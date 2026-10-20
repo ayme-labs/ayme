@@ -21,8 +21,9 @@ import {
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
+import { assertRootReachable } from "./elementReach";
 import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
-import { latestPageStateRef } from "./pageState";
+import { latestPageStateRef, onlyHitTestMarks } from "./pageState";
 import {
   askPredicates,
   assertAvailable,
@@ -336,7 +337,9 @@ function declaredIn(first: PomComponentManifest, second: PomComponentManifest) {
 }
 
 function startObservingPage() {
-  mutationObserver = new MutationObserver(schedulePomMemberProbe);
+  mutationObserver = new MutationObserver((records) => {
+    if (!onlyHitTestMarks(records)) schedulePomMemberProbe();
+  });
   mutationObserver.observe(document.documentElement, {
     attributes: true,
     childList: true,
@@ -677,7 +680,7 @@ export function announceRegisteredPomChange() {
 function createRegisteredTools(registration: ObservedRegisteredPom) {
   const { manifest, instance } = registration;
   const pageTools = manifest.tools.map((tool) =>
-    createRegisteredTool(manifest.className, instance, tool)
+    createRegisteredTool(manifest, instance, tool)
   );
   const components = new Map(
     manifest.components.map((component) => [component.className, component])
@@ -692,20 +695,40 @@ function createRegisteredTools(registration: ObservedRegisteredPom) {
 }
 
 function createRegisteredTool(
-  pomId: string,
+  manifest: PomManifest,
   instance: object,
   tool: ToolManifest
 ): CallerAwarePomTool {
+  const rootMember = manifest.members.find(isRootMember);
   return {
-    pomId,
+    pomId: manifest.className,
     methodName: tool.methodName,
     name: tool.toolName,
     description: toolDescription(tool),
     inputSchema: inputSchemaFor(tool.parameters),
     parameters: inputParameters(tool.parameters),
-    execute: (args, { cursor }) =>
-      performPageObjectAction(instance, tool, args, cursor),
+    execute: async (args, { cursor }) =>
+      performPageObjectAction(
+        instance,
+        tool,
+        args,
+        cursor,
+        rootMember && (await declaredRoot(instance, rootMember))
+      ),
   };
+}
+
+/** The page's declared root, or undefined when it cannot be read as a locator. */
+async function declaredRoot(
+  instance: object,
+  rootMember: PomMemberManifest
+): Promise<Locator | undefined> {
+  try {
+    const root = await readMember(instance, rootMember);
+    return isLocator(root) ? root : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function createComponentTools(
@@ -787,7 +810,8 @@ function createComponentTool(
       componentInstance,
       action,
       args,
-      cursor
+      cursor,
+      rootOf(componentInstance)
     );
   };
   const tool: CallerAwarePomTool = {
@@ -827,7 +851,8 @@ function createSingularComponentTool(
       componentInstance,
       action,
       input,
-      cursor
+      cursor,
+      rootOf(componentInstance)
     );
   };
   return {
@@ -1230,12 +1255,19 @@ async function readMember(instance: object, member: PomMemberManifest) {
   return await value;
 }
 
-/** Performs a Page Object Action for a Run whose Change Record is read from `cursor`. */
+/**
+ * Performs a Page Object Action for a Run whose Change Record is read from
+ * `cursor`. With `root`, the instance's Page Object Root, the call is refused
+ * first when a click would not reach the root where the action would find it
+ * (ADR-0041), as the observation that listed the tool could not tell for a
+ * root it had to scroll to.
+ */
 async function performPageObjectAction(
   instance: object,
   tool: ToolManifest,
   args: unknown,
-  cursor: Cursor
+  cursor: Cursor,
+  root: Locator | undefined
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
   if (!isCallable(method))
@@ -1248,6 +1280,7 @@ async function performPageObjectAction(
     tool.parameters,
     validatedArguments(tool, args)
   );
+  if (root) await assertRootReachable(tool.toolName, root);
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
@@ -1286,6 +1319,11 @@ function locatorElements(locator: Locator): Element[] {
 
 function isPomComponent(value: unknown): value is { root: Locator } {
   return isRecord(value) && isLocator(value.root);
+}
+
+/** A component instance's root locator, or undefined when it has none. */
+function rootOf(component: object): Locator | undefined {
+  return isPomComponent(component) ? component.root : undefined;
 }
 
 function asComponents(value: unknown): unknown[] {

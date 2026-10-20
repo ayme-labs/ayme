@@ -17,21 +17,3 @@ export function containsThroughShadow(
     if (node === ancestor) return true;
   return false;
 }
-
-/**
- * Package-internal: the elements at a point, topmost first, descending into
- * open shadow roots.
- */
-export function hitElements(
-  root: Document | ShadowRoot,
-  x: number,
-  y: number
-): Element[] {
-  return root
-    .elementsFromPoint(x, y)
-    .flatMap((hit): Element[] =>
-      hit.getRootNode() === root && hit.shadowRoot
-        ? [...hitElements(hit.shadowRoot, x, y), hit]
-        : [hit]
-    );
-}

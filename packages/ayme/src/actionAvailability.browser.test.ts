@@ -64,6 +64,7 @@ describe("Action Availability", () => {
     configurePageStateIgnore(undefined);
     document.body.innerHTML = "";
     document.body.removeAttribute("style");
+    window.scrollTo(0, 0);
   });
 
   it.each([
@@ -886,5 +887,107 @@ describe("Action Availability", () => {
       tool.execute({ ref: draft, args: {} }, runContext())
     ).rejects.toThrow("Outbox.items.recall is unavailable: Not sent yet.");
     expect(outbox.items[0]!.recalled).toBe(false);
+  });
+
+  // A root below the fold shows nothing to hit-test when it is observed, so
+  // the call scrolls to it as its action would and tests it there (ADR-0041).
+  it("scrolls to a below-fold root the observation could not hit-test, and runs the action", async () => {
+    document.body.innerHTML =
+      '<div style="height:3000px"></div><section id="panel" style="height:40px"><button>Act</button></section>';
+    const acted = vi.fn();
+    class Panel {
+      root = page.locator("#panel");
+      act() {
+        acted();
+      }
+    }
+    registerCompiledPom(Panel, {
+      className: "Panel",
+      members: [root],
+      tools: [action("act", "Panel.act")],
+      components: [],
+    });
+    session.pom.register(Panel);
+    await probeRegisteredPomMembers();
+
+    expect(published("Panel.act")).toMatchObject({ available: true });
+    expect(window.scrollY).toBe(0);
+    await session.tools.run("Panel.act", {});
+    expect(acted).toHaveBeenCalledOnce();
+    expect(window.scrollY).toBeGreaterThan(0);
+  });
+
+  // Measuring a root under the Inspector marks the host for the hit test;
+  // the probe's own observer must not take that mark for page activity, or
+  // it would probe the page forever.
+  it("probes a root under the Inspector without the hit-test mark starting another probe", async () => {
+    document.body.innerHTML = `
+      <section id="panel" style="position:fixed;left:0;top:0;width:200px;height:40px"><button>Act</button></section>
+      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>`;
+    const host = document.querySelector("ayme-inspector")!;
+    host.attachShadow({ mode: "closed" }).innerHTML =
+      `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>
+       <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
+    class Panel {
+      root = page.locator("#panel");
+      act() {}
+    }
+    registerCompiledPom(Panel, {
+      className: "Panel",
+      members: [root],
+      tools: [action("act", "Panel.act")],
+      components: [],
+    });
+    session.pom.register(Panel);
+    await probeRegisteredPomMembers();
+    expect(published("Panel.act")).toMatchObject({ available: true });
+
+    // A probe already pending may still mark the host once; one that probes
+    // without end marks it every tick and never leaves it alone for 100ms.
+    let marks = 0;
+    const observer = new MutationObserver(
+      (records) => (marks += records.length)
+    );
+    observer.observe(host, { attributes: true });
+    let quiet = false;
+    for (let tries = 0; tries < 10 && !quiet; tries++) {
+      const before = marks;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      quiet = marks === before;
+    }
+    observer.disconnect();
+    expect(quiet).toBe(true);
+  });
+
+  it("refuses a call on a below-fold root covered where the scroll lands, naming the cover", async () => {
+    document.body.innerHTML = `
+      <div style="height:3000px"></div>
+      <section id="panel" style="height:40px"><button>Act</button></section>
+      <div style="height:3000px"></div>
+      <div role="dialog" aria-label="Saving" style="position:fixed;left:0;right:0;top:30%;height:40%"></div>`;
+    const acted = vi.fn();
+    class Panel {
+      root = page.locator("#panel");
+      act() {
+        acted();
+      }
+    }
+    registerCompiledPom(Panel, {
+      className: "Panel",
+      members: [root],
+      tools: [action("act", "Panel.act")],
+      components: [],
+    });
+    session.pom.register(Panel);
+    const { text } = await agent.getPageState();
+    const cover = text.match(/(e\d+) dialog "Saving"/)?.[1];
+    expect(cover).toBeDefined();
+
+    expect(published("Panel.act")).toMatchObject({ available: true });
+    await expect(session.tools.run("Panel.act", {})).rejects.toThrow(
+      `Panel.act is unavailable: a click would not reach it; ${cover} is in the way.`
+    );
+    expect(acted).not.toHaveBeenCalled();
+    expect(window.scrollY).toBeGreaterThan(0);
   });
 });

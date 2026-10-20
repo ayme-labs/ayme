@@ -5,7 +5,6 @@
 import type { JsonSchema } from "./contracts";
 import { ACTION_RESULT_NOTE, runAction } from "./actionSequence";
 import {
-  assertReachable,
   listCustomTools,
   locatorOf,
   registerElementTool,
@@ -18,7 +17,7 @@ import {
   type RegisteredElementTool,
   type ResolvedTarget,
 } from "./elementTools";
-import type { ElementInput } from "./elementReach";
+import { assertReachable, type ElementInput } from "./elementReach";
 import { generateLocatorTool } from "./generateLocator";
 import {
   navigateBackTool,
@@ -367,12 +366,13 @@ async function fillField(field: FormField, currentDocument: Document) {
     field.target,
     currentDocument
   );
-  assertReachable(
+  const locator = locatorOf(target);
+  await assertReachable(
     "fill_form",
+    locator,
     target.element,
     field.type === "checkbox" || field.type === "radio" ? "click" : "focus"
   );
-  const locator = locatorOf(target);
   switch (field.type) {
     case "textbox":
     case "slider":

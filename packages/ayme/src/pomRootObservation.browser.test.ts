@@ -112,6 +112,70 @@ describe("POM root reachability", () => {
     });
   });
 
+  // The root renders no box; its fixed child escapes the clipping of the
+  // root's own ancestors, so it is measured through its own.
+  it("accepts a display-contents root whose fixed descendant escapes a clipping ancestor", async () => {
+    document.body.innerHTML =
+      '<div style="overflow:hidden;height:50px"><section id="root" style="display:contents"><button style="position:fixed;left:20px;top:200px;width:120px;height:40px">Save</button></section></div>';
+    const root = createPage().locator("#root");
+    expect(await root.isVisible()).toBe(true);
+
+    await expect(observePomRoot(root)).resolves.toEqual({
+      present: true,
+      available: true,
+      inTheWay: [],
+    });
+  });
+
+  // The root renders no box of its own and has no element descendants; its
+  // text is what shows, so the root is measured through that text.
+  it("accepts a display-contents root whose only rendered content is text", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="display:contents">Ready</section>';
+    const root = createPage().locator("#root");
+    expect(await root.isVisible()).toBe(true);
+
+    await expect(observePomRoot(root)).resolves.toEqual({
+      present: true,
+      available: true,
+      inTheWay: [],
+    });
+  });
+
+  // Playwright Lite reads a box-less element's visibility from its light
+  // children alone, so a root whose content is only in its shadow tree is not
+  // visible to the click; Ayme agrees rather than offering what cannot be acted on.
+  it("reads a display-contents root with only shadow content as absent, as the click does", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="display:contents"></section>';
+    const root = document.querySelector("#root")!;
+    root.attachShadow({ mode: "open" }).innerHTML =
+      '<button style="position:fixed;left:20px;top:20px;width:120px;height:80px">Save</button>';
+    const locator = createPage().locator("#root");
+    expect(await locator.isVisible()).toBe(false);
+
+    await expect(observePomRoot(locator)).resolves.toEqual({
+      present: false,
+      available: false,
+      inTheWay: [],
+    });
+  });
+
+  // Positioning on a box-less element has no effect: its text stays in the
+  // flow of the clipping ancestor, which clips it.
+  it("reads a positioned display-contents root whose text is clipped away as absent", async () => {
+    document.body.innerHTML =
+      '<div style="overflow:hidden;height:10px"><div style="height:40px"></div><section id="root" style="display:contents;position:fixed">Ready</section></div>';
+
+    await expect(
+      observePomRoot(createPage().locator("#root"))
+    ).resolves.toEqual({
+      present: false,
+      available: false,
+      inTheWay: [],
+    });
+  });
+
   it("accepts nested scrolling without moving either scroll container", async () => {
     document.body.innerHTML =
       '<div id="outer" style="overflow:auto;width:300px;height:200px"><div style="height:600px"></div><div id="inner" style="overflow:auto;width:250px;height:150px"><div style="width:1200px;height:80px;display:flex;justify-content:flex-end"><section id="root" style="width:100px">Nested</section></div></div></div>';
@@ -159,36 +223,36 @@ describe("POM root reachability", () => {
     await expect(probePomReachability(root)).resolves.toBe(true);
   });
 
-  it("does not mistake a covered center for a fully obstructed root", async () => {
+  // A click lands at the centre of the part the viewport shows: a root bare
+  // elsewhere is still out of reach there (ayme-labs/ayme#828).
+  it("rejects a root covered only where a click would land, naming the cover", async () => {
     document.body.innerHTML =
-      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Sidebar</section><div style="position:fixed;left:80px;top:80px;width:40px;height:40px;z-index:10"></div>';
+      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Sidebar</section><div id="badge" style="position:fixed;left:80px;top:80px;width:40px;height:40px;z-index:10"></div>';
     await expect(
-      probePomReachability(createPage().locator("#root"))
-    ).resolves.toBe(true);
+      observePomRoot(createPage().locator("#root"))
+    ).resolves.toEqual({
+      present: true,
+      available: false,
+      inTheWay: [byId("badge")],
+    });
   });
 
-  it("does not bypass a fullscreen overlay for below-fold roots", async () => {
+  // Nothing shows of a below-fold root now, so there is no point to
+  // hit-test: a call scrolls to it and tests it there (ADR-0041).
+  it("accepts a below-fold root under a fullscreen overlay, which a call finds", async () => {
     document.body.innerHTML =
       '<div style="height:2000px"></div><section id="root" style="height:100px">Below fold</section><div style="position:fixed;inset:0;z-index:10"></div>';
     await expect(
       probePomReachability(createPage().locator("#root"))
-    ).resolves.toBe(false);
-  });
-
-  it("accepts another scroll destination when the centered one is covered", async () => {
-    document.body.innerHTML =
-      '<div style="height:1600px"></div><section id="root" style="height:120px">Below fold</section><div style="position:fixed;left:0;right:0;top:35%;height:30%;z-index:10"></div><div style="height:1600px"></div>';
-    await expect(
-      probePomReachability(createPage().locator("#root"))
     ).resolves.toBe(true);
   });
 
-  it("rejects an offscreen root covered by a sibling that scrolls with it", async () => {
+  it("accepts an offscreen root covered by a sibling that scrolls with it, which a call finds", async () => {
     document.body.innerHTML =
       '<div style="overflow:auto;height:200px;position:relative"><div style="height:500px"></div><div style="position:relative;height:100px"><section id="root" style="position:absolute;inset:0">Panel</section><div style="position:absolute;inset:0;z-index:10"></div></div></div>';
     await expect(
       probePomReachability(createPage().locator("#root"))
-    ).resolves.toBe(false);
+    ).resolves.toBe(true);
   });
 
   it("respects inert roots and modal blocking", async () => {
@@ -430,18 +494,6 @@ describe("what is in the way of a present root a click would not reach", () => {
     ]);
   });
 
-  it("names the sibling that would scroll into view over the root", async () => {
-    document.body.innerHTML =
-      '<div style="overflow:auto;height:200px;position:relative"><div style="height:500px"></div><div style="position:relative;height:100px"><section id="root" style="position:absolute;inset:0">Panel</section><div id="cover" style="position:absolute;inset:0;z-index:10"></div></div></div>';
-
-    expect(await observeRoot()).toEqual({
-      present: true,
-      available: false,
-      inTheWay: [byId("cover")],
-    });
-    expect((await observeRoot()).inTheWay).toEqual([byId("cover")]);
-  });
-
   it("names what covers the part of a root the viewport shows when its centre is out of view", async () => {
     document.documentElement.style.overflow = "hidden";
     const height = document.documentElement.clientHeight;
@@ -455,14 +507,25 @@ describe("what is in the way of a present root a click would not reach", () => {
     expect((await observeRoot()).inTheWay).toEqual([byId("footer")]);
   });
 
-  it("keeps the root available when it is partly covered", async () => {
+  it("keeps the root available when it is covered away from where a click would land", async () => {
     document.body.innerHTML =
-      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Content</section><div style="position:fixed;left:0;top:0;width:200px;height:120px;z-index:10"></div>';
+      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Content</section><div style="position:fixed;left:0;top:0;width:200px;height:80px;z-index:10"></div>';
 
     expect(await observeRoot()).toEqual({
       present: true,
       available: true,
       inTheWay: [],
+    });
+  });
+
+  it("names what covers where a click would land though most of the root is bare", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Content</section><div id="cover" style="position:fixed;left:0;top:0;width:200px;height:120px;z-index:10"></div>';
+
+    expect(await observeRoot()).toEqual({
+      present: true,
+      available: false,
+      inTheWay: [byId("cover")],
     });
   });
 });
