@@ -661,8 +661,9 @@ ${
   version
     ? `
 const sourcePath = resolve('consumer.ts');
-// Vite calls the hook with a plugin context; without an environment it only transforms.
-const transformed = await ayme({ include: true }).transform.handler.call({}, readFileSync(sourcePath, 'utf8'), sourcePath);
+// Vite calls the hook with a plugin context that carries the environment and the watch-file method.
+const context = { environment: { config: { consumer: 'client' } }, addWatchFile() {} };
+const transformed = await ayme({ include: true }).transform.handler.call(context, readFileSync(sourcePath, 'utf8'), sourcePath);
 assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
