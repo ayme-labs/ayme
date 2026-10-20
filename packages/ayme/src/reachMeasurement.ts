@@ -296,19 +296,36 @@ function shownParts(element: Element, alignment: ScrollAlignment): Rect[] {
 }
 
 /**
- * The boxes a click on `element` could land in, each with the element that
- * renders it: its own, or for one that renders none (such as
- * `display: contents`) its visible descendants'.
+ * The boxes a click on `element` could land in, each with the element whose
+ * layout places it: its own, or for one that renders none (such as
+ * `display: contents`) its visible descendants' and the text of those that
+ * render none either, placed by the text's parent.
  */
 function renderedBoxes(element: Element) {
   const own = [...element.getClientRects()];
   if (own.length) return own.map((box) => ({ source: element, box }));
   if (styleOf(element).display !== "contents") return [];
-  return [...element.querySelectorAll("*")].flatMap((source) => {
+  const boxes: { source: Element; box: DOMRect }[] = [];
+  const walker = element.ownerDocument.createTreeWalker(
+    element,
+    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT
+  );
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const source =
+      node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
+    if (!source) continue;
     const { visibility } = styleOf(source);
-    if (visibility === "hidden" || visibility === "collapse") return [];
-    return [...source.getClientRects()].map((box) => ({ source, box }));
-  });
+    if (visibility === "hidden" || visibility === "collapse") continue;
+    if (node === source) {
+      for (const box of source.getClientRects()) boxes.push({ source, box });
+    } else if (!source.getClientRects().length) {
+      // Text in an element that renders no box lies in no descendant's box.
+      const range = element.ownerDocument.createRange();
+      range.selectNodeContents(node);
+      for (const box of range.getClientRects()) boxes.push({ source, box });
+    }
+  }
+  return boxes;
 }
 
 /**
