@@ -129,8 +129,7 @@ function memberRole(
   checker: ts.TypeChecker,
   member: ts.ClassElement
 ): MemberRole | undefined {
-  if (!isPublicInstanceMember(member) && !isNonPublicRootMember(member))
-    return undefined;
+  if (!isPublicInstanceMember(member)) return undefined;
   if (!member.name || !ts.isIdentifier(member.name)) return undefined;
   const memberName = member.name.text;
 
@@ -488,26 +487,6 @@ function pomDeclarations(
   }
 
   return [...declarations];
-}
-
-function isNonPublicRootMember(member: ts.ClassElement) {
-  if (
-    (!ts.isPropertyDeclaration(member) &&
-      !ts.isGetAccessorDeclaration(member)) ||
-    !member.name ||
-    !ts.isIdentifier(member.name) ||
-    member.name.text !== "root"
-  )
-    return false;
-  const modifiers = member.modifiers ?? [];
-  return (
-    modifiers.some(
-      (modifier) =>
-        modifier.kind === ts.SyntaxKind.PrivateKeyword ||
-        modifier.kind === ts.SyntaxKind.ProtectedKeyword
-    ) &&
-    !modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
-  );
 }
 
 function isNamedType(type: ts.Type, name: string) {

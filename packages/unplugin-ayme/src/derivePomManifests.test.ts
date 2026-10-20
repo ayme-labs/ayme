@@ -56,7 +56,7 @@ describe("derivePomManifests", () => {
   });
 
   it.each(["privateRootPom", "protectedRootPom"])(
-    "includes an inherited non-public root from %s without exposing other non-public members",
+    "leaves a non-public member named root out of %s like any other non-public member",
     (fixture) => {
       const manifest = manifestFor(fixture);
 
@@ -66,14 +66,21 @@ describe("derivePomManifests", () => {
           kind: "locator",
           access: "field",
         },
-        {
-          memberName: "root",
-          kind: "locator",
-          access: "field",
-        },
       ]);
     }
   );
+
+  it("lists a public member named root as an ordinary locator member, in declaration order", () => {
+    const manifest = manifestForClass(
+      "annotatedChildrenPom",
+      "AnnotatedChildrenPom"
+    );
+
+    expect(manifest?.components[0]?.members).toEqual([
+      { memberName: "root", kind: "locator", access: "field" },
+      { memberName: "child", kind: "locator", access: "field" },
+    ]);
+  });
 
   it("includes inherited public locator members", () => {
     const manifest = manifestFor("inheritedPom");
