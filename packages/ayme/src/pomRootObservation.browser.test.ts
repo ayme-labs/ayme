@@ -112,6 +112,21 @@ describe("POM root reachability", () => {
     });
   });
 
+  // The root renders no box; its fixed child escapes the clipping of the
+  // root's own ancestors, so it is measured through its own.
+  it("accepts a display-contents root whose fixed descendant escapes a clipping ancestor", async () => {
+    document.body.innerHTML =
+      '<div style="overflow:hidden;height:50px"><section id="root" style="display:contents"><button style="position:fixed;left:20px;top:200px;width:120px;height:40px">Save</button></section></div>';
+    const root = createPage().locator("#root");
+    expect(await root.isVisible()).toBe(true);
+
+    await expect(observePomRoot(root)).resolves.toEqual({
+      present: true,
+      available: true,
+      inTheWay: [],
+    });
+  });
+
   it("accepts nested scrolling without moving either scroll container", async () => {
     document.body.innerHTML =
       '<div id="outer" style="overflow:auto;width:300px;height:200px"><div style="height:600px"></div><div id="inner" style="overflow:auto;width:250px;height:150px"><div style="width:1200px;height:80px;display:flex;justify-content:flex-end"><section id="root" style="width:100px">Nested</section></div></div></div>';

@@ -437,6 +437,78 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     );
   });
 
+  // The Inspector lets the action through its own panel only: what the page
+  // puts under the panel still takes the click.
+  it("names an overlay under the Inspector host as in the way, and refuses the click at once", async () => {
+    document.body.innerHTML = `
+      <button id="save" type="button" style="position: fixed; left: 0; top: 0">Save</button>
+      <div id="overlay" role="dialog" aria-label="Saving" style="position: fixed; inset: 0"></div>
+      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
+    `;
+    const host = document.querySelector("ayme-inspector")!;
+    host.attachShadow({ mode: "closed" }).innerHTML =
+      `<div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
+    expect(document.elementFromPoint(20, 10)).toBe(host);
+    const save = await refOf("button", "Save");
+    const overlay = await refOf("dialog", "Saving");
+
+    expect((await listElementToolTargets()).get("click")).not.toContain(save);
+    const { error, elapsed } = await refusal("click", save);
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${overlay} is in the way.`
+    );
+    expect(clicks).toEqual([]);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+    // The host is back as it was.
+    expect((host as HTMLElement).style.visibility).toBe("");
+  });
+
+  // The click lands at the centre of the whole box, which the clip takes
+  // out, not at the centre of the part shown; no scroll moves it.
+  it("refuses at once a click on a button clipped where the click would land, naming what is under the clip", async () => {
+    document.body.innerHTML = `
+      <style>
+        #under { position: fixed; inset: 0; }
+        #save { position: fixed; left: 0; top: 0; width: 200px; height: 40px; clip-path: inset(0 60% 0 0); }
+      </style>
+      <div id="under" role="dialog" aria-label="Saving"></div>
+      <button id="save" type="button">Save</button>
+    `;
+    const save = await refOf("button", "Save");
+    const under = await refOf("dialog", "Saving");
+
+    const { error, elapsed } = await refusal("click", save);
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${under} is in the way.`
+    );
+    expect(clicks).toEqual([]);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+  });
+
+  // The scroller's box is transformed; its scroll offsets and client size
+  // are not. The button sits past the port the transform shows, so it is
+  // offered as one a scroll reaches, and the call's scroll reaches it.
+  it("offers a button scrolled out of a scaled scroll container and clicks it, scrolling to it first", async () => {
+    document.body.innerHTML = `
+      <style>
+        #scroller { overflow: auto; width: 200px; height: 100px; transform: scale(0.5); transform-origin: 0 0; }
+        #save { display: block; height: 30px; }
+      </style>
+      <div id="scroller">
+        <div style="height: 150px"></div>
+        <button id="save" type="button">Save</button>
+      </div>
+    `;
+    const save = await refOf("button", "Save");
+    const scroller = document.querySelector("#scroller")!;
+
+    expect((await listElementToolTargets()).get("click")).toContain(save);
+    expect(scroller.scrollTop).toBe(0);
+    await call("click", { target: save });
+    expect(clicks).toEqual(["save"]);
+    expect(scroller.scrollTop).toBeGreaterThan(0);
+  });
+
   // Playwright's own check never reached these either: the box takes the
   // click, or the clip leaves nothing to click. The tool refuses at once
   // instead of timing out.

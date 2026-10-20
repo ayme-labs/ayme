@@ -171,7 +171,7 @@ export function measureReach(page: Page, element: Element): ReachMeasurement {
     if (!isPresent(element, shown)) return absent;
     const blocker = blockingAncestor(element);
     if (blocker) return { present: true, available: false, blocker };
-    return inTheWay(clickTarget(page, element, shown));
+    return inTheWay(page, element, clickTarget(page, element, shown));
   });
 }
 
@@ -181,8 +181,9 @@ export function measureReach(page: Page, element: Element): ReachMeasurement {
  * scroll, `locator.scrollIntoViewIfNeeded()`, is run first, so the hit test
  * is where the click will land. The scroll moves an element only partly
  * shown, too, until its nearest edge shows, and the click's point moves with
- * it. A scroll that fails leaves the measurement to the action, whose own
- * error says why.
+ * it; after it the point is final, so it is tested wherever it lies, in a
+ * part the clipping takes out as well. A scroll that fails leaves the
+ * measurement to the action, whose own error says why.
  */
 export async function measureReachAtCall(
   locator: Locator,
@@ -196,9 +197,8 @@ export async function measureReachAtCall(
   } catch {
     return reached;
   }
-  return inTheWay(
-    clickTarget(locator.page(), element, shownParts(element, "current"))
-  );
+  const page = locator.page();
+  return inTheWay(page, element, pointerHitTarget(page, element));
 }
 
 /**
@@ -225,21 +225,38 @@ function clickTarget(
 }
 
 /**
- * The measurement `target` makes of a present element: in the way is what
- * the click would hit instead, unless that is Ayme's own Inspector, which
- * lets a runtime action through.
+ * The measurement `target`, the hit test of `page` on `element`, makes of a
+ * present element: in the way is what the click would hit instead. Ayme's
+ * own Inspector lets a runtime action through its panel, so a hit on it is
+ * what the same test finds with the Inspector's host out of hit testing.
  */
-function inTheWay(target: PointerHitTarget | undefined): ReachMeasurement {
-  const hit = target?.hit;
-  return hit && !inInspector(hit)
-    ? { present: true, available: false, hit }
-    : reached;
+function inTheWay(
+  page: Page,
+  element: Element,
+  target: PointerHitTarget | undefined
+): ReachMeasurement {
+  let hit = target?.hit;
+  const host = hit && inspectorHostOf(hit);
+  if (host)
+    hit = withoutHitTesting(host, () => pointerHitTarget(page, element))?.hit;
+  return hit ? { present: true, available: false, hit } : reached;
 }
 
-function inInspector(element: Element): boolean {
+function inspectorHostOf(element: Element): HTMLElement | undefined {
   for (let node: Element | null = element; node; node = parentElement(node))
-    if (node.matches(INSPECTOR_HOST_SELECTOR)) return true;
-  return false;
+    if (node.matches(INSPECTOR_HOST_SELECTOR)) return node as HTMLElement;
+  return undefined;
+}
+
+/** `measure()` with `host` hidden, as the screenshot hides it, then as it was. */
+function withoutHitTesting<R>(host: HTMLElement, measure: () => R): R {
+  const visibility = host.style.visibility;
+  host.style.visibility = "hidden";
+  try {
+    return measure();
+  } finally {
+    host.style.visibility = visibility;
+  }
 }
 
 /**
@@ -255,20 +272,35 @@ function isPresent(element: Element, shown: readonly Rect[]): boolean {
  * The parts of `element`'s boxes the viewport shows with its scroll
  * containers at `alignment`, through their clipping. The boxes are its own,
  * or for an element that renders none (such as `display: contents`) its
- * contents', as playwright-lite picks its point.
+ * rendered descendants', each clipped and scrolled by that descendant's own
+ * ancestors, which a positioned one escapes.
  */
 function shownParts(element: Element, alignment: ScrollAlignment): Rect[] {
   if (!element.isConnected || !element.ownerDocument.defaultView) return [];
-  let boxes: DOMRect[] = [...element.getClientRects()];
-  if (!boxes.length && styleOf(element).display === "contents") {
-    const range = element.ownerDocument.createRange();
-    range.selectNodeContents(element);
-    boxes = [...range.getClientRects()];
-  }
-  const layout = layoutAncestors(element);
-  return boxes.flatMap((box) => {
-    const rect = scrolledIntoView(element, box, layout, alignment);
+  return renderedBoxes(element).flatMap(({ source, box }) => {
+    const rect = scrolledIntoView(
+      source,
+      box,
+      layoutAncestors(source),
+      alignment
+    );
     return rect ? [rect] : [];
+  });
+}
+
+/**
+ * The boxes a click on `element` could land in, each with the element that
+ * renders it: its own, or for one that renders none (such as
+ * `display: contents`) its visible descendants'.
+ */
+function renderedBoxes(element: Element) {
+  const own = [...element.getClientRects()];
+  if (own.length) return own.map((box) => ({ source: element, box }));
+  if (styleOf(element).display !== "contents") return [];
+  return [...element.querySelectorAll("*")].flatMap((source) => {
+    const { visibility } = styleOf(source);
+    if (visibility === "hidden" || visibility === "collapse") return [];
+    return [...source.getClientRects()].map((box) => ({ source, box }));
   });
 }
 
@@ -296,9 +328,17 @@ function scrolledIntoView(
     // own overflow takes that over.
     if (ancestor === document.body && overflowsVisibly(html)) continue;
     const style = styleOf(ancestor);
-    const port = scrollport(ancestor);
+    const { port, scaleX, scaleY } = scrollport(ancestor);
     if (alignment === "center")
-      scrollToCentre(rect, port, ancestor, style.overflowX, style.overflowY);
+      scrollToCentre(
+        rect,
+        port,
+        ancestor,
+        style.overflowX,
+        style.overflowY,
+        scaleX,
+        scaleY
+      );
     rect = clip(
       rect,
       port,
@@ -336,14 +376,18 @@ function scrolledIntoView(
 
 /**
  * Moves `rect` as the scroll of `scroller` that centres it in `port` would,
- * within the scroll range on each axis the overflow lets scroll.
+ * within the scroll range on each axis the overflow lets scroll. The scroll
+ * offsets are in the scroller's own units, which a transform scales by
+ * `scaleX` and `scaleY` into the viewport's.
  */
 function scrollToCentre(
   rect: Rect,
   port: Rect,
   scroller: Element,
   overflowX: string,
-  overflowY: string
+  overflowY: string,
+  scaleX = 1,
+  scaleY = 1
 ) {
   const scrollable = (overflow: string) =>
     /^(auto|scroll|overlay)$/.test(overflow);
@@ -357,15 +401,17 @@ function scrollToCentre(
     portEnd: number,
     current: number,
     maximum: number,
+    scale: number,
     reverse: boolean
   ) => {
-    if (maximum <= 0) return 0;
-    const desired = current + (start + end) / 2 - (portStart + portEnd) / 2;
+    if (maximum <= 0 || scale <= 0) return 0;
+    const desired =
+      current + ((start + end) / 2 - (portStart + portEnd) / 2) / scale;
     const next = Math.max(
       reverse ? -maximum : 0,
       Math.min(reverse ? 0 : maximum, desired)
     );
-    return current - next;
+    return (current - next) * scale;
   };
   const x = scrollable(overflowX)
     ? shift(
@@ -375,6 +421,7 @@ function scrollToCentre(
         port.right,
         scroller.scrollLeft,
         scroller.scrollWidth - scroller.clientWidth,
+        scaleX,
         reversed
       )
     : 0;
@@ -386,6 +433,7 @@ function scrollToCentre(
         port.bottom,
         scroller.scrollTop,
         scroller.scrollHeight - scroller.clientHeight,
+        scaleY,
         false
       )
     : 0;
@@ -395,15 +443,24 @@ function scrollToCentre(
   rect.bottom += y;
 }
 
-/** The box `ancestor` scrolls its content within, in the viewport's coordinates. */
-function scrollport(ancestor: Element): Rect {
+/**
+ * The box `ancestor` scrolls its content within, in the viewport's
+ * coordinates, and how much a transform scales it: the bounding box is
+ * transformed, the client sizes and scroll offsets are not.
+ */
+function scrollport(ancestor: Element) {
   const box = ancestor.getBoundingClientRect();
-  return {
-    left: box.left + ancestor.clientLeft,
-    top: box.top + ancestor.clientTop,
-    right: box.left + ancestor.clientLeft + ancestor.clientWidth,
-    bottom: box.top + ancestor.clientTop + ancestor.clientHeight,
+  const width = (ancestor as HTMLElement).offsetWidth || box.width;
+  const height = (ancestor as HTMLElement).offsetHeight || box.height;
+  const scaleX = width ? box.width / width : 1;
+  const scaleY = height ? box.height / height : 1;
+  const port: Rect = {
+    left: box.left + ancestor.clientLeft * scaleX,
+    top: box.top + ancestor.clientTop * scaleY,
+    right: box.left + (ancestor.clientLeft + ancestor.clientWidth) * scaleX,
+    bottom: box.top + (ancestor.clientTop + ancestor.clientHeight) * scaleY,
   };
+  return { port, scaleX, scaleY };
 }
 
 function overflowsVisibly(style: CSSStyleDeclaration) {
