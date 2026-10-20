@@ -1,7 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
-@ayme
+@ayme({ root: (self: UnmarkedMethodsPom) => self.root })
 export class UnmarkedMethodsPom {
   constructor(readonly root: Locator) {}
 
@@ -36,7 +36,7 @@ export class UnmarkedMethodsPom {
   }
 }
 
-@ayme
+@ayme({ root: (self: ItemPom) => self.root })
 export class ItemPom {
   constructor(readonly root: Locator) {}
 
