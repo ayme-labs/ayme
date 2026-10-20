@@ -1,6 +1,8 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent, h } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
+// jsdom has no URLPattern, which ListPage's presence needs.
+import "urlpattern-polyfill";
 
 // The compiler plugin in vitest.config.ts registers this POM's manifest.
 import { ListPage } from "../../playwright/pom/ListPage";
@@ -56,12 +58,19 @@ describe("example lifecycle", () => {
       value: { registerTool },
     });
 
-    const wrapper = mount(App);
-    await flushPromises();
+    // ListPage is present on the site root, not on the test runner's URL.
+    const testUrl = location.href;
+    history.replaceState(null, "", "/");
+    try {
+      const wrapper = mount(App);
+      await flushPromises();
 
-    expect(registerTool.mock.calls.map(([tool]) => tool.name)).toContain(
-      "ListPage.addItem"
-    );
-    wrapper.unmount();
+      expect(registerTool.mock.calls.map(([tool]) => tool.name)).toContain(
+        "ListPage.addItem"
+      );
+      wrapper.unmount();
+    } finally {
+      history.replaceState(null, "", testUrl);
+    }
   });
 });

@@ -10,7 +10,7 @@ This browser playground combines a functional list app with an Ayme inspector so
 - A collection component action receives a `ref` (the Structural Ref of the instance's Page Object Root, as labelled in the page state) followed by an `args` object derived from its TypeScript method parameters: `ListPage.items.archive({ ref: "e5", args: {} })`.
 - The bundler-neutral POM compiler reads the nearest `tsconfig.json` and derives each decorated method's input schema and each public `Locator` member as POM metadata. The Vite plugin is a thin adapter that places this metadata in the browser bundle. It derives nested, JSON-shaped object inputs too; the decorator does not duplicate parameter types or schemas.
 - POM metadata also describes components constructed from a locator root, including repeated components exposed as paths such as `items[0].archiveButton`.
-- `App.vue` calls `useAyme()` to own the runtime and `usePageObject(ListPage)` to register the imported POM instance.
+- `App.vue` calls `useAyme()` to own the runtime and `usePageObject(ListPage)` to register the imported POM instance at setup. `ListPage` extends `AppPage`, the page base class whose `present` checks the URL against the page's `path`, and `ListItem` and `ArchiveDialog` extend `AppComponent`, whose `root` names their container, as the Page Object Models guide recommends.
 - The runtime publishes the same registered tool objects to `document.modelContext` and the in-page debug console.
 - The in-page Inspector (`inspector` in `App.vue`'s `useAyme`, off with `--mode inspector-disabled`) is a panel titled "ayme" that floats, docks left, right or bottom, or collapses to the ayme logo. Its navigator has three lenses: Model (the Page Objects on the page and the Page Object Models the page knows), Structure (the Structural Page State an agent receives, each node tagged with the member it maps to) and Tools (every tool the panel can run now, published or not). Selecting anything opens its detail, where the same run card runs its tools with a typed form; a tool's page and a structure node's detail also show "What the model sees", the definitions, page state and schemas an agent gets. Runs lists the runs made from the panel with their steps.
 - The Inspector keeps its view live as the demo changes without recording anything an agent would see. It does not use framework bindings or element identity.
@@ -30,7 +30,7 @@ The demo UI is built entirely from [shadcn-vue](https://www.shadcn-vue.com/) com
 
 ## Application setup
 
-Call the lifecycle API once in the application root, before registering Page Objects:
+Call the lifecycle API once in the application root, then register the pages there:
 
 ```ts
 import { useAyme, usePageObject } from "@ayme-dev/vue";
@@ -40,7 +40,7 @@ useAyme({ webMCP: { enabled: true } });
 usePageObject(ListPage);
 ```
 
-`webMCP.enabled` turns publication on through `@ayme-dev/webmcp`, which the example depends on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
+`webMCP.enabled` turns publication on through `@ayme-dev/webmcp`, which the example depends on; it is off unless set. No page argument or application watcher is required. The counter page of the certification registers `CounterPage` in its `Counter` component instead, since the counter's presence is that component's lifetime, and disposal is automatic.
 
 This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 
