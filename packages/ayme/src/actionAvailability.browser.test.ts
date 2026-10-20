@@ -917,6 +917,48 @@ describe("Action Availability", () => {
     expect(window.scrollY).toBeGreaterThan(0);
   });
 
+  // Measuring a root under the Inspector marks the host for the hit test;
+  // the probe's own observer must not take that mark for page activity, or
+  // it would probe the page forever.
+  it("probes a root under the Inspector without the hit-test mark starting another probe", async () => {
+    document.body.innerHTML = `
+      <section id="panel" style="position:fixed;left:0;top:0;width:200px;height:40px"><button>Act</button></section>
+      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>`;
+    const host = document.querySelector("ayme-inspector")!;
+    host.attachShadow({ mode: "closed" }).innerHTML =
+      `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>
+       <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
+    class Panel {
+      root = page.locator("#panel");
+      act() {}
+    }
+    registerCompiledPom(Panel, {
+      className: "Panel",
+      members: [root],
+      tools: [action("act", "Panel.act")],
+      components: [],
+    });
+    session.pom.register(Panel);
+    await probeRegisteredPomMembers();
+    expect(published("Panel.act")).toMatchObject({ available: true });
+
+    // A probe already pending may still mark the host once; one that probes
+    // without end marks it every tick and never leaves it alone for 100ms.
+    let marks = 0;
+    const observer = new MutationObserver(
+      (records) => (marks += records.length)
+    );
+    observer.observe(host, { attributes: true });
+    let quiet = false;
+    for (let tries = 0; tries < 10 && !quiet; tries++) {
+      const before = marks;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      quiet = marks === before;
+    }
+    observer.disconnect();
+    expect(quiet).toBe(true);
+  });
+
   it("refuses a call on a below-fold root covered where the scroll lands, naming the cover", async () => {
     document.body.innerHTML = `
       <div style="height:3000px"></div>

@@ -23,7 +23,7 @@ import {
 import type { Locator, Page } from "@playwright/test";
 import { assertRootReachable } from "./elementReach";
 import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
-import { latestPageStateRef } from "./pageState";
+import { latestPageStateRef, onlyHitTestMarks } from "./pageState";
 import {
   askPredicates,
   assertAvailable,
@@ -337,7 +337,9 @@ function declaredIn(first: PomComponentManifest, second: PomComponentManifest) {
 }
 
 function startObservingPage() {
-  mutationObserver = new MutationObserver(schedulePomMemberProbe);
+  mutationObserver = new MutationObserver((records) => {
+    if (!onlyHitTestMarks(records)) schedulePomMemberProbe();
+  });
   mutationObserver.observe(document.documentElement, {
     attributes: true,
     childList: true,
