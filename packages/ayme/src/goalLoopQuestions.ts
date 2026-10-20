@@ -1228,21 +1228,11 @@ export function buildOperationRequest(
       type: "noul",
       instructions:
         "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
-      criteria: {
-        true: "Every outcome the goal describes is visible in `page`, for the item the goal names.",
-        false:
-          "An outcome the goal describes is missing from `page`, or belongs to another item than the goal names.",
-      },
     },
     goal_remaining: {
       type: "noul",
       instructions:
         "Does the goal still need a step that has not run yet? Judge from `history` and `page`.",
-      criteria: {
-        true: "A step the goal needs is not in `history` with result ok.",
-        false:
-          "Every step the goal needs is in `history` with result ok, whether or not it changed `page`.",
-      },
     },
     ...Object.fromEntries(
       speculative.map((question) => [question.id, choiceQuestion(question)])
