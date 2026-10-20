@@ -305,6 +305,30 @@ export const benchGoals: BenchGoal[] = [
     },
   },
   {
+    // Issue 536: the goal's end state is a Custom Tool effect outside the
+    // page tree (`highlight_page_state_ref`, registered in BenchRoute.vue),
+    // so only the step's returned value can show the goal met.
+    title: "projects: highlight the rename dialog's Confirm button",
+    path: "/bench/projects",
+    heading: "Projects",
+    goal: "The Confirm button of the Rename project dialog for the Mobile app project is highlighted with highlight_page_state_ref. Open only what is needed to make the Confirm button visible. Do not click, submit or otherwise activate the Confirm button.",
+    maxSteps: 4,
+    reason: "done",
+    intended: [
+      { operation: "click", target: 'button "Rename"', nth: 1 },
+      { operation: "highlight_page_state_ref", target: 'button "Confirm"' },
+    ],
+    async outcome(page) {
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toHaveCount(1);
+      // The dialog of the Mobile app row, not the first row's.
+      await expect(dialog.getByLabel("Project name")).toHaveValue("Mobile app");
+      await expect(
+        page.getByRole("button", { name: "Confirm" })
+      ).toHaveAttribute("data-highlighted", "true");
+    },
+  },
+  {
     title: "new project: fill in the details and continue",
     path: "/bench/new-project",
     heading: "New project",

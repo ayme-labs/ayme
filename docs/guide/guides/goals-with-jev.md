@@ -154,6 +154,7 @@ Each step sends the pruned page state, the goal and the step's question from the
     result: string,      // "ok", or the error the action failed with
     page_changed: boolean,
     changes?: string,    // what the step changed, cut to 400 characters; absent when nothing
+    returned?: JsonValue, // what the tool returned, its JSON cut to 200 characters; absent when nothing
     did: string,         // operation(description, …), for a human skimming
   }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value or no_progress
@@ -164,7 +165,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 
 | Reason              | Meaning                                                                                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                                                                                                                                                   |
+| `done`              | The model chose no further operation and judged the goal achieved on the page (goal_met ≥ 0.5), or no step of it still outstanding (goal_remaining < 0.5) after a step that ran. A goal may end in an effect the page never shows.     |
 | `no_fitting_option` | The model chose "none", as no available operation fits, or answered "none of these" to a collection item or in every chunk of a ref.                                                                                                   |
 | `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters.                                                                                                   |
 | `action_failed`     | Two operations failed in a row.                                                                                                                                                                                                        |
@@ -175,7 +176,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 
 A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
 
-`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; in `changes`, what the step changed, its Change Record cut to 400 characters with `… (cut)` on a line of its own where it was cut, absent when the step changed nothing; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
+`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; in `changes`, what the step changed, its Change Record cut to 400 characters with `… (cut)` on a line of its own where it was cut, absent when the step changed nothing; in `returned`, what the tool returned, the only trace of an effect the page does not show, its JSON cut to 200 characters with `… (cut)` where it was cut, absent when the tool returned nothing; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
 
 `changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record. A run that opened a dialog, closed it and archived an item hands over only the net result:
 

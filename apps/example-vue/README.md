@@ -83,7 +83,7 @@ By default it runs the harness's own goal set, `tests/goalHarness.spec.ts` under
 | live-lane | `Add an item called Milk`, with the Goal Value `item name: Milk` | Milk among the active items, reason `done`         |
 | live-lane | `Add an item called Milk`                                        | Reason `needs_value`, the list unchanged           |
 | live-lane | `Archive the second item in the list`                            | The second item in Archived, reason `done`         |
-| bench     | 13 goals on pages without Page Objects                           | See [Bench goal set](#bench-goal-set)              |
+| bench     | 14 goals on pages without Page Objects                           | See [Bench goal set](#bench-goal-set)              |
 
 The script sets `AYME_GOAL_RUNS=1` for the Playwright run it starts. Only then does a goal spec record a run; without it, as in CI and `pnpm run test:goals`, the recorder passes the goal straight through.
 
@@ -116,21 +116,22 @@ The bench goal set measures the Goal Loop on generic app screens that have no Pa
 
 `tests/benchGoals.ts` holds the goals, worded as a coding agent words them, each with its Goal Values, step budget (two to three times the intended steps), expected Handover reason, the DOM outcome the test checks, and its intended steps. The intended steps give each goal's expected step count and, for every `fill`, the element its Goal Value should go to, so the harness reports `doneAtExpectedStepRate` and `wrongTargetSteps` for them.
 
-| Goal                                                                                            | Goal Values                                                 | Steps | Budget |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----- | ------ |
-| `Sign in with the given email and password`                                                     | email, password                                             | 4     | 10     |
-| `Sign in` (ends `needs_value`)                                                                  | none                                                        | -     | 3      |
-| `Set the bio to the given text and save`                                                        | bio                                                         | 3     | 8      |
-| `Change the display name to the given value`                                                    | display name                                                | 2     | 5      |
-| `Fill in the profile with the given values and save`                                            | first name, last name, display name, email, bio             | 7     | 18     |
-| `Turn on push notifications and save`                                                           | none                                                        | 3     | 8      |
-| `Switch to the dark theme`                                                                      | none                                                        | 2     | 5      |
-| `Set the language to the given language`                                                        | language                                                    | 2     | 5      |
-| `Turn off email notifications, use the dark theme, set the language to the given one, and save` | language                                                    | 5     | 12     |
-| `Show only the projects that match the given search`                                            | search                                                      | 2     | 5      |
-| `Rename the Mobile app project to the given name`                                               | new name                                                    | 4     | 10     |
-| `Fill in the project details with the given values and continue`                                | project name, description                                   | 4     | 10     |
-| `Create a project with the given details and invite the given teammate with the given role`     | project name, description, visibility, teammate email, role | 8     | 20     |
+| Goal                                                                                                                         | Goal Values                                                 | Steps | Budget |
+| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----- | ------ |
+| `Sign in with the given email and password`                                                                                  | email, password                                             | 4     | 10     |
+| `Sign in` (ends `needs_value`)                                                                                               | none                                                        | -     | 3      |
+| `Set the bio to the given text and save`                                                                                     | bio                                                         | 3     | 8      |
+| `Change the display name to the given value`                                                                                 | display name                                                | 2     | 5      |
+| `Fill in the profile with the given values and save`                                                                         | first name, last name, display name, email, bio             | 7     | 18     |
+| `Turn on push notifications and save`                                                                                        | none                                                        | 3     | 8      |
+| `Switch to the dark theme`                                                                                                   | none                                                        | 2     | 5      |
+| `Set the language to the given language`                                                                                     | language                                                    | 2     | 5      |
+| `Turn off email notifications, use the dark theme, set the language to the given one, and save`                              | language                                                    | 5     | 12     |
+| `Show only the projects that match the given search`                                                                         | search                                                      | 2     | 5      |
+| `Rename the Mobile app project to the given name`                                                                            | new name                                                    | 4     | 10     |
+| `The Confirm button of the Rename project dialog for the Mobile app project is highlighted with highlight_page_state_ref. …` | none                                                        | 3     | 4      |
+| `Fill in the project details with the given values and continue`                                                             | project name, description                                   | 4     | 10     |
+| `Create a project with the given details and invite the given teammate with the given role`                                  | project name, description, visibility, teammate email, role | 8     | 20     |
 
 Run it with your own model key, as for the [live goal lane](#live-goal-lane), and compare two runs, for example before and after a change to the Goal Loop:
 

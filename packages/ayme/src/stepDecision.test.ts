@@ -183,7 +183,11 @@ function scripted(...turns: Turn[]) {
 }
 
 /** Stage one's answers: the operation chosen, and how far the goal is met. */
-const stageOne = (operation: string, goalMet = 0.1) => ({
+const stageOne = (
+  operation: string,
+  goalMet = 0.1,
+  goalRemaining?: number
+) => ({
   answers: {
     operation: {
       type: "choice",
@@ -191,6 +195,9 @@ const stageOne = (operation: string, goalMet = 0.1) => ({
       probabilities: { [operation]: 0.9 },
     },
     goal_met: { type: "noul", noul: goalMet },
+    ...(goalRemaining === undefined
+      ? {}
+      : { goal_remaining: { type: "noul", noul: goalRemaining } }),
   },
 });
 
@@ -293,8 +300,8 @@ describe("a Step Decision", () => {
       expect(requests).toEqual([]);
     });
 
-    it("with done when the model judges the goal met, before reading the operation's arguments", async () => {
-      const { decide, requests } = scripted(stageOne("click", 0.8));
+    it("with done when the model has nothing left to run and judges the goal met", async () => {
+      const { decide, requests } = scripted(stageOne("none", 0.8));
 
       const verdict = await step(decide);
 
@@ -304,6 +311,53 @@ describe("a Step Decision", () => {
         scores: { goalMetScore: 0.8 },
       });
       expect(requests).toHaveLength(1);
+    });
+
+    it("with done when the model has nothing left to run and judges no step outstanding, although the page does not show the goal met", async () => {
+      const { decide } = scripted(stageOne("none", 0.47, 0.37));
+
+      expect(await step(decide)).toMatchObject({
+        kind: "stop",
+        reason: "done",
+        scores: { goalMetScore: 0.47, goalRemainingScore: 0.37 },
+      });
+    });
+
+    it("with no_fitting_option, not done, when the last step failed and the model only judges no step outstanding", async () => {
+      const { decide } = scripted(stageOne("none", 0.1, 0.1));
+
+      const verdict = await step(decide, {
+        history: [
+          {
+            operation: "click",
+            chosen: {},
+            result: "action exploded",
+            page_changed: false,
+            did: "click()",
+          },
+        ],
+      });
+
+      expect(verdict).toMatchObject({
+        kind: "stop",
+        reason: "no_fitting_option",
+      });
+    });
+
+    it("runs the chosen operation although the model judges the goal met: its effect may never show on the page", async () => {
+      const { decide, requests } = scripted(stageOne("click", 0.8, 0.1), {
+        answers: { ref: choice("e2") },
+      });
+
+      const verdict = await step(decide);
+
+      expect(verdict).toMatchObject({
+        kind: "act",
+        operation: clickTool,
+        args: { ref: "e2" },
+        scores: { goalMetScore: 0.8, goalRemainingScore: 0.1 },
+      });
+      expect(requests).toHaveLength(2);
     });
 
     it("with no_fitting_option when the model chooses none", async () => {
@@ -503,7 +557,12 @@ describe("a Step Decision", () => {
           ...stageOne("Project.rename").answers,
           ...Object.fromEntries(
             Object.keys(request.questions)
-              .filter((id) => id !== "operation" && id !== "goal_met")
+              .filter(
+                (id) =>
+                  id !== "operation" &&
+                  id !== "goal_met" &&
+                  id !== "goal_remaining"
+              )
               .map((id) => [id, choice("not_offered")])
           ),
         }),

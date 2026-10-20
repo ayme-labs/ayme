@@ -23,6 +23,7 @@ import {
   fitListsToTarget,
   operationQuestionFits,
   parseGoalMetAnswer,
+  parseGoalRemainingAnswer,
   parseOperationAnswer,
   planArguments,
   readArgumentAnswers,
@@ -56,6 +57,8 @@ export type GoalLoopDecisionFunction = (
 export type StepScores = {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
+  /** Stage one: how likely the goal still needs a step that has not run. */
+  goalRemainingScore?: number;
   /**
    * Stage one, per speculative question that covers the chosen operation: the
    * key of the option chosen.
@@ -442,25 +445,42 @@ export async function decideStep({
   const stageOneAnswers = asker.read(() => ({
     operation: parseOperationAnswer(answersOf(stageOne.response)),
     goalMet: parseGoalMetAnswer(answersOf(stageOne.response)),
+    goalRemaining: parseGoalRemainingAnswer(answersOf(stageOne.response)),
   }));
   if (stageOneAnswers.stop) return stageOneAnswers.stop;
-  const { operation: operationAnswer, goalMet } = stageOneAnswers.value;
+  const {
+    operation: operationAnswer,
+    goalMet,
+    goalRemaining,
+  } = stageOneAnswers.value;
 
   const scores: StepScores = {
     operationProbabilities: operationAnswer.probabilities,
     goalMetScore: goalMet.noul,
+    ...(goalRemaining ? { goalRemainingScore: goalRemaining.noul } : {}),
   };
   asker.scores = scores;
+  const chosenKey = operationAnswer.choice;
 
-  // 1. done: goal_met >= 0.5
-  if (goalMet.noul >= 0.5)
+  // 1. done: the model has nothing left to run, and either the page shows
+  // the goal's end state or no step of the goal is outstanding. A chosen
+  // operation always runs, whatever the goal_met score: the goal may end in
+  // an effect the page never shows.
+  const nothingToRun = chosenKey === "none";
+  const endStateVisible = goalMet.noul >= 0.5;
+  // A step that failed has not taken effect, so it stays outstanding
+  // whatever the model answers; only the page can show the goal met then.
+  const lastStep = history.at(-1);
+  const lastStepFailed = lastStep !== undefined && lastStep.result !== "ok";
+  const nothingOutstanding =
+    !lastStepFailed && goalRemaining !== undefined && goalRemaining.noul < 0.5;
+  if (nothingToRun && (endStateVisible || nothingOutstanding))
     return stop(
       "done",
       "The goal has been achieved. Continue with your next task."
     );
 
-  // 2. no_fitting_option: model chose "none"
-  const chosenKey = operationAnswer.choice;
+  // 2. no_fitting_option: model chose "none" with the goal not met
   if (chosenKey === "none")
     return stop(
       "no_fitting_option",

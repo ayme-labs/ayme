@@ -1229,6 +1229,11 @@ export function buildOperationRequest(
       instructions:
         "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
     },
+    goal_remaining: {
+      type: "noul",
+      instructions:
+        "Does the goal still need a step that has not run yet? Judge from `history` and `page`.",
+    },
     ...Object.fromEntries(
       speculative.map((question) => [question.id, choiceQuestion(question)])
     ),
@@ -1521,6 +1526,18 @@ export function parseGoalMetAnswer(
   answers: Record<string, unknown>
 ): NoulAnswer {
   return readNoulAnswer(answers, "goal_met");
+}
+
+/**
+ * Extract the `goal_remaining` noul answer from the model response; undefined
+ * when the response has none (a decision function that answers only the
+ * questions it knows).
+ */
+export function parseGoalRemainingAnswer(
+  answers: Record<string, unknown>
+): NoulAnswer | undefined {
+  if (!("goal_remaining" in answers)) return undefined;
+  return readNoulAnswer(answers, "goal_remaining");
 }
 
 export type ChosenArguments = {

@@ -4,6 +4,8 @@
  * build it, nothing in here decides.
  */
 
+import type { JsonValue } from "./contracts";
+
 export type HandoverReason =
   | "done"
   | "no_fitting_option"
@@ -30,6 +32,12 @@ export type GoalLoopStepRecord = {
   /** `"ok"`, or the error the action failed with. */
   result: string;
   page_changed: boolean;
+  /**
+   * What the action returned, when it returned a value: a Custom Tool's or
+   * Page Object tool's result, the only trace of an effect the page does not
+   * show. Bounded to `MAX_STEP_RETURNED` characters of JSON.
+   */
+  returned?: JsonValue;
   /**
    * What the action changed on the page, its Change Record, cut to
    * `MAX_STEP_CHANGES` characters. Absent when the action changed nothing,

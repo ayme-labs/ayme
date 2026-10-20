@@ -17,6 +17,7 @@ import {
   CHANGES_CUT_MARKER,
   configureGoalLoop,
   MAX_STEP_CHANGES,
+  MAX_STEP_RETURNED,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import type { CustomTool } from "./elementTools";
@@ -899,6 +900,7 @@ describe("Goal Loop goal in Chromium", () => {
       expect(Object.keys(criteriaOf(requests[0]!))).toEqual([
         "operation",
         "goal_met",
+        "goal_remaining",
         "value:text",
         "value:navigate.url",
         "value:App.rate.name",
@@ -2045,6 +2047,108 @@ describe("Goal Loop goal in Chromium", () => {
     ]);
   });
 
+  it("carries what a Custom Tool returned into its history entry: the only trace of an effect the page does not show", async () => {
+    setupPageWithOneClickable();
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'heading "Task list"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        filter: (element) => element.tagName === "H1",
+        execute: async ({ ref }) => ({ highlighted: ref }),
+      },
+    ]);
+
+    const result = (await tool.execute({
+      goal: "highlight the title",
+      maxSteps: 5,
+    })) as { history: unknown };
+
+    const ref = Object.keys(criteriaOf(requests[1]!).ref!)[0];
+    const entry = {
+      operation: "highlight_element",
+      result: "ok",
+      returned: { highlighted: ref },
+    };
+    expect(result.history).toMatchObject([entry]);
+    expect(
+      (requests[2]!.state as Record<string, unknown>).history
+    ).toMatchObject([entry]);
+  });
+
+  it("cuts a long returned value to MAX_STEP_RETURNED characters of JSON", async () => {
+    setupPageWithOneClickable();
+    const { decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'heading "Task list"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        filter: (element) => element.tagName === "H1",
+        execute: async () => ({ text: "x".repeat(MAX_STEP_RETURNED) }),
+      },
+    ]);
+
+    const result = (await tool.execute({
+      goal: "highlight the title",
+      maxSteps: 5,
+    })) as { history: { returned?: unknown }[] };
+
+    const returned = result.history[0]!.returned;
+    expect(typeof returned).toBe("string");
+    expect((returned as string).length).toBeLessThanOrEqual(MAX_STEP_RETURNED);
+    expect((returned as string).endsWith(CHANGES_CUT_MARKER)).toBe(true);
+  });
+
+  it("keeps a copy of a short returned value, so that a tool mutating what it returned does not rewrite its history entry", async () => {
+    setupPageWithOneClickable();
+    const { decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'heading "Task list"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // Live application state, returned as is and mutated after the step.
+    const state = { highlighted: "e1" };
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        filter: (element) => element.tagName === "H1",
+        execute: async () => state,
+      },
+    ]);
+
+    const result = (await tool.execute({
+      goal: "highlight the title",
+      maxSteps: 5,
+    })) as { history: { returned?: unknown }[] };
+    state.highlighted = "x".repeat(MAX_STEP_RETURNED * 2);
+
+    expect(result.history[0]!.returned).toEqual({ highlighted: "e1" });
+  });
+
   it("offers a single-element tool without a filter every node that has a ref", async () => {
     setupPageWithOneClickable();
     const { requests, decide } = recording(
@@ -2688,6 +2792,8 @@ describe("Goal Loop goal in Chromium", () => {
       },
       result: "ok",
       page_changed: false,
+      // What the tool returned: the id of the item archived.
+      returned: 1,
       did: expect.any(String),
     };
     expect(result.history).toEqual([record]);

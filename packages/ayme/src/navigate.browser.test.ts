@@ -410,11 +410,18 @@ function navigatingWith(label: string): GoalLoopDecisionFunction {
           confidence: 1,
         },
       ]);
+    // The first step navigates; the next judges the goal met with nothing
+    // left to run.
+    const done = steps++ > 0;
     return {
       model: "typesafe/jev-1.13",
       answers: {
-        operation: { type: "choice", choice: "navigate", confidence: 1 },
-        goal_met: { type: "noul", noul: steps++ > 0 ? 0.9 : 0.1 },
+        operation: {
+          type: "choice",
+          choice: done ? "none" : "navigate",
+          confidence: 1,
+        },
+        goal_met: { type: "noul", noul: done ? 0.9 : 0.1 },
         ...Object.fromEntries(speculative),
       },
     };

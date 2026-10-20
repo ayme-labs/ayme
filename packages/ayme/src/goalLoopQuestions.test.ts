@@ -1554,6 +1554,7 @@ describe("Goal Values asked speculatively in stage one", () => {
     expect(Object.keys(request.questions)).toEqual([
       "operation",
       "goal_met",
+      "goal_remaining",
       "value:text",
     ]);
     expect(request.questions["value:text"]).toMatchObject({
@@ -1573,6 +1574,11 @@ describe("Goal Values asked speculatively in stage one", () => {
       type: "noul",
       instructions:
         "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
+    });
+    expect(request.questions.goal_remaining).toEqual({
+      type: "noul",
+      instructions:
+        "Does the goal still need a step that has not run yet? Judge from `history` and `page`.",
     });
   });
 

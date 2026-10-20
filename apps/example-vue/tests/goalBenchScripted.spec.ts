@@ -64,7 +64,8 @@ function argumentAnswers(
       }
       const criteria = question.criteria ?? {};
       let choice: string | undefined;
-      if (id === "target") {
+      // A built-in operation's element is `target`; a Custom Tool's is `ref`.
+      if (id === "target" || id === "ref") {
         const refs = refsDescribed(criteria, step.target ?? "");
         choice = refs[step.nth ?? 0];
         if (choice === undefined)
@@ -109,6 +110,7 @@ async function answerDecisions(page: Page, intended: IntendedStep[]) {
         Object.assign(answers, {
           operation: { type: "choice", choice: step?.operation ?? "none" },
           goal_met: { type: "noul", noul: step ? 0.05 : 0.95 },
+          goal_remaining: { type: "noul", noul: step ? 0.95 : 0.05 },
         });
       } else {
         answers = argumentAnswers(intended[next - 1]!, questions);
