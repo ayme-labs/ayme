@@ -723,10 +723,11 @@ function isInitializedConst(
 
 /**
  * Whether every reference to the const `declaration` in its file is one
- * that cannot change its object: its own name, a decorator's argument, or
- * the initializer of another such const. Any other reference, a call it is
- * passed to, a member read or written, a shorthand property, an export,
- * may have changed the object the literal shows. A declaration `verified`
+ * that cannot change its object: its own name, the `ayme` decorator's
+ * argument, or the initializer of another such const. Any other reference,
+ * a call it is passed to, another decorator that receives it, a member read
+ * or written, a shorthand property, an export, may have changed the object
+ * the literal shows. A declaration `verified`
  * still holds as pending is on a cycle of initializers, which changes no
  * object.
  */
@@ -748,6 +749,7 @@ function untouchedConst(
         if (
           ts.isCallExpression(use.parent) &&
           ts.isDecorator(use.parent.parent) &&
+          isMarker(use.parent.parent, "ayme") &&
           use.parent.arguments[0] === use
         )
           return true;

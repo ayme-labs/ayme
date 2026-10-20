@@ -30,6 +30,24 @@ class InheritedItem {
   open() {}
 }
 
+// Another decorator receives the same options before `ayme` does and may
+// add a root to them: the compiler cannot read the options.
+function addRoot<T extends object>(options: T) {
+  Object.assign(options, { root: rootOf });
+  return <Class>(target: Class) => target;
+}
+
+const decorated = { description: "An item." };
+
+@addRoot(decorated)
+@ayme(decorated)
+class DecoratedItem {
+  constructor(readonly container: Locator) {}
+
+  @ayme.action
+  open() {}
+}
+
 @ayme
 export class MutatedRootOptionsPom {
   async assigned(): Promise<AssignedItem[]> {
@@ -37,6 +55,10 @@ export class MutatedRootOptionsPom {
   }
 
   async inherited(): Promise<InheritedItem[]> {
+    return [];
+  }
+
+  async decorated(): Promise<DecoratedItem[]> {
     return [];
   }
 }

@@ -666,7 +666,7 @@ describe("derivePomManifests", () => {
       );
     });
 
-    it("leaves a root a constant gained after its initializer, or a literal inherits through __proto__, to the runtime", () => {
+    it("leaves a root a constant gained after its initializer, through another decorator, or a literal inherits through __proto__, to the runtime", () => {
       const manifest = manifestForClass(
         "mutatedRootOptionsPom",
         "MutatedRootOptionsPom"
@@ -674,7 +674,7 @@ describe("derivePomManifests", () => {
 
       expect(
         manifest?.components.map((component) => component.className)
-      ).toEqual(["AssignedItem", "InheritedItem"]);
+      ).toEqual(["AssignedItem", "InheritedItem", "DecoratedItem"]);
     });
 
     it("builds a collection whose item class inherits its root, and a single child without one", () => {
