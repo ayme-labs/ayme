@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Locator, Page } from "@playwright/test";
 
-import { ayme as agent } from "./agentCalls.testSupport";
+import { ayme as agent, runContext } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
 import {
+  listAvailablePomTools,
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
@@ -236,6 +237,76 @@ describe("Page Object Root by option", () => {
     ]);
   });
 
+  it("measures a call's reach at the root the observation found, and runs no root predicate with the call", async () => {
+    document.body.innerHTML =
+      '<aside id="drawer" style="width:200px;height:100px">Menu</aside>';
+    class SideDrawer {
+      container = page.locator("#drawer");
+      opened = 0;
+      open() {
+        this.opened += 1;
+      }
+    }
+    let anchor = page.locator("#drawer");
+    ayme({ root: () => anchor })(SideDrawer);
+    registerCompiledPom(
+      SideDrawer,
+      pageManifest("SideDrawer", [locator("container")])
+    );
+    const drawer = session.pom.register(SideDrawer);
+    await probeRegisteredPomMembers();
+    const tool = listAvailablePomTools().find(
+      ({ name }) => name === "SideDrawer.open"
+    );
+    if (!tool) throw new Error("Expected SideDrawer.open to be available.");
+    await tool.execute({}, runContext());
+    expect(drawer.opened).toBe(1);
+
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div id="overlay" style="position:fixed;inset:0;z-index:10"></div>'
+    );
+    await probeRegisteredPomMembers();
+    // A predicate asked now would name no element, so a call that asked it
+    // would run unmeasured: the call measures at the root the observation
+    // found, under the overlay.
+    anchor = page.locator("#nowhere");
+    await expect(tool.execute({}, runContext())).rejects.toThrow(
+      "SideDrawer.open is unavailable: a click would not reach it."
+    );
+    expect(drawer.opened).toBe(1);
+
+    // The root the observation found left the page: no call runs on it.
+    document.getElementById("drawer")!.remove();
+    await expect(tool.execute({}, runContext())).rejects.toThrow(
+      "SideDrawer.open is unavailable: its Page Object is not on the page."
+    );
+    expect(drawer.opened).toBe(1);
+  });
+
+  it("makes a top-level model whose root predicate throws absent, and logs the error once", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    class SideDrawer {
+      open() {}
+    }
+    ayme({
+      root: () => {
+        throw new TypeError("frame is undefined");
+      },
+    })(SideDrawer);
+    registerCompiledPom(SideDrawer, pageManifest("SideDrawer"));
+    session.pom.register(SideDrawer);
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      'The Page Object "SideDrawer" is absent: its root predicate threw TypeError: frame is undefined.'
+    );
+
+    document.body.innerHTML = "<p>Changed</p>";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+  });
+
   it("needs the root its option names on the page and the predicate to hold", async () => {
     document.body.innerHTML = '<aside id="drawer">Menu</aside>';
     class SideDrawer {
@@ -404,6 +475,22 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual(["Shell.panel.close"]);
   });
 
+  it("judges a root-less single child with a predicate by it alone, also while the Page Object it is reached through is absent by its root", async () => {
+    document.body.innerHTML = "<p>No shell</p>";
+    class Panel {
+      expanded = true;
+      close() {}
+    }
+    ayme({ present: (self: Panel) => self.expanded })(Panel);
+    const shell = session.pom.register(shellWithPanel(Panel));
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Shell.panel.close"]);
+
+    shell.panel.expanded = false;
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+  });
+
   it("records that a collection item without a root declares none, and withdraws its tools", async () => {
     document.body.innerHTML = '<ul><li id="first">First</li></ul>';
     class Item {
@@ -452,7 +539,8 @@ describe("Page Object Root by option", () => {
     ]);
   });
 
-  it("records what a child's root predicate threw, and withdraws the child's tools", async () => {
+  it("records what a child's root predicate threw, logs it once, and withdraws the child's tools", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     document.body.innerHTML =
       '<section id="shell"><div id="panel">Panel</div></section>';
     class Panel {
@@ -498,5 +586,12 @@ describe("Page Object Root by option", () => {
           "POM component panel's root could not be read: TypeError: frame is undefined.",
       },
     ]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      'The Page Object "Shell.panel" is absent: its root predicate threw TypeError: frame is undefined.'
+    );
+
+    document.body.innerHTML = "<p>Changed</p>";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
   });
 });

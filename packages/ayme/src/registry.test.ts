@@ -1291,7 +1291,8 @@ describe("live Page Object registry", () => {
       result: "replacement",
     });
     expect(replacementArchive).toHaveBeenCalledOnce();
-    expect(getItems).toHaveBeenCalledTimes(4);
+    // Each observation read the collection once; the calls read nothing.
+    expect(getItems).toHaveBeenCalledTimes(2);
 
     pageStateResolutions.clear();
   });
@@ -1345,7 +1346,7 @@ describe("live Page Object registry", () => {
     await expect(
       tool.execute({ ref: "e2", args: {} }, runContext())
     ).rejects.toThrow(
-      "ItemsPage.items.archive is unavailable: its Page Object is not on the page."
+      'Cannot call ItemsPage.items.archive on ref "e2": it is not an instance of Item at ItemsPage.items.'
     );
     expect(addedArchive).not.toHaveBeenCalled();
 

@@ -38,6 +38,7 @@ const instance = (
   const observedRoot = "root" in overrides ? overrides.root : root();
   return {
     path: "items[0]",
+    instance: {},
     componentPath: "items[]",
     item: undefined,
     present: observedRoot?.present ?? true,

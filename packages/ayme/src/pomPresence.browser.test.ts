@@ -6,7 +6,11 @@ import type { PomManifest, ToolManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
 import { rootOf } from "./pomRoot.testSupport";
-import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
+import {
+  listRegisteredPoms,
+  probeRegisteredPomMembers,
+  registerCompiledPom,
+} from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
 // Observation and publication seam (ADR-0042): a Page Object Model that
@@ -289,6 +293,79 @@ describe("Page Object Presence by predicate", () => {
     shell.panel.expanded = true;
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["Shell.panel.close"]);
+  });
+
+  it("asks a child's predicate before its root, and reads no member of a child its predicate withdrew", async () => {
+    document.body.innerHTML =
+      '<section id="shell">Shell <div id="panel">Panel <button>Pin</button></div></section>';
+    let reads = 0;
+    class Pin {
+      constructor(readonly root: Locator) {}
+      press() {}
+    }
+    ayme({ root: rootOf })(Pin);
+    class Panel {
+      expanded = false;
+      frame = page.locator("#panel");
+      get pin() {
+        reads += 1;
+        return new Pin(this.frame.getByRole("button"));
+      }
+      close() {}
+    }
+    const frameOf = vi.fn((self: Panel) => self.frame);
+    ayme({ root: frameOf, present: (self: Panel) => self.expanded })(Panel);
+    class Shell {
+      panel = new Panel();
+    }
+    registerCompiledPom(Shell, {
+      className: "Shell",
+      members: [
+        {
+          memberName: "panel",
+          kind: "component",
+          access: "field",
+          componentClassName: "Panel",
+          collection: false,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "Panel",
+          members: [
+            { memberName: "frame", kind: "locator", access: "field" },
+            {
+              memberName: "pin",
+              kind: "component",
+              access: "getter",
+              componentClassName: "Pin",
+              collection: false,
+            },
+          ],
+          tools: [action("close", "Shell.panel.close")],
+        },
+        {
+          className: "Pin",
+          members: [root],
+          tools: [action("press", "Shell.panel.pin.press")],
+        },
+      ],
+    });
+    const shell = session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+    // The absent panel costs its predicate alone: its root is not read, its
+    // members are not walked, so its rooted child is not listed either.
+    expect(names()).toEqual([]);
+    expect(frameOf).not.toHaveBeenCalled();
+    expect(reads).toBe(0);
+    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([]);
+
+    shell.panel.expanded = true;
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Shell.panel.close", "Shell.panel.pin.press"]);
+    expect(frameOf).toHaveBeenCalledOnce();
+    expect(reads).toBe(1);
   });
 
   it("keeps a top-level model with neither option present while registered", async () => {

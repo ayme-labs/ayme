@@ -1,4 +1,5 @@
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
+import type { Locator } from "@playwright/test";
 import type { ToolManifest } from "./contracts";
 import { availabilityPredicateOf, presencePredicateOf } from "./decorators";
 import { asSentence, errorText, RuntimeStateError } from "./errors";
@@ -33,6 +34,8 @@ export type PredicateAnswer = { available: boolean; reason?: string };
 export type PomInstanceObservation = {
   /** Its path from the page, e.g. "items[1].details"; "" for the page's own. */
   path: string;
+  /** The live Page Object the observation read: what a call on it acts on. */
+  instance: object;
   /**
    * Its tools' component path, which has no item indices, e.g.
    * "items[].details"; undefined for the page's own.
@@ -56,6 +59,14 @@ export type PomInstanceObservation = {
    * whose presence predicate failed before the root was read.
    */
   root: ObservedPomRoot | undefined;
+  /**
+   * The locator its root predicate answered with the observation: what a
+   * call measures reach at, so no call runs the predicate again. Undefined
+   * without a root, or when the predicate threw or answered no locator.
+   */
+  rootLocator?: Locator;
+  /** What its root predicate threw, when it threw. */
+  rootError?: string;
   /**
    * What each action's availability predicate answered, by method name.
    * Asked only while the instance is present; actions without one are absent.
@@ -95,11 +106,22 @@ export function availabilityOf(
  */
 export function assertAvailable(
   toolName: string,
-  { present, available, reason }: ToolAvailability
+  availability: ToolAvailability
 ) {
-  if (available) return;
+  if (availability.available) return;
+  throw unavailableError(toolName, availability);
+}
+
+/**
+ * Package-internal: the error `assertAvailable` refuses a call with, for a
+ * caller that has found the call cannot run.
+ */
+export function unavailableError(
+  toolName: string,
+  { present, reason }: Pick<ToolAvailability, "present" | "reason">
+) {
   const why = present ? reason : "its Page Object is not on the page";
-  throw new RuntimeStateError(
+  return new RuntimeStateError(
     why === undefined
       ? `${toolName} is unavailable.`
       : asSentence(`${toolName} is unavailable: ${why}`)
@@ -169,6 +191,14 @@ export async function askPredicates(
 export type PresenceAnswer = { present: boolean; error?: string };
 
 /**
+ * Package-internal: whether `instance`'s class declares or inherits a
+ * presence predicate, so its presence is the predicate's to say.
+ */
+export function declaresPresence(instance: object): boolean {
+  return presencePredicateOf(instance.constructor) !== undefined;
+}
+
+/**
  * Package-internal: asks the presence predicate `instance`'s class declares
  * or inherits, read-only. Without one, the instance is present. A predicate
  * that throws makes the instance absent, with the error's text, so the
@@ -213,6 +243,7 @@ export function sameInstance(
     left.path === right.path &&
     left.present === right.present &&
     left.presenceError === right.presenceError &&
+    left.rootError === right.rootError &&
     sameRoot(left.root, right.root) &&
     left.predicates.size === right.predicates.size &&
     [...left.predicates].every(([methodName, answer]) => {
