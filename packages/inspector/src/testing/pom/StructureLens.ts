@@ -1,13 +1,14 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /**
  * The Structure lens in the navigator: the page's structure as a tree of
  * nodes, each tagged with the Page Object member it maps to.
  */
 @ayme
-export class StructureLens {
-  readonly root: Locator;
+export class StructureLens extends PanelPart {
   readonly tree: Locator;
   /** Every row: nodes with a ref, and text. */
   readonly rows: Locator;
@@ -15,7 +16,7 @@ export class StructureLens {
   readonly error: Locator;
 
   constructor(navigator: Locator) {
-    this.root = navigator;
+    super(navigator);
     this.tree = navigator.getByRole("tree", { name: "Page structure" });
     this.rows = this.tree.getByRole("treeitem");
     this.error = navigator.getByRole("alert");

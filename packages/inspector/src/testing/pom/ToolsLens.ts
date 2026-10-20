@@ -1,6 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /** How the Tools lens labels its groups. */
 export type ToolGroupLabel =
   | "Page object tools"
@@ -22,11 +24,9 @@ const groupLabels: readonly ToolGroupLabel[] = [
 
 /** The Tools lens's tree: the live tools, grouped. */
 @ayme
-export class ToolsLens {
-  readonly root: Locator;
-
+export class ToolsLens extends PanelPart {
   constructor(navigator: Locator) {
-    this.root = navigator;
+    super(navigator);
   }
 
   /** One group's list. */

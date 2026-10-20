@@ -1,6 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /** One Interaction of a run: a call it made on the page. */
 export type RunInteraction = {
   operation: string;
@@ -15,8 +17,7 @@ export type RunInteraction = {
  * never taken for its parent's.
  */
 @ayme
-export class RunEntry {
-  readonly root: Locator;
+export class RunEntry extends PanelPart {
   /** Its card: what it ran, with what, and how it went. */
   readonly card: Locator;
   /** Expands or collapses the run. */
@@ -40,7 +41,7 @@ export class RunEntry {
   readonly childRuns: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     // An ancestor comes first in document order: its own card.
     this.card = root.locator("[data-run-card]").first();
     const card = this.card;
@@ -147,8 +148,7 @@ export class RunEntry {
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 @ayme
-export class RunsView {
-  readonly root: Locator;
+export class RunsView extends PanelPart {
   /** Collapses Runs to its header, or expands it. It reads "Runs · 2". */
   readonly header: Locator;
   readonly scope: Locator;
@@ -163,7 +163,7 @@ export class RunsView {
   readonly empty: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.header = root.getByRole("button", { name: /^Runs · \d+$/ });
     this.scope = root.getByRole("group", { name: "Runs scope" });
     this.selectionScope = this.scope.getByRole("button").first();

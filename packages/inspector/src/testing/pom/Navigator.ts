@@ -2,6 +2,7 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { ModelLens } from "./ModelLens";
+import { PanelPart } from "./PanelPart";
 import { ToolsLens } from "./ToolsLens";
 
 export type LensName = "Model" | "Structure" | "Tools";
@@ -11,8 +12,7 @@ export type LensName = "Model" | "Structure" | "Tools";
  * tree. Each lens's own page object works inside {@link Navigator.root}.
  */
 @ayme
-export class Navigator {
-  readonly root: Locator;
+export class Navigator extends PanelPart {
   readonly searchBox: Locator;
   readonly legend: Locator;
   readonly searchResults: Locator;
@@ -23,7 +23,7 @@ export class Navigator {
   readonly tools: ToolsLens;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.searchBox = root.getByRole("searchbox");
     this.legend = root.getByRole("group", { name: "Legend" });
     this.searchResults = root

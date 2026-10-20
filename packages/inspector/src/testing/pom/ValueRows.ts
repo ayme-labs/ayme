@@ -1,13 +1,14 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /**
  * A run card's map of labelled values, such as `goal`'s `values`: one row
  * per value, with its label, its value and its type. Rows count from 1.
  */
 @ayme
-export class ValueRows {
-  readonly root: Locator;
+export class ValueRows extends PanelPart {
   /** The schema's description of the map, shown above the rows. */
   readonly description: Locator;
   readonly addButton: Locator;
@@ -16,8 +17,8 @@ export class ValueRows {
   private readonly path: string;
 
   constructor(card: Locator, path: string) {
+    super(card.getByRole("group", { name: path, exact: true }));
     this.path = path;
-    this.root = card.getByRole("group", { name: path, exact: true });
     this.description = card.getByRole("note", { name: `${path} description` });
     this.addButton = card.getByRole("button", {
       name: `Add to ${path}`,

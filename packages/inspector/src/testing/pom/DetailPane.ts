@@ -3,13 +3,13 @@ import type { Locator } from "@playwright/test";
 
 import { ModelDetailView } from "./ModelDetailView";
 import { NodeView } from "./NodeView";
+import { PanelPart } from "./PanelPart";
 import { RunCard } from "./RunCard";
 import { ToolPage } from "./ToolPage";
 
 /** The detail pane: the view of what's selected, with its run cards. */
 @ayme
-export class DetailPane {
-  readonly root: Locator;
+export class DetailPane extends PanelPart {
   /** The Model lens's view of the page, a Page Object or a model. */
   readonly model: ModelDetailView;
   /** A structure node's view. */
@@ -18,7 +18,7 @@ export class DetailPane {
   readonly toolPage: ToolPage;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.model = new ModelDetailView(root);
     this.node = new NodeView(root);
     this.toolPage = new ToolPage(root);

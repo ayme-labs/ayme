@@ -1,6 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
 import { dragBy } from "./pointerDrag";
 
 export type ModelPaneName = "On this page" | "Page object models";
@@ -10,8 +11,7 @@ export type ModelPaneName = "On this page" | "Page object models";
  * the Page Object Models the page knows, in two collapsible panes.
  */
 @ayme
-export class ModelLens {
-  readonly root: Locator;
+export class ModelLens extends PanelPart {
   /** The object tree, "On this page". */
   readonly objectTree: Locator;
   /** The Page Object Model list, "Page object models". */
@@ -21,7 +21,7 @@ export class ModelLens {
   readonly divider: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.objectTree = root.getByRole("tree", { name: "Page objects" });
     this.modelList = root.getByRole("list", { name: "Page object models" });
     this.models = this.modelList.getByRole("button");
