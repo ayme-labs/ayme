@@ -109,6 +109,7 @@ async function answerDecisions(page: Page, intended: IntendedStep[]) {
         Object.assign(answers, {
           operation: { type: "choice", choice: step?.operation ?? "none" },
           goal_met: { type: "noul", noul: step ? 0.05 : 0.95 },
+          goal_remaining: { type: "noul", noul: step ? 0.95 : 0.05 },
         });
       } else {
         answers = argumentAnswers(intended[next - 1]!, questions);

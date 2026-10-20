@@ -462,20 +462,21 @@ export async function decideStep({
   asker.scores = scores;
   const chosenKey = operationAnswer.choice;
 
-  // 1. done: goal_met >= 0.5, or the model has nothing left to run and
-  // judges no step of the goal outstanding.
-  if (
-    goalMet.noul >= 0.5 ||
-    (chosenKey === "none" &&
-      goalRemaining !== undefined &&
-      goalRemaining.noul < 0.5)
-  )
+  // 1. done: the model has nothing left to run, and either the page shows
+  // the goal's end state or no step of the goal is outstanding. A chosen
+  // operation always runs, whatever the goal_met score: the goal may end in
+  // an effect the page never shows.
+  const nothingToRun = chosenKey === "none";
+  const endStateVisible = goalMet.noul >= 0.5;
+  const nothingOutstanding =
+    goalRemaining !== undefined && goalRemaining.noul < 0.5;
+  if (nothingToRun && (endStateVisible || nothingOutstanding))
     return stop(
       "done",
       "The goal has been achieved. Continue with your next task."
     );
 
-  // 2. no_fitting_option: model chose "none"
+  // 2. no_fitting_option: model chose "none" with the goal not met
   if (chosenKey === "none")
     return stop(
       "no_fitting_option",
