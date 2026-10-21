@@ -285,57 +285,6 @@ describe("Page Object Root by option", () => {
     expect(drawer.opened).toBe(1);
   });
 
-  it("makes a top-level model whose root predicate throws absent, and logs the error once", async () => {
-    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    class SideDrawer {
-      open() {}
-    }
-    ayme({
-      root: () => {
-        throw new TypeError("frame is undefined");
-      },
-    })(SideDrawer);
-    registerCompiledPom(SideDrawer, pageManifest("SideDrawer"));
-    session.pom.register(SideDrawer);
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual([]);
-    expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "SideDrawer" is absent: its root predicate threw TypeError: frame is undefined.'
-    );
-
-    document.body.innerHTML = "<p>Changed</p>";
-    await probeRegisteredPomMembers();
-    expect(logged).toHaveBeenCalledOnce();
-  });
-
-  it("needs the root its option names on the page and the predicate to hold", async () => {
-    document.body.innerHTML = '<aside id="drawer">Menu</aside>';
-    class SideDrawer {
-      container = page.locator("#drawer");
-      isOpen = false;
-      open() {}
-    }
-    ayme({
-      root: (self: SideDrawer) => self.container,
-      present: (self: SideDrawer) => self.isOpen,
-    })(SideDrawer);
-    registerCompiledPom(
-      SideDrawer,
-      pageManifest("SideDrawer", [locator("container")])
-    );
-    const drawer = session.pom.register(SideDrawer);
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual([]);
-
-    drawer.isOpen = true;
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual(["SideDrawer.open"]);
-
-    document.getElementById("drawer")!.remove();
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual([]);
-  });
-
   it("anchors a model with both at the element its option names, not at its member named root", async () => {
     document.body.innerHTML =
       '<main id="page">Page</main><aside id="drawer">Menu</aside>';
@@ -458,22 +407,6 @@ describe("Page Object Root by option", () => {
     document.getElementById("shell")!.remove();
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
-  });
-
-  it("narrows a root-less single child's presence by its own predicate", async () => {
-    document.body.innerHTML = '<section id="shell">Shell</section>';
-    class Panel {
-      expanded = false;
-      close() {}
-    }
-    ayme({ present: (self: Panel) => self.expanded })(Panel);
-    const shell = session.pom.register(shellWithPanel(Panel));
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual([]);
-
-    shell.panel.expanded = true;
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.panel.close"]);
   });
 
   it("judges a root-less single child with a predicate by it alone, also while the Page Object it is reached through is absent by its root", async () => {

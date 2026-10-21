@@ -189,28 +189,31 @@ describe("Page Object Presence by predicate", () => {
     expect(list.opened).toBe(1);
   });
 
-  it("makes a model whose predicate throws absent, and logs the error once", async () => {
-    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    class ProjectPage {
-      open() {}
-    }
-    ayme({
-      present: () => {
-        throw new TypeError("store is undefined");
-      },
-    })(ProjectPage);
-    registerCompiledPom(ProjectPage, pageManifest("ProjectPage"));
-    session.pom.register(ProjectPage);
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual([]);
-    expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "ProjectPage" is absent: its present predicate threw TypeError: store is undefined.'
-    );
+  it.each(["present", "root"] as const)(
+    "makes a model whose %s predicate throws absent, and logs the error once",
+    async (option) => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      class ProjectPage {
+        open() {}
+      }
+      ayme({
+        [option]: () => {
+          throw new TypeError("store is undefined");
+        },
+      })(ProjectPage);
+      registerCompiledPom(ProjectPage, pageManifest("ProjectPage"));
+      session.pom.register(ProjectPage);
+      await probeRegisteredPomMembers();
+      expect(names()).toEqual([]);
+      expect(logged).toHaveBeenCalledExactlyOnceWith(
+        `The Page Object "ProjectPage" is absent: its ${option} predicate threw TypeError: store is undefined.`
+      );
 
-    document.body.innerHTML = "<p>Changed</p>";
-    await probeRegisteredPomMembers();
-    expect(logged).toHaveBeenCalledOnce();
-  });
+      document.body.innerHTML = "<p>Changed</p>";
+      await probeRegisteredPomMembers();
+      expect(logged).toHaveBeenCalledOnce();
+    }
+  );
 
   it("needs the root on the page and the predicate to hold, and still measures availability at the root", async () => {
     document.body.innerHTML =
@@ -252,47 +255,6 @@ describe("Page Object Presence by predicate", () => {
       reason: "a click would not reach it",
     });
     expect((await agent.getPageState()).text).toContain("SideDrawer");
-  });
-
-  it("narrows a rooted Page Object Child by its own class's predicate", async () => {
-    document.body.innerHTML =
-      '<section id="shell">Shell <div id="panel">Panel</div></section>';
-    class Panel {
-      expanded = false;
-      constructor(readonly root: Locator) {}
-      close() {}
-    }
-    ayme({ root: rootOf, present: (self: Panel) => self.expanded })(Panel);
-    class Shell {
-      panel = new Panel(page.locator("#panel"));
-    }
-    registerCompiledPom(Shell, {
-      className: "Shell",
-      members: [
-        {
-          memberName: "panel",
-          kind: "component",
-          access: "field",
-          componentClassName: "Panel",
-          collection: false,
-        },
-      ],
-      tools: [],
-      components: [
-        {
-          className: "Panel",
-          members: [root],
-          tools: [action("close", "Shell.panel.close")],
-        },
-      ],
-    });
-    const shell = session.pom.register(Shell);
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual([]);
-
-    shell.panel.expanded = true;
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.panel.close"]);
   });
 
   it("asks a child's predicate before its root, and reads no member of a child its predicate withdrew", async () => {
@@ -366,18 +328,5 @@ describe("Page Object Presence by predicate", () => {
     expect(names()).toEqual(["Shell.panel.close", "Shell.panel.pin.press"]);
     expect(frameOf).toHaveBeenCalledOnce();
     expect(reads).toBe(1);
-  });
-
-  it("keeps a top-level model with neither option present while registered", async () => {
-    class HomePage {
-      open() {}
-    }
-    ayme(HomePage);
-    registerCompiledPom(HomePage, pageManifest("HomePage"));
-    session.pom.register(HomePage);
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual(["HomePage.open"]);
-    session.pom.unregister(HomePage);
-    expect(names()).toEqual([]);
   });
 });
