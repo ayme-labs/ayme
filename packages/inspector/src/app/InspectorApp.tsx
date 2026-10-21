@@ -19,7 +19,7 @@ import {
   type Selection,
   selectionHighlight,
 } from "../navigation";
-import { isStaleSelection, structureLens } from "../structure";
+import { isStaleSelection, structureLens, unfoldedOnPage } from "../structure";
 import { modelLens } from "../page-model";
 import { attachToolModels, toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
@@ -114,6 +114,13 @@ export function InspectorApp() {
   // reload waits for the first look at the page, until what it names is
   // there.
   const pageStateRead = runtime.pageState.capturedAt !== undefined;
+  // Unfolded chains whose outermost wrapper left the page are forgotten.
+  const { structure } = runtime.pageState;
+  useEffect(
+    () =>
+      setUnfoldedChains((current) => unfoldedOnPage(current, structure.roots)),
+    [structure]
+  );
   const stale = isStaleSelection(selection, {
     hasView: view !== undefined,
     structure: runtime.pageState.structure,

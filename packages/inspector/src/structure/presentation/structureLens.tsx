@@ -57,7 +57,8 @@ type RefNode = StructureNode & { ref: string };
  *
  * Chains of generic wrappers fold into one row, see {@link treeRows}. A
  * chain is unfolded while its outermost wrapper's ref is in
- * `unfoldedChains`, or while a wrapper the fold hides is selected.
+ * `unfoldedChains`, or while a wrapper the fold hides is selected, which
+ * then adds it there. The app drops refs that leave the page.
  */
 export function structureLens({
   structure,
@@ -95,13 +96,8 @@ export function structureLens({
       return true;
     }),
   ];
-  // Refs that left the page are dropped.
-  const refs = new Set(rows.map(({ node }) => node.ref));
-  const settled = new Set(
-    [...unfoldedChains, selectedChain ?? []]
-      .flat()
-      .filter((ref) => refs.has(ref))
-  );
+  const settled = new Set(unfoldedChains);
+  if (selectedChain) settled.add(selectedChain);
   const toggle = (outer: RefNode) => {
     const next = new Set(settled);
     if (!next.delete(outer.ref)) next.add(outer.ref);
@@ -122,7 +118,7 @@ export function structureLens({
         onToggle={toggle}
         onHover={onHover}
         settle={
-          rows.length && !sameRefs(settled, unfoldedChains)
+          settled.size > unfoldedChains.size
             ? () => onUnfoldedChainsChange(settled)
             : undefined
         }
@@ -252,9 +248,10 @@ const nameClass =
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
 
-// The indent leaves a gutter for the fold toggle.
-function rowIndent(depth: number) {
-  return 18 + depth * 12;
+// The indent leaves a gutter for the fold toggle, and stops growing at
+// 45% of the tree's width, so a deep row keeps room for its ref and role.
+function rowIndent(depth: number, inset = 0) {
+  return `calc(min(${18 + depth * 12}px, 45%) - ${inset}px)`;
 }
 
 /**
@@ -307,17 +304,19 @@ function NodeRow({
           aria-expanded={!outer}
           data-chain={toggle.ref}
           className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
-          style={{ left: rowIndent(depth) - 15 }}
+          style={{ left: rowIndent(depth, 15) }}
           onClick={(event) => {
             event.stopPropagation();
             const tree = event.currentTarget.closest('[role="tree"]');
+            const focused = event.currentTarget.matches(":focus");
             onToggle(toggle);
             // The toggle moves to the chain's other row: focus follows it.
-            requestAnimationFrame(() =>
-              tree
-                ?.querySelector<HTMLElement>(`[data-chain="${toggle.ref}"]`)
-                ?.focus()
-            );
+            if (focused)
+              requestAnimationFrame(() =>
+                tree
+                  ?.querySelector<HTMLElement>(`[data-chain="${toggle.ref}"]`)
+                  ?.focus()
+              );
           }}
         >
           <Chevron className="size-3" aria-hidden />
@@ -458,10 +457,6 @@ function NodeDetail({
       />
     </article>
   );
-}
-
-function sameRefs(a: ReadonlySet<string>, b: ReadonlySet<string>) {
-  return a.size === b.size && [...a].every((ref) => b.has(ref));
 }
 
 function hasRef(node: StructureNode | undefined): node is RefNode {

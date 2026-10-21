@@ -1,4 +1,8 @@
-import type { StructureNode, StructureRow } from "./structure";
+import {
+  structureRows,
+  type StructureNode,
+  type StructureRow,
+} from "./structure";
 
 /**
  * A row of the tree as the Structure lens shows it. A chain of wrappers
@@ -78,4 +82,20 @@ function isWrapper(node: StructureNode) {
     children.length === 1 &&
     children[0]!.role === "generic"
   );
+}
+
+/**
+ * The unfolded chains still on the page: those whose outermost wrapper's
+ * ref the tree holds. The same set when all are, and when the tree is empty,
+ * as it is before the first look at the page.
+ */
+export function unfoldedOnPage(
+  unfoldedChains: ReadonlySet<string>,
+  roots: readonly StructureNode[]
+): ReadonlySet<string> {
+  if (!roots.length) return unfoldedChains;
+  const refs = new Set([...structureRows(roots)].map(({ node }) => node.ref));
+  return [...unfoldedChains].every((ref) => refs.has(ref))
+    ? unfoldedChains
+    : new Set([...unfoldedChains].filter((ref) => refs.has(ref)));
 }
