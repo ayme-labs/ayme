@@ -23,7 +23,7 @@ import { isStaleSelection, structureLens } from "../structure";
 import { modelLens } from "../page-model";
 import { attachToolModels, toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
-import { decodeViewState, viewStateKey } from "./viewState";
+import { decodeViewState, viewStateKey, withSelection } from "./viewState";
 
 /**
  * The Inspector: the runtime's data wired into the panel. It owns
@@ -38,7 +38,7 @@ export function InspectorApp() {
   const setActiveLens = (lens: LensId) =>
     setViewState((current) => ({ ...current, lens }));
   const setSelection = (selection: Selection) =>
-    setViewState((current) => ({ ...current, selection }));
+    setViewState((current) => withSelection(current, selection));
   const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
@@ -71,6 +71,9 @@ export function InspectorApp() {
         .map((tool) => tool.name),
       panes: preferences.modelPanes,
       onPanesChange: (modelPanes) => updatePreferences({ modelPanes }),
+      objectTree: viewState.objectTree,
+      onObjectTreeChange: (objectTree) =>
+        setViewState((current) => ({ ...current, objectTree })),
       selection,
       onSelect: setSelection,
       onHover: runtime.highlight.hover,
