@@ -96,7 +96,61 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(result.changes).not.toContain("Item 1");
   });
 
-  it("keeps a failed action's before capture in the history and leaves the Caller's cursor", async () => {
+  it("reports what a failed action changed with its error, and not again before the next action", async () => {
+    const clickThenFail: CustomTool = {
+      name: "click_then_fail",
+      description: "Clicks Add, then fails.",
+      async execute() {
+        document.querySelector("button")!.click();
+        throw new TypeError("The tool failed after its click.");
+      },
+    };
+    start({ customTools: [clickThenFail] });
+    const by = callers.inspector;
+    const { structure } = await ayme.tools.run("snapshot", {}, { by });
+    const ref = structure.match(/(e\d+) button "Add"/)![1];
+
+    drift("Drifted before the failure");
+    const error: unknown = await ayme.tools
+      .run("click_then_fail", { ref }, { by })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(TypeError);
+    const { message } = error as Error;
+    expect(message).toMatch(/^The tool failed after its click\.\n/);
+    expect(message).toContain("changes_before:");
+    expect(message).toContain("Drifted before the failure");
+    expect(message).toContain("changes:");
+    expect(message.slice(message.indexOf("\nchanges:"))).toContain("Item 1");
+    expect(message.slice(message.indexOf("\nchanges:"))).not.toContain(
+      "Drifted"
+    );
+    // The Caller received both parts with the error.
+    const next = await add(by);
+    expect(next.changes_before).toBeUndefined();
+    expect(next.changes).toContain("Item 2");
+    expect(next.changes).not.toContain("Item 1");
+  });
+
+  it("leaves a failed action's error as it is when nothing changed", async () => {
+    const failing: CustomTool = {
+      name: "fail",
+      description: "Fails.",
+      async execute() {
+        throw new Error("The tool failed.");
+      },
+    };
+    start({ customTools: [failing] });
+    const by = callers.inspector;
+    const { structure } = await ayme.tools.run("snapshot", {}, { by });
+    const ref = structure.match(/(e\d+) button "Add"/)![1];
+
+    await expect(ayme.tools.run("fail", { ref }, { by })).rejects.toThrow(
+      /^The tool failed\.$/
+    );
+  });
+
+  it("keeps a failed action's before capture in the history", async () => {
     const failing: CustomTool = {
       name: "fail",
       description: "Fails.",
@@ -126,10 +180,6 @@ describe("The two parts of a Change Record, in Chromium", () => {
         .map((change) => renderChangeRecord(change.changeTree))
         .join("\n")
     ).toContain("Drifted before the failure");
-    // The cursor stayed at the snapshot: the drift is still before the next action.
-    const next = await add(by);
-    expect(next.changes_before).toContain("Drifted before the failure");
-    expect(next.changes).toContain("Item 1");
   });
 
   it("answers an action that starts a full page load at once, with changes_before", async () => {

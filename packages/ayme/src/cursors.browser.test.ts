@@ -95,7 +95,7 @@ describe("Change Record cursors, in Chromium", () => {
     expect(byAppAgain.changes).toContain("Item 4");
   });
 
-  it("moves a Caller's cursor to its snapshot and to the Settled Page of its action, and leaves it after a failed one", async () => {
+  it("moves a Caller's cursor to its snapshot, to the Settled Page of its action, and to the page a failed one left", async () => {
     const failing: CustomTool = {
       name: "fail",
       description: "Fails.",
@@ -116,14 +116,13 @@ describe("Change Record cursors, in Chromium", () => {
 
     drift("Drifted after the action");
     const ref = structure.match(/(e\d+) button "Add"/)?.[1];
+    // The action moved the cursor to its Settled Page; the failed one reports
+    // the drift since with its error and moves the cursor past it.
     await expect(ayme.tools.run("fail", { ref }, { by })).rejects.toThrow(
-      "The tool failed."
+      /^The tool failed\.\n\nchanges_before:\n(?![\s\S]*Item 1)[\s\S]*Drifted after the action/
     );
     const second = await add(by);
-    // The action moved the cursor to its Settled Page; the failed one did not
-    // move it past the drift.
-    expect(second.changes_before).not.toContain("Item 1");
-    expect(second.changes_before).toContain("Drifted after the action");
+    expect(second.changes_before).toBeUndefined();
     expect(second.changes).toContain("Item 2");
   });
 });

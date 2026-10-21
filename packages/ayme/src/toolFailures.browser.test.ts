@@ -114,6 +114,8 @@ describe("tool failures an agent gets, in Chromium", () => {
   });
 
   it("returns a throwing Page Object tool's message", async () => {
+    // The agent has the page as it is: nothing changed for the error to add.
+    await agentCall("snapshot", {});
     expect(await agentCall("FailingPage.explode", {}).catch(errorText)).toBe(
       "The page object action exploded."
     );

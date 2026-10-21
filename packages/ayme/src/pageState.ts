@@ -234,13 +234,13 @@ export async function captureBeforeActionForDocument(
 
 /**
  * Package-internal: complete an action whose tool call threw, with the page as
- * it is now, or as last recorded when capturing it throws. No caller's cursor
- * moves.
+ * it is now, or as last recorded when capturing it throws, and return that
+ * observation, the failed action's after. No caller's cursor moves.
  */
 export async function failActionForDocument(
   currentDocument: Document,
   actionId: StructuralActionId
-): Promise<void> {
+): Promise<StructuralObservationEntry> {
   return getPageStateSession(currentDocument).failAction(actionId);
 }
 
@@ -423,37 +423,41 @@ class PageStateSession {
     return after;
   }
 
-  async failAction(actionId: StructuralActionId): Promise<void> {
+  async failAction(
+    actionId: StructuralActionId
+  ): Promise<StructuralObservationEntry> {
     let capture: CapturedPageState;
     try {
       capture = await this.captureTree();
     } catch {
       return this.failAtLatestObservation(actionId);
     }
-    this.history.failAction(
+    const after = this.history.failAction(
       actionId,
       capture.tree,
       this.history.now(),
       capture.pomLabels
     );
     this.rememberElements(capture);
+    return after;
   }
 
   /** Complete a failed action without a capture, when capturing is what failed. */
   private async failAtLatestObservation(
     actionId: StructuralActionId
-  ): Promise<void> {
+  ): Promise<StructuralObservationEntry> {
     // Set since the action started: every recorded observation remembers its
     // elements. Read before awaiting, so the tree and its elements match.
     const latest = this.latestElements!;
     const tree = await latest.observation.tree.resolve();
-    this.history.failAction(
+    const after = this.history.failAction(
       actionId,
       tree,
       this.history.now(),
       this.history.pomLabels(latest.observation)
     );
     this.rememberElements(latest);
+    return after;
   }
 
   async getPageStateForElements(

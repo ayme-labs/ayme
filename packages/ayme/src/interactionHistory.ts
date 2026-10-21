@@ -189,20 +189,20 @@ export class InteractionHistory {
   }
 
   /**
-   * Complete an action whose tool call threw, with the page as it is now. The
-   * Caller received an error, not a page, so its cursor stays where it was.
+   * Complete an action whose tool call threw, with the page as it is now, and
+   * return that observation, the failed action's after.
    */
   failAction(
     actionId: StructuralActionId,
     page: StructuralTree,
     at: MonotonicTimeMs,
     pomLabels?: PomLabels
-  ): void {
+  ): StructuralObservationEntry {
     this.recorded.set(actionId, {
       ...this.recordedAction(actionId),
       failed: true,
     });
-    this.complete(actionId, page, at, pomLabels);
+    return this.complete(actionId, page, at, pomLabels);
   }
 
   /** The tool calls behind the recorded Structural Actions, in start order. */

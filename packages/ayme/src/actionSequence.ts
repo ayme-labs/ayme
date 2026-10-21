@@ -64,10 +64,12 @@ export const ACTION_RESULT_NOTE =
  * counts as the action's.
  *
  * An action whose `perform` or settle wait throws is completed as failed with
- * the page as it is then, moves no cursor, and the error travels on; one
- * whose `perform` throws still waits for a Settled Page first. Where
- * capturing that page or the Settled Page throws, the page as last recorded
- * stands in for it.
+ * the page as it is then, and the error travels on; one whose `perform`
+ * throws still waits for a Settled Page first. The error's message then ends
+ * with the Change Record's parts that have a change, and `cursor` moves to
+ * that page, as the Caller received it: what a failed action did still
+ * reaches its Caller once. Where capturing that page or the Settled Page
+ * throws, the page as last recorded stands in for it.
  *
  * An action that starts a full page load answers at once, before the old
  * document goes away, with the Change Record up to that moment, the URL that
@@ -120,7 +122,18 @@ export async function runAction(
     ]);
     if (loadingUrl !== undefined) settled.catch(() => {});
   } catch (error) {
-    await failActionForDocument(currentDocument, actionId).catch(() => {});
+    await failActionForDocument(currentDocument, actionId)
+      .then(async (after) => {
+        if (!(error instanceof Error)) return;
+        const record = await readChangeRecord(
+          history,
+          { received, before },
+          after
+        );
+        appendChangeRecord(error, record);
+        cursor.move(after);
+      })
+      .catch(() => {});
     throw error;
   } finally {
     fullLoad.stop();
@@ -148,6 +161,33 @@ export async function runAction(
   if (record.changes) out.changes = record.changes;
 
   return out;
+}
+
+/** A failed action's error message as it was before a Change Record ended it. */
+const messagesWithoutRecord = new WeakMap<Error, string>();
+
+/**
+ * End a failed action's error message with the parts of its Change Record
+ * that have a change, under the names an action result gives them. An error
+ * that fails an enclosing action too ends with that action's record instead,
+ * which covers the inner one's, as its result would.
+ */
+function appendChangeRecord(
+  error: Error,
+  record: Pick<ActionResult, "changes_before" | "changes">
+) {
+  const parts = (["changes_before", "changes"] as const).flatMap((name) =>
+    record[name] ? [`${name}:\n${record[name]}`] : []
+  );
+  if (!parts.length) return;
+  const message = messagesWithoutRecord.get(error) ?? error.message;
+  messagesWithoutRecord.set(error, message);
+  // An own property, as some errors' `message` is a getter only.
+  Object.defineProperty(error, "message", {
+    value: [message, ...parts].join("\n\n"),
+    configurable: true,
+    writable: true,
+  });
 }
 
 /** Where an action's Change Record is read from: its two starts. */
