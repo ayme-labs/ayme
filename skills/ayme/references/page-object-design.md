@@ -99,13 +99,15 @@ Use names that explain the action and scope. `openCreateMenu()` communicates the
 transition; `clickPlus()` describes an implementation detail.
 `openProjectCreation()` opens a form; `create()` completes creation.
 
-## Describe what the name doesn't say
+## Describe what the action means for the product
 
-An agent reads a tool's name, such as `ProjectsPage.createProject`, beside its
-input schema, its availability and, after a call, what changed on the page.
-Give `@ayme.action` a description only for what none of those tell it, and
-leave it out otherwise: a bare `@ayme.action` on `increment()` says as much as
-"Increment the counter." would.
+An agent sees a tool's name, its input schema, its availability and, after a
+call, what changed on the page, for one user, in this view. A description says
+what the action means beyond that, as product docs would: who may do it, and
+what it commits that outlives the page or reaches other people. An action that
+only changes the UI, such as opening a menu or filling a field, needs none: a
+bare `@ayme.action` on `openCreateMenu()` says as much as "Open the create
+menu." would.
 
 ## Make actions do something
 
@@ -117,7 +119,10 @@ as a tool only repeats it. Keep such reads as plain methods or locators for
 tests and other code.
 
 ```ts
-@ayme.action({ description: "Hides it from every member's project list." })
+@ayme.action({
+  description:
+    "Archived projects disappear for every member until restored from Archived.",
+})
 async archive() {
   await this.archiveButton.click();
   return this;

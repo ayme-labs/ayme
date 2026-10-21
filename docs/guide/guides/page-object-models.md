@@ -27,7 +27,7 @@ export class ProjectsPage {
 }
 ```
 
-- Both decorators take an optional description: `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes with a generated one, `Run createProject.` for the action above. A description says what an agent cannot learn from the tool's name, its input schema, its availability or what a call changes on the page; leave it out otherwise. A model's description is its own, not inherited: a subclass keeps `@ayme({ description })` to have one. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
+- Both decorators take an optional description: `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes with a generated one, `Run createProject.` for the action above. A description says what the action means for the product beyond what an agent sees on the page: who may do it, and what it commits that outlives the page or reaches other people. An action that only changes the UI needs none. A model's description is its own, not inherited: a subclass keeps `@ayme({ description })` to have one. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
 - Only marked actions become tools. Public members are not published on their own.
 - A class that extends an `@ayme` class is a Page Object Model too, even without the decorator. Its actions still need `@ayme.action`.
 - No Ayme base class is needed, and the same class keeps working in your Playwright tests.
@@ -162,7 +162,8 @@ export class SettingsPanel extends AppComponent {
   readonly removeButton = this.container.getByTestId("removeButton");
 
   @ayme.action({
-    description: "Deletes it for every member of the workspace.",
+    description:
+      "Only workspace admins can remove dashboards. Removes it for everyone in the workspace.",
     available: canRemove,
   })
   async remove() {
