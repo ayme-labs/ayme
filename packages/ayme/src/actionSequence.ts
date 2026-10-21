@@ -170,7 +170,8 @@ const messagesWithoutRecord = new WeakMap<Error, string>();
  * End a failed action's error message with the parts of its Change Record
  * that have a change, under the names an action result gives them. An error
  * that fails an enclosing action too ends with that action's record instead,
- * which covers the inner one's, as its result would.
+ * which covers the inner one's, as its result would, or with none when the
+ * enclosing action left nothing changed.
  */
 function appendChangeRecord(
   error: Error,
@@ -179,8 +180,8 @@ function appendChangeRecord(
   const parts = (["changes_before", "changes"] as const).flatMap((name) =>
     record[name] ? [`${name}:\n${record[name]}`] : []
   );
-  if (!parts.length) return;
   const message = messagesWithoutRecord.get(error) ?? error.message;
+  if (!parts.length && message === error.message) return;
   messagesWithoutRecord.set(error, message);
   // An own property, as some errors' `message` is a getter only.
   Object.defineProperty(error, "message", {

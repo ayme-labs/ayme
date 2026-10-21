@@ -132,6 +132,39 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(next.changes).not.toContain("Item 1");
   });
 
+  it("ends an error that fails an enclosing action too with that action's record", async () => {
+    let ref = "";
+    const clickThenFail: CustomTool = {
+      name: "click_then_fail",
+      description: "Clicks Add, then fails.",
+      async execute() {
+        document.querySelector("button")!.click();
+        throw new Error("The child failed.");
+      },
+    };
+    const undoThenRethrow: CustomTool = {
+      name: "undo_then_rethrow",
+      description:
+        "Runs click_then_fail, undoes its click and fails with its error.",
+      async execute(_target, { run }) {
+        try {
+          await run("click_then_fail", { ref });
+        } finally {
+          document.querySelector("p")!.remove();
+        }
+      },
+    };
+    start({ customTools: [clickThenFail, undoThenRethrow] });
+    const by = callers.inspector;
+    const { structure } = await ayme.tools.run("snapshot", {}, { by });
+    ref = structure.match(/(e\d+) button "Add"/)![1]!;
+
+    // The child's record named Item 1; the enclosing action left nothing.
+    await expect(
+      ayme.tools.run("undo_then_rethrow", { ref }, { by })
+    ).rejects.toThrow(/^The child failed\.$/);
+  });
+
   it("leaves a failed action's error as it is when nothing changed", async () => {
     const failing: CustomTool = {
       name: "fail",
