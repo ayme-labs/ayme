@@ -11,14 +11,6 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 - `peek(read, name, id?)` in `@ayme-dev/svelte`: the [Svelte](../frameworks/svelte.md#api) composable.
 - `injectPeek(values, name, id?)` in `@ayme-dev/angular`: the [Angular](../frameworks/angular.md#api) function.
 
-## Page Object root and presence
-
-- `root` in `@ayme-dev/ayme`: the `@ayme` option that names the element anchoring a Page Object, in [Page Object root](ayme.md#page-object-root).
-
-  Migration: a model that anchored on a member named `root` now declares it on the decorator of its class or of a base class, `@ayme({ root: rootOf })` with `const rootOf = (self: AppComponent) => self.root`; the member's name alone anchors nothing. Without the option, the model is root-less: a top-level one has its tools listed while it is registered, with no label in the page state and no reach measurement behind its availability, a single child is present while the Page Object it is reached through is, and the build refuses a collection item whose inline options declare no root, while the runtime reports any other at observation.
-
-- `present` in `@ayme-dev/ayme`: the `@ayme` option that says when a Page Object is on the page, in [Page Object presence](ayme.md#page-object-presence).
-
 ## The Goal Loop
 
 - `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).

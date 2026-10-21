@@ -33,7 +33,6 @@ export type AymeModelOptions<Self = unknown> = {
    * rendered element, which the page state labels with its name and at
    * which its availability is measured. A subclass inherits it and may
    * declare its own.
-   * @experimental
    */
   root?: RootPredicate<Self>;
   /**
@@ -41,7 +40,6 @@ export type AymeModelOptions<Self = unknown> = {
    * a model with a root is present while the root is, and a top-level model
    * without one while it is registered. A subclass inherits it and may
    * declare its own.
-   * @experimental
    */
   present?: PresencePredicate<Self>;
 };

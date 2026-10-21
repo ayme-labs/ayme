@@ -90,7 +90,7 @@ export default function Controls() {
 }
 ```
 
-- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration, so a model registered only in a component is registered while the component is mounted; [Register Page Objects](../guides/publish-tools.md#register-page-objects) says when that is the right place.
+- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
 - `useAyme()` returns the provider's session, `ayme`, and its WebMCP publication, `webMCP`.
 - Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
 

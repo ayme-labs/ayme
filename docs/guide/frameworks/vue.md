@@ -108,7 +108,7 @@ const { ayme } = useAyme();
 await pom.addItem("Write release notes");
 ```
 
-- `usePageObject(Model)` removes its registration with its Vue scope, so a model registered only in a component is registered while the component lives; [Register Page Objects](../guides/publish-tools.md#register-page-objects) says when that is the right place. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
+- `usePageObject(Model)` removes its registration with its Vue scope. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
 - `useAyme()` returns the owner's session, `ayme`, and its WebMCP publication, `webMCP`.
 - Both need an active Vue effect scope.
 

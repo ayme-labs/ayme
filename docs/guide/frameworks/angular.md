@@ -81,7 +81,7 @@ export class Projects {
 
 `provideAyme` takes the [`createAyme` options](../reference/ayme.md#createayme) and passes them through unchanged. For Playwright settings, pass `pageFactory: () => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme`.
 
-`injectAyme`, `injectPageObject` and `injectPeek` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing. A model registered only in a component is registered while the component lives; [Register Page Objects](../guides/publish-tools.md#register-page-objects) says when that is the right place.
+`injectAyme`, `injectPageObject` and `injectPeek` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing.
 
 ## Optional: publish with WebMCP
 
