@@ -43,7 +43,7 @@ describe("@ayme({ root, present }) stacked", () => {
     const root = () => undefined as never;
     const present = () => true;
     ayme({ present })(Stacked, classContext as never);
-    ayme({ root })(Stacked, classContext as never);
+    ayme({ root, present: undefined })(Stacked, classContext as never);
 
     expect(modelOption(Stacked, "root")).toBe(root);
     expect(modelOption(Stacked, "present")).toBe(present);

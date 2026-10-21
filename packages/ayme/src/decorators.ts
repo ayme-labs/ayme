@@ -174,8 +174,13 @@ function keepingPredicates(
   options: AymeModelOptions<never>
 ): AymeClassDecorator {
   return ((target: PageObjectClass) => {
-    if (options.root || options.present)
-      modelOptions.set(target, { ...modelOptions.get(target), ...options });
+    const { root, present } = options;
+    if (root || present)
+      modelOptions.set(target, {
+        ...modelOptions.get(target),
+        ...(root && { root }),
+        ...(present && { present }),
+      });
   }) as AymeClassDecorator;
 }
 
