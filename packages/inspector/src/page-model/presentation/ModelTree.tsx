@@ -1,4 +1,10 @@
-import { useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   BoxIcon,
   BracesIcon,
@@ -21,8 +27,20 @@ import {
 } from "../../panel";
 import type { OnHover, Selection } from "../../navigation";
 import { hoverHandlers } from "../view/hover";
+import { LiveMark } from "../view/LiveMark";
 
 const splitStep = 0.05;
+
+/** How the object tree is opened up, which outlives the tree's rows. */
+export type ObjectTree = {
+  /**
+   * The objects opened or closed by hand, by path. The rest are open while
+   * they are on the page and closed while they aren't.
+   */
+  open: Readonly<Record<string, boolean>>;
+  /** The selected object whose surrounding objects were last opened. */
+  revealed?: string;
+};
 
 const kindIcon: Record<PageObjectNode["kind"], LucideIcon> = {
   page: FileIcon,
@@ -34,7 +52,8 @@ const kindIcon: Record<PageObjectNode["kind"], LucideIcon> = {
 /**
  * The Model lens's tree: the Page Objects on this page, and the Page Object
  * Models the page knows. Each pane collapses to its header; when both are
- * open, a divider between them shares the height out.
+ * open, a divider between them shares the height out. An object not on the
+ * page starts closed, so what isn't there takes one row.
  */
 export function ModelTree({
   host,
@@ -48,6 +67,8 @@ export function ModelTree({
   onPickModel,
   panes,
   onPanesChange,
+  objectTree,
+  onObjectTreeChange,
 }: {
   /** The page's host, e.g. localhost:5173. */
   host: string;
@@ -64,12 +85,51 @@ export function ModelTree({
   /** Which panes are open and how they share the height; the panel keeps it. */
   panes: ModelPanes;
   onPanesChange: (panes: ModelPanes) => void;
+  objectTree: ObjectTree;
+  onObjectTreeChange: (objectTree: ObjectTree) => void;
 }) {
   const { objectsOpen, modelsOpen, split } = panes;
   const bothOpen = objectsOpen && modelsOpen;
 
-  const rows = [...treeRows(objects, 1)];
   const selectedPath = selection.kind === "object" ? selection.path : undefined;
+  const { open: openObjects } = objectTree;
+  const rows = [...treeRows(objects, 1, openObjects)];
+  const setOpen = (path: string, open: boolean) =>
+    onObjectTreeChange({
+      ...objectTree,
+      open: { ...openObjects, [path]: open },
+    });
+
+  // A selection inside a closed object, from search or a link, opens the
+  // objects around it: once per selection, when it is in the tree, so a
+  // later close stays closed, across lens switches too.
+  useEffect(() => {
+    if (selectedPath === objectTree.revealed) return;
+    const around =
+      selectedPath === undefined ? [] : ancestors(objects, selectedPath);
+    if (around === undefined) return;
+    const closed = around.filter((node) => !isOpen(node, openObjects));
+    onObjectTreeChange({
+      open: {
+        ...openObjects,
+        ...Object.fromEntries(closed.map((node) => [node.path, true])),
+      },
+      revealed: selectedPath,
+    });
+  }, [selectedPath, objects, objectTree, openObjects, onObjectTreeChange]);
+
+  // An object that closes on its own, as it leaves the page, takes the rows
+  // under it away; focus on one of them moves to the closest row left.
+  const tree = useRef<HTMLDivElement>(null);
+  const focused = focusedPath(tree.current);
+  useLayoutEffect(() => {
+    if (focused === undefined || rows.some(({ node }) => node.path === focused))
+      return;
+    const kept = parentPaths(focused).find((path) =>
+      rows.some(({ node }) => node.path === path)
+    );
+    if (kept) rowElement(tree.current, kept)?.focus();
+  });
   const selectedModel =
     selection.kind === "model" ? selection.className : undefined;
 
@@ -81,7 +141,7 @@ export function ModelTree({
         onToggle={() => onPanesChange({ ...panes, objectsOpen: !objectsOpen })}
         grow={bothOpen ? split : 1}
       >
-        <div role="tree" aria-label="Page objects">
+        <div ref={tree} role="tree" aria-label="Page objects">
           <TreeRow
             label="Page /"
             name="/"
@@ -91,7 +151,7 @@ export function ModelTree({
             selected={selection.kind === "page"}
             onClick={onPickPage}
           />
-          {rows.map(({ node, depth }) => (
+          {rows.map(({ node, depth, open }) => (
             <TreeRow
               key={node.key}
               label={node.path}
@@ -106,6 +166,8 @@ export function ModelTree({
                     : node.className
               }
               live={node.live}
+              open={open}
+              onOpenChange={(next) => setOpen(node.path, next)}
               selected={node.path === selectedPath}
               onClick={() => onPickObject(node)}
               {...hoverHandlers(
@@ -165,14 +227,65 @@ export function ModelTree({
   );
 }
 
+/** The rows the tree shows: each object, and the children of the open ones. */
 function* treeRows(
   nodes: readonly PageObjectNode[],
-  depth: number
-): Generator<{ node: PageObjectNode; depth: number }> {
+  depth: number,
+  openObjects: ObjectTree["open"]
+): Generator<{ node: PageObjectNode; depth: number; open?: boolean }> {
   for (const node of nodes) {
-    yield { node, depth };
-    yield* treeRows(node.children, depth + 1);
+    if (!node.children.length) {
+      yield { node, depth };
+      continue;
+    }
+    const open = isOpen(node, openObjects);
+    yield { node, depth, open };
+    if (open) yield* treeRows(node.children, depth + 1, openObjects);
   }
+}
+
+function isOpen(node: PageObjectNode, openObjects: ObjectTree["open"]) {
+  return openObjects[node.path] ?? node.live;
+}
+
+/**
+ * The objects above the one at `path`, outermost first; undefined when it
+ * isn't in the tree.
+ */
+function ancestors(
+  nodes: readonly PageObjectNode[],
+  path: string
+): PageObjectNode[] | undefined {
+  for (const node of nodes) {
+    if (node.path === path) return [];
+    const below = ancestors(node.children, path);
+    if (below) return [node, ...below];
+  }
+  return undefined;
+}
+
+/**
+ * The paths above `path`, closest first: "A.items[1].b" gives
+ * "A.items[1]", "A.items" and "A". Read from the path, so it works for an
+ * object that is gone from the page model.
+ */
+function parentPaths(path: string): string[] {
+  const parent = path.replace(/(\.[^.[\]]+|\[\d+\])$/, "");
+  return parent === path ? [] : [parent, ...parentPaths(parent)];
+}
+
+/** The path of the tree's row that has focus, before this render changes it. */
+function focusedPath(tree: HTMLElement | null) {
+  const root = tree?.getRootNode() as Document | ShadowRoot | undefined;
+  const active = root?.activeElement;
+  if (!tree || !active || !tree.contains(active)) return undefined;
+  return active.getAttribute("aria-label") ?? undefined;
+}
+
+function rowElement(tree: HTMLElement | null, path: string) {
+  return tree?.querySelector<HTMLElement>(
+    `[role="treeitem"][aria-label="${CSS.escape(path)}"]`
+  );
 }
 
 function rowClass(selected: boolean) {
@@ -189,6 +302,8 @@ function TreeRow({
   icon: Icon,
   type,
   live,
+  open,
+  onOpenChange,
   selected,
   onClick,
   onMouseEnter,
@@ -202,27 +317,56 @@ function TreeRow({
   type: string;
   /** Undefined for the page itself. */
   live?: boolean;
+  /** Whether its children show; undefined when it has none. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   selected: boolean;
   onClick: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }) {
+  // The tree's keys: right opens an object, left closes it.
+  const onKeyDown = (event: KeyboardEvent) => {
+    const next = { ArrowRight: true, ArrowLeft: false }[event.key];
+    if (open === undefined || next === undefined || next === open) return;
+    event.preventDefault();
+    onOpenChange?.(next);
+  };
   return (
     <button
       type="button"
       role="treeitem"
       aria-level={depth + 1}
+      aria-expanded={open}
       aria-selected={selected}
       aria-label={label}
       aria-description={
         live === undefined ? undefined : live ? "On this page" : "Not on page"
       }
       className={rowClass(selected)}
-      style={{ paddingLeft: 8 + depth * 16 }}
+      style={{ paddingLeft: 4 + depth * 16 }}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
+      {open === undefined ? (
+        <span className="size-3 flex-none" />
+      ) : (
+        <span
+          aria-hidden
+          data-toggle
+          className="-mr-0.5 flex size-3 flex-none items-center justify-center text-muted-foreground hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenChange?.(!open);
+          }}
+        >
+          <ChevronRightIcon
+            className={cn("size-3 transition-transform", open && "rotate-90")}
+          />
+        </span>
+      )}
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
       <span
         className={cn(
@@ -238,21 +382,6 @@ function TreeRow({
       <span className="flex-1" />
       {live !== undefined && <LiveMark live={live} />}
     </button>
-  );
-}
-
-/** A live dot, or "Not on page". */
-export function LiveMark({ live }: { live: boolean }) {
-  return live ? (
-    <span
-      className="size-2 flex-none rounded-full bg-success"
-      title="On this page"
-      aria-hidden
-    />
-  ) : (
-    <span className="text-xs whitespace-nowrap text-muted-foreground">
-      Not on page
-    </span>
   );
 }
 

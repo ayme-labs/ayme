@@ -1,11 +1,12 @@
 import { type LensId, pageSelection, type Selection } from "../navigation";
+import type { ObjectTree } from "../page-model";
 
 /** The key of the Inspector's view state in the tab's storage. */
 export const viewStateKey = "ayme-inspector:view";
 
 /**
- * Where the person was in the Inspector: the lens, the selection and the
- * Runs region. It is kept for the tab, so a reload comes back to it.
+ * Where the person was in the Inspector: the lens, the selection, the Runs
+ * region and how the Model tree is opened up. It is kept for the tab, so a reload comes back to it.
  */
 export type ViewState = {
   lens: LensId;
@@ -15,15 +16,32 @@ export type ViewState = {
     /** Whether Runs lists every run, not only the selection's. */
     all: boolean;
   };
+  objectTree: ObjectTree;
 };
 
 export const defaultViewState: ViewState = {
   lens: "model",
   selection: pageSelection,
   runs: { open: true, all: false },
+  objectTree: { open: {} },
 };
 
 const lenses: readonly LensId[] = ["model", "structure", "tools"];
+
+/**
+ * The view state with a new selection. The Model tree has not opened the
+ * objects around it yet, even when it was not showing as it changed.
+ */
+export function withSelection(
+  current: ViewState,
+  selection: Selection
+): ViewState {
+  return {
+    ...current,
+    selection,
+    objectTree: { open: current.objectTree.open },
+  };
+}
 
 /**
  * The view state in a stored value. Each value that is missing or malformed
@@ -40,6 +58,21 @@ export function decodeViewState(stored: unknown): ViewState {
         typeof runs.open === "boolean" ? runs.open : defaultViewState.runs.open,
       all: typeof runs.all === "boolean" ? runs.all : defaultViewState.runs.all,
     },
+    objectTree: decodeObjectTree(stored.objectTree),
+  };
+}
+
+/** The stored object tree: each path with a true or false. */
+function decodeObjectTree(stored: unknown): ObjectTree {
+  if (!isRecord(stored)) return defaultViewState.objectTree;
+  const open = isRecord(stored.open) ? stored.open : {};
+  return {
+    open: Object.fromEntries(
+      Object.entries(open).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === "boolean"
+      )
+    ),
+    ...(isText(stored.revealed) ? { revealed: stored.revealed } : {}),
   };
 }
 

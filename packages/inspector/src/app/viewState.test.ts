@@ -5,6 +5,7 @@ import {
   defaultViewState,
   type ViewState,
   viewStateKey,
+  withSelection,
 } from "./viewState";
 
 // Unit tests: which parts of a stored view state the Inspector comes back
@@ -15,6 +16,10 @@ it("comes back to the lens, selection and Runs region it was left with", () => {
     lens: "tools",
     selection: { kind: "tool", name: "ListPage_addItem" },
     runs: { open: false, all: true },
+    objectTree: {
+      open: { "InboxPage.taskDialog": true, InboxPage: false },
+      revealed: "InboxPage.taskDialog.taskForm",
+    },
   };
 
   expect(decodeViewState(JSON.parse(JSON.stringify(left)))).toEqual(left);
@@ -49,6 +54,7 @@ it("opens on the Model lens at the page, with Runs open on the selection's runs"
     lens: "model",
     selection: { kind: "page" },
     runs: { open: true, all: false },
+    objectTree: { open: {} },
   });
 });
 
@@ -69,6 +75,31 @@ it("falls back to the default for each malformed value", () => {
       lens: "elsewhere",
       selection: { kind: "member" },
       runs: { open: "yes", all: true },
+      objectTree: {
+        open: { InboxPage: "yes", "InboxPage.list": false },
+        revealed: 3,
+      },
     })
-  ).toEqual({ ...defaultViewState, runs: { open: true, all: true } });
+  ).toEqual({
+    ...defaultViewState,
+    runs: { open: true, all: true },
+    objectTree: { open: { "InboxPage.list": false } },
+  });
+});
+
+it("forgets which selection the Model tree opened up when the selection changes, keeping what is open", () => {
+  const current: ViewState = {
+    ...defaultViewState,
+    selection: { kind: "object", path: "InboxPage.taskDialog.taskForm" },
+    objectTree: {
+      open: { "InboxPage.taskDialog": false },
+      revealed: "InboxPage.taskDialog.taskForm",
+    },
+  };
+
+  expect(withSelection(current, { kind: "node", ref: "e3" })).toEqual({
+    ...current,
+    selection: { kind: "node", ref: "e3" },
+    objectTree: { open: { "InboxPage.taskDialog": false } },
+  });
 });
