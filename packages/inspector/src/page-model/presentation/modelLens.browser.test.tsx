@@ -24,6 +24,7 @@ import {
   Navigator as NavigatorPart,
 } from "../../testing";
 import { modelLens } from "./modelLens";
+import type { OpenObjects } from "./ModelTree";
 
 // Component tests: the Model lens in the navigator and the detail pane, with
 // a fixture page model, driven through the Inspector's page objects on
@@ -150,7 +151,8 @@ const structureLens: Lens = {
 
 function renderLens({
   selection: initial = { kind: "page" },
-}: { selection?: Selection } = {}) {
+  pageModel: initialModel = pageModel,
+}: { selection?: Selection; pageModel?: PageModel } = {}) {
   const onHover = vi.fn<OnHover>();
   const onSelect = vi.fn();
   const renderRun = vi.fn<RenderRun>(({ toolName }) => (
@@ -161,9 +163,12 @@ function renderLens({
     const [selection, setSelection] = useState(initial);
     const [activeLens, setActiveLens] = useState<LensId>("model");
     const [panes, setPanes] = useState(defaultPreferences.modelPanes);
+    const [openObjects, setOpenObjects] = useState<OpenObjects>({});
+    const [shownModel, setModel] = useState(initialModel);
+    setPageModel = setModel;
     const model = modelLens({
       host: "localhost:5173",
-      pageModel,
+      pageModel: shownModel,
       pageTools: ["snapshot", "goal"],
       selection,
       onSelect: (next) => {
@@ -174,6 +179,8 @@ function renderLens({
       renderRun,
       panes,
       onPanesChange: setPanes,
+      openObjects,
+      onOpenObjectsChange: setOpenObjects,
     });
     return (
       <div className="flex" style={{ width: 800, height: 600 }}>
@@ -191,8 +198,15 @@ function renderLens({
       </div>
     );
   }
+  let setPageModel: (pageModel: PageModel) => void = () => {};
   unmounts.push(renderPart(<Harness />));
-  return { onHover, onSelect, renderRun };
+  return {
+    onHover,
+    onSelect,
+    renderRun,
+    /** Stands in for the page changing under the Inspector. */
+    changePage: (next: PageModel) => setPageModel(next),
+  };
 }
 
 async function height(locator: typeof lens.root) {
@@ -212,12 +226,119 @@ it("shows the Page Objects on this page as a tree, marking those not on the page
       "itemsTodoItem[2]",
       "[0]TodoItem",
       "[1]TodoItem",
-      "archiveDialogArchiveDialogNot on page",
+      "archiveDialogArchiveDialog",
     ]);
   expect(await lens.isNotOnPage(lens.object("TodoPage.archiveDialog"))).toBe(
     true
   );
   expect(await lens.isNotOnPage(lens.object("TodoPage.items[1]"))).toBe(false);
+});
+
+// A page with a dialog that isn't open: its Page Object and its children
+// aren't on the page.
+const withDialog = (dialogLive: boolean): PageModel => ({
+  objects: [
+    pageObject("InboxPage", {
+      children: [
+        component("taskDialog", "TaskDialog", {
+          live: dialogLive,
+          children: [
+            component("taskForm", "TaskForm", {
+              live: dialogLive,
+              children: [
+                component("titleInput", "Input", { live: dialogLive }),
+              ],
+            }),
+          ],
+        }),
+        component("list", "TaskList"),
+      ],
+    }),
+  ],
+  models: [],
+});
+
+it("closes an object that is not on the page, and opens one that is", async () => {
+  renderLens({ pageModel: withDialog(false) });
+
+  await expect
+    .poll(() => lens.objectPaths())
+    .toEqual(["Page /", "InboxPage", "InboxPage.taskDialog", "InboxPage.list"]);
+  expect(await lens.isOpen("InboxPage")).toBe(true);
+  expect(await lens.isOpen("InboxPage.taskDialog")).toBe(false);
+  expect(await lens.isOpen("InboxPage.list")).toBe(null);
+});
+
+it("opens and closes an object with its chevron, without selecting it", async () => {
+  const { onSelect } = renderLens({ pageModel: withDialog(false) });
+
+  await lens.toggleObject("InboxPage.taskDialog");
+
+  await expect
+    .poll(() => lens.objectPaths())
+    .toEqual([
+      "Page /",
+      "InboxPage",
+      "InboxPage.taskDialog",
+      "InboxPage.taskDialog.taskForm",
+      "InboxPage.list",
+    ]);
+  await lens.toggleObject("InboxPage");
+  await expect.poll(() => lens.objectPaths()).toEqual(["Page /", "InboxPage"]);
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+it("opens an object with the right arrow key and closes it with the left", async () => {
+  renderLens({ pageModel: withDialog(false) });
+
+  await lens.pressOnObject("InboxPage.taskDialog", "ArrowRight");
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(true);
+  await lens.pressOnObject("InboxPage.taskDialog", "ArrowLeft");
+
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(false);
+});
+
+it("opens and closes untouched objects as they come and go, and keeps the ones set by hand", async () => {
+  const { changePage } = renderLens({ pageModel: withDialog(false) });
+  await lens.toggleObject("InboxPage.taskDialog");
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(true);
+
+  changePage(withDialog(true));
+
+  await expect
+    .poll(() => lens.isOpen("InboxPage.taskDialog.taskForm"))
+    .toBe(true);
+  changePage(withDialog(false));
+  await expect
+    .poll(() => lens.objectPaths())
+    .toEqual([
+      "Page /",
+      "InboxPage",
+      "InboxPage.taskDialog",
+      "InboxPage.taskDialog.taskForm",
+      "InboxPage.list",
+    ]);
+  expect(await lens.isOpen("InboxPage.taskDialog.taskForm")).toBe(false);
+});
+
+it("opens the objects around a selection inside a closed one", async () => {
+  renderLens({
+    pageModel: withDialog(false),
+    selection: {
+      kind: "object",
+      path: "InboxPage.taskDialog.taskForm.titleInput",
+    },
+  });
+
+  await expect
+    .poll(() =>
+      lens
+        .object("InboxPage.taskDialog.taskForm.titleInput")
+        .getAttribute("aria-selected")
+    )
+    .toBe("true");
+  expect(await lens.isOpen("InboxPage.taskDialog")).toBe(true);
+  expect(await lens.isOpen("InboxPage.taskDialog.taskForm")).toBe(true);
 });
 
 it("lists every Page Object Model the page knows, marking those not on the page", async () => {

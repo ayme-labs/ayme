@@ -21,6 +21,7 @@ import type {
 } from "../domain/pageModel";
 import type { OnHover, RenderRun } from "../../navigation";
 import { hoverHandlers } from "./hover";
+import { LiveMark } from "./LiveMark";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
@@ -642,17 +643,7 @@ function MemberName({
 }) {
   return (
     <>
-      {live !== undefined && (
-        <span
-          className={cn(
-            "size-2 flex-none rounded-full",
-            live
-              ? "bg-success"
-              : "shadow-[inset_0_0_0_1.5px_var(--color-muted-foreground)]"
-          )}
-          aria-hidden
-        />
-      )}
+      {live !== undefined && <LiveMark live={live} />}
       {Icon && (
         <Icon
           className="size-3.5 flex-none text-muted-foreground"

@@ -51,6 +51,35 @@ export class ModelLens extends PanelPart {
     return this.objectTree.getByRole("treeitem", { name: path, exact: true });
   }
 
+  /** Whether an object shows its children; null when it has none. */
+  async isOpen(path: string): Promise<boolean | null> {
+    const expanded = await this.object(path).getAttribute("aria-expanded");
+    return expanded === null ? null : expanded === "true";
+  }
+
+  /** The paths of the objects the tree shows, in order. */
+  async objectPaths(): Promise<string[]> {
+    const items = await this.objectTree.getByRole("treeitem").all();
+    const paths = await Promise.all(
+      items.map((item) => item.getAttribute("aria-label"))
+    );
+    return paths.map((path) => path ?? "");
+  }
+
+  @ayme.action({
+    description: "Opens or closes an object in the tree with its chevron.",
+  })
+  async toggleObject(path: string) {
+    await this.object(path).locator("[data-toggle]").click();
+  }
+
+  @ayme.action({
+    description: "Presses a key on an object in the tree, e.g. ArrowRight.",
+  })
+  async pressOnObject(path: string, key: string) {
+    await this.object(path).press(key);
+  }
+
   /** A Page Object Model in the list, by class name. */
   model(className: string): Locator {
     return this.modelList.getByRole("button", { name: className, exact: true });
