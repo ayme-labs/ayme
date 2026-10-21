@@ -6,8 +6,8 @@ import { ArchiveDialog, ListItem } from "./components";
 @ayme
 export class ListPage extends AppPage {
   // The playground is served at the site root in development, and under
-  // /playground/ or /ayme/ when deployed.
-  readonly path = "/{:base(playground|ayme)/}?";
+  // /playground or /ayme when deployed. ayme.dev drops the trailing slash.
+  readonly path = "/{:base(playground|ayme)}?{/}?";
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
   readonly archiveDialog: ArchiveDialog;
