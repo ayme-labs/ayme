@@ -11,19 +11,14 @@ const appRoot = fileURLToPath(new URL("../", import.meta.url));
 const aymeMarkers = [
   "Waiting for the WebMCP driver.",
   "memberName",
-  "Increment the counter.",
   "Set counter mode metadata.",
   "getByRole",
   "playwright-lite",
 ];
 
 // What the models' bodies carry and a source map must not: the locator call
-// and the action descriptions.
-const modelMarkers = [
-  "getByRole",
-  "Increment the counter.",
-  "Set counter mode metadata.",
-];
+// and an action's description.
+const modelMarkers = ["getByRole", "Set counter mode metadata."];
 
 /** Every file under `directory` with `extension`, at any depth. */
 function filesUnder(directory, extension) {

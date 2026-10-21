@@ -42,5 +42,5 @@ The builders drive this DOM, which each example renders on `/`, or the app's `co
 The Page Object Models live in the example's own source, because the build plugin compiles them only from there:
 
 - `CounterMode.ts`: `export type CounterMode = "single" | "double";`
-- `CounterPage.ts`: an `@ayme` class whose `increment` action, "Increment the counter.", clicks the `Increment` button, and whose `setMode(mode: CounterMode)` action is "Set counter mode metadata.";
+- `CounterPage.ts`: an `@ayme` class whose `increment` action, marked without a description, clicks the `Increment` button, and whose `setMode(mode: CounterMode)` action is "Set counter mode metadata.";
 - `SubCounterPage.ts`: `export class SubCounterPage extends CounterPage {}`, undecorated, registered by the counter beside `CounterPage`.

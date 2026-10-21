@@ -13,7 +13,7 @@ export class CounterPage {
     });
   }
 
-  @ayme.action({ description: "Increment the counter." })
+  @ayme.action
   async increment() {
     await this.incrementButton.click();
   }
