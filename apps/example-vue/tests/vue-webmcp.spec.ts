@@ -486,7 +486,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     },
     {
       name: "ListPage.items.archive",
-      description: "Run archive.",
+      description: "An archived item can't be renamed or restored.",
       inputSchema: {
         type: "object",
         properties: {

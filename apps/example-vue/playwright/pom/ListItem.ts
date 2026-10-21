@@ -18,7 +18,9 @@ export class ListItem extends AppComponent {
     this.nameInput = root.getByRole("textbox", { name: "Item name" });
   }
 
-  @ayme.action
+  @ayme.action({
+    description: "An archived item can't be renamed or restored.",
+  })
   async archive() {
     await this.archiveButton.click();
     await this.archiveDialog.confirm();
