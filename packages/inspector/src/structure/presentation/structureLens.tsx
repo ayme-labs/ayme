@@ -199,7 +199,9 @@ function StructureTreeView({
           role="tree"
           aria-label="Page structure"
           {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
-          className="flex flex-col"
+          // Clipped, so even an unfolded chain deeper than the panel is wide
+          // never scrolls it sideways.
+          className="flex flex-col overflow-x-clip"
         >
           {rows.map((row, index) =>
             hasRef(row.node) ? (
@@ -282,7 +284,6 @@ function NodeRow({
       role="treeitem"
       aria-level={depth + 1}
       aria-selected={node.ref === selectedRef}
-      aria-expanded={toggle && !outer}
       aria-label={
         outer
           ? `${nodeLabel(node)}, wrapped from ${outer.ref}`
@@ -302,11 +303,21 @@ function NodeRow({
         <button
           type="button"
           aria-label={outer ? "Unfold wrappers" : "Fold wrappers"}
+          // The wrappers' state, not the row's: the row's children show either way.
+          aria-expanded={!outer}
+          data-chain={toggle.ref}
           className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
           style={{ left: rowIndent(depth) - 15 }}
           onClick={(event) => {
             event.stopPropagation();
+            const tree = event.currentTarget.closest('[role="tree"]');
             onToggle(toggle);
+            // The toggle moves to the chain's other row: focus follows it.
+            requestAnimationFrame(() =>
+              tree
+                ?.querySelector<HTMLElement>(`[data-chain="${toggle.ref}"]`)
+                ?.focus()
+            );
           }}
         >
           <Chevron className="size-3" aria-hidden />

@@ -83,6 +83,9 @@ export class StructureLens extends PanelPart {
     description: "Selects a node by its ref; the page highlights it.",
   })
   async pick(ref: string) {
-    await this.node(ref).click();
+    // The node's own button: a folded row also holds its outer wrapper's.
+    await this.node(ref)
+      .getByRole("button", { name: new RegExp(`^${ref} `) })
+      .click();
   }
 }

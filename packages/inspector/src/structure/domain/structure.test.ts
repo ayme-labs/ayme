@@ -123,6 +123,7 @@ it("builds the tree of nodes with their refs, roles and names", () => {
               ref: "e3",
               role: "button",
               name: "Add item",
+              cursorPointer: true,
               members: [],
               children: [],
             },
@@ -181,7 +182,9 @@ it("keeps what an agent reads of each node alone: its line, its properties and h
   expect(addItem).toMatchObject({
     pageStateLines: ['- e3 button "Add item" [cursor=pointer]'],
     childCount: 0,
+    cursorPointer: true,
   });
+  expect(heading).not.toHaveProperty("cursorPointer");
   expect(list!.children[0]).toMatchObject({
     pageStateLines: ["- e74 listitem: Milk"],
     childCount: 0,

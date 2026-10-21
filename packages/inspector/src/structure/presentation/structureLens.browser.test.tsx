@@ -424,6 +424,13 @@ it("folds a chain of wrappers into one row, led by its outermost wrapper", async
 
   await expect.poll(() => lens.rows.count()).toBe(3);
   expect(await lens.node("e13").textContent()).toBe("e102 more›e13generic");
+  expect(await lens.node("e13").getAttribute("aria-expanded")).toBeNull();
+  expect(
+    await lens
+      .node("e13")
+      .getByRole("button", { name: "Unfold wrappers" })
+      .getAttribute("aria-expanded")
+  ).toBe("false");
   expect(await lens.node("e14").getAttribute("aria-level")).toBe("2");
   expect(await lens.node("e11").count()).toBe(0);
 });
@@ -452,6 +459,31 @@ it("unfolds a chain into a row for each wrapper, and folds it back", async () =>
   await lens.toggleWrappers("e10");
 
   await expect.poll(() => lens.rows.count()).toBe(3);
+});
+
+it("keeps focus on the toggle as it moves between a chain's rows", async () => {
+  renderLens({ structure: wrapped });
+  // The panel renders in a shadow root, which holds its focused element.
+  const active = () =>
+    document.activeElement?.shadowRoot?.activeElement ?? null;
+  const focused = () => active()?.getAttribute("aria-label");
+
+  await lens
+    .node("e13")
+    .getByRole("button", { name: "Unfold wrappers" })
+    .press("Enter");
+
+  await expect.poll(focused).toBe("Fold wrappers");
+  expect(
+    active()?.closest('[role="treeitem"]')?.getAttribute("aria-label")
+  ).toBe("e10 generic");
+
+  await lens
+    .node("e10")
+    .getByRole("button", { name: "Fold wrappers" })
+    .press("Enter");
+
+  await expect.poll(focused).toBe("Unfold wrappers");
 });
 
 it("unfolds the chain of a hidden wrapper picked in search, and keeps it unfolded", async () => {

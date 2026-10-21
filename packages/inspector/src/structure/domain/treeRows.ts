@@ -21,8 +21,8 @@ export type IsUnfolded = (chain: readonly StructureNode[]) => boolean;
 /**
  * Every node of the tree as a row, depth first, with each chain of wrappers
  * folded unless it is unfolded. A wrapper is a generic with no name, no
- * Page Object member, no states and no properties, whose only child is a
- * generic: it adds nesting, nothing an agent reads or acts on.
+ * Page Object member, no states, no properties and no pointer cursor, whose
+ * only child is a generic: it adds nesting, nothing an agent reads or acts on.
  */
 export function* treeRows(
   nodes: readonly StructureNode[],
@@ -69,8 +69,10 @@ function isWrapper(node: StructureNode) {
     role === "generic" &&
     name === "" &&
     members.length === 0 &&
-    // Its own line is all an agent reads of it: no states, no properties.
+    // Its own line is all an agent reads of it: no states, no properties,
+    // and nothing that marks it clickable.
     node.state === undefined &&
+    node.cursorPointer === undefined &&
     node.control === undefined &&
     (node.pageStateLines?.length ?? 1) <= 1 &&
     children.length === 1 &&

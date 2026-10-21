@@ -161,13 +161,16 @@ describe("treeRows", () => {
     ]);
   });
 
-  it("keeps a generic an agent reads more of than its line: states or properties", () => {
+  it("keeps a generic an agent reads more of than its line: states, properties or a pointer cursor", () => {
     const tree = [
       generic("e1", [generic("e2", [button("e3", "Save")])], {
         state: { expanded: true },
       }),
       generic("e4", [generic("e5", [button("e6", "Save")])], {
         pageStateLines: ["- e4:", '  - /pom: "Toolbar"'],
+      }),
+      generic("e7", [generic("e8", [button("e9", "Save")])], {
+        cursorPointer: true,
       }),
     ];
 
@@ -178,6 +181,9 @@ describe("treeRows", () => {
       "0 e4",
       "1 e5",
       "2 e6",
+      "0 e7",
+      "1 e8",
+      "2 e9",
     ]);
   });
 });
