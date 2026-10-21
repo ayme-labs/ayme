@@ -1830,6 +1830,45 @@ describe("Goal Loop goal in Chromium", () => {
     expect(full.startsWith(`${kept}\n`)).toBe(true);
   });
 
+  it("records what a failed step changed under changes, cut, and its error alone as the result", async () => {
+    document.body.innerHTML = `<main><h1>Import</h1><ul></ul></main>`;
+    class App {
+      root = page.locator("main");
+      fill() {
+        const list = document.querySelector("ul")!;
+        for (let i = 0; i < 40; i++) {
+          const item = document.createElement("li");
+          item.textContent = `Imported item number ${i}`;
+          list.appendChild(item);
+        }
+        throw new Error("import exploded");
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("fill", "App.fill")])
+    );
+    const decide = scriptedDecisionFn([
+      { operation: "App.fill", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    session.pom.register(App);
+    const result = (await tool.execute({
+      goal: "import",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    const [entry] = result.history as Array<Record<string, unknown>>;
+    expect(entry).toMatchObject({
+      result: "import exploded",
+      page_changed: true,
+    });
+    const changes = entry!.changes as string;
+    expect(changes).toContain("Imported item number 0");
+    expect(changes.length).toBeLessThanOrEqual(MAX_STEP_CHANGES);
+    expect(changes.endsWith(CHANGES_CUT_MARKER)).toBe(true);
+  });
+
   it("records a failed step as a bare step record with the error as its result", async () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([

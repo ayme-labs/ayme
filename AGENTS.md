@@ -63,6 +63,12 @@ Commit messages follow Conventional Commits. `commitlint.config.ts` defines the 
 
 `@ayme-dev/playwright-lite` is a Git dependency on `ayme-labs/playwright-lite`, pinned to the commit SHA of an `ayme-<date>` tag (ADR-0021). Pin only such tags; never a branch or `main` commit.
 
+Playwright Lite matches Playwright's behaviour; the fork holds only what ayme needs that does not belong in Playwright Lite itself.
+
+- A behaviour where Lite differs from Playwright is a Lite bug. Its fix goes to upstream Playwright Lite (`enekesabel/playwright-lite`), whether it starts there or in the fork.
+- Split every fork change by part: what makes Lite match Playwright goes upstream, and only what ayme alone needs stays in the fork's queue. A change that mixes the two is split.
+- A fork change never makes Lite differ from Playwright. When ayme needs other behaviour than Playwright's, ayme provides it on top of Lite.
+
 1. To pick up upstream changes, first produce a new tag by following `docs/fork/SYNC.md` in the fork. Read it from the latest `ayme-*` [tag](https://github.com/ayme-labs/playwright-lite/tags); the fork's `main` mirrors upstream and does not contain it.
 2. Replace the old SHA with the new tag's SHA everywhere and reinstall: `git grep -l <old-sha> -- ':!pnpm-lock.yaml' | xargs perl -pi -e 's/<old-sha>/<new-sha>/g' && pnpm install`. This covers the three `package.json` files, `allowBuilds` in `pnpm-workspace.yaml`, the ledger link in `docs/guide/reference/playwright-in-the-browser.md`, and `packages/ayme/THIRD_PARTY_NOTICES.txt`. `git grep <old-sha>` must then find nothing. pnpm rewrites the lockfile unformatted, so run `pnpm exec prettier --write pnpm-lock.yaml`; the lockfile diff should be a few lines.
 3. Run `pnpm check`. Review the upstream changelog for behaviour changes that affect POMs.
