@@ -28,10 +28,7 @@ const shownSources = [
 const aymeMarkers = [
   "Waiting for the WebMCP driver.",
   "memberName",
-  "Add a new item to the list.",
-  "Archive this list item.",
-  "Rename this list item.",
-  "Increment the counter.",
+  "Set counter mode metadata.",
   "getByRole",
   "playwright-lite",
   "ayme-inspector",

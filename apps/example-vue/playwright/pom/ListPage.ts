@@ -3,7 +3,6 @@ import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { ArchiveDialog, ListItem } from "./components";
 
-@ayme
 export class ListPage extends AppPage {
   // The playground is served at the site root in development, and under
   // /playground or /ayme when deployed. ayme.dev drops the trailing slash.
@@ -30,9 +29,7 @@ export class ListPage extends AppPage {
     return rows.map((row) => new ListItem(row, this.archiveDialog));
   }
 
-  @ayme.action({
-    description: "Add a new item to the list.",
-  })
+  @ayme.action
   async addItem(text: string) {
     await this.newItemInput.fill("");
     await this.newItemInput.pressSequentially(text);
