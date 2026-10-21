@@ -399,6 +399,26 @@ it("C1, C4: passes navigate to the runtime session and rejects changing it", asy
   ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
+it("C1, C4: passes an inline pageObjects list and keeps it fixed across renders", async () => {
+  const app = root();
+  await act(() =>
+    app.render(h(AymeProvider, { pageFactory, pageObjects: [Model] }))
+  );
+  await act(() =>
+    app.render(h(AymeProvider, { pageFactory, pageObjects: [Model] }))
+  );
+  expect(createAyme).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ pageObjects: [Model] })
+  );
+  await expect(
+    act(async () =>
+      app.render(
+        h(AymeProvider, { pageFactory, pageObjects: [Model, OtherModel] })
+      )
+    )
+  ).rejects.toThrow("provider options changed while the provider was mounted");
+});
+
 it("C1, C4: passes an inline inspector demo setting and keeps it fixed across renders", async () => {
   await withoutInspectorLoad();
   const app = root();

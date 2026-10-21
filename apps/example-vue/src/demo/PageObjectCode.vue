@@ -15,14 +15,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // own options; the closing tag is split so the SFC compiler doesn't end this
 // block at it.
 const wiring = `<script setup lang="ts">
-import { useAyme, usePageObject } from "@ayme-dev/vue";
+import { useAyme } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 
 useAyme({
+  pageObjects: [ListPage],
   inspector: import.meta.env.DEV,
   agentConnection: import.meta.env.DEV,
 });
-usePageObject(ListPage);
 </${"script"}>`;
 
 const files = [
@@ -41,7 +41,7 @@ const highlighter = createHighlighterCore({
 });
 
 /** The lines that make a class a Page Object, an action a tool, or wire it in. */
-const aymeLine = /^\s*(@ayme\b|useAyme\(|usePageObject\()/;
+const aymeLine = /^\s*(@ayme\b|useAyme\(|pageObjects:)/;
 
 const selected = ref<string>(files[0].name);
 const html = ref("");

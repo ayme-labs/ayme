@@ -25,12 +25,13 @@ One session owns the current document at a time. `start()` returns the function 
 
 ## Register Page Objects
 
-A Page Object's tools are listed while its class is registered and the Page Object is present, as [Pages and components](page-object-models.md#pages-and-components) describes. Register at app setup by default: a page states its own presence from the URL, so every page is registered once, in the app's root component with the framework hook, `usePageObject` or `injectPageObject`, or with `ayme.pom.register` in the entry point where `createAyme` runs. The pages are listed in one place, and each one's tools come and go with the browser's location.
+A Page Object's tools are listed while its class is registered and the Page Object is present, as [Pages and components](page-object-models.md#pages-and-components) describes. Register at app setup by default: a page states its own presence from the URL, so every page is listed once, in the `pageObjects` option where Ayme starts, `createAyme` or your framework's owner. Each one's tools come and go with the browser's location, and the classes stay registered for the session's lifetime.
 
 ```ts
-const ayme = createAyme({ webMCP: { enabled: true } });
-ayme.pom.register(ProjectsPage);
-ayme.pom.register(SettingsPage);
+const ayme = createAyme({
+  pageObjects: [ProjectsPage, SettingsPage],
+  webMCP: { enabled: true },
+});
 const stop = ayme.start();
 ```
 

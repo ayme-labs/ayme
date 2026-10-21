@@ -507,6 +507,35 @@ it("runs goal as the application while publication is unavailable", async () => 
   }
 });
 
+it("registers the pageObjects option for the session's lifetime", () => {
+  const runtime = createAyme({ pageFactory: () => page, pageObjects: [Model] });
+  sessions.push(runtime);
+  expect(listRegisteredPoms()).toHaveLength(0);
+  start(runtime);
+  expect(listRegisteredPoms()[0]?.instance).toBe(runtime.pom.get(Model));
+  // A component's registration on top ends without withdrawing the tools.
+  runtime.pom.register(Model);
+  runtime.pom.unregister(Model);
+  expect(listRegisteredPoms()).toHaveLength(1);
+});
+
+it("compares customTools and pageObjects by their items", () => {
+  class Other {}
+  expect(
+    sameRuntimeOptions({ pageObjects: [Model] }, { pageObjects: [Model] })
+  ).toBe(true);
+  expect(
+    sameRuntimeOptions({ pageObjects: [Model] }, { pageObjects: [Other] })
+  ).toBe(false);
+  expect(
+    sameRuntimeOptions({ pageObjects: [Model] }, { pageObjects: [] })
+  ).toBe(false);
+  expect(sameRuntimeOptions({ pageObjects: [Model] }, {})).toBe(false);
+  expect(sameRuntimeOptions({ customTools: [] }, { customTools: [] })).toBe(
+    true
+  );
+});
+
 it("gets without activation and handles registration before owner startup and replay", () => {
   const runtime = session(false);
   const instance = runtime.pom.get(Model);

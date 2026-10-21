@@ -41,27 +41,17 @@ export const appConfig: ApplicationConfig = {
 
 Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
-Register the app's pages once, in the root component; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the `pageObjects` option of `provideAyme`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
 
 ```ts
-import { Component } from "@angular/core";
-import { RouterOutlet } from "@angular/router";
-import { injectPageObject } from "@ayme-dev/angular";
-import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
-import { SettingsPage } from "../../playwright/pom/SettingsPage";
-
-@Component({
-  selector: "app-root",
-  imports: [RouterOutlet],
-  template: `<router-outlet />`,
-})
-export class App {
-  private readonly projects = injectPageObject(ProjectsPage);
-  private readonly settings = injectPageObject(SettingsPage);
-}
+provideAyme({
+  pageObjects: [ProjectsPage, SettingsPage],
+  inspector: isDevMode(),
+  agentConnection: isDevMode(),
+}),
 ```
 
-A component that calls an action gets the same instance from `injectPageObject(Model)`:
+A component that calls an action gets the session's instance from `injectPageObject(Model)`, which also registers the class until the component is destroyed:
 
 ```ts
 import { Component } from "@angular/core";

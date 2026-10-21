@@ -7,7 +7,7 @@ import {
   watch,
 } from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
-import { useAyme, usePageObject } from "@ayme-dev/vue";
+import { useAyme } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
@@ -30,6 +30,7 @@ const peekCheck = import.meta.env.DEV;
 // wizard or the Agent Connection, while `@ayme-dev/mcp` is not on npm yet.
 const agentConnection = import.meta.env.VITE_AGENT_CONNECTION !== "false";
 const { ayme } = useAyme({
+  pageObjects: [ListPage],
   ignore: isNotPlayground,
   // Only the dev server mounts a Decision Endpoint, and only when it has a
   // model key, so the page publishes `goal` only then: never in the deployed
@@ -45,7 +46,6 @@ const { ayme } = useAyme({
   agentConnection:
     agentConnection && import.meta.env.MODE !== "inspector-disabled",
 });
-usePageObject(ListPage);
 onScopeDispose(trackToolRuns(ayme.runs));
 
 // The app and its Page Object code sit side by side in a strip that

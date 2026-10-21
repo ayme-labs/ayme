@@ -10,9 +10,9 @@ returns.
 
 ## Register top-level POMs at setup
 
-Register every page POM once, at app setup: with the framework's page-object
-consumer (`usePageObject`, or `injectPageObject` in Angular) in the app's root
-component, or with `ayme.pom.register` where `createAyme` runs. A page is
+Register every page POM once, at app setup: list it in the `pageObjects`
+option where Ayme starts (`createAyme`, `AymeProvider`, `useAyme` or
+`provideAyme`). A page is
 present by its URL through the page base class of
 [Page object design](page-object-design.md#write-base-classes-for-pages-and-components),
 so its tools come and go with the browser's location.

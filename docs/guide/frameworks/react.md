@@ -49,7 +49,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `inspector` and `agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects`, `inspector` and `agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
 ## Root ownership
 
@@ -59,21 +59,19 @@ Wrap the application root, not a route component or a layout that unmounts on na
 
 ## Hooks
 
-Call the hooks in descendants of the provider. Register the app's pages once, in the root component the provider wraps; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the provider's `pageObjects` prop; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
 
 ```tsx
-import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "./playwright/pom/ProjectsPage";
-import { SettingsPage } from "./playwright/pom/SettingsPage";
-
-export default function App() {
-  usePageObject(ProjectsPage);
-  usePageObject(SettingsPage);
-  return <Routes />;
-}
+<AymeProvider
+  pageObjects={[ProjectsPage, SettingsPage]}
+  inspector={import.meta.env.DEV}
+  agentConnection={import.meta.env.DEV}
+>
+  <App />
+</AymeProvider>
 ```
 
-A component that calls an action gets the same instance from the same hook:
+Call the hooks in descendants of the provider. A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component is mounted:
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";

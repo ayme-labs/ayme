@@ -801,6 +801,7 @@ describe("AymeProvider props", () => {
     "pageFactory",
     "ignore",
     "customTools",
+    "pageObjects",
     "goalLoop",
     "webMCP",
     "inspector",

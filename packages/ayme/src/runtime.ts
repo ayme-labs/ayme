@@ -171,6 +171,11 @@ export type AymeOptions = {
   pageFactory?: () => AymePage;
   ignore?: (element: Element) => boolean;
   customTools?: CustomTool[];
+  /**
+   * Page Objects registered for the session's lifetime, as one
+   * `pom.register` each when the session is created.
+   */
+  pageObjects?: readonly PageObjectConstructor[];
   /** @experimental */
   goalLoop?: GoalLoopDecisionFunction;
   webMCP?: AymeWebMcpOptions;
@@ -695,6 +700,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       registrations.delete(model);
     },
   };
+  for (const model of options.pageObjects ?? []) pom.register(model);
 
   const ayme: Ayme = {
     webMCP,

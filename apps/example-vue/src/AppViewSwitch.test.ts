@@ -7,7 +7,6 @@ import App from "./App.vue";
 // code view are stubbed out.
 vi.mock("@ayme-dev/vue", () => ({
   useAyme: () => ({ ayme: { runs: { subscribe: () => () => {} } } }),
-  usePageObject: vi.fn(),
 }));
 const stubs = { ListDemo: true, PeekCheck: true, PageObjectCode: true };
 
