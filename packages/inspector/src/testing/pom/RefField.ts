@@ -66,7 +66,7 @@ export class RefField {
   }
 
   /** Chooses a ref from the tree. */
-  @ayme.action({ description: "Chooses a ref from the tree." })
+  @ayme.action
   async choose(ref: string) {
     await this.find(ref);
     await this.node(ref).click();

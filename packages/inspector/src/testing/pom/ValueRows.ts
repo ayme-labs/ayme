@@ -7,7 +7,6 @@ import { PanelPart } from "./PanelPart";
  * A run card's map of labelled values, such as `goal`'s `values`: one row
  * per value, with its label, its value and its type. Rows count from 1.
  */
-@ayme
 export class ValueRows extends PanelPart {
   /** The schema's description of the map, shown above the rows. */
   readonly description: Locator;

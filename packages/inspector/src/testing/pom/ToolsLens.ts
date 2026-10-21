@@ -1,4 +1,3 @@
-import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
@@ -23,7 +22,6 @@ const groupLabels: readonly ToolGroupLabel[] = [
 ];
 
 /** The Tools lens's tree: the live tools, grouped. */
-@ayme
 export class ToolsLens extends PanelPart {
   /** One group's list. */
   group(label: ToolGroupLabel): Locator {

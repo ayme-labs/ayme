@@ -7,7 +7,6 @@ import { PanelPart } from "./PanelPart";
  * The Structure lens in the navigator: the page's structure as a tree of
  * nodes, each tagged with the Page Object member it maps to.
  */
-@ayme
 export class StructureLens extends PanelPart {
   readonly tree: Locator;
   /** Every row: nodes with a ref, and text. */

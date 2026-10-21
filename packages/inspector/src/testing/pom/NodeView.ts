@@ -6,7 +6,6 @@ import { RunCard } from "./RunCard";
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A structure node's detail: what it is, who owns it, and its single-element tools. */
-@ayme
 export class NodeView extends PanelPart {
   /** The node as the page state lists it, e.g. `e3 button "Add item"`. */
   readonly title: Locator;

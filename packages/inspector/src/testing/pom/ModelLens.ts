@@ -10,7 +10,6 @@ export type ModelPaneName = "On this page" | "Page object models";
  * The Model lens's tree in the navigator: the Page Objects on this page and
  * the Page Object Models the page knows, in two collapsible panes.
  */
-@ayme
 export class ModelLens extends PanelPart {
   /** The object tree, "On this page". */
   readonly objectTree: Locator;

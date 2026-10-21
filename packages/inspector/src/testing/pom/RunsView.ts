@@ -16,7 +16,6 @@ export type RunInteraction = {
  * started it. Its own parts are read from its card, so a child run's are
  * never taken for its parent's.
  */
-@ayme
 export class RunEntry extends PanelPart {
   /** Its card: what it ran, with what, and how it went. */
   readonly card: Locator;
@@ -147,7 +146,6 @@ export class RunEntry extends PanelPart {
 }
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
-@ayme
 export class RunsView extends PanelPart {
   /** Collapses Runs to its header, or expands it. It reads "Runs · 2". */
   readonly header: Locator;
@@ -194,17 +192,17 @@ export class RunsView extends PanelPart {
     return new RunEntry(this.runs.nth(index));
   }
 
-  @ayme.action({ description: "Shows every run." })
+  @ayme.action
   async showAll() {
     await this.allScope.click();
   }
 
-  @ayme.action({ description: "Shows the selection's runs." })
+  @ayme.action
   async showSelection() {
     await this.selectionScope.click();
   }
 
-  @ayme.action({ description: "Clears the runs." })
+  @ayme.action
   async clear() {
     await this.clearButton.click();
   }

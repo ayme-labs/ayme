@@ -9,7 +9,6 @@ export type PanelCorner =
   "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
 /** The expanded panel's frame: where it sits and how it resizes. */
-@ayme
 export class PanelShell extends PanelPart {
   /** The handle that resizes the panel from one of its edges or corners. */
   resizeHandle(handle: PanelEdge | PanelCorner): Locator {

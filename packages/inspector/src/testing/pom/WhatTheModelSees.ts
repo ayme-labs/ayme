@@ -8,7 +8,6 @@ import { PanelPart } from "./PanelPart";
  * Page Object definitions and the tool schemas an agent receives. It starts
  * collapsed.
  */
-@ayme
 export class WhatTheModelSees extends PanelPart {
   readonly toggle: Locator;
   /** The Page Object definitions, as snapshot renders them. */
@@ -38,13 +37,13 @@ export class WhatTheModelSees extends PanelPart {
     this.childCount = this.root.getByText(/^\d+ child(ren)?$/);
   }
 
-  @ayme.action({ description: "Expands What the model sees." })
+  @ayme.action
   async open() {
     if ((await this.toggle.getAttribute("aria-expanded")) !== "true")
       await this.toggle.click();
   }
 
-  @ayme.action({ description: "Collapses What the model sees." })
+  @ayme.action
   async close() {
     if ((await this.toggle.getAttribute("aria-expanded")) === "true")
       await this.toggle.click();

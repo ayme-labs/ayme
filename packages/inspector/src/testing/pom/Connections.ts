@@ -4,7 +4,6 @@ import type { Locator } from "@playwright/test";
 import { PanelPart } from "./PanelPart";
 
 /** One path in the Connections popover: the agent, or WebMCP. */
-@ayme
 export class ConnectionRow extends PanelPart {
   /** Its state in a word or two, such as "Connected" or "Off". */
   readonly state: Locator;
@@ -26,7 +25,6 @@ export class ConnectionRow extends PanelPart {
  * and the popover it opens in the Inspector's portal: one row for the
  * Agent Connection and one for WebMCP.
  */
-@ayme
 export class Connections extends PanelPart {
   /** The pill, its root: the Page Object is on the page while it shows. */
   readonly pill: Locator;
