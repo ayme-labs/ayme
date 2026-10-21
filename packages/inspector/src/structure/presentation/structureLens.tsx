@@ -195,9 +195,13 @@ function StructureTreeView({
           role="tree"
           aria-label="Page structure"
           {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
-          // Clipped, so even an unfolded chain deeper than the panel is wide
-          // never scrolls it sideways.
-          className="flex flex-col overflow-x-clip"
+          // Monospace, so `ch` below measures the rows' characters.
+          className="flex flex-col font-mono text-xs"
+          // The panel scrolls sideways only when the deepest row's indent
+          // leaves no room for its ref and role.
+          style={{
+            minWidth: `calc(${rowIndent(Math.max(...rows.map(({ depth }) => depth)))}px + ${refAndRole})`,
+          }}
         >
           {rows.map((row, index) =>
             hasRef(row.node) ? (
@@ -248,11 +252,14 @@ const nameClass =
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
 
-// The indent leaves a gutter for the fold toggle, and stops growing at
-// 45% of the tree's width, so a deep row keeps room for its ref and role.
-function rowIndent(depth: number, inset = 0) {
-  return `calc(min(${18 + depth * 12}px, 45%) - ${inset}px)`;
+// The indent leaves a gutter for the fold toggle.
+function rowIndent(depth: number) {
+  return 18 + depth * 12;
 }
+
+// Room for a typical ref and role, such as `e1234 combobox`, with the
+// row's end padding.
+const refAndRole = "16ch + 12px";
 
 /**
  * A node's row. A folded row is the generic its chain of wrappers ends in,
@@ -304,7 +311,7 @@ function NodeRow({
           aria-expanded={!outer}
           data-chain={toggle.ref}
           className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
-          style={{ left: rowIndent(depth, 15) }}
+          style={{ left: rowIndent(depth) - 15 }}
           onClick={(event) => {
             event.stopPropagation();
             const tree = event.currentTarget.closest('[role="tree"]');

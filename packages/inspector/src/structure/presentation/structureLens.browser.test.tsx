@@ -518,3 +518,37 @@ it("keeps the outermost wrapper selected when folding hides the selected one", a
   expect(onSelect).toHaveBeenLastCalledWith({ kind: "node", ref: "e10" });
   await expect.poll(() => lens.rows.count()).toBe(3);
 });
+
+it("scrolls sideways only when the deepest row has no room for its ref and role", async () => {
+  // e20 › e21 › … › e59, unfolded: 40 levels, deeper than the panel is wide.
+  let deep: StructureTree["roots"][number] = {
+    ref: "e60",
+    role: "button",
+    name: "Save",
+    members: [],
+    children: [],
+  };
+  for (let index = 59; index >= 20; index -= 1)
+    deep = {
+      ref: `e${index}`,
+      role: "generic",
+      name: "",
+      members: [],
+      children: [deep, ...(index === 59 ? [{ ...deep, ref: "e61" }] : [])],
+    };
+  // Whether the navigator's scroll area is wider than the panel.
+  const sideways = async () =>
+    (await lens.tree.elementHandle())!.evaluate((tree) => {
+      const scroller = tree.closest(".overflow-auto")!;
+      return scroller.scrollWidth > scroller.clientWidth;
+    });
+  renderLens({ structure: wrapped });
+  await expect.poll(() => lens.rows.count()).toBe(3);
+  expect(await sideways()).toBe(false);
+  unmounts.pop()?.();
+
+  renderLens({ structure: { refCount: 42, roots: [deep] } });
+  await lens.toggleWrappers("e59");
+
+  await expect.poll(sideways).toBe(true);
+});
