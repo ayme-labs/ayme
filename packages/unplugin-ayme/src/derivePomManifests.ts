@@ -217,12 +217,29 @@ function rootState(
           : "undeclared"
     );
   }
-  const bases = baseClassDeclarations(checker, declaration);
-  const extended = declaration.heritageClauses?.some(
+  const extended = declaration.heritageClauses?.find(
     (c) => c.token === ts.SyntaxKind.ExtendsKeyword
-  );
-  if (extended && bases.length === 0) states.push("unreadable");
-  for (const base of bases) states.push(rootState(checker, base));
+  )?.types[0]?.expression;
+  // A call such as `withRoot(Base)` resolves to its declared return type, not
+  // the class it builds; a declaration file or `declare class` hides its
+  // decorators.
+  if (
+    extended &&
+    !ts.isIdentifier(extended) &&
+    !ts.isPropertyAccessExpression(extended)
+  ) {
+    states.push("unreadable");
+  } else if (extended) {
+    const bases = baseClassDeclarations(checker, declaration);
+    if (bases.length === 0) states.push("unreadable");
+    for (const base of bases)
+      states.push(
+        base.getSourceFile().isDeclarationFile ||
+          ts.getCombinedModifierFlags(base) & ts.ModifierFlags.Ambient
+          ? "unreadable"
+          : rootState(checker, base)
+      );
+  }
   return states.includes("declared")
     ? "declared"
     : states.includes("unreadable")

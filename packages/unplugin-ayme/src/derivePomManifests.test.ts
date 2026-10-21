@@ -651,6 +651,18 @@ describe("derivePomManifests", () => {
       ).toMatchObject([{ memberName: "items", collection: true }]);
     });
 
+    it.each([
+      ["factoryBaseCollectionPom", "FactoryBaseCollectionPom"],
+      ["ambientBaseCollectionPom", "AmbientBaseCollectionPom"],
+    ])(
+      "leaves a base the build cannot read to the runtime: %s",
+      (fixture, name) => {
+        expect(manifestForClass(fixture, name)?.members).toMatchObject([
+          { memberName: "items", collection: true },
+        ]);
+      }
+    );
+
     it("leaves options held in a constant to the runtime", () => {
       expect(
         manifestForClass(
