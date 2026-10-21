@@ -49,28 +49,34 @@ describe("example lifecycle", () => {
     expect(registerTool).not.toHaveBeenCalled();
   });
 
-  it("publishes the demo's tools", async () => {
-    const registerTool = vi.fn(async (tool: { name: string }) => {
-      void tool;
-    });
-    Object.defineProperty(document, "modelContext", {
-      configurable: true,
-      value: { registerTool },
-    });
+  // The site root in development, GitHub Pages, and ayme.dev, which drops
+  // the trailing slash.
+  it.each(["/", "/ayme/", "/playground/", "/playground"])(
+    "publishes the demo's tools at %s",
+    async (path) => {
+      const registerTool = vi.fn(async (tool: { name: string }) => {
+        void tool;
+      });
+      Object.defineProperty(document, "modelContext", {
+        configurable: true,
+        value: { registerTool },
+      });
 
-    // ListPage is present on the site root, not on the test runner's URL.
-    const testUrl = location.href;
-    history.replaceState(null, "", "/");
-    try {
-      const wrapper = mount(App);
-      await flushPromises();
+      // ListPage is present where the playground is served, not on the test
+      // runner's URL.
+      const testUrl = location.href;
+      history.replaceState(null, "", path);
+      try {
+        const wrapper = mount(App);
+        await flushPromises();
 
-      expect(registerTool.mock.calls.map(([tool]) => tool.name)).toContain(
-        "ListPage.addItem"
-      );
-      wrapper.unmount();
-    } finally {
-      history.replaceState(null, "", testUrl);
+        expect(registerTool.mock.calls.map(([tool]) => tool.name)).toContain(
+          "ListPage.addItem"
+        );
+        wrapper.unmount();
+      } finally {
+        history.replaceState(null, "", testUrl);
+      }
     }
-  });
+  );
 });
