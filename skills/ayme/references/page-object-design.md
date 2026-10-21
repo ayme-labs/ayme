@@ -66,7 +66,7 @@ class ProfileMenuContent {
 // On the parent POM, which keeps the trigger:
 readonly content = new ProfileMenuContent(this.page);
 
-@ayme.action({ description: "Open the signed-in user profile menu." })
+@ayme.action
 async open() {
   await this.menu.open();
   return this.content;
@@ -98,6 +98,16 @@ members apart.
 Use names that explain the action and scope. `openCreateMenu()` communicates the
 transition; `clickPlus()` describes an implementation detail.
 `openProjectCreation()` opens a form; `create()` completes creation.
+
+## Describe what the name doesn't say
+
+An agent reads a tool's name, such as `ProjectsPage.createProject`, beside its
+description and input schema. Give `@ayme.action` a description only for what
+the name and parameters leave out: what an input means or its format, a
+precondition, a side effect, what is returned, or when to use it rather than a
+sibling action.
+Leave it out where it would restate the name: a bare `@ayme.action` on
+`increment()` says as much as "Increment the counter." would.
 
 ## Make actions do something
 
