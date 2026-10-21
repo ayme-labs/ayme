@@ -86,19 +86,22 @@ export function ModelTree({
     onOpenObjectsChange({ ...openObjects, [path]: open });
 
   // A selection inside a closed object, from search or a link, opens the
-  // objects around it.
+  // objects around it: once per selection, when it is in the tree, so a
+  // later close stays closed.
+  const revealed = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (selectedPath === undefined) return;
-    const closed = ancestors(objects, selectedPath).filter(
-      (node) => !isOpen(node, openObjects)
-    );
+    if (selectedPath === revealed.current) return;
+    const around =
+      selectedPath === undefined ? [] : ancestors(objects, selectedPath);
+    if (around === undefined) return;
+    revealed.current = selectedPath;
+    const closed = around.filter((node) => !isOpen(node, openObjects));
     if (!closed.length) return;
     onOpenObjectsChange({
       ...openObjects,
       ...Object.fromEntries(closed.map((node) => [node.path, true])),
     });
-    // Only a new selection opens its objects, not a later close.
-  }, [selectedPath]);
+  }, [selectedPath, objects, openObjects, onOpenObjectsChange]);
   const selectedModel =
     selection.kind === "model" ? selection.className : undefined;
 
@@ -217,18 +220,20 @@ function isOpen(node: PageObjectNode, openObjects: OpenObjects) {
   return openObjects[node.path] ?? node.live;
 }
 
-/** The objects above the one at `path`, outermost first. */
+/**
+ * The objects above the one at `path`, outermost first; undefined when it
+ * isn't in the tree.
+ */
 function ancestors(
   nodes: readonly PageObjectNode[],
   path: string
-): PageObjectNode[] {
+): PageObjectNode[] | undefined {
   for (const node of nodes) {
     if (node.path === path) return [];
     const below = ancestors(node.children, path);
-    if (below.length || node.children.some((child) => child.path === path))
-      return [node, ...below];
+    if (below) return [node, ...below];
   }
-  return [];
+  return undefined;
 }
 
 function rowClass(selected: boolean) {

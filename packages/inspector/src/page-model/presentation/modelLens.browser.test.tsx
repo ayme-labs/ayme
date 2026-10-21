@@ -341,6 +341,21 @@ it("opens the objects around a selection inside a closed one", async () => {
   expect(await lens.isOpen("InboxPage.taskDialog.taskForm")).toBe(true);
 });
 
+it("opens the objects around a selection that comes before its object does, as after a reload", async () => {
+  const { changePage } = renderLens({
+    pageModel: { objects: [], models: [] },
+    selection: { kind: "object", path: "InboxPage.taskDialog.taskForm" },
+  });
+  await expect.poll(() => lens.objectPaths()).toEqual(["Page /"]);
+
+  changePage(withDialog(false));
+
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(true);
+  await lens.toggleObject("InboxPage.taskDialog");
+  changePage(withDialog(false));
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(false);
+});
+
 it("lists every Page Object Model the page knows, marking those not on the page", async () => {
   renderLens();
 
