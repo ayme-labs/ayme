@@ -1,6 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 export type ModelDetailSection =
   "On this page" | "Actions" | "Members" | "Tools";
 
@@ -11,8 +13,7 @@ export type ModelDetailSection =
  * page-wide tools.
  */
 @ayme
-export class ModelDetailView {
-  readonly root: Locator;
+export class ModelDetailView extends PanelPart {
   readonly title: Locator;
   /** The link from a Page Object or a child Page Object member to its model. */
   readonly modelLink: Locator;
@@ -20,7 +21,7 @@ export class ModelDetailView {
   readonly ownerLink: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.title = root.getByRole("heading", { level: 3 });
     this.modelLink = root.getByRole("button", {
       name: /^Open the \S+ page object model$/,

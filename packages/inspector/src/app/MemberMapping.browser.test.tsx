@@ -27,12 +27,14 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     toolInputViolations,
     elementsOf,
     kindOf,
+    rootTargetPath,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,
     pageStateNodeEntry,
+    rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,
@@ -97,6 +99,14 @@ const listPage: RegisteredPom = {
       })),
     ]),
   ],
+  presentPaths: new Set([
+    "",
+    "items[0]",
+    "items[1]",
+    "entries[0]",
+    "entries[1]",
+  ]),
+  rootMemberPaths: new Set(),
   tools: [],
 };
 
@@ -137,22 +147,22 @@ beforeEach(() => {
     { path: "ListPage.rows", element: milk!, locator: "locator('li')" },
     { path: "ListPage.rows", element: eggs!, locator: "locator('li')" },
     {
-      path: "ListPage.items[0].root",
+      path: "ListPage.items[0].@root",
       element: milk!,
       locator: "locator('li').first()",
     },
     {
-      path: "ListPage.items[1].root",
+      path: "ListPage.items[1].@root",
       element: eggs!,
       locator: "locator('li').nth(1)",
     },
     {
-      path: "ListPage.entries[0].root",
+      path: "ListPage.entries[0].@root",
       element: milk!,
       locator: "locator('.entry').first()",
     },
     {
-      path: "ListPage.entries[1].root",
+      path: "ListPage.entries[1].@root",
       element: eggs!,
       locator: "locator('.entry').nth(1)",
     },

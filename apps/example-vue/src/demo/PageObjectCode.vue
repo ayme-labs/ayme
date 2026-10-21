@@ -5,6 +5,8 @@ import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import listPage from "../../playwright/pom/ListPage.ts?raw";
 import listItem from "../../playwright/pom/ListItem.ts?raw";
 import archiveDialog from "../../playwright/pom/ArchiveDialog.ts?raw";
+import appComponent from "../../playwright/pom/AppComponent.ts?raw";
+import appPage from "../../playwright/pom/AppPage.ts?raw";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // The Page Object files are shown as they are in the repository; the
@@ -27,6 +29,8 @@ const files = [
   { name: "ListPage.ts", lang: "typescript", code: listPage },
   { name: "ListItem.ts", lang: "typescript", code: listItem },
   { name: "ArchiveDialog.ts", lang: "typescript", code: archiveDialog },
+  { name: "AppComponent.ts", lang: "typescript", code: appComponent },
+  { name: "AppPage.ts", lang: "typescript", code: appPage },
   { name: "App.vue", lang: "vue", code: wiring, note: "wiring" },
 ] as const;
 

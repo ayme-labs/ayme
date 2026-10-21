@@ -12,9 +12,31 @@ creation-dialog POM. Revealing a button or expanding explanatory text stays
 within the current POM. An advanced-settings section needs a separate POM only
 when its independent behavior makes that useful.
 
+## Write base classes for pages and components
+
+Pages and components declare when they are on the page through two inherited
+options of `@ayme`, `present` and `root`. Write each once, on a base class the
+project owns, so most POMs carry no Ayme code beyond `@ayme.action`:
+
+- A page base class whose `present` checks the URL against the page's `path`.
+  Every page extends it and sets `path`; an app with a typed router calls the
+  router's matcher in the predicate instead.
+- A component base class whose `root` names the container the constructor
+  takes. Every component extends it.
+
+Fit them to the repo: reuse an existing base class for pages or components
+when one exists and add the option there, and keep the project's names for the
+container and the page. The predicate's argument is `self`, the live POM, and
+is declared as a typed function (`const onPage = (self: AppPage) => ...`),
+since an inline predicate gets `self: unknown`. It runs with Ayme's observation
+of the page, never with a call, so it only reads.
+[Pages and components](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#pages-and-components)
+has both classes and the rules. A POM with neither option is present while it
+is registered; a subclass overrides one option and keeps the other.
+
 ## Root a POM at what its actions touch
 
-A POM's `root` must contain every element its actions touch. Ayme lists a
+A POM's root must contain every element its actions touch. Ayme lists a
 POM's tools while its
 [Page Object Root](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#the-page-object-root)
 is present on the page, and they are available while a click would reach the
@@ -25,14 +47,14 @@ therefore refused exactly when they are needed, for example while a modal menu
 or dialog that blocks pointer events on the rest of the page is open.
 
 Portaled content, such as menus, dialogs, and popovers, gets its own POM rooted
-at that content. The trigger that opens it stays on the parent POM. Expose the
+at that content, through the component base class or its own `root`. The trigger that opens it stays on the parent POM. Expose the
 content POM as a member of the parent, a
 [Page Object Child](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children),
 so its tools are published, and return it from the opening action.
 
 ```ts
 // Rooted at the portaled content, a page-level locator rather than a descendant of the trigger.
-@ayme
+@ayme({ root: (self: ProfileMenuContent) => self.root })
 class ProfileMenuContent {
   readonly root: Locator;
 

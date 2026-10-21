@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
+import { rooted } from "./pomRoot.testSupport";
 import { listRegisteredPomRoots, registerCompiledPom } from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
 
@@ -28,9 +29,9 @@ describe("registered Page Object roots", () => {
 
     class ExamplePage {
       readonly ignored = page.locator("body");
-      readonly zero = { root: page.locator(".zero") };
-      readonly one = { root: page.locator(".one") };
-      readonly many = { root: page.locator(".many") };
+      readonly zero = rooted(page.locator(".zero"), {});
+      readonly one = rooted(page.locator(".one"), {});
+      readonly many = rooted(page.locator(".many"), {});
     }
     registerCompiledPom(ExamplePage, {
       className: "ExamplePage",

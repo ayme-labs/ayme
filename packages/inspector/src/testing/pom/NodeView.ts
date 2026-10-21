@@ -1,13 +1,13 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
 import { RunCard } from "./RunCard";
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A structure node's detail: what it is, who owns it, and its single-element tools. */
 @ayme
-export class NodeView {
-  readonly root: Locator;
+export class NodeView extends PanelPart {
   /** The node as the page state lists it, e.g. `e3 button "Add item"`. */
   readonly title: Locator;
   /**
@@ -21,7 +21,7 @@ export class NodeView {
   readonly modelSees: WhatTheModelSees;
 
   constructor(detail: Locator) {
-    this.root = detail.getByRole("article", { name: "Structure node" });
+    super(detail.getByRole("article", { name: "Structure node" }));
     this.title = this.root.getByRole("heading", { level: 2 });
     this.memberLinks = this.root
       .getByRole("group", { name: "Page object members" })

@@ -9,6 +9,7 @@ import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { ayme } from "./decorators";
 import { errorText } from "./errors";
+import { rootOf, rooted } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
@@ -423,6 +424,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("save", "App.save")])
@@ -440,6 +442,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [actionWithParam("fill", "App.fill")])
@@ -457,6 +460,7 @@ describe("Goal Loop goal in Chromium", () => {
         throw new Error("action exploded");
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("fail", "App.fail")])
@@ -795,6 +799,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([name, description]);
         }
       }
+      ayme({ root: rootOf })(App);
       registerCompiledPom(
         App,
         manifest(
@@ -862,6 +867,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([name, stars]);
         }
       }
+      ayme({ root: rootOf })(App);
       registerCompiledPom(
         App,
         manifest(
@@ -918,6 +924,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([quantity, price]);
         }
       }
+      ayme({ root: rootOf })(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1142,6 +1149,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push(labels);
         }
       }
+      ayme({ root: rootOf })(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1198,6 +1206,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push(labels);
         }
       }
+      ayme({ root: rootOf })(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1369,6 +1378,7 @@ describe("Goal Loop goal in Chromium", () => {
         document.querySelector("main")!.appendChild(row);
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("add", "App.add")])
@@ -1644,6 +1654,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest(
@@ -1707,6 +1718,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("save", "App.save")])
@@ -1752,6 +1764,7 @@ describe("Goal Loop goal in Chromium", () => {
       }
       wait() {}
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest(
@@ -1805,6 +1818,7 @@ describe("Goal Loop goal in Chromium", () => {
         }
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("fill", "App.fill")])
@@ -2544,6 +2558,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([mode, confirm]);
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest(
@@ -2608,6 +2623,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([order]);
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest(
@@ -2761,10 +2777,11 @@ describe("Goal Loop goal in Chromium", () => {
   ) {
     setupCollectionDom(count);
     class ItemsPage {
-      readonly items = Array.from({ length: count }, (_, index) => ({
-        root: page.locator(`#item-${index}`),
-        ...itemMembers(index),
-      }));
+      readonly items = Array.from({ length: count }, (_, index) =>
+        rooted(page.locator(`#item-${index}`), {
+          ...itemMembers(index),
+        })
+      );
     }
     registerCompiledPom(
       ItemsPage,
@@ -2873,11 +2890,12 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     class ItemsPage {
-      readonly items = Array.from({ length: count }, (_, index) => ({
-        root: page.locator(`#item-${index}`),
-        // An action that changes nothing on the page.
-        archive: () => archived.push(index),
-      }));
+      readonly items = Array.from({ length: count }, (_, index) =>
+        rooted(page.locator(`#item-${index}`), {
+          // An action that changes nothing on the page.
+          archive: () => archived.push(index),
+        })
+      );
     }
     registerCompiledPom(
       ItemsPage,
@@ -2991,13 +3009,15 @@ describe("Goal Loop goal in Chromium", () => {
     `;
     const acted: string[] = [];
     class GroupsPage {
-      readonly groups = [0, 1].map((group) => ({
-        root: page.locator(`#group-${group}`),
-        items: (group === 0 ? [0, 1] : [0]).map((item) => ({
-          root: page.locator(`#item-${group}-${item}`),
-          open: () => acted.push(`${group}-${item}`),
-        })),
-      }));
+      readonly groups = [0, 1].map((group) =>
+        rooted(page.locator(`#group-${group}`), {
+          items: (group === 0 ? [0, 1] : [0]).map((item) =>
+            rooted(page.locator(`#item-${group}-${item}`), {
+              open: () => acted.push(`${group}-${item}`),
+            })
+          ),
+        })
+      );
     }
     registerCompiledPom(
       GroupsPage,
@@ -3054,13 +3074,13 @@ describe("Goal Loop goal in Chromium", () => {
     `;
     const opened: number[] = [];
     class ItemsPage {
-      readonly items = [0, 1].map((index) => ({
-        root: page.locator(`#item-${index}`),
-        child: {
-          root: page.locator(`#child-${index}`),
-          open: () => opened.push(index),
-        },
-      }));
+      readonly items = [0, 1].map((index) =>
+        rooted(page.locator(`#item-${index}`), {
+          child: rooted(page.locator(`#child-${index}`), {
+            open: () => opened.push(index),
+          }),
+        })
+      );
     }
     registerCompiledPom(
       ItemsPage,
@@ -3151,6 +3171,7 @@ describe("Goal Loop goal in Chromium", () => {
         archived.push(this.index);
       }
     }
+    ayme({ root: rootOf })(Item);
     ayme.action({
       available: (self: Item) =>
         self.index === last || "it is already archived",
@@ -3260,7 +3281,7 @@ describe("Goal Loop goal in Chromium", () => {
       </main>
     `;
     class ItemsPage {
-      readonly items = [{ root: page.locator("#item-0"), archive() {} }];
+      readonly items = [rooted(page.locator("#item-0"), { archive() {} })];
     }
     registerCompiledPom(
       ItemsPage,
@@ -3449,6 +3470,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([value]);
       }
     }
+    ayme({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest(

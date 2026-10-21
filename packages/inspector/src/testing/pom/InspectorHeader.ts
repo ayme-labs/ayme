@@ -2,6 +2,7 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { Connections } from "./Connections";
+import { PanelPart } from "./PanelPart";
 import { dragBy } from "./pointerDrag";
 
 export type ThemeChoice = "System" | "Light" | "Dark";
@@ -74,8 +75,7 @@ export class LayoutMenu {
  * the layout menu and collapse. The panel drags by it.
  */
 @ayme
-export class InspectorHeader {
-  readonly root: Locator;
+export class InspectorHeader extends PanelPart {
   readonly title: Locator;
   readonly connections: Connections;
   readonly themeSwitch: ThemeSwitch;
@@ -88,7 +88,7 @@ export class InspectorHeader {
    *   Connections popover and the layout menu open.
    */
   constructor(root: Locator, portalRoot: Locator) {
-    this.root = root;
+    super(root);
     this.title = root.getByRole("heading", { name: "ayme", exact: true });
     this.connections = new Connections(root, portalRoot);
     this.themeSwitch = new ThemeSwitch(root);

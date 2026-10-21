@@ -71,6 +71,8 @@ function editor(toolbarOnPage: boolean): RegisteredPom {
         count: toolbarOnPage ? 1 : 0,
       },
     ],
+    presentPaths: new Set(toolbarOnPage ? ["", "toolbar"] : [""]),
+    rootMemberPaths: new Set(),
     tools: [save],
   };
 }
@@ -110,12 +112,14 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     toolInputViolations,
     elementsOf,
     kindOf,
+    rootTargetPath,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,
     pageStateNodeEntry,
+    rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,

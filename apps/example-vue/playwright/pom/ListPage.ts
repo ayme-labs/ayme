@@ -1,15 +1,20 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
+import { AppPage } from "./AppPage";
 import { ArchiveDialog, ListItem } from "./components";
 
 @ayme
-export class ListPage {
+export class ListPage extends AppPage {
+  // The playground is served at the site root in development, and under
+  // /playground/ or /ayme/ when deployed.
+  readonly path = "/{:base(playground|ayme)/}?";
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
   readonly archiveDialog: ArchiveDialog;
   private readonly itemRows: Locator;
 
   constructor(page: Page) {
+    super(page);
     this.newItemInput = page.getByRole("textbox", { name: "New item" });
     this.addItemButton = page.getByRole("button", { name: "Add item" });
     this.archiveDialog = new ArchiveDialog(

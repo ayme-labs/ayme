@@ -3,6 +3,7 @@ import {
   getPageStateForElements,
   listRegisteredPomTargets,
   listRegisteredPoms,
+  rootTargetPath,
 } from "@ayme-dev/ayme/internal";
 
 import {
@@ -39,7 +40,8 @@ export async function interactionMembers(
       // Without the targets' refs, a ref locator names no member.
     }
   const members = indexMembers(
-    buildPageModel(listRegisteredPoms(), new Set(), [], actionSignature)
+    buildPageModel(listRegisteredPoms(), new Set(), [], actionSignature),
+    rootTargetPath
   );
   return interactions.map(({ locator, ref }) => {
     if (locator === undefined) return undefined;

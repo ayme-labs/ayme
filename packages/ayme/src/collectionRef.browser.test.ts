@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
+import { rooted } from "./pomRoot.testSupport";
 import {
   registerCompiledPom,
   listAvailablePomTools,
@@ -45,10 +46,11 @@ describe("collection instances targeted by ref", () => {
     const session = startSession(page);
     try {
       const archiveFns = [vi.fn(), vi.fn(), vi.fn()];
-      const items = [0, 1, 2].map((i) => ({
-        root: page.locator(`#item-${i}`),
-        archive: archiveFns[i]!,
-      }));
+      const items = [0, 1, 2].map((i) =>
+        rooted(page.locator(`#item-${i}`), {
+          archive: archiveFns[i]!,
+        })
+      );
 
       class ItemsPage {
         readonly items = items;
@@ -113,10 +115,11 @@ describe("collection instances targeted by ref", () => {
     const session = startSession(page);
     try {
       const archiveFns = [vi.fn(), vi.fn(), vi.fn()];
-      const items = [0, 1, 2].map((i) => ({
-        root: page.locator(`#item-${i}`),
-        archive: archiveFns[i]!,
-      }));
+      const items = [0, 1, 2].map((i) =>
+        rooted(page.locator(`#item-${i}`), {
+          archive: archiveFns[i]!,
+        })
+      );
 
       class ItemsPage {
         readonly items = items;
@@ -183,10 +186,11 @@ describe("collection instances targeted by ref", () => {
     const session = startSession(page);
     try {
       const archiveFns = [vi.fn(), vi.fn()];
-      const items = [0, 1].map((i) => ({
-        root: page.locator(`#item-${i}`),
-        archive: archiveFns[i]!,
-      }));
+      const items = [0, 1].map((i) =>
+        rooted(page.locator(`#item-${i}`), {
+          archive: archiveFns[i]!,
+        })
+      );
 
       class ItemsPage {
         readonly items = items;
@@ -256,7 +260,7 @@ describe("collection instances targeted by ref", () => {
     try {
       const archive = vi.fn();
       class ItemsPage {
-        readonly items = [{ root: page.locator("#item-0"), archive }];
+        readonly items = [rooted(page.locator("#item-0"), { archive })];
       }
 
       registerCompiledPom(ItemsPage, {
@@ -322,7 +326,7 @@ describe("collection instances targeted by ref", () => {
     try {
       const archive = vi.fn();
       class ItemsPage {
-        readonly items = [{ root: page.locator("#item-0"), archive }];
+        readonly items = [rooted(page.locator("#item-0"), { archive })];
       }
 
       registerCompiledPom(ItemsPage, {
@@ -384,13 +388,15 @@ describe("collection instances targeted by ref", () => {
     const session = startSession(page);
     try {
       const actionFns = [[vi.fn(), vi.fn()], [vi.fn()]];
-      const groups = [0, 1].map((g) => ({
-        root: page.locator(`#group-${g}`),
-        items: [0, ...(g === 0 ? [1] : [])].map((i) => ({
-          root: page.locator(`#item-${g}-${i}`),
-          doAction: actionFns[g]![i]!,
-        })),
-      }));
+      const groups = [0, 1].map((g) =>
+        rooted(page.locator(`#group-${g}`), {
+          items: [0, ...(g === 0 ? [1] : [])].map((i) =>
+            rooted(page.locator(`#item-${g}-${i}`), {
+              doAction: actionFns[g]![i]!,
+            })
+          ),
+        })
+      );
 
       class GroupsPage {
         readonly groups = groups;
@@ -465,13 +471,13 @@ describe("collection instances targeted by ref", () => {
     const session = startSession(page);
     try {
       const openFns = [vi.fn(), vi.fn()];
-      const items = [0, 1].map((i) => ({
-        root: page.locator(`#item-${i}`),
-        child: {
-          root: page.locator(`#child-${i}`),
-          open: openFns[i]!,
-        },
-      }));
+      const items = [0, 1].map((i) =>
+        rooted(page.locator(`#item-${i}`), {
+          child: rooted(page.locator(`#child-${i}`), {
+            open: openFns[i]!,
+          }),
+        })
+      );
 
       class ItemsPage {
         readonly items = items;

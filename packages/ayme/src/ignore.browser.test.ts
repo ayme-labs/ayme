@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
+import { ayme as model } from "./decorators";
+import { rootOf } from "./pomRoot.testSupport";
 import {
   listAvailablePomTools,
   probeRegisteredPomMembers,
@@ -86,6 +88,7 @@ describe("ignore predicate in page state capture", () => {
       root = page.locator("#panel");
       act() {}
     }
+    model({ root: rootOf })(Panel);
     registerCompiledPom(
       Panel,
       manifest("Panel", [root()], [action("act", "Panel.act")])
@@ -109,6 +112,7 @@ describe("ignore predicate in page state capture", () => {
       root = page.locator("#panel");
       act() {}
     }
+    model({ root: rootOf })(Panel);
     registerCompiledPom(
       Panel,
       manifest("Panel", [root()], [action("act", "Panel.act")])

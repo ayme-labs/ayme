@@ -4,6 +4,7 @@ import { createPage } from "./browserPage";
 import { loadAgentConnection } from "./agentConnection";
 import { getAgentConnectionStatus } from "./agentConnectionStatus";
 import { cursors } from "./cursors";
+import { ayme } from "./decorators";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
@@ -360,6 +361,23 @@ it("never calls the page factory on the server", () => {
   expect(runtime.tools.list()).toEqual([]);
   expect(factory).not.toHaveBeenCalled();
   expect(createPage).not.toHaveBeenCalled();
+});
+
+it("never runs a presence predicate on the server", () => {
+  vi.stubGlobal("window", undefined);
+  vi.stubGlobal("document", undefined);
+  const present = vi.fn(() => true);
+  class RoutedModel {
+    constructor(readonly page: AymePage) {}
+  }
+  ayme({ present })(RoutedModel);
+  registerCompiledPom(RoutedModel, { ...manifest, className: "RoutedModel" });
+  const runtime = createAyme({ pageFactory: () => page });
+  sessions.push(runtime);
+  runtime.pom.register(RoutedModel);
+  start(runtime);
+  expect(runtime.tools.list()).toEqual([]);
+  expect(present).not.toHaveBeenCalled();
 });
 
 it("C9: starts and registers nothing for concurrent render sessions on the server", () => {

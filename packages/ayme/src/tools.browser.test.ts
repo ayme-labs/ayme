@@ -13,6 +13,7 @@ import {
   lookAtPageStateForDocument,
   type AriaRef,
 } from "./pageState";
+import { rooted } from "./pomRoot.testSupport";
 import { agentTools, saveButtonRef } from "./publication.testSupport";
 import {
   listElementToolTargets,
@@ -98,8 +99,7 @@ class ListPage {
 
   constructor(page: Page) {
     this.items = [
-      {
-        root: page.locator("#item"),
+      rooted(page.locator("#item"), {
         async archive() {
           document.querySelector("#item")!.setAttribute("hidden", "");
           // Return only once the session lists the tool unavailable, so it
@@ -113,7 +113,7 @@ class ListPage {
             await new Promise((resolve) => setTimeout(resolve, 10));
           return "archived";
         },
-      },
+      }),
     ];
   }
 }

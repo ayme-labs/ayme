@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DecisionRequest } from "./decisionWire";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { ayme as model } from "./decorators";
 import { RuntimeStateError, ToolInputError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { rootOf } from "./pomRoot.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme, type AymeOptions } from "./runtime";
 
@@ -472,6 +474,7 @@ describe("calling a Peek Tool", () => {
     root = page.locator("main");
     save() {}
   }
+  model({ root: rootOf })(Editor);
   registerCompiledPom(Editor, {
     className: "Editor",
     members: [root],
@@ -486,6 +489,7 @@ describe("calling a Peek Tool", () => {
       addMain();
     }
   }
+  model({ root: rootOf })(Toolbar);
   registerCompiledPom(Toolbar, {
     className: "Toolbar",
     members: [root],

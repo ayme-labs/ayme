@@ -1,5 +1,8 @@
 import { createApp, defineAsyncComponent } from "vue";
 import { initializeWebMCPPolyfill } from "@mcp-b/webmcp-polyfill";
+// The page base class matches the URL with URLPattern, which older browsers
+// lack.
+import "urlpattern-polyfill";
 import App from "./App.vue";
 import CounterRoute from "./counter/CounterRoute.vue";
 import OtherRoute from "./counter/OtherRoute.vue";

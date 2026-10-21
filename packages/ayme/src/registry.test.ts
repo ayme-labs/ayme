@@ -47,7 +47,7 @@ vi.mock("./actionSequence", async (importOriginal) => ({
     }
   ),
 }));
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
 import type { AymePage } from "./runtime";
 import type { TestSession } from "./session.testSupport";
@@ -59,7 +59,7 @@ function brandedLocator(
   const loc: Record<string | symbol, unknown> = { ...overrides };
   testLocators.add(loc);
   locatorElements.set(loc, [element]);
-  return loc;
+  return loc as unknown as Locator;
 }
 
 class FakeMutationObserver {
@@ -98,9 +98,12 @@ let started: TestSession | undefined;
 async function setup() {
   const registry = await import("./registry");
   const { startSession } = await import("./session.testSupport");
+  // The decorators the registry reads: the module reset makes them fresh too.
+  const { ayme } = await import("./decorators");
+  const { rootOf, rooted } = await import("./pomRoot.testSupport");
   const session = startSession({} as AymePage);
   started = session;
-  return { registry, session };
+  return { registry, session, ayme, rootOf, rooted };
 }
 
 describe("live Page Object registry", () => {
@@ -640,13 +643,13 @@ describe("live Page Object registry", () => {
   });
 
   it("lists no Page Object's tools before its first observation, whatever its kind", async () => {
-    const { registry, session } = await setup();
-    const { ayme } = await import("./decorators");
+    const { registry, session, ayme, rootOf } = await setup();
 
     class RootedPage {
       readonly root = brandedLocator({ count: async () => 1 });
       save() {}
     }
+    ayme({ root: rootOf })(RootedPage);
     class RootlessPage {
       open() {}
     }
@@ -700,13 +703,14 @@ describe("live Page Object registry", () => {
   });
 
   it("lists a Page Object's tools once its own observation completes, while another's is still pending", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, ayme, rootOf } = await setup();
 
     class StuckPage {
       // A root that never answers how many elements it matches.
       readonly root = brandedLocator({ count: () => new Promise(() => {}) });
       save() {}
     }
+    ayme({ root: rootOf })(StuckPage);
     class Toolbar {
       reset() {}
     }
@@ -737,7 +741,7 @@ describe("live Page Object registry", () => {
   });
 
   it("ends a probe only once every observation has, even when a subscriber throws", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, ayme, rootOf } = await setup();
 
     let answering = false;
     const pendingCounts: ((count: number) => void)[] = [];
@@ -750,6 +754,7 @@ describe("live Page Object registry", () => {
       });
       save() {}
     }
+    ayme({ root: rootOf })(SlowPage);
     class Toolbar {
       reset() {}
     }
@@ -790,15 +795,16 @@ describe("live Page Object registry", () => {
     unsubscribe();
   });
 
-  it("keeps tools inactive when a manifest-declared root is missing", async () => {
-    const { registry, session } = await setup();
+  it("keeps tools inactive when a declared root is missing", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
 
     class MissingRootPage {
+      declare readonly root: Locator;
       readonly save = vi.fn();
     }
+    ayme({ root: rootOf })(MissingRootPage);
     registry.registerCompiledPom(MissingRootPage, {
       ...emptyManifest("MissingRootPage"),
-      members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
     session.register(MissingRootPage);
@@ -814,17 +820,18 @@ describe("live Page Object registry", () => {
   });
 
   it("lists one tool per name, the available one when registrations share it", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, ayme, rootOf } = await setup();
 
     class MissingRootPage {
+      declare readonly root: Locator;
       readonly save = vi.fn();
     }
+    ayme({ root: rootOf })(MissingRootPage);
     class RootlessPage {
       readonly save = vi.fn();
     }
     registry.registerCompiledPom(MissingRootPage, {
       ...emptyManifest("MissingRootPage"),
-      members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
     registry.registerCompiledPom(RootlessPage, {
@@ -844,12 +851,13 @@ describe("live Page Object registry", () => {
   });
 
   it("lists a shared tool name by the present registration, and by the available one among those", async () => {
-    const { registry, session } = await setup();
-    const { ayme } = await import("./decorators");
+    const { registry, session, ayme, rootOf } = await setup();
 
     class MissingRootPage {
+      declare readonly root: Locator;
       save() {}
     }
+    ayme({ root: rootOf })(MissingRootPage);
     class UnavailablePage {
       save() {}
     }
@@ -863,7 +871,6 @@ describe("live Page Object registry", () => {
     );
     registry.registerCompiledPom(MissingRootPage, {
       ...emptyManifest("MissingRootPage"),
-      members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
     for (const Class of [UnavailablePage, RootlessPage])
@@ -895,7 +902,7 @@ describe("live Page Object registry", () => {
   });
 
   it("lists a root's tools absent once its element left the page, before the next probe", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, ayme, rootOf } = await setup();
     const element = { isConnected: true } as { isConnected: boolean };
 
     class RootedPage {
@@ -905,6 +912,7 @@ describe("live Page Object registry", () => {
       );
       save() {}
     }
+    ayme({ root: rootOf })(RootedPage);
     registry.registerCompiledPom(RootedPage, {
       ...emptyManifest("RootedPage"),
       members: [{ memberName: "root", kind: "locator", access: "field" }],
@@ -921,7 +929,7 @@ describe("live Page Object registry", () => {
   });
 
   it("does not notify when a probe observes the same present root again", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, ayme, rootOf } = await setup();
 
     class RootedPage {
       readonly root = brandedLocator({
@@ -931,6 +939,7 @@ describe("live Page Object registry", () => {
       });
       save() {}
     }
+    ayme({ root: rootOf })(RootedPage);
     registry.registerCompiledPom(RootedPage, {
       ...emptyManifest("RootedPage"),
       members: [{ memberName: "root", kind: "locator", access: "field" }],
@@ -952,7 +961,7 @@ describe("live Page Object registry", () => {
   });
 
   it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, ayme, rootOf } = await setup();
     const { measurePomRoot } = await import("./reachMeasurement");
     vi.mocked(measurePomRoot).mockResolvedValue({
       present: true,
@@ -964,6 +973,7 @@ describe("live Page Object registry", () => {
       readonly root = brandedLocator({ count: async () => 1 });
       save() {}
     }
+    ayme({ root: rootOf })(CoveredPage);
     registry.registerCompiledPom(CoveredPage, {
       ...emptyManifest("CoveredPage"),
       members: [{ memberName: "root", kind: "locator", access: "field" }],
@@ -989,13 +999,12 @@ describe("live Page Object registry", () => {
   });
 
   it("bounds recursive component manifests to the current component path", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, rooted } = await setup();
 
     class RecursivePage {
-      readonly node = {
-        root: brandedLocator({ count: async () => 1 }),
+      readonly node = rooted(brandedLocator({ count: async () => 1 }), {
         open: vi.fn(),
-      };
+      });
     }
     registry.registerCompiledPom(RecursivePage, {
       className: "RecursivePage",
@@ -1036,21 +1045,22 @@ describe("live Page Object registry", () => {
   });
 
   it("lists tools for live singular and nested component roots", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, rooted } = await setup();
 
     let dialogRootCount = 1;
     let panelRootCount = 0;
     const confirm = vi.fn();
     const save = vi.fn();
     class NestedPage {
-      readonly dialog = {
-        root: brandedLocator({ count: async () => dialogRootCount }),
-        confirm,
-        panel: {
-          root: brandedLocator({ count: async () => panelRootCount }),
-          save,
-        },
-      };
+      readonly dialog = rooted(
+        brandedLocator({ count: async () => dialogRootCount }),
+        {
+          confirm,
+          panel: rooted(brandedLocator({ count: async () => panelRootCount }), {
+            save,
+          }),
+        }
+      );
     }
     registry.registerCompiledPom(NestedPage, {
       className: "NestedPage",
@@ -1117,17 +1127,16 @@ describe("live Page Object registry", () => {
   });
 
   it("lists collection tools as available only for their direct available roots", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, rooted } = await setup();
 
     let rootCount = 0;
     class ItemsPage {
       readonly addItem = vi.fn();
       readonly items = [
-        {
-          root: brandedLocator({ count: async () => rootCount }),
-          child: { root: brandedLocator({ count: async () => 1 }) },
+        rooted(brandedLocator({ count: async () => rootCount }), {
+          child: rooted(brandedLocator({ count: async () => 1 }), {}),
           archive: vi.fn(),
-        },
+        }),
       ];
     }
     registry.registerCompiledPom(ItemsPage, {
@@ -1204,7 +1213,7 @@ describe("live Page Object registry", () => {
   });
 
   it("resolves method-backed collections from the current returned array", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, rooted } = await setup();
 
     const firstElement = { isConnected: true } as Element;
     const secondElement = { isConnected: true } as Element;
@@ -1212,18 +1221,18 @@ describe("live Page Object registry", () => {
     const firstArchive = vi.fn(() => "first");
     const secondArchive = vi.fn(() => "second");
     const replacementArchive = vi.fn(() => "replacement");
-    const first = {
-      root: brandedLocator({ count: async () => 1 }, firstElement),
-      archive: firstArchive,
-    };
-    const second = {
-      root: brandedLocator({ count: async () => 1 }, secondElement),
-      archive: secondArchive,
-    };
-    const replacement = {
-      root: brandedLocator({ count: async () => 1 }, replacementElement),
-      archive: replacementArchive,
-    };
+    const first = rooted(
+      brandedLocator({ count: async () => 1 }, firstElement),
+      { archive: firstArchive }
+    );
+    const second = rooted(
+      brandedLocator({ count: async () => 1 }, secondElement),
+      { archive: secondArchive }
+    );
+    const replacement = rooted(
+      brandedLocator({ count: async () => 1 }, replacementElement),
+      { archive: replacementArchive }
+    );
     pageStateResolutions.set("e2", {
       node: { ref: "e2", element: secondElement },
     });
@@ -1282,19 +1291,20 @@ describe("live Page Object registry", () => {
       result: "replacement",
     });
     expect(replacementArchive).toHaveBeenCalledOnce();
-    expect(getItems).toHaveBeenCalledTimes(4);
+    // Each observation read the collection once; the calls read nothing.
+    expect(getItems).toHaveBeenCalledTimes(2);
 
     pageStateResolutions.clear();
   });
 
   it("refuses a collection call on an item the last observation did not find, rather than running it", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, rooted } = await setup();
 
     const knownElement = { isConnected: true } as Element;
     const addedElement = { isConnected: true } as Element;
     const addedArchive = vi.fn();
     const items = [
-      { root: brandedLocator({ count: async () => 1 }, knownElement) },
+      rooted(brandedLocator({ count: async () => 1 }, knownElement), {}),
     ];
     pageStateResolutions.set("e2", {
       node: { ref: "e2", element: addedElement },
@@ -1327,15 +1337,16 @@ describe("live Page Object registry", () => {
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected a collection tool.");
     // Held by the Page Object since the last observation.
-    items.push({
-      root: brandedLocator({ count: async () => 1 }, addedElement),
-      archive: addedArchive,
-    } as never);
+    items.push(
+      rooted(brandedLocator({ count: async () => 1 }, addedElement), {
+        archive: addedArchive,
+      }) as never
+    );
 
     await expect(
       tool.execute({ ref: "e2", args: {} }, runContext())
     ).rejects.toThrow(
-      "ItemsPage.items.archive is unavailable: its Page Object is not on the page."
+      'Cannot call ItemsPage.items.archive on ref "e2": it is not an instance of Item at ItemsPage.items.'
     );
     expect(addedArchive).not.toHaveBeenCalled();
 
@@ -1343,17 +1354,16 @@ describe("live Page Object registry", () => {
   });
 
   it("lets an instance tool omit args only when its action needs no input", async () => {
-    const { registry, session } = await setup();
+    const { registry, session, rooted } = await setup();
 
     const element = { isConnected: true } as Element;
     const archive = vi.fn(() => "archived");
     const rename = vi.fn();
-    const item = {
-      root: brandedLocator({ count: async () => 1 }, element),
+    const item = rooted(brandedLocator({ count: async () => 1 }, element), {
       archive,
       pin: vi.fn(),
       rename,
-    };
+    });
     pageStateResolutions.set("e2", { node: { ref: "e2", element } });
     class ItemsPage {
       readonly items = [item];

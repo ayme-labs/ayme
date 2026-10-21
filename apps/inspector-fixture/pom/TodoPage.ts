@@ -1,6 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
+import { AppComponent } from "./AppComponent";
+
 /**
  * The model fixture's Page Object: a to-do list whose items are child Page
  * Objects, and an archive dialog that is not on the page. The runtime
@@ -33,12 +35,11 @@ export class TodoPage {
 }
 
 @ayme
-export class TodoItem {
-  readonly root: Locator;
+export class TodoItem extends AppComponent {
   readonly archiveButton: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.archiveButton = root.locator(".todo-archive");
   }
 
@@ -49,12 +50,11 @@ export class TodoItem {
 }
 
 @ayme
-export class ArchiveDialog {
-  readonly root: Locator;
+export class ArchiveDialog extends AppComponent {
   readonly confirmButton: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.confirmButton = root.locator(".todo-confirm");
   }
 }

@@ -55,8 +55,17 @@ type NameOptions = {
   models?: boolean;
 };
 
+/**
+ * The registry's target path of a Page Object's root, from the Page
+ * Object's path: the runtime's own rule, handed in by the infrastructure.
+ */
+export type RootTargetPath = (objectPath: string) => string;
+
 /** Indexes the page model, once per update. */
-export function indexMembers({ objects, models }: PageModel): MemberIndex {
+export function indexMembers(
+  { objects, models }: PageModel,
+  rootTargetPath: RootTargetPath
+): MemberIndex {
   const byTarget = new Map<string, IndexedMember>();
   const byPath = new Map<string, IndexedMember>();
   const parents = new Map<PageObjectNode, PageObjectNode>();
@@ -78,7 +87,7 @@ export function indexMembers({ objects, models }: PageModel): MemberIndex {
       add(byPath, node.path, self);
       if (node.kind === "collection") collections.push(node);
       else {
-        add(byTarget, rootTarget(node), self);
+        add(byTarget, rootTargetPath(node.path), self);
         const ofClass = instances.get(node.className) ?? [];
         ofClass.push(node);
         instances.set(node.className, ofClass);
@@ -139,8 +148,8 @@ export function indexMembers({ objects, models }: PageModel): MemberIndex {
         named(path).flatMap(({ owner, locator }) => {
           if (locator) return [locator.path];
           if (owner.kind === "collection")
-            return owner.children.map(rootTarget);
-          return [rootTarget(owner)];
+            return owner.children.map(({ path }) => rootTargetPath(path));
+          return [rootTargetPath(owner.path)];
         })
       ),
     within: (path, options) =>
@@ -176,14 +185,6 @@ export function pathBelowPage(node: PageObjectNode, index: MemberIndex) {
         kind === "item" || !path ? `${path}${name}` : `${path}.${name}`,
       ""
     );
-}
-
-/**
- * The registry's target path of a Page Object's root element, the way it
- * names root observations: e.g. "ListPage.items[0].root".
- */
-function rootTarget(node: PageObjectNode) {
-  return `${node.path}.root`;
 }
 
 /** A node's path and its members' and descendants' paths. */

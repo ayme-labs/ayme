@@ -84,7 +84,8 @@ export type MemberOwner = { object: string } | { model: string };
 export type MemberLink = { member: string; owner: MemberOwner };
 
 // Stryker disable next-line ObjectLiteral,ArrayDeclaration: a mutant here breaks loading the module, which fails every importing test file but counts as no failed test for Stryker's Vitest runner.
-const noMembers = indexMembers({ objects: [], models: [] });
+// An empty page model has no Page Object whose root target a path could name.
+const noMembers = indexMembers({ objects: [], models: [] }, (path) => path);
 
 export type StructureTree = {
   roots: readonly StructureNode[];

@@ -4,6 +4,7 @@ import type { Locator } from "@playwright/test";
 import { FillForm } from "./FillForm";
 import { KeyField } from "./KeyField";
 import { LocatorGroups } from "./LocatorGroups";
+import { PanelPart } from "./PanelPart";
 import { RefField } from "./RefField";
 import { ValueRows } from "./ValueRows";
 
@@ -20,8 +21,7 @@ export type ArgumentValue =
  * input, the first press opens the typed form.
  */
 @ayme
-export class RunCard {
-  readonly root: Locator;
+export class RunCard extends PanelPart {
   readonly runButton: Locator;
   /** Why the tool is unavailable, under its name; absent while it's available. */
   readonly reason: Locator;
@@ -53,7 +53,7 @@ export class RunCard {
   readonly values: ValueRows;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.runButton = root.getByRole("button", { name: "Run", exact: true });
     this.reason = root.getByRole("note", { name: "Why it is unavailable" });
     this.argumentsToggle = root.getByRole("button", {

@@ -1,6 +1,7 @@
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
+import type { Locator } from "@playwright/test";
 import type { ToolManifest } from "./contracts";
-import { availabilityPredicateOf } from "./decorators";
+import { availabilityPredicateOf, modelOption } from "./decorators";
 import { asSentence, errorText, RuntimeStateError } from "./errors";
 import type { ObservedPomRoot } from "./pomRootObservation";
 
@@ -33,6 +34,8 @@ export type PredicateAnswer = { available: boolean; reason?: string };
 export type PomInstanceObservation = {
   /** Its path from the page, e.g. "items[1].details"; "" for the page's own. */
   path: string;
+  /** The live Page Object the observation read: what a call on it acts on. */
+  instance: object;
   /**
    * Its tools' component path, which has no item indices, e.g.
    * "items[].details"; undefined for the page's own.
@@ -43,20 +46,39 @@ export type PomInstanceObservation = {
    * "items[1]" for "items[1].details"; undefined outside collections.
    */
   item: PomInstanceObservation | undefined;
-  /** Its root, or undefined for a Page Object without a declared root. */
+  /**
+   * Whether it is on the page (Page Object Presence): its presence
+   * predicate, when its class declares one, holds, and its root, when it has
+   * one, is present.
+   */
+  present: boolean;
+  /** What its presence predicate threw, when it threw. */
+  presenceError?: string;
+  /**
+   * Its root, or undefined for a Page Object without a declared root, or one
+   * whose presence predicate failed before the root was read.
+   */
   root: ObservedPomRoot | undefined;
   /**
+   * The locator its root predicate answered with the observation: what a
+   * call measures reach at, so no call runs the predicate again. Undefined
+   * without a root, or when the predicate threw or answered no locator.
+   */
+  rootLocator?: Locator;
+  /** What its root predicate threw, when it threw. */
+  rootError?: string;
+  /**
    * What each action's availability predicate answered, by method name.
-   * Asked only while the root is present; actions without one are absent.
+   * Asked only while the instance is present; actions without one are absent.
    */
   predicates: ReadonlyMap<string, PredicateAnswer>;
 };
 
 /**
  * Package-internal: whether the action `methodName` can run on `instance`
- * now, by ADR-0035's precedence: an absent root, then a root a click would
- * not reach, then the action's predicate. It reads only the observation and,
- * to name what is in the way, `latestRefOf`.
+ * now, by ADR-0035's precedence: an absent Page Object, then a root a click
+ * would not reach, then the action's predicate. It reads only the
+ * observation and, to name what is in the way, `latestRefOf`.
  */
 export function availabilityOf(
   instance: PomInstanceObservation,
@@ -64,15 +86,13 @@ export function availabilityOf(
   latestRefOf: LatestRefLookup
 ): ToolAvailability {
   const { root } = instance;
-  if (root !== undefined) {
-    if (!root.present) return { present: false, available: false };
-    if (!root.available)
-      return {
-        present: true,
-        available: false,
-        reason: obstructionReason(root.inTheWay, latestRefOf),
-      };
-  }
+  if (!instance.present) return { present: false, available: false };
+  if (root !== undefined && !root.available)
+    return {
+      present: true,
+      available: false,
+      reason: obstructionReason(root.inTheWay, latestRefOf),
+    };
   const answer = instance.predicates.get(methodName);
   if (!answer || answer.available) return { present: true, available: true };
   return { present: true, available: false, reason: answer.reason };
@@ -86,11 +106,22 @@ export function availabilityOf(
  */
 export function assertAvailable(
   toolName: string,
-  { present, available, reason }: ToolAvailability
+  availability: ToolAvailability
 ) {
-  if (available) return;
+  if (availability.available) return;
+  throw unavailableError(toolName, availability);
+}
+
+/**
+ * Package-internal: the error `assertAvailable` refuses a call with, for a
+ * caller that has found the call cannot run.
+ */
+export function unavailableError(
+  toolName: string,
+  { present, reason }: Pick<ToolAvailability, "present" | "reason">
+) {
   const why = present ? reason : "its Page Object is not on the page";
-  throw new RuntimeStateError(
+  return new RuntimeStateError(
     why === undefined
       ? `${toolName} is unavailable.`
       : asSentence(`${toolName} is unavailable: ${why}`)
@@ -156,6 +187,25 @@ export async function askPredicates(
   return answers;
 }
 
+/** What a Page Object's presence predicate answered, or threw. */
+export type PresenceAnswer = { present?: boolean; error?: string };
+
+/**
+ * Package-internal: asks the presence predicate `instance`'s class declares
+ * or inherits, read-only. Without one, `present` is undefined. A predicate
+ * that throws makes the instance absent, with the error's text, so the
+ * author sees it.
+ */
+export async function askPresence(instance: object): Promise<PresenceAnswer> {
+  const predicate = modelOption(instance.constructor, "present");
+  if (!predicate) return { present: undefined };
+  try {
+    return { present: Boolean(await predicate(instance as never)) };
+  } catch (error) {
+    return { present: false, error: errorText(error) };
+  }
+}
+
 /**
  * The predicate `@ayme.action` kept for the class method `methodName`, read
  * along the prototype chain so inherited actions keep theirs and an
@@ -183,6 +233,9 @@ export function sameInstance(
 ): boolean {
   return (
     left.path === right.path &&
+    left.present === right.present &&
+    left.presenceError === right.presenceError &&
+    left.rootError === right.rootError &&
     sameRoot(left.root, right.root) &&
     left.predicates.size === right.predicates.size &&
     [...left.predicates].every(([methodName, answer]) => {

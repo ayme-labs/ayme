@@ -7,6 +7,8 @@ import "./style.css";
 
 function Counter() {
   const [count, setCount] = useState(0);
+  // Registered here, not at setup: the counter's presence is this component's
+  // lifetime, which no URL states (the certification unmounts it on its page).
   const pom = usePageObject(CounterPage);
   usePageObject(SubCounterPage);
   usePeek({ count }, "counter");

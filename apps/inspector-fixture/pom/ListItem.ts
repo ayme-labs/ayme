@@ -1,15 +1,10 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator } from "@playwright/test";
+
+import { AppComponent } from "./AppComponent";
 
 /** An item on the fixture page's list: a Page Object in a collection. */
 @ayme
-export class ListItem {
-  readonly root: Locator;
-
-  constructor(root: Locator) {
-    this.root = root;
-  }
-
+export class ListItem extends AppComponent {
   @ayme.action({ description: "Mark this item done or to do." })
   async mark(state: "done" | "todo") {
     await this.root.evaluate(

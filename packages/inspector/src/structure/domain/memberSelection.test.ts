@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rootTargetPath } from "@ayme-dev/ayme/internal";
 
 import { indexMembers } from "../../page-model";
 import { collection, model, page } from "../../page-model/test-utils/pageModel";
@@ -13,20 +14,23 @@ import {
 // Unit tests: what a member selection highlights, when it is stale, and
 // which runs are in its scope. Fixtures are hand-written.
 
-const index = indexMembers({
-  objects: [
-    page("ListPage", {
-      locators: ["newItemInput", "addItemButton"],
-      children: [
-        collection("items", "ListItem", [
-          { locators: ["nameButton"] },
-          { locators: ["nameButton"] },
-        ]),
-      ],
-    }),
-  ],
-  models: [model("ListItem", ["nameButton"])],
-});
+const index = indexMembers(
+  {
+    objects: [
+      page("ListPage", {
+        locators: ["newItemInput", "addItemButton"],
+        children: [
+          collection("items", "ListItem", [
+            { locators: ["nameButton"] },
+            { locators: ["nameButton"] },
+          ]),
+        ],
+      }),
+    ],
+    models: [model("ListItem", ["nameButton"])],
+  },
+  rootTargetPath
+);
 const structure = buildStructureTree(
   forest(
     node({ ref: "e1", role: "textbox", name: "New item" }),
@@ -38,8 +42,8 @@ const structure = buildStructureTree(
   ),
   new Map([
     ["e1", ["ListPage.newItemInput"]],
-    ["e3", ["ListPage.items[0].root"]],
-    ["e4", ["ListPage.items[1].root"]],
+    ["e3", ["ListPage.items[0].@root"]],
+    ["e4", ["ListPage.items[1].@root"]],
   ]),
   index
 );

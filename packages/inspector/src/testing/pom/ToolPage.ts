@@ -1,13 +1,13 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
 import { RunCard } from "./RunCard";
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A tool's page in the detail pane. */
 @ayme
-export class ToolPage {
-  readonly root: Locator;
+export class ToolPage extends PanelPart {
   /** The tool's name. */
   readonly title: Locator;
   readonly description: Locator;
@@ -20,7 +20,7 @@ export class ToolPage {
   readonly card: RunCard;
 
   constructor(detail: Locator) {
-    this.root = detail.locator("article[data-tool-page]");
+    super(detail.locator("article[data-tool-page]"));
     this.title = this.root.getByRole("heading", { level: 2 });
     this.description = this.root.locator(":scope > p");
     this.kind = this.root.locator("[data-tool-kind]");

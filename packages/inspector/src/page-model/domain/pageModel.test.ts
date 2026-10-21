@@ -151,10 +151,27 @@ const probed: PomMemberObservation[] = [
   { memberName: "archiveDialog.confirmButton", kind: "locator", count: 0 },
 ];
 
+/** The paths of the Page Objects the probe found on the page. */
+const present = ["", "items[0]", "items[1]"];
+/** The members the probe found resolving to their Page Object's root. */
+const rootMembers = ["items[0].root", "items[1].root"];
+
 function registration(
-  memberObservations: PomMemberObservation[] = probed
+  memberObservations: PomMemberObservation[] = probed,
+  presentPaths: readonly string[] = memberObservations.length ? present : [],
+  rootMemberPaths: readonly string[] = memberObservations.length
+    ? rootMembers
+    : []
 ): RegisteredPom {
-  return { id: "TodoPage", instance: {}, manifest, memberObservations, tools };
+  return {
+    id: "TodoPage",
+    instance: {},
+    manifest,
+    memberObservations,
+    presentPaths: new Set(presentPaths),
+    rootMemberPaths: new Set(rootMemberPaths),
+    tools,
+  };
 }
 
 // What snapshot describes for this page.
@@ -243,6 +260,36 @@ describe("the page model", () => {
     ]);
   });
 
+  it("shows a Page Object as not live while the probe found it absent, whatever its members", () => {
+    const { objects } = buildPageModel(
+      [registration(probed, ["items[0]"])],
+      live,
+      definitions,
+      actionSignature
+    );
+
+    expect(
+      [...walk(objects)]
+        .filter(({ kind }) => kind !== "collection")
+        .map(({ path, live }) => ({ path, live }))
+    ).toEqual([
+      { path: "TodoPage", live: false },
+      { path: "TodoPage.items[0]", live: true },
+      { path: "TodoPage.items[1]", live: false },
+      { path: "TodoPage.archiveDialog", live: false },
+    ]);
+    expect(
+      objectAt(objects, "TodoPage").members.map(({ name, live }) => ({
+        name,
+        live,
+      }))
+    ).toEqual([
+      { name: "newItemInput", live: true },
+      { name: "items", live: true },
+      { name: "archiveDialog", live: false },
+    ]);
+  });
+
   it("shows each member of an object as the page probe found it", () => {
     const { objects } = buildPageModel(
       [registration()],
@@ -268,6 +315,77 @@ describe("the page model", () => {
         state,
       }))
     ).toEqual([{ name: "archiveButton", state: "absent" }]);
+  });
+
+  it("hides the member that resolved to the root, whatever its name, on the object and on its model", () => {
+    const anchored: PomManifest = {
+      ...manifest,
+      components: manifest.components.map((component) =>
+        component.className === "TodoItem"
+          ? {
+              ...component,
+              members: [
+                { memberName: "row", kind: "locator", access: "getter" },
+                ...component.members.slice(1),
+              ],
+            }
+          : component
+      ),
+    };
+    const { objects, models } = buildPageModel(
+      [
+        {
+          ...registration(probed, present, ["items[0].row", "items[1].row"]),
+          manifest: anchored,
+        },
+      ],
+      live,
+      definitions.map((definition) =>
+        definition.name === "TodoItem"
+          ? { ...definition, children: anchored.components[0]!.members }
+          : definition
+      ),
+      actionSignature
+    );
+
+    expect(
+      objectAt(objects, "TodoPage.items[0]").members.map(({ name }) => name)
+    ).toEqual(["archiveButton"]);
+    expect(models[1]?.members.map(({ name }) => name)).toEqual([
+      "archiveButton",
+    ]);
+  });
+
+  it("shows a member named root of a root-less model like any locator member", () => {
+    const { objects, models } = buildPageModel(
+      [
+        registration(
+          [
+            ...probed.filter(
+              ({ memberName }) => memberName !== "archiveDialog.root"
+            ),
+            { memberName: "archiveDialog.root", kind: "locator", count: 1 },
+          ],
+          [...present, "archiveDialog"]
+        ),
+      ],
+      live,
+      definitions,
+      actionSignature
+    );
+
+    expect(
+      objectAt(objects, "TodoPage.archiveDialog").members.map(
+        ({ name, state }) => ({ name, state })
+      )
+    ).toEqual([
+      { name: "root", state: "1 match" },
+      { name: "confirmButton", state: "absent" },
+    ]);
+    expect(models[2]?.members.map(({ name }) => name)).toEqual([
+      "root",
+      "confirmButton",
+    ]);
   });
 
   it("says a member is pending until the page is first probed", () => {

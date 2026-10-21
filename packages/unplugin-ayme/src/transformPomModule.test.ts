@@ -309,6 +309,15 @@ describe("a build without Ayme", () => {
     );
   });
 
+  it("names a member called root like any other: a public one as a property, a non-public one of a base class not at all", () => {
+    expect(transform(...fixture("annotatedChildrenPom"))?.code).toContain(
+      'class AnnotatedComponent extends absentPageObject("AnnotatedComponent", {"actions":[],"properties":["root","child"],"methods":[]}) {}'
+    );
+    expect(transform(...fixture("privateRootPom"))?.code).toContain(
+      'export class PrivateRootPom extends absentPageObject("PrivateRootPom", {"actions":[],"properties":["actionButton"],"methods":[]}) {}'
+    );
+  });
+
   it("names every instance member of the class, not only its Page Object Children", () => {
     const code = transform(...fixture("withoutAymeMembersPom"))?.code;
 

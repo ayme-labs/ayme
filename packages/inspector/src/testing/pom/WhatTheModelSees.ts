@@ -1,14 +1,15 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /**
  * "What the model sees" in a detail view: a structure node's page state, the
  * Page Object definitions and the tool schemas an agent receives. It starts
  * collapsed.
  */
 @ayme
-export class WhatTheModelSees {
-  readonly root: Locator;
+export class WhatTheModelSees extends PanelPart {
   readonly toggle: Locator;
   /** The Page Object definitions, as snapshot renders them. */
   readonly definitions: Locator;
@@ -21,10 +22,12 @@ export class WhatTheModelSees {
   readonly childCount: Locator;
 
   constructor(scope: Locator) {
-    this.root = scope.getByRole("region", {
-      name: "What the model sees",
-      exact: true,
-    });
+    super(
+      scope.getByRole("region", {
+        name: "What the model sees",
+        exact: true,
+      })
+    );
     this.toggle = this.root.getByRole("button", {
       name: /^What the model sees/,
     });

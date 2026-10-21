@@ -1,10 +1,11 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /** One path in the Connections popover: the agent, or WebMCP. */
 @ayme
-export class ConnectionRow {
-  readonly root: Locator;
+export class ConnectionRow extends PanelPart {
   /** Its state in a word or two, such as "Connected" or "Off". */
   readonly state: Locator;
   /** Its dot, whose `data-tone` says how the state reads: `ok`, `off`… */
@@ -13,7 +14,7 @@ export class ConnectionRow {
   readonly copyButton: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.state = root.locator(":scope > div > span:last-child");
     this.dot = root.locator(":scope > div > [data-tone]");
     this.copyButton = root.getByRole("button", { name: /^Copy / });
@@ -26,9 +27,8 @@ export class ConnectionRow {
  * Agent Connection and one for WebMCP.
  */
 @ayme
-export class Connections {
-  /** The pill: the Page Object is on the page while it shows. */
-  readonly root: Locator;
+export class Connections extends PanelPart {
+  /** The pill, its root: the Page Object is on the page while it shows. */
   readonly pill: Locator;
   /** The pill's dot, whose `data-tone` says how the agent's state reads. */
   readonly pillDot: Locator;
@@ -46,8 +46,8 @@ export class Connections {
    * @param portalRoot an element holding the Inspector's portal.
    */
   constructor(header: Locator, portalRoot: Locator) {
-    this.pill = header.getByRole("button", { name: /^Connections: / });
-    this.root = this.pill;
+    super(header.getByRole("button", { name: /^Connections: / }));
+    this.pill = this.root;
     this.pillDot = this.pill.locator("[data-tone]");
     this.mark = this.pill.locator("[data-webmcp-mark]");
     this.popover = portalRoot.getByRole("dialog", { name: "Connections" });

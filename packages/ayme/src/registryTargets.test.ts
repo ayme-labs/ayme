@@ -4,7 +4,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
-import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
+import { ayme } from "./decorators";
+import { rooted, rootOf } from "./pomRoot.testSupport";
+import {
+  listRegisteredPomTargets,
+  registerCompiledPom,
+  rootTargetPath,
+} from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
 
 describe("registered Page Object targets", () => {
@@ -33,21 +39,20 @@ describe("registered Page Object targets", () => {
 
     const item = (index: number) => {
       const root = page.locator(".item").nth(index);
-      return {
-        root,
+      return rooted(root, {
         nameButton: root.locator("button"),
-        tags: index === 0 ? [{ root: root.locator(".tag") }] : [],
-      };
+        tags: index === 0 ? [rooted(root.locator(".tag"), {})] : [],
+      });
     };
     class ListPage {
       readonly root = page.locator("main");
       readonly newItemInput = page.locator(".new");
-      readonly header = {
-        root: page.locator("header"),
+      readonly header = rooted(page.locator("header"), {
         title: page.locator("h1"),
-      };
+      });
       readonly items = [item(0), item(1)];
     }
+    ayme({ root: rootOf })(ListPage);
     registerCompiledPom(ListPage, {
       className: "ListPage",
       tools: [],
@@ -106,21 +111,55 @@ describe("registered Page Object targets", () => {
     const [milk, eggs] = document.querySelectorAll(".item");
 
     expect(targets.map(({ path }) => path)).toEqual([
-      "ListPage.root",
+      rootTargetPath("ListPage"),
       "ListPage.newItemInput",
-      "ListPage.header.root",
+      rootTargetPath("ListPage.header"),
       "ListPage.header.title",
-      "ListPage.items[0].root",
+      rootTargetPath("ListPage.items[0]"),
       "ListPage.items[0].nameButton",
-      "ListPage.items[0].tags[0].root",
-      "ListPage.items[1].root",
+      rootTargetPath("ListPage.items[0].tags[0]"),
+      rootTargetPath("ListPage.items[1]"),
       "ListPage.items[1].nameButton",
     ]);
     expect(
       targets
         .filter(({ element }) => element === milk || element === eggs)
         .map(({ path }) => path)
-    ).toEqual(["ListPage.items[0].root", "ListPage.items[1].root"]);
+    ).toEqual([
+      rootTargetPath("ListPage.items[0]"),
+      rootTargetPath("ListPage.items[1]"),
+    ]);
+  });
+
+  it("keeps the root target apart from a member named root that is not the root", async () => {
+    document.body.innerHTML = `
+      <section><p class="root">Intro</p></section>
+    `;
+    class Editor {
+      readonly container = page.locator("section");
+      readonly root = page.locator(".root");
+    }
+    ayme({ root: (self: Editor) => self.container })(Editor);
+    registerCompiledPom(Editor, {
+      className: "Editor",
+      tools: [],
+      members: [
+        { memberName: "container", kind: "locator", access: "field" },
+        { memberName: "root", kind: "locator", access: "field" },
+      ],
+      components: [],
+    });
+    session.register(Editor);
+
+    const targets = await listRegisteredPomTargets();
+
+    expect(rootTargetPath("Editor")).not.toBe("Editor.root");
+    expect(targets.map(({ path, element }) => [path, element.tagName])).toEqual(
+      [
+        [rootTargetPath("Editor"), "SECTION"],
+        ["Editor.root", "P"],
+      ]
+    );
   });
 
   it("names each target's member locator, as an Interaction on it names it", async () => {
@@ -129,7 +168,7 @@ describe("registered Page Object targets", () => {
     `;
     class ListPage {
       readonly addItemButton = page.getByRole("button", { name: "Milk" });
-      readonly items = [{ root: page.locator(".item").nth(0) }];
+      readonly items = [rooted(page.locator(".item").nth(0), {})];
     }
     registerCompiledPom(ListPage, {
       className: "ListPage",
@@ -161,7 +200,10 @@ describe("registered Page Object targets", () => {
         path: "ListPage.addItemButton",
         locator: "getByRole('button', { name: 'Milk' })",
       },
-      { path: "ListPage.items[0].root", locator: "locator('.item').first()" },
+      {
+        path: rootTargetPath("ListPage.items[0]"),
+        locator: "locator('.item').first()",
+      },
     ]);
   });
 });

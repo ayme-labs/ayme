@@ -129,8 +129,7 @@ function memberRole(
   checker: ts.TypeChecker,
   member: ts.ClassElement
 ): MemberRole | undefined {
-  if (!isPublicInstanceMember(member) && !isNonPublicRootMember(member))
-    return undefined;
+  if (!isPublicInstanceMember(member)) return undefined;
   if (!member.name || !ts.isIdentifier(member.name)) return undefined;
   const memberName = member.name.text;
 
@@ -167,6 +166,11 @@ function pomChild(
       ? componentCollectionDeclaration(checker, type, memberName)
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
+  if (access === "method" && rootState(checker, declaration) === "undeclared") {
+    throw new Error(
+      `Page Object Child "${memberName}" is a collection of ${declaration.name.text}, which declares no root; a collection item's ref needs one.`
+    );
+  }
   return {
     member: {
       memberName,
@@ -177,6 +181,87 @@ function pomChild(
     },
     declaration,
   };
+}
+
+type RootState = "declared" | "undeclared" | "unreadable";
+
+/**
+ * Whether a class's `@ayme` options, or its ancestors', name `root`. Only
+ * inline object literals are read; anything else is left to the runtime.
+ */
+function rootState(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): RootState {
+  const states: RootState[] = [];
+  for (const decorator of ts.getDecorators(declaration) ?? []) {
+    if (!isMarker(decorator, "ayme")) continue;
+    const options = ts.isCallExpression(decorator.expression)
+      ? decorator.expression.arguments[0]
+      : undefined;
+    if (options && !ts.isObjectLiteralExpression(options))
+      states.push("unreadable");
+    for (const property of options && ts.isObjectLiteralExpression(options)
+      ? options.properties
+      : []) {
+      const name = property.name;
+      const key =
+        name && (ts.isIdentifier(name) || ts.isStringLiteral(name))
+          ? name.text
+          : undefined;
+      states.push(
+        key === "root"
+          ? "declared"
+          : key === undefined || key === "__proto__"
+            ? "unreadable"
+            : "undeclared"
+      );
+    }
+  }
+  const extended = declaration.heritageClauses?.find(
+    (c) => c.token === ts.SyntaxKind.ExtendsKeyword
+  )?.types[0]?.expression;
+  if (extended) {
+    // Only a class declaration the program shows is read: a call, a constant,
+    // a declaration file or an ambient class may carry a root the types hide.
+    const name = ts.isPropertyAccessExpression(extended)
+      ? extended.name
+      : extended;
+    let symbol = checker.getSymbolAtLocation(name);
+    if (symbol && symbol.flags & ts.SymbolFlags.Alias)
+      symbol = checker.getAliasedSymbol(symbol);
+    const bases = symbol?.declarations ?? [];
+    if (
+      !bases.length ||
+      !bases.every(
+        (base) =>
+          ts.isClassDeclaration(base) &&
+          !base.getSourceFile().isDeclarationFile &&
+          !isAmbient(base)
+      )
+    )
+      states.push("unreadable");
+    else
+      for (const base of bases)
+        states.push(rootState(checker, base as ts.ClassDeclaration));
+  }
+  return states.includes("declared")
+    ? "declared"
+    : states.includes("unreadable")
+      ? "unreadable"
+      : "undeclared";
+}
+
+/** Whether the node, or an enclosing namespace, is declared with `declare`. */
+function isAmbient(node: ts.Node): boolean {
+  for (let n: ts.Node | undefined = node; n; n = n.parent) {
+    if (
+      ts.canHaveModifiers(n) &&
+      ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
+    )
+      return true;
+  }
+  return false;
 }
 
 function skippedMethods(
@@ -488,26 +573,6 @@ function pomDeclarations(
   }
 
   return [...declarations];
-}
-
-function isNonPublicRootMember(member: ts.ClassElement) {
-  if (
-    (!ts.isPropertyDeclaration(member) &&
-      !ts.isGetAccessorDeclaration(member)) ||
-    !member.name ||
-    !ts.isIdentifier(member.name) ||
-    member.name.text !== "root"
-  )
-    return false;
-  const modifiers = member.modifiers ?? [];
-  return (
-    modifiers.some(
-      (modifier) =>
-        modifier.kind === ts.SyntaxKind.PrivateKeyword ||
-        modifier.kind === ts.SyntaxKind.ProtectedKeyword
-    ) &&
-    !modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
-  );
 }
 
 function isNamedType(type: ts.Type, name: string) {

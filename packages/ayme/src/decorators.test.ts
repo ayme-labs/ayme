@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ayme } from "./index";
-import { availabilityPredicateOf } from "./decorators";
+import { availabilityPredicateOf, modelOption } from "./decorators";
 
 // Vitest does not compile decorator syntax, so these tests apply the
 // decorators as each decorator mode calls them. The build integration's
@@ -34,6 +34,19 @@ describe("@ayme", () => {
 
     expect(decorate(Page)).toBeUndefined();
     expect(decorate(Page, classContext)).toBeUndefined();
+  });
+});
+
+describe("@ayme({ root, present }) stacked", () => {
+  it("keeps the predicates each decorator supplied", () => {
+    class Stacked {}
+    const root = () => undefined as never;
+    const present = () => true;
+    ayme({ present })(Stacked, classContext as never);
+    ayme({ root, present: undefined })(Stacked, classContext as never);
+
+    expect(modelOption(Stacked, "root")).toBe(root);
+    expect(modelOption(Stacked, "present")).toBe(present);
   });
 });
 

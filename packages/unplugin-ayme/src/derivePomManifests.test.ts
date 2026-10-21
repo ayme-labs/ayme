@@ -56,7 +56,7 @@ describe("derivePomManifests", () => {
   });
 
   it.each(["privateRootPom", "protectedRootPom"])(
-    "includes an inherited non-public root from %s without exposing other non-public members",
+    "leaves a non-public member named root out of %s like any other non-public member",
     (fixture) => {
       const manifest = manifestFor(fixture);
 
@@ -66,14 +66,21 @@ describe("derivePomManifests", () => {
           kind: "locator",
           access: "field",
         },
-        {
-          memberName: "root",
-          kind: "locator",
-          access: "field",
-        },
       ]);
     }
   );
+
+  it("lists a public member named root as an ordinary locator member, in declaration order", () => {
+    const manifest = manifestForClass(
+      "annotatedChildrenPom",
+      "AnnotatedChildrenPom"
+    );
+
+    expect(manifest?.components[0]?.members).toEqual([
+      { memberName: "root", kind: "locator", access: "field" },
+      { memberName: "child", kind: "locator", access: "field" },
+    ]);
+  });
 
   it("includes inherited public locator members", () => {
     const manifest = manifestFor("inheritedPom");
@@ -610,6 +617,65 @@ describe("derivePomManifests", () => {
       expect(() => manifestsOf("ambiguousInheritedChildrenPom")).toThrow(
         'Page Object Child "ambiguousMenu" is ambiguous: UserMenu, AdminMenu.'
       );
+    });
+  });
+
+  it("builds a collection and a single child without checking a root", () => {
+    const manifest = manifestForClass(
+      "rootlessChildrenPom",
+      "RootlessChildrenPom"
+    );
+
+    expect(manifest?.members).toMatchObject([
+      { memberName: "toolbar", componentClassName: "Toolbar" },
+      { memberName: "rows", componentClassName: "Row", collection: true },
+    ]);
+    expect(
+      manifest?.components.map((component) => component.className)
+    ).toEqual(["Toolbar", "Row"]);
+  });
+
+  describe("a collection item's root", () => {
+    it("refuses a collection whose item class declares no root in its chain", () => {
+      expect(() => manifestFor("rootlessCollectionPom")).toThrow(
+        'Page Object Child "items" is a collection of RootlessItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
+    it("builds a collection whose item class inherits an inline root from a base", () => {
+      expect(
+        manifestForClass(
+          "inheritedRootCollectionPom",
+          "InheritedRootCollectionPom"
+        )?.members
+      ).toMatchObject([{ memberName: "items", collection: true }]);
+    });
+
+    it.each([
+      ["factoryBaseCollectionPom", "FactoryBaseCollectionPom"],
+      ["ambientBaseCollectionPom", "AmbientBaseCollectionPom"],
+      [
+        "namespaceAmbientBaseCollectionPom",
+        "NamespaceAmbientBaseCollectionPom",
+      ],
+      ["constFactoryBaseCollectionPom", "ConstFactoryBaseCollectionPom"],
+      ["stackedDecoratorsCollectionPom", "StackedDecoratorsCollectionPom"],
+    ])(
+      "leaves a base the build cannot read to the runtime: %s",
+      (fixture, name) => {
+        expect(manifestForClass(fixture, name)?.members).toMatchObject([
+          { memberName: "items", collection: true },
+        ]);
+      }
+    );
+
+    it("leaves options held in a constant to the runtime", () => {
+      expect(
+        manifestForClass(
+          "constOptionsCollectionPom",
+          "ConstOptionsCollectionPom"
+        )?.members
+      ).toMatchObject([{ memberName: "items", collection: true }]);
     });
   });
 

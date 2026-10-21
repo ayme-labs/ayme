@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "./contracts";
+import { ayme as model } from "./decorators";
 import {
   createAyme,
   createPage,
@@ -9,6 +10,7 @@ import {
   type Ayme,
   type CustomTool,
 } from "./index";
+import { rootOf } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 
@@ -40,6 +42,7 @@ class ListPage {
     await this.addButton.click();
   }
 }
+model({ root: rootOf })(ListPage);
 
 const addItem: ToolManifest = {
   methodName: "addItem",

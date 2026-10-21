@@ -4,8 +4,10 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
+import { ayme as model } from "./decorators";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import type { Handover } from "./handover";
+import { rootOf } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
@@ -71,6 +73,7 @@ describe("Handover changes in Chromium", () => {
         main().insertAdjacentHTML("beforeend", `<p>${ARCHIVED}</p>`);
       }
     }
+    model({ root: rootOf })(Inbox);
     registerCompiledPom(
       Inbox,
       manifest("Inbox", [

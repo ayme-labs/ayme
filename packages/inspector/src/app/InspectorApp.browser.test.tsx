@@ -31,6 +31,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     toolInputViolations,
     elementsOf,
     kindOf,
+    rootTargetPath,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
@@ -38,6 +39,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     pageStateNodeEntry,
+    rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,
@@ -107,6 +109,8 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
     memberObservations: [
       { memberName: "saveButton", kind: "locator", count: 1 },
     ],
+    presentPaths: new Set([""]),
+    rootMemberPaths: new Set(),
     tools,
   };
 }

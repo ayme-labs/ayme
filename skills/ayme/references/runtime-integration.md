@@ -8,11 +8,21 @@ covers starting Ayme and registering Page Objects. Follow
 [Page object design](page-object-design.md) for members, roots, and action
 returns.
 
-## Register top-level POMs
+## Register top-level POMs at setup
 
-Register page POMs and independent global components, such as a sidebar, with
-the framework's page-object consumer (`usePageObject`, or `injectPageObject` in
-Angular) in the component that owns their lifetime.
+Register every page POM once, at app setup: with the framework's page-object
+consumer (`usePageObject`, or `injectPageObject` in Angular) in the app's root
+component, or with `ayme.pom.register` where `createAyme` runs. A page is
+present by its URL through the page base class of
+[Page object design](page-object-design.md#write-base-classes-for-pages-and-components),
+so its tools come and go with the browser's location.
+[Register Page Objects](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md#register-page-objects)
+is the rule; the framework page shows the call in its idiom.
+
+Register in a component only when the POM's presence is that component's
+lifetime and no URL states it, such as a sidebar mounted on several routes, or
+when the POM belongs in a route's chunk. Say which in a one-line comment at the
+call.
 
 Child POMs exposed through the registered POM's compiled members are discovered
 recursively and need no separate registration. An unrelated marked class or a
@@ -46,7 +56,7 @@ describes.
 
 ## Optional quick verification
 
-After mounting the component, check the tools and the page state:
+On a page the POM is present on, check the tools and the page state:
 
 - [`ayme.tools.list()`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools)
   lists them, with `available` and, for a tool that cannot run now, its `reason`.

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rootTargetPath } from "@ayme-dev/ayme/internal";
 
 import { indexMembers } from "../../page-model";
 import { forest, node } from "../test-utils/projected";
@@ -200,17 +201,20 @@ it("tags each node with the Page Object member it maps to", () => {
     pageState,
     new Map([
       ["e2", ["ListPage.newItemInput"]],
-      ["e74", ["ListPage.items[0].root"]],
+      ["e74", ["ListPage.items[0].@root"]],
     ]),
-    indexMembers({
-      objects: [
-        page("ListPage", {
-          locators: ["newItemInput"],
-          children: [collection("items", "ListItem", [{}])],
-        }),
-      ],
-      models: [],
-    })
+    indexMembers(
+      {
+        objects: [
+          page("ListPage", {
+            locators: ["newItemInput"],
+            children: [collection("items", "ListItem", [{}])],
+          }),
+        ],
+        models: [],
+      },
+      rootTargetPath
+    )
   );
 
   const main = roots[0]!.children[0]!;
@@ -253,24 +257,27 @@ describe("when several members locate the same elements", () => {
   const targets = [
     { path: "ListPage.rows", element: milk! },
     { path: "ListPage.rows", element: eggs! },
-    { path: "ListPage.items[0].root", element: milk! },
-    { path: "ListPage.items[1].root", element: eggs! },
-    { path: "ListPage.entries[0].root", element: milk! },
-    { path: "ListPage.entries[1].root", element: eggs! },
+    { path: "ListPage.items[0].@root", element: milk! },
+    { path: "ListPage.items[1].@root", element: eggs! },
+    { path: "ListPage.entries[0].@root", element: milk! },
+    { path: "ListPage.entries[1].@root", element: eggs! },
   ];
   const twoItems: Contents[] = [{}, {}];
-  const index = indexMembers({
-    objects: [
-      page("ListPage", {
-        locators: ["rows"],
-        children: [
-          collection("items", "ListItem", twoItems),
-          collection("entries", "ListItem", twoItems),
-        ],
-      }),
-    ],
-    models: [model("ListPage", ["rows", "items", "entries"])],
-  });
+  const index = indexMembers(
+    {
+      objects: [
+        page("ListPage", {
+          locators: ["rows"],
+          children: [
+            collection("items", "ListItem", twoItems),
+            collection("entries", "ListItem", twoItems),
+          ],
+        }),
+      ],
+      models: [model("ListPage", ["rows", "items", "entries"])],
+    },
+    rootTargetPath
+  );
   const structure = buildStructureTree(
     listState,
     mapTargetsToRefs(elementsByRef, targets),
@@ -285,16 +292,16 @@ describe("when several members locate the same elements", () => {
           "e2",
           [
             "ListPage.rows",
-            "ListPage.items[0].root",
-            "ListPage.entries[0].root",
+            "ListPage.items[0].@root",
+            "ListPage.entries[0].@root",
           ],
         ],
         [
           "e3",
           [
             "ListPage.rows",
-            "ListPage.items[1].root",
-            "ListPage.entries[1].root",
+            "ListPage.items[1].@root",
+            "ListPage.entries[1].@root",
           ],
         ],
       ])
@@ -340,7 +347,7 @@ function nodeOf(
   const { roots } = buildStructureTree(
     forest(node({ ref: "e1", role: "button" })),
     new Map([["e1", targets]]),
-    indexMembers({ objects, models: [] })
+    indexMembers({ objects, models: [] }, rootTargetPath)
   );
   return roots[0]!;
 }
@@ -367,11 +374,11 @@ describe("where each of a node's members leads", () => {
   });
 
   it("leads a component's root to that instance, and its class to the model", () => {
-    expect(links(["ListPage.items[0].root"])).toEqual([
+    expect(links(["ListPage.items[0].@root"])).toEqual([
       { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
       { member: "ListItem", owner: { model: "ListItem" } },
     ]);
-    expect(links(["ListPage.archiveDialog.root"])).toEqual([
+    expect(links(["ListPage.archiveDialog.@root"])).toEqual([
       {
         member: "ListPage.archiveDialog",
         owner: { object: "ListPage.archiveDialog" },
@@ -393,7 +400,7 @@ describe("where each of a node's members leads", () => {
   it("tags an item's member over the item's own root", () => {
     expect(
       nodeOf(
-        ["ListPage.items[0].root", "ListPage.items[0].nameButton"],
+        ["ListPage.items[0].@root", "ListPage.items[0].nameButton"],
         listPage
       )
     ).toMatchObject({
@@ -405,15 +412,15 @@ describe("where each of a node's members leads", () => {
 
   it("leaves out a target the page model doesn't have yet", () => {
     expect(
-      nodeOf(["ListPage.items[1].root", "ListPage.items[0].root"], listPage)
+      nodeOf(["ListPage.items[1].@root", "ListPage.items[0].@root"], listPage)
     ).toMatchObject({
       members: ["ListPage.items[0]"],
       member: "ListPage.items[0]",
     });
-    expect(nodeOf(["ListPage.items[1].root"], listPage)).toMatchObject({
+    expect(nodeOf(["ListPage.items[1].@root"], listPage)).toMatchObject({
       members: [],
     });
-    expect(nodeOf(["ListPage.items[1].root"], listPage)).not.toHaveProperty(
+    expect(nodeOf(["ListPage.items[1].@root"], listPage)).not.toHaveProperty(
       "member"
     );
   });
@@ -449,7 +456,7 @@ describe("a member in a collection nested in a collection's items", () => {
   });
 
   it("tags its item's root by the item's path below the list it is in", () => {
-    expect(nodeOf(["Page.lists[0].items[1].root"], pages)).toMatchObject({
+    expect(nodeOf(["Page.lists[0].items[1].@root"], pages)).toMatchObject({
       tag: "items[1] · Item",
     });
   });
@@ -479,7 +486,7 @@ describe("a component whose class is also a page on the page", () => {
   const links = (targets: string[]) => nodeOf(targets, pages).memberLinks;
 
   it("leads the component's root to the component, and its class to the model", () => {
-    expect(links(["ListPage.header.root"])).toEqual([
+    expect(links(["ListPage.header.@root"])).toEqual([
       { member: "ListPage.header", owner: { object: "ListPage.header" } },
       { member: "Header", owner: { model: "Header" } },
     ]);
@@ -493,7 +500,7 @@ describe("a component whose class is also a page on the page", () => {
   });
 
   it("leads the page's own members to the page", () => {
-    expect(links(["Header.root"])).toEqual([
+    expect(links(["Header.@root"])).toEqual([
       { member: "Header", owner: { object: "Header" } },
     ]);
     expect(links(["Header.title"])).toEqual([
@@ -502,7 +509,7 @@ describe("a component whose class is also a page on the page", () => {
   });
 
   it("tags a page's root with the page", () => {
-    expect(nodeOf(["Header.root"], pages)).toMatchObject({
+    expect(nodeOf(["Header.@root"], pages)).toMatchObject({
       member: "Header",
       tag: "Header",
       owner: "Header",
@@ -510,7 +517,7 @@ describe("a component whose class is also a page on the page", () => {
   });
 
   it("tags a component's root with its name and class", () => {
-    expect(nodeOf(["ListPage.header.root"], pages)).toMatchObject({
+    expect(nodeOf(["ListPage.header.@root"], pages)).toMatchObject({
       tag: "header · Header",
     });
   });
@@ -521,7 +528,7 @@ describe("a component whose class is also a page on the page", () => {
     const listItem: Contents[] = [{}];
     expect(
       nodeOf(
-        ["App.list.items[0].root", "ListPage.items[0].root"],
+        ["App.list.items[0].@root", "ListPage.items[0].@root"],
         [
           page("App", {
             children: [
@@ -588,7 +595,7 @@ describe("several pages over the same element", () => {
 
     expect(
       nodeOf(
-        ["App.shell.main.panel.list", "ListPage.items[0].root"],
+        ["App.shell.main.panel.list", "ListPage.items[0].@root"],
         [deep, list]
       ).member
     ).toBe("ListPage.items[0]");

@@ -59,7 +59,21 @@ Wrap the application root, not a route component or a layout that unmounts on na
 
 ## Hooks
 
-Call the hooks in descendants of the provider:
+Call the hooks in descendants of the provider. Register the app's pages once, in the root component the provider wraps; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+
+```tsx
+import { usePageObject } from "@ayme-dev/react";
+import { ProjectsPage } from "./playwright/pom/ProjectsPage";
+import { SettingsPage } from "./playwright/pom/SettingsPage";
+
+export default function App() {
+  usePageObject(ProjectsPage);
+  usePageObject(SettingsPage);
+  return <Routes />;
+}
+```
+
+A component that calls an action gets the same instance from the same hook:
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";

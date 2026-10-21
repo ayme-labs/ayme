@@ -2,7 +2,7 @@ import type { Locator } from "@playwright/test";
 
 import { ayme } from "@ayme-dev/ayme";
 
-@ayme
+@ayme({ root: (self: AnnotatedComponent) => self.root })
 class AnnotatedComponent {
   readonly root!: Locator;
   readonly child!: Locator;

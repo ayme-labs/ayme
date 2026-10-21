@@ -16,6 +16,8 @@ export type {
   AvailabilityPredicate,
   AymeActionOptions,
   AymeModelOptions,
+  PresencePredicate,
+  RootPredicate,
 } from "./decorators";
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";

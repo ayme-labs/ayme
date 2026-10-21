@@ -22,6 +22,7 @@ import {
 import { agentTools } from "./publication.testSupport";
 import { lookAtPageStateForDocument } from "./pageState";
 import { listElementToolTargets } from "./publishedTools";
+import { rooted } from "./pomRoot.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
@@ -79,8 +80,8 @@ class RootsPage {
   readonly account;
   readonly card;
   constructor(page: Page) {
-    this.account = { root: page.locator("#account") };
-    this.card = { root: page.locator("#card") };
+    this.account = rooted(page.locator("#account"), {});
+    this.card = rooted(page.locator("#card"), {});
   }
 }
 

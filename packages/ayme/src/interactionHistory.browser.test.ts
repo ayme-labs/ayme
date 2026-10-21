@@ -9,12 +9,14 @@ import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
+import { ayme as model } from "./decorators";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import {
   getInteractionHistory,
   getPageStateForElements,
   resolvePageStateRefs,
 } from "./pageState";
+import { rootOf } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
@@ -67,6 +69,7 @@ describe("Interaction history in Chromium", () => {
           .insertAdjacentHTML("beforeend", "<p>Added by the action</p>");
       }
     }
+    model({ root: rootOf })(App);
     registerCompiledPom(App, manifest("App", [action("add", "App.add")]));
     startRuntime(goalLoop).pom.register(App);
     // Its tool is published once a probe finds the Page Object available.
@@ -375,6 +378,7 @@ describe("Interaction history in Chromium", () => {
       }
       noop() {}
     }
+    model({ root: rootOf })(App);
     registerCompiledPom(
       App,
       manifest("App", [action("add", "App.add"), action("noop", "App.noop")])

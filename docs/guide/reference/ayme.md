@@ -15,7 +15,7 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 | Decorator                                                    | Marks                                                                                                                                                                      |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme` or `@ayme({ description })`                          | A class as a Page Object Model. Its subclasses are Page Object Models too.                                                                                                 |
+| `@ayme` or `@ayme({ description, root, present })`           | A class as a Page Object Model. Its subclasses are Page Object Models too. `root` is the model's root predicate and `present` its presence predicate; see below.           |
 | `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. Without a description, one is generated. `available` is the action's availability predicate; see below. |
 
 [Page Object Models](../guides/page-object-models.md) covers naming, input schemas and Page Object Children.
@@ -27,6 +27,54 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 The predicate runs read-only with the runtime's observation of the page, the same probe that checks Page Object Roots, never when the action is called, so it must not scroll, click, focus or change the page. It runs once per present instance: on a collection action such as `ListPage.items.archive`, each item is judged on its own, so the tool is available while any item passes, carries the first failing item's reason when none does, and a call on an item that failed is refused with that item's reason. A predicate that throws makes the action unavailable with the error's text as the reason, such as `TypeError: store is undefined`. Without `available`, an action shares its Page Object's availability: its root is present and a click would reach it. The build plugin does not read the predicate; the decorator keeps it at runtime.
 
 Availability never adds or withdraws a tool. [`ayme.tools`](#aymetools) says how an unavailable tool is listed and refused, and [Page Object Models](../guides/page-object-models.md#action-availability) shows a predicate in use.
+
+### Page Object root and presence
+
+`root` and `present` are predicates that get the live Page Object instance as `self`; declared as their own functions, `self` is typed. A subclass inherits each from the nearest class in its chain that declares it, with or without a decorator of its own, and may declare its own: `root` and `present` are inherited separately, so a subclass overrides one and keeps the other. They run read-only with the runtime's observation of the page, never when a tool is called, so they must not scroll, click, focus or change the page. They never run on the server, where registration is inert, and the build plugin does not read them; the decorator keeps them at runtime.
+
+### Page Object root
+
+`root` is a root predicate, `(self) => Locator | Promise<Locator>` (`RootPredicate`). The Locator it answers names the Page Object Root: the Page Object is present while the locator resolves to one rendered element, the page state labels that element with the Page Object's name, a collection item's `ref` is that element's Structural Ref, and availability is measured at it. Declared as its own function: `const rootOf = (self: AppComponent) => self.container`. A locator member that resolves to the root's element is the root, not a child, so it is listed once, also when it is a getter that builds a fresh Locator on each read. A predicate that throws makes the Page Object absent, and a child's observation records what it threw.
+
+Only the option anchors a model. A model whose class chain declares none is root-less, also when it has a member named `root` (put `root` on your base class instead): it has no label in the page state and no reach measurement, a top-level one is present while it is registered, and a single child with no predicate while the Page Object it is reached through is; one with a predicate is present while the predicate holds. A collection item needs a root, since its `ref` is the root's element; the build refuses one whose options are inline literals that name no root, and the runtime reports any other at observation.
+
+### Page Object presence
+
+`present` is a presence predicate, `(self) => boolean | Promise<boolean>` (`PresencePredicate`). `true` means the Page Object is on the page now, so its tools are listed; `false` means it is not, so they are withdrawn. There is no reason string: an absent Page Object's tools are listed nowhere a reason could show. Declared as its own function: `const onPage = (self: AppPage) => …`.
+
+Without `present`, a model is present as its [root](#page-object-root) says; with both, the root must be on the page and the predicate narrows. A root-less child with `present` is judged by its predicate alone. The predicate runs before the model's members are read, so an absent model costs one call per observation, and the observation also runs on same-document navigation, so a predicate that reads the URL follows the browser's history. A predicate that throws makes the Page Object absent and logs the error's text to the console, such as `TypeError: store is undefined`, once until the error changes.
+
+Presence adds and withdraws tools; a present Page Object's availability is still measured at its root. [Page Object Models](../guides/page-object-models.md#page-presence) shows a page base class present by its URL, and [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where such a page is registered.
+
+#### Typed route parameters
+
+Optional. A page base class can type its route parameters from its `path`, so that an action reads `self.params().id` with the name checked. The predicate stays the same; the type is the consumer's:
+
+```ts
+type RouteParams<Path extends string> =
+  Path extends `${string}:${infer Name}/${infer Rest}`
+    ? { [Key in Name | keyof RouteParams<Rest>]: string }
+    : Path extends `${string}:${infer Name}`
+      ? { [Key in Name]: string }
+      : Record<never, string>;
+
+@ayme({ present: onPage })
+export abstract class AppPage<Path extends string = string> {
+  abstract readonly path: Path;
+  constructor(readonly page: Page) {}
+
+  params(): RouteParams<Path> | undefined {
+    const match = new URLPattern({ pathname: this.path }).exec(this.page.url());
+    return match?.pathname.groups as RouteParams<Path> | undefined;
+  }
+}
+
+export class ProjectPage extends AppPage<"/projects/:id"> {
+  readonly path = "/projects/:id";
+}
+```
+
+An app with a typed router calls the router's matcher from the predicate instead, with the same `self`.
 
 ## createAyme
 
@@ -55,7 +103,7 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 
 ## ayme.tools
 
-`ayme.tools` (`AymeTools`) reaches every tool by its unprefixed name, whether or not WebMCP publishes it. It lists every tool of a present Page Object, available or not, flagged so. Only presence, the Page Object Root on the page, adds or withdraws Page Object Tools; availability says whether a listed tool would run. WebMCP publication and the Agent Connection publish every listed tool and refuse a call of an unavailable one, the Goal Loop offers only the available ones, and the Inspector shows an unavailable one dimmed with its reason.
+`ayme.tools` (`AymeTools`) reaches every tool by its unprefixed name, whether or not WebMCP publishes it. It lists every tool of a present Page Object, available or not, flagged so. Only presence, the Page Object on the page, adds or withdraws Page Object Tools; availability says whether a listed tool would run. WebMCP publication and the Agent Connection publish every listed tool and refuse a call of an unavailable one, the Goal Loop offers only the available ones, and the Inspector shows an unavailable one dimmed with its reason.
 
 | Member                      | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

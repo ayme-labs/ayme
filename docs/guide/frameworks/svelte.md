@@ -71,6 +71,22 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Composables
 
+Register the app's pages once, in the root `+layout.svelte` after `useAyme`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+
+```svelte
+<script lang="ts">
+  import { useAyme, usePageObject } from "@ayme-dev/svelte";
+  import { ProjectsPage } from "$lib/pom/ProjectsPage";
+  import { SettingsPage } from "$lib/pom/SettingsPage";
+
+  useAyme({ inspector: dev, agentConnection: dev });
+  usePageObject(ProjectsPage);
+  usePageObject(SettingsPage);
+</script>
+```
+
+A component that calls an action gets the same instance from the same composable:
+
 ```svelte
 <script lang="ts">
   import { usePageObject } from "@ayme-dev/svelte";
@@ -84,7 +100,6 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 - `usePageObject(Model)` needs a `useAyme` owner in an ancestor or the same component. It removes its registration when its component is destroyed. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; call actions later, such as in an event handler or `onMount`.
 - Svelte 3 and 4 write `on:click` instead of `onclick`.
-- Register each top-level Page Object in the component that owns its lifetime.
 
 ## Optional: publish with WebMCP
 

@@ -34,14 +34,19 @@ const availabilityOf = (observed: PomInstanceObservation, methodName: string) =>
 
 const instance = (
   overrides: Partial<PomInstanceObservation> = {}
-): PomInstanceObservation => ({
-  path: "items[0]",
-  componentPath: "items[]",
-  item: undefined,
-  root: root(),
-  predicates: new Map(),
-  ...overrides,
-});
+): PomInstanceObservation => {
+  const observedRoot = "root" in overrides ? overrides.root : root();
+  return {
+    path: "items[0]",
+    instance: {},
+    componentPath: "items[]",
+    item: undefined,
+    present: observedRoot?.present ?? true,
+    root: observedRoot,
+    predicates: new Map(),
+    ...overrides,
+  };
+};
 
 describe("one instance's availability", () => {
   it("is available on a present, reachable root without a predicate", () => {

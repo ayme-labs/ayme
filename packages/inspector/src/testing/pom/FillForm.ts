@@ -1,22 +1,22 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
+
 /**
  * `fill_form`'s form in a run card: every field on the page as a row, by
  * its name. The rows changed are filled, numbered in fill order.
  */
 @ayme
-export class FillForm {
-  /** The list of fields. */
-  readonly root: Locator;
-  /** The rows, in fill order. */
+export class FillForm extends PanelPart {
+  /** The rows of the list of fields, in fill order. */
   readonly rows: Locator;
   /** How many rows are changed, e.g. "2 changed". */
   readonly changedCount: Locator;
   readonly undoAllButton: Locator;
 
   constructor(card: Locator) {
-    this.root = card.getByRole("list", { name: "Form fields" });
+    super(card.getByRole("list", { name: "Form fields" }));
     this.rows = this.root.getByRole("listitem");
     this.changedCount = card.getByRole("status", { name: "Changed fields" });
     this.undoAllButton = card.getByRole("button", { name: "Undo all" });

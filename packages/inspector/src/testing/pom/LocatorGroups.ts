@@ -1,6 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { PanelPart } from "./PanelPart";
 import { RefField } from "./RefField";
 
 /**
@@ -8,13 +9,11 @@ import { RefField } from "./RefField";
  * each with a container and its targets, by group number from 1.
  */
 @ayme
-export class LocatorGroups {
-  /** The list of groups. */
-  readonly root: Locator;
+export class LocatorGroups extends PanelPart {
   readonly addGroupButton: Locator;
 
   constructor(card: Locator) {
-    this.root = card.getByRole("list", { name: "Locator groups" });
+    super(card.getByRole("list", { name: "Locator groups" }));
     this.addGroupButton = card.getByRole("button", { name: "Add group" });
   }
 
