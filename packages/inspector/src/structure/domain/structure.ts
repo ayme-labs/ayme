@@ -26,6 +26,8 @@ export type StructureNode = {
    * Rows leave them out; "What the model sees" shows them.
    */
   state?: ProjectedStructuralNode["state"];
+  /** Whether the page shows a pointer over it, which agents read as clickable. */
+  cursorPointer?: true;
   /**
    * A native form control's state, read from the element: what the page
    * state leaves out, such as a slider's range.
@@ -143,6 +145,7 @@ export const structureTreeBuilder = (nodeEntry: NodeEntry) =>
         role: entry.role,
         name: entry.name,
         ...(hasState ? { state: entry.state } : {}),
+        ...(entry.cursorPointer ? { cursorPointer: true as const } : {}),
         members: members.map(({ path }) => path),
         pageStateLines: lines,
         childCount,

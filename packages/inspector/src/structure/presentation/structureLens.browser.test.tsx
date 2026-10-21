@@ -152,11 +152,13 @@ const elementTools = [
 ];
 
 function renderLens({
+  structure: tree = groceries,
   onSelect = vi.fn(),
   onHover = vi.fn(),
   renderRun = () => null,
   initialSelection = pageSelection,
 }: {
+  structure?: StructureTree;
   onSelect?: (selection: Selection) => void;
   onHover?: OnHover;
   renderRun?: RenderRun;
@@ -165,8 +167,13 @@ function renderLens({
   function Harness() {
     const [selection, setSelection] = useState(initialSelection);
     const [activeLens, setActiveLens] = useState<LensId>("structure");
+    const [unfoldedChains, setUnfoldedChains] = useState<ReadonlySet<string>>(
+      new Set()
+    );
     const structure = structureLens({
-      structure: groceries,
+      structure: tree,
+      unfoldedChains,
+      onUnfoldedChainsChange: setUnfoldedChains,
       capture: { loading: false },
       selection,
       onSelect: (next) => {
@@ -356,4 +363,192 @@ it("counts the refs in the legend", async () => {
   renderLens();
 
   await expect.poll(() => navigator.legend.textContent()).toBe("6 refs");
+});
+
+// A toolbar nested in wrappers, as component libraries render it:
+// e10 › e11 › e12 › e13 hold e14 and e15.
+const wrapped: StructureTree = {
+  refCount: 6,
+  roots: [
+    {
+      ref: "e10",
+      role: "generic",
+      name: "",
+      members: [],
+      children: [
+        {
+          ref: "e11",
+          role: "generic",
+          name: "",
+          members: [],
+          children: [
+            {
+              ref: "e12",
+              role: "generic",
+              name: "",
+              members: [],
+              children: [
+                {
+                  ref: "e13",
+                  role: "generic",
+                  name: "",
+                  members: [],
+                  children: [
+                    {
+                      ref: "e14",
+                      role: "button",
+                      name: "Save",
+                      members: [],
+                      children: [],
+                    },
+                    {
+                      ref: "e15",
+                      role: "button",
+                      name: "Cancel",
+                      members: [],
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+it("folds a chain of wrappers into one row, led by its outermost wrapper", async () => {
+  renderLens({ structure: wrapped });
+
+  await expect.poll(() => lens.rows.count()).toBe(3);
+  expect(await lens.node("e13").textContent()).toBe("e102 more›e13generic");
+  expect(await lens.node("e13").getAttribute("aria-expanded")).toBeNull();
+  expect(
+    await lens
+      .node("e13")
+      .getByRole("button", { name: "Unfold wrappers" })
+      .getAttribute("aria-expanded")
+  ).toBe("false");
+  expect(await lens.node("e14").getAttribute("aria-level")).toBe("2");
+  expect(await lens.node("e11").count()).toBe(0);
+});
+
+it("picks the outermost wrapper by its ref, and the row's node by the rest of the row", async () => {
+  const onSelect = vi.fn();
+  renderLens({ structure: wrapped, onSelect });
+
+  await lens.pickWrapper("e10");
+  expect(onSelect).toHaveBeenLastCalledWith({ kind: "node", ref: "e10" });
+  await expect.poll(() => node.title.textContent()).toBe("e10 generic");
+
+  await lens.pick("e13");
+  expect(onSelect).toHaveBeenLastCalledWith({ kind: "node", ref: "e13" });
+});
+
+it("unfolds a chain into a row for each wrapper, and folds it back", async () => {
+  renderLens({ structure: wrapped });
+
+  await lens.toggleWrappers("e13");
+
+  await expect.poll(() => lens.rows.count()).toBe(6);
+  expect(await lens.node("e12").getAttribute("aria-level")).toBe("3");
+  expect(await lens.node("e14").getAttribute("aria-level")).toBe("5");
+
+  await lens.toggleWrappers("e10");
+
+  await expect.poll(() => lens.rows.count()).toBe(3);
+});
+
+it("keeps focus on the toggle as it moves between a chain's rows", async () => {
+  renderLens({ structure: wrapped });
+  // The panel renders in a shadow root, which holds its focused element.
+  const active = () =>
+    document.activeElement?.shadowRoot?.activeElement ?? null;
+  const focused = () => active()?.getAttribute("aria-label");
+
+  await lens
+    .node("e13")
+    .getByRole("button", { name: "Unfold wrappers" })
+    .press("Enter");
+
+  await expect.poll(focused).toBe("Fold wrappers");
+  expect(
+    active()?.closest('[role="treeitem"]')?.getAttribute("aria-label")
+  ).toBe("e10 generic");
+
+  await lens
+    .node("e10")
+    .getByRole("button", { name: "Fold wrappers" })
+    .press("Enter");
+
+  await expect.poll(focused).toBe("Unfold wrappers");
+});
+
+it("unfolds the chain of a hidden wrapper picked in search, and keeps it unfolded", async () => {
+  renderLens({ structure: wrapped });
+
+  await navigator.search("e12");
+  await navigator.result("e12 generic").click();
+
+  await expect
+    .poll(() => lens.node("e12").getAttribute("aria-selected"))
+    .toBe("true");
+  expect(await lens.rows.count()).toBe(6);
+
+  await lens.pick("e14");
+
+  await expect
+    .poll(() => lens.node("e14").getAttribute("aria-selected"))
+    .toBe("true");
+  expect(await lens.rows.count()).toBe(6);
+});
+
+it("keeps the outermost wrapper selected when folding hides the selected one", async () => {
+  const onSelect = vi.fn();
+  renderLens({
+    structure: wrapped,
+    onSelect,
+    initialSelection: { kind: "node", ref: "e12" },
+  });
+
+  await lens.toggleWrappers("e10");
+
+  expect(onSelect).toHaveBeenLastCalledWith({ kind: "node", ref: "e10" });
+  await expect.poll(() => lens.rows.count()).toBe(3);
+});
+
+it("scrolls sideways only when the deepest row has no room for its ref and role", async () => {
+  // e20 › e21 › … › e59, unfolded: 40 levels, deeper than the panel is wide.
+  let deep: StructureTree["roots"][number] = {
+    ref: "e60",
+    role: "button",
+    name: "Save",
+    members: [],
+    children: [],
+  };
+  for (let index = 59; index >= 20; index -= 1)
+    deep = {
+      ref: `e${index}`,
+      role: "generic",
+      name: "",
+      members: [],
+      children: [deep, ...(index === 59 ? [{ ...deep, ref: "e61" }] : [])],
+    };
+  // Whether the navigator's scroll area is wider than the panel.
+  const sideways = async () =>
+    (await lens.tree.elementHandle())!.evaluate((tree) => {
+      const scroller = tree.closest(".overflow-auto")!;
+      return scroller.scrollWidth > scroller.clientWidth;
+    });
+  renderLens({ structure: wrapped });
+  await expect.poll(() => lens.rows.count()).toBe(3);
+  expect(await sideways()).toBe(false);
+  unmounts.pop()?.();
+
+  renderLens({ structure: { refCount: 42, roots: [deep] } });
+  await lens.toggleWrappers("e59");
+
+  await expect.poll(sideways).toBe(true);
 });

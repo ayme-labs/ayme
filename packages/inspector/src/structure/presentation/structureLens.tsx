@@ -1,4 +1,12 @@
-import { ArrowRightIcon, BoxIcon, BracesIcon, WrenchIcon } from "lucide-react";
+import { useEffect } from "react";
+import {
+  ArrowRightIcon,
+  BoxIcon,
+  BracesIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  WrenchIcon,
+} from "lucide-react";
 
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { cn } from "@ayme-dev/design-system/lib/utils";
@@ -7,9 +15,9 @@ import {
   structureRows,
   type MemberOwner,
   type StructureNode,
-  type StructureRow,
   type StructureTree,
 } from "../domain/structure";
+import { treeRows, type TreeRow, wrapperChain } from "../domain/treeRows";
 import {
   Empty,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
@@ -46,6 +54,11 @@ type RefNode = StructureNode & { ref: string };
  * `node` selections. A node's detail runs the single-element tools that can take its
  * ref and shows what the model sees of it. Hovering a node highlights it on
  * the page; the app highlights the selected one.
+ *
+ * Chains of generic wrappers fold into one row, see {@link treeRows}. A
+ * chain is unfolded while its outermost wrapper's ref is in
+ * `unfoldedChains`, or while a wrapper the fold hides is selected, which
+ * then adds it there. The app drops refs that leave the page.
  */
 export function structureLens({
   structure,
@@ -55,6 +68,8 @@ export function structureLens({
   onHover,
   elementTools,
   renderRun,
+  unfoldedChains,
+  onUnfoldedChainsChange,
 }: {
   structure: StructureTree;
   capture: StructureCapture;
@@ -63,18 +78,50 @@ export function structureLens({
   onHover: OnHover;
   elementTools: readonly ElementToolSummary[];
   renderRun: RenderRun;
+  /** The outermost wrappers' refs of the chains the person unfolded. */
+  unfoldedChains: ReadonlySet<string>;
+  onUnfoldedChainsChange: (unfoldedChains: ReadonlySet<string>) => void;
 }): Lens {
   const rows = [...structureRows(structure.roots)];
+  const selectedRef = selection.kind === "node" ? selection.ref : undefined;
+  const hides = (chain: readonly StructureNode[], ref?: string) =>
+    chain.slice(1, -1).some((link) => link.ref === ref);
+  // A picked wrapper the fold hides unfolds its chain, which then stays
+  // unfolded like one the person unfolded.
+  let selectedChain: string | undefined;
+  const shownRows = [
+    ...treeRows(structure.roots, (chain) => {
+      if (!hides(chain, selectedRef)) return unfoldedChains.has(chain[0]!.ref!);
+      selectedChain = chain[0]!.ref!;
+      return true;
+    }),
+  ];
+  const settled = new Set(unfoldedChains);
+  if (selectedChain) settled.add(selectedChain);
+  const toggle = (outer: RefNode) => {
+    const next = new Set(settled);
+    if (!next.delete(outer.ref)) next.add(outer.ref);
+    // Folding hides the selected wrapper: the outermost one stays in view.
+    else if (hides(wrapperChain(outer), selectedRef))
+      onSelect({ kind: "node", ref: outer.ref });
+    onUnfoldedChainsChange(next);
+  };
   return {
     id: "structure",
     label: "Structure",
     tree: (
       <StructureTreeView
-        rows={rows}
+        rows={shownRows}
         capture={capture}
-        selectedRef={selection.kind === "node" ? selection.ref : undefined}
+        selectedRef={selectedRef}
         onPick={(ref) => onSelect({ kind: "node", ref })}
+        onToggle={toggle}
         onHover={onHover}
+        settle={
+          settled.size > unfoldedChains.size
+            ? () => onUnfoldedChainsChange(settled)
+            : undefined
+        }
       />
     ),
     searchEntries: rows.flatMap(({ node }): SearchEntry[] =>
@@ -122,14 +169,20 @@ function StructureTreeView({
   capture,
   selectedRef,
   onPick,
+  onToggle,
   onHover,
+  settle,
 }: {
-  rows: readonly StructureRow[];
+  rows: readonly TreeRow[];
   capture: StructureCapture;
   selectedRef?: string;
   onPick: (ref: string) => void;
+  onToggle: (outer: RefNode) => void;
   onHover: OnHover;
+  /** Stores the unfolded chains as this tree has them, when they differ. */
+  settle?: () => void;
 }) {
+  useEffect(() => settle?.(), [settle]);
   return (
     <div className="flex flex-col gap-1">
       {capture.error && (
@@ -142,16 +195,20 @@ function StructureTreeView({
           role="tree"
           aria-label="Page structure"
           {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
-          className="flex flex-col"
+          // Monospace, so `ch` below measures the rows' characters.
+          className="flex flex-col font-mono text-xs"
+          // The panel scrolls sideways only when a row's indent leaves no
+          // room for what it never cuts.
+          style={{ minWidth: treeMinWidth(rows) }}
         >
-          {rows.map(({ node, depth }, index) =>
-            hasRef(node) ? (
+          {rows.map((row, index) =>
+            hasRef(row.node) ? (
               <NodeRow
-                key={node.ref}
-                node={node}
-                depth={depth}
-                selected={node.ref === selectedRef}
+                key={row.node.ref}
+                row={{ ...row, node: row.node }}
+                selectedRef={selectedRef}
                 onPick={onPick}
+                onToggle={onToggle}
                 onHover={onHover}
               />
             ) : (
@@ -159,13 +216,15 @@ function StructureTreeView({
               <div
                 key={index}
                 role="treeitem"
-                aria-level={depth + 1}
+                aria-level={row.depth + 1}
                 aria-selected={false}
                 aria-disabled
                 className={rowClass}
-                style={{ paddingLeft: rowIndent(depth) }}
+                style={{ paddingLeft: rowIndent(row.depth) }}
               >
-                <span className={nameClass}>{JSON.stringify(node.name)}</span>
+                <span className={nameClass}>
+                  {JSON.stringify(row.node.name)}
+                </span>
               </div>
             )
           )}
@@ -183,58 +242,163 @@ function StructureTreeView({
   );
 }
 
+// Rows never scroll sideways: past the panel's width the name is cut
+// first, the member tag only past its share.
 const rowClass =
-  "flex w-full items-baseline gap-1.5 rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
-// Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-const nameClass = "min-w-0 truncate text-green-700 dark:text-green-300";
+  "relative flex items-baseline gap-1.5 overflow-hidden rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
+const nameClass =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+  "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
 
+// The indent leaves a gutter for the fold toggle.
 function rowIndent(depth: number) {
-  return 6 + depth * 12;
+  return 18 + depth * 12;
 }
 
+/**
+ * The tree's narrowest width: what its widest row needs for what it never
+ * cuts, its indent, refs and role, and on a folded row the outer ref, the
+ * pill and the `›`. One term per depth, the row there with the most
+ * characters, since rows at one depth share their pixels.
+ */
+function treeMinWidth(rows: readonly TreeRow[]) {
+  const chars = new Map<number, number>();
+  for (const { node, depth, folded } of rows) {
+    // Each item is followed by a 6px gap; the row ends in 6px of padding.
+    let width = `${node.ref ?? ""} ${node.role} `.length;
+    if (folded)
+      width += `${folded.outer.ref} ${folded.hidden || ""} more › `.length;
+    chars.set(depth, Math.max(chars.get(depth) ?? 0, width));
+  }
+  const terms = [...chars].map(
+    ([depth, width]) => `calc(${rowIndent(depth) + 30}px + ${width}ch)`
+  );
+  return `max(${terms.join(", ")})`;
+}
+
+/**
+ * A node's row. A folded row is the generic its chain of wrappers ends in,
+ * led by the chain's outermost wrapper: `e1 [1 more] › e3 generic`. Each ref
+ * picks its node; the rest of the row picks the row's node.
+ */
 function NodeRow({
-  node,
-  depth,
-  selected,
+  row: { node, depth, folded, unfolded },
+  selectedRef,
   onPick,
+  onToggle,
   onHover,
 }: {
-  node: RefNode;
-  depth: number;
-  selected: boolean;
+  row: TreeRow & { node: RefNode };
+  selectedRef?: string;
   onPick: (ref: string) => void;
+  onToggle: (outer: RefNode) => void;
   onHover: OnHover;
 }) {
+  const outer = folded && hasRef(folded.outer) ? folded.outer : undefined;
+  const hidden = folded?.hidden ?? 0;
+  const toggle = outer ?? (unfolded ? node : undefined);
+  const Chevron = outer ? ChevronRightIcon : ChevronDownIcon;
   return (
-    <button
-      type="button"
+    <div
       role="treeitem"
       aria-level={depth + 1}
-      aria-selected={selected}
+      aria-selected={node.ref === selectedRef}
+      aria-label={
+        outer
+          ? `${nodeLabel(node)}, wrapped from ${outer.ref}`
+          : nodeLabel(node)
+      }
       className={cn(
         rowClass,
-        "hover:bg-muted",
-        selected && "bg-accent hover:bg-accent"
+        "cursor-default hover:bg-muted",
+        node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
       style={{ paddingLeft: rowIndent(depth) }}
       onClick={() => onPick(node.ref)}
       onMouseEnter={() => onHover({ ref: node.ref })}
       onMouseLeave={() => onHover(undefined)}
     >
-      <span className="text-primary">{node.ref}</span>
-      <span>{node.role}</span>
-      {node.name && (
-        <span className={nameClass}>{JSON.stringify(node.name)}</span>
-      )}
-      {node.member && (
-        <span
-          className="ml-auto max-w-[45%] min-w-0 shrink-0 truncate pl-1.5 text-xs text-muted-foreground"
-          title={node.member}
+      {toggle && (
+        <button
+          type="button"
+          aria-label={outer ? "Unfold wrappers" : "Fold wrappers"}
+          // The wrappers' state, not the row's: the row's children show either way.
+          aria-expanded={!outer}
+          data-chain={toggle.ref}
+          className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
+          style={{ left: rowIndent(depth) - 15 }}
+          onClick={(event) => {
+            event.stopPropagation();
+            const tree = event.currentTarget.closest('[role="tree"]');
+            const focused = event.currentTarget.matches(":focus");
+            onToggle(toggle);
+            // The toggle moves to the chain's other row: focus follows it.
+            if (focused)
+              requestAnimationFrame(() =>
+                tree
+                  ?.querySelector<HTMLElement>(`[data-chain="${toggle.ref}"]`)
+                  ?.focus()
+              );
+          }}
         >
-          {node.tag}
-        </span>
+          <Chevron className="size-3" aria-hidden />
+        </button>
       )}
-    </button>
+      {outer && (
+        <>
+          <button
+            type="button"
+            aria-label={`${outer.ref} generic`}
+            aria-pressed={outer.ref === selectedRef}
+            className="shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPick(outer.ref);
+            }}
+            onMouseEnter={() => onHover({ ref: outer.ref })}
+            onMouseLeave={() => onHover({ ref: node.ref })}
+          >
+            {outer.ref}
+          </button>
+          {hidden > 0 && (
+            // The toggle already says this to assistive technology.
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              className="shrink-0 self-center rounded-full border bg-muted px-1.5 font-sans text-[10px] leading-4 text-muted-foreground hover:text-foreground"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggle(outer);
+              }}
+            >
+              {hidden} more
+            </button>
+          )}
+          <span className="shrink-0 text-muted-foreground" aria-hidden>
+            ›
+          </span>
+        </>
+      )}
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-baseline gap-1.5 text-left"
+      >
+        <span className="shrink-0 text-primary">{node.ref}</span>
+        <span className="shrink-0">{node.role}</span>
+        {node.name && (
+          <span className={nameClass}>{JSON.stringify(node.name)}</span>
+        )}
+        {node.member && (
+          <span
+            className="ml-auto max-w-[45%] min-w-0 truncate pl-1.5 text-xs text-muted-foreground"
+            title={node.member}
+          >
+            {node.tag}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 

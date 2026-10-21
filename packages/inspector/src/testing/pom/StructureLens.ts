@@ -52,11 +52,40 @@ export class StructureLens extends PanelPart {
     return (await tag.count()) ? tag.getAttribute("title") : null;
   }
 
+  /**
+   * Selects the outermost wrapper of a folded chain by its ref, which leads
+   * the row the chain folds into.
+   */
+  @ayme.action({
+    description:
+      "Selects the outermost wrapper of a folded chain of wrappers by its ref.",
+  })
+  async pickWrapper(ref: string) {
+    await this.tree.getByRole("button", { name: `${ref} generic` }).click();
+  }
+
+  /**
+   * Folds or unfolds a chain of wrappers: on its folded row, by the ref of
+   * the generic it ends in, or on its outermost wrapper's row when unfolded.
+   */
+  @ayme.action({
+    description:
+      "Folds or unfolds a chain of generic wrappers, from the row that has the toggle.",
+  })
+  async toggleWrappers(ref: string) {
+    await this.node(ref)
+      .getByRole("button", { name: /^(Unfold|Fold) wrappers$/ })
+      .click();
+  }
+
   /** Selects a node; the page highlights the selected node. */
   @ayme.action({
     description: "Selects a node by its ref; the page highlights it.",
   })
   async pick(ref: string) {
-    await this.node(ref).click();
+    // The node's own button: a folded row also holds its outer wrapper's.
+    await this.node(ref)
+      .getByRole("button", { name: new RegExp(`^${ref} `) })
+      .click();
   }
 }

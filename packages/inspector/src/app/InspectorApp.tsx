@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
 import { Empty, InspectorRoot, useTabState } from "../shared";
@@ -19,7 +19,7 @@ import {
   type Selection,
   selectionHighlight,
 } from "../navigation";
-import { isStaleSelection, structureLens } from "../structure";
+import { isStaleSelection, structureLens, unfoldedOnPage } from "../structure";
 import { modelLens } from "../page-model";
 import { attachToolModels, toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
@@ -39,6 +39,10 @@ export function InspectorApp() {
     setViewState((current) => ({ ...current, lens }));
   const setSelection = (selection: Selection) =>
     setViewState((current) => withSelection(current, selection));
+  // Like a node selection, unfolded chains name refs, so a reload drops them.
+  const [unfoldedChains, setUnfoldedChains] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
@@ -87,6 +91,8 @@ export function InspectorApp() {
       onHover: runtime.highlight.hover,
       elementTools: runtime.elementTools,
       renderRun,
+      unfoldedChains,
+      onUnfoldedChainsChange: setUnfoldedChains,
     }),
     toolsLens({
       tools,
@@ -111,6 +117,13 @@ export function InspectorApp() {
   // reload waits for the first look at the page, until what it names is
   // there.
   const pageStateRead = runtime.pageState.capturedAt !== undefined;
+  // Unfolded chains whose outermost wrapper left the page are forgotten,
+  // once the page has been read.
+  const { structure } = runtime.pageState;
+  useEffect(() => {
+    if (pageStateRead)
+      setUnfoldedChains((current) => unfoldedOnPage(current, structure.roots));
+  }, [pageStateRead, structure]);
   const stale = isStaleSelection(selection, {
     hasView: view !== undefined,
     structure: runtime.pageState.structure,
