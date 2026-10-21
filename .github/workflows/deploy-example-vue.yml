@@ -71,7 +71,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       # Turbo hashes the VITE_* variables into every Vite package's build, so
       # the packages are built without them first and come from the builds
-      # CI already cached. Only the playground is built with them.
+      # CI already cached. Only the playground is built with them, and it skips
+      # the cache: with --only its hash leaves out the packages, so a cached
+      # playground could carry packages older than the ones just built.
       - name: Build the packages the playground uses
         run: pnpm exec turbo run build --filter=@ayme-dev/example-vue^... --env-mode=strict
       # ayme.dev proxies /playground/ to this copy, so the playground runs on
@@ -83,14 +85,14 @@ jobs:
       # agent" wizard until @ayme-dev/mcp is on npm; drop it then.
       - name: Build the playground for ayme.dev/playground/
         run: |
-          pnpm exec turbo run build --filter=@ayme-dev/example-vue --only --env-mode=strict
+          pnpm exec turbo run build --filter=@ayme-dev/example-vue --only --cache="local:,remote:" --env-mode=strict
           mv apps/example-vue/dist "$RUNNER_TEMP/playground"
         env:
           VITE_BASE_PATH: /playground/
           VITE_GTM_ID: GTM-T3H5D4DX
           VITE_AGENT_CONNECTION: "false"
       - name: Build the Pages artifact
-        run: pnpm exec turbo run build --filter=@ayme-dev/example-vue --only --env-mode=strict
+        run: pnpm exec turbo run build --filter=@ayme-dev/example-vue --only --cache="local:,remote:" --env-mode=strict
         env:
           VITE_BASE_PATH: /ayme/
           VITE_AGENT_CONNECTION: "false"
