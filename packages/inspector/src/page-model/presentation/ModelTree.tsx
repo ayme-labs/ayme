@@ -1,4 +1,10 @@
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   BoxIcon,
   BracesIcon,
@@ -25,11 +31,16 @@ import { LiveMark } from "../view/LiveMark";
 
 const splitStep = 0.05;
 
-/**
- * The objects the person opened or closed in the tree by hand, by path. The
- * rest are open while they are on the page and closed while they aren't.
- */
-export type OpenObjects = Readonly<Record<string, boolean>>;
+/** How the object tree is opened up, which outlives the tree's rows. */
+export type ObjectTree = {
+  /**
+   * The objects opened or closed by hand, by path. The rest are open while
+   * they are on the page and closed while they aren't.
+   */
+  open: Readonly<Record<string, boolean>>;
+  /** The selected object whose surrounding objects were last opened. */
+  revealed?: string;
+};
 
 const kindIcon: Record<PageObjectNode["kind"], LucideIcon> = {
   page: FileIcon,
@@ -56,8 +67,8 @@ export function ModelTree({
   onPickModel,
   panes,
   onPanesChange,
-  openObjects,
-  onOpenObjectsChange,
+  objectTree,
+  onObjectTreeChange,
 }: {
   /** The page's host, e.g. localhost:5173. */
   host: string;
@@ -74,34 +85,51 @@ export function ModelTree({
   /** Which panes are open and how they share the height; the panel keeps it. */
   panes: ModelPanes;
   onPanesChange: (panes: ModelPanes) => void;
-  openObjects: OpenObjects;
-  onOpenObjectsChange: (openObjects: OpenObjects) => void;
+  objectTree: ObjectTree;
+  onObjectTreeChange: (objectTree: ObjectTree) => void;
 }) {
   const { objectsOpen, modelsOpen, split } = panes;
   const bothOpen = objectsOpen && modelsOpen;
 
   const selectedPath = selection.kind === "object" ? selection.path : undefined;
+  const { open: openObjects } = objectTree;
   const rows = [...treeRows(objects, 1, openObjects)];
   const setOpen = (path: string, open: boolean) =>
-    onOpenObjectsChange({ ...openObjects, [path]: open });
+    onObjectTreeChange({
+      ...objectTree,
+      open: { ...openObjects, [path]: open },
+    });
 
   // A selection inside a closed object, from search or a link, opens the
   // objects around it: once per selection, when it is in the tree, so a
-  // later close stays closed.
-  const revealed = useRef<string | undefined>(undefined);
+  // later close stays closed, across lens switches too.
   useEffect(() => {
-    if (selectedPath === revealed.current) return;
+    if (selectedPath === objectTree.revealed) return;
     const around =
       selectedPath === undefined ? [] : ancestors(objects, selectedPath);
     if (around === undefined) return;
-    revealed.current = selectedPath;
     const closed = around.filter((node) => !isOpen(node, openObjects));
-    if (!closed.length) return;
-    onOpenObjectsChange({
-      ...openObjects,
-      ...Object.fromEntries(closed.map((node) => [node.path, true])),
+    onObjectTreeChange({
+      open: {
+        ...openObjects,
+        ...Object.fromEntries(closed.map((node) => [node.path, true])),
+      },
+      revealed: selectedPath,
     });
-  }, [selectedPath, objects, openObjects, onOpenObjectsChange]);
+  }, [selectedPath, objects, objectTree, openObjects, onObjectTreeChange]);
+
+  // An object that closes on its own, as it leaves the page, takes the rows
+  // under it away; focus on one of them moves to the closest row left.
+  const tree = useRef<HTMLDivElement>(null);
+  const focused = focusedPath(tree.current);
+  useLayoutEffect(() => {
+    if (focused === undefined || rows.some(({ node }) => node.path === focused))
+      return;
+    const kept = (ancestors(objects, focused) ?? [])
+      .reverse()
+      .find((node) => rows.some((row) => row.node.path === node.path));
+    if (kept) rowElement(tree.current, kept.path)?.focus();
+  });
   const selectedModel =
     selection.kind === "model" ? selection.className : undefined;
 
@@ -113,7 +141,7 @@ export function ModelTree({
         onToggle={() => onPanesChange({ ...panes, objectsOpen: !objectsOpen })}
         grow={bothOpen ? split : 1}
       >
-        <div role="tree" aria-label="Page objects">
+        <div ref={tree} role="tree" aria-label="Page objects">
           <TreeRow
             label="Page /"
             name="/"
@@ -203,7 +231,7 @@ export function ModelTree({
 function* treeRows(
   nodes: readonly PageObjectNode[],
   depth: number,
-  openObjects: OpenObjects
+  openObjects: ObjectTree["open"]
 ): Generator<{ node: PageObjectNode; depth: number; open?: boolean }> {
   for (const node of nodes) {
     if (!node.children.length) {
@@ -216,7 +244,7 @@ function* treeRows(
   }
 }
 
-function isOpen(node: PageObjectNode, openObjects: OpenObjects) {
+function isOpen(node: PageObjectNode, openObjects: ObjectTree["open"]) {
   return openObjects[node.path] ?? node.live;
 }
 
@@ -234,6 +262,20 @@ function ancestors(
     if (below) return [node, ...below];
   }
   return undefined;
+}
+
+/** The path of the tree's row that has focus, before this render changes it. */
+function focusedPath(tree: HTMLElement | null) {
+  const root = tree?.getRootNode() as Document | ShadowRoot | undefined;
+  const active = root?.activeElement;
+  if (!tree || !active || !tree.contains(active)) return undefined;
+  return active.getAttribute("aria-label") ?? undefined;
+}
+
+function rowElement(tree: HTMLElement | null, path: string) {
+  return tree?.querySelector<HTMLElement>(
+    `[role="treeitem"][aria-label="${CSS.escape(path)}"]`
+  );
 }
 
 function rowClass(selected: boolean) {

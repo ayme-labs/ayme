@@ -20,7 +20,7 @@ import {
   PageDetail,
   type MemberView,
 } from "../view/ModelDetails";
-import { ModelTree, type OpenObjects } from "./ModelTree";
+import { ModelTree, type ObjectTree } from "./ModelTree";
 
 /**
  * The Model lens: the Page Objects on the page as a tree, and the Page
@@ -38,8 +38,8 @@ export function modelLens({
   renderRun,
   panes,
   onPanesChange,
-  openObjects,
-  onOpenObjectsChange,
+  objectTree,
+  onObjectTreeChange,
 }: {
   /** The page's host, e.g. localhost:5173. */
   host: string;
@@ -54,9 +54,9 @@ export function modelLens({
   /** The panes' open state and divider, which the panel remembers. */
   panes: ModelPanes;
   onPanesChange: (panes: ModelPanes) => void;
-  /** The objects opened or closed in the tree by hand, which the tab keeps. */
-  openObjects: OpenObjects;
-  onOpenObjectsChange: (openObjects: OpenObjects) => void;
+  /** How the object tree is opened up, which the tab keeps. */
+  objectTree: ObjectTree;
+  onObjectTreeChange: (objectTree: ObjectTree) => void;
 }): Lens {
   const nodes = [...walk(pageModel.objects)];
   const byPath = new Map(nodes.map((node) => [node.path, node]));
@@ -90,8 +90,8 @@ export function modelLens({
         onPickModel={selectModel}
         panes={panes}
         onPanesChange={onPanesChange}
-        openObjects={openObjects}
-        onOpenObjectsChange={onOpenObjectsChange}
+        objectTree={objectTree}
+        onObjectTreeChange={onObjectTreeChange}
       />
     ),
     searchEntries: searchEntries(pageModel, nodes),

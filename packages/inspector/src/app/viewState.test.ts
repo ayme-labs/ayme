@@ -15,7 +15,10 @@ it("comes back to the lens, selection and Runs region it was left with", () => {
     lens: "tools",
     selection: { kind: "tool", name: "ListPage_addItem" },
     runs: { open: false, all: true },
-    openObjects: { "InboxPage.taskDialog": true, InboxPage: false },
+    objectTree: {
+      open: { "InboxPage.taskDialog": true, InboxPage: false },
+      revealed: "InboxPage.taskDialog.taskForm",
+    },
   };
 
   expect(decodeViewState(JSON.parse(JSON.stringify(left)))).toEqual(left);
@@ -50,7 +53,7 @@ it("opens on the Model lens at the page, with Runs open on the selection's runs"
     lens: "model",
     selection: { kind: "page" },
     runs: { open: true, all: false },
-    openObjects: {},
+    objectTree: { open: {} },
   });
 });
 
@@ -71,11 +74,14 @@ it("falls back to the default for each malformed value", () => {
       lens: "elsewhere",
       selection: { kind: "member" },
       runs: { open: "yes", all: true },
-      openObjects: { InboxPage: "yes", "InboxPage.list": false },
+      objectTree: {
+        open: { InboxPage: "yes", "InboxPage.list": false },
+        revealed: 3,
+      },
     })
   ).toEqual({
     ...defaultViewState,
     runs: { open: true, all: true },
-    openObjects: { "InboxPage.list": false },
+    objectTree: { open: { "InboxPage.list": false } },
   });
 });

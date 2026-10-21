@@ -24,7 +24,7 @@ import {
   Navigator as NavigatorPart,
 } from "../../testing";
 import { modelLens } from "./modelLens";
-import type { OpenObjects } from "./ModelTree";
+import type { ObjectTree } from "./ModelTree";
 
 // Component tests: the Model lens in the navigator and the detail pane, with
 // a fixture page model, driven through the Inspector's page objects on
@@ -163,7 +163,7 @@ function renderLens({
     const [selection, setSelection] = useState(initial);
     const [activeLens, setActiveLens] = useState<LensId>("model");
     const [panes, setPanes] = useState(defaultPreferences.modelPanes);
-    const [openObjects, setOpenObjects] = useState<OpenObjects>({});
+    const [objectTree, setObjectTree] = useState<ObjectTree>({ open: {} });
     const [shownModel, setModel] = useState(initialModel);
     setPageModel = setModel;
     const model = modelLens({
@@ -179,8 +179,8 @@ function renderLens({
       renderRun,
       panes,
       onPanesChange: setPanes,
-      openObjects,
-      onOpenObjectsChange: setOpenObjects,
+      objectTree,
+      onObjectTreeChange: setObjectTree,
     });
     return (
       <div className="flex" style={{ width: 800, height: 600 }}>
@@ -354,6 +354,32 @@ it("opens the objects around a selection that comes before its object does, as a
   await lens.toggleObject("InboxPage.taskDialog");
   changePage(withDialog(false));
   await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(false);
+});
+
+it("keeps an object closed around the selection after switching lenses and back", async () => {
+  renderLens({
+    pageModel: withDialog(false),
+    selection: { kind: "object", path: "InboxPage.taskDialog.taskForm" },
+  });
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(true);
+  await lens.toggleObject("InboxPage.taskDialog");
+  await expect.poll(() => lens.isOpen("InboxPage.taskDialog")).toBe(false);
+
+  await navigator.showLens("Structure");
+  await expect.poll(() => lens.objectTree.count()).toBe(0);
+  await navigator.showLens("Model");
+
+  await expect.poll(() => lens.objectTree.count()).toBe(1);
+  expect(await lens.isOpen("InboxPage.taskDialog")).toBe(false);
+});
+
+it("moves focus to the object that closes as it leaves the page, from a row under it", async () => {
+  const { changePage } = renderLens({ pageModel: withDialog(true) });
+  await lens.object("InboxPage.taskDialog.taskForm").focus();
+
+  changePage(withDialog(false));
+
+  await expect.poll(() => lens.hasFocus("InboxPage.taskDialog")).toBe(true);
 });
 
 it("lists every Page Object Model the page knows, marking those not on the page", async () => {

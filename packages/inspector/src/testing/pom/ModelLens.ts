@@ -66,6 +66,13 @@ export class ModelLens extends PanelPart {
     return paths.map((path) => path ?? "");
   }
 
+  /** Whether an object's row has keyboard focus. */
+  async hasFocus(path: string): Promise<boolean> {
+    return this.object(path).evaluate(
+      (row) => (row.getRootNode() as Document).activeElement === row
+    );
+  }
+
   @ayme.action({
     description: "Opens or closes an object in the tree with its chevron.",
   })

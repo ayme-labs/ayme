@@ -71,9 +71,9 @@ export function InspectorApp() {
         .map((tool) => tool.name),
       panes: preferences.modelPanes,
       onPanesChange: (modelPanes) => updatePreferences({ modelPanes }),
-      openObjects: viewState.openObjects,
-      onOpenObjectsChange: (openObjects) =>
-        setViewState((current) => ({ ...current, openObjects })),
+      objectTree: viewState.objectTree,
+      onObjectTreeChange: (objectTree) =>
+        setViewState((current) => ({ ...current, objectTree })),
       selection,
       onSelect: setSelection,
       onHover: runtime.highlight.hover,
