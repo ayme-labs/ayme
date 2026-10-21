@@ -165,6 +165,47 @@ describe("The two parts of a Change Record, in Chromium", () => {
     ).rejects.toThrow(/^The child failed\.$/);
   });
 
+  it("keeps a prefix an enclosing action put on its child's error while replacing the record", async () => {
+    let ref = "";
+    const clickThenFail: CustomTool = {
+      name: "click_then_fail",
+      description: "Clicks Add, then fails.",
+      async execute() {
+        document.querySelector("button")!.click();
+        throw new Error("The child failed.");
+      },
+    };
+    const prefixThenRethrow: CustomTool = {
+      name: "prefix_then_rethrow",
+      description: "Runs click_then_fail and fails with its error, prefixed.",
+      async execute(_target, { run }) {
+        try {
+          await run("click_then_fail", { ref });
+        } catch (error) {
+          (error as Error).message =
+            `Checkout failed: ${(error as Error).message}`;
+          throw error;
+        }
+      },
+    };
+    start({ customTools: [clickThenFail, prefixThenRethrow] });
+    const by = callers.inspector;
+    const { structure } = await ayme.tools.run("snapshot", {}, { by });
+    ref = structure.match(/(e\d+) button "Add"/)![1]!;
+
+    const error: unknown = await ayme.tools
+      .run("prefix_then_rethrow", { ref }, { by })
+      .catch((caught: unknown) => caught);
+
+    const { message } = error as Error;
+    expect(message).toMatch(
+      /^Checkout failed: The child failed\.\n\nchanges:\n/
+    );
+    // One record: the enclosing action's.
+    expect(message.match(/changes:/g)).toHaveLength(1);
+    expect(message).toContain("Item 1");
+  });
+
   it("leaves a failed action's error as it is when nothing changed", async () => {
     const failing: CustomTool = {
       name: "fail",

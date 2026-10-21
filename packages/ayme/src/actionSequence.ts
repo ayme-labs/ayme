@@ -163,15 +163,49 @@ export async function runAction(
   return out;
 }
 
-/** A failed action's error message as it was before a Change Record ended it. */
-const messagesWithoutRecord = new WeakMap<Error, string>();
+/** The Change Record a failed action's error carries, and the text it added to the message. */
+type FailedRecord = {
+  record: Pick<ActionResult, "changes_before" | "changes">;
+  suffix: string;
+};
+
+const failedRecords = new WeakMap<Error, FailedRecord>();
+
+/** An error's message without the Change Record Ayme ended it with. */
+function messageWithoutRecord(error: Error): string {
+  const suffix = failedRecords.get(error)?.suffix;
+  return suffix && error.message.endsWith(suffix)
+    ? error.message.slice(0, -suffix.length)
+    : error.message;
+}
+
+/**
+ * Package-internal: what a failed action reported with its error, for a
+ * Caller that bounds it itself, as the Goal Loop's step history does: the
+ * error's message without the record, whether the page changed, and what the
+ * action changed. Undefined for an error that carries no record.
+ */
+export function failedActionRecord(
+  error: unknown
+): { message: string; page_changed: boolean; changes?: string } | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const failed = failedRecords.get(error);
+  if (!failed) return undefined;
+  const { changes_before, changes } = failed.record;
+  return {
+    message: messageWithoutRecord(error),
+    page_changed: Boolean(changes_before || changes),
+    ...(changes ? { changes } : {}),
+  };
+}
 
 /**
  * End a failed action's error message with the parts of its Change Record
  * that have a change, under the names an action result gives them. An error
  * that fails an enclosing action too ends with that action's record instead,
  * which covers the inner one's, as its result would, or with none when the
- * enclosing action left nothing changed.
+ * enclosing action left nothing changed. Only the text Ayme added is
+ * replaced: a prefix the application put on the message in between stays.
  */
 function appendChangeRecord(
   error: Error,
@@ -180,15 +214,16 @@ function appendChangeRecord(
   const parts = (["changes_before", "changes"] as const).flatMap((name) =>
     record[name] ? [`${name}:\n${record[name]}`] : []
   );
-  const message = messagesWithoutRecord.get(error) ?? error.message;
-  if (!parts.length && message === error.message) return;
-  messagesWithoutRecord.set(error, message);
+  const message = messageWithoutRecord(error);
+  const suffix = parts.map((part) => `\n\n${part}`).join("");
+  if (message + suffix === error.message) return;
   // An own property, as some errors' `message` is a getter only.
   Object.defineProperty(error, "message", {
-    value: [message, ...parts].join("\n\n"),
+    value: message + suffix,
     configurable: true,
     writable: true,
   });
+  failedRecords.set(error, { record, suffix });
 }
 
 /** Where an action's Change Record is read from: its two starts. */
