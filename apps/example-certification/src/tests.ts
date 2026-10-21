@@ -202,7 +202,7 @@ async function answerAcrossFullLoad(
 const counterSchemas = (pom: string) => [
   {
     name: `${pom}.increment`,
-    description: "Increment the counter.",
+    description: "Run increment.",
     inputSchema: {
       type: "object",
       properties: {},

@@ -6,7 +6,7 @@ import "urlpattern-polyfill";
 
 // The compiler plugin in vitest.config.ts registers this POM's manifest.
 import { ListPage } from "../../playwright/pom/ListPage";
-import { useAyme, usePageObject } from "@ayme-dev/vue";
+import { useAyme } from "@ayme-dev/vue";
 import App from "../App.vue";
 
 describe("example lifecycle", () => {
@@ -23,8 +23,7 @@ describe("example lifecycle", () => {
     const wrapper = mount(
       defineComponent({
         setup() {
-          useAyme({ webMCP: { enabled: true } });
-          usePageObject(ListPage);
+          useAyme({ pageObjects: [ListPage], webMCP: { enabled: true } });
           return () => h("div");
         },
       })

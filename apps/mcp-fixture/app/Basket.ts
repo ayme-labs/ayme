@@ -21,7 +21,7 @@ export class Basket {
     this.items = page.getByRole("listitem");
   }
 
-  @ayme.action({ description: "Read the basket's heading." })
+  @ayme.action
   async readHeading() {
     return this.heading.textContent();
   }

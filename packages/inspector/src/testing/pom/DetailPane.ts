@@ -1,4 +1,3 @@
-import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { ModelDetailView } from "./ModelDetailView";
@@ -8,7 +7,6 @@ import { RunCard } from "./RunCard";
 import { ToolPage } from "./ToolPage";
 
 /** The detail pane: the view of what's selected, with its run cards. */
-@ayme
 export class DetailPane extends PanelPart {
   /** The Model lens's view of the page, a Page Object or a model. */
   readonly model: ModelDetailView;

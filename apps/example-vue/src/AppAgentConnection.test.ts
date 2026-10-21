@@ -8,7 +8,7 @@ import App from "./App.vue";
 const useAyme = vi.hoisted(() =>
   vi.fn(() => ({ ayme: { runs: { subscribe: () => () => {} } } }))
 );
-vi.mock("@ayme-dev/vue", () => ({ useAyme, usePageObject: vi.fn() }));
+vi.mock("@ayme-dev/vue", () => ({ useAyme }));
 const stubs = { ListDemo: true, PeekCheck: true };
 
 enableAutoUnmount(afterEach);

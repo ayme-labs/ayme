@@ -1,4 +1,3 @@
-import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
@@ -6,7 +5,6 @@ import { RunCard } from "./RunCard";
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A tool's page in the detail pane. */
-@ayme
 export class ToolPage extends PanelPart {
   /** The tool's name. */
   readonly title: Locator;

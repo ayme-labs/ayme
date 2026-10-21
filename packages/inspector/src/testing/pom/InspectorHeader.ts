@@ -28,7 +28,7 @@ export class ThemeSwitch {
     return current;
   }
 
-  @ayme.action({ description: "Switches to a theme." })
+  @ayme.action
   async choose(choice: ThemeChoice) {
     for (let presses = 0; presses < 3; presses += 1) {
       if ((await this.current()) === choice) return;
@@ -74,7 +74,6 @@ export class LayoutMenu {
  * The panel's header: the title, the Connections pill, the theme switch,
  * the layout menu and collapse. The panel drags by it.
  */
-@ayme
 export class InspectorHeader extends PanelPart {
   readonly title: Locator;
   readonly connections: Connections;
@@ -98,7 +97,7 @@ export class InspectorHeader extends PanelPart {
     });
   }
 
-  @ayme.action({ description: "Collapses the panel." })
+  @ayme.action
   async collapse() {
     await this.collapseButton.click();
   }

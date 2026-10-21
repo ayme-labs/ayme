@@ -8,7 +8,6 @@ import { RefField } from "./RefField";
  * `generate_locator`'s form in a run card: one group per page object class,
  * each with a container and its targets, by group number from 1.
  */
-@ayme
 export class LocatorGroups extends PanelPart {
   readonly addGroupButton: Locator;
 
@@ -79,14 +78,14 @@ export class LocatorGroups extends PanelPart {
     return this.group(number).getByRole("alert");
   }
 
-  @ayme.action({ description: "Removes a target from a group." })
+  @ayme.action
   async removeTarget(number: number, ref: string) {
     await this.group(number)
       .getByRole("button", { name: `Remove ${ref}`, exact: true })
       .click();
   }
 
-  @ayme.action({ description: "Removes a group." })
+  @ayme.action
   async removeGroup(number: number) {
     await this.group(number)
       .getByRole("button", { name: `Remove group ${number}` })

@@ -25,7 +25,7 @@ export class ProjectsPage {
     this.page = page;
   }
 
-  @ayme.action({ description: "Create a project with the given name." })
+  @ayme.action
   async createProject(name: string) {
     await this.page.getByRole("button", { name: "New project" }).click();
     await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
@@ -43,10 +43,12 @@ Your framework package starts Ayme at the root of your app: `AymeProvider` in Vu
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
 
-const ayme = createAyme({ webMCP: { enabled: true } });
+const ayme = createAyme({
+  pageObjects: [ProjectsPage],
+  webMCP: { enabled: true },
+});
 const stop = ayme.start();
 
-ayme.pom.register(ProjectsPage);
 await ayme.tools.run("ProjectsPage.createProject", { name: "Launch plan" });
 ```
 

@@ -1,4 +1,3 @@
-import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
@@ -12,7 +11,6 @@ export type ModelDetailSection =
  * actions (run through the run slot) and the members; the page shows its
  * page-wide tools.
  */
-@ayme
 export class ModelDetailView extends PanelPart {
   readonly title: Locator;
   /** The link from a Page Object or a child Page Object member to its model. */

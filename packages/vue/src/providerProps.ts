@@ -25,6 +25,10 @@ export const providerProps = {
     required: false,
   },
   customTools: { type: Array as PropType<CustomTool[]>, required: false },
+  pageObjects: {
+    type: Array as PropType<AymeOptions["pageObjects"]>,
+    required: false,
+  },
   /** @experimental */
   goalLoop: {
     type: Function as PropType<GoalLoopDecisionFunction>,

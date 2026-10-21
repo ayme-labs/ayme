@@ -20,7 +20,6 @@ export type ArgumentValue =
  * The run card: runs one tool. Run is always there; when the tool needs
  * input, the first press opens the typed form.
  */
-@ayme
 export class RunCard extends PanelPart {
   readonly runButton: Locator;
   /** Why the tool is unavailable, under its name; absent while it's available. */

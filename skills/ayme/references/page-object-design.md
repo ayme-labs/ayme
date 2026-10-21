@@ -66,7 +66,7 @@ class ProfileMenuContent {
 // On the parent POM, which keeps the trigger:
 readonly content = new ProfileMenuContent(this.page);
 
-@ayme.action({ description: "Open the signed-in user profile menu." })
+@ayme.action
 async open() {
   await this.menu.open();
   return this.content;
@@ -99,6 +99,16 @@ Use names that explain the action and scope. `openCreateMenu()` communicates the
 transition; `clickPlus()` describes an implementation detail.
 `openProjectCreation()` opens a form; `create()` completes creation.
 
+## Describe what the action means for the product
+
+An agent sees a tool's name, its input schema, its availability and, after a
+call, what changed on the page, for one user, in this view. A description says
+what the action means beyond that, as product docs would: who may do it, and
+what it commits that outlives the page or reaches other people. An action that
+only changes the UI, such as opening a menu or filling a field, needs none: a
+bare `@ayme.action` on `openCreateMenu()` says as much as "Open the create
+menu." would.
+
 ## Make actions do something
 
 Mark a method with `@ayme.action` only when it does something a user does:
@@ -109,7 +119,10 @@ as a tool only repeats it. Keep such reads as plain methods or locators for
 tests and other code.
 
 ```ts
-@ayme.action({ description: "Archive the selected project." })
+@ayme.action({
+  description:
+    "Archived projects disappear for every member until restored from Archived.",
+})
 async archive() {
   await this.archiveButton.click();
   return this;
@@ -139,8 +152,8 @@ it returned one, and a call is refused with that reason before anything runs.
 [Action availability](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#action-availability)
 has the signature, the example and the rules.
 
-The reason states the fact ("No item is selected"); the description states the
-condition ("Removes the selected item. Needs a selection."). The predicate runs
+The reason states the fact ("No item is selected"), so the description need not
+repeat the condition. The predicate runs
 with Ayme's observation of the page, not with the call, so it only reads:
 visibility, enabled state, text, counts. It never clicks, scrolls, focuses or
 changes the page. One predicate can guard several actions.

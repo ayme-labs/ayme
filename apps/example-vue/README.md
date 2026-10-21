@@ -3,14 +3,14 @@
 This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme](https://ayme-labs.github.io/ayme/) so developers can try Ayme WebMCP before adding it to their own project. This README is for people reading the repository; visitors follow the instructions on the page itself.
 
 - The demo app lets you add items and archive them through a confirmation dialog.
-- A switch above the app shows its Page Object code instead: the files in `playwright/pom` as they are, highlighted, and the `useAyme` and `usePageObject` calls that wire them into `App.vue`, as the Vue guide sets them up. The app and the code sit side by side in a strip that scrolls sideways, so the app stays on the page, a scroll away, and a tool that acts on it scrolls it back into view. `ignore` keeps the switch and the code out of Structural Page State, and `scripts/verify-browser-output.mjs` allows the Page Object source in the output only verbatim, as the text the code view shows. `pnpm run build` builds the app twice, into `dist` with Ayme and, with `--mode without-ayme`, into `dist-without-ayme` as a build without Ayme, and the same script then checks the second output for any trace of Ayme: the runtime, the compiled Page Object Models, their action descriptions and locator calls, Playwright and the Inspector.
+- A switch above the app shows its Page Object code instead: the files in `playwright/pom` as they are, highlighted, and the `useAyme` call that wires them into `App.vue`, as the Vue guide sets them up. The app and the code sit side by side in a strip that scrolls sideways, so the app stays on the page, a scroll away, and a tool that acts on it scrolls it back into view. `ignore` keeps the switch and the code out of Structural Page State, and `scripts/verify-browser-output.mjs` allows the Page Object source in the output only verbatim, as the text the code view shows. `pnpm run build` builds the app twice, into `dist` with Ayme and, with `--mode without-ayme`, into `dist-without-ayme` as a build without Ayme, and the same script then checks the second output for any trace of Ayme: the runtime, the compiled Page Object Models, their action descriptions and locator calls, Playwright and the Inspector.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
 - `@ayme` and `@ayme.action` choose the Page Object Tools. Tool descriptions come from the decorator.
 - Registered page tools use their fully qualified POM method name, such as `ListPage.addItem`. A collection component action is registered once, at its collection path, such as `ListPage.items.archive`.
 - A collection component action receives a `ref` (the Structural Ref of the instance's Page Object Root, as labelled in the page state) followed by an `args` object derived from its TypeScript method parameters: `ListPage.items.archive({ ref: "e5", args: {} })`.
 - The bundler-neutral POM compiler reads the nearest `tsconfig.json` and derives each decorated method's input schema and each public `Locator` member as POM metadata. The Vite plugin is a thin adapter that places this metadata in the browser bundle. It derives nested, JSON-shaped object inputs too; the decorator does not duplicate parameter types or schemas.
 - POM metadata also describes components constructed from a locator root, including repeated components exposed as paths such as `items[0].archiveButton`.
-- `App.vue` calls `useAyme()` to own the runtime and `usePageObject(ListPage)` to register the imported POM instance at setup. `ListPage` extends `AppPage`, the page base class whose `present` checks the URL against the page's `path`, and `ListItem` and `ArchiveDialog` extend `AppComponent`, whose `root` names their container, as the Page Object Models guide recommends.
+- `App.vue` calls `useAyme()` to own the runtime and lists `ListPage` in its `pageObjects` option to register it at setup. `ListPage` extends `AppPage`, the page base class whose `present` checks the URL against the page's `path`, and `ListItem` and `ArchiveDialog` extend `AppComponent`, whose `root` names their container, as the Page Object Models guide recommends.
 - The runtime publishes the same registered tool objects to `document.modelContext` and the in-page debug console.
 - The in-page Inspector (`inspector` in `App.vue`'s `useAyme`, off with `--mode inspector-disabled`) is a panel titled "ayme" that floats, docks left, right or bottom, or collapses to the ayme logo. Its navigator has three lenses: Model (the Page Objects on the page and the Page Object Models the page knows), Structure (the Structural Page State an agent receives, each node tagged with the member it maps to) and Tools (every tool the panel can run now, published or not). Selecting anything opens its detail, where the same run card runs its tools with a typed form; a tool's page and a structure node's detail also show "What the model sees", the definitions, page state and schemas an agent gets. Runs lists the runs made from the panel with their steps.
 - The Inspector keeps its view live as the demo changes without recording anything an agent would see. It does not use framework bindings or element identity.
@@ -30,14 +30,13 @@ The demo UI is built entirely from [shadcn-vue](https://www.shadcn-vue.com/) com
 
 ## Application setup
 
-Call the lifecycle API once in the application root, then register the pages there:
+Call the lifecycle API once in the application root, with the pages it registers:
 
 ```ts
-import { useAyme, usePageObject } from "@ayme-dev/vue";
+import { useAyme } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
 
-useAyme({ webMCP: { enabled: true } });
-usePageObject(ListPage);
+useAyme({ pageObjects: [ListPage], webMCP: { enabled: true } });
 ```
 
 `webMCP.enabled` turns publication on through `@ayme-dev/webmcp`, which the example depends on; it is off unless set. No page argument or application watcher is required. The counter page of the certification registers `CounterPage` in its `Counter` component instead, since the counter's presence is that component's lifetime, and disposal is automatic.

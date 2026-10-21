@@ -71,21 +71,23 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Composables
 
-Register the app's pages once, in the root `+layout.svelte` after `useAyme`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
 
 ```svelte
 <script lang="ts">
-  import { useAyme, usePageObject } from "@ayme-dev/svelte";
+  import { useAyme } from "@ayme-dev/svelte";
   import { ProjectsPage } from "$lib/pom/ProjectsPage";
   import { SettingsPage } from "$lib/pom/SettingsPage";
 
-  useAyme({ inspector: dev, agentConnection: dev });
-  usePageObject(ProjectsPage);
-  usePageObject(SettingsPage);
+  useAyme({
+    pageObjects: [ProjectsPage, SettingsPage],
+    inspector: dev,
+    agentConnection: dev,
+  });
 </script>
 ```
 
-A component that calls an action gets the same instance from the same composable:
+A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component lives:
 
 ```svelte
 <script lang="ts">

@@ -474,7 +474,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     },
     {
       name: "ListPage.addItem",
-      description: "Add a new item to the list.",
+      description: "Run addItem.",
       inputSchema: {
         type: "object",
         properties: {
@@ -486,7 +486,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     },
     {
       name: "ListPage.items.archive",
-      description: "Archive this list item.",
+      description: "An archived item can't be renamed or restored.",
       inputSchema: {
         type: "object",
         properties: {
@@ -508,7 +508,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     },
     {
       name: "ListPage.items.rename",
-      description: "Rename this list item.",
+      description: "Run rename.",
       inputSchema: {
         type: "object",
         properties: {

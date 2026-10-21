@@ -11,7 +11,6 @@ export type LensName = "Model" | "Structure" | "Tools";
  * The navigator: search, the lens switcher, the legend and the active lens's
  * tree. Each lens's own page object works inside {@link Navigator.root}.
  */
-@ayme
 export class Navigator extends PanelPart {
   readonly searchBox: Locator;
   readonly legend: Locator;

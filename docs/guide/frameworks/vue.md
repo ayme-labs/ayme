@@ -65,7 +65,7 @@ useAyme({
 });
 ```
 
-Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:inspector` and `:agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them. For the `navigate` tool to move through Vue Router, pass its `push` with the URL's path: `navigate: (url) => router.push(url.slice(location.origin.length))`, as `:navigate` on the provider; a different function on a later render is a change of options.
+Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects`, `:inspector` and `:agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them. For the `navigate` tool to move through Vue Router, pass its `push` with the URL's path: `navigate: (url) => router.push(url.slice(location.origin.length))`, as `:navigate` on the provider; a different function on a later render is a change of options.
 
 ## Root ownership
 
@@ -84,18 +84,17 @@ In the browser, the standalone owner starts immediately in its Vue scope and pro
 
 ## Composables
 
-Register the app's pages once, in the root component's setup, beneath the owner or in the same setup as the standalone `useAyme`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the owner's `pageObjects` option, as `:pageObjects` on the provider; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
 
 ```ts
-import { usePageObject } from "@ayme-dev/vue";
+import { useAyme } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
 import { SettingsPage } from "./playwright/pom/SettingsPage";
 
-usePageObject(ListPage);
-usePageObject(SettingsPage);
+useAyme({ pageObjects: [ListPage, SettingsPage] });
 ```
 
-A component that calls an action gets the same instance from the same composable:
+A component that calls an action gets the session's instance from `usePageObject`, which also registers the class for the component's scope:
 
 ```ts
 import { useAyme, usePageObject } from "@ayme-dev/vue";

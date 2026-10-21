@@ -7,7 +7,6 @@ import { PanelPart } from "./PanelPart";
  * `fill_form`'s form in a run card: every field on the page as a row, by
  * its name. The rows changed are filled, numbered in fill order.
  */
-@ayme
 export class FillForm extends PanelPart {
   /** The rows of the list of fields, in fill order. */
   readonly rows: Locator;
@@ -95,7 +94,7 @@ export class FillForm extends PanelPart {
   }
 
   /** Undoes the change to one field. */
-  @ayme.action({ description: "Undoes the change to one field." })
+  @ayme.action
   async undo(name: string) {
     await this.row(name)
       .getByRole("button", { name: `Undo the change to ${name}` })

@@ -8,8 +8,8 @@ export function inspectorMode({ inspector }: AymeOptions) {
 
 /**
  * Whether two option objects configure the same runtime session: every option
- * is the same value, `webMCP` has the same fields, and `inspector` turns on
- * the same. The framework owners use it to keep their options fixed while
+ * is the same value, `webMCP` has the same fields, `inspector` turns on the
+ * same, and `customTools` and `pageObjects` list the same values in order. The framework owners use it to keep their options fixed while
  * mounted.
  */
 export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
@@ -20,6 +20,8 @@ export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
         a.webMCP?.enabled === b.webMCP?.enabled &&
         a.webMCP?.toolNamePrefix === b.webMCP?.toolNamePrefix
       );
+    if (key === "customTools" || key === "pageObjects")
+      return sameItems(a[key], b[key]);
     if (key === "inspector") return inspectorMode(a) === inspectorMode(b);
     if (key === "agentConnection")
       return (
@@ -27,4 +29,9 @@ export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
       );
     return a[key as keyof AymeOptions] === b[key as keyof AymeOptions];
   });
+}
+
+function sameItems(a?: readonly unknown[], b?: readonly unknown[]) {
+  if (!a || !b) return a === b;
+  return a.length === b.length && a.every((item, index) => item === b[index]);
 }

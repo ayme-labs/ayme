@@ -77,6 +77,9 @@ export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
       );
     const snapshotOptions = (): UseAymeOptions => ({
       ...props,
+      // Copies, so a later change to the caller's list shows as a change.
+      customTools: props.customTools && [...props.customTools],
+      pageObjects: props.pageObjects && [...props.pageObjects],
       webMCP: props.webMCP && { ...props.webMCP },
       inspector:
         typeof props.inspector === "object"

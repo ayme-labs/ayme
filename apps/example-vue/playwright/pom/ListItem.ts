@@ -3,7 +3,6 @@ import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
 import type { ArchiveDialog } from "./ArchiveDialog";
 
-@ayme
 export class ListItem extends AppComponent {
   readonly archiveButton: Locator;
   readonly nameButton: Locator;
@@ -20,16 +19,14 @@ export class ListItem extends AppComponent {
   }
 
   @ayme.action({
-    description: "Archive this list item.",
+    description: "An archived item can't be renamed or restored.",
   })
   async archive() {
     await this.archiveButton.click();
     await this.archiveDialog.confirm();
   }
 
-  @ayme.action({
-    description: "Rename this list item.",
-  })
+  @ayme.action
   async rename(text: string) {
     await this.nameButton.click();
     await this.nameInput.fill("");
