@@ -18,7 +18,7 @@ export class ProjectsPage {
     this.page = page;
   }
 
-  @ayme.action({ description: "Create a project with the given name." })
+  @ayme.action
   async createProject(name: string) {
     await this.page.getByRole("button", { name: "New project" }).click();
     await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
@@ -27,7 +27,7 @@ export class ProjectsPage {
 }
 ```
 
-- Both decorators take an optional description: `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes with a generated description. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
+- Both decorators take an optional description: `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes with a generated one, `Run createProject.` for the action above. A description says what the name does not: what an input means or its format, a precondition, a side effect, what the action returns. Leave it out where it would restate the name. A model's description is its own, not inherited: a subclass keeps `@ayme({ description })` to have one. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
 - Only marked actions become tools. Public members are not published on their own.
 - A class that extends an `@ayme` class is a Page Object Model too, even without the decorator. Its actions still need `@ayme.action`.
 - No Ayme base class is needed, and the same class keeps working in your Playwright tests.
@@ -77,7 +77,7 @@ export abstract class AppPage {
 export class ProjectPage extends AppPage {
   readonly path = "/projects/:id";
 
-  @ayme.action({ description: "Archive the project." })
+  @ayme.action
   async archive() {
     await this.page.getByRole("button", { name: "Archive" }).click();
   }
@@ -107,7 +107,7 @@ export class ListItem extends AppComponent {
     name: "Archive",
   });
 
-  @ayme.action({ description: "Archive this list item." })
+  @ayme.action
   async archive() {
     await this.archiveButton.click();
   }
@@ -139,7 +139,7 @@ export class ListPage {
 
 // Anchored at the row: AppComponent names the Page Object Root, above.
 export class ListItem extends AppComponent {
-  @ayme.action({ description: "Archive this list item." })
+  @ayme.action
   async archive() {
     // ...
   }
