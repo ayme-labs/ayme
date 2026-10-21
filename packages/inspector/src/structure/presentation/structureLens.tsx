@@ -197,11 +197,9 @@ function StructureTreeView({
           {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
           // Monospace, so `ch` below measures the rows' characters.
           className="flex flex-col font-mono text-xs"
-          // The panel scrolls sideways only when the deepest row's indent
-          // leaves no room for its ref and role.
-          style={{
-            minWidth: `calc(${rowIndent(Math.max(...rows.map(({ depth }) => depth)))}px + ${refAndRole})`,
-          }}
+          // The panel scrolls sideways only when a row's indent leaves no
+          // room for what it never cuts.
+          style={{ minWidth: treeMinWidth(rows) }}
         >
           {rows.map((row, index) =>
             hasRef(row.node) ? (
@@ -257,9 +255,26 @@ function rowIndent(depth: number) {
   return 18 + depth * 12;
 }
 
-// Room for a typical ref and role, such as `e1234 combobox`, with the
-// row's end padding.
-const refAndRole = "16ch + 12px";
+/**
+ * The tree's narrowest width: what its widest row needs for what it never
+ * cuts, its indent, refs and role, and on a folded row the outer ref, the
+ * pill and the `›`. One term per depth, the row there with the most
+ * characters, since rows at one depth share their pixels.
+ */
+function treeMinWidth(rows: readonly TreeRow[]) {
+  const chars = new Map<number, number>();
+  for (const { node, depth, folded } of rows) {
+    // Each item is followed by a 6px gap; the row ends in 6px of padding.
+    let width = `${node.ref ?? ""} ${node.role} `.length;
+    if (folded)
+      width += `${folded.outer.ref} ${folded.hidden || ""} more › `.length;
+    chars.set(depth, Math.max(chars.get(depth) ?? 0, width));
+  }
+  const terms = [...chars].map(
+    ([depth, width]) => `calc(${rowIndent(depth) + 30}px + ${width}ch)`
+  );
+  return `max(${terms.join(", ")})`;
+}
 
 /**
  * A node's row. A folded row is the generic its chain of wrappers ends in,
