@@ -20,37 +20,34 @@ export type IsUnfolded = (chain: readonly StructureNode[]) => boolean;
 
 /**
  * Every node of the tree as a row, depth first, with each chain of wrappers
- * folded unless it is unfolded. A wrapper is a generic with no name and no
- * Page Object member whose only child is a generic: it adds nesting, nothing
- * an agent reads or acts on.
+ * folded unless it is unfolded. A wrapper is a generic with no name, no
+ * Page Object member, no states and no properties, whose only child is a
+ * generic: it adds nesting, nothing an agent reads or acts on.
  */
-export function treeRows(
+export function* treeRows(
   nodes: readonly StructureNode[],
   isUnfolded: IsUnfolded,
   depth = 0
-): TreeRow[] {
-  return nodes.flatMap((node) => {
+): Generator<TreeRow> {
+  for (const node of nodes) {
     const chain = wrapperChain(node);
-    if (chain.length === 1)
-      return [
-        { node, depth },
-        ...treeRows(node.children, isUnfolded, depth + 1),
-      ];
     const end = chain[chain.length - 1]!;
-    if (isUnfolded(chain))
-      return [
-        ...chain.map((link, index) => ({
-          node: link,
-          depth: depth + index,
-          ...(index === 0 ? { unfolded: true as const } : {}),
-        })),
-        ...treeRows(end.children, isUnfolded, depth + chain.length),
-      ];
-    return [
-      { node: end, depth, folded: { outer: node, hidden: chain.length - 2 } },
-      ...treeRows(end.children, isUnfolded, depth + 1),
-    ];
-  });
+    let endDepth = depth;
+    if (chain.length === 1) yield { node, depth };
+    else if (!isUnfolded(chain))
+      yield {
+        node: end,
+        depth,
+        folded: { outer: node, hidden: chain.length - 2 },
+      };
+    else {
+      yield { node, depth, unfolded: true };
+      for (const [index, link] of chain.slice(1).entries())
+        yield { node: link, depth: depth + index + 1 };
+      endDepth += chain.length - 1;
+    }
+    yield* treeRows(end.children, isUnfolded, endDepth + 1);
+  }
 }
 
 /**
@@ -66,11 +63,16 @@ export function wrapperChain(node: StructureNode): StructureNode[] {
   return chain;
 }
 
-function isWrapper({ role, name, members, children }: StructureNode) {
+function isWrapper(node: StructureNode) {
+  const { role, name, members, children } = node;
   return (
     role === "generic" &&
     name === "" &&
     members.length === 0 &&
+    // Its own line is all an agent reads of it: no states, no properties.
+    node.state === undefined &&
+    node.control === undefined &&
+    (node.pageStateLines?.length ?? 1) <= 1 &&
     children.length === 1 &&
     children[0]!.role === "generic"
   );

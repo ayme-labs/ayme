@@ -454,7 +454,7 @@ it("unfolds a chain into a row for each wrapper, and folds it back", async () =>
   await expect.poll(() => lens.rows.count()).toBe(3);
 });
 
-it("unfolds the chain of a hidden wrapper picked in search", async () => {
+it("unfolds the chain of a hidden wrapper picked in search, and keeps it unfolded", async () => {
   renderLens({ structure: wrapped });
 
   await navigator.search("e12");
@@ -462,6 +462,13 @@ it("unfolds the chain of a hidden wrapper picked in search", async () => {
 
   await expect
     .poll(() => lens.node("e12").getAttribute("aria-selected"))
+    .toBe("true");
+  expect(await lens.rows.count()).toBe(6);
+
+  await lens.pick("e14");
+
+  await expect
+    .poll(() => lens.node("e14").getAttribute("aria-selected"))
     .toBe("true");
   expect(await lens.rows.count()).toBe(6);
 });

@@ -49,7 +49,7 @@ describe("treeRows", () => {
       ]),
     ];
 
-    expect(shape(treeRows(tree, closed))).toEqual([
+    expect(shape([...treeRows(tree, closed)])).toEqual([
       "0 e1…e3 (+1)",
       "1 e4",
       "1 e5",
@@ -59,7 +59,10 @@ describe("treeRows", () => {
   it("folds a single wrapper into its generic child, hiding nothing", () => {
     const tree = [generic("e1", [generic("e2", [button("e3", "Save")])])];
 
-    expect(shape(treeRows(tree, closed))).toEqual(["0 e1…e2 (+0)", "1 e3"]);
+    expect(shape([...treeRows(tree, closed)])).toEqual([
+      "0 e1…e2 (+0)",
+      "1 e3",
+    ]);
   });
 
   it("keeps a generic that wraps something other than one generic", () => {
@@ -69,7 +72,7 @@ describe("treeRows", () => {
       generic("e6", [{ role: "text", name: "Hi", members: [], children: [] }]),
     ];
 
-    expect(shape(treeRows(tree, closed))).toEqual([
+    expect(shape([...treeRows(tree, closed)])).toEqual([
       "0 e1",
       "1 e2",
       "0 e3",
@@ -88,7 +91,7 @@ describe("treeRows", () => {
       }),
     ];
 
-    expect(shape(treeRows(tree, closed))).toEqual([
+    expect(shape([...treeRows(tree, closed)])).toEqual([
       "0 e1",
       "1 e2",
       "2 e3",
@@ -119,7 +122,7 @@ describe("treeRows", () => {
       ]),
     ];
 
-    expect(shape(treeRows(tree, closed))).toEqual([
+    expect(shape([...treeRows(tree, closed)])).toEqual([
       "0 e1…e2 (+0)",
       "1 e3",
       "1 e4…e6 (+1)",
@@ -133,12 +136,48 @@ describe("treeRows", () => {
     ];
 
     const asked: string[][] = [];
-    const rows = treeRows(tree, (chain) => {
-      asked.push(chain.map(({ ref }) => ref ?? ""));
-      return true;
-    });
+    const rows = [
+      ...treeRows(tree, (chain) => {
+        asked.push(chain.map(({ ref }) => ref ?? ""));
+        return true;
+      }),
+    ];
 
     expect(asked).toEqual([["e1", "e2", "e3"]]);
     expect(shape(rows)).toEqual(["0 e1 ▾", "1 e2", "2 e3", "3 e4"]);
+  });
+
+  it("puts the node after an unfolded chain back at the chain's depth", () => {
+    const tree = [
+      generic("e1", [generic("e2", [button("e3", "Save")])]),
+      button("e4", "Next"),
+    ];
+
+    expect(shape([...treeRows(tree, () => true)])).toEqual([
+      "0 e1 ▾",
+      "1 e2",
+      "2 e3",
+      "0 e4",
+    ]);
+  });
+
+  it("keeps a generic an agent reads more of than its line: states or properties", () => {
+    const tree = [
+      generic("e1", [generic("e2", [button("e3", "Save")])], {
+        state: { expanded: true },
+      }),
+      generic("e4", [generic("e5", [button("e6", "Save")])], {
+        pageStateLines: ["- e4:", '  - /pom: "Toolbar"'],
+      }),
+    ];
+
+    expect(shape([...treeRows(tree, closed)])).toEqual([
+      "0 e1",
+      "1 e2",
+      "2 e3",
+      "0 e4",
+      "1 e5",
+      "2 e6",
+    ]);
   });
 });

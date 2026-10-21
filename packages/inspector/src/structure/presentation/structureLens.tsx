@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ArrowRightIcon,
   BoxIcon,
@@ -84,19 +85,29 @@ export function structureLens({
   const selectedRef = selection.kind === "node" ? selection.ref : undefined;
   const hides = (chain: readonly StructureNode[], ref?: string) =>
     chain.slice(1, -1).some((link) => link.ref === ref);
-  const shownRows = treeRows(
-    structure.roots,
-    (chain) => unfoldedChains.has(chain[0]!.ref!) || hides(chain, selectedRef)
+  // A picked wrapper the fold hides unfolds its chain, which then stays
+  // unfolded like one the person unfolded.
+  let selectedChain: string | undefined;
+  const shownRows = [
+    ...treeRows(structure.roots, (chain) => {
+      if (!hides(chain, selectedRef)) return unfoldedChains.has(chain[0]!.ref!);
+      selectedChain = chain[0]!.ref!;
+      return true;
+    }),
+  ];
+  // Refs that left the page are dropped.
+  const refs = new Set(rows.map(({ node }) => node.ref));
+  const settled = new Set(
+    [...unfoldedChains, selectedChain ?? []]
+      .flat()
+      .filter((ref) => refs.has(ref))
   );
   const toggle = (outer: RefNode) => {
-    // Refs no longer on the page are dropped as the person folds or unfolds.
-    const refs = new Set(rows.map(({ node }) => node.ref));
-    const next = new Set([...unfoldedChains].filter((ref) => refs.has(ref)));
-    const hidesSelected = hides(wrapperChain(outer), selectedRef);
-    if (next.delete(outer.ref) || hidesSelected) {
-      // Folding hides the selected wrapper: the outermost one stays in view.
-      if (hidesSelected) onSelect({ kind: "node", ref: outer.ref });
-    } else next.add(outer.ref);
+    const next = new Set(settled);
+    if (!next.delete(outer.ref)) next.add(outer.ref);
+    // Folding hides the selected wrapper: the outermost one stays in view.
+    else if (hides(wrapperChain(outer), selectedRef))
+      onSelect({ kind: "node", ref: outer.ref });
     onUnfoldedChainsChange(next);
   };
   return {
@@ -110,6 +121,11 @@ export function structureLens({
         onPick={(ref) => onSelect({ kind: "node", ref })}
         onToggle={toggle}
         onHover={onHover}
+        settle={
+          rows.length && !sameRefs(settled, unfoldedChains)
+            ? () => onUnfoldedChainsChange(settled)
+            : undefined
+        }
       />
     ),
     searchEntries: rows.flatMap(({ node }): SearchEntry[] =>
@@ -159,6 +175,7 @@ function StructureTreeView({
   onPick,
   onToggle,
   onHover,
+  settle,
 }: {
   rows: readonly TreeRow[];
   capture: StructureCapture;
@@ -166,7 +183,10 @@ function StructureTreeView({
   onPick: (ref: string) => void;
   onToggle: (outer: RefNode) => void;
   onHover: OnHover;
+  /** Stores the unfolded chains as this tree has them, when they differ. */
+  settle?: () => void;
 }) {
+  useEffect(() => settle?.(), [settle]);
   return (
     <div className="flex flex-col gap-1">
       {capture.error && (
@@ -185,8 +205,7 @@ function StructureTreeView({
             hasRef(row.node) ? (
               <NodeRow
                 key={row.node.ref}
-                row={row}
-                node={row.node}
+                row={{ ...row, node: row.node }}
                 selectedRef={selectedRef}
                 onPick={onPick}
                 onToggle={onToggle}
@@ -227,8 +246,8 @@ function StructureTreeView({
 // first, the member tag only past its share.
 const rowClass =
   "relative flex items-baseline gap-1.5 overflow-hidden rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
-// Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
 const nameClass =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
 
 // The indent leaves a gutter for the fold toggle.
@@ -242,15 +261,13 @@ function rowIndent(depth: number) {
  * picks its node; the rest of the row picks the row's node.
  */
 function NodeRow({
-  row: { depth, folded, unfolded },
-  node,
+  row: { node, depth, folded, unfolded },
   selectedRef,
   onPick,
   onToggle,
   onHover,
 }: {
-  row: TreeRow;
-  node: RefNode;
+  row: TreeRow & { node: RefNode };
   selectedRef?: string;
   onPick: (ref: string) => void;
   onToggle: (outer: RefNode) => void;
@@ -430,6 +447,10 @@ function NodeDetail({
       />
     </article>
   );
+}
+
+function sameRefs(a: ReadonlySet<string>, b: ReadonlySet<string>) {
+  return a.size === b.size && [...a].every((ref) => b.has(ref));
 }
 
 function hasRef(node: StructureNode | undefined): node is RefNode {
