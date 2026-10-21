@@ -125,10 +125,10 @@ export function ModelTree({
   useLayoutEffect(() => {
     if (focused === undefined || rows.some(({ node }) => node.path === focused))
       return;
-    const kept = (ancestors(objects, focused) ?? [])
-      .reverse()
-      .find((node) => rows.some((row) => row.node.path === node.path));
-    if (kept) rowElement(tree.current, kept.path)?.focus();
+    const kept = parentPaths(focused).find((path) =>
+      rows.some(({ node }) => node.path === path)
+    );
+    if (kept) rowElement(tree.current, kept)?.focus();
   });
   const selectedModel =
     selection.kind === "model" ? selection.className : undefined;
@@ -262,6 +262,16 @@ function ancestors(
     if (below) return [node, ...below];
   }
   return undefined;
+}
+
+/**
+ * The paths above `path`, closest first: "A.items[1].b" gives
+ * "A.items[1]", "A.items" and "A". Read from the path, so it works for an
+ * object that is gone from the page model.
+ */
+function parentPaths(path: string): string[] {
+  const parent = path.replace(/(\.[^.[\]]+|\[\d+\])$/, "");
+  return parent === path ? [] : [parent, ...parentPaths(parent)];
 }
 
 /** The path of the tree's row that has focus, before this render changes it. */

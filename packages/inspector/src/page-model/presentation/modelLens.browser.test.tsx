@@ -382,6 +382,34 @@ it("moves focus to the object that closes as it leaves the page, from a row unde
   await expect.poll(() => lens.hasFocus("InboxPage.taskDialog")).toBe(true);
 });
 
+it("moves focus to the closest row left when the focused object is gone from the page model", async () => {
+  const withItems = (count: number): PageModel => ({
+    objects: [
+      pageObject("InboxPage", {
+        children: [
+          component("taskDialog", "TaskDialog", {
+            live: count > 0,
+            children: [
+              collection(
+                "tasks",
+                "Task",
+                Array.from({ length: count }, () => ({}))
+              ),
+            ],
+          }),
+        ],
+      }),
+    ],
+    models: [],
+  });
+  const { changePage } = renderLens({ pageModel: withItems(1) });
+  await lens.object("InboxPage.taskDialog.tasks[0]").focus();
+
+  changePage(withItems(0));
+
+  await expect.poll(() => lens.hasFocus("InboxPage.taskDialog")).toBe(true);
+});
+
 it("lists every Page Object Model the page knows, marking those not on the page", async () => {
   renderLens();
 

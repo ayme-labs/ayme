@@ -29,6 +29,21 @@ export const defaultViewState: ViewState = {
 const lenses: readonly LensId[] = ["model", "structure", "tools"];
 
 /**
+ * The view state with a new selection. The Model tree has not opened the
+ * objects around it yet, even when it was not showing as it changed.
+ */
+export function withSelection(
+  current: ViewState,
+  selection: Selection
+): ViewState {
+  return {
+    ...current,
+    selection,
+    objectTree: { open: current.objectTree.open },
+  };
+}
+
+/**
  * The view state in a stored value. Each value that is missing or malformed
  * falls back to its default.
  */

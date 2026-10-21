@@ -5,6 +5,7 @@ import {
   defaultViewState,
   type ViewState,
   viewStateKey,
+  withSelection,
 } from "./viewState";
 
 // Unit tests: which parts of a stored view state the Inspector comes back
@@ -83,5 +84,22 @@ it("falls back to the default for each malformed value", () => {
     ...defaultViewState,
     runs: { open: true, all: true },
     objectTree: { open: { "InboxPage.list": false } },
+  });
+});
+
+it("forgets which selection the Model tree opened up when the selection changes, keeping what is open", () => {
+  const current: ViewState = {
+    ...defaultViewState,
+    selection: { kind: "object", path: "InboxPage.taskDialog.taskForm" },
+    objectTree: {
+      open: { "InboxPage.taskDialog": false },
+      revealed: "InboxPage.taskDialog.taskForm",
+    },
+  };
+
+  expect(withSelection(current, { kind: "node", ref: "e3" })).toEqual({
+    ...current,
+    selection: { kind: "node", ref: "e3" },
+    objectTree: { open: { "InboxPage.taskDialog": false } },
   });
 });
