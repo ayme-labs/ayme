@@ -171,12 +171,16 @@ type FailedRecord = {
 
 const failedRecords = new WeakMap<Error, FailedRecord>();
 
-/** An error's message without the Change Record Ayme ended it with. */
+/**
+ * An error's message without the Change Record Ayme added to it, wherever
+ * that record now stands: text the application appended after it stays.
+ */
 function messageWithoutRecord(error: Error): string {
   const suffix = failedRecords.get(error)?.suffix;
-  return suffix && error.message.endsWith(suffix)
-    ? error.message.slice(0, -suffix.length)
-    : error.message;
+  const at = suffix ? error.message.lastIndexOf(suffix) : -1;
+  return at < 0
+    ? error.message
+    : error.message.slice(0, at) + error.message.slice(at + suffix!.length);
 }
 
 /**
@@ -205,7 +209,7 @@ export function failedActionRecord(
  * that fails an enclosing action too ends with that action's record instead,
  * which covers the inner one's, as its result would, or with none when the
  * enclosing action left nothing changed. Only the text Ayme added is
- * replaced: a prefix the application put on the message in between stays.
+ * replaced: text the application put before or after it in between stays.
  */
 function appendChangeRecord(
   error: Error,
@@ -216,13 +220,13 @@ function appendChangeRecord(
   );
   const message = messageWithoutRecord(error);
   const suffix = parts.map((part) => `\n\n${part}`).join("");
-  if (message + suffix === error.message) return;
-  // An own property, as some errors' `message` is a getter only.
-  Object.defineProperty(error, "message", {
-    value: message + suffix,
-    configurable: true,
-    writable: true,
-  });
+  if (message + suffix !== error.message)
+    // An own property, as some errors' `message` is a getter only.
+    Object.defineProperty(error, "message", {
+      value: message + suffix,
+      configurable: true,
+      writable: true,
+    });
   failedRecords.set(error, { record, suffix });
 }
 
