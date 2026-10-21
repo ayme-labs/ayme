@@ -15,6 +15,7 @@ import { createAyme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
+  type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
 
 vi.mock("@ayme-dev/ayme", async (importOriginal) => {
@@ -414,6 +415,20 @@ it("C1, C4: passes an inline pageObjects list and keeps it fixed across renders"
     act(async () =>
       app.render(
         h(AymeProvider, { pageFactory, pageObjects: [Model, OtherModel] })
+      )
+    )
+  ).rejects.toThrow("provider options changed while the provider was mounted");
+});
+
+it("C4: rejects a change made to the pageObjects list it was given", async () => {
+  const pageObjects: PageObjectConstructor[] = [Model];
+  const app = root();
+  await act(() => app.render(h(AymeProvider, { pageFactory, pageObjects })));
+  pageObjects[0] = OtherModel;
+  await expect(
+    act(async () =>
+      app.render(
+        h(AymeProvider, { pageFactory, pageObjects: [...pageObjects] })
       )
     )
   ).rejects.toThrow("provider options changed while the provider was mounted");

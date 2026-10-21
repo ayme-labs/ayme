@@ -35,6 +35,9 @@ export function AymeProvider({
   const [setup] = useState(() => {
     const snapshot = {
       ...options,
+      // Copies, so a later change to the caller's list shows as a change.
+      customTools: options.customTools && [...options.customTools],
+      pageObjects: options.pageObjects && [...options.pageObjects],
       webMCP: options.webMCP && { ...options.webMCP },
       inspector:
         typeof options.inspector === "object"
