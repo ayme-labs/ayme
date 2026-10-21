@@ -193,58 +193,75 @@ function rootState(
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
 ): RootState {
-  const marker = findClassMarker(declaration);
-  const call = marker && ts.isCallExpression(marker.expression);
-  const options = call
-    ? (marker.expression as ts.CallExpression).arguments[0]
-    : undefined;
   const states: RootState[] = [];
-  if (options && !ts.isObjectLiteralExpression(options))
-    states.push("unreadable");
-  for (const property of options && ts.isObjectLiteralExpression(options)
-    ? options.properties
-    : []) {
-    const name = property.name;
-    const key =
-      name && (ts.isIdentifier(name) || ts.isStringLiteral(name))
-        ? name.text
-        : undefined;
-    states.push(
-      key === "root"
-        ? "declared"
-        : key === undefined || key === "__proto__"
-          ? "unreadable"
-          : "undeclared"
-    );
+  for (const decorator of ts.getDecorators(declaration) ?? []) {
+    if (!isMarker(decorator, "ayme")) continue;
+    const options = ts.isCallExpression(decorator.expression)
+      ? decorator.expression.arguments[0]
+      : undefined;
+    if (options && !ts.isObjectLiteralExpression(options))
+      states.push("unreadable");
+    for (const property of options && ts.isObjectLiteralExpression(options)
+      ? options.properties
+      : []) {
+      const name = property.name;
+      const key =
+        name && (ts.isIdentifier(name) || ts.isStringLiteral(name))
+          ? name.text
+          : undefined;
+      states.push(
+        key === "root"
+          ? "declared"
+          : key === undefined || key === "__proto__"
+            ? "unreadable"
+            : "undeclared"
+      );
+    }
   }
   const extended = declaration.heritageClauses?.find(
     (c) => c.token === ts.SyntaxKind.ExtendsKeyword
   )?.types[0]?.expression;
-  // A call such as `withRoot(Base)` resolves to its declared return type, not
-  // the class it builds; a declaration file or `declare class` hides its
-  // decorators.
-  if (
-    extended &&
-    !ts.isIdentifier(extended) &&
-    !ts.isPropertyAccessExpression(extended)
-  ) {
-    states.push("unreadable");
-  } else if (extended) {
-    const bases = baseClassDeclarations(checker, declaration);
-    if (bases.length === 0) states.push("unreadable");
-    for (const base of bases)
-      states.push(
-        base.getSourceFile().isDeclarationFile ||
-          ts.getCombinedModifierFlags(base) & ts.ModifierFlags.Ambient
-          ? "unreadable"
-          : rootState(checker, base)
-      );
+  if (extended) {
+    // Only a class declaration the program shows is read: a call, a constant,
+    // a declaration file or an ambient class may carry a root the types hide.
+    const name = ts.isPropertyAccessExpression(extended)
+      ? extended.name
+      : extended;
+    let symbol = checker.getSymbolAtLocation(name);
+    if (symbol && symbol.flags & ts.SymbolFlags.Alias)
+      symbol = checker.getAliasedSymbol(symbol);
+    const bases = symbol?.declarations ?? [];
+    if (
+      !bases.length ||
+      !bases.every(
+        (base) =>
+          ts.isClassDeclaration(base) &&
+          !base.getSourceFile().isDeclarationFile &&
+          !isAmbient(base)
+      )
+    )
+      states.push("unreadable");
+    else
+      for (const base of bases)
+        states.push(rootState(checker, base as ts.ClassDeclaration));
   }
   return states.includes("declared")
     ? "declared"
     : states.includes("unreadable")
       ? "unreadable"
       : "undeclared";
+}
+
+/** Whether the node, or an enclosing namespace, is declared with `declare`. */
+function isAmbient(node: ts.Node): boolean {
+  for (let n: ts.Node | undefined = node; n; n = n.parent) {
+    if (
+      ts.canHaveModifiers(n) &&
+      ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
+    )
+      return true;
+  }
+  return false;
 }
 
 function skippedMethods(

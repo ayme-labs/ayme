@@ -654,6 +654,12 @@ describe("derivePomManifests", () => {
     it.each([
       ["factoryBaseCollectionPom", "FactoryBaseCollectionPom"],
       ["ambientBaseCollectionPom", "AmbientBaseCollectionPom"],
+      [
+        "namespaceAmbientBaseCollectionPom",
+        "NamespaceAmbientBaseCollectionPom",
+      ],
+      ["constFactoryBaseCollectionPom", "ConstFactoryBaseCollectionPom"],
+      ["stackedDecoratorsCollectionPom", "StackedDecoratorsCollectionPom"],
     ])(
       "leaves a base the build cannot read to the runtime: %s",
       (fixture, name) => {
