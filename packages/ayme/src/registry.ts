@@ -21,7 +21,7 @@ import {
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
-import { rootPredicateOf } from "./decorators";
+import { modelOption } from "./decorators";
 import { assertRootReachable } from "./elementReach";
 import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
 import {
@@ -32,14 +32,13 @@ import {
 import {
   askPredicates,
   askPresence,
-  declaresPresence,
   assertAvailable,
   availabilityOf,
-  unavailableError,
   combinedAvailability,
   sameInstance,
   type PomInstanceObservation,
   type ToolAvailability,
+  unavailableError,
 } from "./pomInstance";
 import { registerRefSelectorEngine } from "./refSelectorEngine";
 import { refFailure, resolveRef } from "./refTarget";
@@ -811,35 +810,21 @@ function rootHolds(observed: PomInstanceObservation): boolean {
 }
 
 /**
- * Whether `instance` names a root: by the `root` option its class declares
- * or inherits. A member's name never does; a page without the option is on
- * every page.
- */
-function declaresRoot(instance: object): boolean {
-  return rootPredicateOf(instance.constructor) !== undefined;
-}
-
-/**
  * The locator that anchors `instance`, its Page Object Root: what the `root`
  * option its class declares or inherits answers. Undefined without the
  * option, or when the answer is not a locator; a root predicate that throws,
  * throws.
  */
 async function readRoot(instance: object): Promise<Locator | undefined> {
-  const predicate = rootPredicateOf(instance.constructor);
+  const predicate = modelOption(instance.constructor, "root");
   if (!predicate) return undefined;
   const root = await predicate(instance as never);
   return isLocator(root) ? root : undefined;
 }
 
 /** `instance`'s root, or undefined when it cannot be read as a locator. */
-async function declaredRoot(instance: object): Promise<Locator | undefined> {
-  try {
-    return await readRoot(instance);
-  } catch {
-    return undefined;
-  }
-}
+const declaredRoot = (instance: object) =>
+  readRoot(instance).catch(() => undefined);
 
 function createComponentTools(
   registration: ObservedRegisteredPom,
@@ -1024,31 +1009,16 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
   // is: an absent Page Object costs one call, and its members are not walked.
   const presence = await askPresence(instance);
   reportPredicateError(registration, place.path, "present", presence.error);
-  if (!presence.present) {
-    walk.instances.push({
-      ...place,
-      instance,
-      componentPath: undefined,
-      present: false,
-      presenceError: presence.error,
-      root: undefined,
-      predicates: new Map(),
-    });
-    return {
-      memberObservations: [],
-      instances: walk.instances,
-      rootMemberPaths: walk.rootMemberPaths,
-    };
-  }
-  // A rootless Page Object with no predicate is on every page.
-  const root = declaresRoot(instance) ? await observeRoot(instance) : undefined;
+  const absent = presence.present === false;
+  const root = absent ? undefined : await observeRoot(instance);
   reportPredicateError(registration, place.path, "root", root?.error);
-  const present = root === undefined || root.root.present;
+  const present = !absent && (root?.root.present ?? true);
   walk.instances.push({
     ...place,
     instance,
     componentPath: undefined,
     present,
+    presenceError: presence.error,
     root: root?.root,
     rootLocator: root?.locator,
     rootError: root?.error,
@@ -1056,6 +1026,12 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
       ? await askPredicates(instance, manifest.tools)
       : new Map(),
   });
+  if (absent)
+    return {
+      memberObservations: [],
+      instances: walk.instances,
+      rootMemberPaths: walk.rootMemberPaths,
+    };
   const memberObservations = await probeMembers(
     walk,
     instance,
@@ -1134,7 +1110,11 @@ type RootObservation = {
  * answers no locator for, never falls back to rootless activation: it is
  * absent.
  */
-async function observeRoot(instance: object): Promise<RootObservation> {
+async function observeRoot(
+  instance: object
+): Promise<RootObservation | undefined> {
+  // A rootless Page Object with no predicate is on every page.
+  if (!modelOption(instance.constructor, "root")) return undefined;
   let locator: Locator | undefined;
   try {
     locator = await readRoot(instance);
@@ -1347,7 +1327,7 @@ async function probeComponentMember(
     // is, as the page's own: a child it withdraws costs one call.
     const presence = await askPresence(component);
     reportPredicateError(walk.registration, path, "present", presence.error);
-    if (!presence.present) {
+    if (presence.present === false) {
       observed.presenceError = presence.error;
       walk.instances.push(observed);
       continue;
@@ -1359,8 +1339,8 @@ async function probeComponentMember(
     // refuses when every options object in the chain is an inline literal
     // naming no root; anything else is reported here, at observation.
     let present: boolean;
-    if (declaresRoot(component)) {
-      const root = await observeRoot(component);
+    const root = await observeRoot(component);
+    if (root) {
       reportPredicateError(walk.registration, path, "root", root.error);
       observed.root = root.root;
       observed.rootLocator = root.locator;
@@ -1387,7 +1367,7 @@ async function probeComponentMember(
         rootObservation(`POM component ${path} declares no root.`)
       );
       continue;
-    } else present = declaresPresence(component) || place.present;
+    } else present = presence.present ?? place.present;
     observed.present = present;
     if (present)
       observed.predicates = await askPredicates(component, manifest.tools);

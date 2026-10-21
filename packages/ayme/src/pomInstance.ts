@@ -1,7 +1,7 @@
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator } from "@playwright/test";
 import type { ToolManifest } from "./contracts";
-import { availabilityPredicateOf, presencePredicateOf } from "./decorators";
+import { availabilityPredicateOf, modelOption } from "./decorators";
 import { asSentence, errorText, RuntimeStateError } from "./errors";
 import type { ObservedPomRoot } from "./pomRootObservation";
 
@@ -188,25 +188,17 @@ export async function askPredicates(
 }
 
 /** What a Page Object's presence predicate answered, or threw. */
-export type PresenceAnswer = { present: boolean; error?: string };
-
-/**
- * Package-internal: whether `instance`'s class declares or inherits a
- * presence predicate, so its presence is the predicate's to say.
- */
-export function declaresPresence(instance: object): boolean {
-  return presencePredicateOf(instance.constructor) !== undefined;
-}
+export type PresenceAnswer = { present?: boolean; error?: string };
 
 /**
  * Package-internal: asks the presence predicate `instance`'s class declares
- * or inherits, read-only. Without one, the instance is present. A predicate
+ * or inherits, read-only. Without one, `present` is undefined. A predicate
  * that throws makes the instance absent, with the error's text, so the
  * author sees it.
  */
 export async function askPresence(instance: object): Promise<PresenceAnswer> {
-  const predicate = presencePredicateOf(instance.constructor);
-  if (!predicate) return { present: true };
+  const predicate = modelOption(instance.constructor, "present");
+  if (!predicate) return { present: undefined };
   try {
     return { present: Boolean(await predicate(instance as never)) };
   } catch (error) {

@@ -87,42 +87,25 @@ export function availabilityPredicateOf(
   return availabilityPredicates.get(method as object);
 }
 
-// Each decorated class's root and presence predicates, by the class itself:
-// each read along a class's own prototype chain, so a subclass inherits its
-// base's and the nearest class declaring that one wins.
-const rootPredicates = new WeakMap<object, RootPredicate<never>>();
-const presencePredicates = new WeakMap<object, PresencePredicate<never>>();
+// Each decorated class's options, by the class itself: `modelOption` reads
+// them along the class's own prototype chain, so a subclass inherits its
+// base's and the nearest class declaring that option wins.
+const modelOptions = new WeakMap<object, AymeModelOptions<never>>();
 
 /**
- * Package-internal: the presence predicate `@ayme` kept for `PomClass` or,
- * when it declares none, for the nearest base class that does.
+ * Package-internal: the `root` or `present` predicate `@ayme` kept for
+ * `PomClass` or, when it declares none, for the nearest base class that does.
  */
-export function presencePredicateOf(
-  PomClass: unknown
-): PresencePredicate<never> | undefined {
-  return inheritedPredicate(presencePredicates, PomClass);
-}
-
-/**
- * Package-internal: the root predicate `@ayme` kept for `PomClass` or, when
- * it declares none, for the nearest base class that does.
- */
-export function rootPredicateOf(
-  PomClass: unknown
-): RootPredicate<never> | undefined {
-  return inheritedPredicate(rootPredicates, PomClass);
-}
-
-function inheritedPredicate<Predicate>(
-  predicates: WeakMap<object, Predicate>,
-  PomClass: unknown
-): Predicate | undefined {
+export function modelOption<Key extends "root" | "present">(
+  PomClass: unknown,
+  key: Key
+): AymeModelOptions<never>[Key] {
   for (
     let Class: unknown = PomClass;
     typeof Class === "function";
     Class = Object.getPrototypeOf(Class)
   ) {
-    const predicate = predicates.get(Class);
+    const predicate = modelOptions.get(Class)?.[key];
     if (predicate) return predicate;
   }
   return undefined;
@@ -150,16 +133,6 @@ type StandardMethodDecorator = <This, Value extends AnyMethod<This>>(
   context: ClassMethodDecoratorContext<This, Value>
 ) => void;
 type AymeActionDecorator = LegacyMethodDecorator & StandardMethodDecorator;
-
-function markClass(target: PageObjectClass): void;
-function markClass<Class extends PageObjectClass>(
-  target: Class,
-  context: ClassDecoratorContext<Class>
-): void;
-function markClass(target: PageObjectClass, context?: unknown) {
-  void target;
-  void context;
-}
 
 function markAction(
   target: object,
@@ -203,8 +176,7 @@ function keepingPredicates(
   options: AymeModelOptions<never>
 ): AymeClassDecorator {
   return ((target: PageObjectClass) => {
-    if (options.root) rootPredicates.set(target, options.root);
-    if (options.present) presencePredicates.set(target, options.present);
+    if (options.root || options.present) modelOptions.set(target, options);
   }) as AymeClassDecorator;
 }
 
@@ -218,9 +190,7 @@ function aymeClass(
   targetOrOptions?: PageObjectClass | AymeModelOptions<never>
 ) {
   if (typeof targetOrOptions === "function") return;
-  return targetOrOptions?.root || targetOrOptions?.present
-    ? keepingPredicates(targetOrOptions)
-    : markClass;
+  return keepingPredicates(targetOrOptions ?? {});
 }
 
 function action(
