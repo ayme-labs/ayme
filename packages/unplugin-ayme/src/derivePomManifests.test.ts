@@ -635,6 +635,32 @@ describe("derivePomManifests", () => {
     ).toEqual(["Toolbar", "Row"]);
   });
 
+  describe("a collection item's root", () => {
+    it("refuses a collection whose item class declares no root in its chain", () => {
+      expect(() => manifestFor("rootlessCollectionPom")).toThrow(
+        'Page Object Child "items" is a collection of RootlessItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
+    it("builds a collection whose item class inherits an inline root from a base", () => {
+      expect(
+        manifestForClass(
+          "inheritedRootCollectionPom",
+          "InheritedRootCollectionPom"
+        )?.members
+      ).toMatchObject([{ memberName: "items", collection: true }]);
+    });
+
+    it("leaves options held in a constant to the runtime", () => {
+      expect(
+        manifestForClass(
+          "constOptionsCollectionPom",
+          "ConstOptionsCollectionPom"
+        )?.members
+      ).toMatchObject([{ memberName: "items", collection: true }]);
+    });
+  });
+
   describe("parameter shapes", () => {
     function parametersOf(methodName: string) {
       return manifestFor("parameterShapesPom")?.tools.find(

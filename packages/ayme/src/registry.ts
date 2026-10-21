@@ -1355,8 +1355,9 @@ async function probeComponentMember(
     // Whether the child is on the page: a rooted one while its root is, a
     // root-less one with a predicate by the predicate alone, a root-less
     // single child with neither while the Page Object it is reached through
-    // is. A collection item needs a root for its ref, which the compiler
-    // refuses at build time; a model compiled before meets it here.
+    // is. A collection item needs a root for its ref, which the build
+    // refuses when every options object in the chain is an inline literal
+    // naming no root; anything else is reported here, at observation.
     let present: boolean;
     if (declaresRoot(component)) {
       const root = await observeRoot(component);

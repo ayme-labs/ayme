@@ -166,6 +166,11 @@ function pomChild(
       ? componentCollectionDeclaration(checker, type, memberName)
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
+  if (access === "method" && rootState(checker, declaration) === "undeclared") {
+    throw new Error(
+      `Page Object Child "${memberName}" is a collection of ${declaration.name.text}, which declares no root; a collection item's ref needs one.`
+    );
+  }
   return {
     member: {
       memberName,
@@ -176,6 +181,53 @@ function pomChild(
     },
     declaration,
   };
+}
+
+type RootState = "declared" | "undeclared" | "unreadable";
+
+/**
+ * Whether a class's `@ayme` options, or its ancestors', name `root`. Only
+ * inline object literals are read; anything else is left to the runtime.
+ */
+function rootState(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): RootState {
+  const marker = findClassMarker(declaration);
+  const call = marker && ts.isCallExpression(marker.expression);
+  const options = call
+    ? (marker.expression as ts.CallExpression).arguments[0]
+    : undefined;
+  const states: RootState[] = [];
+  if (options && !ts.isObjectLiteralExpression(options))
+    states.push("unreadable");
+  for (const property of options && ts.isObjectLiteralExpression(options)
+    ? options.properties
+    : []) {
+    const name = property.name;
+    const key =
+      name && (ts.isIdentifier(name) || ts.isStringLiteral(name))
+        ? name.text
+        : undefined;
+    states.push(
+      key === "root"
+        ? "declared"
+        : key === undefined || key === "__proto__"
+          ? "unreadable"
+          : "undeclared"
+    );
+  }
+  const bases = baseClassDeclarations(checker, declaration);
+  const extended = declaration.heritageClauses?.some(
+    (c) => c.token === ts.SyntaxKind.ExtendsKeyword
+  );
+  if (extended && bases.length === 0) states.push("unreadable");
+  for (const base of bases) states.push(rootState(checker, base));
+  return states.includes("declared")
+    ? "declared"
+    : states.includes("unreadable")
+      ? "unreadable"
+      : "undeclared";
 }
 
 function skippedMethods(
