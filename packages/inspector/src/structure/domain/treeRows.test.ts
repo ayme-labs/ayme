@@ -201,9 +201,7 @@ describe("unfoldedOnPage", () => {
     expect(unfoldedOnPage(unfolded, tree)).toBe(unfolded);
   });
 
-  it("keeps every chain while the tree is empty, before the page is read", () => {
-    const unfolded = new Set(["e1"]);
-
-    expect(unfoldedOnPage(unfolded, [])).toBe(unfolded);
+  it("forgets every chain when the page holds no nodes", () => {
+    expect([...unfoldedOnPage(new Set(["e1"]), [])]).toEqual([]);
   });
 });

@@ -114,13 +114,13 @@ export function InspectorApp() {
   // reload waits for the first look at the page, until what it names is
   // there.
   const pageStateRead = runtime.pageState.capturedAt !== undefined;
-  // Unfolded chains whose outermost wrapper left the page are forgotten.
+  // Unfolded chains whose outermost wrapper left the page are forgotten,
+  // once the page has been read.
   const { structure } = runtime.pageState;
-  useEffect(
-    () =>
-      setUnfoldedChains((current) => unfoldedOnPage(current, structure.roots)),
-    [structure]
-  );
+  useEffect(() => {
+    if (pageStateRead)
+      setUnfoldedChains((current) => unfoldedOnPage(current, structure.roots));
+  }, [pageStateRead, structure]);
   const stale = isStaleSelection(selection, {
     hasView: view !== undefined,
     structure: runtime.pageState.structure,
