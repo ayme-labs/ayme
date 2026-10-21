@@ -102,12 +102,10 @@ transition; `clickPlus()` describes an implementation detail.
 ## Describe what the name doesn't say
 
 An agent reads a tool's name, such as `ProjectsPage.createProject`, beside its
-description and input schema. Give `@ayme.action` a description only for what
-the name and parameters leave out: what an input means or its format, a
-precondition, a side effect, what is returned, or when to use it rather than a
-sibling action.
-Leave it out where it would restate the name: a bare `@ayme.action` on
-`increment()` says as much as "Increment the counter." would.
+input schema, its availability and, after a call, what changed on the page.
+Give `@ayme.action` a description only for what none of those tell it, and
+leave it out otherwise: a bare `@ayme.action` on `increment()` says as much as
+"Increment the counter." would.
 
 ## Make actions do something
 
@@ -119,7 +117,7 @@ as a tool only repeats it. Keep such reads as plain methods or locators for
 tests and other code.
 
 ```ts
-@ayme.action({ description: "Archive the selected project." })
+@ayme.action({ description: "Hides it from every member's project list." })
 async archive() {
   await this.archiveButton.click();
   return this;
@@ -149,8 +147,8 @@ it returned one, and a call is refused with that reason before anything runs.
 [Action availability](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#action-availability)
 has the signature, the example and the rules.
 
-The reason states the fact ("No item is selected"); the description states the
-condition ("Removes the selected item. Needs a selection."). The predicate runs
+The reason states the fact ("No item is selected"), so the description need not
+repeat the condition. The predicate runs
 with Ayme's observation of the page, not with the call, so it only reads:
 visibility, enabled state, text, counts. It never clicks, scrolls, focuses or
 changes the page. One predicate can guard several actions.
