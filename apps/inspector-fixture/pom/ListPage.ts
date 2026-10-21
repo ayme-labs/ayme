@@ -31,13 +31,13 @@ export class ListPage {
     return (await this.items.all()).map((item) => new ListItem(item));
   }
 
-  @ayme.action({ description: "Add an item to the list." })
+  @ayme.action
   async addItem(text: string) {
     await this.newItemInput.fill(text);
     await this.addItemButton.click();
   }
 
-  @ayme.action({ description: "Count the items on the list." })
+  @ayme.action
   async countItems() {
     return this.items.count();
   }

@@ -27,14 +27,13 @@ export class TodoPage {
     return (await this.rows.all()).map((row) => new TodoItem(row));
   }
 
-  @ayme.action({ description: "Add an item to the list." })
+  @ayme.action
   async addItem(text: string) {
     await this.newItemInput.fill(text);
     await this.addItemButton.click();
   }
 }
 
-@ayme
 export class TodoItem extends AppComponent {
   readonly archiveButton: Locator;
 
@@ -43,13 +42,12 @@ export class TodoItem extends AppComponent {
     this.archiveButton = root.locator(".todo-archive");
   }
 
-  @ayme.action({ description: "Archive this item." })
+  @ayme.action
   async archive() {
     await this.archiveButton.click();
   }
 }
 
-@ayme
 export class ArchiveDialog extends AppComponent {
   readonly confirmButton: Locator;
 
