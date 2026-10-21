@@ -1,4 +1,11 @@
-import { ArrowRightIcon, BoxIcon, BracesIcon, WrenchIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  BoxIcon,
+  BracesIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  WrenchIcon,
+} from "lucide-react";
 
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { cn } from "@ayme-dev/design-system/lib/utils";
@@ -7,9 +14,9 @@ import {
   structureRows,
   type MemberOwner,
   type StructureNode,
-  type StructureRow,
   type StructureTree,
 } from "../domain/structure";
+import { treeRows, type TreeRow, wrapperChain } from "../domain/treeRows";
 import {
   Empty,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
@@ -46,6 +53,10 @@ type RefNode = StructureNode & { ref: string };
  * `node` selections. A node's detail runs the single-element tools that can take its
  * ref and shows what the model sees of it. Hovering a node highlights it on
  * the page; the app highlights the selected one.
+ *
+ * Chains of generic wrappers fold into one row, see {@link treeRows}. A
+ * chain is unfolded while its outermost wrapper's ref is in
+ * `unfoldedChains`, or while a wrapper the fold hides is selected.
  */
 export function structureLens({
   structure,
@@ -55,6 +66,8 @@ export function structureLens({
   onHover,
   elementTools,
   renderRun,
+  unfoldedChains,
+  onUnfoldedChainsChange,
 }: {
   structure: StructureTree;
   capture: StructureCapture;
@@ -63,17 +76,39 @@ export function structureLens({
   onHover: OnHover;
   elementTools: readonly ElementToolSummary[];
   renderRun: RenderRun;
+  /** The outermost wrappers' refs of the chains the person unfolded. */
+  unfoldedChains: ReadonlySet<string>;
+  onUnfoldedChainsChange: (unfoldedChains: ReadonlySet<string>) => void;
 }): Lens {
   const rows = [...structureRows(structure.roots)];
+  const selectedRef = selection.kind === "node" ? selection.ref : undefined;
+  const hides = (chain: readonly StructureNode[], ref?: string) =>
+    chain.slice(1, -1).some((link) => link.ref === ref);
+  const shownRows = treeRows(
+    structure.roots,
+    (chain) => unfoldedChains.has(chain[0]!.ref!) || hides(chain, selectedRef)
+  );
+  const toggle = (outer: RefNode) => {
+    // Refs no longer on the page are dropped as the person folds or unfolds.
+    const refs = new Set(rows.map(({ node }) => node.ref));
+    const next = new Set([...unfoldedChains].filter((ref) => refs.has(ref)));
+    const hidesSelected = hides(wrapperChain(outer), selectedRef);
+    if (next.delete(outer.ref) || hidesSelected) {
+      // Folding hides the selected wrapper: the outermost one stays in view.
+      if (hidesSelected) onSelect({ kind: "node", ref: outer.ref });
+    } else next.add(outer.ref);
+    onUnfoldedChainsChange(next);
+  };
   return {
     id: "structure",
     label: "Structure",
     tree: (
       <StructureTreeView
-        rows={rows}
+        rows={shownRows}
         capture={capture}
-        selectedRef={selection.kind === "node" ? selection.ref : undefined}
+        selectedRef={selectedRef}
         onPick={(ref) => onSelect({ kind: "node", ref })}
+        onToggle={toggle}
         onHover={onHover}
       />
     ),
@@ -122,12 +157,14 @@ function StructureTreeView({
   capture,
   selectedRef,
   onPick,
+  onToggle,
   onHover,
 }: {
-  rows: readonly StructureRow[];
+  rows: readonly TreeRow[];
   capture: StructureCapture;
   selectedRef?: string;
   onPick: (ref: string) => void;
+  onToggle: (outer: RefNode) => void;
   onHover: OnHover;
 }) {
   return (
@@ -144,14 +181,15 @@ function StructureTreeView({
           {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
           className="flex flex-col"
         >
-          {rows.map(({ node, depth }, index) =>
-            hasRef(node) ? (
+          {rows.map((row, index) =>
+            hasRef(row.node) ? (
               <NodeRow
-                key={node.ref}
-                node={node}
-                depth={depth}
-                selected={node.ref === selectedRef}
+                key={row.node.ref}
+                row={row}
+                node={row.node}
+                selectedRef={selectedRef}
                 onPick={onPick}
+                onToggle={onToggle}
                 onHover={onHover}
               />
             ) : (
@@ -159,13 +197,15 @@ function StructureTreeView({
               <div
                 key={index}
                 role="treeitem"
-                aria-level={depth + 1}
+                aria-level={row.depth + 1}
                 aria-selected={false}
                 aria-disabled
                 className={rowClass}
-                style={{ paddingLeft: rowIndent(depth) }}
+                style={{ paddingLeft: rowIndent(row.depth) }}
               >
-                <span className={nameClass}>{JSON.stringify(node.name)}</span>
+                <span className={nameClass}>
+                  {JSON.stringify(row.node.name)}
+                </span>
               </div>
             )
           )}
@@ -183,58 +223,133 @@ function StructureTreeView({
   );
 }
 
+// Rows never scroll sideways: past the panel's width the name is cut
+// first, the member tag only past its share.
 const rowClass =
-  "flex w-full items-baseline gap-1.5 rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
+  "relative flex items-baseline gap-1.5 overflow-hidden rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
 // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-const nameClass = "min-w-0 truncate text-green-700 dark:text-green-300";
+const nameClass =
+  "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
 
+// The indent leaves a gutter for the fold toggle.
 function rowIndent(depth: number) {
-  return 6 + depth * 12;
+  return 18 + depth * 12;
 }
 
+/**
+ * A node's row. A folded row is the generic its chain of wrappers ends in,
+ * led by the chain's outermost wrapper: `e1 [1 more] › e3 generic`. Each ref
+ * picks its node; the rest of the row picks the row's node.
+ */
 function NodeRow({
+  row: { depth, folded, unfolded },
   node,
-  depth,
-  selected,
+  selectedRef,
   onPick,
+  onToggle,
   onHover,
 }: {
+  row: TreeRow;
   node: RefNode;
-  depth: number;
-  selected: boolean;
+  selectedRef?: string;
   onPick: (ref: string) => void;
+  onToggle: (outer: RefNode) => void;
   onHover: OnHover;
 }) {
+  const outer = folded && hasRef(folded.outer) ? folded.outer : undefined;
+  const hidden = folded?.hidden ?? 0;
+  const toggle = outer ?? (unfolded ? node : undefined);
+  const Chevron = outer ? ChevronRightIcon : ChevronDownIcon;
   return (
-    <button
-      type="button"
+    <div
       role="treeitem"
       aria-level={depth + 1}
-      aria-selected={selected}
+      aria-selected={node.ref === selectedRef}
+      aria-expanded={toggle && !outer}
+      aria-label={
+        outer
+          ? `${nodeLabel(node)}, wrapped from ${outer.ref}`
+          : nodeLabel(node)
+      }
       className={cn(
         rowClass,
-        "hover:bg-muted",
-        selected && "bg-accent hover:bg-accent"
+        "cursor-default hover:bg-muted",
+        node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
       style={{ paddingLeft: rowIndent(depth) }}
       onClick={() => onPick(node.ref)}
       onMouseEnter={() => onHover({ ref: node.ref })}
       onMouseLeave={() => onHover(undefined)}
     >
-      <span className="text-primary">{node.ref}</span>
-      <span>{node.role}</span>
-      {node.name && (
-        <span className={nameClass}>{JSON.stringify(node.name)}</span>
-      )}
-      {node.member && (
-        <span
-          className="ml-auto max-w-[45%] min-w-0 shrink-0 truncate pl-1.5 text-xs text-muted-foreground"
-          title={node.member}
+      {toggle && (
+        <button
+          type="button"
+          aria-label={outer ? "Unfold wrappers" : "Fold wrappers"}
+          className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
+          style={{ left: rowIndent(depth) - 15 }}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(toggle);
+          }}
         >
-          {node.tag}
-        </span>
+          <Chevron className="size-3" aria-hidden />
+        </button>
       )}
-    </button>
+      {outer && (
+        <>
+          <button
+            type="button"
+            aria-label={`${outer.ref} generic`}
+            aria-pressed={outer.ref === selectedRef}
+            className="shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPick(outer.ref);
+            }}
+            onMouseEnter={() => onHover({ ref: outer.ref })}
+            onMouseLeave={() => onHover({ ref: node.ref })}
+          >
+            {outer.ref}
+          </button>
+          {hidden > 0 && (
+            // The toggle already says this to assistive technology.
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              className="shrink-0 self-center rounded-full border bg-muted px-1.5 font-sans text-[10px] leading-4 text-muted-foreground hover:text-foreground"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggle(outer);
+              }}
+            >
+              {hidden} more
+            </button>
+          )}
+          <span className="shrink-0 text-muted-foreground" aria-hidden>
+            ›
+          </span>
+        </>
+      )}
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-baseline gap-1.5 text-left"
+      >
+        <span className="shrink-0 text-primary">{node.ref}</span>
+        <span className="shrink-0">{node.role}</span>
+        {node.name && (
+          <span className={nameClass}>{JSON.stringify(node.name)}</span>
+        )}
+        {node.member && (
+          <span
+            className="ml-auto max-w-[45%] min-w-0 truncate pl-1.5 text-xs text-muted-foreground"
+            title={node.member}
+          >
+            {node.tag}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 

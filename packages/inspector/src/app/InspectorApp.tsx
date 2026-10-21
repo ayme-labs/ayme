@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
 import { Empty, InspectorRoot, useTabState } from "../shared";
@@ -39,6 +39,10 @@ export function InspectorApp() {
     setViewState((current) => ({ ...current, lens }));
   const setSelection = (selection: Selection) =>
     setViewState((current) => ({ ...current, selection }));
+  // Like a node selection, unfolded chains name refs, so a reload drops them.
+  const [unfoldedChains, setUnfoldedChains] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
@@ -84,6 +88,8 @@ export function InspectorApp() {
       onHover: runtime.highlight.hover,
       elementTools: runtime.elementTools,
       renderRun,
+      unfoldedChains,
+      onUnfoldedChainsChange: setUnfoldedChains,
     }),
     toolsLens({
       tools,
