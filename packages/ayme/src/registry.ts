@@ -1,9 +1,7 @@
 import type {
   JsonSchema,
   PomComponentManifest,
-  PomComponentMemberManifest,
   PomManifest,
-  PomMemberManifest,
   PomMemberObservation,
   RegisteredPomTool,
   ToolManifest,
@@ -16,22 +14,16 @@ import {
 } from "./actionTool";
 import { throwViolations, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
-import {
-  isPlaywrightLiteLocator,
-  resolveLocatorElements,
-} from "@ayme-dev/playwright-lite/internal";
+import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
-import { modelOption } from "./decorators";
 import { assertRootReachable } from "./elementReach";
-import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
+import type { ObservedPomRoot } from "./pomRootObservation";
 import {
   getInteractionHistory,
   latestPageStateRef,
   onlyHitTestMarks,
 } from "./pageState";
 import {
-  askPredicates,
-  askPresence,
   assertAvailable,
   availabilityOf,
   combinedAvailability,
@@ -40,12 +32,19 @@ import {
   type ToolAvailability,
   unavailableError,
 } from "./pomInstance";
+import {
+  observePageObject,
+  pomGroups,
+  type PageObjectObservation,
+  type PomGroup,
+  type RegisteredPomTarget,
+} from "./pomTree";
 import { registerRefSelectorEngine } from "./refSelectorEngine";
 import { refFailure, resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
-import { errorText, RefResolutionError, RuntimeStateError } from "./errors";
+import { RefResolutionError, RuntimeStateError } from "./errors";
 
 export type PageObjectConstructor<T extends object = object> = new (
   page: Page
@@ -96,21 +95,7 @@ export type RegisteredPomRoot = {
   element: Element;
 };
 
-/**
- * An element a Page Object member holds, at the member's concrete path, e.g.
- * "ListPage.items[0].nameButton", or at `rootTargetPath` of a Page Object's
- * path for its root.
- */
-export type RegisteredPomTarget = {
-  path: string;
-  element: Element;
-  /**
-   * The member's locator, as its `toString()` reads, e.g.
-   * "getByRole('button', { name: 'Add item' })": the locator an Interaction
-   * on the member names.
-   */
-  locator: string;
-};
+export type { RegisteredPomTarget } from "./pomTree";
 
 /**
  * The instances the last observation found of one registered Page Object,
@@ -135,6 +120,8 @@ type ObservedRegisteredPom = RegisteredPom & {
    * an item that declares no root, e.g. "owners" or "items[1].tags".
    */
   rootlessCollectionPaths: ReadonlySet<string>;
+  /** The elements the last observation found its members and roots holding. */
+  targets: readonly RegisteredPomTarget[];
   tools: readonly CallerAwarePomTool[];
 };
 
@@ -245,6 +232,7 @@ export function registerPageObject<T extends object>(
     rootMemberPaths: new Set(),
     instances: undefined,
     rootlessCollectionPaths: new Set(),
+    targets: [],
     tools: [],
   };
   // Its collection tools read the instances observed of this registration.
@@ -441,7 +429,10 @@ async function probeRegistrations(lifetime: number): Promise<void> {
   // a later probe's observation is never overwritten by an older one.
   const settled = await Promise.allSettled(
     [...registeredPoms].map(async (registration) => {
-      const observed = await probePomMembers(registration);
+      const observed = await observePageObject(
+        registration.instance,
+        registration.manifest
+      );
       if (
         lifetime === probeLifetime &&
         commitObservation(registration, observed)
@@ -455,18 +446,17 @@ async function probeRegistrations(lifetime: number): Promise<void> {
 
 /**
  * Keeps `registration`'s new observation, so a call acts on the instances
- * the last observation read; whether it found anything new.
+ * the last observation read, and logs what it found wrong that the last
+ * one did not; whether it found anything new.
  */
 function commitObservation(
   registration: ObservedRegisteredPom,
-  {
-    memberObservations,
-    instances,
-    rootMemberPaths,
-    rootlessCollectionPaths,
-  }: Awaited<ReturnType<typeof probePomMembers>>
+  observation: PageObjectObservation
 ): boolean {
   if (!registeredPoms.has(registration)) return false;
+  reportObservationErrors(registration, observation);
+  const { memberObservations, instances, rootMemberPaths, targets } =
+    observation;
   const previous = registration.instances?.all;
   const same =
     previous?.length === instances.length &&
@@ -479,7 +469,10 @@ function commitObservation(
     instances.flatMap((instance) => (instance.present ? [instance.path] : []))
   );
   registration.rootMemberPaths = rootMemberPaths;
-  registration.rootlessCollectionPaths = rootlessCollectionPaths;
+  registration.rootlessCollectionPaths = new Set(
+    observation.rootlessCollections.keys()
+  );
+  registration.targets = targets;
   registration.instances = groupedInstances(instances);
   return !same;
 }
@@ -579,39 +572,16 @@ function isRootPresent<T extends ObservedPomRoot>(
 }
 
 /**
- * Package-internal: the path of the target that is the Page Object Root of
- * the instance at `path`, e.g. "ListPage.items[0].@root". The segment is one
- * no member is named, so a member named `root` never shares a path with it.
- */
-export function rootTargetPath(path: string) {
-  return `${path}.@root`;
-}
-
-/**
  * Package-internal: every element the registered Page Objects' members hold,
  * one target per element and concrete member path, in registration and
- * declaration order. Paths through collections carry their item indices.
+ * declaration order, as an observation run now finds them. Paths through
+ * collections carry their item indices.
  */
 export async function listRegisteredPomTargets(): Promise<
   RegisteredPomTarget[]
 > {
-  const targets: RegisteredPomTarget[] = [];
-  for (const registration of registeredPoms) {
-    const components = new Map(
-      registration.manifest.components.map((component) => [
-        component.className,
-        component,
-      ])
-    );
-    await collectPomTargets(
-      registration.instance,
-      registration.manifest.members,
-      registration.id,
-      components,
-      targets
-    );
-  }
-  return targets;
+  await probeRegisteredPomMembers();
+  return [...registeredPoms].flatMap((registration) => registration.targets);
 }
 
 /**
@@ -744,15 +714,11 @@ function createRegisteredTools(registration: ObservedRegisteredPom) {
   const pageTools = manifest.tools.map((tool) =>
     createRegisteredTool(registration, tool)
   );
-  const components = new Map(
-    manifest.components.map((component) => [component.className, component])
+  const componentTools = pomGroups(manifest).flatMap((group) =>
+    group.component.tools.map((action) =>
+      createComponentTool(registration, group, action)
+    )
   );
-  const componentTools = manifest.members.flatMap((member) => {
-    if (member.kind !== "component") return [];
-    const component = components.get(member.componentClassName);
-    if (!component) return [];
-    return createComponentTools(registration, [member], component, components);
-  });
   return [...pageTools, ...componentTools];
 }
 
@@ -817,75 +783,22 @@ function rootHolds(observed: PomInstanceObservation): boolean {
   return elements.length === 1 && elements[0] === element;
 }
 
-/**
- * The locator that anchors `instance`, its Page Object Root: what the `root`
- * option its class declares or inherits answers. Undefined without the
- * option, or when the answer is not a locator; a root predicate that throws,
- * throws.
- */
-async function readRoot(instance: object): Promise<Locator | undefined> {
-  const predicate = modelOption(instance.constructor, "root");
-  if (!predicate) return undefined;
-  const root = await predicate(instance as never);
-  return isLocator(root) ? root : undefined;
-}
-
-/** `instance`'s root, or undefined when it cannot be read as a locator. */
-const declaredRoot = (instance: object) =>
-  readRoot(instance).catch(() => undefined);
-
-function createComponentTools(
-  registration: ObservedRegisteredPom,
-  path: readonly PomComponentMemberManifest[],
-  component: PomComponentManifest,
-  components: ReadonlyMap<string, PomComponentManifest>,
-  componentPath: ReadonlySet<string> = new Set()
-): CallerAwarePomTool[] {
-  if (componentPath.has(component.className)) return [];
-  const nextComponentPath = new Set(componentPath).add(component.className);
-  const tools = component.tools.map((action) =>
-    createComponentTool(registration, path, component, action)
-  );
-  const nestedTools = component.members.flatMap((member) => {
-    if (member.kind !== "component") return [];
-    const childComponent = components.get(member.componentClassName);
-    if (!childComponent) return [];
-    return createComponentTools(
-      registration,
-      [...path, member],
-      childComponent,
-      components,
-      nextComponentPath
-    );
-  });
-  return [...tools, ...nestedTools];
-}
-
 function createComponentTool(
   registration: ObservedRegisteredPom,
-  path: readonly PomComponentMemberManifest[],
-  component: PomComponentManifest,
+  group: PomGroup,
   action: ToolManifest
 ): CallerAwarePomTool {
   const { id: pomId } = registration;
-  const componentPath = componentPathFor(path);
-  const collectionCount = path.filter((member) => member.collection).length;
-  if (collectionCount === 0)
-    return createSingularComponentTool(
-      registration,
-      path,
-      component,
-      action,
-      componentPath
-    );
+  const { component, collectionKey } = group;
+  if (collectionKey === undefined)
+    return createSingularComponentTool(registration, group, action);
 
-  const wrapper = refComponentToolManifest(pomId, path, action);
-  const itemDepth = path.map((member) => member.collection).lastIndexOf(true);
+  const wrapper = refComponentToolManifest(pomId, group.toolPath, action);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
     const ref = values[0] as string;
     const args = values[1] ?? {};
-    const toolPath = `${pomId}.${publicComponentPath(path)}`;
+    const toolPath = `${pomId}.${group.toolPath}`;
     const label = `call ${wrapper.toolName} on`;
     const { element } = await resolveRef(ref, label, document);
     // The instance the last observation found at the ref's element; an item
@@ -916,8 +829,8 @@ function createComponentTool(
   const tool: CallerAwarePomTool = {
     pomId,
     componentClassName: component.className,
-    componentPath,
-    collectionPath: componentPathFor(path.slice(0, itemDepth + 1)),
+    componentPath: group.key,
+    collectionPath: collectionKey,
     methodName: action.methodName,
     name: wrapper.toolName,
     ...actionFacts(action, component.className),
@@ -930,17 +843,15 @@ function createComponentTool(
 
 function createSingularComponentTool(
   registration: ObservedRegisteredPom,
-  path: readonly PomComponentMemberManifest[],
-  component: PomComponentManifest,
-  action: ToolManifest,
-  componentPath: string
+  { component, key, toolPath }: PomGroup,
+  action: ToolManifest
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
     pomId: registration.id,
     componentClassName: component.className,
-    componentPath,
+    componentPath: key,
     methodName: action.methodName,
-    name: `${registration.id}.${publicComponentPath(path)}.${action.methodName}`,
+    name: `${registration.id}.${toolPath}.${action.methodName}`,
     ...actionFacts(action, component.className),
     inputSchema: inputSchemaFor(action.parameters),
     parameters: inputParameters(action.parameters),
@@ -957,7 +868,7 @@ function createSingularComponentTool(
 
 function refComponentToolManifest(
   pomId: string,
-  path: readonly PomComponentMemberManifest[],
+  toolPath: string,
   action: ToolManifest
 ): ToolManifest {
   const parameters = [
@@ -982,509 +893,60 @@ function refComponentToolManifest(
 
   return {
     ...action,
-    toolName: `${pomId}.${publicComponentPath(path)}.${action.methodName}`,
+    toolName: `${pomId}.${toolPath}.${action.methodName}`,
     parameters,
   };
 }
 
-function componentPathFor(path: readonly PomComponentMemberManifest[]) {
-  return path
-    .map((member) => `${member.memberName}${member.collection ? "[]" : ""}`)
-    .join(".");
-}
-
-function publicComponentPath(path: readonly PomComponentMemberManifest[]) {
-  return path.map((member) => member.memberName).join(".");
-}
-
-async function probePomMembers(registration: ObservedRegisteredPom) {
-  const { instance, manifest } = registration;
-  const walk: Walk = {
-    registration,
-    components: new Map(
-      manifest.components.map((component) => [component.className, component])
-    ),
-    instances: [],
-    rootMemberPaths: new Set(),
-    rootlessCollectionPaths: new Set(),
-  };
-  const place: Place = {
-    path: "",
-    componentPath: "",
-    item: undefined,
-    present: false,
-  };
-  // Its presence predicate is asked before its root is read or any member
-  // is: an absent Page Object costs one call, and its members are not walked.
-  const presence = await askPresence(instance);
-  reportPredicateError(registration, place.path, "present", presence.error);
-  const absent = presence.present === false;
-  const root = absent ? undefined : await observeRoot(instance);
-  reportPredicateError(registration, place.path, "root", root?.error);
-  reportRootCount(registration, place.path, root?.count);
-  const present = !absent && (root?.root.present ?? true);
-  walk.instances.push({
-    ...place,
-    instance,
-    componentPath: undefined,
-    present,
-    presenceError: presence.error,
-    root: root?.root,
-    rootLocator: root?.locator,
-    rootError: root?.error,
-    rootCount: root?.count,
-    predicates: present
-      ? await askPredicates(instance, manifest.tools)
-      : new Map(),
-  });
-  if (absent)
-    return {
-      memberObservations: [],
-      instances: walk.instances,
-      rootMemberPaths: walk.rootMemberPaths,
-      rootlessCollectionPaths: walk.rootlessCollectionPaths,
-    };
-  const memberObservations = await probeMembers(
-    walk,
-    instance,
-    manifest.members,
-    { ...place, present, rootElement: root?.root.element },
-    new Set()
-  );
-  return {
-    memberObservations,
-    instances: walk.instances,
-    rootMemberPaths: walk.rootMemberPaths,
-    rootlessCollectionPaths: walk.rootlessCollectionPaths,
-  };
-}
-
 /**
- * Logs what the `option` predicate of `registration`'s instance at `path`
- * threw, once: again only when a later observation finds another error.
+ * Logs what `observation` of `registration` found wrong that its last one
+ * did not: a presence or root predicate that threw, a root matching several
+ * elements, a collection whose item class declares no root. Each is logged
+ * once, and again only when a later observation finds it changed or gone
+ * and back. A root matching none is ordinary absence, never logged.
  */
-function reportPredicateError(
+function reportObservationErrors(
   registration: ObservedRegisteredPom,
-  path: string,
-  option: "present" | "root",
-  error: string | undefined
+  { instances, rootlessCollections }: PageObjectObservation
 ) {
-  if (error === undefined) return;
-  const previous = registration.instances?.all.find(
-    (instance) => instance.path === path
-  );
-  const reported =
-    option === "present" ? previous?.presenceError : previous?.rootError;
-  if (reported === error) return;
-  console.error(
-    `The Page Object "${pomLabel(registration, path)}" is absent: its ${option} predicate threw ${error}.`
-  );
-}
-
-/**
- * Logs that the root of `registration`'s instance at `path` matched `count`
- * elements, when that is several: again only when a later observation finds
- * another count. A root matching none is ordinary absence, never logged.
- */
-function reportRootCount(
-  registration: ObservedRegisteredPom,
-  path: string,
-  count: number | undefined
-) {
-  if (count === undefined || count < 2) return;
-  const previous = registration.instances?.all.find(
-    (instance) => instance.path === path
-  );
-  if (previous?.rootCount === count) return;
-  console.error(
-    `The Page Object "${pomLabel(registration, path)}" is absent: its root matches ${count} elements.`
-  );
-}
-
-/**
- * Logs that the collection at `path` of `walk`'s Page Object holds items
- * of `className`, which declares no root: once, and again only after an
- * observation that did not find it so, as the predicate lines are: one
- * that found the collection rooted, or did not walk it while its Page
- * Object was absent.
- */
-function reportRootlessCollection(walk: Walk, path: string, className: string) {
-  if (walk.rootlessCollectionPaths.has(path)) return;
-  walk.rootlessCollectionPaths.add(path);
-  if (walk.registration.rootlessCollectionPaths.has(path)) return;
-  console.error(
-    `The Page Object "${pomLabel(walk.registration, path)}" is absent: its item class ${className} declares no root.`
-  );
+  const previous = new Map<string, PomInstanceObservation>();
+  for (const instance of registration.instances?.all ?? [])
+    if (!previous.has(instance.path)) previous.set(instance.path, instance);
+  for (const instance of instances) {
+    const before = previous.get(instance.path);
+    const label = pomLabel(registration, instance.path);
+    if (
+      instance.presenceError !== undefined &&
+      instance.presenceError !== before?.presenceError
+    )
+      console.error(
+        `The Page Object "${label}" is absent: its present predicate threw ${instance.presenceError}.`
+      );
+    if (
+      instance.rootError !== undefined &&
+      instance.rootError !== before?.rootError
+    )
+      console.error(
+        `The Page Object "${label}" is absent: its root predicate threw ${instance.rootError}.`
+      );
+    if (
+      instance.rootCount !== undefined &&
+      instance.rootCount >= 2 &&
+      instance.rootCount !== before?.rootCount
+    )
+      console.error(
+        `The Page Object "${label}" is absent: its root matches ${instance.rootCount} elements.`
+      );
+  }
+  for (const [path, className] of rootlessCollections)
+    if (!registration.rootlessCollectionPaths.has(path))
+      console.error(
+        `The Page Object "${pomLabel(registration, path)}" is absent: its item class ${className} declares no root.`
+      );
 }
 
 function pomLabel(registration: ObservedRegisteredPom, path: string) {
   return path ? `${registration.id}.${path}` : registration.id;
-}
-
-/** One walk over a registered Page Object's members. */
-type Walk = {
-  registration: ObservedRegisteredPom;
-  components: ReadonlyMap<string, PomComponentManifest>;
-  /** Every instance the walk found, parents before their members. */
-  instances: PomInstanceObservation[];
-  /** The paths of the locator members that resolved to their root. */
-  rootMemberPaths: Set<string>;
-  /** The paths of the collections holding an item that declares no root. */
-  rootlessCollectionPaths: Set<string>;
-};
-
-/** Where in the walk an instance's members are. */
-type Place = Pick<PomInstanceObservation, "path" | "item"> & {
-  componentPath: string;
-  /**
-   * Whether the instance is present: what a root-less single child with no
-   * predicate follows.
-   */
-  present: boolean;
-  /**
-   * The one element the instance's root locator resolved to, when it did: a
-   * locator member resolving to that element alone is the root, not a child.
-   */
-  rootElement?: Element;
-};
-
-/** What observing an instance's declared root found. */
-type RootObservation = {
-  root: ObservedPomRoot;
-  /** How many elements the root locator matched. */
-  count: number;
-  /** The locator the root predicate answered, when it answered one. */
-  locator?: Locator;
-  /** What the root predicate threw, when it threw. */
-  error?: string;
-};
-
-/**
- * Observes `instance`'s declared root. A root the predicate throws on, or
- * answers no locator for, never falls back to rootless activation: it is
- * absent.
- */
-async function observeRoot(
-  instance: object
-): Promise<RootObservation | undefined> {
-  // A rootless Page Object with no predicate is on every page.
-  if (!modelOption(instance.constructor, "root")) return undefined;
-  let locator: Locator | undefined;
-  try {
-    locator = await readRoot(instance);
-  } catch (error) {
-    return { root: absentRoot, count: 0, error: errorText(error) };
-  }
-  if (!locator) return { root: absentRoot, count: 0 };
-  return { ...(await observePomRoot(locator)), locator };
-}
-
-const absentRoot: ObservedPomRoot = {
-  element: undefined,
-  present: false,
-  available: false,
-  inTheWay: [],
-};
-
-/**
- * `instance`'s targets at `prefix`: its root's elements at the root target
- * path, then its members', without the member that resolves to the root.
- */
-async function collectPomTargets(
-  instance: object,
-  members: readonly PomMemberManifest[],
-  prefix: string,
-  components: ReadonlyMap<string, PomComponentManifest>,
-  targets: RegisteredPomTarget[],
-  componentClasses: ReadonlySet<string> = new Set()
-): Promise<void> {
-  const rootElement = await collectRootTargets(instance, prefix, targets);
-  for (const member of members) {
-    const memberPath = `${prefix}.${member.memberName}`;
-    try {
-      const value = await readMember(instance, member);
-      if (member.kind === "locator") {
-        if (!isLocator(value) || resolvesToRoot(value, rootElement)) continue;
-        const locator = value.toString();
-        for (const element of locatorElements(value))
-          targets.push({ path: memberPath, element, locator });
-        continue;
-      }
-
-      const component = components.get(member.componentClassName);
-      if (!component) continue;
-      const values = member.collection ? asComponents(value) : [value];
-      for (const [index, candidate] of values.entries()) {
-        if (!isRecord(candidate)) continue;
-        const componentPath = member.collection
-          ? `${memberPath}[${index}]`
-          : memberPath;
-        if (componentClasses.has(component.className)) {
-          await collectRootTargets(candidate, componentPath, targets);
-          continue;
-        }
-        await collectPomTargets(
-          candidate,
-          component.members,
-          componentPath,
-          components,
-          targets,
-          new Set(componentClasses).add(component.className)
-        );
-      }
-    } catch {
-      continue;
-    }
-  }
-}
-
-/**
- * Pushes the elements `instance`'s root resolves to as targets at the root
- * target path of `prefix`, and answers the one element it resolved to, when
- * it did.
- */
-async function collectRootTargets(
-  instance: object,
-  prefix: string,
-  targets: RegisteredPomTarget[]
-): Promise<Element | undefined> {
-  const root = await declaredRoot(instance);
-  if (!root) return undefined;
-  const elements = locatorElements(root);
-  const locator = root.toString();
-  const path = rootTargetPath(prefix);
-  for (const element of elements) targets.push({ path, element, locator });
-  return elements.length === 1 ? elements[0] : undefined;
-}
-
-async function probeMembers(
-  walk: Walk,
-  instance: object,
-  members: readonly PomMemberManifest[],
-  place: Place,
-  ancestors: ReadonlySet<object>
-): Promise<PomMemberObservation[]> {
-  if (ancestors.has(instance)) return [];
-  const nextAncestors = new Set(ancestors).add(instance);
-  const observations: PomMemberObservation[] = [];
-  for (const member of members) {
-    const memberPath = joinPath(place.path, member.memberName);
-    try {
-      const value = await readMember(instance, member);
-      if (member.kind === "locator") {
-        if (isLocator(value) && resolvesToRoot(value, place.rootElement)) {
-          walk.rootMemberPaths.add(memberPath);
-          continue;
-        }
-        observations.push(await observeLocator(value, member, memberPath));
-      } else
-        await probeComponentMember(
-          walk,
-          value,
-          member,
-          place,
-          nextAncestors,
-          observations
-        );
-    } catch (error) {
-      observations.push(failedObservation(member, memberPath, error));
-    }
-  }
-  return observations;
-}
-
-/**
- * Whether `locator` resolves to `rootElement` alone, so the member holding
- * it is the Page Object Root. By element, not by Locator identity: a getter
- * may build a fresh Locator on each read.
- */
-function resolvesToRoot(locator: Locator, rootElement: Element | undefined) {
-  if (!rootElement) return false;
-  const elements = locatorElements(locator);
-  return elements.length === 1 && elements[0] === rootElement;
-}
-
-async function observeLocator(
-  value: unknown,
-  member: PomMemberManifest,
-  memberPath: string
-): Promise<PomMemberObservation> {
-  if (!isLocator(value))
-    throw new RuntimeStateError(
-      `POM member ${memberPath} is not a browser locator.`
-    );
-  return {
-    memberName: memberPath,
-    kind: "locator",
-    access: member.access,
-    count: await value.count(),
-  };
-}
-
-/**
- * Walks the component, or each component of the collection, a member of
- * the instance at `place` holds, into `observations`.
- */
-async function probeComponentMember(
-  walk: Walk,
-  value: unknown,
-  member: PomComponentMemberManifest,
-  place: Place,
-  ancestors: ReadonlySet<object>,
-  observations: PomMemberObservation[]
-) {
-  const manifest = walk.components.get(member.componentClassName);
-  if (!manifest)
-    throw new RuntimeStateError(
-      `No metadata found for component ${member.componentClassName}.`
-    );
-  const memberPath = joinPath(place.path, member.memberName);
-  const componentPath = joinPath(
-    place.componentPath,
-    `${member.memberName}${member.collection ? "[]" : ""}`
-  );
-  const values = member.collection ? asComponents(value) : [value];
-  if (member.collection)
-    observations.push({
-      memberName: memberPath,
-      kind: "component-collection",
-      access: member.access,
-      count: values.length,
-    });
-  for (const [index, component] of values.entries()) {
-    const path = member.collection ? `${memberPath}[${index}]` : memberPath;
-    // A child whose root cannot be observed is absent, and the observation
-    // says why.
-    const rootObservation = (error: string): PomMemberObservation => ({
-      memberName: `${path}.root`,
-      kind: "component-root",
-      count: 0,
-      error,
-    });
-    if (!isRecord(component)) {
-      observations.push(
-        rootObservation(`POM component ${path} is not an object.`)
-      );
-      continue;
-    }
-    const observed: PomInstanceObservation = {
-      path,
-      instance: component,
-      componentPath,
-      item: place.item,
-      present: false,
-      root: undefined,
-      predicates: new Map(),
-    };
-    if (member.collection) observed.item = observed;
-    // Its presence predicate is asked before its root is read or any member
-    // is, as the page's own: a child it withdraws costs one call.
-    const presence = await askPresence(component);
-    reportPredicateError(walk.registration, path, "present", presence.error);
-    if (presence.present === false) {
-      observed.presenceError = presence.error;
-      walk.instances.push(observed);
-      continue;
-    }
-    // Whether the child is on the page: a rooted one while its root is, a
-    // root-less one with a predicate by the predicate alone, a root-less
-    // single child with neither while the Page Object it is reached through
-    // is. A collection item needs a root for its ref, which the build
-    // refuses when every options object in the chain is an inline literal
-    // naming no root; anything else is reported here, at observation.
-    let present: boolean;
-    const root = await observeRoot(component);
-    if (root) {
-      reportPredicateError(walk.registration, path, "root", root.error);
-      reportRootCount(walk.registration, path, root.count);
-      observed.root = root.root;
-      observed.rootLocator = root.locator;
-      observed.rootError = root.error;
-      observed.rootCount = root.count;
-      if (root.error !== undefined || !root.locator) {
-        observations.push(
-          rootObservation(
-            root.error === undefined
-              ? `POM component ${path}'s root is not a browser locator.`
-              : `POM component ${path}'s root could not be read: ${root.error}.`
-          )
-        );
-        walk.instances.push(observed);
-        continue;
-      }
-      observations.push({
-        memberName: `${path}.root`,
-        kind: "component-root",
-        count: root.count,
-      });
-      present = root.root.present;
-    } else if (member.collection) {
-      observations.push(
-        rootObservation(`POM component ${path} declares no root.`)
-      );
-      reportRootlessCollection(walk, memberPath, manifest.className);
-      continue;
-    } else present = presence.present ?? place.present;
-    observed.present = present;
-    if (present)
-      observed.predicates = await askPredicates(component, manifest.tools);
-    walk.instances.push(observed);
-    // A child absent by its root is still walked: a present Page Object
-    // inside one that is not on the page stays listed (ADR-0020).
-    observations.push(
-      ...(await probeMembers(
-        walk,
-        component,
-        manifest.members,
-        {
-          path,
-          componentPath,
-          item: observed.item,
-          present,
-          rootElement: observed.root?.element,
-        },
-        ancestors
-      ))
-    );
-  }
-}
-
-function failedObservation(
-  member: PomMemberManifest,
-  memberPath: string,
-  error: unknown
-): PomMemberObservation {
-  return {
-    memberName:
-      member.kind === "component" && !member.collection
-        ? `${memberPath}.root`
-        : memberPath,
-    kind:
-      member.kind === "locator"
-        ? "locator"
-        : member.collection
-          ? "component-collection"
-          : "component-root",
-    access: member.access,
-    count: 0,
-    error: errorMessage(error),
-  };
-}
-
-function joinPath(prefix: string, name: string) {
-  return prefix ? `${prefix}.${name}` : name;
-}
-
-async function readMember(instance: object, member: PomMemberManifest) {
-  const value = Reflect.get(instance, member.memberName);
-  if (member.access === "method") {
-    if (!isCallable(value))
-      throw new RuntimeStateError(
-        `POM member ${member.memberName} is not callable.`
-      );
-    return await value.apply(instance, []);
-  }
-  return await value;
 }
 
 /**
@@ -1540,24 +1002,6 @@ function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === "function";
 }
 
-function isLocator(value: unknown): value is Locator {
-  return isPlaywrightLiteLocator(value);
-}
-
 function locatorElements(locator: Locator): Element[] {
   return resolveLocatorElements(locator);
-}
-
-function asComponents(value: unknown): unknown[] {
-  if (!Array.isArray(value))
-    throw new RuntimeStateError("Expected a component collection array.");
-  return value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
 }

@@ -6,11 +6,8 @@ import { createPage } from "./browserPage";
 
 import { ayme } from "./decorators";
 import { rooted, rootOf } from "./pomRoot.testSupport";
-import {
-  listRegisteredPomTargets,
-  registerCompiledPom,
-  rootTargetPath,
-} from "./registry";
+import { rootTargetPath } from "./pomTree";
+import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
 
 describe("registered Page Object targets", () => {
