@@ -38,12 +38,16 @@ export type PomInstanceObservation = {
   instance: object;
   /**
    * Its tools' component path, which has no item indices, e.g.
-   * "items[].details"; undefined for the page's own.
+   * "items[].details"; undefined for the page's own. An instance whose
+   * class appears higher on its path through a collection, with a root of
+   * its own, has its first occurrence's, e.g. "items[]" for
+   * "items[0].children[1]".
    */
   componentPath: string | undefined;
   /**
    * The innermost collection item it is or lies in, e.g. the instance at
-   * "items[1]" for "items[1].details"; undefined outside collections.
+   * "items[1]" for "items[1].details", or itself when it joined its first
+   * occurrence's instances; undefined outside collections.
    */
   item: PomInstanceObservation | undefined;
   /**

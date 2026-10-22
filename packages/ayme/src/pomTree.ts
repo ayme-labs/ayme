@@ -89,7 +89,8 @@ export function rootTargetPath(path: string) {
  * Package-internal: the places `manifest`'s component tools live, a group's
  * own before the ones nested in it, in declaration order. A class that
  * already appears higher on a path ends that path: the manifest alone
- * would repeat it forever.
+ * would repeat it forever. Its instances there belong to its first
+ * occurrence, which `observePageObject` follows.
  */
 export function pomGroups(manifest: PomManifest): PomGroup[] {
   const components = componentsOf(manifest);
@@ -97,19 +98,26 @@ export function pomGroups(manifest: PomManifest): PomGroup[] {
   const visit = (
     members: readonly PomMemberManifest[],
     path: readonly PomComponentMemberManifest[],
-    classes: ReadonlySet<string>
+    occurrences: Occurrences
   ) => {
     for (const member of members) {
       if (member.kind !== "component") continue;
       const component = components.get(member.componentClassName);
-      if (!component || classes.has(component.className)) continue;
+      if (!component) continue;
       const memberPath = [...path, member];
+      const key = componentKey(memberPath);
+      const { repeatOf, below } = occurrenceOf(
+        occurrences,
+        component.className,
+        key
+      );
+      if (repeatOf !== undefined) continue;
       const itemDepth = memberPath
         .map((step) => step.collection)
         .lastIndexOf(true);
       groups.push({
         component,
-        key: componentKey(memberPath),
+        key,
         toolPath: memberPath.map((step) => step.memberName).join("."),
         ...(itemDepth < 0
           ? {}
@@ -117,15 +125,33 @@ export function pomGroups(manifest: PomManifest): PomGroup[] {
               collectionKey: componentKey(memberPath.slice(0, itemDepth + 1)),
             }),
       });
-      visit(
-        component.members,
-        memberPath,
-        new Set(classes).add(component.className)
-      );
+      visit(component.members, memberPath, below);
     }
   };
-  visit(manifest.members, [], new Set());
+  visit(manifest.members, [], new Map());
   return groups;
+}
+
+/**
+ * The classes on a path through the tree, each with the key of its first
+ * occurrence there.
+ */
+type Occurrences = ReadonlyMap<string, string>;
+
+/**
+ * Where the class `className` at `key` belongs on a path with
+ * `occurrences`: a class that already appears higher on it belongs to its
+ * first occurrence, `repeatOf`. `below` is what the path holds under it.
+ */
+function occurrenceOf(
+  occurrences: Occurrences,
+  className: string,
+  key: string
+): { repeatOf: string | undefined; below: Occurrences } {
+  const first = occurrences.get(className);
+  return first === undefined
+    ? { repeatOf: undefined, below: new Map(occurrences).set(className, key) }
+    : { repeatOf: first, below: occurrences };
 }
 
 function componentKey(path: readonly PomComponentMemberManifest[]) {
@@ -155,6 +181,7 @@ export async function observePageObject(
   const place: Place = {
     path: "",
     componentPath: "",
+    occurrences: new Map(),
     item: undefined,
     present: true,
   };
@@ -199,6 +226,7 @@ type Walk = PageObjectObservation & {
 /** Where in the walk an instance's members are. */
 type Place = Pick<PomInstanceObservation, "path" | "item"> & {
   componentPath: string;
+  occurrences: Occurrences;
   /**
    * Whether the instance is present: what a root-less single child with no
    * predicate follows.
@@ -216,7 +244,7 @@ type Place = Pick<PomInstanceObservation, "path" | "item"> & {
  * single child, or a collection item. `present` is the presence a root-less
  * one with no predicate takes.
  */
-type InstancePlace = Omit<Place, "rootElement"> & {
+type InstancePlace = Omit<Place, "rootElement" | "occurrences"> & {
   kind: "page" | "child" | "item";
 };
 
@@ -418,6 +446,11 @@ async function walkComponentMember(
     place.componentPath,
     `${member.memberName}${member.collection ? "[]" : ""}`
   );
+  const { repeatOf, below } = occurrenceOf(
+    place.occurrences,
+    manifest.className,
+    componentPath
+  );
   const values = member.collection ? asComponents(value) : [value];
   if (member.collection)
     walk.memberObservations.push({
@@ -448,6 +481,15 @@ async function walkComponentMember(
       walk.rootlessCollections.set(memberPath, manifest.className);
       continue;
     }
+    // An instance of a class that appears higher on its path, reached
+    // through a collection whose tools take a ref, is one of that first
+    // occurrence's instances when it has a root of its own: the item a ref
+    // to that root names. Without either, no tool reaches it.
+    const { observed } = child;
+    if (repeatOf?.includes("[]") && observed.rootLocator) {
+      observed.componentPath = repeatOf;
+      observed.item = observed;
+    }
     if (!child.walk) continue;
     await walkMembers(
       walk,
@@ -455,9 +497,10 @@ async function walkComponentMember(
       manifest.members,
       {
         path,
-        componentPath,
-        item: child.observed.item,
-        present: child.observed.present,
+        componentPath: observed.componentPath ?? componentPath,
+        occurrences: below,
+        item: observed.item,
+        present: observed.present,
         rootElement: child.rootElement,
       },
       ancestors
