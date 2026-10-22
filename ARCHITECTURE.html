@@ -1,0 +1,2257 @@
+<!-- The architecture diagram, published at https://claude.ai/artifact/5YFUfE3seAb7iu2ffbZMMG.
+     Its data block is ARCHITECTURE.md in JSON: change both in the same pull request. -->
+<title>Ayme Architecture</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+  /* Layout concept: actors on the left, the Ayme system boundary in the middle holding one frame per deployment node
+   of the chosen environment, external systems on the right. Edges are drawn over the cards; selecting an element
+   lights up its own connections and lists their flows in the inspector above the picture. */
+  :root {
+    --bg: #f1f3f6;
+    --surface: #ffffff;
+    --ink: #17212c;
+    --muted: #566475;
+    --rule: #cdd5de;
+    --edge: #6e7b8c;
+    --cont-line: #2a3949;
+    --actor-bg: #fff0d6;
+    --actor-line: #b0731a;
+    --ext-bg: #ebe8f9;
+    --ext-line: #6252b3;
+    --hot-out: #0a62c4;
+    --hot-in: #c2410c;
+    --g1: #2f6fd0;
+    --g2: #12877a;
+    --g3: #b43f87;
+    --g4: #8a8a12;
+    --g5: #d0701c;
+    --g6: #7a52c9;
+    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1319;
+      --surface: #17202a;
+      --ink: #e3e9ef;
+      --muted: #9aa7b7;
+      --rule: #2d3a47;
+      --edge: #7a8a9d;
+      --cont-line: #8fa5bd;
+      --actor-bg: #3a2c14;
+      --actor-line: #e2a64c;
+      --ext-bg: #25213f;
+      --ext-line: #a094f2;
+      --hot-out: #5eacff;
+      --hot-in: #ff9d60;
+      --g1: #6aa2ff;
+      --g2: #3dc4b2;
+      --g3: #f08ac4;
+      --g4: #cfcf4a;
+      --g5: #ffa05a;
+      --g6: #b697ff;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1319;
+    --surface: #17202a;
+    --ink: #e3e9ef;
+    --muted: #9aa7b7;
+    --rule: #2d3a47;
+    --edge: #7a8a9d;
+    --cont-line: #8fa5bd;
+    --actor-bg: #3a2c14;
+    --actor-line: #e2a64c;
+    --ext-bg: #25213f;
+    --ext-line: #a094f2;
+    --hot-out: #5eacff;
+    --hot-in: #ff9d60;
+    --g1: #6aa2ff;
+    --g2: #3dc4b2;
+    --g3: #f08ac4;
+    --g4: #cfcf4a;
+    --g5: #ffa05a;
+    --g6: #b697ff;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 14px;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    overflow-wrap: anywhere;
+  }
+  .page {
+    max-width: 1900px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .page > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .premise {
+    margin: 0;
+    color: var(--muted);
+    max-width: 70ch;
+    font-size: 13.5px;
+    line-height: 1.45;
+    flex: 1 1 360px;
+    min-width: 0;
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    align-items: center;
+  }
+  .envs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .envs button,
+  .zoom button {
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .envs button small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+  .envs button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .envs button[aria-pressed="true"] small {
+    color: inherit;
+    opacity: 0.75;
+  }
+  button:focus-visible,
+  .node:focus-visible,
+  .crow:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--hot-out);
+    outline-offset: 2px;
+  }
+  .zoom {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: auto;
+  }
+  .zoom button {
+    padding: 5px 10px;
+  }
+  .opt {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 12px;
+    color: var(--muted);
+    align-items: center;
+  }
+  .legend span.i {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .sw {
+    display: inline-block;
+    width: 26px;
+    height: 15px;
+    border: 1.5px solid var(--cont-line);
+    background: var(--surface);
+  }
+  .sw.actor {
+    border-color: var(--actor-line);
+    background: var(--actor-bg);
+    border-radius: 9px;
+  }
+  .sw.ext {
+    border-color: var(--ext-line);
+    background: var(--ext-bg);
+    border-radius: 8px 1px 8px 1px;
+  }
+  .sw.cont {
+    border-radius: 2px;
+  }
+  .sw.dash {
+    border-style: dashed;
+  }
+  .sw.frame {
+    border: 1px solid color-mix(in srgb, var(--g2) 60%, transparent);
+    background: color-mix(in srgb, var(--g2) 12%, transparent);
+    border-radius: 4px;
+  }
+  .sw.off {
+    opacity: 0.35;
+  }
+  .ln {
+    display: inline-block;
+    width: 28px;
+    border-top: 2px solid var(--edge);
+  }
+  .ln.dash {
+    border-top-style: dashed;
+  }
+  .ln.faint {
+    opacity: 0.3;
+  }
+  .glyph {
+    font-size: 14px;
+    color: var(--ink);
+  }
+
+  .insp {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 6;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 8px 26px;
+    max-height: 250px;
+    overflow: auto;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  }
+  .insp h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .insp h3 {
+    margin: 10px 0 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .insp p {
+    margin: 3px 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .insp .kind {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .insp .col {
+    min-width: 0;
+  }
+  .ev {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .mk {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0 5px;
+    border-radius: 3px;
+    border: 1px solid currentColor;
+    vertical-align: 1px;
+    margin-right: 4px;
+  }
+  .mk.inf {
+    color: var(--hot-in);
+    border-style: dashed;
+  }
+  .mk.ver {
+    color: var(--muted);
+  }
+  .crow {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--rule);
+    padding: 6px 2px;
+    cursor: pointer;
+  }
+  .crow:hover,
+  .crow.hv {
+    background: color-mix(in srgb, var(--hot-out) 9%, transparent);
+  }
+  .crow .who {
+    font-weight: 600;
+    font-size: 12.5px;
+  }
+  .crow ul {
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .crow li {
+    display: flex;
+    gap: 6px;
+    line-height: 1.4;
+  }
+  .ar {
+    font-family: var(--mono);
+    color: var(--ink);
+    flex: none;
+    width: 1.2em;
+    text-align: center;
+  }
+  .hint {
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .hint b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .cout {
+    color: var(--hot-out);
+    font-weight: 600;
+  }
+  .cin {
+    color: var(--hot-in);
+    font-weight: 600;
+  }
+
+  .vp {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--ink) 2%, var(--bg));
+  }
+  .box {
+    position: relative;
+  }
+  .stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1580px;
+    transform-origin: 0 0;
+    padding: 22px;
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr) 436px;
+    column-gap: 66px;
+    align-items: stretch;
+  }
+  .actors {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .externals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-content: stretch;
+  }
+  .boundary {
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    padding: 12px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+  }
+  .btitle {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .btitle span {
+    color: var(--muted);
+    font-weight: 400;
+    margin-left: 6px;
+  }
+  .bgrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    grid-auto-flow: dense;
+    align-items: start;
+  }
+  .frame {
+    border: 1px solid color-mix(in srgb, var(--gc, var(--ink)) 45%, transparent);
+    background: color-mix(in srgb, var(--gc, var(--ink)) 7%, transparent);
+    border-radius: 8px;
+    padding: 8px;
+    min-width: 0;
+  }
+  .frame.solo-f {
+    --gc: var(--muted);
+  }
+  .frame .fl {
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.4;
+    color: color-mix(in srgb, var(--gc, var(--muted)) 70%, var(--ink));
+    margin: 0 2px 7px;
+    overflow-wrap: anywhere;
+  }
+  .frame .fi {
+    display: grid;
+    gap: 8px;
+    align-items: start;
+  }
+  .frame.offf {
+    --gc: var(--muted);
+    border-style: dashed;
+  }
+
+  .node {
+    background: var(--surface);
+    border: 1.5px solid var(--cont-line);
+    border-radius: 3px;
+    padding: 8px 10px 9px;
+    font-size: 11px;
+    line-height: 1.4;
+    cursor: pointer;
+    min-width: 0;
+    position: relative;
+  }
+  .node.inf {
+    border-style: dashed;
+  }
+  .node .hd {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    align-items: baseline;
+  }
+  .node .nm {
+    font-weight: 600;
+    font-size: 12.5px;
+    line-height: 1.25;
+  }
+  .node .tg.optn {
+    color: var(--muted);
+  }
+  .node .tg {
+    font-size: 8.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--hot-in);
+    flex: none;
+  }
+  .node .desc {
+    margin-top: 3px;
+  }
+  .node .desc b {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .node .role {
+    color: var(--muted);
+  }
+  .node .how {
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.42;
+    overflow-wrap: anywhere;
+  }
+  .node.actor {
+    background: var(--actor-bg);
+    border-color: var(--actor-line);
+    border-radius: 22px;
+    padding: 11px 14px 12px;
+  }
+  .node.ext {
+    background: var(--ext-bg);
+    border-color: var(--ext-line);
+    border-radius: 16px 3px 16px 3px;
+    padding-left: 12px;
+  }
+  .node.nonode .how em {
+    font-style: normal;
+    display: block;
+    margin-top: 3px;
+    color: var(--ink);
+  }
+  .node.off {
+    opacity: 0.62;
+  }
+  .stage.has-sel .node.dim {
+    opacity: 0.28;
+  }
+  .node.sel {
+    outline: 2.5px solid var(--hot-out);
+    outline-offset: 2px;
+  }
+
+  svg.edges {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .edge .line {
+    fill: none;
+    stroke: var(--edge);
+    stroke-width: 1.3;
+    opacity: 0.42;
+  }
+  .edge .head {
+    fill: var(--edge);
+    opacity: 0.55;
+  }
+  .edge.inf .line {
+    stroke-dasharray: 6 4;
+  }
+  .edge.off .line,
+  .edge.off .head {
+    opacity: 0.12;
+  }
+  .edge .hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 12;
+    pointer-events: stroke;
+    cursor: pointer;
+  }
+  .stage.has-sel .edge.dim .line,
+  .stage.has-sel .edge.dim .head {
+    opacity: 0.05;
+  }
+  .edge.hot .line {
+    opacity: 1;
+    stroke-width: 2.4;
+  }
+  .edge.hot .head {
+    opacity: 1;
+  }
+  .edge.hot.out .line {
+    stroke: var(--hot-out);
+  }
+  .edge.hot.out .head {
+    fill: var(--hot-out);
+  }
+  .edge.hot.in .line {
+    stroke: var(--hot-in);
+  }
+  .edge.hot.in .head {
+    fill: var(--hot-in);
+  }
+  .edge.hover .line {
+    opacity: 1;
+    stroke-width: 2.4;
+  }
+  .lbl rect {
+    fill: var(--surface);
+    stroke: var(--rule);
+    opacity: 0.96;
+  }
+  .lbl text {
+    font: 11px var(--font);
+    fill: var(--ink);
+  }
+  .lbl text .a {
+    font-family: var(--mono);
+    font-weight: 600;
+  }
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 110ch;
+  }
+
+  @media (max-width: 760px) {
+    .insp {
+      grid-template-columns: minmax(0, 1fr);
+      position: static;
+      max-height: none;
+    }
+    .zoom {
+      margin-left: 0;
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .node {
+      transition: opacity 0.12s;
+    }
+  }
+</style>
+
+<div class="page">
+  <div class="top">
+    <h1>Ayme architecture</h1>
+    <p class="premise" id="premise"></p>
+  </div>
+  <div class="bar">
+    <div class="envs" id="envs" role="group" aria-label="Environment"></div>
+    <label class="opt" for="allLabels"
+      ><input type="checkbox" id="allLabels" /> Label every connection with its
+      flows</label
+    >
+    <div class="zoom">
+      <button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button
+      ><button id="zfit" title="Fit to width">Fit</button
+      ><button id="zin" aria-label="Zoom in" title="Zoom in">+</button>
+    </div>
+  </div>
+  <div class="legend" aria-label="Legend">
+    <span class="i"><span class="sw actor"></span>Actor</span>
+    <span class="i"><span class="sw cont"></span>Container</span>
+    <span class="i"><span class="sw ext"></span>External system</span>
+    <span class="i"
+      ><span class="sw"></span><span class="ln"></span>Verified</span
+    >
+    <span class="i"
+      ><span class="sw dash"></span><span class="ln dash"></span>Inferred
+      (element outline, connection line)</span
+    >
+    <span class="i"
+      ><span class="sw frame"></span>Containers sharing a deployment node</span
+    >
+    <span class="i"
+      ><span class="sw cont off"></span><span class="ln faint"></span>Does not
+      run here, and its connections</span
+    >
+    <span class="i"
+      ><span class="glyph">&nearr;</span>Beside a flow: the way the data moves
+      along the line as drawn</span
+    >
+    <span class="i"
+      ><span class="sw cont"></span>On demand: runs only when started on
+      purpose</span
+    >
+    <span class="i"
+      >Under the rule on a card: how it is realized in this environment</span
+    >
+  </div>
+
+  <div class="insp" id="insp" aria-live="polite"></div>
+
+  <figure style="margin: 0">
+    <div class="vp" id="vp">
+      <div class="box" id="box">
+        <div
+          class="stage"
+          id="stage"
+          role="group"
+          aria-label="Architecture of Ayme in the selected environment"
+        >
+          <div class="actors" id="actors"></div>
+          <div class="boundary" id="boundary">
+            <div class="btitle">Ayme<span>system boundary</span></div>
+            <div class="bgrid" id="bgrid"></div>
+          </div>
+          <div class="externals" id="externals"></div>
+          <svg class="edges" id="edges" aria-hidden="true">
+            <g id="elayer"></g>
+            <g id="llayer"></g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <figcaption class="note">
+      One arrow per connection, pointing from the initiator to its target.
+      Select a box to light up its connections (blue: it initiates, orange: it
+      receives) and read their flows above; select or hover a line for the flows
+      beside it.
+    </figcaption>
+  </figure>
+</div>
+
+<script id="data" type="application/json">
+  {
+    "premise": "Ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents, in-browser agents and the app's own code call on the running page. Ayme is a library: its runtime units run inside the host app's page, bundler and Node processes and inside the coding agent, so each container's deployment node is the host process it runs in.",
+    "actors": [
+      {
+        "name": "App developers",
+        "role": "the team integrating Ayme into their app",
+        "goal": "expose their Page Object Actions as tools, inspect what agents see, and read app state through Peeks while developing",
+        "evidence": {
+          "text": "verified: `docs/guide/start/install.md`, `packages/inspector/README.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Coding agents",
+        "role": "Claude Code, Codex, Cursor or any MCP client the developer runs",
+        "goal": "drive and read the developer's running app through its Page Object, Browser, Custom, Peek and goal tools",
+        "evidence": {
+          "text": "verified: `docs/guide/guides/connect-an-agent.md`, `packages/mcp/src/cli.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "In-browser agents",
+        "role": "agents that read the page's `document.modelContext`, such as a browser-side assistant or Chrome's own agent",
+        "goal": "call the tools the page publishes through WebMCP",
+        "evidence": {
+          "text": "verified: `packages/webmcp/src/driver.ts`, `docs/guide/guides/publish-tools.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Host app code",
+        "role": "the app's own features, such as an in-app assistant or a checklist's \"Show me how\" button",
+        "goal": "run Page Object Actions and read the page state from inside the app",
+        "evidence": {
+          "text": "verified: `docs/guide/guides/in-app-assistant.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Playground visitors",
+        "role": "developers evaluating Ayme before integrating it",
+        "goal": "try the Inspector and the page's tools on a hosted demo",
+        "evidence": {
+          "text": "verified: `apps/example-vue/README.md`, `apps/example-vue/src/App.vue`",
+          "inferred": false,
+          "mixed": false
+        }
+      }
+    ],
+    "externals": [
+      {
+        "name": "Host application",
+        "provides": "the page Ayme observes and acts on, the Page Object Models it compiles, the bundler that runs the build plugin, the backend that mounts the Decision Endpoint, and the Node processes that pair as App Processes",
+        "evidence": {
+          "text": "verified: `docs/guide/reference/ayme.md`, `docs/guide/guides/server-rendering.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Decision model provider",
+        "provides": "Jev, the System One decision model the Goal Loop asks at each step, served by TypeSafe directly or through OpenRouter",
+        "evidence": {
+          "text": "verified: `packages/ayme/src/server.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "WebMCP driver",
+        "provides": "`document.modelContext`, the page's tool registry for in-browser agents, from Chrome's WebMCP flag or a polyfill the app loads",
+        "evidence": {
+          "text": "verified: `packages/webmcp/src/driver.ts`, `docs/guide/guides/publish-tools.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      }
+    ],
+    "containers": [
+      {
+        "name": "Browser runtime",
+        "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection",
+        "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
+        "evidence": {
+          "text": "verified: `packages/ayme/src/runtime.ts`, `packages/ayme/src/webMcp.ts`, `packages/ayme/src/inspector.ts`, `packages/ayme/src/agentConnection.ts`, `packages/ayme/src/browserPage.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Build plugin",
+        "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries Ayme at all. Without it, the runtime's root and internal entries and the framework packages resolve to absent entries and each Page Object Model compiles to a stand-in. A build prints one line saying which it is, except a Next.js build that compiles no Page Object Model",
+        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, running the TypeScript compiler",
+        "evidence": {
+          "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/unplugin-ayme/src/derivePomManifests.ts`, `packages/unplugin-ayme/src/transformPomModule.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Ayme MCP server",
+        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools",
+        "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365",
+        "evidence": {
+          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "App Process runtime",
+        "responsibility": "the Ayme session inside a Node process of the host app (its dev server or backend): pairs with the agent's MCP server beside the page and offers the process's Peek Tools, `peek.node.<name>`",
+        "technology": "`createAyme` from `@ayme-dev/ayme` in Node, loading `@ayme-dev/mcp/process`",
+        "evidence": {
+          "text": "verified: `packages/ayme/src/agentConnection.ts`, `packages/mcp/src/process/`, `packages/mcp/README.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Decision Endpoint",
+        "responsibility": "the one route in the host app's backend that gates each Goal Loop decision request, adds the provider key and Jev model, forwards it to the provider and relays the answer; Ayme ships the handler, the app mounts and gates it",
+        "technology": "Fetch-API request handler from `@ayme-dev/ayme/server`",
+        "evidence": {
+          "text": "verified: `packages/ayme/src/server.ts`, `docs/guide/reference/decision-endpoint.md`, `docs/adr/0022-build-decision-requests-in-the-browser.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Playground",
+        "responsibility": "the hosted demo app with the Inspector in demo mode, plus the rendered documentation beside it. The \"Try with your own coding agent\" wizard and the Agent Connection are built only into local and dev builds, not the hosted ones",
+        "technology": "Vue single-page app built from `apps/example-vue`, with the docs rendered by Jekyll from `docs/guide`",
+        "evidence": {
+          "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
+          "inferred": false,
+          "mixed": false
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from": "App developers",
+        "to": "Browser runtime",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "tool runs and lens navigation in the Inspector panel"
+          },
+          {
+            "dir": "←",
+            "text": "Page Objects, Structural Page State, tools and run results"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/inspector/src/panel/`, `docs/guide/guides/inspector.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Coding agents",
+        "to": "Ayme MCP server",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "`ayme_connect`, `ayme_list_tools`, `ayme_call` and the page's tools, over stdio"
+          },
+          {
+            "dir": "←",
+            "text": "connect links, tool lists and `tools/list_changed` notifications, tool results and change notes"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/server/serverTools.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "In-browser agents",
+        "to": "WebMCP driver",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "calls to the published tools"
+          },
+          {
+            "dir": "←",
+            "text": "tool results"
+          }
+        ],
+        "evidence": {
+          "text": "inferred: the driver is the browser's or a polyfill's; Ayme only registers tools with it (`packages/webmcp/src/publication.ts`)",
+          "inferred": true,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Host app code",
+        "to": "Browser runtime",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "Page Object registrations through the `pageObjects` setup option and `usePageObject`, `ayme.tools.list()` and `ayme.tools.run()` calls, Custom Tool and Peek registrations"
+          },
+          {
+            "dir": "←",
+            "text": "tool definitions, results and Change Records"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `docs/guide/guides/in-app-assistant.md`, `packages/ayme/src/runtime.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Playground visitors",
+        "to": "Playground",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "list edits and Inspector runs"
+          },
+          {
+            "dir": "←",
+            "text": "the demo page, its tools and their run results"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Host application",
+        "to": "Build plugin",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "Page Object Model sources through the bundler's transform hooks"
+          },
+          {
+            "dir": "←",
+            "text": "transformed modules carrying POM metadata"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/unplugin-ayme/src/vite.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "WebMCP driver",
+        "to": "Browser runtime",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "`execute` of a published tool"
+          },
+          {
+            "dir": "←",
+            "text": "the tool's result or error"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/webmcp/src/publication.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Browser runtime",
+        "to": "Ayme MCP server",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "the tab's pairing (link token or loopback auto-pair), tool list and its changes, tool results, navigation and reload notices"
+          },
+          {
+            "dir": "←",
+            "text": "tool calls from the agent, the server's token, the App Processes' tools for the Inspector"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/mcp/src/client/`, `packages/mcp/src/connection/`, `packages/mcp/README.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Browser runtime",
+        "to": "Decision Endpoint",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "`POST { state, questions }` per Goal Loop step"
+          },
+          {
+            "dir": "←",
+            "text": "the provider's decision, or an `{ error }` body"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/ayme/src/decisionEndpoint.ts`, `packages/ayme/src/goalLoop.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Browser runtime",
+        "to": "WebMCP driver",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "`registerTool` for each active tool, kept in step with the registry"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/webmcp/src/publication.ts`, `packages/webmcp/src/synchronize.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Browser runtime",
+        "to": "Host application",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "DOM reads, clicks, fills and key presses"
+          },
+          {
+            "dir": "←",
+            "text": "the page structure captured into Structural Page State"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/ayme/src/browserPage.ts`, `packages/core/src/capture/`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "App Process runtime",
+        "to": "Ayme MCP server",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "pairing without a token, the process's Peek Tools and their changes, read results"
+          },
+          {
+            "dir": "←",
+            "text": "Peek Tool calls, the server's token"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/mcp/src/process/`, `packages/mcp/README.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Decision Endpoint",
+        "to": "Decision model provider",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "the decision request with the bearer key and the pinned Jev model"
+          },
+          {
+            "dir": "←",
+            "text": "the provider's status and body"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/ayme/src/server.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      }
+    ],
+    "environments": [
+      {
+        "key": "local",
+        "sub": "development",
+        "purpose": "a developer's app running on their machine with a coding agent attached",
+        "evidence": {
+          "text": "verified: `docs/guide/guides/connect-an-agent.md`",
+          "inferred": false,
+          "mixed": false
+        },
+        "containers": {
+          "Browser runtime": {
+            "how": "the app's development build, with `inspector` and `agentConnection` on under the framework's development flag",
+            "node": "the host app's page in the developer's browser",
+            "nodeKey": "the host app's page in the developer's browser",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `docs/guide/guides/connect-an-agent.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Build plugin": {
+            "how": "runs inside the dev server's bundler on every transform; the dev server needs `include: true` too, or the page gets a build without Ayme",
+            "node": "the host app's dev server process",
+            "nodeKey": "the host app's dev server process",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `packages/unplugin-ayme/src/vite.ts`, `docs/guide/reference/build-plugin.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Ayme MCP server": {
+            "how": "`npx -y @ayme-dev/mcp@<version> mcp`, one child process per agent",
+            "node": "the coding agent's process on the developer's machine",
+            "nodeKey": "the coding agent's process on the developer's machine",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `docs/guide/guides/connect-an-agent.md`, `packages/mcp/src/cli.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "App Process runtime": {
+            "how": "`createAyme({ agentConnection })` started once in the dev server's or backend's entry point",
+            "node": "the host app's dev server process",
+            "nodeKey": "the host app's dev server process",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": true,
+            "evidence": {
+              "text": "verified: `docs/guide/guides/server-rendering.md`, `packages/mcp/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision Endpoint": {
+            "how": "mounted in the dev server with the developer's own key; the playground's Vite plugin is the reference setup",
+            "node": "the host app's dev server process",
+            "nodeKey": "the host app's dev server process",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": true,
+            "evidence": {
+              "text": "verified for the playground: `apps/example-vue/vite/decisionEndpoint.dev.ts`; inferred for other apps: the docs show the handler, not a dev-server mount",
+              "inferred": false,
+              "mixed": true
+            }
+          },
+          "Playground": {
+            "how": "the same app as the hosted site, run as a local Vite dev server on port 4190",
+            "node": "a local Vite process",
+            "nodeKey": "a local Vite process",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/example-vue/package.json`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        },
+        "externals": {
+          "Host application": {
+            "how": "the developer's own app, served by its dev server",
+            "evidence": {
+              "text": "verified: `docs/guide/start/install.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision model provider": {
+            "how": "the live TypeSafe or OpenRouter API, with the developer's key",
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "WebMCP driver": {
+            "how": "Chrome's flag or a polyfill the app loads before its entry module",
+            "evidence": {
+              "text": "verified: `docs/guide/guides/publish-tools.md`, `apps/example-vue/src/main.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        }
+      },
+      {
+        "key": "production",
+        "sub": "host app",
+        "purpose": "the host app serving its users, with Ayme's agent surface limited to what the app's setup publishes",
+        "evidence": {
+          "text": "verified: `docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md`",
+          "inferred": false,
+          "mixed": false
+        },
+        "containers": {
+          "Browser runtime": {
+            "how": "the production bundle, only when it was built with `include: true`, otherwise it is a build without Ayme and none of it runs; WebMCP publication as the app's setup decides, the Inspector and Agent Connection off, Peeks inert",
+            "node": "the host app's page in its users' browsers",
+            "nodeKey": "the host app's page in its users' browsers",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `docs/adr/0034-peek-tools-reach-coding-agents-only-in-development.md`, `docs/guide/guides/connect-an-agent.md`, `docs/guide/reference/build-plugin.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Build plugin": {
+            "how": "ran once at build time; nothing of it runs in production",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `docs/guide/guides/server-rendering.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Ayme MCP server": {
+            "how": "does not run here; coding agents are a development tool",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `docs/guide/guides/connect-an-agent.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "App Process runtime": {
+            "how": "does not pair here; the docs gate `agentConnection` behind the development flag",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "inferred: nothing prevents it, the docs only advise the gate",
+              "inferred": true,
+              "mixed": false
+            }
+          },
+          "Decision Endpoint": {
+            "how": "the handler mounted on a route of the app's backend, gated by the app's `authorize`",
+            "node": "the host app's backend",
+            "nodeKey": "the host app's backend",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `docs/guide/reference/decision-endpoint.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Playground": {
+            "how": "does not run here",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        },
+        "externals": {
+          "Host application": {
+            "how": "the app itself, in production",
+            "evidence": {
+              "text": "verified: `docs/guide/guides/server-rendering.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision model provider": {
+            "how": "the live API, reached only through the Decision Endpoint",
+            "evidence": {
+              "text": "verified: `packages/ayme/src/server.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "WebMCP driver": {
+            "how": "whatever the user's browser or the app's polyfill supplies",
+            "evidence": {
+              "text": "verified: `docs/guide/guides/publish-tools.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        }
+      },
+      {
+        "key": "playground",
+        "sub": "GitHub Pages",
+        "purpose": "the public demo and docs at ayme-labs.github.io/ayme, and the same demo at ayme.dev/playground/",
+        "evidence": {
+          "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+          "inferred": false,
+          "mixed": false
+        },
+        "containers": {
+          "Browser runtime": {
+            "how": "the playground's production build with `webMCP` and `inspector` in demo mode, `agentConnection` off (`VITE_AGENT_CONNECTION=false`), and no `goal` since no Decision Endpoint exists",
+            "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Build plugin": {
+            "how": "ran in the Pages build; nothing of it runs on the site",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Ayme MCP server": {
+            "how": "does not run here; the hosted builds leave out the Agent Connection and the coding-agent wizard, and the workflow fails if the wizard is in the output",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `apps/example-vue/src/App.vue`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "App Process runtime": {
+            "how": "does not run here; the site is static",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision Endpoint": {
+            "how": "does not run here; the deployed build publishes no `goal`",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Playground": {
+            "how": "the static Vite build plus the Jekyll-rendered docs under `/docs`; the build is made twice, once for each base path, and only the `/playground/` copy loads the landing's Google Tag Manager container",
+            "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `docs/guide/_config.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        },
+        "externals": {
+          "Host application": {
+            "how": "the playground's own list app",
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision model provider": {
+            "how": "not reached",
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "WebMCP driver": {
+            "how": "the `@mcp-b/webmcp-polyfill` initialized before the Vue app",
+            "evidence": {
+              "text": "verified: `apps/example-vue/src/main.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        }
+      },
+      {
+        "key": "ci",
+        "sub": "GitHub Actions",
+        "purpose": "the checks on every pull request and on `main`, including the live goal lane",
+        "evidence": {
+          "text": "verified: `.github/workflows/ci.yml`",
+          "inferred": false,
+          "mixed": false
+        },
+        "containers": {
+          "Browser runtime": {
+            "how": "the fixtures and example apps under test in Chromium",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/ci.yml`, `docs/testing.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Build plugin": {
+            "how": "runs in each example's build and dev server under test",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/ci.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Ayme MCP server": {
+            "how": "started over stdio by the test's MCP client",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `packages/mcp/src/testing/`, `apps/mcp-fixture/`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "App Process runtime": {
+            "how": "the example dev servers paired in the certification tests",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision Endpoint": {
+            "how": "the playground's dev-server mount, only in the live goal lane with a repository secret",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": true,
+            "evidence": {
+              "text": "verified: `.github/workflows/ci.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Playground": {
+            "how": "built on pull requests that change it, not deployed; its build also builds it without Ayme and checks that output carries none of Ayme",
+            "node": "a GitHub Actions runner",
+            "nodeKey": "a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `apps/example-vue/package.json`, `apps/example-vue/scripts/verify-browser-output.mjs`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        },
+        "externals": {
+          "Host application": {
+            "how": "the fixture and example apps in `apps/`",
+            "evidence": {
+              "text": "verified: `docs/testing.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision model provider": {
+            "how": "the live API in the live goal lane, skipped without a key",
+            "evidence": {
+              "text": "verified: `.github/workflows/ci.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "WebMCP driver": {
+            "how": "a recording driver from `@ayme-dev/webmcp/testing`",
+            "evidence": {
+              "text": "verified: `packages/webmcp/src/testing.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        }
+      }
+    ]
+  }
+</script>
+<script>
+  (function () {
+    const D = JSON.parse(document.getElementById("data").textContent);
+    const $ = (s) => document.querySelector(s);
+    const NS = "http://www.w3.org/2000/svg";
+    const esc = (s) =>
+      String(s).replace(
+        /[&<>"]/g,
+        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]
+      );
+    const md = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+    const plain = (s) => s.replace(/`/g, "");
+
+    const kindOf = {};
+    D.actors.forEach((a) => (kindOf[a.name] = "a"));
+    D.externals.forEach((a) => (kindOf[a.name] = "x"));
+    D.containers.forEach((a) => (kindOf[a.name] = "c"));
+    const idOf = (n) => kindOf[n] + ":" + n;
+    const info = {};
+    D.actors.forEach((a) => (info["a:" + a.name] = a));
+    D.externals.forEach((a) => (info["x:" + a.name] = a));
+    D.containers.forEach((a) => (info["c:" + a.name] = a));
+    const cIndex = {};
+    D.containers.forEach((c, i) => (cIndex[c.name] = i));
+
+    const edges = D.connections.map((c, i) => ({
+      i,
+      c,
+      fromId: idOf(c.from),
+      toId: idOf(c.to),
+    }));
+    const envByKey = {};
+    D.environments.forEach((e) => (envByKey[e.key] = e));
+
+    let envKey = "local";
+    try {
+      const h = location.hash.replace("#", "");
+      if (envByKey[h]) envKey = h;
+    } catch (e) {}
+    let sel = null,
+      hoverEdge = null,
+      scale = 1,
+      manual = false;
+    let nodeEl = {};
+    const NW = 1580;
+
+    $("#premise").textContent = D.premise;
+
+    /* ---------- controls ---------- */
+    const envsEl = $("#envs");
+    D.environments.forEach((e) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.k = e.key;
+      b.innerHTML =
+        esc(e.key) + (e.sub ? "<small>" + esc(e.sub) + "</small>" : "");
+      b.addEventListener("click", () => {
+        envKey = e.key;
+        try {
+          history.replaceState(null, "", "#" + e.key);
+        } catch (x) {}
+        render();
+      });
+      envsEl.appendChild(b);
+    });
+
+    /* ---------- helpers ---------- */
+    const G = ["→", "↘", "↓", "↙", "←", "↖", "↑", "↗"];
+    const glyph = (ang) => G[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
+    const flowGlyph = (i, dir) => {
+      const g = geom[i];
+      if (!g) return dir;
+      return glyph(dir === "→" ? g.ang : g.ang + Math.PI);
+    };
+    const mark = (ev) =>
+      ev.inferred
+        ? '<span class="mk inf">inferred</span>'
+        : '<span class="mk ver">verified</span>';
+    const evLine = (ev) =>
+      '<div class="ev">' +
+      mark(ev) +
+      md(ev.text.replace(/^(verified|inferred):\s*/, "")) +
+      (ev.mixed ? " <em>(mixed: part of this entry is inferred)</em>" : "") +
+      "</div>";
+
+    /* ---------- stage building ---------- */
+    function cardInfo(id) {
+      const env = envByKey[envKey];
+      const [k, name] = [id[0], id.slice(2)];
+      const base = info[id];
+      let entry = null,
+        inferred = base.evidence.inferred;
+      if (k === "c") entry = env.containers[name];
+      if (k === "x") entry = env.externals[name];
+      if (entry && entry.evidence.inferred) inferred = true;
+      return { k, name, base, entry, inferred };
+    }
+
+    function card(id, opts) {
+      opts = opts || {};
+      const { k, name, base, entry, inferred } = cardInfo(id);
+      const el = document.createElement("div");
+      el.className =
+        "node " +
+        (k === "a" ? "actor" : k === "x" ? "ext" : "cont") +
+        (inferred ? " inf" : "") +
+        (opts.off ? " off" : "") +
+        (opts.nonode ? " nonode" : "");
+      el.dataset.id = id;
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      let html =
+        '<div class="hd"><span class="nm">' +
+        esc(name) +
+        "</span>" +
+        (inferred
+          ? '<span class="tg">inferred</span>'
+          : entry && entry.optional
+            ? '<span class="tg optn">on demand</span>'
+            : "") +
+        "</div>";
+      if (k === "a") {
+        html +=
+          '<div class="desc role">' +
+          md(base.role) +
+          '</div><div class="desc"><b>Goal</b>' +
+          md(base.goal) +
+          "</div>";
+      } else if (k === "x") {
+        html +=
+          '<div class="desc">' +
+          md(base.provides) +
+          '</div><div class="how">' +
+          md(entry.how) +
+          "</div>";
+      } else {
+        html +=
+          '<div class="desc">' +
+          md(base.responsibility) +
+          '</div><div class="how">' +
+          md(entry.how) +
+          (opts.nonode ? "<em>node: " + md(entry.node) + "</em>" : "") +
+          "</div>";
+      }
+      el.innerHTML = html;
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        select({ type: "node", id });
+      });
+      el.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          select({ type: "node", id });
+        }
+      });
+      nodeEl[id] = el;
+      return el;
+    }
+
+    function buildGroups(env) {
+      const byKey = new Map(),
+        items = [],
+        off = [];
+      D.containers.forEach((c, idx) => {
+        const e = env.containers[c.name];
+        if (!e.runs) off.push(c.name);
+        else if (!e.nodeKnown) items.push({ solo: true, idx, names: [c.name] });
+        else {
+          let g = byKey.get(e.nodeKey);
+          if (!g) {
+            g = { label: e.nodeKey, idx, names: [] };
+            byKey.set(e.nodeKey, g);
+            items.push(g);
+          }
+          g.names.push(c.name);
+        }
+      });
+      items.sort((a, b) => a.idx - b.idx);
+      return { items, off };
+    }
+
+    function render() {
+      const env = envByKey[envKey];
+      nodeEl = {};
+      document
+        .querySelectorAll("#envs button")
+        .forEach((b) =>
+          b.setAttribute("aria-pressed", String(b.dataset.k === envKey))
+        );
+
+      const actors = $("#actors");
+      actors.innerHTML = "";
+      D.actors.forEach((a) => actors.appendChild(card("a:" + a.name)));
+      const ex = $("#externals");
+      ex.innerHTML = "";
+      D.externals.forEach((a) => ex.appendChild(card("x:" + a.name)));
+
+      const grid = $("#bgrid");
+      grid.innerHTML = "";
+      const { items, off } = buildGroups(env);
+      let gi = 0;
+      items.forEach((it) => {
+        if (it.solo) {
+          const w = document.createElement("div");
+          w.style.gridColumn = "span 1";
+          w.appendChild(card("c:" + it.names[0], { nonode: true }));
+          grid.appendChild(w);
+          return;
+        }
+        const n = it.names.length;
+        const span = n <= 3 ? n : n === 4 ? 2 : 3;
+        const cols = n === 4 ? 2 : Math.min(n, 3);
+        const f = document.createElement("section");
+        f.className = "frame" + (n === 1 ? " solo-f" : "");
+        if (n > 1) {
+          gi++;
+          f.style.setProperty("--gc", "var(--g" + (((gi - 1) % 6) + 1) + ")");
+        }
+        f.style.gridColumn = "span " + span;
+        f.innerHTML = '<div class="fl">' + md(it.label) + "</div>";
+        const inner = document.createElement("div");
+        inner.className = "fi";
+        inner.style.gridTemplateColumns =
+          "repeat(" + cols + ", minmax(0, 1fr))";
+        it.names.forEach((nm) => inner.appendChild(card("c:" + nm)));
+        f.appendChild(inner);
+        grid.appendChild(f);
+      });
+      if (off.length) {
+        const f = document.createElement("section");
+        f.className = "frame offf";
+        f.style.gridColumn = "1 / -1";
+        f.innerHTML = '<div class="fl">Does not run here</div>';
+        const inner = document.createElement("div");
+        inner.className = "fi";
+        inner.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+        off.forEach((nm) => inner.appendChild(card("c:" + nm, { off: true })));
+        f.appendChild(inner);
+        grid.appendChild(f);
+      }
+      buildEdges();
+      layout();
+    }
+
+    /* ---------- edges ---------- */
+    let geom = [];
+    const edgeG = [];
+    function buildEdges() {
+      const env = envByKey[envKey];
+      const layer = $("#elayer");
+      if (!edgeG.length) {
+        edges.forEach((e) => {
+          const g = document.createElementNS(NS, "g");
+          g.setAttribute("class", "edge");
+          g.innerHTML =
+            '<path class="line"></path><polygon class="head"></polygon><path class="hit"></path>';
+          const hit = g.querySelector(".hit");
+          hit.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            select({ type: "edge", i: e.i });
+          });
+          hit.addEventListener("mouseenter", () => {
+            hoverEdge = e.i;
+            refreshLabels();
+          });
+          hit.addEventListener("mouseleave", () => {
+            hoverEdge = null;
+            refreshLabels();
+          });
+          layer.appendChild(g);
+          edgeG.push(g);
+        });
+      }
+      edges.forEach((e) => {
+        const g = edgeG[e.i];
+        const notRun = (id) =>
+          id[0] === "c" && !env.containers[id.slice(2)].runs;
+        const off = notRun(e.fromId) || notRun(e.toId);
+        g.setAttribute(
+          "class",
+          "edge" + (e.c.evidence.inferred ? " inf" : "") + (off ? " off" : "")
+        );
+        e.off = off;
+      });
+    }
+
+    function box(el) {
+      return {
+        x: el.offsetLeft,
+        y: el.offsetTop,
+        w: el.offsetWidth,
+        h: el.offsetHeight,
+      };
+    }
+    function clip(b, tx, ty) {
+      const cx = b.x + b.w / 2,
+        cy = b.y + b.h / 2,
+        dx = tx - cx,
+        dy = ty - cy;
+      if (!dx && !dy) return [cx, cy];
+      const sx = dx ? b.w / 2 / Math.abs(dx) : Infinity,
+        sy = dy ? b.h / 2 / Math.abs(dy) : Infinity;
+      const s = Math.min(sx, sy);
+      return [cx + dx * s, cy + dy * s];
+    }
+
+    function layout() {
+      const stage = $("#stage");
+      const W = stage.offsetWidth,
+        H = stage.offsetHeight;
+      const svg = $("#edges");
+      svg.setAttribute("width", W);
+      svg.setAttribute("height", H);
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      geom = [];
+      edges.forEach((e) => {
+        const a = box(nodeEl[e.fromId]),
+          b = box(nodeEl[e.toId]);
+        const ac = [a.x + a.w / 2, a.y + a.h / 2],
+          bc = [b.x + b.w / 2, b.y + b.h / 2];
+        const p0 = clip(a, bc[0], bc[1]),
+          p2 = clip(b, ac[0], ac[1]);
+        const dx = p2[0] - p0[0],
+          dy = p2[1] - p0[1],
+          len = Math.hypot(dx, dy) || 1;
+        const bend = Math.min(len * 0.1, 56);
+        const c = [
+          (p0[0] + p2[0]) / 2 + (dy / len) * bend,
+          (p0[1] + p2[1]) / 2 - (dx / len) * bend,
+        ];
+        const ang = Math.atan2(dy, dx);
+        const mid = [
+          0.25 * p0[0] + 0.5 * c[0] + 0.25 * p2[0],
+          0.25 * p0[1] + 0.5 * c[1] + 0.25 * p2[1],
+        ];
+        geom[e.i] = { p0, c, p2, ang, mid };
+        const d =
+          "M" +
+          p0[0].toFixed(1) +
+          " " +
+          p0[1].toFixed(1) +
+          " Q" +
+          c[0].toFixed(1) +
+          " " +
+          c[1].toFixed(1) +
+          " " +
+          p2[0].toFixed(1) +
+          " " +
+          p2[1].toFixed(1);
+        const g = edgeG[e.i];
+        g.querySelector(".line").setAttribute("d", d);
+        g.querySelector(".hit").setAttribute("d", d);
+        const ta = Math.atan2(p2[1] - c[1], p2[0] - c[0]),
+          s = 9;
+        const tip = p2,
+          l = [
+            tip[0] - s * Math.cos(ta - 0.38),
+            tip[1] - s * Math.sin(ta - 0.38),
+          ],
+          r = [
+            tip[0] - s * Math.cos(ta + 0.38),
+            tip[1] - s * Math.sin(ta + 0.38),
+          ];
+        g.querySelector(".head").setAttribute(
+          "points",
+          tip.map((v) => v.toFixed(1)).join(",") +
+            " " +
+            l.map((v) => v.toFixed(1)).join(",") +
+            " " +
+            r.map((v) => v.toFixed(1)).join(",")
+        );
+      });
+      fit();
+      applySel();
+    }
+
+    /* ---------- labels ---------- */
+    function wrap(s, n) {
+      const out = [];
+      let cur = "";
+      s.split(" ").forEach((w) => {
+        if ((cur + " " + w).trim().length > n) {
+          out.push(cur);
+          cur = w;
+        } else cur = (cur + " " + w).trim();
+      });
+      if (cur) out.push(cur);
+      return out;
+    }
+    function makeLabel(i) {
+      const e = edges[i],
+        g0 = geom[i];
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "lbl");
+      const rect = document.createElementNS(NS, "rect");
+      g.appendChild(rect);
+      let y = 0;
+      e.c.flows.forEach((f) => {
+        wrap(plain(f.text), 46).forEach((line, j) => {
+          const t = document.createElementNS(NS, "text");
+          t.setAttribute("y", y + 11);
+          t.setAttribute("x", j === 0 ? 0 : 16);
+          if (j === 0) {
+            const a = document.createElementNS(NS, "tspan");
+            a.setAttribute("class", "a");
+            a.textContent = flowGlyph(i, f.dir) + " ";
+            t.appendChild(a);
+          }
+          t.appendChild(document.createTextNode(line));
+          g.appendChild(t);
+          y += 14;
+        });
+      });
+      $("#llayer").appendChild(g);
+      const bb = g.getBBox();
+      rect.setAttribute("x", bb.x - 6);
+      rect.setAttribute("y", bb.y - 4);
+      rect.setAttribute("width", bb.width + 12);
+      rect.setAttribute("height", bb.height + 8);
+      rect.setAttribute("rx", 4);
+      g.setAttribute(
+        "transform",
+        "translate(" +
+          (g0.mid[0] - bb.width / 2).toFixed(1) +
+          "," +
+          (g0.mid[1] - bb.height / 2).toFixed(1) +
+          ")"
+      );
+      return g;
+    }
+    let hotSet = new Set();
+    function refreshLabels() {
+      const ll = $("#llayer");
+      ll.innerHTML = "";
+      const all = $("#allLabels").checked;
+      const show = new Set();
+      if (all) {
+        if (sel) hotSet.forEach((i) => show.add(i));
+        else edges.forEach((e) => show.add(e.i));
+      } else if (sel && sel.type === "edge") show.add(sel.i);
+      else if (sel && hotSet.size <= 6) hotSet.forEach((i) => show.add(i));
+      if (hoverEdge !== null) show.add(hoverEdge);
+      show.forEach((i) => makeLabel(i));
+      document
+        .querySelectorAll(".crow")
+        .forEach((r) =>
+          r.classList.toggle("hv", Number(r.dataset.e) === hoverEdge)
+        );
+      edgeG.forEach((g, i) => g.classList.toggle("hover", i === hoverEdge));
+    }
+
+    /* ---------- selection ---------- */
+    function select(s) {
+      if (sel && s && sel.type === s.type && sel.id === s.id && sel.i === s.i)
+        s = null;
+      sel = s;
+      applySel();
+    }
+    function applySel() {
+      const stage = $("#stage");
+      stage.classList.toggle("has-sel", !!sel);
+      hotSet = new Set();
+      const hotN = new Set();
+      if (sel && sel.type === "node") {
+        hotN.add(sel.id);
+        edges.forEach((e) => {
+          if (e.fromId === sel.id || e.toId === sel.id) {
+            hotSet.add(e.i);
+            hotN.add(e.fromId);
+            hotN.add(e.toId);
+          }
+        });
+      } else if (sel && sel.type === "edge") {
+        hotSet.add(sel.i);
+        hotN.add(edges[sel.i].fromId);
+        hotN.add(edges[sel.i].toId);
+      }
+      Object.keys(nodeEl).forEach((id) => {
+        nodeEl[id].classList.toggle("dim", !!sel && !hotN.has(id));
+        nodeEl[id].classList.toggle(
+          "sel",
+          !!sel && sel.type === "node" && sel.id === id
+        );
+      });
+      const layer = $("#elayer");
+      edges.forEach((e) => {
+        const g = edgeG[e.i],
+          hot = hotSet.has(e.i);
+        g.classList.toggle("hot", hot);
+        g.classList.toggle("dim", !!sel && !hot);
+        g.classList.toggle(
+          "out",
+          hot && !!sel && sel.type === "node" && e.fromId === sel.id
+        );
+        g.classList.toggle(
+          "in",
+          hot && !!sel && sel.type === "node" && e.toId === sel.id
+        );
+        if (hot) layer.appendChild(g);
+      });
+      renderInsp();
+      refreshLabels();
+    }
+
+    /* ---------- inspector ---------- */
+    function connRow(e, otherName, withDir) {
+      const flows = e.c.flows
+        .map(
+          (f) =>
+            '<li><span class="ar">' +
+            flowGlyph(e.i, f.dir) +
+            "</span><span>" +
+            md(f.text) +
+            "</span></li>"
+        )
+        .join("");
+      return (
+        '<button type="button" class="crow" data-e="' +
+        e.i +
+        '"><span class="who">' +
+        esc(otherName) +
+        "</span> " +
+        (e.c.evidence.inferred ? '<span class="mk inf">inferred</span>' : "") +
+        "<ul>" +
+        flows +
+        "</ul></button>"
+      );
+    }
+    function renderInsp() {
+      const env = envByKey[envKey];
+      const el = $("#insp");
+      let L = "",
+        R = "";
+      if (!sel) {
+        L =
+          '<div class="kind">Environment</div><h2>' +
+          esc(env.key) +
+          (env.sub
+            ? ' <span style="font-weight:400;color:var(--muted)">(' +
+              esc(env.sub) +
+              ")</span>"
+            : "") +
+          "</h2><p>" +
+          md(env.purpose) +
+          "</p><h3>Evidence</h3>" +
+          evLine(env.evidence);
+        R =
+          '<p class="hint"><b>Select a box</b> to light up its connections: <span class="cout">blue</span> lines it initiates, <span class="cin">orange</span> lines it receives. Their flows are listed here, with arrows pointing the way the data moves along the line as drawn.</p><p class="hint"><b>Select or hover a line</b> to read its flows beside it. Tick the box above to label every connection at once.</p><p class="hint"><b>Switch environment</b> above: frames, realizations and inferred marks change; connections stay.</p>';
+      } else if (sel.type === "node") {
+        const ci = cardInfo(sel.id),
+          kinds = { a: "Actor", x: "External system", c: "Container" };
+        L =
+          '<div class="kind">' +
+          kinds[ci.k] +
+          "</div><h2>" +
+          esc(ci.name) +
+          "</h2>";
+        if (ci.k === "a")
+          L +=
+            "<p>" +
+            md(ci.base.role) +
+            "</p><p><b>Goal:</b> " +
+            md(ci.base.goal) +
+            "</p>";
+        if (ci.k === "x")
+          L += "<p><b>Provides:</b> " + md(ci.base.provides) + "</p>";
+        if (ci.k === "c")
+          L +=
+            "<p><b>Responsibility:</b> " +
+            md(ci.base.responsibility) +
+            "</p>" +
+            (ci.base.technology
+              ? "<p><b>Technology:</b> " + md(ci.base.technology) + "</p>"
+              : "");
+        L += "<h3>Evidence</h3>" + evLine(ci.base.evidence);
+        if (ci.entry) {
+          L +=
+            "<h3>In " + esc(env.key) + "</h3><p>" + md(ci.entry.how) + "</p>";
+          if (ci.k === "c")
+            L +=
+              "<p><b>Deployment node:</b> " +
+              (ci.entry.node
+                ? md(ci.entry.node)
+                : "none, it does not run here") +
+              "</p>";
+          L += evLine(ci.entry.evidence);
+        }
+        const out = edges.filter((e) => e.fromId === sel.id),
+          inn = edges.filter((e) => e.toId === sel.id);
+        R =
+          '<h3 style="margin-top:0">Initiates (' +
+          out.length +
+          ")</h3>" +
+          (out.map((e) => connRow(e, e.c.to)).join("") ||
+            '<p class="hint">none</p>') +
+          "<h3>Receives (" +
+          inn.length +
+          ")</h3>" +
+          (inn.map((e) => connRow(e, e.c.from)).join("") ||
+            '<p class="hint">none</p>');
+      } else {
+        const e = edges[sel.i];
+        L =
+          '<div class="kind">Connection</div><h2>' +
+          esc(e.c.from) +
+          " &rarr; " +
+          esc(e.c.to) +
+          "</h2><h3>Evidence</h3>" +
+          evLine(e.c.evidence);
+        R =
+          '<h3 style="margin-top:0">Flows</h3>' +
+          connRow(e, e.c.to).replace(
+            '<span class="who">' + esc(e.c.to) + "</span>",
+            ""
+          );
+      }
+      el.innerHTML =
+        '<div class="col">' + L + '</div><div class="col">' + R + "</div>";
+      el.querySelectorAll(".crow").forEach((r) => {
+        const i = Number(r.dataset.e);
+        r.addEventListener("click", () => select({ type: "edge", i }));
+        r.addEventListener("mouseenter", () => {
+          hoverEdge = i;
+          refreshLabels();
+        });
+        r.addEventListener("mouseleave", () => {
+          hoverEdge = null;
+          refreshLabels();
+        });
+      });
+    }
+
+    /* ---------- zoom ---------- */
+    function fit() {
+      const vp = $("#vp"),
+        stage = $("#stage"),
+        bx = $("#box");
+      if (!manual) scale = Math.max(0.5, Math.min(1, vp.clientWidth / NW));
+      stage.style.transform = "scale(" + scale + ")";
+      bx.style.width = NW * scale + "px";
+      bx.style.height = stage.offsetHeight * scale + "px";
+    }
+    $("#zin").addEventListener("click", () => {
+      manual = true;
+      scale = Math.min(1.4, scale + 0.1);
+      fit();
+    });
+    $("#zout").addEventListener("click", () => {
+      manual = true;
+      scale = Math.max(0.35, scale - 0.1);
+      fit();
+    });
+    $("#zfit").addEventListener("click", () => {
+      manual = false;
+      fit();
+    });
+    $("#allLabels").addEventListener("change", refreshLabels);
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && sel) select(null);
+    });
+    $("#stage").addEventListener("click", () => {
+      if (sel) select(null);
+    });
+    if (window.ResizeObserver)
+      new ResizeObserver(() => {
+        if (!manual) fit();
+      }).observe($("#vp"));
+
+    render();
+    if (document.fonts && document.fonts.ready)
+      document.fonts.ready.then(layout);
+  })();
+</script>
