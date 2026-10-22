@@ -18,7 +18,7 @@ Layers: `domain` (pure rules and types), `application` (the flows and the ports 
 
 - Every file of a layered slice sits in a layer folder, except its `index.ts`.
 - A `domain` rule may read an `Element` it is handed, as the Goal Loop's questions and the Browser Tools' element filters do; capturing the page or acting on it is not a rule.
-- In `tools`, a tool runs in `application` against the browser Page its Run carries, a Playwright `Page`, and keeps its name, description, input schema and the reach it needs beside its execution. `infrastructure` holds what uses Playwright Lite itself: `generate_locator`, and the list of published Browser Tools, which includes it.
+- In `tools`, a tool runs in `application` against the browser Page its Run carries, a Playwright `Page`, and keeps its name, description, input schema and the reach it needs beside its execution. `infrastructure` holds what uses Playwright Lite itself: `generate_locator`, and the list of published Browser Tools, which includes it. Lint checks that no other tools module imports Playwright Lite; [`eslint.config.js`](eslint.config.js) names the one exception and why.
 - Another slice is reached through its `index.ts`, which re-exports only what other slices, the entries and tests use, and only names its own slice declares. Inside a slice, a module imports the module it needs, never its own slice's `index.ts`.
 - A module sets up on import only the state its own exports use, so the build drops the modules an entry does not use: `src/builtEntries.test.ts` checks that the built `./server` and `./absent` entries carry no browser runtime.
 
