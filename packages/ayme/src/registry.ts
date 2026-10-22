@@ -130,6 +130,11 @@ type ObservedRegisteredPom = RegisteredPom & {
    * observation has not found yet (ADR-0035).
    */
   instances: InstanceObservations | undefined;
+  /**
+   * The paths of the collection members the last observation found holding
+   * an item that declares no root, e.g. "owners" or "items[1].tags".
+   */
+  rootlessCollectionPaths: ReadonlySet<string>;
   tools: readonly CallerAwarePomTool[];
 };
 
@@ -239,6 +244,7 @@ export function registerPageObject<T extends object>(
     presentPaths: new Set(),
     rootMemberPaths: new Set(),
     instances: undefined,
+    rootlessCollectionPaths: new Set(),
     tools: [],
   };
   // Its collection tools read the instances observed of this registration.
@@ -457,6 +463,7 @@ function commitObservation(
     memberObservations,
     instances,
     rootMemberPaths,
+    rootlessCollectionPaths,
   }: Awaited<ReturnType<typeof probePomMembers>>
 ): boolean {
   if (!registeredPoms.has(registration)) return false;
@@ -472,6 +479,7 @@ function commitObservation(
     instances.flatMap((instance) => (instance.present ? [instance.path] : []))
   );
   registration.rootMemberPaths = rootMemberPaths;
+  registration.rootlessCollectionPaths = rootlessCollectionPaths;
   registration.instances = groupedInstances(instances);
   return !same;
 }
@@ -998,6 +1006,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     ),
     instances: [],
     rootMemberPaths: new Set(),
+    rootlessCollectionPaths: new Set(),
   };
   const place: Place = {
     path: "",
@@ -1012,6 +1021,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
   const absent = presence.present === false;
   const root = absent ? undefined : await observeRoot(instance);
   reportPredicateError(registration, place.path, "root", root?.error);
+  reportRootCount(registration, place.path, root?.count);
   const present = !absent && (root?.root.present ?? true);
   walk.instances.push({
     ...place,
@@ -1022,6 +1032,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     root: root?.root,
     rootLocator: root?.locator,
     rootError: root?.error,
+    rootCount: root?.count,
     predicates: present
       ? await askPredicates(instance, manifest.tools)
       : new Map(),
@@ -1031,6 +1042,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
       memberObservations: [],
       instances: walk.instances,
       rootMemberPaths: walk.rootMemberPaths,
+      rootlessCollectionPaths: walk.rootlessCollectionPaths,
     };
   const memberObservations = await probeMembers(
     walk,
@@ -1043,6 +1055,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     memberObservations,
     instances: walk.instances,
     rootMemberPaths: walk.rootMemberPaths,
+    rootlessCollectionPaths: walk.rootlessCollectionPaths,
   };
 }
 
@@ -1063,10 +1076,49 @@ function reportPredicateError(
   const reported =
     option === "present" ? previous?.presenceError : previous?.rootError;
   if (reported === error) return;
-  const label = path ? `${registration.id}.${path}` : registration.id;
   console.error(
-    `The Page Object "${label}" is absent: its ${option} predicate threw ${error}.`
+    `The Page Object "${pomLabel(registration, path)}" is absent: its ${option} predicate threw ${error}.`
   );
+}
+
+/**
+ * Logs that the root of `registration`'s instance at `path` matched `count`
+ * elements, when that is several: again only when a later observation finds
+ * another count. A root matching none is ordinary absence, never logged.
+ */
+function reportRootCount(
+  registration: ObservedRegisteredPom,
+  path: string,
+  count: number | undefined
+) {
+  if (count === undefined || count < 2) return;
+  const previous = registration.instances?.all.find(
+    (instance) => instance.path === path
+  );
+  if (previous?.rootCount === count) return;
+  console.error(
+    `The Page Object "${pomLabel(registration, path)}" is absent: its root matches ${count} elements.`
+  );
+}
+
+/**
+ * Logs that the collection at `path` of `walk`'s Page Object holds items
+ * of `className`, which declares no root: once, and again only after an
+ * observation that did not find it so, as the predicate lines are: one
+ * that found the collection rooted, or did not walk it while its Page
+ * Object was absent.
+ */
+function reportRootlessCollection(walk: Walk, path: string, className: string) {
+  if (walk.rootlessCollectionPaths.has(path)) return;
+  walk.rootlessCollectionPaths.add(path);
+  if (walk.registration.rootlessCollectionPaths.has(path)) return;
+  console.error(
+    `The Page Object "${pomLabel(walk.registration, path)}" is absent: its item class ${className} declares no root.`
+  );
+}
+
+function pomLabel(registration: ObservedRegisteredPom, path: string) {
+  return path ? `${registration.id}.${path}` : registration.id;
 }
 
 /** One walk over a registered Page Object's members. */
@@ -1077,6 +1129,8 @@ type Walk = {
   instances: PomInstanceObservation[];
   /** The paths of the locator members that resolved to their root. */
   rootMemberPaths: Set<string>;
+  /** The paths of the collections holding an item that declares no root. */
+  rootlessCollectionPaths: Set<string>;
 };
 
 /** Where in the walk an instance's members are. */
@@ -1342,9 +1396,11 @@ async function probeComponentMember(
     const root = await observeRoot(component);
     if (root) {
       reportPredicateError(walk.registration, path, "root", root.error);
+      reportRootCount(walk.registration, path, root.count);
       observed.root = root.root;
       observed.rootLocator = root.locator;
       observed.rootError = root.error;
+      observed.rootCount = root.count;
       if (root.error !== undefined || !root.locator) {
         observations.push(
           rootObservation(
@@ -1366,6 +1422,7 @@ async function probeComponentMember(
       observations.push(
         rootObservation(`POM component ${path} declares no root.`)
       );
+      reportRootlessCollection(walk, memberPath, manifest.className);
       continue;
     } else present = presence.present ?? place.present;
     observed.present = present;
