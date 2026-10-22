@@ -6,7 +6,7 @@ import {
   assertAvailable,
   obstructionReason,
   type LatestRefLookup,
-} from "./pomInstance";
+} from "./toolAvailability";
 import {
   blockingAncestor,
   measureReach,

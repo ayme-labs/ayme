@@ -9,13 +9,9 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { JsonSchema } from "./contracts";
 import type { DecisionRequest } from "./decisionWire";
-import type { GoalLoopStepRecord } from "./handover";
+import type { GoalLoopStepRecord, GoalValues } from "./handover";
 import type { PageStateCapture } from "./pageState";
-import {
-  NONE_OF_THESE_KEY,
-  NO_VALUE_NEEDED_KEY,
-  type GoalValues,
-} from "./goalLoopQuestions";
+import { NONE_OF_THESE_KEY, NO_VALUE_NEEDED_KEY } from "./goalLoopQuestions";
 import {
   specsOfParameters,
   type GoalLoopOperation,

@@ -1,10 +1,21 @@
 /**
- * The Handover: what the Goal Loop hands the calling agent when it stops. The
- * Goal Loop's contract with its Caller; the loop and the Step Decision both
- * build it, nothing in here decides.
+ * The Goal Loop's contract with its Caller: the `goal` tool's input, and the
+ * Handover it hands the calling agent when it stops. The loop and the Step
+ * Decision both build the Handover; nothing in here decides.
  */
 
 import type { JsonValue } from "./contracts";
+
+/** Goal Values: labelled strings or numbers the loop may pick from. */
+export type GoalValues = Readonly<Record<string, string | number>>;
+
+/** What the calling agent starts a goal Run with. */
+export type GoalInput = {
+  goal: string;
+  maxSteps: number;
+  /** Goal Values: labelled strings or numbers the loop may pick from. */
+  values?: GoalValues;
+};
 
 export type HandoverReason =
   | "done"

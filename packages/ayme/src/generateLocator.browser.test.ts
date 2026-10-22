@@ -5,7 +5,7 @@ import type { Locator, Page } from "@playwright/test";
 import { createPage } from "./browserPage";
 import type { PomManifest } from "./contracts";
 import { RuntimeStateError, ToolInputError } from "./errors";
-import { buildToolOptions } from "./goalLoopOperations";
+import { buildToolOptions } from "./toolOptions";
 import { getInteractionHistory } from "./pageState";
 import { shapeOf } from "./playwrightMcp.testSupport";
 import { agentTools } from "./publication.testSupport";

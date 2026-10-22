@@ -5,7 +5,7 @@ import { ayme as agent, runContext } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
-import { buildToolOptions } from "./goalLoopOperations";
+import { buildToolOptions } from "./toolOptions";
 import { configurePageStateIgnore } from "./pageState";
 import { rootOf, rooted } from "./pomRoot.testSupport";
 import { listTools } from "./publishedTools";

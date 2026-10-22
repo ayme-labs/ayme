@@ -18,6 +18,7 @@ import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
 import { loadInspector } from "./inspector";
 import { configureRouterNavigate } from "./navigateTool";
 import { instrumentedPage } from "./pageInstrumentation";
+import { getPageContextTool } from "./pageContext";
 import {
   constructPageObject,
   createAymeRuntime,
@@ -26,12 +27,13 @@ import {
   subscribeToRegisteredPoms,
   type PageObjectConstructor,
 } from "./registry";
-import { assertAvailable } from "./pomInstance";
+import { assertAvailable } from "./toolAvailability";
 import { loadWebMcpPublication } from "./webMcp";
 import { RuntimeStateError } from "./errors";
 import { checkedToolInput } from "./schemaValidation";
 import {
   addPeek,
+  isPeekTool,
   listPeekTools,
   peekToolName,
   subscribeToPeekTools,
@@ -611,7 +613,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     return runLog.record(name, input, { by }, (id) => {
       const { tool, checkedInput } = lookUpRun(name, input);
       return executeTopLevelRun(
-        tool,
+        { reads: tool === getPageContextTool || isPeekTool(tool) },
         () =>
           executeWithChildRuns(id, cursor, (context) =>
             tool.execute(checkedInput, context)

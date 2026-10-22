@@ -7,11 +7,11 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import {
   askPredicates,
-  assertAvailable,
   availabilityOf as availabilityWithRefs,
   combinedAvailability,
   type PomInstanceObservation,
 } from "./pomInstance";
+import { assertAvailable } from "./toolAvailability";
 import type { ObservedPomRoot } from "./pomRootObservation";
 
 // Unit tests: one Page Object instance's Action Availability (ADR-0035),

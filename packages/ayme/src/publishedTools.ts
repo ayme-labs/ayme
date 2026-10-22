@@ -13,7 +13,7 @@ import {
   type PublishedElementTool,
 } from "./elementTools";
 import { listRegisteredPomTools, type CallerAwarePomTool } from "./registry";
-import type { ToolAvailability } from "./pomInstance";
+import type { ToolAvailability } from "./toolAvailability";
 import { RuntimeStateError } from "./errors";
 import { listPeekTools, type PeekTool } from "./peek";
 import { inReachBatch } from "./reachMeasurement";

@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { isPlaywrightLiteLocator } from "@ayme-dev/playwright-lite/internal";
 
 import {
@@ -5,9 +6,8 @@ import {
   type CallSubject,
   type Interaction,
 } from "./interactions";
-import type { AymePage } from "./runtime";
 
-type PageInstrumentation = (page: AymePage) => AymePage;
+type PageInstrumentation = (page: Page) => Page;
 
 // The Page's input devices, which a Page Object may save as properties.
 const inputDevices = new Set<string | symbol>(["keyboard", "mouse"]);
@@ -39,9 +39,9 @@ export function installRuntimePageInstrumentation(
  * `onInteraction` hears each call that is an Interaction, before it runs.
  */
 export function instrumentedPage(
-  page: AymePage,
+  page: Page,
   onInteraction?: (interaction: Interaction) => void
-): AymePage {
+): Page {
   const derivePage = () => {
     let instrumented = page;
     for (const instrumentation of instrumentations)

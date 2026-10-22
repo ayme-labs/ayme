@@ -11,7 +11,7 @@ import {
   isUncheckableElement,
 } from "./browserTools";
 import { errorText } from "./errors";
-import { buildToolOptions } from "./goalLoopOperations";
+import { buildToolOptions } from "./toolOptions";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,

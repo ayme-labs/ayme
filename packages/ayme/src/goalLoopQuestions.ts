@@ -12,7 +12,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionWire";
-import type { ChosenOption, GoalLoopStepRecord } from "./handover";
+import type { ChosenOption, GoalLoopStepRecord, GoalValues } from "./handover";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { acceptedRefNodes } from "./elementTools";
 import type {
@@ -136,8 +136,6 @@ function wholeParameters(args: readonly ArgumentSpec[]): string[] {
  * Goal Values: labelled strings or numbers the calling agent passes with a
  * goal, for the model to pick from where the page offers nothing to pick.
  */
-export type GoalValues = Readonly<Record<string, string | number>>;
-
 // --- Arguments asked in stage two ---
 
 type ArgumentOption = {

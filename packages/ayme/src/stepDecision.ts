@@ -9,6 +9,7 @@ import { asSentence } from "./errors";
 import type {
   ChosenOption,
   GoalLoopStepRecord,
+  GoalValues,
   HandoverNeeds,
   HandoverReason,
 } from "./handover";
@@ -32,7 +33,6 @@ import {
   type AnswerRecord,
   type ArgumentPlan,
   type ChosenArguments,
-  type GoalValues,
   type StageTwoQuestion,
   type StepState,
   type ValuePreset,

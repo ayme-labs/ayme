@@ -1,27 +1,13 @@
-import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator } from "@playwright/test";
 import type { ToolManifest } from "./contracts";
 import { availabilityPredicateOf, modelOption } from "./decorators";
-import { asSentence, errorText, RuntimeStateError } from "./errors";
+import { errorText } from "./errors";
+import {
+  obstructionReason,
+  type LatestRefLookup,
+  type ToolAvailability,
+} from "./toolAvailability";
 import type { ObservedPomRoot } from "./pomRootObservation";
-
-/**
- * Package-internal: whether a tool, or an action on one Page Object
- * instance, can be offered and run now (ADR-0035): `present` while its Page
- * Object is, so it is listed; `available` while a call would run it;
- * otherwise `reason`, the Availability Reason, when there is one.
- */
-export type ToolAvailability = {
-  present: boolean;
-  available: boolean;
-  reason?: string;
-};
-
-/**
- * Package-internal: the Structural Ref the agent's latest page state gave
- * `element`, if any; how an Availability Reason names what is in the way.
- */
-export type LatestRefLookup = (element: Element) => AriaRef | undefined;
 
 /** What an action's availability predicate answered. */
 export type PredicateAnswer = { available: boolean; reason?: string };
@@ -103,36 +89,6 @@ export function availabilityOf(
 }
 
 /**
- * Package-internal: refuses a call of the tool `toolName` that `availability`
- * says would not run, the tool's own or the one on the instance the call
- * names: `<tool> is unavailable: <reason>.`, or without the reason when there
- * is none.
- */
-export function assertAvailable(
-  toolName: string,
-  availability: ToolAvailability
-) {
-  if (availability.available) return;
-  throw unavailableError(toolName, availability);
-}
-
-/**
- * Package-internal: the error `assertAvailable` refuses a call with, for a
- * caller that has found the call cannot run.
- */
-export function unavailableError(
-  toolName: string,
-  { present, reason }: Pick<ToolAvailability, "present" | "reason">
-) {
-  const why = present ? reason : "its Page Object is not on the page";
-  return new RuntimeStateError(
-    why === undefined
-      ? `${toolName} is unavailable.`
-      : asSentence(`${toolName} is unavailable: ${why}`)
-  );
-}
-
-/**
  * Package-internal: one tool's availability over the instances it stands
  * for: available while any is; when none is, the first present instance's
  * reason.
@@ -145,21 +101,6 @@ export function combinedAvailability(
   if (available || first === undefined)
     return { present: first !== undefined, available };
   return { present: true, available: false, reason: first.reason };
-}
-
-/**
- * Package-internal: the runtime's Availability Reason for a present element a
- * click would not reach: it names the Structural Ref of the first element in
- * the way the agent's latest page state gave one.
- */
-export function obstructionReason(
-  inTheWay: readonly Element[],
-  latestRefOf: LatestRefLookup
-) {
-  const ref = inTheWay.map(latestRefOf).find((ref) => ref !== undefined);
-  return ref === undefined
-    ? "a click would not reach it"
-    : `a click would not reach it; ${ref} is in the way`;
 }
 
 /**

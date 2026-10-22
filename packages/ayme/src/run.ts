@@ -1,7 +1,5 @@
 import type { Cursor } from "./cursors";
 import { RuntimeStateError } from "./errors";
-import { getPageContextTool } from "./pageContext";
-import { isPeekTool } from "./peek";
 
 import { callers, type Caller } from "./callers";
 
@@ -37,11 +35,6 @@ export type StartChildRun = (
   cursor?: Cursor
 ) => Promise<unknown>;
 
-/** Package-internal: a tool as a Run executes it. */
-export type ExecutableTool<T = unknown> = {
-  execute(input: unknown, context: RunContext): Promise<T>;
-};
-
 /**
  * Package-internal: the Caller `options` names, `app` when it names none.
  * Throws `RuntimeStateError` for an empty name.
@@ -76,19 +69,18 @@ export function createRunQueue(): RunQueue {
 }
 
 /**
- * Package-internal: `execute` a top-level Run of `tool`, then `settle`
- * before resolving, whether it succeeded or failed; a child Run adds no
- * settle wait of its own. A read (`snapshot`, a Peek Tool) skips the settle,
- * and so does an answer saying a full page load started: it goes out at
- * once, before the document goes away.
+ * Package-internal: `execute` a top-level Run, then `settle` before
+ * resolving, whether it succeeded or failed; a child Run adds no settle wait
+ * of its own. A read (`snapshot`, a Peek Tool: the caller says which) skips
+ * the settle, and so does an answer saying a full page load started: it goes
+ * out at once, before the document goes away.
  */
 export async function executeTopLevelRun<T>(
-  tool: ExecutableTool<T>,
+  { reads }: { reads: boolean },
   execute: () => Promise<T>,
   settle: () => Promise<void>
 ): Promise<T> {
-  if ((tool as object) === getPageContextTool || isPeekTool(tool))
-    return execute();
+  if (reads) return execute();
   let result: T;
   try {
     result = await execute();

@@ -10,10 +10,12 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
-import { buildToolOptions, type GoalLoopOperation } from "./goalLoopOperations";
-import { type GoalValues, MAX_GOAL_VALUES } from "./goalLoopQuestions";
+import type { GoalLoopOperation } from "./goalLoopOperations";
+import { buildToolOptions } from "./toolOptions";
+import { MAX_GOAL_VALUES } from "./goalLoopQuestions";
 import type {
   ChosenOption,
+  GoalInput,
   GoalLoopStepRecord,
   Handover,
   HandoverHistoryEntry,
@@ -239,13 +241,6 @@ export function createPursueGoalTool(
 }
 
 /** The `goal` tool's input: what callers pass and what the loop reads. */
-export type GoalInput = {
-  goal: string;
-  maxSteps: number;
-  /** Goal Values: labelled strings or numbers the loop may pick from. */
-  values?: GoalValues;
-};
-
 /**
  * Run the Goal Loop: each step reads the page, has the Step Decision say what
  * the step does, runs that operation and records it, until a Handover

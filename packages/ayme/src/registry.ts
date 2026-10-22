@@ -25,14 +25,16 @@ import {
 } from "./pageState";
 import { onlyHitTestMarks } from "./inspectorMarks";
 import {
-  assertAvailable,
   availabilityOf,
   combinedAvailability,
   sameInstance,
   type PomInstanceObservation,
+} from "./pomInstance";
+import {
+  assertAvailable,
   type ToolAvailability,
   unavailableError,
-} from "./pomInstance";
+} from "./toolAvailability";
 import {
   observePageObject,
   pomGroups,

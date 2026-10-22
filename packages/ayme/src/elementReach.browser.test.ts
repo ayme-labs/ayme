@@ -4,7 +4,7 @@ import { createPage } from "./browserPage";
 import { listElementTools } from "./browserTools";
 import { reaches } from "./elementReach";
 import { errorText } from "./errors";
-import { buildToolOptions } from "./goalLoopOperations";
+import { buildToolOptions } from "./toolOptions";
 import { planArguments } from "./goalLoopQuestions";
 import { lookAtPageStateForDocument } from "./pageState";
 import { agentTools } from "./publication.testSupport";
