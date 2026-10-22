@@ -9,7 +9,7 @@
  * hands the resolver options that were already parsed, and the resolver
  * parses them again.
  *
- * Type-only imports are skipped, in `.ts`, `.tsx` and `.vue` files alike:
+ * It reads `.ts`, `.tsx` and `.vue` files. Type-only imports are skipped:
  * `verbatimModuleSyntax` erases them. `import { type T }` is not skipped by
  * the language, since it keeps an empty import, so lint requires
  * `import type { T }` instead (`no-import-type-side-effects`).
@@ -38,7 +38,7 @@ export async function findCycles(sourceDirs) {
       path.dirname(tsconfigPath)
     );
     const graph = await madge(sourceDir, {
-      fileExtensions: ["ts", "tsx"],
+      fileExtensions: ["ts", "tsx", "vue"],
       excludeRegExp: [/(^|\/)fixtures\//, /(^|\/)components\/ui\//],
       tsConfig: { options },
       detectiveOptions: {

@@ -48,6 +48,14 @@ test("follows the workspace's path aliases", async () => {
   assert.deepEqual(await findCycles([src]), [`${src}: a.ts > b.ts`]);
 });
 
+test("fails on a cycle of Vue components alone", async () => {
+  const src = workspace({
+    "Parent.vue": `<script setup lang="ts">\nimport Child from "./Child.vue";\n</script>\n`,
+    "Child.vue": `<script setup lang="ts">\nimport Parent from "./Parent.vue";\n</script>\n`,
+  });
+  assert.deepEqual(await findCycles([src]), [`${src}: Child.vue > Parent.vue`]);
+});
+
 test("passes a cycle closed by a type-only import, in TypeScript or Vue", async () => {
   const src = workspace({
     "a.ts": `import { b } from "./b";\nimport View from "./View.vue";\nexport type A = number;\nexport const a = () => [b, View];\n`,
