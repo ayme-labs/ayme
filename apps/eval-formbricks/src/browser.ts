@@ -5,8 +5,8 @@
  * Playwright that ships with the pinned Playwright MCP, on the same browser.
  */
 import { createRequire } from "node:module";
+import path from "node:path";
 
-import { playwrightMcpRoot } from "./arms.ts";
 import { signInPath, type Mission } from "./missions.ts";
 
 type Locator = {
@@ -60,6 +60,11 @@ type Chromium = {
 };
 
 export const viewport = { width: 1280, height: 720 };
+
+/** Where the pinned Playwright MCP is installed. */
+export const playwrightMcpRoot = path.dirname(
+  createRequire(import.meta.url).resolve("@playwright/mcp/package.json")
+);
 
 /** The Playwright that ships with the pinned Playwright MCP; the harness's own browser work goes through it. */
 export function playwright(): { chromium: Chromium } {
