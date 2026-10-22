@@ -1,3 +1,5 @@
+import type { AgentConnectionStatus } from "@ayme-dev/ayme/internal";
+
 /** The WebMCP publication status, as the runtime reports it. */
 export type PublicationStatus = Readonly<{
   state:
@@ -5,22 +7,12 @@ export type PublicationStatus = Readonly<{
   message: string;
 }>;
 
-/** Why the Agent Connection is on and the tab is not connected. */
-export type NotConnectedReason =
-  | "connecting"
-  | "reconnecting"
-  | "no-answer"
-  | "no-server"
-  | "several-servers"
-  | "other-tab"
-  | "not-local"
-  | "no-client";
-
 /** The Agent Connection status, as the runtime reports it. */
-export type AgentConnectionStatus = Readonly<
-  | { state: "off" }
-  | { state: "not-connected"; reason?: NotConnectedReason }
-  | { state: "connected"; agent?: string }
+export type { AgentConnectionStatus };
+
+/** Why the Agent Connection is on and the tab is not connected. */
+export type NotConnectedReason = NonNullable<
+  Extract<AgentConnectionStatus, { state: "not-connected" }>["reason"]
 >;
 
 /**
