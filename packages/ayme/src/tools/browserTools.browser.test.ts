@@ -105,6 +105,7 @@ registerCompiledPom(RootsPage, rootsManifest);
 
 describe("Browser Tools in Chromium", () => {
   let ayme: Ayme;
+  let page: Page;
   let stop: () => void;
   let listening: AbortController;
   const log: string[] = [];
@@ -123,9 +124,8 @@ describe("Browser Tools in Chromium", () => {
     document.querySelector("#form")!.addEventListener("submit", (event) => {
       event.preventDefault();
     });
-    ayme = createAyme({
-      pageFactory: () => createPage({ actionTimeout: 500 }),
-    });
+    page = createPage({ actionTimeout: 500 });
+    ayme = createAyme({ pageFactory: () => page });
     stop = ayme.start();
   });
 
@@ -552,7 +552,7 @@ describe("Browser Tools in Chromium", () => {
     for (const tool of ["click", "hover"])
       expect(offered(tool)).toEqual(["Name", "Email", "Agree", "Size", "Save"]);
 
-    const options = buildToolOptions();
+    const options = buildToolOptions(page);
     const loopTools = options.map((option) => option.key);
     expect(loopTools).not.toContain("fill_form");
     expect(loopTools).not.toContain("press_key");

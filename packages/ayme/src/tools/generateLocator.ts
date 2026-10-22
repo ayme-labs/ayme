@@ -5,6 +5,7 @@ import {
   refFromSelector,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
+import type { Page } from "@playwright/test";
 import { generateLocator } from "@ayme-dev/playwright-lite/internal";
 import type { JsonSchema } from "../shared";
 import { asSentence } from "../shared";
@@ -14,7 +15,6 @@ import {
   TARGET_SCHEMA,
   type PublishedElementTool,
 } from "./elementTools";
-import { requireAymeRuntimePage } from "../page-objects";
 import type { ToolResult } from "./toolTypes";
 
 type Result = ToolResult<"generate_locator">;
@@ -56,11 +56,13 @@ const WITHIN_LABEL = "scope locators to";
 
 /** Resolve a target or container, or throw the error its entry reports. */
 async function resolve(
+  page: Page,
   label: string,
   requested: string,
   currentDocument: Document
 ): Promise<Element> {
   const { element } = await resolveElementTarget(
+    page,
     { label, targetField: "target" },
     requested,
     currentDocument
@@ -84,10 +86,11 @@ function isInside(element: Element, container: Element): boolean {
  * Structural Ref.
  */
 function recommendLocator(
+  page: Page,
   element: Element,
   container: Element | undefined
 ): PlaywrightLocatorString {
-  const locator = generateLocator(requireAymeRuntimePage(), element, {
+  const locator = generateLocator(page, element, {
     ...(container ? { root: container } : {}),
   });
   if (refFromSelector(locator))
@@ -104,6 +107,7 @@ const reason = (error: unknown) =>
 type Container = { within: string; element: Element };
 
 async function entryFor(
+  page: Page,
   target: string,
   container: Container | undefined,
   currentDocument: Document
@@ -114,20 +118,24 @@ async function entryFor(
   });
   let element: Element;
   try {
-    element = await resolve(TARGET_LABEL, target, currentDocument);
+    element = await resolve(page, TARGET_LABEL, target, currentDocument);
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
   }
   if (container && !isInside(element, container.element))
     return fail(`it is not inside the container "${container.within}"`);
   try {
-    return { target, locator: recommendLocator(element, container?.element) };
+    return {
+      target,
+      locator: recommendLocator(page, element, container?.element),
+    };
   } catch (error) {
     return fail(reason(error));
   }
 }
 
 async function groupFor(
+  page: Page,
   group: { targets: string[]; within?: string },
   currentDocument: Document
 ): Promise<Group> {
@@ -136,14 +144,19 @@ async function groupFor(
     try {
       container = {
         within: group.within,
-        element: await resolve(WITHIN_LABEL, group.within, currentDocument),
+        element: await resolve(
+          page,
+          WITHIN_LABEL,
+          group.within,
+          currentDocument
+        ),
       };
     } catch (error) {
       return { within: group.within, error: asSentence(reason(error)) };
     }
   const locators: Entry[] = [];
   for (const target of group.targets)
-    locators.push(await entryFor(target, container, currentDocument));
+    locators.push(await entryFor(page, target, container, currentDocument));
   return {
     ...(group.within !== undefined ? { within: group.within } : {}),
     locators,
@@ -163,14 +176,14 @@ export const generateLocatorTool: PublishedElementTool = {
   ].join(" "),
   // Stryker restore StringLiteral
   inputSchema,
-  execute: async (input) => {
+  execute: async (input, { page }) => {
     const { groups } = input as {
       groups: { targets: string[]; within?: string }[];
     };
     const currentDocument = requireCurrentDocument();
     const result: Result = { groups: [] };
     for (const group of groups)
-      result.groups.push(await groupFor(group, currentDocument));
+      result.groups.push(await groupFor(page, group, currentDocument));
     return result;
   },
 };

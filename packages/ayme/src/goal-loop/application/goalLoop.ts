@@ -258,7 +258,7 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  { cursor, run: runChild }: RunContext
+  { cursor, run: runChild, page }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
@@ -309,7 +309,7 @@ export async function pursueGoal(
       values,
       history,
       capture,
-      toolOptions: buildToolOptions(),
+      toolOptions: buildToolOptions(page),
       pomDefinitions: renderPomDefinitions(getPomDefinitions().definitions),
       decide: decisionFn,
     });

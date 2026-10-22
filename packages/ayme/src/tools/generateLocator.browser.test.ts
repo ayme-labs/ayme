@@ -377,7 +377,7 @@ describe("generate_locator in Chromium", () => {
     await run({ groups: [{ targets: [heading, "#icon"] }] });
 
     expect(getInteractionHistory(document).actions().size).toBe(actionsBefore);
-    expect(buildToolOptions().map((option) => option.key)).not.toContain(
+    expect(buildToolOptions(page).map((option) => option.key)).not.toContain(
       "generate_locator"
     );
   });

@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import {
   parseStructuralRef,
   selectorForRef,
@@ -19,7 +20,6 @@ import type { RunContext } from "../runs";
 import type { ToolInput, ToolResult } from "./toolTypes";
 import type { AriaRef, PageStateCapture } from "../page-state";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { requireAymeRuntimePage } from "../page-objects";
 import {
   RefResolutionError,
   RuntimeStateError,
@@ -61,7 +61,8 @@ export type CustomToolContext = {
 
 /**
  * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
- * whose context carries the cursor its Change Record reads from and moves.
+ * whose context carries the page it acts on and the cursor its Change Record
+ * reads from and moves.
  */
 export type PublishedElementTool = ToolDescriptor & {
   inputSchema: JsonSchema;
@@ -82,10 +83,10 @@ export type RegisteredElementTool = {
   readonly loopInputSchema: JsonSchema;
   /**
    * true = the Goal Loop may offer this element; not enforced on direct
-   * calls. For a tool that needs reach, it keeps only elements a click would
-   * reach, which a direct call does enforce.
+   * calls. For a tool that needs reach, it keeps only elements a click on
+   * `page` would reach, which a direct call does enforce.
    */
-  readonly filter: (element: Element) => boolean;
+  readonly filter: (element: Element, page: Page) => boolean;
   /**
    * For a tool that needs reach, its filter before reach: what it may act on
    * whether or not a click would reach it.
@@ -159,6 +160,7 @@ function elementToolExecution(
     const fields = input as Record<string, unknown>;
     const currentDocument = requireCurrentDocument();
     const target = await resolveElementTarget(
+      context.page,
       definition,
       fields[definition.targetField] as string,
       currentDocument
@@ -166,7 +168,7 @@ function elementToolExecution(
     if (definition.needsReach)
       await assertReachable(
         definition.name,
-        locatorOf(target),
+        locatorOf(context.page, target),
         target.element,
         definition.needsReach
       );
@@ -200,9 +202,8 @@ export function registerElementTool(
     // The cheap filter first: only the elements it keeps are measured.
     ...(definition.needsReach
       ? {
-          filter: (element: Element) =>
-            filter(element) &&
-            reaches(requireAymeRuntimePage(), element, definition.needsReach!),
+          filter: (element: Element, page: Page) =>
+            filter(element) && reaches(page, element, definition.needsReach!),
           matches: filter,
         }
       : { filter }),
@@ -238,9 +239,11 @@ const LOCATOR_EXPRESSION =
 /**
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
- * a Structural Ref, else a selector, which must match exactly one element.
+ * a Structural Ref, else a selector `page` resolves, which must match
+ * exactly one element.
  */
 export async function resolveElementTarget(
+  page: Page,
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
   currentDocument: Document
@@ -262,7 +265,6 @@ export async function resolveElementTarget(
     throw new ToolInputError(
       failure("it is a Playwright locator expression, which tools do not take")
     );
-  const page = requireAymeRuntimePage();
   let elements: Element[];
   try {
     elements = resolveLocatorElements(page.locator(requested));
@@ -289,9 +291,9 @@ export async function resolveElementTarget(
   return { element: elements[0]!, selector: requested };
 }
 
-/** Package-internal: the browser Page's locator for a resolved element. */
-export function locatorOf(target: ResolvedTarget) {
-  return requireAymeRuntimePage().locator(target.selector);
+/** Package-internal: `page`'s locator for a resolved element. */
+export function locatorOf(page: Page, target: ResolvedTarget) {
+  return page.locator(target.selector);
 }
 
 export function requireCurrentDocument(): Document {

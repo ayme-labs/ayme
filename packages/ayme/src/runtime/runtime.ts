@@ -37,6 +37,7 @@ import {
   listPeekToolInfo,
   listTools,
   resolveTools,
+  setStartedPage,
   type ToolInfo,
 } from "./publishedTools";
 import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
@@ -546,6 +547,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     }
     owner.dispose();
     owner = undefined;
+    setStartedPage(undefined);
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
@@ -677,7 +679,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         )
       );
     try {
-      return await execute({ cursor, run });
+      return await execute({ cursor, run, page: getPage() });
     } finally {
       // A turn taken now starts once every child started so far has ended.
       await takeChildTurn(async () => {});
@@ -764,6 +766,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           { code: "active-owner" }
         );
       owner = createAymeRuntime(getPage());
+      setStartedPage(getPage());
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
       configurePageStateIgnore(options.ignore);

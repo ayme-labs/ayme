@@ -206,6 +206,7 @@ const names = (tools: readonly { name: string }[]) =>
 
 describe("the session's tools in Chromium", () => {
   let ayme: Ayme;
+  let page: Page;
   const cleanups: (() => void)[] = [];
 
   /**
@@ -213,8 +214,9 @@ describe("the session's tools in Chromium", () => {
    * do. It lists `goal`, but no test runs a goal.
    */
   async function startSession(options: Parameters<typeof createAyme>[0] = {}) {
+    page = createPage({ actionTimeout: 1000 });
     ayme = createAyme({
-      pageFactory: () => createPage({ actionTimeout: 1000 }),
+      pageFactory: () => page,
       customTools: [highlight],
       goalLoop: async () => {
         throw new Error("No test runs a goal.");
@@ -437,7 +439,7 @@ describe("the session's tools in Chromium", () => {
       select_option: [],
       highlight: ["p Draft"],
     });
-    for (const { key, tool } of buildToolOptions()) {
+    for (const { key, tool } of buildToolOptions(page)) {
       if (!targets.has(key)) continue;
       // The element question alone: fill's free `text` would otherwise stop
       // the plan before the element is asked.
@@ -495,7 +497,7 @@ describe("the session's tools in Chromium", () => {
     const listed = (name: string) =>
       ayme.tools.list().find((tool) => tool.name === name);
     const label = (name: string) =>
-      buildToolOptions().find(({ key }) => key === name)?.label;
+      buildToolOptions(page).find(({ key }) => key === name)?.label;
 
     expect(listed("BarePage.open")).toMatchObject({
       returnPoms: ["SettingsPage"],

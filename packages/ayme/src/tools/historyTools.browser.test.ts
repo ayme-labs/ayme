@@ -1,6 +1,7 @@
+import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createPage, requireAymeRuntimePage } from "../page-objects";
+import { createPage } from "../page-objects";
 import { agentTools, operations } from "../test-utils/publication.testSupport";
 import { createAyme, type Ayme } from "../runtime";
 
@@ -12,6 +13,7 @@ let offered: string[] = [];
 
 describe("navigate_back, navigate_forward and reload, in Chromium", () => {
   let ayme: Ayme;
+  let page: Page;
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
   let listening: AbortController;
@@ -37,8 +39,9 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
       { signal: listening.signal }
     );
     const decide = operations(["navigate_back", "navigate_forward"]);
+    page = createPage({ actionTimeout: 500 });
     ayme = createAyme({
-      pageFactory: () => createPage({ actionTimeout: 500 }),
+      pageFactory: () => page,
       goalLoop: (request) => {
         offered = Object.keys(
           (request.questions.operation as { criteria: object }).criteria
@@ -93,7 +96,7 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
   it("fails with the browser Page's error when it refuses before any navigation starts", async () => {
     open("Settings");
     await call("snapshot", {});
-    vi.spyOn(requireAymeRuntimePage(), "goBack").mockRejectedValue(
+    vi.spyOn(page, "goBack").mockRejectedValue(
       new Error("Timeout 500ms exceeded.")
     );
     await expect(call("navigate_back", {})).rejects.toThrow(
@@ -105,9 +108,7 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
   it("reloads through the browser Page", async () => {
     await call("snapshot", {});
     // A real reload would end this test document.
-    const reload = vi
-      .spyOn(requireAymeRuntimePage(), "reload")
-      .mockResolvedValue(null);
+    const reload = vi.spyOn(page, "reload").mockResolvedValue(null);
     await expect(call("reload", {})).resolves.toMatchObject({
       page_changed: false,
     });

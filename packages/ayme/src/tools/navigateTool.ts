@@ -7,7 +7,6 @@ import {
   type PublishedElementTool,
 } from "./elementTools";
 import { ToolInputError } from "../shared";
-import { requireAymeRuntimePage } from "../page-objects";
 
 /** The application's own navigation, given in runtime setup as `navigate`. */
 type RouterNavigate = (url: string) => unknown;
@@ -57,10 +56,9 @@ export const navigateTool: PublishedElementTool = {
     "Open a URL on the page's own origin, or a path relative to the current page.",
   inputSchema: navigateSchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const { url } = input as { url: string };
     const currentDocument = requireCurrentDocument();
-    const page = requireAymeRuntimePage();
     const destination = URL.parse(url, currentDocument.baseURI);
     // The browser Page rejects an invalid URL with its own error before it
     // navigates.
