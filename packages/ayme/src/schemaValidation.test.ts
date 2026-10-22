@@ -224,6 +224,24 @@ describe("checkedToolInput", () => {
     );
   });
 
+  it("returns only the input's own properties", () => {
+    const input = Object.assign(Object.create({ goal: 1 }), {
+      goal: "x",
+      maxSteps: 1,
+    });
+    expect(checkedToolInput(goalSchema, input)).toStrictEqual({
+      goal: "x",
+      maxSteps: 1,
+    });
+    const optional: JsonSchema = {
+      type: "object",
+      properties: { values: { type: "object" } },
+    };
+    expect(
+      checkedToolInput(optional, Object.create({ values: { a: true } }))
+    ).toStrictEqual({});
+  });
+
   it("takes missing input as {} and refuses null", () => {
     expect(checkedToolInput({ type: "object" }, undefined)).toStrictEqual({});
     expect(() => checkedToolInput(goalSchema, undefined)).toThrow(

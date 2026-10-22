@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
@@ -52,15 +52,25 @@ const manifest: PomManifest = {
           description: "Archive the item.",
           parameters: [],
         },
+        {
+          methodName: "pin",
+          toolName: "pin",
+          description: "Pin the item.",
+          parameters: [
+            { name: "top", optional: true, schema: { type: "boolean" } },
+          ],
+        },
       ],
     },
   ],
 };
 
+const pin = vi.fn();
+
 class InputPage {
   readonly items;
   constructor(page: Page) {
-    this.items = [rooted(page.locator("#item"), { archive() {} })];
+    this.items = [rooted(page.locator("#item"), { archive() {}, pin })];
   }
   explode() {
     throw new Error("The page object action exploded.");
@@ -179,6 +189,21 @@ describe("the one input check every Run passes, in Chromium", () => {
     expect(
       await call("InputPage.items.archive", { ref: "e404", args: { x: 1 } })
     ).toBe("ToolInputError: Input property args.x is not supported.");
+  });
+
+  it("hands a tool only the input properties it checked", async () => {
+    document.querySelector("#overlay")!.remove();
+    const { structure } = (await run("snapshot", {})) as { structure: string };
+    const ref = structure.match(/(e\d+) InputPage\.items\[0\]/)?.[1];
+    pin.mockClear();
+
+    // An inherited property is not part of the input the check reads.
+    const input = Object.assign(Object.create({ args: { top: "yes" } }), {
+      ref,
+    });
+    expect(await call("InputPage.items.pin", input)).toBe("ran");
+    expect(pin).toHaveBeenCalledOnce();
+    expect(pin.mock.calls[0]![0]).toBeUndefined();
   });
 
   it("checks a child Run's input", async () => {

@@ -35,13 +35,16 @@ export function toolInputViolations(
 /**
  * Package-internal: a Run's input once it meets its tool's input schema, as
  * the runtime checks every Run's input before the tool runs. Missing input
- * is `{}`; anything else that is not an object is refused.
+ * is `{}`; anything else that is not an object is refused. The tool gets a
+ * copy of the input's own properties, the ones the check reads, so it never
+ * reads an inherited one nobody checked.
  */
 export function checkedToolInput(
   schema: JsonSchema,
   input: unknown
 ): Record<string, unknown> {
-  const value = input === undefined ? {} : input;
+  const value =
+    input === undefined ? {} : isRecord(input) ? { ...input } : input;
   throwViolations(toolInputViolations(schema, value));
   return value as Record<string, unknown>;
 }
