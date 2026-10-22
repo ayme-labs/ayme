@@ -7,6 +7,12 @@ export default [
   ...tseslint.configs.recommended,
   ...testingEntries,
   {
+    // `import { type T }` keeps an empty runtime import under
+    // verbatimModuleSyntax; `import type { T }` leaves none, which
+    // scripts/check-cycles.mjs relies on.
+    rules: { "@typescript-eslint/no-import-type-side-effects": "error" },
+  },
+  {
     ignores: [
       "dist/**",
       "coverage/**",

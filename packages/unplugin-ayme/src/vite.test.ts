@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { resolveConfig, type InlineConfig } from "vite";
 import { describe, expect, it, vi } from "vitest";
 
-import { type AymeOptions } from "./index";
+import type { AymeOptions } from "./index";
 import { ayme } from "./vite";
 
 type VitePlugin = Extract<ReturnType<typeof ayme>, { config?: unknown }>;
