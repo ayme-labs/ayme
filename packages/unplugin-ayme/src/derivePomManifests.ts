@@ -340,7 +340,7 @@ function classManifest(
     manifest: {
       className,
       file: declaringFile(declaration),
-      ...classDescription(declaration),
+      ...classDescription(checker, declaration),
       members,
       tools,
     },
@@ -700,10 +700,22 @@ function decoratorDescription(decorator: ts.Decorator) {
   return undefined;
 }
 
-function classDescription(declaration: ts.ClassDeclaration) {
+/**
+ * The class's description, or, when its `@ayme` declares none, the one of
+ * the nearest base class that does, as `root` and `present` are inherited.
+ */
+function classDescription(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): { description?: string } {
   const marker = findClassMarker(declaration);
   const description = marker && decoratorDescription(marker);
-  return description === undefined ? {} : { description };
+  if (description !== undefined) return { description };
+  for (const base of baseClassDeclarations(checker, declaration)) {
+    const inherited = classDescription(checker, base);
+    if (inherited.description !== undefined) return inherited;
+  }
+  return {};
 }
 
 type ToolDescription = { authored?: string };

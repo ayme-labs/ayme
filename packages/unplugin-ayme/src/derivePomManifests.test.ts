@@ -563,6 +563,27 @@ describe("derivePomManifests", () => {
       );
     });
 
+    it.each([
+      ["ConfirmDialog", "A dialog that holds the page until it is closed."],
+      ["PlainDialog", "A dialog that holds the page until it is closed."],
+      ["DeleteDialog", "A dialog that holds the page until it is closed."],
+      [
+        "DeleteWorkspaceDialog",
+        "Deleting the workspace removes it for every member.",
+      ],
+      [
+        "DeleteWorkspaceForeverDialog",
+        "Deleting the workspace removes it for every member.",
+      ],
+    ])(
+      "gives %s the description of the nearest class that declares one",
+      (className, description) => {
+        expect(manifestForClass("describedBasePom", className)).toMatchObject({
+          description,
+        });
+      }
+    );
+
     it("does not make a member typed as an undecorated class chain a Page Object Child", () => {
       expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
