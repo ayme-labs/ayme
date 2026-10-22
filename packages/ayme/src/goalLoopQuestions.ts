@@ -28,10 +28,10 @@ import type { CollectionToolItem } from "./registry";
 
 /**
  * What the Goal Loop asks the model, and how an answer maps back to what it
- * offered. The Step Decision (`stepDecision.ts`) puts these in order, and is
- * the only module that imports them: everything else decides a step through
- * `decideStep`. The question ids and Goal Values are the exception, since a
- * decision function and the Goal Loop see them too.
+ * offered. The Step Decision (`stepDecision.ts`) puts these in order. By
+ * convention it is the only production module that imports them: everything
+ * else decides a step through `decideStep`. The exceptions are the question
+ * ids and Goal Values, which a decision function and the Goal Loop see too.
  */
 
 /** The decisions API answers a choice over at most this many options. Every

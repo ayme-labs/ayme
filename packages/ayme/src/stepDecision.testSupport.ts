@@ -60,14 +60,7 @@ export const clickTool: GoalLoopOperation = {
   description: "Click an element.",
   execute: async () => null,
   requiredParams: ["ref"],
-  args: [
-    {
-      name: "ref",
-      path: ["ref"],
-      optional: false,
-      closedSet: { kind: "ref", filter: () => true },
-    },
-  ],
+  args: [refArg],
 };
 
 export const saveTool: GoalLoopOperation = {
@@ -153,35 +146,20 @@ export const archivedItem: CollectionToolItem = {
 export const collectionTool = (
   capture: PageStateCapture,
   unavailable: CollectionToolItem[] = []
-): GoalLoopOperation => ({
-  name: "List.archive",
-  description: "Archive an item.",
-  execute: async () => null,
-  requiredParams: ["ref"],
-  args: [
-    {
-      name: "ref",
-      path: ["ref"],
-      optional: false,
-      closedSet: {
-        kind: "instance",
-        roots: [
-          ...[...capture.elementsByRef.values()].map((element, index) => ({
-            label: `items[${index}]`,
-            element,
-            present: true,
-            available: true,
-          })),
-          ...unavailable,
-        ],
-      },
-    },
-  ],
-});
+): GoalLoopOperation =>
+  archiveTool([
+    ...[...capture.elementsByRef.values()].map((element, index) => ({
+      label: `items[${index}]`,
+      element,
+      present: true,
+      available: true,
+    })),
+    ...unavailable,
+  ]);
 
 /**
- * The same collection tool over exactly `roots`, in their order, so items
- * left out can come before the ones offered.
+ * A tool that goes through a collection over exactly `roots`, in their
+ * order, so items left out can come before the ones offered.
  */
 export const archiveTool = (
   roots: readonly CollectionToolItem[]

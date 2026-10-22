@@ -14,8 +14,6 @@ import type { PageStateCapture } from "./pageState";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
-  chunkQuestionId,
-  runOffQuestionId,
   type GoalValues,
 } from "./goalLoopQuestions";
 import {
@@ -1096,8 +1094,7 @@ describe("Goal Values asked speculatively in stage one", () => {
   });
 
   it("names the value in every chunk and in the run-off", async () => {
-    const names = ["ref", "text"];
-    const runOff = runOffQuestionId("ref", names);
+    const runOff = "ref_run_off";
     const { decide, requests } = scripted(
       fillWithItemName(),
       // Each chunk names its first element.
@@ -1119,9 +1116,7 @@ describe("Goal Values asked speculatively in stage one", () => {
       values,
     });
 
-    const chunks = [1, 2].map((ordinal) =>
-      chunkQuestionId("ref", ordinal, names)
-    );
+    const chunks = ["ref_1", "ref_2"];
     expect(Object.keys(requests[1]!.questions)).toEqual(chunks);
     for (const id of chunks)
       expect(questionsOf(requests[1])[id]!.instructions).toMatch(

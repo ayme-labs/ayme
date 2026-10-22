@@ -206,6 +206,11 @@ const answersOf = (response: DecisionResponse) =>
 type Read<T> =
   { value: T; stop?: undefined } | { value?: undefined; stop: StepStop };
 
+/** The chosen operation's arguments, or the verdict that ends the step. */
+type Decided =
+  | { chosen: ChosenArguments; stop?: undefined }
+  | { chosen?: undefined; stop: StepStop };
+
 const errorTextOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
@@ -334,7 +339,7 @@ async function decideArguments(
   presets: readonly ValuePreset[],
   state: StepState,
   capture: PageStateCapture
-): Promise<{ chosen: ChosenArguments; stop?: undefined } | { stop: StepStop }> {
+): Promise<Decided> {
   // needs_value: the operation needs a value the model cannot pick
   const plan = planArguments(tool, capture, values, presets);
   if (plan.kind !== "ask") return { stop: planStop(tool, plan, asker.stop) };
@@ -373,7 +378,7 @@ async function askArguments(
   questions: readonly StageTwoQuestion[],
   state: StepState,
   capture: PageStateCapture
-): Promise<{ chosen: ChosenArguments; stop?: undefined } | { stop: StepStop }> {
+): Promise<Decided> {
   // The scores share the record's maps, so an answer that fails to read
   // leaves the ones read before it on the run result.
   const record: AnswerRecord = { choices: {}, probabilities: {} };

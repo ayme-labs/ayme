@@ -28,6 +28,9 @@ describe("the parameters an operation requires", () => {
         true
       )
     ).toEqual(["ref", "args.value", "args.payload"]);
+  });
+
+  it("requires the parameters that are not optional, outside a collection", () => {
     expect(
       requiredParamsOf(
         [

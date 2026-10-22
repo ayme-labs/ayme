@@ -3,11 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { DecisionEndpointError } from "./decisionWire";
 import type { GoalLoopOperation } from "./goalLoopOperations";
-import {
-  NONE_OF_THESE_KEY,
-  chunkQuestionId,
-  runOffQuestionId,
-} from "./goalLoopQuestions";
+import { NONE_OF_THESE_KEY } from "./goalLoopQuestions";
 import {
   answering,
   archiveTool,
@@ -398,9 +394,10 @@ describe("a Step Decision", () => {
         next: 'No element on the current page fits the operation "click". Navigate to a different page or try a different approach.',
       });
       // Every chunk's answer is kept on the stop.
-      expect(Object.keys(verdict.scores?.argumentProbabilities ?? {})).toEqual(
-        [1, 2].map((ordinal) => chunkQuestionId("ref", ordinal, ["ref"]))
-      );
+      expect(Object.keys(verdict.scores?.argumentProbabilities ?? {})).toEqual([
+        "ref_1",
+        "ref_2",
+      ]);
     });
     it("with no_fitting_option naming the items left out when a collection item answers none of these", async () => {
       const capture = captureOfButtons(2);
@@ -590,9 +587,9 @@ describe("a Step Decision", () => {
 
   describe("a ref over the option cap", () => {
     const capture = captureOfButtons(300);
-    const firstChunk = chunkQuestionId("ref", 1, ["ref"]);
-    const secondChunk = chunkQuestionId("ref", 2, ["ref"]);
-    const runOff = runOffQuestionId("ref", ["ref"]);
+    const firstChunk = "ref_1";
+    const secondChunk = "ref_2";
+    const runOff = "ref_run_off";
 
     it("asks a run-off among the elements several chunks named, then runs the one it picks", async () => {
       const { decide, requests } = scripted(
@@ -676,9 +673,7 @@ describe("a Step Decision", () => {
       const verdict = await step(decide, { capture: captureOfButtons(600) });
 
       // ⌈600 / 254⌉ = 3 chunks, all for the one parameter, each with its own id.
-      const chunks = [1, 2, 3].map((ordinal) =>
-        chunkQuestionId("ref", ordinal, ["ref"])
-      );
+      const chunks = ["ref_1", "ref_2", "ref_3"];
       expect(requests).toHaveLength(2);
       expect(Object.keys(requests[1]!.questions)).toEqual(chunks);
       for (const id of chunks) {
@@ -726,9 +721,7 @@ describe("a Step Decision", () => {
     });
 
     it("acts on the one chunk that names an element", async () => {
-      const chunks = [1, 2, 3].map((ordinal) =>
-        chunkQuestionId("ref", ordinal, ["ref"])
-      );
+      const chunks = ["ref_1", "ref_2", "ref_3"];
       const { decide, requests } = scripted(stageOne("click"), {
         answer: answering((id) => (id === chunks[1] ? "e300" : "none")),
       });
@@ -767,16 +760,18 @@ describe("a Step Decision", () => {
         reason: "decide_failed",
         scores: { runOff: true },
       });
+      // The chunks' answers stay on the stop; the unread run-off adds none.
+      expect(verdict.scores?.argumentChoices).toEqual({
+        [firstChunk]: "e10",
+        [secondChunk]: "e280",
+      });
       expect(verdict.kind === "stop" && verdict.next).toMatch(
         /^The decision function's answers could not be read: .*"e20".*not one of the offered options.*Handle the goal without the Goal Loop\.$/
       );
     });
 
     it("asks the operation's other parameters alongside the chunks, and the run-off adds the ref", async () => {
-      const names = ["ref", "force"];
-      const chunks = [1, 2].map((ordinal) =>
-        chunkQuestionId("ref", ordinal, names)
-      );
+      const chunks = ["ref_1", "ref_2"];
       const { decide, requests } = scripted(
         stageOne("force_click"),
         {
@@ -786,7 +781,7 @@ describe("a Step Decision", () => {
             force: choice("true"),
           },
         },
-        { answers: { [runOffQuestionId("ref", names)]: choice("e5") } }
+        { answers: { ref_run_off: choice("e5") } }
       );
 
       const verdict = await step(decide, {
@@ -796,9 +791,7 @@ describe("a Step Decision", () => {
 
       expect(Object.keys(requests[1]!.questions)).toEqual([...chunks, "force"]);
       // The other parameter is already chosen; the run-off asks only the ref.
-      expect(Object.keys(requests[2]!.questions)).toEqual([
-        runOffQuestionId("ref", names),
-      ]);
+      expect(Object.keys(requests[2]!.questions)).toEqual(["ref_run_off"]);
       expect(verdict.kind === "act" && verdict.args).toEqual({
         force: true,
         ref: "e5",
@@ -810,11 +803,9 @@ describe("a Step Decision", () => {
     });
 
     it("never gives a chunk or the run-off the id of a parameter of the operation", async () => {
-      const names = ["ref", "ref_1", "ref_run_off"];
-      const chunks = [1, 2].map((ordinal) =>
-        chunkQuestionId("ref", ordinal, names)
-      );
-      const lookalikeRunOff = runOffQuestionId("ref", names);
+      // "ref_" starts other parameter names, so the derived ids use "ref__".
+      const chunks = ["ref__1", "ref__2"];
+      const lookalikeRunOff = "ref__run_off";
       const { decide, requests } = scripted(
         stageOne("lookalike_click"),
         {
