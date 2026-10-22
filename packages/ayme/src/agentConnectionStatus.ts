@@ -1,3 +1,5 @@
+import type { NotConnectedReason } from "@ayme-dev/mcp/client";
+
 import type { Ayme } from "./runtime";
 
 /**
@@ -12,15 +14,7 @@ export type AgentConnectionStatus = Readonly<
   | { state: "off" }
   | {
       state: "not-connected";
-      reason?:
-        | "connecting"
-        | "reconnecting"
-        | "no-answer"
-        | "no-server"
-        | "several-servers"
-        | "other-tab"
-        | "not-local"
-        | "no-client";
+      reason?: NotConnectedReason | "no-client";
     }
   | { state: "connected"; agent?: string }
 >;
