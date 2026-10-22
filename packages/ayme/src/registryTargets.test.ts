@@ -258,4 +258,61 @@ describe("registered Page Object targets", () => {
     document.querySelector<HTMLInputElement>(".done")!.checked = true;
     expect(await checked()).toEqual(["Todo.checked"]);
   });
+
+  it("leaves out a member whose locator cannot be resolved, and lists the rest", async () => {
+    document.body.innerHTML = '<input class="name" />';
+    class Form {
+      readonly broken = page.locator("[");
+      readonly name = page.locator(".name");
+    }
+    registerCompiledPom(Form, {
+      className: "Form",
+      tools: [],
+      members: [
+        { memberName: "broken", kind: "locator", access: "field" },
+        { memberName: "name", kind: "locator", access: "field" },
+      ],
+      components: [],
+    });
+    session.register(Form);
+
+    const targets = await listRegisteredPomTargets();
+
+    expect(targets.map(({ path }) => path)).toEqual(["Form.name"]);
+  });
+
+  it("lists a member apart from the root only while it holds another element than the root, after a change no observation follows", async () => {
+    document.body.innerHTML = `
+      <input type="checkbox" id="a" checked />
+      <input type="checkbox" id="b" />
+    `;
+    class Todos {
+      readonly checked = page.locator("input:checked");
+    }
+    ayme({ root: () => page.locator("#a") })(Todos);
+    registerCompiledPom(Todos, {
+      className: "Todos",
+      tools: [],
+      members: [{ memberName: "checked", kind: "locator", access: "field" }],
+      components: [],
+    });
+    session.register(Todos);
+    const [a, b] = document.querySelectorAll("input");
+    const targets = async () =>
+      (await listRegisteredPomTargets()).map(({ path, element }) => [
+        path,
+        element.id,
+      ]);
+
+    expect(await targets()).toEqual([[rootTargetPath("Todos"), "a"]]);
+    a.checked = false;
+    b.checked = true;
+    expect(await targets()).toEqual([
+      [rootTargetPath("Todos"), "a"],
+      ["Todos.checked", "b"],
+    ]);
+    a.checked = true;
+    b.checked = false;
+    expect(await targets()).toEqual([[rootTargetPath("Todos"), "a"]]);
+  });
 });

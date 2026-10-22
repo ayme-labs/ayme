@@ -61,19 +61,43 @@ export type RegisteredPomTarget = {
  * member or root. Resolved when the targets are read, so they are the
  * elements it holds then.
  */
-export type PomTargetSource = { path: string; locator: Locator };
+export type PomTargetSource = {
+  path: string;
+  locator: Locator;
+  /**
+   * For a member of an instance with a root, that root's locator: the
+   * member holds no targets while it resolves to the root's one element,
+   * since it is the root.
+   */
+  root?: Locator;
+};
 
-/** Package-internal: the elements `sources` hold now, in their order. */
+/**
+ * Package-internal: the elements `sources` hold now, in their order. A
+ * locator that cannot be resolved holds none; its observation says why.
+ */
 export function resolveTargets(
   sources: readonly PomTargetSource[]
 ): RegisteredPomTarget[] {
-  return sources.flatMap(({ path, locator }) => {
+  // Each locator once: a member's root is also a source of its own.
+  const resolved = new Map<Locator, Element[]>();
+  const elementsOf = (locator: Locator) => {
+    let elements = resolved.get(locator);
+    if (!elements) {
+      try {
+        elements = locatorElements(locator);
+      } catch {
+        elements = [];
+      }
+      resolved.set(locator, elements);
+    }
+    return elements;
+  };
+  return sources.flatMap(({ path, locator, root }) => {
+    const elements = elementsOf(locator);
+    if (root && isRootElement(elements, elementsOf(root))) return [];
     const name = locator.toString();
-    return locatorElements(locator).map((element) => ({
-      path,
-      element,
-      locator: name,
-    }));
+    return elements.map((element) => ({ path, element, locator: name }));
   });
 }
 
@@ -219,6 +243,7 @@ export async function observePageObject(
         ...place,
         present: page.observed.present,
         rootElement: page.rootElement,
+        rootLocator: page.observed.rootLocator,
       },
       new Set()
     );
@@ -258,6 +283,8 @@ type Place = Pick<PomInstanceObservation, "path" | "item"> & {
    * locator member resolving to that element alone is the root, not a child.
    */
   rootElement?: Element;
+  /** The instance's root locator, which its member targets are read against. */
+  rootLocator?: Locator;
 };
 
 /**
@@ -265,7 +292,10 @@ type Place = Pick<PomInstanceObservation, "path" | "item"> & {
  * single child, or a collection item. `present` is the presence a root-less
  * one with no predicate takes.
  */
-type InstancePlace = Omit<Place, "rootElement" | "occurrences"> & {
+type InstancePlace = Omit<
+  Place,
+  "rootElement" | "rootLocator" | "occurrences"
+> & {
   kind: "page" | "child" | "item";
 };
 
@@ -388,13 +418,26 @@ async function walkMembers(
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
-        if (isLocator(value) && resolvesToRoot(value, place.rootElement)) {
+        if (!isLocator(value))
+          throw new RuntimeStateError(
+            `POM member ${memberPath} is not a browser locator.`
+          );
+        // Kept even while it is the root: it may not be on a later read.
+        walk.targetSources.push({
+          path: joinPath(walk.label, memberPath),
+          locator: value,
+          root: place.rootLocator,
+        });
+        if (resolvesToRoot(value, place.rootElement)) {
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
-        walk.memberObservations.push(
-          await observeLocator(walk, value, member, memberPath)
-        );
+        walk.memberObservations.push({
+          memberName: memberPath,
+          kind: "locator",
+          access: member.access,
+          count: await value.count(),
+        });
       } else
         await walkComponentMember(walk, value, member, place, nextAncestors);
     } catch (error) {
@@ -411,31 +454,22 @@ async function walkMembers(
  * may build a fresh Locator on each read.
  */
 function resolvesToRoot(locator: Locator, rootElement: Element | undefined) {
-  if (!rootElement) return false;
-  const elements = locatorElements(locator);
-  return elements.length === 1 && elements[0] === rootElement;
+  return (
+    rootElement !== undefined &&
+    isRootElement(locatorElements(locator), [rootElement])
+  );
 }
 
-async function observeLocator(
-  walk: Walk,
-  value: unknown,
-  member: PomMemberManifest,
-  memberPath: string
-): Promise<PomMemberObservation> {
-  if (!isLocator(value))
-    throw new RuntimeStateError(
-      `POM member ${memberPath} is not a browser locator.`
-    );
-  walk.targetSources.push({
-    path: joinPath(walk.label, memberPath),
-    locator: value,
-  });
-  return {
-    memberName: memberPath,
-    kind: "locator",
-    access: member.access,
-    count: await value.count(),
-  };
+/** Whether `elements` is the one element a root holds, `rootElements`. */
+function isRootElement(
+  elements: readonly Element[],
+  rootElements: readonly Element[]
+) {
+  return (
+    rootElements.length === 1 &&
+    elements.length === 1 &&
+    elements[0] === rootElements[0]
+  );
 }
 
 /**
@@ -515,6 +549,7 @@ async function walkComponentMember(
         item: observed.item,
         present: observed.present,
         rootElement: child.rootElement,
+        rootLocator: observed.rootLocator,
       },
       ancestors
     );
