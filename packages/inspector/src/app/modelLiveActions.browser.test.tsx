@@ -106,6 +106,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   startedAyme.webMCP.publicationStatus = runtime.publication;
   const {
     pageStateNodeEntry,
+    agentDescription,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -121,6 +122,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     pageStateNodeEntry,
     rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
+    agentDescription,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,

@@ -58,6 +58,27 @@ class SettingsPage {
   save() {}
 }
 
+/** A Page Object whose actions have no description. */
+class BarePage {
+  open() {}
+  close() {}
+}
+
+registerCompiledPom(BarePage, {
+  className: "BarePage",
+  members: [],
+  tools: [
+    {
+      methodName: "open",
+      toolName: "BarePage.open",
+      parameters: [],
+      returnPoms: ["BarePage", "SettingsPage"],
+    },
+    { methodName: "close", toolName: "BarePage.close", parameters: [] },
+  ],
+  components: [],
+});
+
 /** A Page Object whose action takes a rest parameter. */
 class GroupPage {
   static calls: unknown[][] = [];
@@ -462,6 +483,24 @@ describe("the session's tools in Chromium", () => {
     expect(all).toMatch(
       /TodoPage[\s\S]*SettingsPage|SettingsPage[\s\S]*TodoPage/
     );
+  });
+
+  it("lists a bare action with only the Page Objects it shows next, and offers the Goal Loop a description of every one", async () => {
+    await startSession();
+    cleanups.push(registered(BarePage));
+    await probeRegisteredPomMembers();
+    const listed = (name: string) =>
+      ayme.tools.list().find((tool) => tool.name === name);
+    const label = (name: string) =>
+      buildToolOptions().find(({ key }) => key === name)?.label;
+
+    expect(listed("BarePage.open")).toMatchObject({
+      returnPoms: ["SettingsPage"],
+    });
+    expect(listed("BarePage.open")).not.toHaveProperty("description");
+    expect(listed("BarePage.close")).not.toHaveProperty("returnPoms");
+    expect(label("BarePage.open")).toBe("Then shows SettingsPage.");
+    expect(label("BarePage.close")).toBe("Run close.");
   });
 
   it("passes a rest parameter's list to the action as separate arguments", async () => {

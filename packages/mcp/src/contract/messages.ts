@@ -9,11 +9,13 @@ import * as z from "zod/mini";
  * A tool the page offers, as the page names and describes it, and whether
  * a call can run it now: a Page Object Tool is listed while its Page Object
  * is on the page, and `reason` says why an unavailable one cannot run, when
- * the page knows (ADR-0035).
+ * the page knows (ADR-0035). A Page Object Tool whose action says nothing
+ * beyond its name and schema has no description, and MCP lists it without
+ * one.
  */
 export const PageToolSchema = z.object({
   name: z.string().check(z.minLength(1)),
-  description: z.string(),
+  description: z.optional(z.string()),
   inputSchema: z.record(z.string(), z.unknown()),
   available: z.boolean(),
   reason: z.optional(z.string()),

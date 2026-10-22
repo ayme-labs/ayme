@@ -426,6 +426,16 @@ describe("derivePomManifests", () => {
     });
   });
 
+  it("names the inheriting class where an inherited action returns its declaring class", () => {
+    const manifest = manifestForClass("inheritedSelfReturnPom", "SettingsPage");
+
+    expect(manifest?.tools).toMatchObject([
+      { methodName: "save", returnPoms: ["SettingsPage"] },
+      { methodName: "refresh", returnPoms: ["SettingsPage"] },
+      { methodName: "openOther", returnPoms: ["OtherPage"] },
+    ]);
+  });
+
   it("captures class descriptions and Promise-union return POMs", () => {
     const manifest = manifestFor("returningPom");
     if (!manifest) throw new Error("The POM manifest was not derived.");

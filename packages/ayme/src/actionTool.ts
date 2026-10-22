@@ -43,17 +43,57 @@ export function inputSchemaFor(
   };
 }
 
-/** An action's description as agents read it. */
-export function toolDescription(tool: ToolManifest) {
-  const parts = [tool.description ?? `Run ${tool.methodName}.`];
-  const rest = tool.parameters.find((parameter) => parameter.rest);
-  if (rest)
-    parts.push(
-      `${rest.name} is a rest parameter: pass its arguments as a list.`
-    );
+/**
+ * What a Page Object Tool tells about its action beyond its name and schema:
+ * the description its author wrote, and the other Page Objects it may
+ * return, which the page shows afterwards. A blank description, or
+ * returning its own class, tells nothing, so it is left out.
+ */
+export function actionFacts(
+  action: ToolManifest,
+  ownClassName: string
+): { description?: string; returnPoms?: readonly string[] } {
+  const returnPoms =
+    action.returnPoms?.filter((name) => name !== ownClassName) ?? [];
+  return {
+    // A blank description says nothing, and WebMCP refuses an empty one.
+    ...(action.description?.trim() ? { description: action.description } : {}),
+    ...(returnPoms.length ? { returnPoms } : {}),
+  };
+}
+
+/** A tool as `agentDescription` reads it. */
+type DescribedTool = {
+  name: string;
+  description?: string;
+  returnPoms?: readonly string[];
+};
+
+/**
+ * A tool's description as agents read it: its own, then the Page Objects
+ * the page shows afterwards. None when the tool says nothing beyond its name
+ * and schema, unless `required`: WebMCP refuses a tool without one, and the
+ * Goal Loop's model chooses an operation by it, so they get `Run addItem.`.
+ */
+export function agentDescription(
+  tool: DescribedTool,
+  options: { required: true }
+): string;
+export function agentDescription(
+  tool: DescribedTool,
+  options?: { required: boolean }
+): string | undefined;
+export function agentDescription(
+  tool: DescribedTool,
+  options?: { required: boolean }
+): string | undefined {
+  const parts = tool.description === undefined ? [] : [tool.description];
   if (tool.returnPoms?.length)
-    parts.push(`Potential return POMs: ${tool.returnPoms.join(", ")}.`);
-  return parts.join(" ");
+    parts.push(`Then shows ${tool.returnPoms.join(" or ")}.`);
+  if (parts.length) return parts.join(" ");
+  if (options?.required)
+    return `Run ${tool.name.slice(tool.name.lastIndexOf(".") + 1)}.`;
+  return undefined;
 }
 
 /** The method's arguments: a rest parameter's list is its remaining ones. */

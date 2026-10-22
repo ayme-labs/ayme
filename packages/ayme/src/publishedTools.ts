@@ -37,10 +37,19 @@ export type PublishedTool =
 export type PublishedToolGroup =
   "pageObject" | "browser" | "custom" | "peek" | "agent";
 
-/** A published tool as an agent sees it, for reading only. */
+/**
+ * A published tool, for reading only. A Page Object Tool's description is
+ * only what its author wrote, and none when there is nothing to say;
+ * `agentDescription` makes the text an agent reads from it.
+ */
 export type PublishedToolInfo = Readonly<{
   name: string;
-  description: string;
+  description?: string;
+  /**
+   * For a Page Object Tool: the other Page Objects its action may return,
+   * which the page shows afterwards.
+   */
+  returnPoms?: readonly string[];
   inputSchema: JsonSchema;
   group: PublishedToolGroup;
 }>;
@@ -198,7 +207,12 @@ function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
     tools.map(({ tool, group, available, reason }) =>
       Object.freeze({
         name: tool.name,
-        description: tool.description,
+        ...(tool.description === undefined
+          ? {}
+          : { description: tool.description }),
+        ...("returnPoms" in tool && tool.returnPoms
+          ? { returnPoms: tool.returnPoms }
+          : {}),
         inputSchema: tool.inputSchema,
         group,
         available,

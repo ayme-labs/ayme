@@ -9,7 +9,7 @@ export type RunnableTool = {
   name: string;
   /** The action's own name, e.g. addItem; a tool's name when it's no action. */
   action: string;
-  description: string;
+  description?: string;
   /**
    * The arguments a person fills in: the tool's input, or for a collection
    * action the action's own arguments, without the item's ref.
@@ -53,7 +53,7 @@ export type RunnableTool = {
  */
 export type ToolSummary = {
   name: string;
-  description: string;
+  description?: string;
   inputSchema: JsonSchema;
   group?: PublishedToolGroup;
   available: boolean;
@@ -80,7 +80,8 @@ export function listRunnableTools(
         tools.set(
           tool.name,
           pageObjectTool(
-            tool,
+            // The session's listing describes it as agents read it.
+            { ...tool, description: listed?.description ?? tool.description },
             listed
               ? {
                   present: true,

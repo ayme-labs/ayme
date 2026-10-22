@@ -29,7 +29,8 @@ export type {
   ToolManifest,
   ToolParameter,
 } from "./contracts";
-export { inputSchemaFor } from "./actionTool";
+// How a tool reads to agents, so the Inspector shows what Ayme MCP gives them.
+export { agentDescription, inputSchemaFor } from "./actionTool";
 // The definition text's own rendering, so the Inspector shows an action's
 // signature and argument types the way agents read them.
 export {

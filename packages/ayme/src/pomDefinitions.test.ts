@@ -299,6 +299,8 @@ describe("POM definition catalog", () => {
 
     const [definition] = definitions.getPomDefinitions("BarePage").definitions;
     expect(definition?.actions[0]).not.toHaveProperty("description");
-    expect(registry.listAvailablePomTools()[0]?.description).toBe("Run run.");
+    expect(registry.listAvailablePomTools()[0]).not.toHaveProperty(
+      "description"
+    );
   });
 });
