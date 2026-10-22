@@ -26,6 +26,14 @@ export type ObservedPomRoot = {
   inTheWay: readonly Element[];
 };
 
+/** Package-internal: a Page Object Root that is not on the page. */
+export const absentPomRoot: ObservedPomRoot = {
+  element: undefined,
+  present: false,
+  available: false,
+  inTheWay: [],
+};
+
 /**
  * Package-internal: one live Page Object instance as the last observation
  * found it: the page's own, or a component instance. It holds the facts its

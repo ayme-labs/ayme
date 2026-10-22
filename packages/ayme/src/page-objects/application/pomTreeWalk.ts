@@ -9,9 +9,10 @@ import type {
 } from "../../shared";
 import { modelOption } from "../domain/decorators";
 import { errorText, RuntimeStateError } from "../../shared";
-import type {
-  ObservedPomRoot,
-  PomInstanceObservation,
+import {
+  absentPomRoot,
+  type ObservedPomRoot,
+  type PomInstanceObservation,
 } from "../domain/pomInstance";
 import { askPredicates, askPresence } from "./pomPredicates";
 import type { PageDriver } from "./pageDriver";
@@ -456,9 +457,9 @@ async function observeRoot(
   try {
     locator = await readRoot(driver, instance);
   } catch (error) {
-    return { root: absentRoot, count: 0, error: errorText(error) };
+    return { root: absentPomRoot, count: 0, error: errorText(error) };
   }
-  if (!locator) return { root: absentRoot, count: 0 };
+  if (!locator) return { root: absentPomRoot, count: 0 };
   return { ...(await driver.observeRoot(locator)), locator };
 }
 
@@ -477,13 +478,6 @@ async function readRoot(
   const root = await predicate(instance as never);
   return driver.isLocator(root) ? root : undefined;
 }
-
-const absentRoot: ObservedPomRoot = {
-  element: undefined,
-  present: false,
-  available: false,
-  inTheWay: [],
-};
 
 function joinPath(prefix: string, name: string) {
   return prefix ? `${prefix}.${name}` : name;

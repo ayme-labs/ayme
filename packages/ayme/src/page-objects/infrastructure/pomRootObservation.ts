@@ -1,14 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { inTheWayOf, measurePomRoot } from "../../page-state";
-import type { ObservedPomRoot } from "../domain/pomInstance";
-
-const absent: ObservedPomRoot = {
-  element: undefined,
-  present: false,
-  available: false,
-  inTheWay: [],
-};
+import { absentPomRoot, type ObservedPomRoot } from "../domain/pomInstance";
 
 /**
  * Package-internal: observes one Page Object Root without scrolling or
@@ -27,7 +20,9 @@ export async function observePomRoot(
   return {
     count,
     root:
-      root && current.length === 1 && current[0] === element ? root : absent,
+      root && current.length === 1 && current[0] === element
+        ? root
+        : absentPomRoot,
   };
 }
 
@@ -36,7 +31,7 @@ async function observeElement(
   element: Element
 ): Promise<ObservedPomRoot> {
   const measurement = await measurePomRoot(locator, element);
-  if (!measurement.present) return { ...absent, element };
+  if (!measurement.present) return { ...absentPomRoot, element };
   return {
     element,
     present: true,
