@@ -19,9 +19,8 @@ import {
   NONE_OF_THESE_KEY,
   chunkQuestionId,
   runOffQuestionId,
-  type GoalLoopOperation,
-  type ToolOption,
 } from "./goalLoopQuestions";
+import type { GoalLoopOperation, ToolOption } from "./goalLoopOperations";
 import {
   decideStep,
   type GoalLoopDecisionFunction,

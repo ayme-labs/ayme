@@ -23,15 +23,17 @@ import {
   readArgumentAnswers,
   readRunOffAnswer,
   readSpeculativeValues,
-  requiredParamsOf,
-  specsOfParameters,
   type ArgumentQuestion,
-  type GoalLoopOperation,
   type GoalValues,
   type StageTwoQuestion,
-  type ToolOption,
   type ValuePreset,
 } from "./goalLoopQuestions";
+import {
+  requiredParamsOf,
+  specsOfParameters,
+  type GoalLoopOperation,
+  type ToolOption,
+} from "./goalLoopOperations";
 
 // --- Fixtures ---
 
