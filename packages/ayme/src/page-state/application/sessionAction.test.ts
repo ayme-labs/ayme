@@ -6,11 +6,11 @@ import {
   SyntheticAriaRefFactory,
   type StructuralActionId,
 } from "@ayme-dev/core/structural-observation";
-import { createCursors } from "./cursors";
-import { InteractionHistory } from "./interactionHistory";
+import { createCursors } from "../domain/cursors";
+import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession } from "./pageStateSession";
 import { runSessionAction, type ActionPage } from "./sessionAction";
-import type { PageCapture } from "./structuralPageState";
+import type { PageCapture } from "../domain/structuralPageState";
 
 let now = 0;
 const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };

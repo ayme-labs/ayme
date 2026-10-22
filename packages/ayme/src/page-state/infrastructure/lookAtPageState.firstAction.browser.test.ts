@@ -1,12 +1,12 @@
 import { afterEach, expect, it } from "vitest";
 
-import type { PomManifest } from "../shared";
+import type { PomManifest } from "../../shared";
 import { lookAtPageStateForDocument } from "./pageState";
 import {
   probeRegisteredPomMembers,
   registerCompiledPom,
-} from "../page-objects";
-import { startAgentSession } from "./lookAtPageState.testSupport";
+} from "../../page-objects";
+import { startAgentSession } from "../test-utils/lookAtPageState.testSupport";
 
 // Its own file: the agent's first action must be the document's first
 // recorded observation, and each browser test file gets its own document.

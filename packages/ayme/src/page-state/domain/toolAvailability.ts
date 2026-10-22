@@ -2,7 +2,7 @@
 // Browser Tools that act on one element and by Page Object Tools.
 
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
-import { asSentence, RuntimeStateError } from "../shared";
+import { asSentence, RuntimeStateError } from "../../shared";
 
 /**
  * Package-internal: whether a tool, or an action on one Page Object

@@ -1,14 +1,14 @@
 import type { StructuralActionId } from "@ayme-dev/core/structural-observation";
-import { isJsonValue } from "../shared";
-import type { Cursor } from "./cursors";
-import type { ToolCall } from "./interactionHistory";
+import { isJsonValue } from "../../shared";
+import type { Cursor } from "../domain/cursors";
+import type { ToolCall } from "../domain/interactionHistory";
 import type { PageStateSession } from "./pageStateSession";
 import {
   attachChangeRecord,
   readChangeRecord,
   type ActionResult,
   type ChangeRecordStarts,
-} from "./actionResult";
+} from "../domain/actionResult";
 
 /** The page signals an action waits on, besides its session's captures. */
 export type ActionPage = {

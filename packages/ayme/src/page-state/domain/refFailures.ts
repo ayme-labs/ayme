@@ -1,5 +1,5 @@
 import { refWrittenOtherwise } from "@ayme-dev/core/structural-observation";
-import { asSentence } from "../shared";
+import { asSentence } from "../../shared";
 import type { RefResolution } from "./structuralPageState";
 
 /**

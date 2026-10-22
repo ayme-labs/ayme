@@ -6,10 +6,10 @@ import {
   StructuralTree,
   SyntheticAriaRefFactory,
 } from "@ayme-dev/core/structural-observation";
-import { InteractionHistory } from "./interactionHistory";
+import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession } from "./pageStateSession";
-import type { PomLabels } from "./pomLabels";
-import type { PageCapture } from "./structuralPageState";
+import type { PomLabels } from "../domain/pomLabels";
+import type { PageCapture } from "../domain/structuralPageState";
 
 const ref = AriaRefSchema.parse;
 

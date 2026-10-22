@@ -2,9 +2,9 @@ import {
   parseStructuralRef,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import { RefResolutionError, ToolInputError } from "../shared";
-import { refFailure, refHint, UNRESOLVED } from "./refFailures";
-import type { AymeNode, RefResolution } from "./structuralPageState";
+import { RefResolutionError, ToolInputError } from "../../shared";
+import { refFailure, refHint, UNRESOLVED } from "../domain/refFailures";
+import type { AymeNode, RefResolution } from "../domain/structuralPageState";
 
 /** Resolves refs against the page as it is now. */
 export type ResolveRefs = (...refs: AriaRef[]) => Promise<RefResolution[]>;

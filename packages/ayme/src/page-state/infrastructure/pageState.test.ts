@@ -24,9 +24,9 @@ import {
   resolvePageStateRefs,
   startActionForDocument,
 } from "./pageState";
-import { pageStateNodeEntry } from "./structuralPageState";
-import { getPageStateTool } from "../tools";
-import { ayme } from "../test-utils/agentCalls.testSupport";
+import { pageStateNodeEntry } from "../domain/structuralPageState";
+import { getPageStateTool } from "../../tools";
+import { ayme } from "../../test-utils/agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
 

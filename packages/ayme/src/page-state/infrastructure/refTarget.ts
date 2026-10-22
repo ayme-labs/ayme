@@ -1,6 +1,6 @@
 import { resolvePageStateRefs } from "./pageState";
-import { resolveRequestedRef } from "./refResolution";
-import type { AymeNode } from "./structuralPageState";
+import { resolveRequestedRef } from "../application/refResolution";
+import type { AymeNode } from "../domain/structuralPageState";
 
 /**
  * Package-internal: the node a tool's Structural Ref addresses now in

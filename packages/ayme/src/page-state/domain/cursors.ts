@@ -1,7 +1,7 @@
 // Runtime, not publication: the Change Record cursors, beside the Run log.
 
 import type { StructuralObservationEntry } from "@ayme-dev/core/structural-observation";
-import type { Caller } from "../shared";
+import type { Caller } from "../../shared";
 
 /**
  * Where a reader of the page stands: the observation it last received, the

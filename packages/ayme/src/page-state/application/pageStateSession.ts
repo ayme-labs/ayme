@@ -5,9 +5,12 @@ import {
   type StructuralIdentityLedger,
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
-import { RuntimeStateError } from "../shared";
-import type { Cursor } from "./cursors";
-import type { InteractionHistory, ToolCall } from "./interactionHistory";
+import { RuntimeStateError } from "../../shared";
+import type { Cursor } from "../domain/cursors";
+import type {
+  InteractionHistory,
+  ToolCall,
+} from "../domain/interactionHistory";
 import {
   renderPageState,
   sameLabels,
@@ -15,7 +18,7 @@ import {
   type PageState,
   type PageStateLook,
   type RefResolution,
-} from "./structuralPageState";
+} from "../domain/structuralPageState";
 
 /**
  * The Page State Session's port: a capture of the page as it is now. Every

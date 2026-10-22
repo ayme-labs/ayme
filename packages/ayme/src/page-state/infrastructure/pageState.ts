@@ -13,24 +13,27 @@ import {
   type StructuralActionId,
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
-import { browserMonotonicClock, ToolInputError } from "../shared";
-import { createCursors, type Cursor, type Cursors } from "./cursors";
-import { InteractionHistory, type ToolCall } from "./interactionHistory";
+import { browserMonotonicClock, ToolInputError } from "../../shared";
+import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
+import {
+  InteractionHistory,
+  type ToolCall,
+} from "../domain/interactionHistory";
 import { watchSameDocumentNavigations } from "./navigation";
 import {
   capturePage,
   type PageCaptureSources,
   type PageObjectStructure,
 } from "./pageCapture";
-import { PageStateSession } from "./pageStateSession";
-import { SyntheticRootRefFactory } from "./pomRootPlacement";
+import { PageStateSession } from "../application/pageStateSession";
+import { SyntheticRootRefFactory } from "../domain/pomRootPlacement";
 import {
   renderPageState,
   type PageState,
   type PageStateCapture,
   type PageStateLook,
   type RefResolution,
-} from "./structuralPageState";
+} from "../domain/structuralPageState";
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 

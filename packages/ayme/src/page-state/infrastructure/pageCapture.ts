@@ -8,16 +8,16 @@ import {
   type AriaRef,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import { INSPECTOR_HOST_SELECTOR } from "../shared";
-import { parseCapturedTree } from "./capturedTree";
+import { INSPECTOR_HOST_SELECTOR } from "../../shared";
+import { parseCapturedTree } from "../domain/capturedTree";
 import {
   coalesceByElement,
   placeCapturedRoots,
   type OmittedCapturedRoot,
   type ReferencedCapturedRoot,
   type SyntheticRootRefFactory,
-} from "./pomRootPlacement";
-import type { PageCapture } from "./structuralPageState";
+} from "../domain/pomRootPlacement";
+import type { PageCapture } from "../domain/structuralPageState";
 
 /**
  * The Page Object Roots a capture places: present roots are labelled, and

@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { PomManifest } from "../shared";
+import type { PomManifest } from "../../shared";
 import {
   ayme as model,
   createPage,
   probeRegisteredPomMembers,
   registerCompiledPom,
-} from "../page-objects";
-import { rootOf } from "../test-utils/pomRoot.testSupport";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { createAyme } from "../runtime";
+} from "../../page-objects";
+import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { createAyme } from "../../runtime";
 
 /**
  * One Page State Session lives per document, so a session that has handed

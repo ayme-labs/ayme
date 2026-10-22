@@ -5,7 +5,7 @@ import {
   MonotonicTimeMsSchema,
   PageIdSchema,
 } from "@ayme-dev/core/structural-observation";
-import { InteractionHistory } from "./interactionHistory";
+import { InteractionHistory } from "../domain/interactionHistory";
 import { startNavigation, watchSameDocumentNavigations } from "./navigation";
 
 let now = 0;

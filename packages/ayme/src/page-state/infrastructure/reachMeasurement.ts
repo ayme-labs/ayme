@@ -8,7 +8,7 @@ import {
   INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
   INSPECTOR_HOST_SELECTOR,
   parentElement,
-} from "../shared";
+} from "../../shared";
 
 /**
  * Package-internal: what the layout shows of one element (ADR-0035,

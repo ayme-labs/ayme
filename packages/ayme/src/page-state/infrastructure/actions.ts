@@ -3,14 +3,17 @@ import {
   SETTLED_PAGE_QUIET_MS,
   waitForSettled,
 } from "@ayme-dev/core/structural-observation";
-import { browserMonotonicClock } from "../shared";
-import type { ActionResult } from "./actionResult";
-import type { Cursor } from "./cursors";
-import type { ToolCall } from "./interactionHistory";
+import { browserMonotonicClock } from "../../shared";
+import type { ActionResult } from "../domain/actionResult";
+import type { Cursor } from "../domain/cursors";
+import type { ToolCall } from "../domain/interactionHistory";
 import { watchFullLoad } from "./navigation";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
 import { getPageStateSession } from "./pageState";
-import { runSessionAction, type ActionPage } from "./sessionAction";
+import {
+  runSessionAction,
+  type ActionPage,
+} from "../application/sessionAction";
 
 /**
  * Run `perform` as an action on `currentDocument` through its Page State

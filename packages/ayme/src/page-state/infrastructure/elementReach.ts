@@ -1,13 +1,13 @@
 import type { Locator, Page } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { containsThroughShadow, parentElement } from "../shared";
+import { containsThroughShadow, parentElement } from "../../shared";
 import { latestPageStateRef } from "./pageState";
 import {
   assertAvailable,
   obstructionReason,
   unfocusableReason,
   type LatestRefLookup,
-} from "./toolAvailability";
+} from "../domain/toolAvailability";
 import {
   blockingAncestor,
   measureReach,

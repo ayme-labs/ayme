@@ -1,7 +1,7 @@
 // What an action answers: its result and its Change Record, in two parts.
 
 import type { StructuralObservationEntry } from "@ayme-dev/core/structural-observation";
-import type { JsonValue } from "../shared";
+import type { JsonValue } from "../../shared";
 import { renderChangeRecord } from "./changeRecord";
 import type { InteractionHistory } from "./interactionHistory";
 
