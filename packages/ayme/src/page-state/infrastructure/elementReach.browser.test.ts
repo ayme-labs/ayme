@@ -1,6 +1,7 @@
+import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createPage, requireAymeRuntimePage } from "../../page-objects";
+import { createPage } from "../../page-objects";
 import { listElementTools } from "../../tools";
 import { assertRootReachable, reaches } from "./elementReach";
 import { errorText } from "../../shared";
@@ -31,6 +32,7 @@ const RENAME_DIALOG = `
 describe("Browser Tools on elements a click would not reach, in Chromium", () => {
   let stop: () => void;
   let listening: AbortController;
+  let page: Page;
   const clicks: string[] = [];
 
   beforeEach(() => {
@@ -41,9 +43,8 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       (event) => clicks.push((event.target as Element).id),
       { capture: true, signal: listening.signal }
     );
-    const ayme = createAyme({
-      pageFactory: () => createPage({ actionTimeout: ACTION_TIMEOUT }),
-    });
+    page = createPage({ actionTimeout: ACTION_TIMEOUT });
+    const ayme = createAyme({ pageFactory: () => page });
     stop = ayme.start();
   });
 
@@ -429,7 +430,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     const save = document.querySelector("#save")!;
     expect(document.elementFromPoint(20, 10)).toBe(host);
 
-    expect(reaches(requireAymeRuntimePage(), save, "click")).toBe(true);
+    expect(reaches(page, save, "click")).toBe(true);
     expect((await listElementToolTargets()).get("click")).toContain(
       await refOf("button", "Save")
     );
@@ -549,11 +550,11 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
 
 describe("Element reach timing in Chromium", () => {
   let stop: () => void;
+  let page: Page;
 
   beforeEach(() => {
-    stop = createAyme({
-      pageFactory: () => createPage({ actionTimeout: ACTION_TIMEOUT }),
-    }).start();
+    page = createPage({ actionTimeout: ACTION_TIMEOUT });
+    stop = createAyme({ pageFactory: () => page }).start();
   });
 
   afterEach(() => {
@@ -602,13 +603,12 @@ describe("Element reach timing in Chromium", () => {
     async (kind, cover) => {
       longList(cover);
       const capture = await lookAtPageStateForDocument(document);
-      const click = buildToolOptions().find(({ key }) => key === "click")!;
+      const click = buildToolOptions(page).find(({ key }) => key === "click")!;
       const targetOnly = {
         ...click.tool,
         args: click.tool.args.filter((arg) => arg.name === "target"),
         requiredParams: ["target"],
       };
-      const page = requireAymeRuntimePage();
 
       const listing = await medianMs(() => listElementToolTargets(capture));
       const planning = await medianMs(() => planArguments(targetOnly, capture));

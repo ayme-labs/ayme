@@ -2,6 +2,7 @@
 // Playwright MCP's tools at the revision the README pins. Field names and
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
+import type { Locator, Page } from "@playwright/test";
 import type { JsonSchema } from "../shared";
 import {
   ACTION_RESULT_NOTE,
@@ -19,7 +20,6 @@ import {
   type PublishedElementTool,
   type ElementToolDefinition,
   type RegisteredElementTool,
-  type ResolvedTarget,
 } from "./elementTools";
 import { generateLocatorTool } from "./generateLocator";
 import {
@@ -28,7 +28,6 @@ import {
   reloadTool,
 } from "./historyTools";
 import { navigateTool } from "./navigateTool";
-import { requireAymeRuntimePage } from "../page-objects";
 import { screenshotTool } from "./screenshotTool";
 
 // --- Input schemas ---
@@ -81,12 +80,13 @@ function clickOptions(input: Fields) {
   };
 }
 
+/** A single-element Browser Tool; `perform` acts on the element's locator. */
 function browserTool(
   name: string,
   description: string,
   inputSchema: JsonSchema,
   needsReach: ElementInput,
-  perform: (target: ResolvedTarget, input: Fields) => Promise<unknown>
+  perform: (locator: Locator, input: Fields) => Promise<unknown>
 ): ElementToolDefinition {
   return {
     name,
@@ -97,8 +97,8 @@ function browserTool(
     needsReach,
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
-    perform: async (target, input) => {
-      await perform(target, input);
+    perform: async (target, input, { page }) => {
+      await perform(locatorOf(page, target), input);
     },
   };
 }
@@ -115,8 +115,7 @@ const clickDefinition = browserTool(
     modifiers: MODIFIERS,
   }),
   "click",
-  async (target, input) => {
-    const locator = locatorOf(target);
+  async (locator, input) => {
     if (input.doubleClick === true) await locator.dblclick(clickOptions(input));
     else await locator.click(clickOptions(input));
   }
@@ -127,7 +126,7 @@ const hoverDefinition = browserTool(
   "Move the pointer over one element.",
   elementInput(),
   "click",
-  async (target) => locatorOf(target).hover()
+  async (locator) => locator.hover()
 );
 
 const typeDefinition = browserTool(
@@ -149,8 +148,7 @@ const typeDefinition = browserTool(
     ["text"]
   ),
   "focus",
-  async (target, input) => {
-    const locator = locatorOf(target);
+  async (locator, input) => {
     const text = input.text as string;
     if (input.slowly === true) await locator.pressSequentially(text);
     else await locator.fill(text);
@@ -165,7 +163,7 @@ const fillDefinition = browserTool(
     "text",
   ]),
   "focus",
-  async (target, input) => locatorOf(target).fill(input.text as string)
+  async (locator, input) => locator.fill(input.text as string)
 );
 
 const checkDefinition = browserTool(
@@ -173,7 +171,7 @@ const checkDefinition = browserTool(
   "Check one checkbox or radio button.",
   elementInput(),
   "click",
-  async (target) => locatorOf(target).check()
+  async (locator) => locator.check()
 );
 
 const uncheckDefinition = browserTool(
@@ -181,7 +179,7 @@ const uncheckDefinition = browserTool(
   "Uncheck one checkbox.",
   elementInput(),
   "click",
-  async (target) => locatorOf(target).uncheck()
+  async (locator) => locator.uncheck()
 );
 
 const selectOptionDefinition = browserTool(
@@ -198,8 +196,7 @@ const selectOptionDefinition = browserTool(
     ["values"]
   ),
   "focus",
-  async (target, input) =>
-    locatorOf(target).selectOption(input.values as string[])
+  async (locator, input) => locator.selectOption(input.values as string[])
 );
 
 // --- Built-in filters ---
@@ -363,13 +360,18 @@ type FormField = {
   value: string;
 };
 
-async function fillField(field: FormField, currentDocument: Document) {
+async function fillField(
+  page: Page,
+  field: FormField,
+  currentDocument: Document
+) {
   const target = await resolveElementTarget(
+    page,
     { label: `fill the field "${field.name}" at`, targetField: "target" },
     field.target,
     currentDocument
   );
-  const locator = locatorOf(target);
+  const locator = locatorOf(page, target);
   await assertReachable(
     "fill_form",
     locator,
@@ -398,7 +400,7 @@ const fillFormTool: PublishedElementTool = {
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const { fields } = input as { fields: FormField[] };
     const currentDocument = requireCurrentDocument();
     return runAction(
@@ -409,7 +411,7 @@ const fillFormTool: PublishedElementTool = {
         const filled: string[] = [];
         for (const field of fields) {
           try {
-            await fillField(field, currentDocument);
+            await fillField(page, field, currentDocument);
           } catch (error) {
             return {
               filled,
@@ -446,13 +448,13 @@ const pressKeyTool: PublishedElementTool = {
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const { key } = input as { key: string };
     return runAction(
       requireCurrentDocument(),
       cursor,
       { tool: "press_key", args: input },
-      () => requireAymeRuntimePage().keyboard.press(key)
+      () => page.keyboard.press(key)
     );
   },
 };

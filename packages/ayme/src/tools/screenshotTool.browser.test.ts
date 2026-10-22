@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../page-objects";
@@ -36,13 +37,13 @@ async function pixel(data: string, x: number, y: number) {
 
 describe("screenshot in Chromium", () => {
   let ayme: Ayme;
+  let page: Page;
   let stop: () => void;
 
   beforeEach(() => {
     document.body.innerHTML = FIXTURE;
-    ayme = createAyme({
-      pageFactory: () => createPage({ actionTimeout: 2_000 }),
-    });
+    page = createPage({ actionTimeout: 2_000 });
+    ayme = createAyme({ pageFactory: () => page });
     stop = ayme.start();
   });
 
@@ -71,7 +72,7 @@ describe("screenshot in Chromium", () => {
   });
 
   it("is never offered to the Goal Loop", () => {
-    expect(buildToolOptions().map((option) => option.key)).not.toContain(
+    expect(buildToolOptions(page).map((option) => option.key)).not.toContain(
       "screenshot"
     );
   });

@@ -3,19 +3,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
-const { captureAriaSnapshot, pageObjectStructure, requireAymeRuntimePage } =
-  vi.hoisted(() => ({
-    captureAriaSnapshot: vi.fn(),
-    pageObjectStructure: vi.fn(),
-    requireAymeRuntimePage: vi.fn(),
-  }));
+const { captureAriaSnapshot, pageObjectStructure } = vi.hoisted(() => ({
+  captureAriaSnapshot: vi.fn(),
+  pageObjectStructure: vi.fn(),
+}));
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   captureAriaSnapshot,
-}));
-vi.mock("../page-objects/registry", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  requireAymeRuntimePage,
 }));
 
 const waitForSettled = vi.hoisted(() =>
@@ -72,9 +66,9 @@ describe("Structural Ref interactions", () => {
     mockCapture(button, "e2");
     await getPageStateForDocument(document);
     const click = vi.fn().mockResolvedValue(undefined);
-    usePage({ click });
+    const page = fakePage({ click });
 
-    await clickRef(ref("e2"));
+    await clickRef(page, ref("e2"));
 
     expect(click).toHaveBeenCalledWith("ayme-ref=e2");
   });
@@ -92,8 +86,8 @@ describe("Structural Ref interactions", () => {
     mockCapture(replacement, "e4", "e3");
 
     const fill = vi.fn().mockResolvedValue(undefined);
-    usePage({ fill });
-    await fillRef(ref("e2"), "updated");
+    const page = fakePage({ fill });
+    await fillRef(page, ref("e2"), "updated");
 
     expect(fill).toHaveBeenCalledWith("ayme-ref=e4", "updated");
   });
@@ -104,8 +98,8 @@ describe("Structural Ref interactions", () => {
     mockCapture(button, "e2");
     await getPageStateForDocument(document);
 
-    const page = usePage();
-    await expect(clickRef(ref("e999"))).rejects.toThrow(
+    const page = fakePage();
+    await expect(clickRef(page, ref("e999"))).rejects.toThrow(
       'Cannot click ref "e999": no snapshot of the current document issued it.'
     );
     expect(page.click).not.toHaveBeenCalled();
@@ -123,11 +117,11 @@ describe("Structural Ref interactions", () => {
       refsByElement: new Map([[document.body, "e1"]]),
     });
 
-    const page = usePage();
-    await expect(clickRef(ref("e2"))).rejects.toThrow(
+    const page = fakePage();
+    await expect(clickRef(page, ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": it is no longer on the page.'
     );
-    await expect(clickRef(ref("e2"))).rejects.toBeInstanceOf(
+    await expect(clickRef(page, ref("e2"))).rejects.toBeInstanceOf(
       RefResolutionError
     );
     expect(page.click).not.toHaveBeenCalled();
@@ -156,8 +150,8 @@ describe("Structural Ref interactions", () => {
       ]
     );
 
-    const page = usePage();
-    await expect(clickRef(ref("e2"))).rejects.toThrow(
+    const page = fakePage();
+    await expect(clickRef(page, ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": it cannot be matched unambiguously to the current page.'
     );
     expect(page.click).not.toHaveBeenCalled();
@@ -167,8 +161,8 @@ describe("Structural Ref interactions", () => {
     mockCapture(undefined, "e2");
     await getPageStateForDocument(document);
 
-    const page = usePage();
-    await expect(clickRef(ref("e2"))).rejects.toThrow(
+    const page = fakePage();
+    await expect(clickRef(page, ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": it has no element on the page now.'
     );
     expect(page.click).not.toHaveBeenCalled();
@@ -198,9 +192,9 @@ describe("Structural Ref interactions", () => {
         refFromSelector(selector)!
       );
     });
-    usePage({ click });
+    const page = fakePage({ click });
 
-    await clickRef(ref(rootRef));
+    await clickRef(page, ref(rootRef));
 
     expect(clicked.selector).toMatch(/^ayme-ref=s_\w+$/);
     expect(clicked.element).toBe(root);
@@ -213,9 +207,9 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
 
     const click = vi.fn().mockResolvedValue(undefined);
-    usePage({ click });
+    const page = fakePage({ click });
 
-    await expect(clickRef(ref("e2"))).resolves.toEqual({
+    await expect(clickRef(page, ref("e2"))).resolves.toEqual({
       page_changed: false,
       settled: true,
     });
@@ -229,9 +223,9 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
     waitForSettled.mockResolvedValueOnce({ stable: false });
 
-    usePage({ click: vi.fn().mockResolvedValue(undefined) });
+    const page = fakePage({ click: vi.fn().mockResolvedValue(undefined) });
 
-    await expect(clickRef(ref("e2"))).resolves.toEqual({
+    await expect(clickRef(page, ref("e2"))).resolves.toEqual({
       page_changed: false,
       settled: false,
     });
@@ -244,23 +238,26 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
     const click = vi.fn().mockResolvedValue(undefined);
     const fill = vi.fn().mockResolvedValue(undefined);
-    usePage({ click, fill });
+    const page = fakePage({ click, fill });
     const published = (name: string) =>
       listPublishedBrowserTools().find((tool) => tool.name === name)!;
 
     await expect(
-      published("click").execute({ target: "e2" }, runContext())
+      published("click").execute({ target: "e2" }, runContext(page))
     ).resolves.toEqual({ page_changed: false, settled: true });
     await expect(
-      published("fill").execute({ target: "e2", text: "updated" }, runContext())
+      published("fill").execute(
+        { target: "e2", text: "updated" },
+        runContext(page)
+      )
     ).resolves.toEqual({ page_changed: false, settled: true });
     expect(click).toHaveBeenCalledWith("ayme-ref=e2");
     expect(fill).toHaveBeenCalledWith("ayme-ref=e2", "updated");
   });
 });
 
-/** Make a fake Playwright Page the Ayme runtime hands to single-element tool actions. */
-function usePage(
+/** Make a fake Playwright Page for a test to hand the Run of a single-element tool. */
+function fakePage(
   overrides: {
     click?: ReturnType<typeof vi.fn>;
     fill?: ReturnType<typeof vi.fn>;
@@ -280,7 +277,6 @@ function usePage(
       fill: (value: string) => fill(selector, value),
     }),
   } as unknown as Page;
-  requireAymeRuntimePage.mockReturnValue(page);
   return page;
 }
 

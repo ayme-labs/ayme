@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import type { JsonSchema } from "../shared";
 import { getPursueGoalTool, type GoalTool } from "../goal-loop";
 import {
@@ -193,15 +194,28 @@ export function listPeekToolInfo(): readonly ToolInfo[] {
   );
 }
 
+// The started session's page, for what reads it outside any Run: the
+// Inspector's element tool targets. A Run is handed its page instead.
+let startedPage: Page | undefined;
+
+/** Package-internal: set while a runtime session is started. */
+export function setStartedPage(page: Page | undefined): void {
+  startedPage = page;
+}
+
 /**
  * The refs each available single-element tool can take in `capture` (a look at the current
  * page when absent), by tool name, in tree order: the same closed set the Goal
  * Loop offers for that tool's ref. Pass the look the Inspector shows,
- * so the refs match its structure.
+ * so the refs match its structure. Reach is measured on the started
+ * session's page.
  */
 export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
+  const page = startedPage;
+  if (!page)
+    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   const elementTools = listElementTools();
   const current = capture ?? (await lookAtPageStateForDocument(document));
   return inReachBatch(
@@ -209,7 +223,9 @@ export async function listElementToolTargets(
       new Map(
         elementTools.map(({ tool, filter }) => [
           tool.name,
-          acceptedRefNodes(filter, current).map((node) => node.ref),
+          acceptedRefNodes((element) => filter(element, page), current).map(
+            (node) => node.ref
+          ),
         ])
       )
   );

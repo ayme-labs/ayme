@@ -10,7 +10,6 @@ import {
   type PublishedElementTool,
 } from "./elementTools";
 import { INSPECTOR_HOST_SELECTOR } from "../shared";
-import { requireAymeRuntimePage } from "../page-objects";
 import {
   screenshotRequest,
   type ImageType,
@@ -80,7 +79,7 @@ export const screenshotTool: PublishedElementTool = {
   description:
     "Take a screenshot of the viewport, the full page or one element. To act on the page, use the snapshot's Structural Refs, not the image.",
   inputSchema,
-  execute: async (input) => {
+  execute: async (input, { page }) => {
     const request = screenshotRequest(input as ScreenshotInput, new Date());
     const options = {
       type: request.type,
@@ -93,14 +92,15 @@ export const screenshotTool: PublishedElementTool = {
     let subject: string;
     if (request.target !== undefined) {
       const target = await resolveElementTarget(
+        page,
         { label: "take a screenshot of", targetField: "target" },
         request.target,
         requireCurrentDocument()
       );
-      bytes = await locatorOf(target).screenshot(options);
+      bytes = await locatorOf(page, target).screenshot(options);
       subject = `element ${request.target}`;
     } else {
-      bytes = await requireAymeRuntimePage().screenshot({
+      bytes = await page.screenshot({
         ...options,
         fullPage: request.fullPage,
       });

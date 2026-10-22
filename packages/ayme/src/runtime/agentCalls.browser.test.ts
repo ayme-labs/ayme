@@ -78,7 +78,8 @@ describe("the Ayme page state helper in Chromium", () => {
   it("clicks and fills real elements addressed by page-state refs", async () => {
     document.body.innerHTML =
       '<button id="save">Save changes</button><input id="name" aria-label="Name">';
-    const runtime = createAymeRuntime(createPage());
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const saveRef = structuralRefFor(state.text, "Save changes");
@@ -89,8 +90,8 @@ describe("the Ayme page state helper in Chromium", () => {
       let clicks = 0;
       button.addEventListener("click", () => clicks++);
 
-      await ayme.click(saveRef);
-      await ayme.fill(nameRef, "Updated name");
+      await ayme.click(page, saveRef);
+      await ayme.fill(page, nameRef, "Updated name");
 
       expect(clicks).toBe(1);
       expect(input.value).toBe("Updated name");
@@ -103,22 +104,23 @@ describe("the Ayme page state helper in Chromium", () => {
     // A click reaches the disabled button and times out waiting for it.
     document.body.innerHTML =
       '<button id="save" disabled>Save changes</button><input id="name" aria-label="Name">';
-    const runtime = createAymeRuntime(
-      createPlaywrightLitePage({ actionTimeout: 1000 })
-    );
+    const page = createPlaywrightLitePage({ actionTimeout: 1000 });
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const saveRef = structuralRefFor(state.text, "Save changes");
       const nameRef = structuralRefFor(state.text, "Name", "textbox");
 
-      const clickError = await ayme.click(saveRef).catch((error) => error);
+      const clickError = await ayme
+        .click(page, saveRef)
+        .catch((error) => error);
       expect(clickError).toBeInstanceOf(Error);
       expect(clickError.name).toBe("TimeoutError");
       expect(clickError.message).toMatch(/^locator\.click: Timeout 1000ms/);
 
       document.querySelector("#name")!.remove();
       const fillError = await ayme
-        .fill(nameRef, "Updated name")
+        .fill(page, nameRef, "Updated name")
         .catch((error) => error);
       expect(fillError).toBeInstanceOf(RefResolutionError);
       expect(fillError.message).toBe(
