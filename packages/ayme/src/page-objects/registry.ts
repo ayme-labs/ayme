@@ -47,7 +47,9 @@ import {
   pomGroups,
   type PageObjectObservation,
   type PomGroup,
+  type PomTargetSource,
   type RegisteredPomTarget,
+  resolveTargets,
 } from "./pomTree";
 import type { Cursor } from "../page-state";
 import type { RunContext } from "../runs";
@@ -126,8 +128,8 @@ type ObservedRegisteredPom = RegisteredPom & {
    * an item that declares no root, e.g. "owners" or "items[1].tags".
    */
   rootlessCollectionPaths: ReadonlySet<string>;
-  /** The elements the last observation found its members and roots holding. */
-  targets: readonly RegisteredPomTarget[];
+  /** The locators the last observation found its members and roots holding. */
+  targetSources: readonly PomTargetSource[];
   tools: readonly CallerAwarePomTool[];
 };
 
@@ -239,7 +241,7 @@ export function registerPageObject<T extends object>(
     rootMemberPaths: new Set(),
     instances: undefined,
     rootlessCollectionPaths: new Set(),
-    targets: [],
+    targetSources: [],
     tools: [],
   };
   // Its collection tools read the instances observed of this registration.
@@ -472,7 +474,7 @@ function commitObservation(
 ): boolean {
   if (!registeredPoms.has(registration)) return false;
   reportObservationErrors(registration, observation);
-  const { memberObservations, instances, rootMemberPaths, targets } =
+  const { memberObservations, instances, rootMemberPaths, targetSources } =
     observation;
   const previous = registration.instances?.all;
   const same =
@@ -489,7 +491,7 @@ function commitObservation(
   registration.rootlessCollectionPaths = new Set(
     observation.rootlessCollections.keys()
   );
-  registration.targets = targets;
+  registration.targetSources = targetSources;
   registration.instances = groupedInstances(instances);
   return !same;
 }
@@ -589,12 +591,14 @@ function isRootPresent<T extends ObservedPomRoot>(
 }
 
 /**
- * Package-internal: every element the registered Page Objects' members hold,
- * one target per element and concrete member path, in registration and
- * declaration order, as the latest observation found them. An observation
- * runs first only when the page changed since the last one, so a reader
- * called on every render does not walk the tree again. Paths through
- * collections carry their item indices.
+ * Package-internal: every element the registered Page Objects' members hold
+ * now, one target per element and concrete member path, in registration and
+ * declaration order. The latest observation says which locators those are,
+ * and each read resolves them again, so a change no observation follows,
+ * such as a checked box or a focus move, shows too. An observation runs
+ * first only when the page changed since the last one, so a reader called
+ * on every render does not walk the tree again. Paths through collections
+ * carry their item indices.
  */
 export async function listRegisteredPomTargets(): Promise<
   RegisteredPomTarget[]
@@ -603,7 +607,9 @@ export async function listRegisteredPomTargets(): Promise<
   const records = mutationObserver?.takeRecords() ?? [];
   if (records.length && !onlyHitTestMarks(records)) schedulePomMemberProbe();
   if (probePending || probeInFlight) await probeRegisteredPomMembers();
-  return [...registeredPoms].flatMap((registration) => registration.targets);
+  return resolveTargets(
+    [...registeredPoms].flatMap((registration) => registration.targetSources)
+  );
 }
 
 /**

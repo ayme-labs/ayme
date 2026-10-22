@@ -1,0 +1,24 @@
+diff --git a/index.js b/index.js
+index a6db6f3b70c9c31006542aa28d5f1984ac99d2cc..69eccd05d65eed9a608241ede4883b56aeec9506 100644
+--- a/index.js
++++ b/index.js
+@@ -143,10 +143,6 @@ function isTypeImports(node) {
+   if (node.importKind === 'type') {
+     return true;
+   }
+-
+-  if (node.specifiers?.length && node.specifiers.every(n => n.importKind === 'type')) {
+-    return true;
+-  }
+ }
+ 
+ function handleCallExpression(node, mixedImports) {
+@@ -167,8 +163,4 @@ function isTypeExports(node) {
+   if (node.exportKind === 'type') {
+     return true;
+   }
+-
+-  if (node.specifiers?.length && node.specifiers.every(n => n.exportKind === 'type')) {
+-    return true;
+-  }
+ }

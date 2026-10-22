@@ -9,7 +9,8 @@
   "scripts": {
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
-    "check": "pnpm run boundaries && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
+    "cycles": "node scripts/check-cycles.mjs packages/*/src apps/*/src",
+    "check": "pnpm run boundaries && pnpm run cycles && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
     "prepare": "lefthook install && scripts/link-cloud-browsers.sh",
     "release:version": "node scripts/release-version.mjs",
     "hooks:install": "lefthook install",
@@ -21,7 +22,7 @@
     "test:e2e": "turbo run test:e2e",
     "typecheck": "turbo run typecheck",
     "analyze:changed": "node scripts/analyze-changed.mjs",
-    "test:scripts": "node --test scripts/analyze-changed.test.mjs scripts/crap-report.test.mjs scripts/mutation-survivors.test.mjs"
+    "test:scripts": "node --test scripts/check-cycles.test.mjs scripts/analyze-changed.test.mjs scripts/crap-report.test.mjs scripts/mutation-survivors.test.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
@@ -31,6 +32,7 @@
     "eslint": "^10.9.1",
     "lefthook": "^2.1.8",
     "lint-staged": "^17.3.0",
+    "madge": "^8.0.0",
     "prettier": "^3.9.6",
     "turbo": "^2.11.3",
     "typescript": "^6.0.3",

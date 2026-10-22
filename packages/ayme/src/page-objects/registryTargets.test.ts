@@ -241,4 +241,24 @@ describe("registered Page Object targets", () => {
       .insertAdjacentHTML("beforeend", '<li class="item">Eggs</li>');
     expect(await items()).toEqual(["Milk", "Eggs"]);
   });
+
+  it("lists what a member's locator holds now, after a change no observation follows", async () => {
+    document.body.innerHTML = '<input type="checkbox" class="done" />';
+    class Todo {
+      readonly checked = page.locator(".done:checked");
+    }
+    registerCompiledPom(Todo, {
+      className: "Todo",
+      tools: [],
+      members: [{ memberName: "checked", kind: "locator", access: "field" }],
+      components: [],
+    });
+    session.register(Todo);
+    const checked = async () =>
+      (await listRegisteredPomTargets()).map(({ path }) => path);
+
+    expect(await checked()).toEqual([]);
+    document.querySelector<HTMLInputElement>(".done")!.checked = true;
+    expect(await checked()).toEqual(["Todo.checked"]);
+  });
 });
