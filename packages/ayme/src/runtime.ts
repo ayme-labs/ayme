@@ -29,6 +29,7 @@ import {
 import { assertAvailable } from "./pomInstance";
 import { loadWebMcpPublication } from "./webMcp";
 import { RuntimeStateError } from "./errors";
+import { checkedToolInput } from "./schemaValidation";
 import {
   addPeek,
   listPeekTools,
@@ -604,16 +605,16 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         : undefined;
       if (!peekTool) throw noSuchTool(name);
       // A read: it moves no cursor and adds no settle wait.
-      return peekTool.execute(input);
+      return peekTool.execute(checkedToolInput(peekTool.inputSchema, input));
     }
     const cursor = cursors.of(by);
     return runLog.record(name, input, { by }, (id) => {
-      const tool = lookUpAvailableTool(name);
+      const { tool, checkedInput } = lookUpRun(name, input);
       return executeTopLevelRun(
         tool,
         () =>
           executeWithChildRuns(id, cursor, (context) =>
-            tool.execute(input, context)
+            tool.execute(checkedInput, context)
           ),
         settle
       );
@@ -621,19 +622,22 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * Looks up the available tool `name` for a Run. Throws when there is none
-   * or it is not available, inside the Run that asked for it, so the log
-   * records that Run as failed.
+   * Looks up the tool `name` for a Run and checks the Run's `input` against
+   * the tool's input schema, missing input as `{}`, before it asks whether
+   * the tool is available: what is wrong with an input does not depend on
+   * the page. Throws inside the Run that asked, so the log records that Run
+   * as failed.
    */
-  function lookUpAvailableTool(name: string) {
+  function lookUpRun(name: string, input: unknown) {
     if (!owner)
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
       );
     const entry = resolveTools({ peeks }).get(name);
     if (!entry) throw noSuchTool(name);
+    const checkedInput = checkedToolInput(entry.tool.inputSchema, input);
     assertAvailable(name, entry);
-    return entry.tool;
+    return { tool: entry.tool, checkedInput };
   }
 
   /**
@@ -657,9 +661,10 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     const run: StartChildRun = (name, input, childCursor = cursor) =>
       takeChildTurn(() =>
         runLog.record(name, input, { parent: id }, (childId) =>
-          executeWithChildRuns(childId, childCursor, (context) =>
-            lookUpAvailableTool(name).execute(input, context)
-          )
+          executeWithChildRuns(childId, childCursor, (context) => {
+            const { tool, checkedInput } = lookUpRun(name, input);
+            return tool.execute(checkedInput, context);
+          })
         )
       );
     try {

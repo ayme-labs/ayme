@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { JsonSchema } from "./contracts";
 import { ToolInputError } from "./errors";
-import { validatedToolInput } from "./elementTools";
-import { toolInputViolations } from "./schemaValidation";
+import { checkedToolInput, toolInputViolations } from "./schemaValidation";
 
 const goalSchema: JsonSchema = {
   type: "object",
@@ -207,10 +206,10 @@ describe("toolInputViolations", () => {
   });
 });
 
-describe("validatedToolInput", () => {
+describe("checkedToolInput", () => {
   it("throws a single violation with its path", () => {
     expect(() =>
-      validatedToolInput(goalSchema, {
+      checkedToolInput(goalSchema, {
         goal: "x",
         maxSteps: 1,
         values: { zip: true },
@@ -220,27 +219,39 @@ describe("validatedToolInput", () => {
         "Input property values.zip must be a string or a number."
       )
     );
-    expect(() => validatedToolInput(goalSchema, "x")).toThrow(
+    expect(() => checkedToolInput(goalSchema, "x")).toThrow(
       "Tool input must be an object."
+    );
+  });
+
+  it("takes missing input as {} and refuses null", () => {
+    expect(checkedToolInput({ type: "object" }, undefined)).toStrictEqual({});
+    expect(() => checkedToolInput(goalSchema, undefined)).toThrow(
+      new ToolInputError(
+        "Input property goal is required. Input property maxSteps is required."
+      )
+    );
+    expect(() => checkedToolInput({ type: "object" }, null)).toThrow(
+      new ToolInputError("Tool input must be an object.")
     );
   });
 
   it("throws for a property whose name is empty as that property", () => {
     expect(() =>
-      validatedToolInput(goalSchema, { "": "x", goal: "x", maxSteps: 1 })
+      checkedToolInput(goalSchema, { "": "x", goal: "x", maxSteps: 1 })
     ).toThrow(new ToolInputError('Input property "" is not supported.'));
   });
 
   it("throws every violation, a sentence each, in order", () => {
     expect(() =>
-      validatedToolInput(goalSchema, { maxSteps: 1, name: "x" })
+      checkedToolInput(goalSchema, { maxSteps: 1, name: "x" })
     ).toThrow(
       new ToolInputError(
         "Input property name is not supported. Input property goal is required."
       )
     );
     expect(() =>
-      validatedToolInput(goalSchema, { maxSteps: 0.5, name: "x" })
+      checkedToolInput(goalSchema, { maxSteps: 0.5, name: "x" })
     ).toThrow(
       new ToolInputError(
         "Input property maxSteps must be an integer. Input property name is not supported. Input property goal is required."
@@ -262,15 +273,15 @@ describe("validatedToolInput", () => {
       { length: 20 },
       (_, i) => `Input property p${i} is not supported.`
     ).join(" ");
-    expect(() => validatedToolInput(schema, extra(20))).toThrow(
+    expect(() => checkedToolInput(schema, extra(20))).toThrow(
       new ToolInputError(listed)
     );
-    expect(() => validatedToolInput(schema, extra(21))).toThrow(
+    expect(() => checkedToolInput(schema, extra(21))).toThrow(
       new ToolInputError(`${listed} There is 1 more problem with the input.`)
     );
     let message = "";
     try {
-      validatedToolInput(schema, extra(10_000));
+      checkedToolInput(schema, extra(10_000));
     } catch (error) {
       message = (error as Error).message;
     }

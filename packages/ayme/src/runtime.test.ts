@@ -513,7 +513,10 @@ it("runs goal as the application while publication is unavailable", async () => 
     .mockReturnValue({
       name: "goal",
       description: "Drive the page toward a goal.",
-      inputSchema: { type: "object" },
+      inputSchema: {
+        type: "object",
+        properties: { goal: { type: "string" }, maxSteps: { type: "integer" } },
+      },
       execute,
     });
   try {

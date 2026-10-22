@@ -32,6 +32,20 @@ export function toolInputViolations(
   );
 }
 
+/**
+ * Package-internal: a Run's input once it meets its tool's input schema, as
+ * the runtime checks every Run's input before the tool runs. Missing input
+ * is `{}`; anything else that is not an object is refused.
+ */
+export function checkedToolInput(
+  schema: JsonSchema,
+  input: unknown
+): Record<string, unknown> {
+  const value = input === undefined ? {} : input;
+  throwViolations(toolInputViolations(schema, value));
+  return value as Record<string, unknown>;
+}
+
 /** Package-internal: every way a value breaks its schema, in document order. */
 export function schemaViolations(
   schema: JsonSchema,

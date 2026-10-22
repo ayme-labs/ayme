@@ -4,7 +4,6 @@ import type { JsonSchema } from "./contracts";
 import { runAction, startNavigation } from "./actionSequence";
 import {
   requireCurrentDocument,
-  validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
 import { ToolInputError } from "./errors";
@@ -59,9 +58,7 @@ export const navigateTool: PublishedElementTool = {
   inputSchema: navigateSchema,
   execute: async (input, context) => {
     const { cursor } = context;
-    const { url } = validatedToolInput(navigateSchema, input) as {
-      url: string;
-    };
+    const { url } = input as { url: string };
     const currentDocument = requireCurrentDocument();
     const page = requireAymeRuntimePage();
     const destination = URL.parse(url, currentDocument.baseURI);

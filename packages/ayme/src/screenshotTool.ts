@@ -7,7 +7,6 @@ import {
   locatorOf,
   requireCurrentDocument,
   resolveElementTarget,
-  validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
 import { INSPECTOR_HOST_SELECTOR } from "./pageState";
@@ -82,10 +81,7 @@ export const screenshotTool: PublishedElementTool = {
     "Take a screenshot of the viewport, the full page or one element. To act on the page, use the snapshot's Structural Refs, not the image.",
   inputSchema,
   execute: async (input) => {
-    const request = screenshotRequest(
-      validatedToolInput(inputSchema, input) as ScreenshotInput,
-      new Date()
-    );
+    const request = screenshotRequest(input as ScreenshotInput, new Date());
     const options = {
       type: request.type,
       // As Playwright MCP captures: CSS pixels, and jpeg at quality 90.

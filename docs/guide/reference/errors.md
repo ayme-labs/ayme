@@ -35,6 +35,7 @@ A published tool never throws, because WebMCP drops the reason of a rejected cal
 
 - `document.modelContext.executeTool()` resolves with this result's JSON, so a caller must read `isError`; the call does not reject.
 - The text is the error's full message, prefixed with the error's name unless the name is plain `Error`. A browser action failure keeps playwright-lite's name and call log, such as `TimeoutError: locator.click: Timeout 1000ms exceeded.` followed by `Call log:`.
+- Input that does not match the tool's input schema is refused first, before availability and before anything runs, with a sentence for each problem: `ToolInputError: Input property maxSteps must be at least 1. Input property extra is not supported.` A call with no input at all counts as `{}`.
 - A call of an unavailable tool is refused the same way, before anything runs, with its reason: `RuntimeStateError: Panel.remove is unavailable: No item is selected.`
 - The result has no `structuredContent`.
 - Inside the Goal Loop, a failed step does not end the call: the loop records its message in the Handover's history.

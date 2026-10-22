@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "./agentCalls.testSupport";
+import { checkedToolInput } from "./schemaValidation";
 
 const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
   () => ({
@@ -1425,10 +1426,10 @@ describe("live Page Object registry", () => {
     expect(tool("ItemsPage.items.pin").inputSchema.required).toEqual(["ref"]);
 
     expect(renameTool.inputSchema.required).toEqual(["ref", "args"]);
-    await expect(
-      renameTool.execute({ ref: "e2" }, runContext())
-    ).rejects.toThrow(/args/);
-    expect(rename).not.toHaveBeenCalled();
+    // The runtime checks a Run's input against this schema before execute.
+    expect(() =>
+      checkedToolInput(renameTool.inputSchema, { ref: "e2" })
+    ).toThrow("Input property args is required.");
 
     pageStateResolutions.clear();
   });
