@@ -1103,6 +1103,16 @@ it(
     }
     expect(hits, "private package references in dist artifacts").toEqual([]);
 
+    // ── Assert: declarations never import the optional mcp ──────────
+    const mcpImports = textualFiles.filter(
+      (relPath) =>
+        relPath.endsWith(".d.mts") &&
+        fs
+          .readFileSync(path.join(distDir, relPath), "utf-8")
+          .includes('from "@ayme-dev/mcp')
+    );
+    expect(mcpImports, "declarations importing @ayme-dev/mcp").toEqual([]);
+
     // ── Assert: consumer can install and import ─────────────────────
     const consumerDir = path.join(tmp, "webmcp-consumer");
     fs.mkdirSync(consumerDir, { recursive: true });

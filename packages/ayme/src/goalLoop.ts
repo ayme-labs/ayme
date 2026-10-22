@@ -10,12 +10,8 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
-import { buildToolOptions } from "./goalLoopOperations";
-import {
-  type GoalLoopOperation,
-  type GoalValues,
-  MAX_GOAL_VALUES,
-} from "./goalLoopQuestions";
+import { buildToolOptions, type GoalLoopOperation } from "./goalLoopOperations";
+import { type GoalValues, MAX_GOAL_VALUES } from "./goalLoopQuestions";
 import type {
   ChosenOption,
   GoalLoopStepRecord,

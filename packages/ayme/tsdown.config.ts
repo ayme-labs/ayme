@@ -1,12 +1,19 @@
 import { defineConfig } from "tsdown";
 
+// Private workspace packages, copied into the output instead of imported.
+const bundled = ["@ayme-dev/playwright-lite", "@ayme-dev/core"];
+
 export default defineConfig({
   clean: true,
   // Omit build-machine source paths, not copyright or license comments.
   inputOptions: { experimental: { attachDebugInfo: "none" } },
   copy: ["THIRD_PARTY_NOTICES.txt"],
   deps: {
-    alwaysBundle: ["@ayme-dev/playwright-lite", "@ayme-dev/core"],
+    alwaysBundle: bundled,
+    // The declarations also copy in the page client's types they name, such
+    // as its not-connected reasons, so they never import the optional
+    // `@ayme-dev/mcp`. This list replaces the one above for declarations.
+    dts: { alwaysBundle: [...bundled, "@ayme-dev/mcp/client"] },
   },
   dts: true,
   entry: [

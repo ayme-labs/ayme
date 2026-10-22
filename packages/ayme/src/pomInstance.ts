@@ -67,6 +67,8 @@ export type PomInstanceObservation = {
   rootLocator?: Locator;
   /** What its root predicate threw, when it threw. */
   rootError?: string;
+  /** How many elements its root locator matched; 0 when it answered none. */
+  rootCount?: number;
   /**
    * What each action's availability predicate answered, by method name.
    * Asked only while the instance is present; actions without one are absent.
