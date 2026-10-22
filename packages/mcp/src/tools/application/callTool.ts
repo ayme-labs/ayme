@@ -28,14 +28,10 @@ export const callTool: ServerToolFactory = ({ connection, saveImage }) => {
       required: ["tool"],
       additionalProperties: false,
     },
-    call: async ({ tool, input = {} }) => {
-      if (typeof tool !== "string" || tool === "")
-        return errorResult(
-          'ayme_call needs "tool": the name of a tool, as ayme_list_tools gives it.'
-        );
-      return callPageTool(
+    call: async ({ tool, input = {} }) =>
+      callPageTool(
         connection,
-        tool,
+        tool as string,
         input,
         (name) =>
           wasOffered(name)
@@ -44,7 +40,6 @@ export const callTool: ServerToolFactory = ({ connection, saveImage }) => {
                 `No connected page or App Process offers a tool "${name}".`
               ),
         saveImage
-      );
-    },
+      ),
   };
 };

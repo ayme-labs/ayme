@@ -87,7 +87,7 @@ test("ayme_call with an unknown tool names it", async ({ agent, connect }) => {
   );
 });
 
-test("ayme_call without a tool name says it needs one", async ({
+test("ayme_call without a tool name says the tool is required", async ({
   agent,
   connect,
 }) => {
@@ -96,7 +96,7 @@ test("ayme_call without a tool name says it needs one", async ({
   const { text, isError } = await agent.call("ayme_call", {});
 
   expect(isError).toBe(true);
-  expect(text).toContain('ayme_call needs "tool"');
+  expect(text).toContain("ToolInputError: Input property tool is required.");
 });
 
 test("with no page connected, page tools and fallback tools say no page is connected", async ({

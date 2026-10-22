@@ -5,6 +5,8 @@ import { afterEach, expect, it } from "vitest";
 
 import { AgentConnection } from "../../connection";
 import type { PageTool } from "../../contract";
+import { callTool } from "../application/callTool";
+import { connectTool } from "../application/connectTool";
 import { listToolsTool } from "../application/listToolsTool";
 import { textResult } from "../domain/toolResult";
 import { createMcpToolServer } from "./mcpToolServer";
@@ -32,15 +34,18 @@ afterEach(async () => {
 async function connectAgent() {
   const connection = new AgentConnection();
   const page = connection.attach({ tab: "a", url: "http://x/" }, () => {})!;
+  const context = {
+    connection,
+    pairing: { address: "ws://x", token: "t" },
+    saveImage: async () => "/x",
+  };
   const server = createMcpToolServer({
     name: "ayme",
     version: "0.0.0",
     serverTools: [
-      listToolsTool({
-        connection,
-        pairing: { address: "ws://x", token: "t" },
-        saveImage: async () => "/x",
-      }),
+      connectTool(context),
+      listToolsTool(context),
+      callTool(context),
       {
         name: "ayme_noop",
         description: "Does nothing.",
@@ -69,13 +74,19 @@ async function connectAgent() {
     page.publishTools(tools);
     await settle();
   };
-  const call = async (name: string) => {
-    const result = (await client.callTool({ name, arguments: {} })) as {
+  /** The result's text items and whether it is an error; no `input` leaves out the arguments. */
+  const answer = async (name: string, input?: Record<string, unknown>) => {
+    const result = (await client.callTool({ name, arguments: input })) as {
       content: { type: string; text?: string }[];
+      isError?: boolean;
     };
-    return result.content.map(({ text }) => text);
+    return {
+      texts: result.content.map(({ text }) => text),
+      isError: result.isError ?? false,
+    };
   };
-  return { client, publish, call, listChanges: () => listChanges };
+  const call = async (name: string) => (await answer(name, {})).texts;
+  return { client, publish, call, answer, listChanges: () => listChanges };
 }
 
 it("announces a changed tool list on presence only, and lists an unavailable tool without its availability", async () => {
@@ -144,5 +155,56 @@ it("notes the tools that became available or unavailable, and ayme_list_tools ca
     name: "Panel.remove",
     available: false,
     reason: "No item is selected",
+  });
+});
+
+it("refuses a server tool's input that breaks its input schema, naming every problem", async () => {
+  const agent = await connectAgent();
+
+  for (const [name, input, refusal] of [
+    ["ayme_connect", {}, "Input property url is required."],
+    [
+      "ayme_connect",
+      { link: "x" },
+      "Input property link is not supported. Input property url is required.",
+    ],
+    ["ayme_connect", { url: 5 }, "Input property url must be a string."],
+    [
+      "ayme_call",
+      { tool: "ListPage.addItem", args: { text: "x" } },
+      "Input property args is not supported.",
+    ],
+    [
+      "ayme_call",
+      { name: "ListPage.addItem", input: { text: "x" } },
+      "Input property name is not supported. Input property tool is required.",
+    ],
+    [
+      "ayme_call",
+      { tool: "ListPage.addItem", input: { text: "x" }, foo: 1 },
+      "Input property foo is not supported.",
+    ],
+    [
+      "ayme_list_tools",
+      { filter: "x" },
+      "Input property filter is not supported.",
+    ],
+  ] as const)
+    expect(await agent.answer(name, input), name).toEqual({
+      texts: [`ToolInputError: ${refusal}`],
+      isError: true,
+    });
+});
+
+it("takes a server tool's left-out arguments as {}", async () => {
+  const agent = await connectAgent();
+
+  expect(await agent.answer("ayme_list_tools")).toEqual({
+    texts: ["[]"],
+    isError: false,
+  });
+  expect(await agent.answer("ayme_connect")).toEqual({
+    texts: ["ToolInputError: Input property url is required."],
+    isError: true,
   });
 });

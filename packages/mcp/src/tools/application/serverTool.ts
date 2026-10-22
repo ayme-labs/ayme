@@ -1,3 +1,5 @@
+import type { JsonSchema } from "@ayme-dev/core/tool-input";
+
 import type { AgentConnection } from "../../connection";
 import type { Pairing } from "../../pairing";
 import type { ToolResult } from "../domain/toolResult";
@@ -20,7 +22,8 @@ export type ServerToolContext = {
 export type ServerTool = {
   name: string;
   description: string;
-  inputSchema: { type: "object" } & Record<string, unknown>;
+  /** The server checks a call's input against it before `call` runs. */
+  inputSchema: JsonSchema & { type: "object" };
   call(input: Record<string, unknown>): Promise<ToolResult>;
 };
 
