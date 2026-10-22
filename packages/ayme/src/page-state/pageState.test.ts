@@ -19,13 +19,12 @@ import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
   latestPageStateElement,
-  latestPageStateRef,
-  pageStateNodeEntry,
   lookAtPageStateForDocument,
-  resolvePageStateRefs,
   providePageObjectStructure,
+  resolvePageStateRefs,
   startActionForDocument,
 } from "./pageState";
+import { pageStateNodeEntry } from "./structuralPageState";
 import { getPageStateTool } from "../tools";
 import { ayme } from "../test-utils/agentCalls.testSupport";
 
@@ -683,43 +682,6 @@ describe("get_page_state", () => {
     ]);
   });
 
-  it("resolves a ref against the capture the identity ledger last reconciled when another capture interleaves", async () => {
-    const original = document.querySelector("#captured");
-    if (!original) throw new Error("Missing test root.");
-    const snapshot = (body: string, button: string, element: Element) => ({
-      distilledText: `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
-      fullText: `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
-      refsByElement: new Map([
-        [document.body, body],
-        [element, button],
-      ]),
-    });
-    pageObjectRoots.mockResolvedValue([]);
-    captureAriaSnapshot.mockReturnValueOnce(snapshot("e1", "e2", original));
-    await getPageStateCaptureForDocument(document);
-
-    original.outerHTML = '<button id="captured">Captured omitted</button>';
-    const replacement = document.querySelector("#captured")!;
-    captureAriaSnapshot
-      .mockReturnValueOnce(snapshot("e1", "e2", original))
-      .mockReturnValueOnce(snapshot("e3", "e4", replacement));
-
-    // The resolution's own capture still shows e2; the interleaved capture,
-    // recorded before the ledger is read, re-renders the button as e4.
-    const [resolutions] = await Promise.all([
-      resolvePageStateRefs(document, ref("e2")),
-      getPageStateCaptureForDocument(document),
-    ]);
-
-    expect(resolutions).toEqual([
-      {
-        status: "resolved",
-        requestedRef: ref("e2"),
-        node: { ref: ref("e4"), element: replacement },
-      },
-    ]);
-  });
-
   it("keeps concurrent capture results scoped to their own capture", async () => {
     const captured = document.querySelector("#captured");
     if (!captured) throw new Error("Missing test root.");
@@ -752,118 +714,6 @@ describe("get_page_state", () => {
 
     expect(first.tree.getNode(ref("e2"))?.name).toBe("First capture");
     expect(second.tree.getNode(ref("e4"))?.name).toBe("Second capture");
-  });
-
-  describe("a capture in which two nodes share a ref", () => {
-    const snapshot = (...buttons: [name: string, element: Element][]) => {
-      const text = [
-        "- generic [ref=e1]:",
-        ...buttons.map(([name]) => `  - button "${name}" [ref=e2]`),
-      ].join("\n");
-      return {
-        distilledText: text,
-        fullText: text,
-        refsByElement: new Map<Element, string>([
-          [document.body, "e1"],
-          ...buttons.map(([, element]) => [element, "e2"] as const),
-        ]),
-      };
-    };
-
-    beforeEach(() => {
-      document.body.innerHTML = "<button>A</button><button>B</button>";
-      pageObjectRoots.mockResolvedValue([]);
-    });
-
-    it("is rejected, and the next valid capture resolves the ref", async () => {
-      const [a, b] = document.querySelectorAll("button");
-      captureAriaSnapshot
-        .mockReturnValueOnce(snapshot(["A", a!], ["B", b!]))
-        .mockReturnValue(snapshot(["A", a!]));
-
-      await expect(getPageStateCaptureForDocument(document)).rejects.toThrow(
-        "more than one node the Structural Ref e2"
-      );
-      await getPageStateCaptureForDocument(document);
-
-      await expect(resolvePageStateRefs(document, ref("e2"))).resolves.toEqual([
-        {
-          status: "resolved",
-          requestedRef: ref("e2"),
-          node: { ref: ref("e2"), element: a },
-        },
-      ]);
-    });
-
-    it("is rejected after a valid capture without disturbing its refs", async () => {
-      const [a, b] = document.querySelectorAll("button");
-      captureAriaSnapshot
-        .mockReturnValueOnce(snapshot(["A", a!]))
-        .mockReturnValueOnce(snapshot(["A", a!], ["B", b!]))
-        .mockReturnValue(snapshot(["A", a!]));
-
-      await getPageStateCaptureForDocument(document);
-      await expect(getPageStateCaptureForDocument(document)).rejects.toThrow(
-        "more than one node the Structural Ref e2"
-      );
-
-      await expect(resolvePageStateRefs(document, ref("e2"))).resolves.toEqual([
-        {
-          status: "resolved",
-          requestedRef: ref("e2"),
-          node: { ref: ref("e2"), element: a },
-        },
-      ]);
-    });
-  });
-});
-
-describe("the ref the latest page state gave an element", () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      "document",
-      document.implementation.createHTMLDocument("Obstruction test")
-    );
-    document.body.innerHTML = `
-      <div id="holder"><section id="root">Root</section><div id="cover"></div></div>
-      <div id="overlay"><div id="pane"></div></div>
-    `;
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  const byId = (id: string) => document.querySelector(`#${id}`)!;
-  const recordPageState = async (refs: [Element, string][]) => {
-    const text = [
-      "- generic [ref=e1]:",
-      ...refs.map(([, ref]) => `  - generic [ref=${ref}]`),
-    ].join("\n");
-    captureAriaSnapshot.mockReturnValue({
-      distilledText: text,
-      fullText: text,
-      refsByElement: new Map([[document.body, "e1"], ...refs]),
-    });
-    pageObjectRoots.mockResolvedValue([]);
-    await getPageStateTool.execute();
-  };
-
-  it("is nothing before the document has a page state", () => {
-    expect(latestPageStateRef(byId("cover"))).toBeUndefined();
-  });
-
-  it("is the ref the agent's latest page state gave the element itself", async () => {
-    await recordPageState([
-      [byId("overlay"), "e2"],
-      [byId("holder"), "e3"],
-    ]);
-
-    expect(latestPageStateRef(byId("overlay"))).toBe(ref("e2"));
-    expect(latestPageStateRef(byId("holder"))).toBe(ref("e3"));
-    // Naming walks up from what is in the way; the lookup does not.
-    expect(latestPageStateRef(byId("pane"))).toBeUndefined();
   });
 });
 

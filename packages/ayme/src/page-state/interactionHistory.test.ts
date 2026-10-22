@@ -1,8 +1,7 @@
-// @vitest-environment jsdom
-
 import { describe, expect, it } from "vitest";
 import {
   MonotonicTimeMsSchema,
+  PageIdSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
 } from "@ayme-dev/core/structural-observation";
@@ -12,6 +11,13 @@ import { InteractionHistory } from "./interactionHistory";
 let now = 0;
 const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };
 
+const at = (url: string, onClock = clock) =>
+  new InteractionHistory({
+    pageId: PageIdSchema.parse("document_1"),
+    url,
+    clock: onClock,
+  });
+
 function tree(yaml: string): StructuralTree {
   return StructuralTree.fromAriaSnapshotYaml(
     yaml,
@@ -19,56 +25,13 @@ function tree(yaml: string): StructuralTree {
   );
 }
 
-describe("InteractionHistory without the Navigation API", () => {
-  it("records a Visit per pushState, replaceState and popstate route change", () => {
-    expect("navigation" in window).toBe(false);
-    const history = new InteractionHistory(document, clock);
-    const urls = () =>
-      history.observations.getVisits().map((visit) => visit.urls);
-
-    window.history.pushState(null, "", "/orders");
-    window.history.replaceState(null, "", "/customers");
-    window.history.pushState(null, "", "/customers#top");
-    window.dispatchEvent(new PopStateEvent("popstate"));
-
-    expect(urls()).toEqual([
-      ["http://localhost:3000/"],
-      ["http://localhost:3000/orders"],
-      [
-        "http://localhost:3000/customers",
-        "http://localhost:3000/customers#top",
-      ],
-    ]);
-  });
-
-  it("records a direct fragment navigation in the current Visit", async () => {
-    const history = new InteractionHistory(document, clock);
-    const lastUrl = () => history.observations.getVisits().at(-1)!.urls.at(-1);
-
-    // Assigning location.hash, as a fragment link does.
-    const hashChanged = new Promise((resolve) =>
-      window.addEventListener("hashchange", resolve, { once: true })
-    );
-    window.location.hash = "details";
-    await hashChanged;
-    expect(lastUrl()).toBe("http://localhost:3000/customers#details");
-
-    // A fragment navigation that fires only hashchange: the URL changes
-    // through the unwrapped History method, then the event arrives.
-    History.prototype.replaceState.call(window.history, null, "", "#reviews");
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-    expect(lastUrl()).toBe("http://localhost:3000/customers#reviews");
-    expect(history.observations.getVisits()).toHaveLength(1);
-  });
-});
-
 describe("InteractionHistory actions", () => {
   const empty = () => tree('- button "Save" [ref=e1]');
   const saved = () =>
     tree('- button "Save" [ref=e1]\n- status "Saved" [ref=e2]');
 
   it("stands the first observation in for a cursor that received nothing", () => {
-    const history = new InteractionHistory(document, clock);
+    const history = at("http://localhost:3000/");
     const cursor = createCursors().of("app");
     expect(history.received(cursor)).toBeUndefined();
 
@@ -82,7 +45,7 @@ describe("InteractionHistory actions", () => {
   });
 
   it("completes an action with its after observation and reads the change from where the cursor stood", async () => {
-    const history = new InteractionHistory(document, clock);
+    const history = at("http://localhost:3000/");
     const cursor = createCursors().of("app");
     cursor.move(history.observe(empty(), history.now()));
     const actionId = history.startAction({ tool: "App.save", args: {} });
@@ -104,7 +67,7 @@ describe("InteractionHistory actions", () => {
   });
 
   it("records the page right before an action as its before, which core reads the action's change from", async () => {
-    const history = new InteractionHistory(document, clock);
+    const history = at("http://localhost:3000/");
     history.observe(empty(), history.now());
     const actionId = history.startAction({ tool: "App.save", args: {} });
     const drifted = tree(
@@ -142,7 +105,7 @@ describe("InteractionHistory actions", () => {
     // A browser coarsens performance.now(): a capture that resolves a ref and
     // the action started right after it can read the same time.
     const coarse = { now: () => MonotonicTimeMsSchema.parse(7) };
-    const history = new InteractionHistory(document, coarse);
+    const history = at("http://localhost:3000/", coarse);
     history.observe(empty(), history.now());
     history.observe(
       tree('- button "Save" [ref=e1]\n- status "Drifted" [ref=e3]'),
@@ -171,7 +134,7 @@ describe("InteractionHistory actions", () => {
   });
 
   it("completes an action whose tool call failed with its page", async () => {
-    const history = new InteractionHistory(document, clock);
+    const history = at("http://localhost:3000/");
     history.observe(empty(), history.now());
     const actionId = history.startAction({ tool: "App.save", args: {} });
 

@@ -48,9 +48,3 @@ export function createCursors(): Cursors {
     fork: (from) => cursorAt(from.current()),
   };
 }
-
-/**
- * The document's cursors. Module state is the document's: a new document
- * starts with none, as it starts with an empty Run log.
- */
-export const cursors: Cursors = createCursors();

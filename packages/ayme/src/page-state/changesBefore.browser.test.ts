@@ -9,7 +9,7 @@ import {
   type CustomTool,
   type Run,
 } from "../index";
-import { ACTION_RESULT_NOTE } from "./actionSequence";
+import { ACTION_RESULT_NOTE } from "./actionResult";
 import { listElementTools } from "../tools";
 import { renderChangeRecord } from "./changeRecord";
 import { getInteractionHistory } from "./pageState";

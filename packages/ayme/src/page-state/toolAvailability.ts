@@ -66,3 +66,19 @@ export function obstructionReason(
     ? "a click would not reach it"
     : `a click would not reach it; ${ref} is in the way`;
 }
+
+/**
+ * Package-internal: the runtime's Availability Reason for an element a tool
+ * types into or selects in that cannot take focus: it names the Structural
+ * Ref of `blocker`, the open modal or inert ancestor in the way, when the
+ * agent's latest page state gave it one.
+ */
+export function unfocusableReason(
+  blocker: Element,
+  latestRefOf: LatestRefLookup
+) {
+  const ref = latestRefOf(blocker);
+  return ref === undefined
+    ? "it cannot take focus"
+    : `it cannot take focus; ${ref} is in the way`;
+}

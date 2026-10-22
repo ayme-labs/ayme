@@ -1,0 +1,238 @@
+import { describe, expect, it } from "vitest";
+import {
+  AriaRefSchema,
+  MonotonicTimeMsSchema,
+  PageIdSchema,
+  StructuralTree,
+  SyntheticAriaRefFactory,
+} from "@ayme-dev/core/structural-observation";
+import { InteractionHistory } from "./interactionHistory";
+import { PageStateSession } from "./pageStateSession";
+import type { PomLabels } from "./pomLabels";
+import type { PageCapture } from "./structuralPageState";
+
+const ref = AriaRefSchema.parse;
+
+let now = 0;
+const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };
+
+/** An element as the session sees one: something its captures map refs to. */
+const element = (name: string) => ({ name }) as unknown as Element;
+
+function capture(
+  yaml: string,
+  elements: [ref: string, element: Element][] = [],
+  pomLabels: PomLabels = new Map()
+): PageCapture {
+  return {
+    tree: StructuralTree.fromAriaSnapshotYaml(
+      yaml,
+      new SyntheticAriaRefFactory()
+    ),
+    elementsByRef: new Map(elements.map(([key, value]) => [ref(key), value])),
+    pomLabels,
+  };
+}
+
+/**
+ * A session whose captures are `captures`, in order, the last one repeated;
+ * an error is a capture that throws it. `count()` is how many it took.
+ */
+function sessionOver(...captures: (PageCapture | Error)[]) {
+  let taken = 0;
+  const session = new PageStateSession(
+    new InteractionHistory({
+      pageId: PageIdSchema.parse("document_1"),
+      url: "https://app.test/",
+      clock,
+    }),
+    async () => {
+      const next = captures[Math.min(taken++, captures.length - 1)]!;
+      if (next instanceof Error) throw next;
+      return next;
+    }
+  );
+  return { session, count: () => taken };
+}
+
+describe("a capture in which two nodes share a ref", () => {
+  const a = element("A");
+  const b = element("B");
+  const shared = capture(
+    '- generic [ref=e1]:\n  - button "A" [ref=e2]\n  - button "B" [ref=e2]',
+    [
+      ["e2", a],
+      ["e2", b],
+    ]
+  );
+  const valid = capture('- generic [ref=e1]:\n  - button "A" [ref=e2]', [
+    ["e2", a],
+  ]);
+
+  it("is rejected, and the next valid capture resolves the ref", async () => {
+    const { session } = sessionOver(shared, valid);
+
+    await expect(session.getPageStateCapture()).rejects.toThrow(
+      "more than one node the Structural Ref e2"
+    );
+    await session.getPageStateCapture();
+
+    await expect(session.resolveRefs([ref("e2")])).resolves.toEqual([
+      {
+        status: "resolved",
+        requestedRef: ref("e2"),
+        node: { ref: ref("e2"), element: a },
+      },
+    ]);
+  });
+
+  it("is rejected after a valid capture without disturbing its refs", async () => {
+    const { session } = sessionOver(valid, shared, valid);
+
+    await session.getPageStateCapture();
+    await expect(session.getPageStateCapture()).rejects.toThrow(
+      "more than one node the Structural Ref e2"
+    );
+
+    await expect(session.resolveRefs([ref("e2")])).resolves.toEqual([
+      {
+        status: "resolved",
+        requestedRef: ref("e2"),
+        node: { ref: ref("e2"), element: a },
+      },
+    ]);
+  });
+
+  it("is still shown by a look, which records nothing", async () => {
+    const { session } = sessionOver(shared);
+
+    await expect(session.look()).resolves.toMatchObject({
+      text: expect.stringContaining('e2 button "B"'),
+    });
+    expect(session.history.hasObservation).toBe(false);
+  });
+});
+
+it("resolves a ref against the capture the identity ledger last reconciled when another capture interleaves", async () => {
+  const original = element("original");
+  const replacement = element("replacement");
+  const snapshot = (body: string, button: string, target: Element) =>
+    capture(
+      `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
+      [[button, target]]
+    );
+  const { session } = sessionOver(
+    snapshot("e1", "e2", original),
+    snapshot("e1", "e2", original),
+    snapshot("e3", "e4", replacement)
+  );
+  await session.getPageStateCapture();
+
+  // The resolution's own capture still shows e2; the interleaved capture,
+  // recorded before the ledger is read, re-renders the button as e4.
+  const [resolutions] = await Promise.all([
+    session.resolveRefs([ref("e2")]),
+    session.getPageStateCapture(),
+  ]);
+
+  expect(resolutions).toEqual([
+    {
+      status: "resolved",
+      requestedRef: ref("e2"),
+      node: { ref: ref("e4"), element: replacement },
+    },
+  ]);
+});
+
+describe("the ref the latest page state gave an element", () => {
+  const overlay = element("overlay");
+  const holder = element("holder");
+  const pane = element("pane");
+
+  it("is nothing before the session has recorded a page state", async () => {
+    const { session } = sessionOver(capture("- generic [ref=e1]"));
+
+    await session.look();
+
+    expect(session.latestRefOf(overlay)).toBeUndefined();
+  });
+
+  it("is the ref the latest page state gave the element itself", async () => {
+    const { session } = sessionOver(
+      capture(
+        "- generic [ref=e1]:\n  - generic [ref=e2]\n  - generic [ref=e3]",
+        [
+          ["e2", overlay],
+          ["e3", holder],
+        ]
+      )
+    );
+
+    await session.getPageState();
+
+    expect(session.latestRefOf(overlay)).toBe(ref("e2"));
+    expect(session.latestRefOf(holder)).toBe(ref("e3"));
+    expect(session.latestRefOf(pane)).toBeUndefined();
+  });
+
+  it("is nothing for an element the page state gave two refs", async () => {
+    const { session } = sessionOver(
+      capture(
+        "- generic [ref=e1]:\n  - generic [ref=e2]\n  - generic [ref=e3]",
+        [
+          ["e2", overlay],
+          ["e3", overlay],
+        ]
+      )
+    );
+
+    await session.getPageState();
+
+    expect(session.latestRefOf(overlay)).toBeUndefined();
+    expect(session.latestElementOf(ref("e3"))).toBe(overlay);
+  });
+});
+
+describe("an action's before capture", () => {
+  const page = '- generic [ref=e1]:\n  - button "Save" [ref=e2]';
+
+  it("records nothing when the page and its labels are as last recorded", async () => {
+    const { session } = sessionOver(capture(page));
+    const actionId = await session.startAction({ tool: "click", args: {} });
+
+    await expect(session.captureBefore(actionId)).resolves.toBeUndefined();
+  });
+
+  it("records a before when only a Page Object label changed", async () => {
+    const { session } = sessionOver(
+      capture(page),
+      capture(page, [], new Map([[ref("e2"), ["SaveButton"]]]))
+    );
+    const actionId = await session.startAction({ tool: "click", args: {} });
+
+    const before = await session.captureBefore(actionId);
+
+    expect(before).toBe(session.history.latestObservation);
+    expect(session.history.pomLabels(before!)).toEqual(
+      new Map([[ref("e2"), ["SaveButton"]]])
+    );
+  });
+});
+
+it("completes a failed action with the page as last recorded when capturing it throws", async () => {
+  const { session, count } = sessionOver(
+    capture('- button "Save" [ref=e1]'),
+    new Error("Capture failed.")
+  );
+  const actionId = await session.startAction({ tool: "click", args: {} });
+
+  const after = await session.failAction(actionId);
+
+  expect(count()).toBe(2);
+  expect(await after.tree.resolve()).toEqual(
+    await session.history.firstObservation!.tree.resolve()
+  );
+  expect(session.history.actions().get(actionId)).toMatchObject({
+    failed: true,
+  });
+});

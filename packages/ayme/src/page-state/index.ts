@@ -1,11 +1,7 @@
-export {
-  ACTION_RESULT_NOTE,
-  runAction,
-  startNavigation,
-} from "./actionSequence";
-export type { ActionFailure, ActionResult } from "./actionSequence";
+export { ACTION_RESULT_NOTE } from "./actionResult";
+export type { ActionFailure, ActionResult } from "./actionResult";
+export { runAction } from "./actionSequence";
 export { renderChangeRecord } from "./changeRecord";
-export { cursors } from "./cursors";
 export type { Cursor } from "./cursors";
 export {
   assertReachable,
@@ -14,9 +10,11 @@ export {
   reaches,
 } from "./elementReach";
 export type { ElementInput } from "./elementReach";
+export { startNavigation } from "./navigation";
 export {
   capturePageState,
   configurePageStateIgnore,
+  cursors,
   getInteractionHistory,
   getPageStateCaptureForDocument,
   getPageStateForDocument,
@@ -25,11 +23,15 @@ export {
   latestPageStateRef,
   lookAtPageStateForDocument,
   onPageStateRecorded,
-  pageStateNodeEntry,
   providePageObjectStructure,
   resolvePageStateRef,
   resolvePageStateRefs,
 } from "./pageState";
+export { inReachBatch, measurePomRoot } from "./reachMeasurement";
+export { refFailure, refHint, selectorFailure } from "./refFailures";
+export { registerRefSelectorEngine } from "./refSelectorEngine";
+export { resolveRef } from "./refTarget";
+export { pageStateNodeEntry } from "./structuralPageState";
 export type {
   AriaRef,
   AymeNode,
@@ -37,10 +39,7 @@ export type {
   PageStateCapture,
   PageStateLook,
   RefResolution,
-} from "./pageState";
-export { inReachBatch, measurePomRoot } from "./reachMeasurement";
-export { registerRefSelectorEngine } from "./refSelectorEngine";
-export { refFailure, refHint, resolveRef, selectorFailure } from "./refTarget";
+} from "./structuralPageState";
 export {
   assertAvailable,
   obstructionReason,

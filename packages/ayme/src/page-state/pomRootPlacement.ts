@@ -235,3 +235,23 @@ function fullTreeOrder(
     ? Math.min(...descendantOrders)
     : Number.MAX_SAFE_INTEGER;
 }
+
+/**
+ * The Page Object Roots a capture places, one entry per element: an element
+ * several Page Objects root on carries each of their labels once.
+ */
+export function coalesceByElement(
+  roots: readonly { label: string; element: Element }[]
+): { element: Element; labels: string[] }[] {
+  const seen = new Map<Element, { element: Element; labels: string[] }>();
+  for (const root of roots) {
+    const existing = seen.get(root.element);
+    if (existing) {
+      if (!existing.labels.includes(root.label))
+        existing.labels.push(root.label);
+    } else {
+      seen.set(root.element, { element: root.element, labels: [root.label] });
+    }
+  }
+  return [...seen.values()];
+}
