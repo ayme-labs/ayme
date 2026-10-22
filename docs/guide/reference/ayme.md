@@ -13,10 +13,10 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 ## Decorators
 
-| Decorator                                                    | Marks                                                                                                                                                                      |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme` or `@ayme({ description, root, present })`           | A class as a Page Object Model. Its subclasses are Page Object Models too. `root` is the model's root predicate and `present` its presence predicate; see below.           |
-| `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. Without a description, one is generated. `available` is the action's availability predicate; see below. |
+| Decorator                                                    | Marks                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ayme` or `@ayme({ description, root, present })`           | A class as a Page Object Model. Its subclasses are Page Object Models too. A subclass inherits `description`, `root` and `present` and may declare its own. `root` is the model's root predicate and `present` its presence predicate; see below. |
+| `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. Without a description, one is generated. `available` is the action's availability predicate; see below.                                                                        |
 
 [Page Object Models](../guides/page-object-models.md) covers naming, input schemas and Page Object Children.
 

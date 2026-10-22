@@ -26,6 +26,10 @@ export type RootPredicate<Self = unknown> = (
 ) => Locator | Promise<Locator>;
 
 export type AymeModelOptions<Self = unknown> = {
+  /**
+   * What the Page Object stands for in the product, which agents read in its
+   * definition. A subclass inherits it and may declare its own.
+   */
   description?: string;
   /**
    * The locator of the element that anchors the Page Object (its Page Object

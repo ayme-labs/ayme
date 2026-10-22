@@ -109,6 +109,24 @@ only changes the UI, such as opening a menu or filling a field, needs none: a
 bare `@ayme.action` on `openCreateMenu()` says as much as "Open the create
 menu." would.
 
+## Describe what a POM stands for in the product
+
+`@ayme({ description })` says the same for the surface as an action's
+description does for the action: whose data it shows, how far it reaches (one
+project or the whole workspace), and what it holds that outlives the page. An
+agent reads it in the POM's definition, which `snapshot` returns. A POM whose
+name and page say enough needs none. A subclass inherits it from the nearest
+base class that declares one, so describe a shared base class only with what
+holds for every subclass.
+
+```ts
+@ayme({
+  description:
+    "Members of the current workspace; changes here apply to everyone in it.",
+})
+export class MembersPage extends AppPage {}
+```
+
 ## Make actions do something
 
 Mark a method with `@ayme.action` only when it does something a user does:

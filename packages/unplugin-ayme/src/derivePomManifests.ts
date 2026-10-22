@@ -340,7 +340,7 @@ function classManifest(
     manifest: {
       className,
       file: declaringFile(declaration),
-      ...classDescription(declaration),
+      ...classDescription(checker, declaration),
       members,
       tools,
     },
@@ -700,10 +700,38 @@ function decoratorDescription(decorator: ts.Decorator) {
   return undefined;
 }
 
-function classDescription(declaration: ts.ClassDeclaration) {
+/**
+ * The class's description, or, when its `@ayme` declares none, the one of
+ * the nearest base class that does, as `root` and `present` are inherited.
+ */
+function classDescription(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): { description?: string } {
   const marker = findClassMarker(declaration);
   const description = marker && decoratorDescription(marker);
-  return description === undefined ? {} : { description };
+  if (description !== undefined) return { description };
+  const base = extendedClassDeclaration(checker, declaration);
+  return base ? classDescription(checker, base) : {};
+}
+
+/**
+ * The class `declaration` extends at runtime: the one its `extends` clause
+ * names, not a type-only base a merged interface adds.
+ */
+function extendedClassDeclaration(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+) {
+  const base = declaration.heritageClauses?.find(
+    (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+  )?.types[0];
+  return base
+    ? checker
+        .getTypeAtLocation(base)
+        .getSymbol()
+        ?.declarations?.find(ts.isClassDeclaration)
+    : undefined;
 }
 
 type ToolDescription = { authored?: string };
