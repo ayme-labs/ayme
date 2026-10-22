@@ -1,7 +1,7 @@
 import { expectTypeOf, it } from "vitest";
 import type { ActionResult } from "../../page-state";
 import type { Handover } from "../../shared";
-import type { PageContextPayload } from "../application/pageContext";
+import type { PageContextPayload } from "./toolTypes";
 import type { Ayme } from "../../runtime";
 import type { BuiltInCaller, Caller, CustomToolContext } from "../../index";
 
