@@ -425,14 +425,15 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual([]);
   });
 
-  it("records that a collection item without a root declares none, and withdraws its tools", async () => {
+  it("records that a collection item without a root declares none, logs it once for the collection, and withdraws its tools", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     document.body.innerHTML = '<ul><li id="first">First</li></ul>';
     class Item {
       root = page.locator("#first");
       send() {}
     }
     class Outbox {
-      items = [new Item()];
+      items = [new Item(), new Item()];
     }
     registerCompiledPom(Outbox, {
       className: "Outbox",
@@ -462,7 +463,7 @@ describe("Page Object Root by option", () => {
         memberName: "items",
         kind: "component-collection",
         access: "field",
-        count: 1,
+        count: 2,
       },
       {
         memberName: "items[0].root",
@@ -470,7 +471,19 @@ describe("Page Object Root by option", () => {
         count: 0,
         error: "POM component items[0] declares no root.",
       },
+      {
+        memberName: "items[1].root",
+        kind: "component-root",
+        count: 0,
+        error: "POM component items[1] declares no root.",
+      },
     ]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      'The Page Object "Outbox.items" is absent: its item class Item declares no root.'
+    );
+
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
   });
 
   it("records what a child's root predicate threw, logs it once, and withdraws the child's tools", async () => {
@@ -525,6 +538,57 @@ describe("Page Object Root by option", () => {
     );
 
     document.body.innerHTML = "<p>Changed</p>";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+  });
+
+  it("logs that a child's root matches several elements once, again when the count changes, and not while it matches none", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<section id="shell"><button>Rename</button><button>Rename</button></section>';
+    class Panel {
+      close() {}
+    }
+    ayme({ root: () => page.getByRole("button", { name: "Rename" }) })(Panel);
+    session.pom.register(shellWithPanel(Panel));
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      'The Page Object "Shell.panel" is absent: its root matches 2 elements.'
+    );
+
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+
+    const shell = document.getElementById("shell")!;
+    shell.insertAdjacentHTML("beforeend", "<button>Rename</button>");
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(2);
+    expect(logged).toHaveBeenLastCalledWith(
+      'The Page Object "Shell.panel" is absent: its root matches 3 elements.'
+    );
+
+    shell.replaceChildren();
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+    expect(logged).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs that a Page Object's own root matches several elements, once", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML = "<aside>One</aside><aside>Two</aside>";
+    class Drawer {
+      open() {}
+    }
+    ayme({ root: () => page.locator("aside") })(Drawer);
+    registerCompiledPom(Drawer, pageManifest("Drawer"));
+    session.pom.register(Drawer);
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      'The Page Object "Drawer" is absent: its root matches 2 elements.'
+    );
+
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledOnce();
   });
