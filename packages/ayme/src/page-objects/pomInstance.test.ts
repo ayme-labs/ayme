@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { ayme } from "./decorators";
 import {
   AriaRefSchema,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import {
-  askPredicates,
   availabilityOf as availabilityWithRefs,
   combinedAvailability,
+  type ObservedPomRoot,
   type PomInstanceObservation,
 } from "./pomInstance";
 import { assertAvailable } from "../page-state";
-import type { ObservedPomRoot } from "./pomRootObservation";
 
 // Unit tests: one Page Object instance's Action Availability (ADR-0035),
 // from hand-written observations, without a page or a runtime. Elements are
@@ -143,44 +141,6 @@ describe("one instance's availability", () => {
       present: true,
       available: true,
     });
-  });
-});
-
-describe("asking an instance's predicates", () => {
-  class Item {
-    archive() {}
-    rename() {}
-    open() {}
-  }
-  const decorate = (
-    methodName: keyof Item,
-    available: () => boolean | string | Promise<boolean | string>
-  ) =>
-    ayme.action({ available })(
-      Item.prototype,
-      methodName,
-      Object.getOwnPropertyDescriptor(Item.prototype, methodName)!
-    );
-  decorate("archive", () => "Archived already");
-  decorate("rename", async () => {
-    throw new Error("No name field");
-  });
-  const tool = (methodName: string) => ({
-    methodName,
-    toolName: methodName,
-    parameters: [],
-  });
-
-  it("records each answer, a thrown error as the reason, and skips actions without one", async () => {
-    const answers = await askPredicates(new Item(), [
-      tool("archive"),
-      tool("rename"),
-      tool("open"),
-    ]);
-    expect([...answers]).toEqual([
-      ["archive", { available: false, reason: "Archived already" }],
-      ["rename", { available: false, reason: "No name field" }],
-    ]);
   });
 });
 

@@ -7,12 +7,8 @@ import { createPage } from "./browserPage";
 import type { PomComponentManifest, PomManifest } from "../shared";
 import { ayme } from "./decorators";
 import { rooted } from "../test-utils/pomRoot.testSupport";
-import {
-  observePageObject,
-  pomGroups,
-  resolveTargets,
-  rootTargetPath,
-} from "./pomTree";
+import { pomGroups, rootTargetPath } from "./pomTree";
+import { observePageObject, resolveTargets } from "./pomTreeWalk";
 
 const page = createPage();
 

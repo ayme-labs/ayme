@@ -139,14 +139,15 @@ describe("live Page Object registry", () => {
 
   it("allows one runtime owner and permits a fresh owner after disposal", async () => {
     const registry = await import("./registry");
+    const { createAymeRuntime } = await import("./runtimePage");
     const firstPage = {} as Page;
-    const first = registry.createAymeRuntime(firstPage);
+    const first = createAymeRuntime(firstPage);
 
     expect(first.page).toBe(firstPage);
-    expect(() => registry.createAymeRuntime({} as Page)).toThrow(
+    expect(() => createAymeRuntime({} as Page)).toThrow(
       "The Ayme runtime already has an active owner."
     );
-    expect(() => registry.createAymeRuntime({} as Page)).toThrow(
+    expect(() => createAymeRuntime({} as Page)).toThrow(
       expect.objectContaining({
         name: "RuntimeStateError",
         kind: "runtime",
@@ -166,7 +167,7 @@ describe("live Page Object registry", () => {
     ).toHaveBeenCalledOnce();
 
     const secondPage = {} as Page;
-    const second = registry.createAymeRuntime(secondPage);
+    const second = createAymeRuntime(secondPage);
     expect(second.page).toBe(secondPage);
     second.dispose();
   });

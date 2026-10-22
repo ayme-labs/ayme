@@ -1,20 +1,11 @@
 import type {
-  JsonSchema,
-  PomComponentManifest,
   PomManifest,
   PomMemberObservation,
-  RegisteredPomTool,
   ToolManifest,
 } from "../shared";
-import {
-  inputParameters,
-  inputSchemaFor,
-  methodArguments,
-  actionFacts,
-} from "./actionTool";
-import { createPage } from "./browserPage";
+import { methodArguments } from "./actionTool";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import {
   assertAvailable,
   assertRootReachable,
@@ -23,14 +14,12 @@ import {
   onPageStateRecorded,
   providePageObjectStructure,
   refFailure,
-  registerRefSelectorEngine,
   resolveRef,
   runAction,
   unavailableError,
   type ActionResult,
   type ToolAvailability,
 } from "../page-state";
-import type { ObservedPomRoot } from "./pomRootObservation";
 import {
   onlyHitTestMarks,
   RefResolutionError,
@@ -39,34 +28,40 @@ import {
 import {
   availabilityOf,
   combinedAvailability,
-  sameInstance,
+  type ObservedPomRoot,
   type PomInstanceObservation,
 } from "./pomInstance";
 import {
-  observePageObject,
   pomGroups,
   type PageObjectObservation,
   type PomGroup,
   type PomTargetSource,
   type RegisteredPomTarget,
-  resolveTargets,
 } from "./pomTree";
+import { observePageObject, resolveTargets } from "./pomTreeWalk";
+import {
+  componentToolFacts,
+  listedInstead,
+  pageToolFacts,
+  type ScopedPomTool,
+} from "./pomTools";
+import { sameNamedClassRefusal } from "./pomClasses";
+import {
+  newObservationErrors,
+  pomLabel,
+  sameObservation,
+} from "./observationReport";
+import { compiledManifestOf, type PageObjectConstructor } from "./compiledPoms";
 import type { Cursor } from "../page-state";
 import type { RunContext } from "../runs";
 
-export type PageObjectConstructor<T extends object = object> = new (
-  page: Page
-) => T;
-
-type ScopedPomTool = RegisteredPomTool & {
-  /** The component it acts on, without item indices, e.g. "items[].details". */
-  componentPath?: string;
-  /**
-   * For a tool that goes through a collection, the path of the items a
-   * ref names, e.g. "items[]" for "items[].details".
-   */
-  collectionPath?: string;
-};
+// The registry's interface includes registering the compiled manifests its
+// registrations read.
+export {
+  constructPageObject,
+  registerCompiledPom,
+  type PageObjectConstructor,
+} from "./compiledPoms";
 
 /**
  * Package-internal: a Page Object tool as the registry holds it. Its
@@ -103,8 +98,6 @@ export type RegisteredPomRoot = {
   element: Element;
 };
 
-export type { RegisteredPomTarget } from "./pomTree";
-
 /**
  * The instances the last observation found of one registered Page Object,
  * and the ones each of its tools stands for, by the tool's component path
@@ -139,9 +132,6 @@ type ObservedRegisteredPom = RegisteredPom & {
  */
 export type CollectionToolItem = RegisteredPomRoot & ToolAvailability;
 
-let browserPage: Page | undefined;
-let runtimeOwner: object | undefined;
-const compiledPoms = new WeakMap<object, PomManifest>();
 const registeredPoms = new Set<ObservedRegisteredPom>();
 // Registrations refused for a same-named class, in the order they were
 // made: each gets in once the registration it clashes with is disposed.
@@ -166,40 +156,11 @@ const layoutEvents = [
   "animationcancel",
 ] as const;
 
-export function requireAymeRuntimePage(): Page {
-  if (!browserPage)
-    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
-  return browserPage;
-}
-
-export function createAymeRuntime(page?: object) {
-  if (runtimeOwner)
-    throw new RuntimeStateError(
-      "The Ayme runtime already has an active owner.",
-      { code: "active-owner" }
-    );
-
-  resetRegisteredPoms();
-  browserPage = undefined;
-  const owner = {};
-  const runtimePage = page ?? createPage();
-  runtimeOwner = owner;
-  browserPage = runtimePage as Page;
-  // The page's locators for Structural Refs resolve through Ayme's engine.
-  registerRefSelectorEngine();
-
-  return {
-    page: runtimePage,
-    dispose() {
-      if (runtimeOwner !== owner) return;
-      resetRegisteredPoms();
-      browserPage = undefined;
-      runtimeOwner = undefined;
-    },
-  };
-}
-
-function resetRegisteredPoms() {
+/**
+ * Package-internal: unregisters every Page Object, as a runtime session
+ * starts or ends.
+ */
+export function resetRegisteredPoms() {
   const hadRegistrations = registeredPoms.size > 0;
   registeredPoms.clear();
   waitingPoms.clear();
@@ -207,30 +168,11 @@ function resetRegisteredPoms() {
   if (hadRegistrations) notifySubscribers();
 }
 
-export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
-  compiledPoms.set(PomClass, manifest);
-}
-
-export function constructPageObject<T extends object>(
-  PomClass: PageObjectConstructor<T>,
-  page: Page
-): T {
-  if (!compiledPoms.has(PomClass))
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
-  return new PomClass(page);
-}
-
 export function registerPageObject<T extends object>(
   PomClass: PageObjectConstructor<T>,
   instance: T
 ) {
-  const compiledPom = compiledPoms.get(PomClass);
-  if (!compiledPom)
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
+  const compiledPom = compiledManifestOf(PomClass);
   const registration: ObservedRegisteredPom = {
     id: compiledPom.className,
     pomClass: PomClass,
@@ -249,7 +191,11 @@ export function registerPageObject<T extends object>(
   // A clash between the app's own classes is logged rather than thrown, so
   // it does not take down the component, or the session start, that
   // registered the Page Object. It lists no tools until the clash is gone.
-  const refusal = sameNamedClassRefusal(PomClass, compiledPom);
+  const refusal = sameNamedClassRefusal(
+    [...registeredPoms],
+    PomClass,
+    compiledPom
+  );
   if (refusal) {
     console.error(refusal);
     waitingPoms.add(registration);
@@ -267,7 +213,13 @@ export function registerPageObject<T extends object>(
       // Only leaving can clear a clash. A registration still refused is
       // not logged again.
       for (const waiting of waitingPoms)
-        if (!sameNamedClassRefusal(waiting.pomClass, waiting.manifest)) {
+        if (
+          !sameNamedClassRefusal(
+            [...registeredPoms],
+            waiting.pomClass,
+            waiting.manifest
+          )
+        ) {
           waitingPoms.delete(waiting);
           admitRegisteredPom(waiting);
         }
@@ -281,85 +233,6 @@ function admitRegisteredPom(registration: ObservedRegisteredPom) {
   registeredPoms.add(registration);
   if (registryWasEmpty) startObservingPage();
   else schedulePomMemberProbe();
-}
-
-/**
- * Ayme tells Page Object classes apart by name: tools are named after their
- * class, and definitions and Page Object Children are looked up by it. So no
- * two different classes the registered Page Objects reach, at any depth, may
- * share a name. Children carry no class at runtime, only their compiled
- * manifest, so two of one name are the same class when the build plugin
- * found them in the same file: an HMR update recompiles a class there while
- * Page Objects reaching its old version are still registered. A manifest
- * without a file is the same class when it is the same manifest.
- */
-function sameNamedClassRefusal(
-  PomClass: object,
-  manifest: PomManifest
-): RuntimeStateError | undefined {
-  // A different class with the same name would have its tools hidden by the
-  // first one registered.
-  for (const registered of registeredPoms)
-    if (
-      registered.id === manifest.className &&
-      registered.pomClass !== PomClass
-    )
-      return new RuntimeStateError(
-        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}.`,
-        { code: "same-named-class" }
-      );
-
-  type Reached = { pageObject: string; node: PomComponentManifest };
-  // Every distinct class of each name, so a manifest without a file cannot
-  // stand in for two classes from different files.
-  const reached = new Map<string, Reached[]>();
-  const reach = (pageObject: string, pom: PomManifest) => {
-    for (const node of [pom, ...pom.components]) {
-      const others = reached.get(node.className) ?? [];
-      const other = others.find((other) => !sameClass(other.node, node));
-      if (other)
-        return new RuntimeStateError(
-          `Cannot register the Page Object "${manifest.className}": ${
-            other.pageObject === manifest.className
-              ? `it reaches two different classes named "${node.className}"`
-              : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
-          }${declaredIn(other.node, node)}. Ayme tells the classes of Page Objects apart by name.`,
-          { code: "same-named-class" }
-        );
-      if (!others.some((other) => other.node.file === node.file))
-        reached.set(node.className, [...others, { pageObject, node }]);
-    }
-    return undefined;
-  };
-  // Registered Page Objects can stop matching each other once one leaves,
-  // as a manifest without a file matches by shape: the new one is refused
-  // then too.
-  for (const registered of registeredPoms) {
-    const refusal = reach(registered.id, registered.manifest);
-    if (refusal) return refusal;
-  }
-  return reach(manifest.className, manifest);
-}
-
-function sameClass(first: PomComponentManifest, second: PomComponentManifest) {
-  return first.file !== undefined && second.file !== undefined
-    ? first.file === second.file
-    : classShape(first) === classShape(second);
-}
-
-function classShape({
-  className,
-  description,
-  members,
-  tools,
-}: PomComponentManifest) {
-  return JSON.stringify({ className, description, members, tools });
-}
-
-function declaredIn(first: PomComponentManifest, second: PomComponentManifest) {
-  return first.file === undefined || second.file === undefined
-    ? ""
-    : `, declared in ${first.file} and ${second.file}`;
 }
 
 function startObservingPage() {
@@ -473,16 +346,16 @@ function commitObservation(
   observation: PageObjectObservation
 ): boolean {
   if (!registeredPoms.has(registration)) return false;
-  reportObservationErrors(registration, observation);
+  const last = {
+    instances: registration.instances?.all,
+    memberObservations: registration.memberObservations,
+    rootlessCollectionPaths: registration.rootlessCollectionPaths,
+  };
+  for (const error of newObservationErrors(registration.id, last, observation))
+    console.error(error);
+  const same = sameObservation(last, observation);
   const { memberObservations, instances, rootMemberPaths, targetSources } =
     observation;
-  const previous = registration.instances?.all;
-  const same =
-    previous?.length === instances.length &&
-    previous.every((instance, index) =>
-      sameInstance(instance, instances[index]!)
-    ) &&
-    sameObservations(registration.memberObservations, memberObservations);
   registration.memberObservations = memberObservations;
   registration.presentPaths = new Set(
     instances.flatMap((instance) => (instance.present ? [instance.path] : []))
@@ -494,26 +367,6 @@ function commitObservation(
   registration.targetSources = targetSources;
   registration.instances = groupedInstances(instances);
   return !same;
-}
-
-function sameObservations(
-  left: readonly PomMemberObservation[],
-  right: readonly PomMemberObservation[]
-) {
-  return (
-    left.length === right.length &&
-    left.every((observation, index) => {
-      const candidate = right[index];
-      return (
-        candidate !== undefined &&
-        observation.memberName === candidate.memberName &&
-        observation.kind === candidate.kind &&
-        observation.count === candidate.count &&
-        observation.access === candidate.access &&
-        observation.error === candidate.error
-      );
-    })
-  );
 }
 
 export function listRegisteredPoms(): RegisteredPom[] {
@@ -555,15 +408,7 @@ export async function getRegisteredPomStructure() {
   await probeRegisteredPomMembers();
   const observations = [...registeredPoms].flatMap((registration) =>
     (registration.instances?.all ?? []).flatMap(({ path, root, present }) =>
-      root
-        ? [
-            {
-              root,
-              present,
-              label: path ? `${registration.id}.${path}` : registration.id,
-            },
-          ]
-        : []
+      root ? [{ root, present, label: pomLabel(registration.id, path) }] : []
     )
   );
   const roots = observations.flatMap(({ root, present, label }) =>
@@ -636,12 +481,7 @@ export function listRegisteredPomTools(): ({
           availabilityNow(instance, tool.methodName)
         )
       );
-      const listed = tools.get(tool.name);
-      if (
-        !listed ||
-        (availability.available && !listed.available) ||
-        (availability.present && !listed.present)
-      )
+      if (listedInstead(availability, tools.get(tool.name)))
         tools.set(tool.name, { tool, ...availability });
     }
   return [...tools.values()];
@@ -738,29 +578,32 @@ function announceObstructedRoots() {
 }
 
 function createRegisteredTools(registration: ObservedRegisteredPom) {
-  const { manifest } = registration;
-  const pageTools = manifest.tools.map((tool) =>
-    createRegisteredTool(registration, tool)
+  const { id, manifest } = registration;
+  const pageTools = manifest.tools.map((action) =>
+    createTool(registration, pageToolFacts(id, action), action)
   );
   const componentTools = pomGroups(manifest).flatMap((group) =>
     group.component.tools.map((action) =>
-      createComponentTool(registration, group, action)
+      group.collectionKey === undefined
+        ? createTool(
+            registration,
+            componentToolFacts(id, group, action),
+            action
+          )
+        : createCollectionTool(registration, group, action)
     )
   );
   return [...pageTools, ...componentTools];
 }
 
-function createRegisteredTool(
+/** A tool that acts on the one instance the last observation found. */
+function createTool(
   registration: ObservedRegisteredPom,
+  facts: ScopedPomTool,
   action: ToolManifest
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
-    pomId: registration.manifest.className,
-    methodName: action.methodName,
-    name: action.toolName,
-    ...actionFacts(action, registration.manifest.className),
-    inputSchema: inputSchemaFor(action.parameters),
-    parameters: inputParameters(action.parameters),
+    ...facts,
     execute: async (args, { cursor }) =>
       performPageObjectAction(
         callTarget(tool.name, instancesOf(registration, tool)[0]),
@@ -811,21 +654,16 @@ function rootHolds(observed: PomInstanceObservation): boolean {
   return elements.length === 1 && elements[0] === element;
 }
 
-function createComponentTool(
+/** A tool that acts on the collection item its ref names. */
+function createCollectionTool(
   registration: ObservedRegisteredPom,
   group: PomGroup,
   action: ToolManifest
 ): CallerAwarePomTool {
-  const { id: pomId } = registration;
-  const { component, collectionKey } = group;
-  if (collectionKey === undefined)
-    return createSingularComponentTool(registration, group, action);
-
-  const wrapper = refComponentToolManifest(pomId, group.toolPath, action);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const { ref, args = {} } = input as { ref: string; args?: object };
-    const toolPath = `${pomId}.${group.toolPath}`;
-    const label = `call ${wrapper.toolName} on`;
+    const toolPath = `${registration.id}.${group.toolPath}`;
+    const label = `call ${tool.name} on`;
     const { element } = await resolveRef(ref, label, document);
     // The instance the last observation found at the ref's element; an item
     // it did not find is not on the page yet.
@@ -837,7 +675,7 @@ function createComponentTool(
         refFailure(
           label,
           ref,
-          `it is not an instance of ${component.className} at ${toolPath}`
+          `it is not an instance of ${group.component.className} at ${toolPath}`
         )
       );
     }
@@ -853,126 +691,10 @@ function createComponentTool(
     );
   };
   const tool: CallerAwarePomTool = {
-    pomId,
-    componentClassName: component.className,
-    componentPath: group.key,
-    collectionPath: collectionKey,
-    methodName: action.methodName,
-    name: wrapper.toolName,
-    ...actionFacts(action, component.className),
-    inputSchema: inputSchemaFor(wrapper.parameters),
-    parameters: wrapper.parameters,
+    ...componentToolFacts(registration.id, group, action),
     execute,
   };
   return tool;
-}
-
-function createSingularComponentTool(
-  registration: ObservedRegisteredPom,
-  { component, key, toolPath }: PomGroup,
-  action: ToolManifest
-): CallerAwarePomTool {
-  const tool: CallerAwarePomTool = {
-    pomId: registration.id,
-    componentClassName: component.className,
-    componentPath: key,
-    methodName: action.methodName,
-    name: `${registration.id}.${toolPath}.${action.methodName}`,
-    ...actionFacts(action, component.className),
-    inputSchema: inputSchemaFor(action.parameters),
-    parameters: inputParameters(action.parameters),
-    execute: async (input, { cursor }) =>
-      performPageObjectAction(
-        callTarget(tool.name, instancesOf(registration, tool)[0]),
-        action,
-        input,
-        cursor
-      ),
-  };
-  return tool;
-}
-
-function refComponentToolManifest(
-  pomId: string,
-  toolPath: string,
-  action: ToolManifest
-): ToolManifest {
-  const parameters = [
-    {
-      name: "ref",
-      optional: false,
-      schema: {
-        type: "string",
-        description:
-          "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
-      } satisfies JsonSchema,
-    },
-    {
-      name: "args",
-      // An action that needs no input runs on `{}`, so `args` may be omitted.
-      optional: inputParameters(action.parameters).every(
-        (parameter) => parameter.optional
-      ),
-      schema: inputSchemaFor(action.parameters),
-    },
-  ];
-
-  return {
-    ...action,
-    toolName: `${pomId}.${toolPath}.${action.methodName}`,
-    parameters,
-  };
-}
-
-/**
- * Logs what `observation` of `registration` found wrong that its last one
- * did not: a presence or root predicate that threw, a root matching several
- * elements, a collection whose item class declares no root. Each is logged
- * once, and again only when a later observation finds it changed or gone
- * and back. A root matching none is ordinary absence, never logged.
- */
-function reportObservationErrors(
-  registration: ObservedRegisteredPom,
-  { instances, rootlessCollections }: PageObjectObservation
-) {
-  const previous = new Map<string, PomInstanceObservation>();
-  for (const instance of registration.instances?.all ?? [])
-    if (!previous.has(instance.path)) previous.set(instance.path, instance);
-  for (const instance of instances) {
-    const before = previous.get(instance.path);
-    const label = pomLabel(registration, instance.path);
-    if (
-      instance.presenceError !== undefined &&
-      instance.presenceError !== before?.presenceError
-    )
-      console.error(
-        `The Page Object "${label}" is absent: its present predicate threw ${instance.presenceError}.`
-      );
-    if (
-      instance.rootError !== undefined &&
-      instance.rootError !== before?.rootError
-    )
-      console.error(
-        `The Page Object "${label}" is absent: its root predicate threw ${instance.rootError}.`
-      );
-    if (
-      instance.rootCount !== undefined &&
-      instance.rootCount >= 2 &&
-      instance.rootCount !== before?.rootCount
-    )
-      console.error(
-        `The Page Object "${label}" is absent: its root matches ${instance.rootCount} elements.`
-      );
-  }
-  for (const [path, className] of rootlessCollections)
-    if (!registration.rootlessCollectionPaths.has(path))
-      console.error(
-        `The Page Object "${pomLabel(registration, path)}" is absent: its item class ${className} declares no root.`
-      );
-}
-
-function pomLabel(registration: ObservedRegisteredPom, path: string) {
-  return path ? `${registration.id}.${path}` : registration.id;
 }
 
 /**

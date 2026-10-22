@@ -13,7 +13,7 @@ const { captureAriaSnapshot, pageObjectStructure, requireAymeRuntimePage } =
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   captureAriaSnapshot,
 }));
-vi.mock("../page-objects/registry", async (importOriginal) => ({
+vi.mock("../page-objects/runtimePage", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   requireAymeRuntimePage,
 }));

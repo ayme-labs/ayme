@@ -5,7 +5,6 @@ import type {
   PomManifest,
 } from "../shared";
 import { inputSchemaFor } from "./actionTool";
-import { listRegisteredPoms } from "./registry";
 import { ToolInputError } from "../shared";
 
 type DefinitionNode = {
@@ -15,13 +14,19 @@ type DefinitionNode = {
   tools: PomManifest["tools"];
 };
 
-export function getPomDefinitions(
-  ...names: readonly string[]
+/**
+ * Package-internal: the definitions of the classes `manifests` reach, the
+ * ones `names` names or, without names, all of them. A name no class has is
+ * left out.
+ */
+export function pomDefinitionsOf(
+  manifests: readonly PomManifest[],
+  names: readonly string[]
 ): PomDefinitionsResult {
   if (!names.every((name) => typeof name === "string"))
     throw new ToolInputError("POM definition names must be strings.");
 
-  const index = definitionIndex();
+  const index = definitionIndex(manifests);
   if (names.length > 0)
     return {
       definitions: names.flatMap((name) => {
@@ -34,14 +39,13 @@ export function getPomDefinitions(
 }
 
 /**
- * Every class the registered Page Objects reach, by name. Registration
- * refuses two different classes with one name, so each name has one
- * definition.
+ * Every class `manifests` reach, by name. Registration refuses two different
+ * classes with one name, so each name has one definition.
  */
-function definitionIndex() {
+function definitionIndex(manifests: readonly PomManifest[]) {
   const definitions = new Map<string, PomDefinition>();
-  for (const registration of listRegisteredPoms()) {
-    for (const definition of reachableDefinitions(registration.manifest))
+  for (const manifest of manifests) {
+    for (const definition of reachableDefinitions(manifest))
       definitions.set(definition.name, definition);
   }
   return definitions;

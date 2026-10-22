@@ -39,7 +39,7 @@ let started: TestSession | undefined;
 async function setup() {
   vi.resetModules();
   const registry = await import("./registry");
-  const definitions = await import("./pomDefinitions");
+  const definitions = await import("./registeredPomDefinitions");
   const { startSession } = await import("../test-utils/session.testSupport");
   const session = startSession({} as AymePage);
   started = session;
