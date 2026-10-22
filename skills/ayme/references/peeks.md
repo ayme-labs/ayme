@@ -16,9 +16,8 @@ holds it before inferring that state from the page or the source.
   its `values` or the error its read threw. A component's Peek has one
   instance per mounted component.
 - A Peek Tool appears while its Peek has an instance and goes with the last
-  one. When one you expect is missing, list the tools with `ayme_list_tools`
-  and check that the component is mounted, or that the App Process is
-  running and paired.
+  one. When one you expect is missing from the current tools, check that the
+  component is mounted, or that the App Process is running and paired.
 - Peeks are meant for development: they are live only while the session has
   `agentConnection` on, or `inspector` in the browser, so turn those on
   behind the project's dev flag. They reach coding agents and the Inspector
