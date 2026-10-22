@@ -6,7 +6,7 @@ import {
   requireCurrentDocument,
   type PublishedElementTool,
 } from "./elementTools";
-import { ToolInputError } from "../../shared";
+import { navigationDestination } from "../domain/navigationDestination";
 
 /** The application's own navigation, given in runtime setup as `navigate`. */
 type RouterNavigate = (url: string) => unknown;
@@ -59,21 +59,14 @@ export const navigateTool: PublishedElementTool = {
     const { cursor, page } = context;
     const { url } = input as { url: string };
     const currentDocument = requireCurrentDocument();
-    const destination = URL.parse(url, currentDocument.baseURI);
+    const destination = navigationDestination(
+      url,
+      currentDocument.baseURI,
+      currentDocument.location.origin
+    );
     // The browser Page rejects an invalid URL with its own error before it
     // navigates.
     if (!destination) await page.goto(url);
-    // Only http(s) documents run this runtime; a same-origin blob: URL
-    // would pass the origin check below.
-    if (destination && !["http:", "https:"].includes(destination.protocol))
-      throw new ToolInputError(
-        `Cannot navigate to "${url}": the protocol ${destination.protocol} is not supported.`
-      );
-    const { origin } = currentDocument.location;
-    if (destination && destination.origin !== origin)
-      throw new ToolInputError(
-        `Cannot navigate to "${url}": it is not on the page's own origin, ${origin}. Leaving the origin would lose the connection to this page.`
-      );
     const { navigate } = routerStore;
     return runAction(
       currentDocument,

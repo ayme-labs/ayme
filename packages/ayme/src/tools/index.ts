@@ -23,10 +23,7 @@ export {
   getPageStateTool,
   getPomDefinitionText,
 } from "./application/pageContext";
-export type {
-  PageContext,
-  PageContextPayload,
-} from "./application/pageContext";
+export type { PageContext } from "./application/pageContext";
 export {
   addPeek,
   isPeekTool,
@@ -35,4 +32,9 @@ export {
   subscribeToPeekTools,
 } from "./application/peek";
 export type { PeekRead, PeekResult, PeekTool } from "./application/peek";
-export type { BuiltInTools, ToolInput, ToolResult } from "./domain/toolTypes";
+export type {
+  BuiltInTools,
+  PageContextPayload,
+  ToolInput,
+  ToolResult,
+} from "./domain/toolTypes";
