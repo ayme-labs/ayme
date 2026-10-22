@@ -1,6 +1,6 @@
 // The rules of a screenshot call's input: which format, which file name, and
 // what to capture. Pure, so they hold the same wherever the capture runs.
-import { ToolInputError } from "../shared";
+import { ToolInputError } from "../../shared";
 
 export type ImageType = "png" | "jpeg";
 

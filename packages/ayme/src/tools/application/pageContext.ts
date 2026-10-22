@@ -1,12 +1,12 @@
-import type { JsonValue, PomDefinition, ToolDescriptor } from "../shared";
+import type { JsonValue, PomDefinition, ToolDescriptor } from "../../shared";
 import {
   getPageStateForDocument,
   type AriaRef,
   type PageState,
-} from "../page-state";
-import { getPomDefinitions, renderPomDefinitions } from "../page-objects";
-import type { Cursor } from "../page-state";
-import type { RunContext } from "../runs";
+} from "../../page-state";
+import { getPomDefinitions, renderPomDefinitions } from "../../page-objects";
+import type { Cursor } from "../../page-state";
+import type { RunContext } from "../../runs";
 
 export type PageContext = {
   readonly structure: string;

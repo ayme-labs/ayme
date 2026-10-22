@@ -1,17 +1,17 @@
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { PomManifest, ToolManifest } from "../shared";
-import { ayme as model, registerCompiledPom } from "../page-objects";
+import type { PomManifest, ToolManifest } from "../../shared";
+import { ayme as model, registerCompiledPom } from "../../page-objects";
 import {
   createAyme,
   createPage,
   type ActionResult,
   type Ayme,
   type CustomTool,
-} from "../index";
-import { rootOf } from "../test-utils/pomRoot.testSupport";
-import { agentTools } from "../test-utils/publication.testSupport";
+} from "../../index";
+import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
 
 // Runtime object seam, with an agent calling through WebMCP (a `webmcp` Run,
 // through the publication harness): its call of a Custom Tool answers with a

@@ -3,13 +3,12 @@
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
 import type { Locator, Page } from "@playwright/test";
-import type { JsonSchema } from "../shared";
+import type { JsonSchema } from "../../shared";
 import {
-  ACTION_RESULT_NOTE,
   assertReachable,
   runAction,
   type ElementInput,
-} from "../page-state";
+} from "../../page-state";
 import {
   listCustomTools,
   locatorOf,
@@ -21,14 +20,12 @@ import {
   type ElementToolDefinition,
   type RegisteredElementTool,
 } from "./elementTools";
-import { generateLocatorTool } from "./generateLocator";
 import {
   navigateBackTool,
   navigateForwardTool,
   reloadTool,
 } from "./historyTools";
 import { navigateTool } from "./navigateTool";
-import { screenshotTool } from "./screenshotTool";
 
 // --- Input schemas ---
 
@@ -296,7 +293,8 @@ export function isSelectElement(element: Element): boolean {
   return element instanceof HTMLSelectElement && !isDisabled(element);
 }
 
-const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
+/** Package-internal: the single-element Browser Tools, in publication order. */
+export const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
   registerElementTool(clickDefinition, isClickableElement),
   registerElementTool(hoverDefinition, isClickableElement),
   registerElementTool(typeDefinition, isFillableElement),
@@ -391,10 +389,11 @@ async function fillField(
 }
 
 /**
- * Fill the fields in order and stop at the first failure. The result names the
- * fields filled and the one that failed; filled fields stay filled.
+ * Package-internal: fill the fields in order and stop at the first failure.
+ * The result names the fields filled and the one that failed; filled fields
+ * stay filled.
  */
-const fillFormTool: PublishedElementTool = {
+export const fillFormTool: PublishedElementTool = {
   name: "fill_form",
   description:
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
@@ -442,8 +441,8 @@ const pressKeySchema: JsonSchema = {
   additionalProperties: false,
 };
 
-/** Press a key on the focused element. */
-const pressKeyTool: PublishedElementTool = {
+/** Package-internal: press a key on the focused element. */
+export const pressKeyTool: PublishedElementTool = {
   name: "press_key",
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
@@ -472,31 +471,3 @@ export const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
   navigateForwardTool,
   reloadTool,
 ];
-
-/**
- * A Browser Tool that acts on the page, as published: its description ends
- * with how the action result reports what changed. Only Ayme's own Browser
- * Tools carry the sentence; a Page Object Tool or Custom Tool is published
- * with the description its author wrote, and the Goal Loop offers its model
- * every tool's own description.
- */
-function withActionResultNote(
-  tool: PublishedElementTool
-): PublishedElementTool {
-  return { ...tool, description: `${tool.description} ${ACTION_RESULT_NOTE}` };
-}
-
-/** Computed once, so a Browser Tool resolves to the same object across publications. */
-const PUBLISHED_BROWSER_TOOLS: readonly PublishedElementTool[] = [
-  ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => withActionResultNote(tool)),
-  withActionResultNote(fillFormTool),
-  withActionResultNote(pressKeyTool),
-  generateLocatorTool,
-  screenshotTool,
-  ...NAVIGATION_TOOLS.map(withActionResultNote),
-];
-
-/** Package-internal: every Browser Tool as published, in publication order. */
-export function listPublishedBrowserTools(): readonly PublishedElementTool[] {
-  return PUBLISHED_BROWSER_TOOLS;
-}

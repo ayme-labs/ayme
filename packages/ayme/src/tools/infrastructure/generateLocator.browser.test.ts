@@ -2,16 +2,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
 
-import { createPage, registerCompiledPom } from "../page-objects";
-import type { PomManifest } from "../shared";
-import { RuntimeStateError, ToolInputError } from "../shared";
-import { buildToolOptions } from "../goal-loop";
-import { getInteractionHistory } from "../page-state";
-import { shapeOf } from "./playwrightMcp.testSupport";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { rooted } from "../test-utils/pomRoot.testSupport";
-import { createAyme, type Ayme } from "../runtime";
-import type { ToolInput, ToolResult } from "./toolTypes";
+import { createPage, registerCompiledPom } from "../../page-objects";
+import type { PomManifest } from "../../shared";
+import { RuntimeStateError, ToolInputError } from "../../shared";
+import { buildToolOptions } from "../../goal-loop";
+import { getInteractionHistory } from "../../page-state";
+import { shapeOf } from "../test-utils/playwrightMcp.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { createAyme, type Ayme } from "../../runtime";
+import type { ToolInput, ToolResult } from "../domain/toolTypes";
 
 type Result = ToolResult<"generate_locator">;
 

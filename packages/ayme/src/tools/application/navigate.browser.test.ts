@@ -4,12 +4,15 @@ import type {
   DecisionRequest,
   DecisionResponse,
   GoalLoopDecisionFunction,
-} from "../goal-loop";
-import { createPage } from "../page-objects";
-import { NO_VALUE_NEEDED_KEY } from "../goal-loop";
-import { agentTools, operations } from "../test-utils/publication.testSupport";
-import { createAyme, type Ayme } from "../runtime";
-import { errorText } from "../shared";
+} from "../../goal-loop";
+import { createPage } from "../../page-objects";
+import { NO_VALUE_NEEDED_KEY } from "../../goal-loop";
+import {
+  agentTools,
+  operations,
+} from "../../test-utils/publication.testSupport";
+import { createAyme, type Ayme } from "../../runtime";
+import { errorText } from "../../shared";
 
 // The test server answers `/__no-content` with 204 (vitest.browser.config.ts),
 // so a load starts and is then dropped: the test document stays, and what the
