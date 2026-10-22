@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
   type KeyboardEvent,
@@ -18,6 +17,11 @@ import {
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { PageObjectModel, PageObjectNode } from "../domain/pageModel";
+import {
+  objectRows,
+  revealSelection,
+  type ObjectTree,
+} from "../domain/objectTree";
 import { Divider } from "../../shared";
 import {
   defaultPreferences,
@@ -30,17 +34,6 @@ import { hoverHandlers } from "../view/hover";
 import { LiveMark } from "../view/LiveMark";
 
 const splitStep = 0.05;
-
-/** How the object tree is opened up, which outlives the tree's rows. */
-export type ObjectTree = {
-  /**
-   * The objects opened or closed by hand, by path. The rest are open while
-   * they are on the page and closed while they aren't.
-   */
-  open: Readonly<Record<string, boolean>>;
-  /** The selected object whose surrounding objects were last opened. */
-  revealed?: string;
-};
 
 const kindIcon: Record<PageObjectNode["kind"], LucideIcon> = {
   page: FileIcon,
@@ -92,31 +85,12 @@ export function ModelTree({
   const bothOpen = objectsOpen && modelsOpen;
 
   const selectedPath = selection.kind === "object" ? selection.path : undefined;
-  const { open: openObjects } = objectTree;
-  const rows = [...treeRows(objects, 1, openObjects)];
+  // The objects around the selection show open; the app stores that as the
+  // selection moves on, and a toggle stores it with the toggle.
+  const shown = revealSelection(objects, objectTree, selectedPath);
+  const rows = [...objectRows(objects, shown.open)];
   const setOpen = (path: string, open: boolean) =>
-    onObjectTreeChange({
-      ...objectTree,
-      open: { ...openObjects, [path]: open },
-    });
-
-  // A selection inside a closed object, from search or a link, opens the
-  // objects around it: once per selection, when it is in the tree, so a
-  // later close stays closed, across lens switches too.
-  useEffect(() => {
-    if (selectedPath === objectTree.revealed) return;
-    const around =
-      selectedPath === undefined ? [] : ancestors(objects, selectedPath);
-    if (around === undefined) return;
-    const closed = around.filter((node) => !isOpen(node, openObjects));
-    onObjectTreeChange({
-      open: {
-        ...openObjects,
-        ...Object.fromEntries(closed.map((node) => [node.path, true])),
-      },
-      revealed: selectedPath,
-    });
-  }, [selectedPath, objects, objectTree, openObjects, onObjectTreeChange]);
+    onObjectTreeChange({ ...shown, open: { ...shown.open, [path]: open } });
 
   // An object that closes on its own, as it leaves the page, takes the rows
   // under it away; focus on one of them moves to the closest row left.
@@ -225,43 +199,6 @@ export function ModelTree({
       </Pane>
     </div>
   );
-}
-
-/** The rows the tree shows: each object, and the children of the open ones. */
-function* treeRows(
-  nodes: readonly PageObjectNode[],
-  depth: number,
-  openObjects: ObjectTree["open"]
-): Generator<{ node: PageObjectNode; depth: number; open?: boolean }> {
-  for (const node of nodes) {
-    if (!node.children.length) {
-      yield { node, depth };
-      continue;
-    }
-    const open = isOpen(node, openObjects);
-    yield { node, depth, open };
-    if (open) yield* treeRows(node.children, depth + 1, openObjects);
-  }
-}
-
-function isOpen(node: PageObjectNode, openObjects: ObjectTree["open"]) {
-  return openObjects[node.path] ?? node.live;
-}
-
-/**
- * The objects above the one at `path`, outermost first; undefined when it
- * isn't in the tree.
- */
-function ancestors(
-  nodes: readonly PageObjectNode[],
-  path: string
-): PageObjectNode[] | undefined {
-  for (const node of nodes) {
-    if (node.path === path) return [];
-    const below = ancestors(node.children, path);
-    if (below) return [node, ...below];
-  }
-  return undefined;
 }
 
 /**

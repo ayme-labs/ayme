@@ -19,7 +19,12 @@ import {
   type Selection,
   selectionHighlight,
 } from "../navigation";
-import { isStaleSelection, structureLens, unfoldedOnPage } from "../structure";
+import {
+  isStaleSelection,
+  shownUnfolded,
+  structureLens,
+  unfoldedOnPage,
+} from "../structure";
 import { modelLens } from "../page-model";
 import { attachToolModels, toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
@@ -37,8 +42,6 @@ export function InspectorApp() {
   const { lens: activeLens, selection } = viewState;
   const setActiveLens = (lens: LensId) =>
     setViewState((current) => ({ ...current, lens }));
-  const setSelection = (selection: Selection) =>
-    setViewState((current) => withSelection(current, selection));
   // Like a node selection, unfolded chains name refs, so a reload drops them.
   const [unfoldedChains, setUnfoldedChains] = useState<ReadonlySet<string>>(
     () => new Set()
@@ -46,6 +49,20 @@ export function InspectorApp() {
   const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
+  const { structure } = runtime.pageState;
+  // What each tree opened around the old selection stays open.
+  const setSelection = (next: Selection) => {
+    setUnfoldedChains(
+      shownUnfolded(
+        structure.roots,
+        unfoldedChains,
+        selection.kind === "node" ? selection.ref : undefined
+      )
+    );
+    setViewState((current) =>
+      withSelection(current, next, runtime.pageModel.objects)
+    );
+  };
   const dark = useDarkTheme(preferences.theme);
   const { renderRun, runsRegion } = useRunning(runtime, selection, {
     view: viewState.runs,
@@ -119,7 +136,6 @@ export function InspectorApp() {
   const pageStateRead = runtime.pageState.capturedAt !== undefined;
   // Unfolded chains whose outermost wrapper left the page are forgotten,
   // once the page has been read.
-  const { structure } = runtime.pageState;
   useEffect(() => {
     if (pageStateRead)
       setUnfoldedChains((current) => unfoldedOnPage(current, structure.roots));

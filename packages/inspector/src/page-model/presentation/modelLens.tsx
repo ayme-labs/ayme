@@ -20,7 +20,8 @@ import {
   PageDetail,
   type MemberView,
 } from "../view/ModelDetails";
-import { ModelTree, type ObjectTree } from "./ModelTree";
+import type { ObjectTree } from "../domain/objectTree";
+import { ModelTree } from "./ModelTree";
 
 /**
  * The Model lens: the Page Objects on the page as a tree, and the Page

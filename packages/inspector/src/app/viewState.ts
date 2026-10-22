@@ -1,5 +1,9 @@
 import { type LensId, pageSelection, type Selection } from "../navigation";
-import type { ObjectTree } from "../page-model";
+import {
+  type ObjectTree,
+  type PageObjectNode,
+  revealSelection,
+} from "../page-model";
 
 /** The key of the Inspector's view state in the tab's storage. */
 export const viewStateKey = "ayme-inspector:view";
@@ -29,17 +33,21 @@ export const defaultViewState: ViewState = {
 const lenses: readonly LensId[] = ["model", "structure", "tools"];
 
 /**
- * The view state with a new selection. The Model tree has not opened the
- * objects around it yet, even when it was not showing as it changed.
+ * The view state with a new selection. The objects the Model tree opened
+ * around the old selection stay open; it has not opened those around the
+ * new one yet, even when it was not showing as it changed.
  */
 export function withSelection(
   current: ViewState,
-  selection: Selection
+  selection: Selection,
+  objects: readonly PageObjectNode[]
 ): ViewState {
+  const { selection: old, objectTree } = current;
+  const oldPath = old.kind === "object" ? old.path : undefined;
   return {
     ...current,
     selection,
-    objectTree: { open: current.objectTree.open },
+    objectTree: { open: revealSelection(objects, objectTree, oldPath).open },
   };
 }
 

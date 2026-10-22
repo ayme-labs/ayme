@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { StructureNode } from "./structure";
-import { treeRows, type TreeRow, unfoldedOnPage } from "./treeRows";
+import {
+  shownUnfolded,
+  treeRows,
+  type TreeRow,
+  unfoldedOnPage,
+} from "./treeRows";
 
 // Unit tests: the rows the Structure lens shows, with chains of generic
 // wrappers folded. The fixture is hand-written.
@@ -203,5 +208,29 @@ describe("unfoldedOnPage", () => {
 
   it("forgets every chain when the page holds no nodes", () => {
     expect([...unfoldedOnPage(new Set(["e1"]), [])]).toEqual([]);
+  });
+});
+
+describe("shownUnfolded", () => {
+  const tree = [
+    generic("e1", [generic("e2", [generic("e3", [button("e4", "Save")])])]),
+  ];
+
+  it("unfolds the chain of a selected wrapper the fold hides", () => {
+    expect([...shownUnfolded(tree, new Set(), "e2")]).toEqual(["e1"]);
+  });
+
+  it("keeps the same set for a selection the fold shows", () => {
+    const unfolded = new Set<string>();
+
+    expect(shownUnfolded(tree, unfolded, "e1")).toBe(unfolded);
+    expect(shownUnfolded(tree, unfolded, "e4")).toBe(unfolded);
+    expect(shownUnfolded(tree, unfolded, undefined)).toBe(unfolded);
+  });
+
+  it("keeps the same set when the chain is unfolded already", () => {
+    const unfolded = new Set(["e1"]);
+
+    expect(shownUnfolded(tree, unfolded, "e2")).toBe(unfolded);
   });
 });
