@@ -6,7 +6,6 @@ import {
 } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
-import { throwViolations, toolInputViolations } from "./schemaValidation";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 
@@ -66,7 +65,7 @@ async function snapshotFor(input: unknown, cursor: Cursor): Promise<JsonValue> {
   const context = await pageContextFor(
     document,
     cursor,
-    definitionNamesFrom(input)
+    (input as { names?: string[] }).names ?? []
   );
   const payload: PageContextPayload = {
     structure: context.structure,
@@ -103,11 +102,4 @@ async function pageContextFor(
  */
 export function getPomDefinitionText(...names: readonly string[]): string {
   return renderPomDefinitions(getPomDefinitions(...names).definitions);
-}
-
-function definitionNamesFrom(input: unknown): string[] {
-  // Omitted input asks for every definition, as `{}` does.
-  if (input === undefined) return [];
-  throwViolations(toolInputViolations(getPageContextTool.inputSchema, input));
-  return (input as { names?: string[] }).names ?? [];
 }

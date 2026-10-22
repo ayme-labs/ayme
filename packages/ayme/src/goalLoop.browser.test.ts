@@ -1339,7 +1339,7 @@ describe("Goal Loop goal in Chromium", () => {
 
       expect(
         await tool.execute({ goal: "do the thing", maxSteps }).catch(errorText)
-      ).toMatch(/^ToolInputError: .*maxSteps of at least 1/);
+      ).toBe("ToolInputError: Input property maxSteps must be at least 1.");
       expect(requests).toEqual([]);
     }
   );

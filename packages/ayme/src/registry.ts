@@ -14,7 +14,6 @@ import {
   methodArguments,
   actionFacts,
 } from "./actionTool";
-import { throwViolations, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
 import {
   isPlaywrightLiteLocator,
@@ -882,9 +881,7 @@ function createComponentTool(
   const wrapper = refComponentToolManifest(pomId, path, action);
   const itemDepth = path.map((member) => member.collection).lastIndexOf(true);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
-    const values = validatedArguments(wrapper, input);
-    const ref = values[0] as string;
-    const args = values[1] ?? {};
+    const { ref, args = {} } = input as { ref: string; args?: object };
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
     const label = `call ${wrapper.toolName} on`;
     const { element } = await resolveRef(ref, label, document);
@@ -1509,7 +1506,7 @@ async function performPageObjectAction(
   const currentDocument = requireCurrentDocument();
   const parameters = methodArguments(
     tool.parameters,
-    validatedArguments(tool, args)
+    argumentValues(tool, args)
   );
   if (root) await assertRootReachable(tool.toolName, root);
   // A tool may be called without the Caller ever having read the page; the
@@ -1527,8 +1524,8 @@ function requireCurrentDocument(): Document {
   return document;
 }
 
-function validatedArguments(tool: ToolManifest, args: unknown) {
-  throwViolations(toolInputViolations(inputSchemaFor(tool.parameters), args));
+/** The values of `tool`'s parameters in `args`, input the runtime checked. */
+function argumentValues(tool: ToolManifest, args: unknown) {
   const input = args as Record<string, unknown>;
   // An inherited name, such as constructor, is no argument.
   return tool.parameters.map((parameter) =>

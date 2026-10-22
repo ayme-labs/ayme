@@ -6,7 +6,6 @@ import type { JsonSchema } from "./contracts";
 import { runAction, startNavigation } from "./actionSequence";
 import {
   requireCurrentDocument,
-  validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
 import { requireAymeRuntimePage } from "./registry";
@@ -36,7 +35,6 @@ function traversalTool(
     inputSchema: noInputSchema,
     execute: async (input, context) => {
       const { cursor } = context;
-      validatedToolInput(noInputSchema, input);
       const currentDocument = requireCurrentDocument();
       const page = requireAymeRuntimePage();
       const traverse = () =>
@@ -112,7 +110,6 @@ export const reloadTool: PublishedElementTool = {
   inputSchema: noInputSchema,
   execute: async (input, context) => {
     const { cursor } = context;
-    validatedToolInput(noInputSchema, input);
     const currentDocument = requireCurrentDocument();
     const page = requireAymeRuntimePage();
     return runAction(
