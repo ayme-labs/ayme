@@ -319,7 +319,10 @@ function classManifest(
       const parameters = member.parameters.map((parameter) =>
         toolParameter(checker, parameter, className, methodName)
       );
-      const returnPoms = returnPomClassDeclarations(checker, member);
+      // An inherited action that returns its declaring class shows this one.
+      const returnPoms = returnPomClassDeclarations(checker, member).map(
+        (pom) => (pom === member.parent ? declaration : pom)
+      );
       returnReferences.push(...returnPoms);
       const returnPomNames = [
         ...new Set(returnPoms.map((pom) => pom.name!.text)),
