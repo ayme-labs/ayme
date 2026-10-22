@@ -102,8 +102,25 @@ export function shownUnfolded(
   return unfoldedChains;
 }
 
+/**
+ * Folds or unfolds the chain that `outer` leads, from the unfolded chains
+ * as the tree shows them. Folding a chain that hides the selected wrapper
+ * moves the selection to `outer`, so it stays in view.
+ */
+export function toggleChain(
+  shown: ReadonlySet<string>,
+  outer: StructureNode & { ref: string },
+  selectedRef: string | undefined
+): { unfolded: ReadonlySet<string>; select?: string } {
+  const unfolded = new Set(shown);
+  if (!unfolded.delete(outer.ref)) return { unfolded: unfolded.add(outer.ref) };
+  return hides(wrapperChain(outer), selectedRef)
+    ? { unfolded, select: outer.ref }
+    : { unfolded };
+}
+
 /** Whether folding the chain hides the node `ref`: one between its ends. */
-export function hides(chain: readonly StructureNode[], ref?: string) {
+function hides(chain: readonly StructureNode[], ref?: string) {
   return chain.slice(1, -1).some((link) => link.ref === ref);
 }
 

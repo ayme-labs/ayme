@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { StructureNode } from "./structure";
 import {
   shownUnfolded,
+  toggleChain,
   treeRows,
   type TreeRow,
   unfoldedOnPage,
@@ -232,5 +233,30 @@ describe("shownUnfolded", () => {
     const unfolded = new Set(["e1"]);
 
     expect(shownUnfolded(tree, unfolded, "e2")).toBe(unfolded);
+  });
+});
+
+describe("toggleChain", () => {
+  const outer = generic("e1", [
+    generic("e2", [generic("e3", [button("e4", "Save")])]),
+  ]) as StructureNode & { ref: string };
+
+  it("unfolds a folded chain, keeping the selection", () => {
+    expect(toggleChain(new Set(), outer, "e4")).toEqual({
+      unfolded: new Set(["e1"]),
+    });
+  });
+
+  it("folds an unfolded chain, keeping a selection the fold shows", () => {
+    expect(toggleChain(new Set(["e1", "e9"]), outer, "e3")).toEqual({
+      unfolded: new Set(["e9"]),
+    });
+  });
+
+  it("selects the outermost wrapper when folding hides the selected one", () => {
+    expect(toggleChain(new Set(["e1"]), outer, "e2")).toEqual({
+      unfolded: new Set(),
+      select: "e1",
+    });
   });
 });

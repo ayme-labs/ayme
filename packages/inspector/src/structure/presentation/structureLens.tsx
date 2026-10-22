@@ -17,11 +17,10 @@ import {
   type StructureTree,
 } from "../domain/structure";
 import {
-  hides,
   shownUnfolded,
+  toggleChain,
   treeRows,
   type TreeRow,
-  wrapperChain,
 } from "../domain/treeRows";
 import {
   Empty,
@@ -96,12 +95,9 @@ export function structureLens({
     ...treeRows(structure.roots, (chain) => shown.has(chain[0]!.ref!)),
   ];
   const toggle = (outer: RefNode) => {
-    const next = new Set(shown);
-    if (!next.delete(outer.ref)) next.add(outer.ref);
-    // Folding hides the selected wrapper: the outermost one stays in view.
-    else if (hides(wrapperChain(outer), selectedRef))
-      onSelect({ kind: "node", ref: outer.ref });
-    onUnfoldedChainsChange(next);
+    const { unfolded, select } = toggleChain(shown, outer, selectedRef);
+    if (select) onSelect({ kind: "node", ref: select });
+    onUnfoldedChainsChange(unfolded);
   };
   return {
     id: "structure",
