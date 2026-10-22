@@ -189,8 +189,8 @@ export function listPeekToolInfo(): readonly ToolInfo[] {
 // Inspector's element tool targets. A Run is handed its page instead.
 let startedPage: Page | undefined;
 
-/** Package-internal: set while a runtime session is started. */
-export function setStartedPage(page: Page | undefined): void {
+/** Package-internal: store or clear the started session's page. Called by `start()` and `stop()`. */
+export function configureStartedPage(page: Page | undefined): void {
   startedPage = page;
 }
 

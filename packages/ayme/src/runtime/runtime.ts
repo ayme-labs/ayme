@@ -37,7 +37,7 @@ import {
   listPeekToolInfo,
   listTools,
   resolveTools,
-  setStartedPage,
+  configureStartedPage,
   type ToolInfo,
 } from "./publishedTools";
 import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
@@ -547,7 +547,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     }
     owner.dispose();
     owner = undefined;
-    setStartedPage(undefined);
+    configureStartedPage(undefined);
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
@@ -766,7 +766,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           { code: "active-owner" }
         );
       owner = createAymeRuntime(getPage());
-      setStartedPage(getPage());
+      configureStartedPage(getPage());
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
       configurePageStateIgnore(options.ignore);
