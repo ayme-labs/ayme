@@ -1,27 +1,14 @@
-export type JsonPrimitive = string | number | boolean | null;
+import {
+  isJsonPrimitive,
+  type JsonPrimitive,
+  type JsonSchema,
+} from "@ayme-dev/core/tool-input";
+
+export { isJsonPrimitive };
+export type { JsonPrimitive, JsonSchema };
 
 export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-
-export type JsonSchema = {
-  type?:
-    "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
-  description?: string;
-  items?: JsonSchema;
-  /** A tuple's elements, in order; `items` then takes any further ones. */
-  prefixItems?: readonly JsonSchema[];
-  minItems?: number;
-  maxItems?: number;
-  enum?: readonly JsonPrimitive[];
-  properties?: Record<string, JsonSchema>;
-  required?: readonly string[];
-  additionalProperties?: boolean | JsonSchema;
-  minProperties?: number;
-  maxProperties?: number;
-  anyOf?: readonly JsonSchema[];
-  minimum?: number;
-  default?: JsonPrimitive;
-};
 
 /** A Page Object Action's parameter, as TypeScript declares it. */
 export type ToolParameter = {
@@ -135,15 +122,6 @@ export function isJsonValue(
   }
   ancestors.delete(value);
   return valid;
-}
-
-export function isJsonPrimitive(value: unknown): value is JsonPrimitive {
-  return (
-    value === null ||
-    typeof value === "string" ||
-    (typeof value === "number" && Number.isFinite(value)) ||
-    typeof value === "boolean"
-  );
 }
 
 /** A tool as an agent reads it, apart from its input schema. */
