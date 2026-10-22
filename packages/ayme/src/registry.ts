@@ -12,7 +12,7 @@ import {
   inputParameters,
   inputSchemaFor,
   methodArguments,
-  toolDescription,
+  actionFacts,
 } from "./actionTool";
 import { throwViolations, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
@@ -764,7 +764,7 @@ function createRegisteredTool(
     pomId: registration.manifest.className,
     methodName: action.methodName,
     name: action.toolName,
-    description: toolDescription(action),
+    ...actionFacts(action, registration.manifest.className),
     inputSchema: inputSchemaFor(action.parameters),
     parameters: inputParameters(action.parameters),
     execute: async (args, { cursor }) =>
@@ -920,7 +920,7 @@ function createComponentTool(
     collectionPath: componentPathFor(path.slice(0, itemDepth + 1)),
     methodName: action.methodName,
     name: wrapper.toolName,
-    description: toolDescription(action),
+    ...actionFacts(action, component.className),
     inputSchema: inputSchemaFor(wrapper.parameters),
     parameters: wrapper.parameters,
     execute,
@@ -941,7 +941,7 @@ function createSingularComponentTool(
     componentPath,
     methodName: action.methodName,
     name: `${registration.id}.${publicComponentPath(path)}.${action.methodName}`,
-    description: toolDescription(action),
+    ...actionFacts(action, component.className),
     inputSchema: inputSchemaFor(action.parameters),
     parameters: inputParameters(action.parameters),
     execute: async (input, { cursor }) =>

@@ -1,3 +1,4 @@
+import { agentDescription } from "./actionTool";
 import { recordAgentImageRun } from "./agentImageRuns";
 import {
   createAgentConnectionStatus,
@@ -271,7 +272,7 @@ function createServerPageObject<T extends object>(
 /** A tool an App Process paired beside the page offers. */
 export type AppProcessTool = Readonly<{
   name: string;
-  description: string;
+  description?: string;
   inputSchema: Readonly<Record<string, unknown>>;
 }>;
 
@@ -381,6 +382,15 @@ export function subscribeToStartedAyme(
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 
 /**
+ * A tool as Ayme MCP lists it: with the description agents read, and none
+ * when the tool says nothing beyond its name and schema, which MCP allows.
+ */
+function forAymeMcp(tool: ToolInfo): ToolInfo {
+  const description = agentDescription(tool);
+  return description === undefined ? tool : { ...tool, description };
+}
+
+/**
  * Create an inert runtime session. Its owner starts activity by calling
  * `start()`. `pageFactory` runs once, on first use in the browser; on the
  * server `pom.get` returns an inert Page Object. `ignore`, `customTools`,
@@ -454,7 +464,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    * calls as `webmcp` Runs. The package decides which of them it publishes.
    */
   const webMcpTools = {
-    list: () => ayme.tools.list(),
+    list: () =>
+      ayme.tools.list().map((tool) => ({
+        ...tool,
+        description: agentDescription(tool, { required: true }),
+      })),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
     run: (name: string, input: unknown) =>
       ayme.tools.run(name, input as never, { by: callers.webmcp }),
@@ -661,9 +675,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller.
    */
   const aymeMcpTools = {
-    list: () => ayme.tools.list(),
+    list: () => ayme.tools.list().map(forAymeMcp),
     subscribe: (listener: (tools: readonly ToolInfo[]) => void) =>
-      ayme.tools.subscribe(listener),
+      ayme.tools.subscribe((tools) => listener(tools.map(forAymeMcp))),
     run: (name: string, input: unknown) =>
       ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
   };

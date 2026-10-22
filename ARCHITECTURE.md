@@ -32,8 +32,8 @@ in-browser agents and the app's own code call on the running page.
   - Goal: run Page Object Actions and read the page state from inside the app
   - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md)
 - **Playground visitors**: developers evaluating Ayme before integrating it
-  - Goal: try the Inspector and connect their own coding agent to a hosted demo
-  - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [apps/example-vue/src/agentPrompts.ts](apps/example-vue/src/agentPrompts.ts)
+  - Goal: try the Inspector and the page's tools on a hosted demo
+  - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
 
 ### External systems
 
@@ -71,11 +71,17 @@ in-browser agents and the app's own code call on the running page.
 ### Build plugin
 
 - Responsibility: compiles the marked Page Object Models and derives each action's input
-  schema and each `Locator` member into POM metadata placed in the browser bundle
+  schema and each `Locator` member into POM metadata placed in the browser bundle; through
+  its `include` option, off by default, also decides whether a build carries Ayme at all.
+  Without it, the runtime's root and internal entries and the framework packages resolve
+  to absent entries and each Page Object Model compiles to a stand-in. A build prints one
+  line saying which it is, except a Next.js build that compiles no Page Object Model
 - Technology: Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and
   Turbopack entries, running the TypeScript compiler
 - Evidence: verified: [packages/unplugin-ayme/src/unplugin.ts](packages/unplugin-ayme/src/unplugin.ts),
-  [packages/unplugin-ayme/src/derivePomManifests.ts](packages/unplugin-ayme/src/derivePomManifests.ts)
+  [packages/unplugin-ayme/src/derivePomManifests.ts](packages/unplugin-ayme/src/derivePomManifests.ts),
+  [packages/unplugin-ayme/src/transformPomModule.ts](packages/unplugin-ayme/src/transformPomModule.ts),
+  [docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md](docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md)
 
 ### Ayme MCP server
 
@@ -108,8 +114,9 @@ in-browser agents and the app's own code call on the running page.
 
 ### Playground
 
-- Responsibility: the hosted demo app with the Inspector in demo mode and the "Try with your
-  own coding agent" wizard, plus the rendered documentation beside it
+- Responsibility: the hosted demo app with the Inspector in demo mode, plus the rendered
+  documentation beside it. The "Try with your own coding agent" wizard and the Agent
+  Connection are built only into local and dev builds, not the hosted ones
 - Technology: Vue single-page app built from [apps/example-vue](apps/example-vue), with the docs rendered by
   Jekyll from [docs/guide](docs/guide)
 - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
@@ -135,15 +142,16 @@ in-browser agents and the app's own code call on the running page.
     tools with it ([packages/webmcp/src/publication.ts](packages/webmcp/src/publication.ts))
 - **Host app code → Browser runtime**
   - Flows:
-    - → `usePageObject` registrations, `ayme.tools.list()` and `ayme.tools.run()` calls,
+    - → Page Object registrations through the `pageObjects` setup option and
+      `usePageObject`, `ayme.tools.list()` and `ayme.tools.run()` calls,
       Custom Tool and Peek registrations
     - ← tool definitions, results and Change Records
   - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md), [packages/ayme/src/runtime.ts](packages/ayme/src/runtime.ts)
 - **Playground visitors → Playground**
   - Flows:
-    - → list edits, Inspector runs, the agent prompt copied from the wizard
-    - ← the demo page, the prompt and the connect link flow
-  - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [apps/example-vue/src/agentPrompts.ts](apps/example-vue/src/agentPrompts.ts)
+    - → list edits and Inspector runs
+    - ← the demo page, its tools and their run results
+  - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 - **Host application → Build plugin**
   - Flows:
     - → Page Object Model sources through the bundler's transform hooks
@@ -198,9 +206,10 @@ in-browser agents and the app's own code call on the running page.
     `agentConnection` on under the framework's development flag
     - Deployment node: the host app's page in the developer's browser
     - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md)
-  - **Build plugin**: runs inside the dev server's bundler on every transform
+  - **Build plugin**: runs inside the dev server's bundler on every transform; the dev
+    server needs `include: true` too, or the page gets a build without Ayme
     - Deployment node: the host app's dev server process
-    - Evidence: verified: [packages/unplugin-ayme/src/vite.ts](packages/unplugin-ayme/src/vite.ts)
+    - Evidence: verified: [packages/unplugin-ayme/src/vite.ts](packages/unplugin-ayme/src/vite.ts), [docs/guide/reference/build-plugin.md](docs/guide/reference/build-plugin.md)
   - **Ayme MCP server**: `npx -y @ayme-dev/mcp@<version> mcp`, one child process per agent
     - Deployment node: the coding agent's process on the developer's machine
     - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md), [packages/mcp/src/cli.ts](packages/mcp/src/cli.ts)
@@ -231,11 +240,13 @@ in-browser agents and the app's own code call on the running page.
   app's setup publishes
 - Evidence: verified: [docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md](docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md)
 - Containers:
-  - **Browser runtime**: the production bundle; WebMCP publication as the app's setup
-    decides, the Inspector and Agent Connection off, Peeks inert
+  - **Browser runtime**: the production bundle, only when it was built with
+    `include: true`, otherwise it is a build without Ayme and none of it runs; WebMCP
+    publication as the app's setup decides, the Inspector and Agent Connection off, Peeks
+    inert
     - Deployment node: the host app's page in its users' browsers
     - Evidence: verified: [docs/adr/0034-peek-tools-reach-coding-agents-only-in-development.md](docs/adr/0034-peek-tools-reach-coding-agents-only-in-development.md),
-      [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md)
+      [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md), [docs/guide/reference/build-plugin.md](docs/guide/reference/build-plugin.md)
   - **Build plugin**: ran once at build time; nothing of it runs in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
   - **Ayme MCP server**: does not run here; coding agents are a development tool
@@ -248,6 +259,7 @@ in-browser agents and the app's own code call on the running page.
     - Deployment node: the host app's backend
     - Evidence: verified: [docs/guide/reference/decision-endpoint.md](docs/guide/reference/decision-endpoint.md)
   - **Playground**: does not run here
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 - External systems:
   - **Host application**: the app itself, in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
@@ -258,25 +270,31 @@ in-browser agents and the app's own code call on the running page.
 
 ### playground
 
-- Purpose: the public demo and docs at ayme-labs.github.io/ayme
+- Purpose: the public demo and docs at ayme-labs.github.io/ayme, and the same demo at
+  ayme.dev/playground/
 - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 - Containers:
-  - **Browser runtime**: the playground's production build with `webMCP`, `inspector`
-    in demo mode and `agentConnection` on, and no `goal` since no Decision Endpoint exists
-    - Deployment node: the ayme-labs.github.io/ayme GitHub Pages site
-    - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
+  - **Browser runtime**: the playground's production build with `webMCP` and `inspector`
+    in demo mode, `agentConnection` off (`VITE_AGENT_CONNECTION=false`), and no `goal`
+    since no Decision Endpoint exists
+    - Deployment nodes: the ayme-labs.github.io/ayme GitHub Pages site, and its
+      `/playground/` copy that ayme.dev/playground/ proxies to
+    - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
   - **Build plugin**: ran in the Pages build; nothing of it runs on the site
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
-  - **Ayme MCP server**: the visitor's own, started by their coding agent from the wizard's
-    prompt and paired through a connect link
-    - Deployment node: the visitor's machine
-    - Evidence: verified: [apps/example-vue/src/agentPrompts.ts](apps/example-vue/src/agentPrompts.ts)
+  - **Ayme MCP server**: does not run here; the hosted builds leave out the Agent
+    Connection and the coding-agent wizard, and the workflow fails if the wizard is in the
+    output
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
   - **App Process runtime**: does not run here; the site is static
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
   - **Decision Endpoint**: does not run here; the deployed build publishes no `goal`
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
-  - **Playground**: the static Vite build plus the Jekyll-rendered docs under `/docs`
-    - Deployment node: the ayme-labs.github.io/ayme GitHub Pages site
+  - **Playground**: the static Vite build plus the Jekyll-rendered docs under `/docs`;
+    the build is made twice, once for each base path, and only the `/playground/` copy
+    loads the landing's Google Tag Manager container
+    - Deployment nodes: the ayme-labs.github.io/ayme GitHub Pages site, and its
+      `/playground/` copy that ayme.dev/playground/ proxies to
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [docs/guide/_config.yml](docs/guide/_config.yml)
 - External systems:
   - **Host application**: the playground's own list app
@@ -307,9 +325,11 @@ in-browser agents and the app's own code call on the running page.
     with a repository secret
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  - **Playground**: built on pull requests that change it, not deployed
+  - **Playground**: built on pull requests that change it, not deployed; its build also
+    builds it without Ayme and checks that output carries none of Ayme
     - Deployment node: a GitHub Actions runner
-    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/package.json](apps/example-vue/package.json),
+      [apps/example-vue/scripts/verify-browser-output.mjs](apps/example-vue/scripts/verify-browser-output.mjs)
 - External systems:
   - **Host application**: the fixture and example apps in [apps/](apps/)
     - Evidence: verified: [docs/testing.md](docs/testing.md)

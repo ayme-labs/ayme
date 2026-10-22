@@ -13,6 +13,17 @@ export type AgentTool = {
 };
 
 /**
+ * A tool's description as the panel shows it: what Ayme MCP gives agents.
+ * WebMCP requires a description, so it gives a bare action `Run <action>.`,
+ * which Ayme MCP and the panel leave out.
+ */
+export function panelDescription(tool: AgentTool): string {
+  return tool.description === `Run ${tool.name.split(".").at(-1)}.`
+    ? ""
+    : tool.description;
+}
+
+/**
  * What an agent gets over the page's WebMCP: the published tools, and
  * snapshot's result, as the recording WebMCP driver received them.
  * The e2e tests take their expected values from here, never from the panel.

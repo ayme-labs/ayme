@@ -1,4 +1,4 @@
-import { AgentView } from "./agentView";
+import { AgentView, panelDescription } from "./agentView";
 import { expect, INSPECTOR, test } from "./fixtures";
 
 // E2E: the lenses, the run card, Runs and What the model sees working
@@ -36,7 +36,7 @@ test("a tool's page runs it from a card without a head, and What the model sees 
 
   const card = await inspector.tool("ListPage.addItem");
 
-  await expect(toolPage.description).toHaveText(addItem.description);
+  await expect(toolPage.description).toHaveText(panelDescription(addItem));
   await expect(card.argumentsToggle).toHaveCount(0);
   await card.run({ text: "Bread" });
   await expect(listPage.items.filter({ hasText: "Bread" })).toHaveCount(1);

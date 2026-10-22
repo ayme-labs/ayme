@@ -20,7 +20,10 @@ import {
 
 // Unit tests: the Inspector's one source of the tools the panel can run, over
 // a stand-in started session that the test changes and announces.
-vi.mock("@ayme-dev/ayme/internal", () => ({
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => ({
+  agentDescription: (
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>()
+  ).agentDescription,
   getStartedAyme: vi.fn(),
   getAgentConnectionStatus: vi.fn(),
   getAppProcessTools: vi.fn(),
@@ -104,6 +107,25 @@ it("gives the live tools and the publication status", () => {
     publication: { state: "active", message: "" },
     agentConnection: { state: "off" },
   });
+});
+
+it("describes each tool as Ayme MCP gives it to agents", () => {
+  const bare: ToolInfo = { ...addItem, name: "ListPage.clear" };
+  delete (bare as { description?: string }).description;
+  const opener: ToolInfo = {
+    ...bare,
+    name: "ListPage.openSettings",
+    returnPoms: ["SettingsPage"],
+  };
+  publish([addItem, bare, opener]);
+
+  const [listed, ...rest] = renderReader().at(-1)!.live;
+
+  expect(listed).toEqual(addItem);
+  expect(rest).toEqual([
+    bare,
+    { ...opener, description: "Then shows SettingsPage." },
+  ]);
 });
 
 it("gives the Agent Connection status, and follows it", () => {

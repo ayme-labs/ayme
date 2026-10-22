@@ -251,7 +251,36 @@ it("starts the Agent Connection while a session with agentConnection is started"
     { tools: Ayme["tools"]; recordAgentImage: unknown },
   ];
   expect(recordAgentImage).toBe(recordAgentImageRun);
-  expect(tools.list()).toBe(runtime.tools.list());
+  expect(tools.list()).toEqual(runtime.tools.list());
+  // MCP lists a bare action without a description, and says what an action
+  // shows afterwards.
+  class Opener {
+    open() {}
+    close() {}
+  }
+  registerCompiledPom(Opener, {
+    className: "Opener",
+    components: [],
+    members: [],
+    tools: [
+      {
+        methodName: "open",
+        toolName: "Opener.open",
+        parameters: [],
+        returnPoms: ["Dialog"],
+      },
+      { methodName: "close", toolName: "Opener.close", parameters: [] },
+    ],
+  });
+  runtime.pom.register(Opener);
+  await registryModule.probeRegisteredPomMembers();
+  const listed = (name: string) =>
+    tools.list().find((tool) => tool.name === name);
+  expect(listed("Opener.open")).toMatchObject({
+    description: "Then shows Dialog.",
+  });
+  expect(listed("Opener.close")).not.toHaveProperty("description");
+  runtime.pom.unregister(Opener);
   const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
   await expect(tools.run("snapshot", {})).resolves.toBe("ran");
   expect(run).toHaveBeenCalledExactlyOnceWith(
@@ -739,8 +768,8 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
       {
         methodName: "save",
         toolName: "Saver.save",
-        description: "Save.",
         parameters: [],
+        returnPoms: ["Saver"],
       },
     ],
   });
@@ -749,7 +778,7 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
   await publicationStarts();
   const { tools } = published();
   const names = () => tools.list().map(({ name }) => name);
-  expect(tools.list()).toBe(runtime.tools.list());
+  expect(names()).toEqual(runtime.tools.list().map(({ name }) => name));
   expect(names()).toContain("click");
 
   const listener = vi.fn();
@@ -759,7 +788,10 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
   expect(names()).not.toContain("Saver.save");
   await registryModule.probeRegisteredPomMembers();
   expect(listener).toHaveBeenCalledOnce();
-  expect(names()).toContain("Saver.save");
+  // WebMCP refuses a tool without a description, so a bare action has one.
+  expect(tools.list().find(({ name }) => name === "Saver.save")).toMatchObject({
+    description: "Run save.",
+  });
   unsubscribe();
   runtime.pom.unregister(Saver);
   expect(listener).toHaveBeenCalledOnce();
