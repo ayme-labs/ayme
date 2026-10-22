@@ -30,3 +30,6 @@ tools are missing, read [Browser setup](browser-setup.md).
   `ayme_list_tools` shows whether each tool is available and why not,
   and a tool result says which tools became available or unavailable since
   your previous call.
+- When a tool answers that it is gone, what offered it is no longer there,
+  such as a Page Object that is no longer present, a page that navigated or
+  an App Process that stopped. Use one of the current tools instead.

@@ -77,7 +77,8 @@ async open() {
 
 Expose individual buttons, links, and inputs as named locators. Introduce helper
 objects when they supply meaningful reusable behavior. Include collections when
-the flow or structural observation needs them.
+the flow or structural observation needs them. Give a collection's item class a
+`root`: each item's ref is its root's.
 
 ```ts
 readonly createButton = this.root.getByTestId("create-button");
