@@ -56,3 +56,15 @@ it("compares objects field by field", () => {
     sameRuntimeOptions({ agentConnection: true }, { agentConnection: {} })
   ).toBe(false);
 });
+
+it("keeps an instance by reference rather than copying its own fields", () => {
+  class Config {
+    get enabled() {
+      return true;
+    }
+  }
+  const webMCP = new Config();
+  const snapshot = snapshotRuntimeOptions({ webMCP });
+  expect(snapshot.webMCP).toBe(webMCP);
+  expect(sameRuntimeOptions({ webMCP }, { webMCP: new Config() })).toBe(false);
+});

@@ -8,8 +8,8 @@ export function inspectorMode({ inspector }: AymeOptions) {
 
 /**
  * A copy of the options that `sameRuntimeOptions` can later trust: every
- * list and object is copied one level deep, the depth the comparison reads,
- * so a change the caller makes to one in place shows as a change. The
+ * list and plain object is copied one level deep, the depth the comparison
+ * reads, so a change the caller makes to one in place shows as a change. The
  * framework owners keep it while mounted.
  */
 export function snapshotRuntimeOptions(options: AymeOptions): AymeOptions {
@@ -21,8 +21,8 @@ export function snapshotRuntimeOptions(options: AymeOptions): AymeOptions {
 /**
  * Whether two option objects configure the same runtime session: `inspector`
  * turns on the same, and every other option holds the same values one level
- * deep, lists item by item in order and objects field by field. The framework
- * owners use it to keep their options fixed while mounted.
+ * deep, lists item by item in order and plain objects field by field. The
+ * framework owners use it to keep their options fixed while mounted.
  */
 export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   return sameFields(a, b, (key) =>
@@ -54,6 +54,10 @@ function sameFields<T extends object>(
   return [...keys].every((key) => same(key as keyof T));
 }
 
+// Only plain objects: an instance's fields may live on its prototype, which a
+// spread would drop, so instances stay by reference.
 function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
