@@ -99,7 +99,7 @@ export default [
   ...horizontalBoundaries({
     packageRoot,
     // The other slices aren't layered yet; packages/ayme/AGENTS.md says why.
-    enforcedSlices: ["runs", "goal-loop"],
+    enforcedSlices: ["runs", "page-objects", "goal-loop"],
   }),
   {
     files: [sourceFiles],

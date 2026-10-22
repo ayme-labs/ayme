@@ -11,7 +11,7 @@ vi.mock("../page-state/pageState", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getPageStateForDocument,
 }));
-vi.mock("../page-objects/registeredPomDefinitions", () => ({
+vi.mock("../page-objects/infrastructure/registeredPomDefinitions", () => ({
   getPomDefinitions,
 }));
 
