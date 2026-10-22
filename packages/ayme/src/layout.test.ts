@@ -1,0 +1,72 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { ESLint } from "eslint";
+import { expect, it } from "vitest";
+
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const eslint = new ESLint({ cwd: packageRoot });
+
+/** The lint messages for `code` as if it were the file at `path`. */
+async function lint(path: string, code: string) {
+  const [result] = await eslint.lintText(code, {
+    filePath: join(packageRoot, path),
+  });
+  return result!.messages.map(({ message }) => message);
+}
+
+// ESLint loads the package config and its import resolver on first use.
+it(
+  "lint flags an import against the slice and layer layout",
+  { timeout: 60_000 },
+  async () => {
+    expect(
+      await lint(
+        "src/goal-loop/domain/misplaced.ts",
+        'export { configureGoalLoop } from "../application/goalLoop";\n'
+      )
+    ).toEqual([
+      expect.stringContaining(
+        "domain may only depend on the allowed horizontal layers"
+      ),
+    ]);
+    expect(
+      await lint(
+        "src/page-state/misplaced.ts",
+        'export { createPage } from "../page-objects";\n'
+      )
+    ).toEqual([expect.stringContaining("page-state may only use shared")]);
+    expect(
+      await lint(
+        "src/page-state/misplaced.ts",
+        'export type { ToolRunOptions } from "../runs";\n'
+      )
+    ).toEqual([expect.stringContaining("page-state may only use shared")]);
+    expect(
+      await lint(
+        "src/tools/misplaced.ts",
+        'export { createRunQueue } from "../runs/application/run";\n'
+      )
+    ).toEqual([
+      expect.stringContaining("Import another slice through its index.ts."),
+    ]);
+    expect(
+      await lint(
+        "src/tools/misplaced.ts",
+        'export { startSession } from "../test-utils/session.testSupport";\n'
+      )
+    ).toEqual([expect.stringContaining("Only test code may use test code.")]);
+  }
+);
+
+it(
+  "lint lets a test use any slice, through its index.ts",
+  { timeout: 60_000 },
+  async () => {
+    expect(
+      await lint(
+        "src/page-state/misplaced.test.ts",
+        'export { createAyme } from "../runtime";\n'
+      )
+    ).toEqual([]);
+  }
+);
