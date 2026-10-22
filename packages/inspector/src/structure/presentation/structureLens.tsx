@@ -17,7 +17,12 @@ import {
   type StructureNode,
   type StructureTree,
 } from "../domain/structure";
-import { treeRows, type TreeRow, wrapperChain } from "../domain/treeRows";
+import {
+  shownUnfolded,
+  toggleChain,
+  treeRows,
+  type TreeRow,
+} from "../domain/treeRows";
 import {
   Empty,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
@@ -57,8 +62,8 @@ type RefNode = StructureNode & { ref: string };
  *
  * Chains of generic wrappers fold into one row, see {@link treeRows}. A
  * chain is unfolded while its outermost wrapper's ref is in
- * `unfoldedChains`, or while a wrapper the fold hides is selected, which
- * then adds it there. The app drops refs that leave the page.
+ * `unfoldedChains`, or while a wrapper the fold hides is selected, see
+ * {@link shownUnfolded}. The app drops refs that leave the page.
  */
 export function structureLens({
   structure,
@@ -84,27 +89,16 @@ export function structureLens({
 }): Lens {
   const rows = [...structureRows(structure.roots)];
   const selectedRef = selection.kind === "node" ? selection.ref : undefined;
-  const hides = (chain: readonly StructureNode[], ref?: string) =>
-    chain.slice(1, -1).some((link) => link.ref === ref);
   // A picked wrapper the fold hides unfolds its chain, which then stays
   // unfolded like one the person unfolded.
-  let selectedChain: string | undefined;
+  const shown = shownUnfolded(structure.roots, unfoldedChains, selectedRef);
   const shownRows = [
-    ...treeRows(structure.roots, (chain) => {
-      if (!hides(chain, selectedRef)) return unfoldedChains.has(chain[0]!.ref!);
-      selectedChain = chain[0]!.ref!;
-      return true;
-    }),
+    ...treeRows(structure.roots, (chain) => shown.has(chain[0]!.ref!)),
   ];
-  const settled = new Set(unfoldedChains);
-  if (selectedChain) settled.add(selectedChain);
   const toggle = (outer: RefNode) => {
-    const next = new Set(settled);
-    if (!next.delete(outer.ref)) next.add(outer.ref);
-    // Folding hides the selected wrapper: the outermost one stays in view.
-    else if (hides(wrapperChain(outer), selectedRef))
-      onSelect({ kind: "node", ref: outer.ref });
-    onUnfoldedChainsChange(next);
+    const { unfolded, select } = toggleChain(shown, outer, selectedRef);
+    if (select) onSelect({ kind: "node", ref: select });
+    onUnfoldedChainsChange(unfolded);
   };
   return {
     id: "structure",
@@ -117,10 +111,10 @@ export function structureLens({
         onPick={(ref) => onSelect({ kind: "node", ref })}
         onToggle={toggle}
         onHover={onHover}
-        settle={
-          settled.size > unfoldedChains.size
-            ? () => onUnfoldedChainsChange(settled)
-            : undefined
+        store={
+          shown === unfoldedChains
+            ? undefined
+            : () => onUnfoldedChainsChange(shown)
         }
       />
     ),
@@ -171,7 +165,7 @@ function StructureTreeView({
   onPick,
   onToggle,
   onHover,
-  settle,
+  store,
 }: {
   rows: readonly TreeRow[];
   capture: StructureCapture;
@@ -179,10 +173,10 @@ function StructureTreeView({
   onPick: (ref: string) => void;
   onToggle: (outer: RefNode) => void;
   onHover: OnHover;
-  /** Stores the unfolded chains as this tree has them, when they differ. */
-  settle?: () => void;
+  /** Stores the unfolded chains as this tree shows them, when they differ. */
+  store?: () => void;
 }) {
-  useEffect(() => settle?.(), [settle]);
+  useEffect(() => store?.(), [store]);
   return (
     <div className="flex flex-col gap-1">
       {capture.error && (
