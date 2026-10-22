@@ -108,25 +108,19 @@ export class ChannelSession {
 }
 
 /**
- * One page connected to the server through the channel: which tab it is,
- * besides its tools and calls.
+ * One page connected to the server through the channel: its tools and
+ * calls, and how to end its channel. Which tab it is, the tab's lifecycle
+ * keeps (see `TabLifecycle`).
  */
 export class PageSession extends ChannelSession {
-  /** The id the tab keeps for its pairing across reloads and navigation. */
-  readonly tab: string;
-  /** The document's URL when it connected. */
-  readonly url: string;
   /** Ends the page's channel and tells it another tab paired in its place. */
   readonly disconnect: () => void;
 
   constructor(
-    hello: PageHello,
     disconnect: () => void,
     onToolsChanged: (tools: readonly PageTool[]) => void
   ) {
     super(onToolsChanged);
-    this.tab = hello.tab;
-    this.url = hello.url;
     this.disconnect = disconnect;
   }
 }
@@ -156,7 +150,8 @@ type ToolHolder = PageSession | ProcessSession;
  * A page belongs to a tab, which keeps its id across reloads and
  * navigation. The newest tab wins: when another tab connects, the paired
  * tab's calls are answered, it is disconnected, and it may not connect
- * again. An App Process never replaces the page or another App Process,
+ * again. The tab's lifecycle decides this (see `attached`); the connection
+ * carries it out. An App Process never replaces the page or another App Process,
  * and the page never replaces it (ADR-0033).
  *
  * The agent sees one tool per name: the page's, else that of the App
@@ -181,7 +176,6 @@ export class AgentConnection {
   readonly #held = new Set<(exit?: HeldCallExit) => void>();
   /** Fires at the lifecycle's next deadline. */
   #timer: ReturnType<typeof setTimeout> | undefined;
-  readonly #replacedTabs = new Set<string>();
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
 
@@ -234,11 +228,17 @@ export class AgentConnection {
 
   /**
    * A page introduced itself on a channel the server accepted. It becomes
-   * the paired page, unless a newer tab replaced its tab: then it is
-   * disconnected and `undefined` returned.
+   * the paired page, unless the tab's lifecycle refuses it because a newer
+   * tab replaced its tab: then it is disconnected and `undefined` returned.
    */
   attach(hello: PageHello, disconnect: () => void): PageSession | undefined {
-    if (this.#replacedTabs.has(hello.tab)) {
+    const transition = tabLifecycle.attached(
+      this.#lifecycle,
+      hello.tab,
+      hello.url,
+      Date.now()
+    );
+    if (transition.refused) {
       disconnect();
       return undefined;
     }
@@ -249,14 +249,12 @@ export class AgentConnection {
       // the lifecycle says how its calls are answered.
       for (const [callId, answer] of previous.takeUnanswered())
         this.#leftCalls.set(callId, answer);
-      if (previous.tab !== hello.tab) previous.disconnect();
+      // The replaced exit is also the signal to disconnect the previous page.
+      if (transition.left?.type === "replaced") previous.disconnect();
       this.#emit({ type: "unpaired" });
     }
-    const lifecycle = this.#lifecycle;
-    if (lifecycle.name !== "unpaired" && lifecycle.tab !== hello.tab)
-      this.#replacedTabs.add(lifecycle.tab);
 
-    const page = new PageSession(hello, disconnect, (tools) => {
+    const page = new PageSession(disconnect, (tools) => {
       if (this.#page !== page) return;
       this.#apply(
         tabLifecycle.reported(
@@ -267,9 +265,7 @@ export class AgentConnection {
       this.#emit({ type: "toolsChanged", tools: this.tools });
     });
     this.#page = page;
-    this.#apply(
-      tabLifecycle.attached(lifecycle, hello.tab, hello.url, Date.now())
-    );
+    this.#apply(transition);
     this.#emit({ type: "paired" });
     return page;
   }
@@ -444,7 +440,7 @@ export class AgentConnection {
       answerUnanswered(page.takeUnanswered(), { type: "stopped" });
       this.#emit({ type: "unpaired" });
     }
-    this.#apply(tabLifecycle.stopped());
+    this.#apply(tabLifecycle.stopped(this.#lifecycle));
   }
 
   /** Calls `listener` with every event; returns what unsubscribes it. */
