@@ -115,7 +115,7 @@ export function notConnectedResult(): ToolResult {
  */
 export function goneToolResult(name: string): ToolResult {
   return errorResult(
-    `The tool "${name}" is gone: the page or App Process that offered it no longer does, such as when its component unmounted, the page navigated or the process stopped. ayme_list_tools lists the current tools.`
+    `The tool "${name}" is gone: the page or App Process that offered it no longer does.`
   );
 }
 

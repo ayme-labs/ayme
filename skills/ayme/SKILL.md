@@ -15,6 +15,10 @@ navigated or closed, read [Browser setup](references/browser-setup.md).
 When you use the page's tools, a ref fails to resolve, `goal` hands over, or a
 tool answers that it is unavailable, read [Page tools](references/page-tools.md).
 
+The page's tools change as the page does. If your client doesn't update your
+tool list by itself, `ayme_list_tools` lists the current tools and `ayme_call`
+runs them.
+
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md). Where it conflicts with
 the project's conventions, raise the conflict with the user.

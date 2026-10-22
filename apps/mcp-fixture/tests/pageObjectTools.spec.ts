@@ -107,5 +107,5 @@ test("a Page Object Tool that went is no longer callable", async ({
   const fallback = await agent.call("ayme_call", { tool: BASKET_TOOL });
   expect(fallback.isError).toBe(true);
   expect(fallback.text).toContain(`The tool "${BASKET_TOOL}" is gone`);
-  expect(fallback.text).toContain("ayme_list_tools");
+  expect(fallback.text).not.toContain("ayme_list_tools");
 });

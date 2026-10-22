@@ -87,10 +87,13 @@ const pageTool = (name: string) => ({
 });
 const url = "http://127.0.0.1:5173/";
 
-/** Answers `page`'s calls with the page's name, until its channel ends. */
-async function answerAs(page: PageSession, signal: AbortSignal) {
+/**
+ * Answers `page`'s calls with the URL it connected at, its name, until its
+ * channel ends.
+ */
+async function answerAs(page: PageSession, at: string, signal: AbortSignal) {
   for await (const call of page.calls(signal))
-    page.answer({ callId: call.callId, ok: true, result: page.url });
+    page.answer({ callId: call.callId, ok: true, result: at });
 }
 
 describe("a call while the tab loads a new document", () => {
@@ -120,7 +123,7 @@ describe("a call while the tab loads a new document", () => {
   const flush = () => vi.advanceTimersByTimeAsync(0);
   const reconnect = (connection: AgentConnection, at: string) => {
     const next = connection.attach({ tab: "a", url: at }, () => {})!;
-    void answerAs(next, ending.signal);
+    void answerAs(next, at, ending.signal);
     next.publishTools([pageTool("snapshot")]);
   };
   const leftFor = (to: string) =>
@@ -158,7 +161,7 @@ describe("a call while the tab loads a new document", () => {
     vi.useFakeTimers();
     const connection = new AgentConnection();
     const page = connection.attach({ tab: "a", url }, () => {})!;
-    void answerAs(page, ending.signal);
+    void answerAs(page, url, ending.signal);
 
     const { result } = call(connection);
     await flush();
@@ -229,7 +232,7 @@ describe("a call while the tab loads a new document", () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
     connection.navigating(page, { url: `${url}download`, reload: false });
-    void answerAs(page, ending.signal);
+    void answerAs(page, url, ending.signal);
 
     const { result, answered } = call(connection);
     await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS - 1);
@@ -247,7 +250,7 @@ describe("a call while the tab loads a new document", () => {
     const { result } = call(connection);
     await flush();
     const other = connection.attach({ tab: "b", url }, () => {})!;
-    void answerAs(other, ending.signal);
+    void answerAs(other, url, ending.signal);
     other.publishTools([pageTool("snapshot")]);
 
     expect(await result).toEqual(
@@ -265,7 +268,7 @@ describe("a call while the tab loads a new document", () => {
     const { result } = call(connection);
     await flush();
     const other = connection.attach({ tab: "b", url }, () => {})!;
-    void answerAs(other, ending.signal);
+    void answerAs(other, url, ending.signal);
     other.publishTools([pageTool("snapshot")]);
 
     expect(await result).toEqual(
@@ -309,7 +312,7 @@ describe("a call while the tab loads a new document", () => {
     const { result } = call(connection);
     await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS - 100);
     const next = connection.attach({ tab: "a", url }, () => {})!;
-    void answerAs(next, ending.signal);
+    void answerAs(next, url, ending.signal);
     await vi.advanceTimersByTimeAsync(200);
     next.publishTools([pageTool("snapshot")]);
 
@@ -320,7 +323,7 @@ describe("a call while the tab loads a new document", () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
     connection.navigating(page, { url: `${url}download`, reload: false });
-    void answerAs(page, ending.signal);
+    void answerAs(page, url, ending.signal);
     await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS);
 
     const { result, answered } = call(connection);

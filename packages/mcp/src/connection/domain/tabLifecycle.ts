@@ -36,8 +36,12 @@ type Left = { url: string; to?: PageNavigating; until: number };
  *
  * Page calls are held while the tab is navigating, disconnected or
  * reconnected (see `holdsPageCalls`).
+ *
+ * In every state, `replaced` lists the tabs another tab's page replaced, if
+ * any: the newest tab wins, and a replaced tab may not connect again for as
+ * long as the server runs, even once no tab is paired.
  */
-export type TabLifecycle =
+export type TabLifecycle = (
   | { name: "unpaired" }
   | { name: "paired"; tab: string; url: string; to?: PageNavigating }
   | {
@@ -55,18 +59,21 @@ export type TabLifecycle =
       url: string;
       until: number;
       left?: Left;
-    };
+    }
+) & { replaced?: readonly string[] };
 
 /**
  * A lifecycle after an event, with what the server does about it: answer
  * the previous document's calls in flight as `left` says, and answer the
  * held calls without running them as `held` says. When `held` is absent and
- * the new lifecycle holds no page calls, the held calls go out.
+ * the new lifecycle holds no page calls, the held calls go out. `refused`
+ * says the page that connected may not pair, and is to be disconnected.
  */
 export type Transition = {
   lifecycle: TabLifecycle;
   left?: PageExit;
   held?: HeldCallExit;
+  refused?: true;
 };
 
 export const unpaired: TabLifecycle = { name: "unpaired" };
@@ -94,9 +101,10 @@ export function deadline(lifecycle: TabLifecycle): number | undefined {
 }
 
 /**
- * A page of the tab `tab` connected at `url`. Another tab's page replaces
- * the paired tab, whose calls are answered; the same tab's earlier
- * document, connected or not, is left.
+ * A page of the tab `tab` connected at `url`. This is where the newest tab
+ * wins: another tab's page replaces the paired tab, whose calls are
+ * answered, and the replaced tab is refused from then on. The same tab's
+ * earlier document, connected or not, is left.
  */
 export function attached(
   lifecycle: TabLifecycle,
@@ -104,16 +112,21 @@ export function attached(
   url: string,
   now: number
 ): Transition {
+  if (lifecycle.replaced?.includes(tab)) return { lifecycle, refused: true };
   const page = {
     name: "reconnected",
     tab,
     url,
     until: now + RECONNECT_WAIT_MS,
+    ...kept(lifecycle),
   } as const;
   if (lifecycle.name === "unpaired") return { lifecycle: page };
   if (lifecycle.tab !== tab)
     return {
-      lifecycle: page,
+      lifecycle: {
+        ...page,
+        replaced: [...(lifecycle.replaced ?? []), lifecycle.tab],
+      },
       left: { type: "replaced" },
       held: { type: "replaced" },
     };
@@ -138,6 +151,7 @@ export function navigating(
       to,
       until: now + RECONNECT_WAIT_MS,
       ...(left ? { left } : {}),
+      ...kept(lifecycle),
     },
   };
 }
@@ -151,6 +165,7 @@ export function disconnected(lifecycle: TabLifecycle, now: number): Transition {
       name: "disconnected",
       tab: lifecycle.tab,
       left: leave(lifecycle, now),
+      ...kept(lifecycle),
     },
   };
 }
@@ -169,7 +184,9 @@ export function reported(
   const { left, ...rest } = lifecycle;
   const { tab, url } = rest;
   const next: TabLifecycle =
-    rest.name === "reconnected" ? { name: "paired", tab, url } : rest;
+    rest.name === "reconnected"
+      ? { name: "paired", tab, url, ...kept(rest) }
+      : rest;
   if (!left) return { lifecycle: next };
   const reload = left.to?.reload ?? url === left.url;
   return {
@@ -191,20 +208,35 @@ export function elapsed(lifecycle: TabLifecycle, now: number): Transition {
   if (left && left.until <= now) {
     const exit = exitOf(left);
     if (lifecycle.name === "disconnected")
-      return { lifecycle: unpaired, left: exit, held: exit };
+      return {
+        lifecycle: { ...unpaired, ...kept(lifecycle) },
+        left: exit,
+        held: exit,
+      };
     return { ...elapsed({ ...lifecycle, left: undefined }, now), left: exit };
   }
   if (lifecycle.name === "disconnected" || lifecycle.until > now)
     return { lifecycle };
   const { tab, url } = lifecycle;
   const to = lifecycle.name === "navigating" ? lifecycle.to : undefined;
-  return { lifecycle: { name: "paired", tab, url, ...(to ? { to } : {}) } };
+  return {
+    lifecycle: {
+      name: "paired",
+      tab,
+      url,
+      ...(to ? { to } : {}),
+      ...kept(lifecycle),
+    },
+  };
 }
 
-/** The server stopped: every call still waiting is answered. */
-export function stopped(): Transition {
+/**
+ * The server stopped: every call still waiting is answered. The replaced
+ * tabs stay refused.
+ */
+export function stopped(lifecycle: TabLifecycle): Transition {
   return {
-    lifecycle: unpaired,
+    lifecycle: { ...unpaired, ...kept(lifecycle) },
     left: { type: "stopped" },
     held: { type: "stopped" },
   };
@@ -228,6 +260,11 @@ function leave(
     until: now + RECONNECT_WAIT_MS,
     ...(to ? { to } : {}),
   };
+}
+
+/** The tabs `lifecycle` replaced, for the lifecycle after it to keep. */
+function kept({ replaced }: TabLifecycle): { replaced?: readonly string[] } {
+  return replaced ? { replaced } : {};
 }
 
 /** How a document left when no page of its tab answered for it in time. */
