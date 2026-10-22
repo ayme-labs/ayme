@@ -26,14 +26,14 @@ import {
   AriaRefSchema,
   refFromSelector,
 } from "@ayme-dev/core/structural-observation";
-import { RefResolutionError } from "../shared";
+import { RefResolutionError } from "../../shared";
 import {
   getPageStateForDocument,
   latestPageStateElement,
   providePageObjectStructure,
-} from "../page-state";
-import { listPublishedBrowserTools } from "./browserTools";
-import { ayme, runContext } from "../test-utils/agentCalls.testSupport";
+} from "../../page-state";
+import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
+import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
 

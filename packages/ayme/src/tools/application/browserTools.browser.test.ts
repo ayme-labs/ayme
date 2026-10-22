@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
-import { createPage, registerCompiledPom } from "../page-objects";
-import type { PomManifest } from "../shared";
+import { createPage, registerCompiledPom } from "../../page-objects";
+import type { PomManifest } from "../../shared";
 import {
   isCheckableElement,
   isClickableElement,
@@ -10,19 +10,19 @@ import {
   isSelectElement,
   isUncheckableElement,
 } from "./browserTools";
-import { errorText } from "../shared";
-import { buildToolOptions } from "../goal-loop";
+import { errorText } from "../../shared";
+import { buildToolOptions } from "../../goal-loop";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,
   PLAYWRIGHT_MCP_SCHEMAS,
   shapeOf,
   withoutElement,
-} from "./playwrightMcp.testSupport";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { lookAtPageStateForDocument } from "../page-state";
-import { createAyme, listElementToolTargets, type Ayme } from "../runtime";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+} from "../test-utils/playwrightMcp.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { lookAtPageStateForDocument } from "../../page-state";
+import { createAyme, listElementToolTargets, type Ayme } from "../../runtime";
+import { rooted } from "../../test-utils/pomRoot.testSupport";
 
 type Schema = {
   type?: string;

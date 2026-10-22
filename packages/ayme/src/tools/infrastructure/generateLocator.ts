@@ -7,15 +7,15 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
 import { generateLocator } from "@ayme-dev/playwright-lite/internal";
-import type { JsonSchema } from "../shared";
-import { asSentence } from "../shared";
+import type { JsonSchema } from "../../shared";
+import { asSentence } from "../../shared";
 import {
   requireCurrentDocument,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
-} from "./elementTools";
-import type { ToolResult } from "./toolTypes";
+} from "../application/elementTools";
+import type { ToolResult } from "../domain/toolTypes";
 
 type Result = ToolResult<"generate_locator">;
 type Group = Result["groups"][number];

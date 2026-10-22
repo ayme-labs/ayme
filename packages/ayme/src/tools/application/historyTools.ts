@@ -2,8 +2,8 @@
 // page through its history or reload it through the browser Page's `goBack`,
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
-import type { JsonSchema } from "../shared";
-import { runAction, startNavigation } from "../page-state";
+import type { JsonSchema } from "../../shared";
+import { runAction, startNavigation } from "../../page-state";
 import {
   requireCurrentDocument,
   type PublishedElementTool,

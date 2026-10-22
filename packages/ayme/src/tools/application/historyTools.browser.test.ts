@@ -1,9 +1,12 @@
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createPage } from "../page-objects";
-import { agentTools, operations } from "../test-utils/publication.testSupport";
-import { createAyme, type Ayme } from "../runtime";
+import { createPage } from "../../page-objects";
+import {
+  agentTools,
+  operations,
+} from "../../test-utils/publication.testSupport";
+import { createAyme, type Ayme } from "../../runtime";
 
 // The test document's first history entry: no test can go back from it.
 const firstEntry = navigation.currentEntry!;

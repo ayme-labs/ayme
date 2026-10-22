@@ -14,17 +14,17 @@ import {
   runAction,
   selectorFailure,
   type ElementInput,
-} from "../page-state";
-import type { JsonSchema, JsonValue, ToolDescriptor } from "../shared";
-import type { RunContext } from "../runs";
-import type { ToolInput, ToolResult } from "./toolTypes";
-import type { AriaRef, PageStateCapture } from "../page-state";
+} from "../../page-state";
+import type { JsonSchema, JsonValue, ToolDescriptor } from "../../shared";
+import type { RunContext } from "../../runs";
+import type { ToolInput, ToolResult } from "../domain/toolTypes";
+import type { AriaRef, PageStateCapture } from "../../page-state";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import {
   RefResolutionError,
   RuntimeStateError,
   ToolInputError,
-} from "../shared";
+} from "../../shared";
 
 /**
  * A Custom Tool: an operation an app registers that applies to one element.

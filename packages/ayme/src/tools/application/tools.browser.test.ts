@@ -6,22 +6,22 @@ import {
   probeRegisteredPomMembers,
   registerCompiledPom,
   type PageObjectConstructor,
-} from "../page-objects";
-import type { PomManifest } from "../shared";
+} from "../../page-objects";
+import type { PomManifest } from "../../shared";
 import type { CustomTool } from "./elementTools";
-import { AymeError, ToolInputError } from "../shared";
-import { buildToolOptions, planArguments } from "../goal-loop";
+import { AymeError, ToolInputError } from "../../shared";
+import { buildToolOptions, planArguments } from "../../goal-loop";
 import { getPomDefinitionText } from "./pageContext";
 import {
   getInteractionHistory,
   lookAtPageStateForDocument,
   type AriaRef,
-} from "../page-state";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+} from "../../page-state";
+import { rooted } from "../../test-utils/pomRoot.testSupport";
 import {
   agentTools,
   saveButtonRef,
-} from "../test-utils/publication.testSupport";
+} from "../../test-utils/publication.testSupport";
 import {
   createAyme,
   listElementToolTargets,
@@ -29,7 +29,7 @@ import {
   type Ayme,
   type PublishedToolGroup,
   type ToolInfo,
-} from "../runtime";
+} from "../../runtime";
 
 // Runtime object seam: the session's tools as `ayme.tools` lists and runs
 // them, and the set `@ayme-dev/webmcp` publishes. An agent's call is a

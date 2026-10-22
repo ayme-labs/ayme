@@ -1,12 +1,12 @@
 // The `navigate` Browser Tool: opens a URL on the page's own origin through
 // the browser Page's `goto`, mirroring Playwright MCP's `browser_navigate`.
-import type { JsonSchema } from "../shared";
-import { runAction, startNavigation } from "../page-state";
+import type { JsonSchema } from "../../shared";
+import { runAction, startNavigation } from "../../page-state";
 import {
   requireCurrentDocument,
   type PublishedElementTool,
 } from "./elementTools";
-import { ToolInputError } from "../shared";
+import { ToolInputError } from "../../shared";
 
 /** The application's own navigation, given in runtime setup as `navigate`. */
 type RouterNavigate = (url: string) => unknown;

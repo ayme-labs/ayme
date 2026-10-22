@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { createPage } from "../page-objects";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { createAyme } from "../runtime";
+import { createPage } from "../../page-objects";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { createAyme } from "../../runtime";
 import { listCustomTools, type CustomTool } from "./elementTools";
-import { errorText } from "../shared";
+import { errorText } from "../../shared";
 
 type ActionResultShape = {
   result?: unknown;

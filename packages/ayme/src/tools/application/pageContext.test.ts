@@ -7,14 +7,20 @@ const { getPageStateForDocument, getPomDefinitions } = vi.hoisted(() => ({
   getPomDefinitions: vi.fn(),
 }));
 
-vi.mock("../page-state/infrastructure/pageState", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  getPageStateForDocument,
-}));
-vi.mock("../page-objects/pomDefinitions", () => ({ getPomDefinitions }));
+vi.mock(
+  "../../page-state/infrastructure/pageState",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    getPageStateForDocument,
+  })
+);
+vi.mock("../../page-objects/pomDefinitions", () => ({ getPomDefinitions }));
 
 import { getPageContextForDocument, getPageContextTool } from "./pageContext";
-import { agentCursor, runContext } from "../test-utils/agentCalls.testSupport";
+import {
+  agentCursor,
+  runContext,
+} from "../../test-utils/agentCalls.testSupport";
 
 describe("snapshot", () => {
   beforeEach(() => {

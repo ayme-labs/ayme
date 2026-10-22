@@ -1,9 +1,9 @@
 import { expectTypeOf, it } from "vitest";
-import type { ActionResult } from "../page-state";
-import type { Handover } from "../shared";
-import type { PageContextPayload } from "./pageContext";
-import type { Ayme } from "../runtime";
-import type { BuiltInCaller, Caller, CustomToolContext } from "../index";
+import type { ActionResult } from "../../page-state";
+import type { Handover } from "../../shared";
+import type { PageContextPayload } from "../application/pageContext";
+import type { Ayme } from "../../runtime";
+import type { BuiltInCaller, Caller, CustomToolContext } from "../../index";
 
 // Type checks only: the calls never run.
 const run = (() => Promise.resolve()) as unknown as Ayme["tools"]["run"];
