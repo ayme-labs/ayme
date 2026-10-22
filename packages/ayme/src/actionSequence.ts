@@ -39,6 +39,15 @@ export type ActionResult = {
 };
 
 /**
+ * The Change Record a failed action's error carries, on the error itself:
+ * what changed before the action and what it changed before it failed.
+ */
+export type ActionFailure = Pick<
+  ActionResult,
+  "page_changed" | "changes_before" | "changes"
+>;
+
+/**
  * The sentence every action tool's description ends with: how the result
  * reports what changed, in two parts, and the limit of the second.
  */
@@ -130,7 +139,7 @@ export async function runAction(
           { received, before },
           after
         );
-        appendChangeRecord(error, record);
+        attachChangeRecord(error, record);
         cursor.move(after);
       })
       .catch(() => {});
@@ -163,71 +172,20 @@ export async function runAction(
   return out;
 }
 
-/** The Change Record a failed action's error carries, and the text it added to the message. */
-type FailedRecord = {
-  record: Pick<ActionResult, "changes_before" | "changes">;
-  suffix: string;
-};
-
-const failedRecords = new WeakMap<Error, FailedRecord>();
-
 /**
- * An error's message without the Change Record Ayme added to it, wherever
- * that record now stands: text the application appended after it stays.
+ * Give a failed action's error its Change Record, under the names an action
+ * result gives them. An error that fails an enclosing action too ends up with
+ * that action's record instead, which covers the inner one's, as its result
+ * would.
  */
-function messageWithoutRecord(error: Error): string {
-  const suffix = failedRecords.get(error)?.suffix;
-  const at = suffix ? error.message.lastIndexOf(suffix) : -1;
-  return at < 0
-    ? error.message
-    : error.message.slice(0, at) + error.message.slice(at + suffix!.length);
-}
-
-/**
- * Package-internal: what a failed action reported with its error, for a
- * Caller that bounds it itself, as the Goal Loop's step history does: the
- * error's message without the record, whether the page changed, and what the
- * action changed. Undefined for an error that carries no record.
- */
-export function failedActionRecord(
-  error: unknown
-): { message: string; page_changed: boolean; changes?: string } | undefined {
-  if (!(error instanceof Error)) return undefined;
-  const failed = failedRecords.get(error);
-  if (!failed) return undefined;
-  const { changes_before, changes } = failed.record;
-  return {
-    message: messageWithoutRecord(error),
-    page_changed: Boolean(changes_before || changes),
-    ...(changes ? { changes } : {}),
-  };
-}
-
-/**
- * End a failed action's error message with the parts of its Change Record
- * that have a change, under the names an action result gives them. An error
- * that fails an enclosing action too ends with that action's record instead,
- * which covers the inner one's, as its result would, or with none when the
- * enclosing action left nothing changed. Only the text Ayme added is
- * replaced: text the application put before or after it in between stays.
- */
-function appendChangeRecord(
-  error: Error,
-  record: Pick<ActionResult, "changes_before" | "changes">
+function attachChangeRecord(
+  error: Error & Partial<ActionFailure>,
+  record: Pick<ActionResult, "page_changed" | "changes_before" | "changes">
 ) {
-  const parts = (["changes_before", "changes"] as const).flatMap((name) =>
-    record[name] ? [`${name}:\n${record[name]}`] : []
-  );
-  const message = messageWithoutRecord(error);
-  const suffix = parts.map((part) => `\n\n${part}`).join("");
-  if (message + suffix !== error.message)
-    // An own property, as some errors' `message` is a getter only.
-    Object.defineProperty(error, "message", {
-      value: message + suffix,
-      configurable: true,
-      writable: true,
-    });
-  failedRecords.set(error, { record, suffix });
+  error.page_changed = record.page_changed;
+  for (const name of ["changes_before", "changes"] as const)
+    if (record[name]) error[name] = record[name];
+    else delete error[name];
 }
 
 /** Where an action's Change Record is read from: its two starts. */

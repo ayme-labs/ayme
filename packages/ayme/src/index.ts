@@ -57,7 +57,7 @@ export {
   ToolInputError,
 } from "./errors";
 export type { AymeErrorKind, RuntimeStateErrorCode } from "./errors";
-export type { ActionResult } from "./actionSequence";
+export type { ActionFailure, ActionResult } from "./actionSequence";
 export type { CustomTool, CustomToolContext } from "./elementTools";
 export type { PageContext, PageContextPayload } from "./pageContext";
 export type { AriaRef, AymeNode, PageState, RefResolution } from "./pageState";

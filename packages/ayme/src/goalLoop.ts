@@ -1,5 +1,5 @@
 import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
-import { failedActionRecord, type ActionResult } from "./actionSequence";
+import type { ActionFailure, ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
 import type { StartChildRun, RunContext } from "./run";
 import { cursors } from "./cursors";
@@ -377,15 +377,13 @@ export async function pursueGoal(
     } catch (error) {
       // A failed step's Change Record goes through the history's bound, not
       // its error text.
-      const failed = failedActionRecord(error);
-      if (failed) {
-        const { message, ...record } = failed;
-        actionResult = { result: message, ...record };
-      } else {
-        const errorText =
-          error instanceof Error ? error.message : String(error);
-        actionResult = { result: errorText, page_changed: false };
-      }
+      const { page_changed = false, changes } = (error ??
+        {}) as Partial<ActionFailure>;
+      actionResult = {
+        result: error instanceof Error ? error.message : String(error),
+        page_changed,
+        ...(changes ? { changes } : {}),
+      };
       consecutiveFailures++;
     }
 

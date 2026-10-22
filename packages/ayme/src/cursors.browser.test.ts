@@ -3,6 +3,7 @@ import {
   callers,
   createAyme,
   createPage,
+  type ActionFailure,
   type Ayme,
   type CustomTool,
 } from "./index";
@@ -118,9 +119,11 @@ describe("Change Record cursors, in Chromium", () => {
     const ref = structure.match(/(e\d+) button "Add"/)?.[1];
     // The action moved the cursor to its Settled Page; the failed one reports
     // the drift since with its error and moves the cursor past it.
-    await expect(ayme.tools.run("fail", { ref }, { by })).rejects.toThrow(
-      /^The tool failed\.\n\nchanges_before:\n(?![\s\S]*Item 1)[\s\S]*Drifted after the action/
-    );
+    const failed = (await ayme.tools
+      .run("fail", { ref }, { by })
+      .catch((caught: unknown) => caught)) as ActionFailure;
+    expect(failed.changes_before).toContain("Drifted after the action");
+    expect(failed.changes_before).not.toContain("Item 1");
     const second = await add(by);
     expect(second.changes_before).toBeUndefined();
     expect(second.changes).toContain("Item 2");
