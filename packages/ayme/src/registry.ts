@@ -28,6 +28,7 @@ import {
   getInteractionHistory,
   latestPageStateRef,
   onPageStateRecorded,
+  providePageObjectStructure,
 } from "./pageState";
 import { onlyHitTestMarks } from "./inspectorMarks";
 import {
@@ -385,6 +386,7 @@ function startObservingPage() {
     document,
     announceObstructedRoots
   );
+  providePageObjectStructure(getRegisteredPomStructure);
   schedulePomMemberProbe();
 }
 
@@ -399,6 +401,7 @@ function stopObservingPage() {
   stopWatchingNavigations = undefined;
   stopWatchingPageStates?.();
   stopWatchingPageStates = undefined;
+  providePageObjectStructure(undefined);
   mutationObserver?.disconnect();
   mutationObserver = undefined;
   if (probeTimer !== undefined) clearTimeout(probeTimer);

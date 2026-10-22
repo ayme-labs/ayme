@@ -6,7 +6,9 @@ const {
   testLocators,
   pageStateResolutions,
   pageStateRecordedListeners,
+  pageObjectStructure,
 } = vi.hoisted(() => ({
+  pageObjectStructure: { source: undefined as unknown },
   locatorElements: new WeakMap<object, Element[]>(),
   testLocators: new WeakSet<object>(),
   pageStateRecordedListeners: new Set<() => void>(),
@@ -34,6 +36,9 @@ vi.mock("./pageState", async (importOriginal) => ({
   onPageStateRecorded: (_doc: unknown, listener: () => void) => {
     pageStateRecordedListeners.add(listener);
     return () => pageStateRecordedListeners.delete(listener);
+  },
+  providePageObjectStructure: (source: unknown) => {
+    pageObjectStructure.source = source;
   },
 }));
 vi.mock("./actionSequence", async (importOriginal) => ({
@@ -206,6 +211,18 @@ describe("live Page Object registry", () => {
       FakeMutationObserver.instances[0]?.disconnect
     ).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("gives page state its Page Object Roots only while a Page Object is registered", async () => {
+    const { registry, session } = await setup();
+    class FirstPage {}
+    registry.registerCompiledPom(FirstPage, emptyManifest("FirstPage"));
+
+    session.register(FirstPage);
+    expect(pageObjectStructure.source).toBe(registry.getRegisteredPomStructure);
+
+    session.unregister(FirstPage);
+    expect(pageObjectStructure.source).toBeUndefined();
   });
 
   it("coalesces DOM mutations and ignores unchanged observations", async () => {

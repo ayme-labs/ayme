@@ -19,7 +19,6 @@ import {
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import { InteractionHistory, type ToolCall } from "./interactionHistory";
 import type { Cursor } from "./cursors";
-import { getRegisteredPomStructure } from "./registry";
 
 import {
   placeCapturedRoots,
@@ -101,6 +100,30 @@ export function pageStateNodeEntry(node: ProjectedStructuralNode): {
 }
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
+
+/**
+ * The Page Object Roots a capture places: present roots are labelled, and
+ * absent ones are left out of it.
+ */
+export type PageObjectStructure = {
+  roots: readonly { label: string; element: Element }[];
+  absentElements: readonly Element[];
+};
+
+type PageObjectStructureSource = () => Promise<PageObjectStructure>;
+
+let pageObjectStructure: PageObjectStructureSource | undefined;
+
+/**
+ * Package-internal: where captures read the Page Object Roots from, set
+ * while the registry observes the page. Unset, a capture places none, as
+ * when no Page Object is registered.
+ */
+export function providePageObjectStructure(
+  source: PageObjectStructureSource | undefined
+): void {
+  pageObjectStructure = source;
+}
 
 type PageStateIgnorePredicate = (element: Element) => boolean;
 
@@ -611,7 +634,10 @@ async function captureCurrentPageState(
   root: Element,
   refFactory: SyntheticRootRefFactory
 ): Promise<CapturedPageState> {
-  const structure = await getRegisteredPomStructure();
+  const structure = (await pageObjectStructure?.()) ?? {
+    roots: [],
+    absentElements: [],
+  };
   const registrations = structure.roots.filter(
     (registration) =>
       registration.element.ownerDocument === root.ownerDocument &&

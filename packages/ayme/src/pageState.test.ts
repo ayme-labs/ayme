@@ -2,18 +2,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { captureAriaSnapshot, listRegisteredPomRoots } = vi.hoisted(() => ({
+const { captureAriaSnapshot, pageObjectRoots } = vi.hoisted(() => ({
   captureAriaSnapshot: vi.fn(),
-  listRegisteredPomRoots: vi.fn(),
+  pageObjectRoots: vi.fn(),
 }));
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
-vi.mock("./registry", () => ({
-  getRegisteredPomStructure: async () => ({
-    roots: await listRegisteredPomRoots(),
-    absentElements: [],
-  }),
-}));
 
 import {
   AriaRefSchema,
@@ -29,12 +23,18 @@ import {
   pageStateNodeEntry,
   lookAtPageStateForDocument,
   resolvePageStateRefs,
+  providePageObjectStructure,
   startActionForDocument,
 } from "./pageState";
 import { getPageStateTool } from "./pageContext";
 import { ayme } from "./agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
+
+providePageObjectStructure(async () => ({
+  roots: await pageObjectRoots(),
+  absentElements: [],
+}));
 
 describe("get_page_state", () => {
   beforeEach(() => {
@@ -87,7 +87,7 @@ describe("get_page_state", () => {
         [foreign, "e4"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "ListPage.captured", element: captured },
       { label: "ListPage.hidden", element: hidden },
       { label: "ListPage.foreign", element: foreign },
@@ -125,7 +125,7 @@ describe("get_page_state", () => {
         [child, "e3"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "ListPage.item", element: pomRoot },
     ]);
 
@@ -171,7 +171,7 @@ describe("get_page_state", () => {
         [following, "e5"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "ListPage.item", element: pomRoot },
     ]);
 
@@ -210,7 +210,7 @@ describe("get_page_state", () => {
         [child, "e3"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "ListPage.synthetic", element: pomRoot },
     ]);
 
@@ -246,7 +246,7 @@ describe("get_page_state", () => {
         [child, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "PageA.root", element: pomRoot },
       { label: "PageB.root", element: pomRoot },
     ]);
@@ -299,7 +299,7 @@ describe("get_page_state", () => {
         ["First.root", first],
         ["Second.root", second],
       ]);
-      listRegisteredPomRoots.mockResolvedValue(
+      pageObjectRoots.mockResolvedValue(
         labels.map((label) => ({ label, element: roots.get(label)! }))
       );
 
@@ -348,7 +348,7 @@ describe("get_page_state", () => {
         [child, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "Page.root", element: pomRoot },
       { label: "Page.root", element: pomRoot },
     ]);
@@ -405,7 +405,7 @@ describe("get_page_state", () => {
       ]),
     });
     // Registrations arrive inner-first with unrelated between inner and outer.
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "Inner.root", element: inner },
       { label: "Unrelated.root", element: unrelated },
       { label: "Outer.root", element: outer },
@@ -452,9 +452,7 @@ describe("get_page_state", () => {
           [other, "e3"],
         ]),
       });
-    listRegisteredPomRoots.mockResolvedValue([
-      { label: "Root.root", element: root },
-    ]);
+    pageObjectRoots.mockResolvedValue([{ label: "Root.root", element: root }]);
     expect(await getPageStateTool.execute()).toContain("s_1 Root.root");
 
     // The page changed since, so the action's before capture is recorded
@@ -474,7 +472,7 @@ describe("get_page_state", () => {
     if (!preCaptureRoot) throw new Error("Missing pre-capture root.");
     let rootsResolved = false;
 
-    listRegisteredPomRoots.mockImplementation(async () => {
+    pageObjectRoots.mockImplementation(async () => {
       await Promise.resolve();
       rootsResolved = true;
       document.body.insertAdjacentHTML(
@@ -526,7 +524,7 @@ describe("get_page_state", () => {
         [original, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
 
     const firstText = await getPageStateTool.execute();
     expect(firstText).toContain('e2 button "Captured omitted"');
@@ -590,7 +588,7 @@ describe("get_page_state", () => {
         [main, "e3"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "Panel.root", element: panel },
     ]);
 
@@ -630,7 +628,7 @@ describe("get_page_state", () => {
         [inspector, "e3"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
 
     await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
       "- e1:
@@ -652,7 +650,7 @@ describe("get_page_state", () => {
         [original, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
 
     const first = await getPageStateCaptureForDocument(document);
     expect(first.tree.getNode(ref("e2"))?.role).toBe("button");
@@ -696,7 +694,7 @@ describe("get_page_state", () => {
         [element, button],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     captureAriaSnapshot.mockReturnValueOnce(snapshot("e1", "e2", original));
     await getPageStateCaptureForDocument(document);
 
@@ -745,7 +743,7 @@ describe("get_page_state", () => {
           [captured, "e4"],
         ]),
       });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
 
     const [first, second] = await Promise.all([
       getPageStateCaptureForDocument(document),
@@ -774,7 +772,7 @@ describe("get_page_state", () => {
 
     beforeEach(() => {
       document.body.innerHTML = "<button>A</button><button>B</button>";
-      listRegisteredPomRoots.mockResolvedValue([]);
+      pageObjectRoots.mockResolvedValue([]);
     });
 
     it("is rejected, and the next valid capture resolves the ref", async () => {
@@ -848,7 +846,7 @@ describe("the ref the latest page state gave an element", () => {
       fullText: text,
       refsByElement: new Map([[document.body, "e1"], ...refs]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     await getPageStateTool.execute();
   };
 
@@ -918,7 +916,7 @@ describe("the look's projected forest", () => {
       ]),
     });
     // A lowercase label is inline; two labels on one element are a property.
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "listpage", element: element("list") },
       { label: "Done.root", element: element("done") },
       { label: "Toggle.root", element: element("done") },

@@ -8,9 +8,6 @@ const { captureAriaSnapshot, waitForSettled } = vi.hoisted(() => ({
 }));
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
-vi.mock("./registry", () => ({
-  getRegisteredPomStructure: async () => ({ roots: [], absentElements: [] }),
-}));
 vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@ayme-dev/core/structural-observation")
