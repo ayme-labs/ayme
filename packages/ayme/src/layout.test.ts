@@ -27,6 +27,11 @@ const refusals: [path: string, code: string, message: string][] = [
     "domain may only depend on the allowed horizontal layers",
   ],
   [
+    "src/tools/application/misplaced.ts",
+    'export { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";',
+    "application may only depend on the allowed horizontal layers",
+  ],
+  [
     "src/goal-loop/domain/misplaced.ts",
     'export { createDecisionEndpoint } from "../index";',
     "Inside a slice, import the module itself, not the slice's index.ts.",
