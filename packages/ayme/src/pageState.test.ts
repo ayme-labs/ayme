@@ -13,7 +13,6 @@ vi.mock("./registry", () => ({
     roots: await listRegisteredPomRoots(),
     absentElements: [],
   }),
-  announceRegisteredPomChange: () => {},
 }));
 
 import {

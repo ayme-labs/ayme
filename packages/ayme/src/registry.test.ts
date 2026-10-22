@@ -1,16 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "./agentCalls.testSupport";
 
-const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
-  () => ({
-    locatorElements: new WeakMap<object, Element[]>(),
-    testLocators: new WeakSet<object>(),
-    pageStateResolutions: new Map<
-      string,
-      { node: { ref: string; element: Element } }
-    >(),
-  })
-);
+const {
+  locatorElements,
+  testLocators,
+  pageStateResolutions,
+  pageStateRecordedListeners,
+} = vi.hoisted(() => ({
+  locatorElements: new WeakMap<object, Element[]>(),
+  testLocators: new WeakSet<object>(),
+  pageStateRecordedListeners: new Set<() => void>(),
+  pageStateResolutions: new Map<
+    string,
+    { node: { ref: string; element: Element } }
+  >(),
+}));
 vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@ayme-dev/playwright-lite/internal")
@@ -27,6 +31,10 @@ vi.mock("./pageState", async (importOriginal) => ({
       if (entry) return { status: "resolved", requestedRef: ref, ...entry };
       return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
     }),
+  onPageStateRecorded: (_doc: unknown, listener: () => void) => {
+    pageStateRecordedListeners.add(listener);
+    return () => pageStateRecordedListeners.delete(listener);
+  },
 }));
 vi.mock("./actionSequence", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./actionSequence")>()),
@@ -992,7 +1000,7 @@ describe("live Page Object registry", () => {
       }),
     ]);
     subscriber.mockClear();
-    registry.announceRegisteredPomChange();
+    for (const listener of pageStateRecordedListeners) listener();
     expect(subscriber).toHaveBeenCalledOnce();
 
     vi.mocked(measurePomRoot).mockReset();
