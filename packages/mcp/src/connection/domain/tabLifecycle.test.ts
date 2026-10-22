@@ -9,6 +9,7 @@ import {
   navigating,
   RECONNECT_WAIT_MS as WAIT,
   reported,
+  stopped,
   unpaired,
   type TabLifecycle,
 } from "./tabLifecycle";
@@ -98,7 +99,13 @@ describe("the tab's lifecycle", () => {
     const left = navigating(paired, { url, reload: true }, 0).lifecycle;
 
     expect(attached(left, "b", url, 10)).toEqual({
-      lifecycle: { name: "reconnected", tab: "b", url, until: 10 + WAIT },
+      lifecycle: {
+        name: "reconnected",
+        tab: "b",
+        url,
+        until: 10 + WAIT,
+        replaced: ["a"],
+      },
       left: { type: "replaced" },
       held: { type: "replaced" },
     });
@@ -168,6 +175,63 @@ describe("the tab's lifecycle", () => {
     const back = attached(away, "a", `${url}other`, 10).lifecycle;
 
     expect(reported(back, []).left).toMatchObject({ type: "navigated" });
+  });
+
+  it("lets the paired tab's page connect again, as its new document", () => {
+    const back = attached(paired, "a", `${url}other`, 10);
+
+    expect(back.refused).toBeUndefined();
+    expect(back.left).toBeUndefined();
+    expect(back.lifecycle).toMatchObject({ name: "reconnected", tab: "a" });
+  });
+
+  it("remembers the tab another tab's page replaced", () => {
+    expect(attached(paired, "b", url, 10)).toEqual({
+      lifecycle: {
+        name: "reconnected",
+        tab: "b",
+        url,
+        until: 10 + WAIT,
+        replaced: ["a"],
+      },
+      left: { type: "replaced" },
+      held: { type: "replaced" },
+    });
+  });
+
+  it("refuses a page of a replaced tab, and changes nothing", () => {
+    const other = attached(paired, "b", url, 10).lifecycle;
+
+    expect(attached(other, "a", url, 20)).toEqual({
+      lifecycle: other,
+      refused: true,
+    });
+  });
+
+  it("still refuses a page of a replaced tab once no tab is paired", () => {
+    const other = attached(paired, "b", url, 10).lifecycle;
+    const gone = elapsed(disconnected(other, 20).lifecycle, 20 + WAIT);
+
+    expect(name(gone.lifecycle)).toBe("unpaired");
+    expect(attached(gone.lifecycle, "a", url, 30)).toMatchObject({
+      refused: true,
+    });
+    expect(attached(stopped(other).lifecycle, "a", url, 30)).toMatchObject({
+      refused: true,
+    });
+  });
+
+  it("keeps the tabs it replaced as the paired tab navigates, leaves and comes back", () => {
+    const to = { url: `${url}other`, reload: false };
+    const other = attached(paired, "b", url, 10).lifecycle;
+    const ready = reported(other, ["snapshot"]).lifecycle;
+    const slow = elapsed(navigating(ready, to, 20).lifecycle, 20 + WAIT);
+    const away = disconnected(slow.lifecycle, 30 + WAIT).lifecycle;
+    const back = attached(away, "b", `${url}other`, 40 + WAIT).lifecycle;
+    const again = reported(back, ["snapshot"]).lifecycle;
+
+    expect(again).toMatchObject({ name: "paired", replaced: ["a"] });
+    expect(attached(again, "a", url, 50 + WAIT).refused).toBe(true);
   });
 
   it("ignores what can't happen without a page: a navigation, a channel closing again, time passing", () => {
