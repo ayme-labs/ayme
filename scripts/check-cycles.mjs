@@ -9,10 +9,10 @@
  * hands the resolver options that were already parsed, and the resolver
  * parses them again.
  *
- * It reads `.ts`, `.tsx` and `.vue` files. Type-only imports are skipped:
- * `verbatimModuleSyntax` erases them. `import { type T }` is not skipped by
- * the language, since it keeps an empty import, so lint requires
- * `import type { T }` instead (`no-import-type-side-effects`).
+ * It reads `.ts`, `.tsx` and `.vue` files. `import type` and `export type`
+ * are skipped: `verbatimModuleSyntax` erases them. `import { type T }` and
+ * `export { type T } from` are not, since they keep an empty runtime import;
+ * a patch to detective-typescript stops madge from dropping them.
  *
  * Left out: test fixtures, which are input shaped on purpose, and generated
  * shadcn-vue components, each of which imports its variants from the index

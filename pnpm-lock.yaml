@@ -9,6 +9,7 @@ overrides:
 
 patchedDependencies:
   "@stryker-mutator/vitest-runner@10.0.0": 0e45bb77b8aa13f70ef9a38e645fc707cb33df7b55baca0492549533251792ce
+  detective-typescript@14.1.2: 6cfae3a6e478450b3a569c6ce595998eb4a45cd4649828db4516dda87eb75ea7
 
 importers:
   .:
@@ -19408,7 +19409,7 @@ snapshots:
 
   detective-stylus@5.0.1: {}
 
-  detective-typescript@14.1.2(supports-color@10.2.2)(typescript@5.9.3):
+  detective-typescript@14.1.2(patch_hash=6cfae3a6e478450b3a569c6ce595998eb4a45cd4649828db4516dda87eb75ea7)(supports-color@10.2.2)(typescript@5.9.3):
     dependencies:
       "@typescript-eslint/typescript-estree": 8.68.0(supports-color@10.2.2)(typescript@5.9.3)
       ast-module-types: 6.0.2
@@ -19425,7 +19426,7 @@ snapshots:
       detective-sass: 6.0.2
       detective-scss: 5.0.2
       detective-stylus: 5.0.1
-      detective-typescript: 14.1.2(supports-color@10.2.2)(typescript@5.9.3)
+      detective-typescript: 14.1.2(patch_hash=6cfae3a6e478450b3a569c6ce595998eb4a45cd4649828db4516dda87eb75ea7)(supports-color@10.2.2)(typescript@5.9.3)
       typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
@@ -21661,7 +21662,7 @@ snapshots:
       detective-sass: 6.0.2
       detective-scss: 5.0.2
       detective-stylus: 5.0.1
-      detective-typescript: 14.1.2(supports-color@10.2.2)(typescript@5.9.3)
+      detective-typescript: 14.1.2(patch_hash=6cfae3a6e478450b3a569c6ce595998eb4a45cd4649828db4516dda87eb75ea7)(supports-color@10.2.2)(typescript@5.9.3)
       detective-vue2: 2.3.0(supports-color@10.2.2)(typescript@5.9.3)
       module-definition: 6.0.2
       node-source-walk: 7.0.2

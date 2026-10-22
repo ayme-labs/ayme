@@ -56,6 +56,20 @@ test("fails on a cycle of Vue components alone", async () => {
   assert.deepEqual(await findCycles([src]), [`${src}: Child.vue > Parent.vue`]);
 });
 
+test("fails on a cycle closed by inline type specifiers, which keep an empty import", async () => {
+  const src = workspace({
+    "a.ts": `import { b } from "./b";\nimport { c } from "./c";\nimport View from "./View.vue";\nexport type A = number;\nexport const a = () => [b, c, View];\n`,
+    "b.ts": `import { type A } from "./a";\nexport const b = (value: A) => value;\n`,
+    "c.ts": `export { type A } from "./a";\nexport const c = 1;\n`,
+    "View.vue": `<script setup lang="ts">\nimport { type A } from "./a";\ndefineProps<{ value: A }>();\n</script>\n`,
+  });
+  assert.deepEqual(await findCycles([src]), [
+    `${src}: View.vue > a.ts`,
+    `${src}: a.ts > b.ts`,
+    `${src}: a.ts > c.ts`,
+  ]);
+});
+
 test("passes a cycle closed by a type-only import, in TypeScript or Vue", async () => {
   const src = workspace({
     "a.ts": `import { b } from "./b";\nimport View from "./View.vue";\nexport type A = number;\nexport const a = () => [b, View];\n`,
