@@ -1,9 +1,9 @@
-import { AgentView } from "./agentView";
+import { AgentView, panelDescription } from "./agentView";
 import { expect, openFixture, test } from "./fixtures";
 
-// E2E: the panel shows exactly what an agent gets over WebMCP. The expected
-// values come from the page's WebMCP tool list and snapshot, never
-// from the panel.
+// E2E: the panel shows exactly what an agent gets over WebMCP, but for a bare
+// action's description, which it shows as Ayme MCP does. The expected values
+// come from the page's WebMCP tool list and snapshot, never from the panel.
 
 // Live, but never published to WebMCP: its result is an image.
 const NOT_ON_WEBMCP = ["screenshot"];
@@ -38,7 +38,7 @@ test("each tool's page shows the description and schema an agent gets", async ({
     await expect(toolPage.title).toHaveText(tool.name);
     await toolPage.modelSees.open();
 
-    await expect(toolPage.description).toHaveText(tool.description);
+    await expect(toolPage.description).toHaveText(panelDescription(tool));
     expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
       tool.inputSchema
     );

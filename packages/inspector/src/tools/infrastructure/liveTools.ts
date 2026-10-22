@@ -6,6 +6,7 @@ import type {
   ToolInfo,
 } from "@ayme-dev/ayme";
 import {
+  agentDescription,
   getAgentConnectionStatus,
   getAppProcessTools,
   getStartedAyme,
@@ -75,12 +76,30 @@ const NO_AGENT_CONNECTION: AgentConnectionStatus = Object.freeze({
 
 let snapshot: LiveTools | undefined;
 
+// The session's list, each tool described as Ayme MCP gives it to agents,
+// kept per list so an unchanged list stays the same object.
+const described = new WeakMap<readonly ToolInfo[], readonly ToolInfo[]>();
+
+function asAgentsReadThem(tools: readonly ToolInfo[]): readonly ToolInfo[] {
+  let result = described.get(tools);
+  if (!result) {
+    result = Object.freeze(
+      tools.map((tool) => {
+        const description = agentDescription(tool);
+        return description === undefined ? tool : { ...tool, description };
+      })
+    );
+    described.set(tools, result);
+  }
+  return result;
+}
+
 // useSyncExternalStore needs the same object until something changes: the
 // session hands back the same list and status until they change, so keep one
 // pair.
 function readLiveTools(): LiveTools {
   const ayme = getStartedAyme();
-  const live = ayme?.tools.list() ?? NO_TOOLS;
+  const live = ayme ? asAgentsReadThem(ayme.tools.list()) : NO_TOOLS;
   const appProcess = asNodePeekTools(
     ayme ? getAppProcessTools(ayme).list() : NO_PROCESS_TOOLS
   );

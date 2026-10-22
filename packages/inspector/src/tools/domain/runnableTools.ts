@@ -80,7 +80,8 @@ export function listRunnableTools(
         tools.set(
           tool.name,
           pageObjectTool(
-            tool,
+            // The session's listing describes it as agents read it.
+            { ...tool, description: listed?.description ?? tool.description },
             listed
               ? {
                   present: true,
