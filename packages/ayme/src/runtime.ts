@@ -230,7 +230,7 @@ type Registration = {
   active?: { dispose(): void };
 };
 
-export { sameRuntimeOptions } from "./runtimeOptions";
+export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtimeOptions";
 
 /** The names of the registered tools, available or not; none while they clash. */
 function registeredToolNames(): Set<string> {

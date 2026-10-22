@@ -24,7 +24,7 @@ export {
   RuntimeStateError,
   ToolInputError,
 } from "./errors";
-export { sameRuntimeOptions } from "./runtimeOptions";
+export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtimeOptions";
 
 const REMOVED = "Ayme was removed from this build.";
 

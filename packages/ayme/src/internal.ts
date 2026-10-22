@@ -73,6 +73,7 @@ export {
   getStartedAyme,
   markRenderSession,
   sameRuntimeOptions,
+  snapshotRuntimeOptions,
   subscribeToStartedAyme,
 } from "./runtime";
 export type { AppProcessTool, AppProcessTools } from "./runtime";

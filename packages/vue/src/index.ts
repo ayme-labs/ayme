@@ -24,6 +24,7 @@ import {
   getStartedAyme,
   markRenderSession,
   sameRuntimeOptions,
+  snapshotRuntimeOptions,
   type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
 import { providerProps } from "./providerProps";
@@ -75,17 +76,7 @@ export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
       throw new Error(
         "AymeProvider cannot be nested beneath another Ayme runtime owner."
       );
-    const snapshotOptions = (): UseAymeOptions => ({
-      ...props,
-      // Copies, so a later change to the caller's list shows as a change.
-      customTools: props.customTools && [...props.customTools],
-      pageObjects: props.pageObjects && [...props.pageObjects],
-      webMCP: props.webMCP && { ...props.webMCP },
-      inspector:
-        typeof props.inspector === "object"
-          ? { ...props.inspector }
-          : props.inspector,
-    });
+    const snapshotOptions = () => snapshotRuntimeOptions(props);
     const options = snapshotOptions();
     ownRuntime(options);
     watch(
