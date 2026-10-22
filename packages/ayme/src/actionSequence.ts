@@ -139,6 +139,8 @@ export async function runAction(
           { received, before },
           after
         );
+        // An error that cannot take the fields, such as a frozen one, leaves
+        // the cursor where it was: the next action reports these changes.
         attachChangeRecord(error, record);
         cursor.move(after);
       })

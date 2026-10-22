@@ -377,12 +377,13 @@ export async function pursueGoal(
     } catch (error) {
       // A failed step's Change Record goes through the history's bound, not
       // its error text.
-      const { page_changed = false, changes } = (error ??
-        {}) as Partial<ActionFailure>;
+      const { page_changed, changes } = (
+        error instanceof Error ? error : {}
+      ) as Partial<Record<keyof ActionFailure, unknown>>;
       actionResult = {
         result: error instanceof Error ? error.message : String(error),
-        page_changed,
-        ...(changes ? { changes } : {}),
+        page_changed: page_changed === true,
+        ...(typeof changes === "string" && changes ? { changes } : {}),
       };
       consecutiveFailures++;
     }

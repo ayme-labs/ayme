@@ -452,12 +452,15 @@ describe("Goal Loop goal in Chromium", () => {
     return tool;
   }
 
-  async function registerFailingPom(goalLoop: GoalLoopDecisionFunction) {
+  async function registerFailingPom(
+    goalLoop: GoalLoopDecisionFunction,
+    thrown: unknown = new Error("action exploded")
+  ) {
     setupDom();
     class App {
       root = page.locator("main");
       fail() {
-        throw new Error("action exploded");
+        throw thrown;
       }
     }
     ayme({ root: rootOf })(App);
@@ -1908,6 +1911,31 @@ describe("Goal Loop goal in Chromium", () => {
     expect((requests.at(-1)!.state as Record<string, unknown>).history).toEqual(
       [record]
     );
+  });
+
+  it("takes a failed step's Change Record only from an Error's fields", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.fail", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await registerFailingPom(decide, {
+      page_changed: true,
+      changes: 42,
+    });
+    const result = (await tool.execute({
+      goal: "do the thing",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    expect(result.reason).toBe("done");
+    expect(result.history).toEqual([
+      {
+        operation: "App.fail",
+        chosen: {},
+        result: "[object Object]",
+        page_changed: false,
+        did: "App.fail()",
+      },
+    ]);
   });
 
   // --- State fields sent to the model ---

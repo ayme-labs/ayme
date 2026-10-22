@@ -131,6 +131,30 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(next.changes).not.toContain("Item 1");
   });
 
+  it("leaves the Caller's cursor alone for a frozen error, so the next action reports what the failed one changed", async () => {
+    const clickThenFreeze: CustomTool = {
+      name: "click_then_freeze",
+      description: "Clicks Add, then fails with a frozen error.",
+      async execute() {
+        document.querySelector("button")!.click();
+        throw Object.freeze(new Error("Frozen."));
+      },
+    };
+    start({ customTools: [clickThenFreeze] });
+    const by = callers.inspector;
+    const { structure } = await ayme.tools.run("snapshot", {}, { by });
+    const ref = structure.match(/(e\d+) button "Add"/)![1];
+
+    const error = (await ayme.tools
+      .run("click_then_freeze", { ref }, { by })
+      .catch((caught: unknown) => caught)) as Error & ActionFailure;
+
+    expect(error.message).toBe("Frozen.");
+    expect(error).not.toHaveProperty("changes");
+    const next = await add(by);
+    expect(next.changes_before).toContain("Item 1");
+  });
+
   it("gives an error that fails an enclosing action too that action's record", async () => {
     let ref = "";
     const clickThenFail: CustomTool = {
