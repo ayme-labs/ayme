@@ -43,6 +43,7 @@ describe("actionFacts", () => {
 
   it("says nothing for a bare action that returns nothing or itself", () => {
     expect(actionFacts(tool(), "Page")).toStrictEqual({});
+    expect(actionFacts(tool({ description: " " }), "Page")).toStrictEqual({});
     expect(actionFacts(tool({ returnPoms: ["Page"] }), "Page")).toStrictEqual(
       {}
     );

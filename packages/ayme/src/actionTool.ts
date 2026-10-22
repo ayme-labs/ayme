@@ -46,8 +46,8 @@ export function inputSchemaFor(
 /**
  * What a Page Object Tool tells about its action beyond its name and schema:
  * the description its author wrote, and the other Page Objects it may
- * return, which the page shows afterwards. Returning its own class tells
- * nothing, so it is left out.
+ * return, which the page shows afterwards. A blank description, or
+ * returning its own class, tells nothing, so it is left out.
  */
 export function actionFacts(
   action: ToolManifest,
@@ -56,9 +56,8 @@ export function actionFacts(
   const returnPoms =
     action.returnPoms?.filter((name) => name !== ownClassName) ?? [];
   return {
-    ...(action.description === undefined
-      ? {}
-      : { description: action.description }),
+    // A blank description says nothing, and WebMCP refuses an empty one.
+    ...(action.description?.trim() ? { description: action.description } : {}),
     ...(returnPoms.length ? { returnPoms } : {}),
   };
 }
