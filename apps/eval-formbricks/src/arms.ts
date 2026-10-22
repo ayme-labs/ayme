@@ -18,6 +18,7 @@ import {
   aymeSkillName,
   setUpAymeAgent,
 } from "./ayme.ts";
+import { playwrightMcpRoot } from "./browser.ts";
 import type { Mission } from "./missions.ts";
 import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
 import type { Precondition } from "./preconditions.ts";
@@ -88,12 +89,11 @@ export type Arm = {
 };
 
 const require = createRequire(import.meta.url);
-const playwrightMcpPackagePath =
-  require.resolve("@playwright/mcp/package.json");
-export const playwrightMcpRoot = path.dirname(playwrightMcpPackagePath);
 
 function playwrightMcpVersion(): string {
-  const manifest = require(playwrightMcpPackagePath) as { version: string };
+  const manifest = require(path.join(playwrightMcpRoot, "package.json")) as {
+    version: string;
+  };
   return manifest.version;
 }
 
