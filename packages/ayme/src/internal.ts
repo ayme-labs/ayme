@@ -1,5 +1,5 @@
+export { INSPECTOR_DOGFOOD_ATTRIBUTE } from "./inspectorMarks";
 export {
-  INSPECTOR_DOGFOOD_ATTRIBUTE,
   capturePageState,
   getPageStateForElements,
   pageStateNodeEntry,
@@ -73,6 +73,7 @@ export {
   getStartedAyme,
   markRenderSession,
   sameRuntimeOptions,
+  snapshotRuntimeOptions,
   subscribeToStartedAyme,
 } from "./runtime";
 export type { AppProcessTool, AppProcessTools } from "./runtime";

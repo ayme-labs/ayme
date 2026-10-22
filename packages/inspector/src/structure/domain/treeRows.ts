@@ -85,6 +85,46 @@ function isWrapper(node: StructureNode) {
 }
 
 /**
+ * The unfolded chains as the tree shows them with the node `selectedRef`
+ * selected: a selected wrapper the fold hides unfolds its chain, which
+ * stays unfolded once stored, like one the person unfolded. The same set
+ * when the selection hides in no folded chain.
+ */
+export function shownUnfolded(
+  roots: readonly StructureNode[],
+  unfoldedChains: ReadonlySet<string>,
+  selectedRef: string | undefined
+): ReadonlySet<string> {
+  const isUnfolded: IsUnfolded = (chain) => unfoldedChains.has(chain[0]!.ref!);
+  for (const { folded } of treeRows(roots, isUnfolded))
+    if (folded && hides(wrapperChain(folded.outer), selectedRef))
+      return new Set(unfoldedChains).add(folded.outer.ref!);
+  return unfoldedChains;
+}
+
+/**
+ * Folds or unfolds the chain that `outer` leads, from the unfolded chains
+ * as the tree shows them. Folding a chain that hides the selected wrapper
+ * moves the selection to `outer`, so it stays in view.
+ */
+export function toggleChain(
+  shown: ReadonlySet<string>,
+  outer: StructureNode & { ref: string },
+  selectedRef: string | undefined
+): { unfolded: ReadonlySet<string>; select?: string } {
+  const unfolded = new Set(shown);
+  if (!unfolded.delete(outer.ref)) return { unfolded: unfolded.add(outer.ref) };
+  return hides(wrapperChain(outer), selectedRef)
+    ? { unfolded, select: outer.ref }
+    : { unfolded };
+}
+
+/** Whether folding the chain hides the node `ref`: one between its ends. */
+function hides(chain: readonly StructureNode[], ref?: string) {
+  return chain.slice(1, -1).some((link) => link.ref === ref);
+}
+
+/**
  * The unfolded chains still on the page: those whose outermost wrapper's
  * ref the tree holds. The same set when all are.
  */

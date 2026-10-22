@@ -11,7 +11,6 @@ import {
   requireCurrentDocument,
   resolveElementTarget,
   TARGET_SCHEMA,
-  validatedToolInput,
   type PublishedElementTool,
   type ElementToolDefinition,
   type RegisteredElementTool,
@@ -396,8 +395,7 @@ const fillFormTool: PublishedElementTool = {
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
     const { cursor } = context;
-    const fields = validatedToolInput(fillFormSchema, input)
-      .fields as FormField[];
+    const { fields } = input as { fields: FormField[] };
     const currentDocument = requireCurrentDocument();
     return runAction(
       currentDocument,
@@ -445,9 +443,7 @@ const pressKeyTool: PublishedElementTool = {
   inputSchema: pressKeySchema,
   execute: async (input, context) => {
     const { cursor } = context;
-    const { key } = validatedToolInput(pressKeySchema, input) as {
-      key: string;
-    };
+    const { key } = input as { key: string };
     return runAction(
       requireCurrentDocument(),
       cursor,

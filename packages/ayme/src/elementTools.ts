@@ -14,7 +14,6 @@ import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { assertReachable, reaches, type ElementInput } from "./elementReach";
 import { inReachBatch } from "./reachMeasurement";
-import { throwViolations, toolInputViolations } from "./schemaValidation";
 import {
   RefResolutionError,
   RuntimeStateError,
@@ -142,16 +141,16 @@ const REF_INPUT_SCHEMA: JsonSchema = {
 // --- The shared mechanism ---
 
 /**
- * How a tool that acts on one element executes for a Run: check the input
- * against the schema, resolve the element (a ref through the identity
- * ledger, ADR-0028) and hand `perform` the element. Finishes with the
- * shared action sequence, so every such tool returns the same action result.
+ * How a tool that acts on one element executes for a Run: resolve the
+ * element (a ref through the identity ledger, ADR-0028) and hand `perform`
+ * the element. Finishes with the shared action sequence, so every such tool
+ * returns the same action result.
  */
 function elementToolExecution(
   definition: ElementToolDefinition
 ): PublishedElementTool["execute"] {
   return async (input, context) => {
-    const fields = validatedToolInput(definition.inputSchema, input);
+    const fields = input as Record<string, unknown>;
     const currentDocument = requireCurrentDocument();
     const target = await resolveElementTarget(
       definition,
@@ -220,18 +219,6 @@ function requiredInputOnly(schema: JsonSchema): JsonSchema {
       )
     ),
   };
-}
-
-/**
- * Package-internal: check a tool's input against its object schema. An
- * option the schema does not declare is rejected by name, never ignored.
- */
-export function validatedToolInput(
-  schema: JsonSchema,
-  input: unknown
-): Record<string, unknown> {
-  throwViolations(toolInputViolations(schema, input));
-  return input as Record<string, unknown>;
 }
 
 /**

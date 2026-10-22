@@ -19,6 +19,7 @@ import {
 import {
   markRenderSession,
   sameRuntimeOptions,
+  snapshotRuntimeOptions,
   type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
 
@@ -33,17 +34,7 @@ export function AymeProvider({
 }: AymeProviderProps): ReactElement {
   const ancestor = useContext(RuntimeContext);
   const [setup] = useState(() => {
-    const snapshot = {
-      ...options,
-      // Copies, so a later change to the caller's list shows as a change.
-      customTools: options.customTools && [...options.customTools],
-      pageObjects: options.pageObjects && [...options.pageObjects],
-      webMCP: options.webMCP && { ...options.webMCP },
-      inspector:
-        typeof options.inspector === "object"
-          ? { ...options.inspector }
-          : options.inspector,
-    };
+    const snapshot = snapshotRuntimeOptions(options);
     const runtime = createAyme(snapshot);
     // Without a window, React renders on the server, where the session must
     // never claim the process.

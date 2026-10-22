@@ -3,22 +3,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
-const {
-  captureAriaSnapshot,
-  getRegisteredPomStructure,
-  requireAymeRuntimePage,
-} = vi.hoisted(() => ({
-  captureAriaSnapshot: vi.fn(),
-  getRegisteredPomStructure: vi.fn(),
-  requireAymeRuntimePage: vi.fn(),
-}));
+const { captureAriaSnapshot, pageObjectStructure, requireAymeRuntimePage } =
+  vi.hoisted(() => ({
+    captureAriaSnapshot: vi.fn(),
+    pageObjectStructure: vi.fn(),
+    requireAymeRuntimePage: vi.fn(),
+  }));
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   captureAriaSnapshot,
 }));
 vi.mock("./registry", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./registry")>()),
-  getRegisteredPomStructure,
   requireAymeRuntimePage,
 }));
 
@@ -37,11 +33,17 @@ import {
   refFromSelector,
 } from "@ayme-dev/core/structural-observation";
 import { RefResolutionError } from "./errors";
-import { getPageStateForDocument, latestPageStateElement } from "./pageState";
+import {
+  getPageStateForDocument,
+  latestPageStateElement,
+  providePageObjectStructure,
+} from "./pageState";
 import { listPublishedBrowserTools } from "./browserTools";
 import { ayme, runContext } from "./agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
+
+providePageObjectStructure(pageObjectStructure);
 const clickRef = ayme.click;
 const fillRef = ayme.fill;
 
@@ -52,7 +54,7 @@ describe("Structural Ref interactions", () => {
       document.implementation.createHTMLDocument("Ref interactions test")
     );
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    getRegisteredPomStructure.mockResolvedValue({
+    pageObjectStructure.mockResolvedValue({
       roots: [],
       absentElements: [],
     });
@@ -178,7 +180,7 @@ describe("Structural Ref interactions", () => {
     if (!button) throw new Error("Expected the save button.");
     root.append(button);
     document.body.append(root);
-    getRegisteredPomStructure.mockResolvedValue({
+    pageObjectStructure.mockResolvedValue({
       roots: [{ label: "Page.root", element: root }],
       absentElements: [],
     });

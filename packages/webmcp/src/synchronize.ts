@@ -41,7 +41,8 @@ type SynchronizationOptions = {
 /**
  * Return a thrown error as an MCP `isError` result. WebMCP drops the reason of
  * a rejected `execute`, so a published tool never throws. The text is the
- * error's full message, prefixed with its name unless that is plain "Error".
+ * error's full message, prefixed with its name unless that is plain "Error",
+ * and followed by the Change Record a failed action left on it.
  */
 async function asToolResult(call: () => Promise<unknown>): Promise<unknown> {
   try {
@@ -56,9 +57,21 @@ async function asToolResult(call: () => Promise<unknown>): Promise<unknown> {
 
 function errorText(error: unknown): string {
   if (!(error instanceof Error)) return String(error);
-  if (!error.name || error.name === "Error") return error.message;
-  return `${error.name}: ${error.message}`;
+  const text =
+    !error.name || error.name === "Error"
+      ? error.message
+      : `${error.name}: ${error.message}`;
+  return text + changeRecordText(error);
 }
+
+/** The Change Record a failed action left on its error, as text to follow it. */
+const changeRecordText = (error: Error) =>
+  (["changes_before", "changes"] as const)
+    .map((name) => {
+      const part = (error as Partial<Record<typeof name, unknown>>)[name];
+      return typeof part === "string" && part ? `\n\n${name}:\n${part}` : "";
+    })
+    .join("");
 
 /**
  * Whether WebMCP publishes a tool: every listed one but a Peek Tool, which

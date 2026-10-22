@@ -24,7 +24,7 @@ import {
   Navigator as NavigatorPart,
 } from "../../testing";
 import { modelLens } from "./modelLens";
-import type { ObjectTree } from "./ModelTree";
+import type { ObjectTree } from "../domain/objectTree";
 
 // Component tests: the Model lens in the navigator and the detail pane, with
 // a fixture page model, driven through the Inspector's page objects on

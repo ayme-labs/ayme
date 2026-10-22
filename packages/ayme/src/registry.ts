@@ -12,7 +12,6 @@ import {
   methodArguments,
   actionFacts,
 } from "./actionTool";
-import { throwViolations, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
@@ -21,8 +20,10 @@ import type { ObservedPomRoot } from "./pomRootObservation";
 import {
   getInteractionHistory,
   latestPageStateRef,
-  onlyHitTestMarks,
+  onPageStateRecorded,
+  providePageObjectStructure,
 } from "./pageState";
+import { onlyHitTestMarks } from "./inspectorMarks";
 import {
   assertAvailable,
   availabilityOf,
@@ -141,6 +142,7 @@ const waitingPoms = new Set<ObservedRegisteredPom>();
 const subscribers = new Set<() => void>();
 let mutationObserver: MutationObserver | undefined;
 let stopWatchingNavigations: (() => void) | undefined;
+let stopWatchingPageStates: (() => void) | undefined;
 let probeTimer: ReturnType<typeof setTimeout> | undefined;
 let observedWindow: Window | null = null;
 let probeLifetime = 0;
@@ -371,6 +373,13 @@ function startObservingPage() {
   stopWatchingNavigations = getInteractionHistory(document).onNavigation(
     schedulePomMemberProbe
   );
+  // An Availability Reason names the ref a recorded page state may have just
+  // given the element in the way, so the tools are read again.
+  stopWatchingPageStates = onPageStateRecorded(
+    document,
+    announceObstructedRoots
+  );
+  providePageObjectStructure(getRegisteredPomStructure);
   schedulePomMemberProbe();
 }
 
@@ -383,6 +392,9 @@ function stopObservingPage() {
   observedWindow = null;
   stopWatchingNavigations?.();
   stopWatchingNavigations = undefined;
+  stopWatchingPageStates?.();
+  stopWatchingPageStates = undefined;
+  providePageObjectStructure(undefined);
   mutationObserver?.disconnect();
   mutationObserver = undefined;
   if (probeTimer !== undefined) clearTimeout(probeTimer);
@@ -696,11 +708,11 @@ function notifySubscribers() {
 }
 
 /**
- * Package-internal: tells the subscribers to read the tools again although
- * no observation changed, as when a recorded page state gave the element in
- * an unavailable root's way its ref.
+ * Tells the subscribers to read the tools again although no observation
+ * changed, as when a recorded page state gave the element in an unavailable
+ * root's way its ref.
  */
-export function announceRegisteredPomChange() {
+function announceObstructedRoots() {
   const obstructed = [...registeredPoms].some((registration) =>
     registration.instances?.all.some(
       (instance) => instance.root?.inTheWay.length
@@ -795,9 +807,7 @@ function createComponentTool(
 
   const wrapper = refComponentToolManifest(pomId, group.toolPath, action);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
-    const values = validatedArguments(wrapper, input);
-    const ref = values[0] as string;
-    const args = values[1] ?? {};
+    const { ref, args = {} } = input as { ref: string; args?: object };
     const toolPath = `${pomId}.${group.toolPath}`;
     const label = `call ${wrapper.toolName} on`;
     const { element } = await resolveRef(ref, label, document);
@@ -971,7 +981,7 @@ async function performPageObjectAction(
   const currentDocument = requireCurrentDocument();
   const parameters = methodArguments(
     tool.parameters,
-    validatedArguments(tool, args)
+    argumentValues(tool, args)
   );
   if (root) await assertRootReachable(tool.toolName, root);
   // A tool may be called without the Caller ever having read the page; the
@@ -989,8 +999,8 @@ function requireCurrentDocument(): Document {
   return document;
 }
 
-function validatedArguments(tool: ToolManifest, args: unknown) {
-  throwViolations(toolInputViolations(inputSchemaFor(tool.parameters), args));
+/** The values of `tool`'s parameters in `args`, input the runtime checked. */
+function argumentValues(tool: ToolManifest, args: unknown) {
   const input = args as Record<string, unknown>;
   // An inherited name, such as constructor, is no argument.
   return tool.parameters.map((parameter) =>

@@ -1,5 +1,5 @@
 import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
-import { failedActionRecord, type ActionResult } from "./actionSequence";
+import type { ActionFailure, ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
 import type { StartChildRun, RunContext } from "./run";
 import { cursors } from "./cursors";
@@ -23,7 +23,6 @@ import {
   type GoalLoopDecisionFunction,
   type StepScores,
 } from "./stepDecision";
-import { ToolInputError } from "./errors";
 import { goalLoopRunResultKey } from "./goalLoopRunResultKey";
 
 export type { GoalLoopDecisionFunction } from "./stepDecision";
@@ -200,7 +199,7 @@ export function createPursueGoalTool(
     context: RunContext
   ): Promise<JsonValue> => {
     const result = await pursueGoal(
-      readPursueGoalInput(input),
+      input as GoalInput,
       decisionFn,
       currentDocument,
       context
@@ -246,44 +245,6 @@ export type GoalInput = {
   /** Goal Values: labelled strings or numbers the loop may pick from. */
   values?: GoalValues;
 };
-
-const isGoalValues = (values: unknown): values is GoalValues => {
-  if (typeof values !== "object" || values === null || Array.isArray(values))
-    return false;
-  const entries = Object.values(values);
-  return (
-    entries.length >= 1 &&
-    entries.length <= MAX_GOAL_VALUES &&
-    entries.every(
-      (value) =>
-        typeof value === "string" ||
-        (typeof value === "number" && Number.isFinite(value))
-    )
-  );
-};
-
-/** Validate and narrow the raw `goal` input to typed fields. */
-function readPursueGoalInput(input: unknown): GoalInput {
-  if (
-    typeof input === "object" &&
-    input !== null &&
-    "goal" in input &&
-    typeof input.goal === "string" &&
-    "maxSteps" in input &&
-    typeof input.maxSteps === "number" &&
-    Number.isInteger(input.maxSteps) &&
-    input.maxSteps >= 1
-  ) {
-    const values = "values" in input ? input.values : undefined;
-    if (values === undefined)
-      return { goal: input.goal, maxSteps: input.maxSteps };
-    if (isGoalValues(values))
-      return { goal: input.goal, maxSteps: input.maxSteps, values };
-  }
-  throw new ToolInputError(
-    `goal requires a string goal and an integer maxSteps of at least 1, and takes values as 1 to ${MAX_GOAL_VALUES} labelled strings or numbers.`
-  );
-}
 
 /**
  * Run the Goal Loop: each step reads the page, has the Step Decision say what
@@ -373,15 +334,14 @@ export async function pursueGoal(
     } catch (error) {
       // A failed step's Change Record goes through the history's bound, not
       // its error text.
-      const failed = failedActionRecord(error);
-      if (failed) {
-        const { message, ...record } = failed;
-        actionResult = { result: message, ...record };
-      } else {
-        const errorText =
-          error instanceof Error ? error.message : String(error);
-        actionResult = { result: errorText, page_changed: false };
-      }
+      const { page_changed, changes } = (
+        error instanceof Error ? error : {}
+      ) as Partial<Record<keyof ActionFailure, unknown>>;
+      actionResult = {
+        result: error instanceof Error ? error.message : String(error),
+        page_changed: page_changed === true,
+        ...(typeof changes === "string" && changes ? { changes } : {}),
+      };
       consecutiveFailures++;
     }
 

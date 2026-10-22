@@ -8,4 +8,4 @@ export { buildPageModel } from "./domain/pageModel";
 export { actionSignature } from "./infrastructure/actionSignature";
 export { rootTargetPath } from "./infrastructure/rootTargetPath";
 export { modelLens } from "./presentation/modelLens";
-export type { ObjectTree } from "./presentation/ModelTree";
+export type { ObjectTree } from "./domain/objectTree";

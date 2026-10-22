@@ -10,7 +10,7 @@ import {
 import {
   INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
   INSPECTOR_HOST_SELECTOR,
-} from "./pageState";
+} from "./inspectorMarks";
 
 /**
  * Package-internal: what the layout shows of one element (ADR-0035,

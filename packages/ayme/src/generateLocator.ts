@@ -12,7 +12,6 @@ import {
   requireCurrentDocument,
   resolveElementTarget,
   TARGET_SCHEMA,
-  validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
 import { requireAymeRuntimePage } from "./registry";
@@ -165,7 +164,7 @@ export const generateLocatorTool: PublishedElementTool = {
   // Stryker restore StringLiteral
   inputSchema,
   execute: async (input) => {
-    const { groups } = validatedToolInput(inputSchema, input) as {
+    const { groups } = input as {
       groups: { targets: string[]; within?: string }[];
     };
     const currentDocument = requireCurrentDocument();

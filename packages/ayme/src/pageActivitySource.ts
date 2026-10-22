@@ -1,6 +1,6 @@
 import type { PageActivitySource } from "@ayme-dev/core/structural-observation";
 
-import { onlyHitTestMarks } from "./pageState";
+import { onlyHitTestMarks } from "./inspectorMarks";
 
 const PAGE_ACTIVITY_EVENTS = [
   "transitionrun",
