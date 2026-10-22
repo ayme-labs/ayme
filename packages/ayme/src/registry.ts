@@ -1104,7 +1104,9 @@ function reportRootCount(
 /**
  * Logs that the collection at `path` of `walk`'s Page Object holds items
  * of `className`, which declares no root: once, and again only after an
- * observation that found none.
+ * observation that did not find it so, as the predicate lines are: one
+ * that found the collection rooted, or did not walk it while its Page
+ * Object was absent.
  */
 function reportRootlessCollection(walk: Walk, path: string, className: string) {
   if (walk.rootlessCollectionPaths.has(path)) return;
