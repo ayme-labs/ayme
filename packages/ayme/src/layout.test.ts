@@ -47,6 +47,16 @@ const refusals: [path: string, code: string, message: string][] = [
     "page-state may only use shared",
   ],
   [
+    "src/page-state/domain/misplaced.ts",
+    'export { PageStateSession } from "../application/pageStateSession";',
+    "domain may only depend on the allowed horizontal layers",
+  ],
+  [
+    "src/page-state/application/misplaced.ts",
+    'export { capturePage } from "../infrastructure/pageCapture";',
+    "application may only depend on the allowed horizontal layers",
+  ],
+  [
     "src/shared/misplaced.ts",
     'export { createAyme } from "../index";',
     "A slice may not use the package's entries.",
