@@ -3,12 +3,13 @@ import {
   callers,
   createAyme,
   createPage,
+  type ActionFailure,
   type ActionResult,
   type Ayme,
   type CustomTool,
   type Run,
 } from "./index";
-import { ACTION_RESULT_NOTE, failedActionRecord } from "./actionSequence";
+import { ACTION_RESULT_NOTE } from "./actionSequence";
 import { listElementTools } from "./browserTools";
 import { renderChangeRecord } from "./changeRecord";
 import { getInteractionHistory } from "./pageState";
@@ -116,15 +117,19 @@ describe("The two parts of a Change Record, in Chromium", () => {
       .catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(TypeError);
-    const { message } = error as Error;
-    expect(message).toMatch(/^The tool failed after its click\.\n/);
-    expect(message).toContain("changes_before:");
-    expect(message).toContain("Drifted before the failure");
-    expect(message).toContain("changes:");
-    expect(message.slice(message.indexOf("\nchanges:"))).toContain("Item 1");
-    expect(message.slice(message.indexOf("\nchanges:"))).not.toContain(
-      "Drifted"
-    );
+    const failed = error as TypeError & ActionFailure;
+    // The error keeps its own message; the record is its fields.
+    expect(failed.message).toBe("The tool failed after its click.");
+    expect(failed.page_changed).toBe(true);
+    expect(failed.changes_before).toContain("Drifted before the failure");
+    expect(failed.changes).toContain("Item 1");
+    expect(failed.changes).not.toContain("Drifted");
+    // The Run log keeps the error alone.
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "click_then_fail",
+      status: "failed",
+      error: "TypeError: The tool failed after its click.",
+    });
     // The Caller received both parts with the error.
     const next = await add(by);
     expect(next.changes_before).toBeUndefined();
@@ -132,7 +137,31 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(next.changes).not.toContain("Item 1");
   });
 
-  it("ends an error that fails an enclosing action too with that action's record", async () => {
+  it("leaves the Caller's cursor alone for a frozen error, so the next action reports what the failed one changed", async () => {
+    const clickThenFreeze: CustomTool = {
+      name: "click_then_freeze",
+      description: "Clicks Add, then fails with a frozen error.",
+      async execute() {
+        document.querySelector("button")!.click();
+        throw Object.freeze(new Error("Frozen."));
+      },
+    };
+    start({ customTools: [clickThenFreeze] });
+    const by = callers.inspector;
+    const { structure } = await ayme.tools.run("snapshot", {}, { by });
+    const ref = structure.match(/(e\d+) button "Add"/)![1];
+
+    const error = (await ayme.tools
+      .run("click_then_freeze", { ref }, { by })
+      .catch((caught: unknown) => caught)) as Error & ActionFailure;
+
+    expect(error.message).toBe("Frozen.");
+    expect(error).not.toHaveProperty("changes");
+    const next = await add(by);
+    expect(next.changes_before).toContain("Item 1");
+  });
+
+  it("gives an error that fails an enclosing action too that action's record", async () => {
     let ref = "";
     const clickThenFail: CustomTool = {
       name: "click_then_fail",
@@ -159,13 +188,17 @@ describe("The two parts of a Change Record, in Chromium", () => {
     const { structure } = await ayme.tools.run("snapshot", {}, { by });
     ref = structure.match(/(e\d+) button "Add"/)![1]!;
 
+    const error = (await ayme.tools
+      .run("undo_then_rethrow", { ref }, { by })
+      .catch((caught: unknown) => caught)) as Error & ActionFailure;
+
     // The child's record named Item 1; the enclosing action left nothing.
-    await expect(
-      ayme.tools.run("undo_then_rethrow", { ref }, { by })
-    ).rejects.toThrow(/^The child failed\.$/);
+    expect(error.message).toBe("The child failed.");
+    expect(error.page_changed).toBe(false);
+    expect(error).not.toHaveProperty("changes");
   });
 
-  it("keeps a prefix an enclosing action put on its child's error while replacing the record", async () => {
+  it("keeps what an enclosing action wrote into its child's message, with the enclosing action's record", async () => {
     let ref = "";
     const clickThenFail: CustomTool = {
       name: "click_then_fail",
@@ -193,99 +226,13 @@ describe("The two parts of a Change Record, in Chromium", () => {
     const { structure } = await ayme.tools.run("snapshot", {}, { by });
     ref = structure.match(/(e\d+) button "Add"/)![1]!;
 
-    const error: unknown = await ayme.tools
+    const error = (await ayme.tools
       .run("prefix_then_rethrow", { ref }, { by })
-      .catch((caught: unknown) => caught);
+      .catch((caught: unknown) => caught)) as Error & ActionFailure;
 
-    const { message } = error as Error;
-    expect(message).toMatch(
-      /^Checkout failed: The child failed\.\n\nchanges:\n/
-    );
-    // One record: the enclosing action's.
-    expect(message.match(/changes:/g)).toHaveLength(1);
-    expect(message).toContain("Item 1");
-  });
-
-  it("replaces the child's record when an enclosing action appends to its error", async () => {
-    let ref = "";
-    const clickThenFail: CustomTool = {
-      name: "click_then_fail",
-      description: "Clicks Add, then fails.",
-      async execute() {
-        document.querySelector("button")!.click();
-        throw new Error("The child failed.");
-      },
-    };
-    const appendThenRethrow: CustomTool = {
-      name: "append_then_rethrow",
-      description: "Runs click_then_fail and fails with its error, extended.",
-      async execute(_target, { run }) {
-        try {
-          await run("click_then_fail", { ref });
-        } catch (error) {
-          (error as Error).message += "\nCheckout failed.";
-          throw error;
-        }
-      },
-    };
-    start({ customTools: [clickThenFail, appendThenRethrow] });
-    const by = callers.inspector;
-    const { structure } = await ayme.tools.run("snapshot", {}, { by });
-    ref = structure.match(/(e\d+) button "Add"/)![1]!;
-
-    const error: unknown = await ayme.tools
-      .run("append_then_rethrow", { ref }, { by })
-      .catch((caught: unknown) => caught);
-
-    const { message } = error as Error;
-    expect(message).toMatch(
-      /^The child failed\.\nCheckout failed\.\n\nchanges:\n/
-    );
-    expect(message.match(/changes:/g)).toHaveLength(1);
-    expect(failedActionRecord(error)).toMatchObject({
-      message: "The child failed.\nCheckout failed.",
-      page_changed: true,
-    });
-  });
-
-  it("reports no change for an enclosing action that undid its failed child's change and replaced the message", async () => {
-    let ref = "";
-    const clickThenFail: CustomTool = {
-      name: "click_then_fail",
-      description: "Clicks Add, then fails.",
-      async execute() {
-        document.querySelector("button")!.click();
-        throw new Error("The child failed.");
-      },
-    };
-    const undoThenReplace: CustomTool = {
-      name: "undo_then_replace",
-      description:
-        "Runs click_then_fail, undoes it and fails with a new message.",
-      async execute(_target, { run }) {
-        try {
-          await run("click_then_fail", { ref });
-        } catch (error) {
-          document.querySelector("p")!.remove();
-          (error as Error).message = "Checkout failed.";
-          throw error;
-        }
-      },
-    };
-    start({ customTools: [clickThenFail, undoThenReplace] });
-    const by = callers.inspector;
-    const { structure } = await ayme.tools.run("snapshot", {}, { by });
-    ref = structure.match(/(e\d+) button "Add"/)![1]!;
-
-    const error: unknown = await ayme.tools
-      .run("undo_then_replace", { ref }, { by })
-      .catch((caught: unknown) => caught);
-
-    expect((error as Error).message).toBe("Checkout failed.");
-    expect(failedActionRecord(error)).toEqual({
-      message: "Checkout failed.",
-      page_changed: false,
-    });
+    expect(error.message).toBe("Checkout failed: The child failed.");
+    expect(error.page_changed).toBe(true);
+    expect(error.changes).toContain("Item 1");
   });
 
   it("leaves a failed action's error as it is when nothing changed", async () => {
@@ -301,9 +248,14 @@ describe("The two parts of a Change Record, in Chromium", () => {
     const { structure } = await ayme.tools.run("snapshot", {}, { by });
     const ref = structure.match(/(e\d+) button "Add"/)![1];
 
-    await expect(ayme.tools.run("fail", { ref }, { by })).rejects.toThrow(
-      /^The tool failed\.$/
-    );
+    const error = (await ayme.tools
+      .run("fail", { ref }, { by })
+      .catch((caught: unknown) => caught)) as Error & ActionFailure;
+
+    expect(error.message).toBe("The tool failed.");
+    expect(error.page_changed).toBe(false);
+    expect(error).not.toHaveProperty("changes_before");
+    expect(error).not.toHaveProperty("changes");
   });
 
   it("keeps a failed action's before capture in the history", async () => {

@@ -70,6 +70,33 @@ it("records no other result", async () => {
   expect(recorded).toEqual([]);
 });
 
+it("answers a failed call with the error's text and the Change Record it carries", async () => {
+  let handler!: (call: ToolCall) => Promise<ToolCallOutcome>;
+  const channel = {
+    answerCalls(answerWith: typeof handler) {
+      handler = answerWith;
+      return () => {};
+    },
+  } as unknown as PageChannel;
+  const failure = Object.assign(new Error("Timeout 1000ms."), {
+    name: "TimeoutError",
+    page_changed: true,
+    changes: "- e3 status: Saved",
+  });
+  const tools = {
+    run: vi.fn(async () => {
+      throw failure;
+    }),
+  } as unknown as PageTools;
+  answerToolCalls({ tools, channel });
+
+  expect(await handler({ callId: "1", name: "click", input: {} })).toEqual({
+    callId: "1",
+    ok: false,
+    error: "TimeoutError: Timeout 1000ms.\n\nchanges:\n- e3 status: Saved",
+  });
+});
+
 it("publishes every tool of the page with its availability and reason, again after each change", () => {
   const published: PageTool[][] = [];
   const channel = {
