@@ -32,12 +32,12 @@ import {
   type AnswerRecord,
   type ArgumentPlan,
   type ChosenArguments,
-  type GoalLoopOperation,
   type GoalValues,
   type StageTwoQuestion,
   type StepState,
-  type ToolOption,
+  type ValuePreset,
 } from "./goalLoopQuestions";
+import type { GoalLoopOperation, ToolOption } from "./goalLoopOperations";
 
 /**
  * The Step Decision: what one step of the Goal Loop does, decided from the
@@ -206,6 +206,11 @@ const answersOf = (response: DecisionResponse) =>
 type Read<T> =
   { value: T; stop?: undefined } | { value?: undefined; stop: StepStop };
 
+/** The chosen operation's arguments, or the verdict that ends the step. */
+type Decided =
+  | { chosen: ChosenArguments; stop?: undefined }
+  | { chosen?: undefined; stop: StepStop };
+
 const errorTextOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
@@ -322,17 +327,58 @@ function planStop(
 }
 
 /**
+ * The chosen operation's arguments: planned from the page and the Goal
+ * Values, asked in stage two when a parameter is left to the model, and
+ * completed with the speculative values stage one already read.
+ */
+async function decideArguments(
+  asker: StepAsker,
+  scores: StepScores,
+  tool: GoalLoopOperation,
+  values: GoalValues | undefined,
+  presets: readonly ValuePreset[],
+  state: StepState,
+  capture: PageStateCapture
+): Promise<Decided> {
+  // needs_value: the operation needs a value the model cannot pick
+  const plan = planArguments(tool, capture, values, presets);
+  if (plan.kind !== "ask") return { stop: planStop(tool, plan, asker.stop) };
+
+  let chosen: ChosenArguments = {
+    args: {},
+    chosen: {},
+    choices: {},
+    probabilities: {},
+    lists: {},
+  };
+  if (plan.questions.length > 0) {
+    const asked = await askArguments(
+      asker,
+      scores,
+      tool,
+      plan.questions,
+      state,
+      capture
+    );
+    if (asked.stop) return asked;
+    chosen = asked.chosen;
+  }
+  completeArguments(tool, chosen, presets);
+  return { chosen };
+}
+
+/**
  * Stage two: the chosen operation's arguments, asked in one parallel request,
  * and a run-off when several chunks of a ref each named an element.
  */
-async function decideArguments(
+async function askArguments(
   asker: StepAsker,
   scores: StepScores,
   tool: GoalLoopOperation,
   questions: readonly StageTwoQuestion[],
   state: StepState,
   capture: PageStateCapture
-): Promise<{ chosen: ChosenArguments; stop?: undefined } | { stop: StepStop }> {
+): Promise<Decided> {
   // The scores share the record's maps, so an answer that fails to read
   // leaves the ones read before it on the run result.
   const record: AnswerRecord = { choices: {}, probabilities: {} };
@@ -509,32 +555,18 @@ export async function decideStep({
   );
   if (presets.stop) return presets.stop;
 
-  // 3. needs_value: the operation needs a value the model cannot pick
-  const plan = planArguments(chosenTool, capture, values, presets.value);
-  if (plan.kind !== "ask") return planStop(chosenTool, plan, stop);
-
-  // --- Stage two: the operation's arguments ---
-
-  let chosenArguments: ChosenArguments = {
-    args: {},
-    chosen: {},
-    choices: {},
-    probabilities: {},
-    lists: {},
-  };
-  if (plan.questions.length > 0) {
-    const decided = await decideArguments(
-      asker,
-      scores,
-      chosenTool,
-      plan.questions,
-      state,
-      capture
-    );
-    if (decided.stop) return decided.stop;
-    chosenArguments = decided.chosen;
-  }
-  completeArguments(chosenTool, chosenArguments, presets.value);
+  // 3. needs_value, and stage two: the operation's arguments
+  const decided = await decideArguments(
+    asker,
+    scores,
+    chosenTool,
+    values,
+    presets.value,
+    state,
+    capture
+  );
+  if (decided.stop) return decided.stop;
+  const chosenArguments = decided.chosen;
 
   // 4. no_progress: the step would repeat the one before, to no effect.
   const stuck = stuckOn(history, chosenTool.name, chosenArguments.chosen);
