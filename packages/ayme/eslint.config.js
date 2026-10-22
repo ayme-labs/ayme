@@ -34,7 +34,7 @@ const sourceFiles = "src/**/*.ts";
 const testCode = [
   "src/**/*.test.ts",
   "src/**/*.testSupport.ts",
-  "src/test-utils/**",
+  "src/**/test-utils/**",
 ];
 
 /** Relative imports beneath another slice, past its front door (its index.ts). */
@@ -43,8 +43,13 @@ function deepImport(slice) {
   return `^\\.\\.?/(.*/)?(${others.join("|")})/(?!index(\\.[jt]s)?$)`;
 }
 
-/** Relative imports of test code: a test-utils folder or a test harness. */
-const testCodeImport = String.raw`^\.\.?/(.*/)?(test-utils/.*|[^/]+\.testSupport)$`;
+/** Relative imports of test code: a test-utils folder, a test or a harness. */
+const testCodeImport = String.raw`^\.\.?/(.*/)?(test-utils(/.*)?|[^/]+\.(test|testSupport)(\.[jt]s)?)$`;
+
+/** esquery reads `/` as the end of a regex, so selectors match it as `\x2F`. */
+function selectorRegex(regex) {
+  return `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
+}
 
 function frontDoors(slice, files, { tests }) {
   const patterns = [
@@ -66,14 +71,29 @@ function frontDoors(slice, files, { tests }) {
     ...(tests ? {} : { ignores: testCode }),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // The same rules for import() as a value and as a type. A test types
+      // what vi.mock and vi.importActual load, which they name by file.
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => [
+          {
+            selector: `ImportExpression[source.value=${selectorRegex(regex)}]`,
+            message,
+          },
+          {
+            selector: `TSImportType[source.value=${selectorRegex(regex)}]${tests ? ":not(CallExpression[callee.object.name=vi][callee.property.name=/^(mock|importActual)$/] *)" : ""}`,
+            message,
+          },
+        ]),
+        ...(tests
+          ? []
+          : [
+              {
+                selector: "ImportExpression[source.type!=Literal]",
+                message:
+                  "Name the module in import() with a string literal, so lint can check it.",
+              },
+            ]),
       ],
     },
   };
@@ -96,24 +116,40 @@ export default [
         {
           default: "allow",
           checkAllOrigins: false,
-          checkUnknownLocals: false,
-          policies: slices.map((slice) => ({
-            from: { element: { captured: { slice } } },
-            disallow: {
-              to: {
-                element: {
-                  captured: {
-                    slice: slices.filter(
-                      (target) =>
-                        target !== slice &&
-                        !allowedSlices[slice].includes(target)
-                    ),
+          // The entries belong to no element, and a file of an unlayered
+          // slice shares its element with the slice's index.ts.
+          checkUnknownLocals: true,
+          checkInternals: true,
+          policies: slices.flatMap((slice) => [
+            {
+              from: { element: { captured: { slice } } },
+              disallow: {
+                to: {
+                  element: {
+                    captured: {
+                      slice: slices.filter(
+                        (target) =>
+                          target !== slice &&
+                          !allowedSlices[slice].includes(target)
+                      ),
+                    },
                   },
                 },
               },
+              message: `${slice} may only use ${[...allowedSlices[slice], "itself"].join(", ")}.`,
             },
-            message: `${slice} may only use ${[...allowedSlices[slice], "itself"].join(", ")}.`,
-          })),
+            {
+              from: { element: { captured: { slice } } },
+              disallow: { to: { file: { path: "src/*.ts" } } },
+              message: "A slice may not use the package's entries.",
+            },
+            {
+              from: { element: { captured: { slice } } },
+              disallow: { to: { file: { path: `src/${slice}/index.ts` } } },
+              message:
+                "Inside a slice, import the module itself, not the slice's index.ts.",
+            },
+          ]),
         },
       ],
     },
@@ -122,7 +158,11 @@ export default [
     frontDoors(slice, [`src/${slice}/**/*.ts`], { tests: false }),
     frontDoors(
       slice,
-      [`src/${slice}/**/*.test.ts`, `src/${slice}/**/*.testSupport.ts`],
+      [
+        `src/${slice}/**/*.test.ts`,
+        `src/${slice}/**/*.testSupport.ts`,
+        `src/${slice}/**/test-utils/**/*.ts`,
+      ],
       { tests: true }
     ),
   ]),
