@@ -240,6 +240,12 @@ describe("checkedToolInput", () => {
     expect(
       checkedToolInput(optional, Object.create({ values: { a: true } }))
     ).toStrictEqual({});
+    const symbolKeyed = {
+      get [Symbol("unread")]() {
+        throw new Error("The check never reads a symbol key.");
+      },
+    };
+    expect(checkedToolInput(optional, symbolKeyed)).toStrictEqual({});
   });
 
   it("takes missing input as {} and refuses null", () => {
