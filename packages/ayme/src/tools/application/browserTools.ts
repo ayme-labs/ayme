@@ -11,7 +11,6 @@ import {
 } from "../../page-state";
 import {
   listCustomTools,
-  locatorOf,
   registerElementTool,
   requireCurrentDocument,
   resolveElementTarget,
@@ -102,7 +101,7 @@ function browserTool(
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
     perform: async (target, input, { page }) => {
-      await perform(locatorOf(page, target), input);
+      await perform(page.locator(target.selector), input);
     },
   };
 }
@@ -279,7 +278,7 @@ async function fillField(
     field.target,
     currentDocument
   );
-  const locator = locatorOf(page, target);
+  const locator = page.locator(target.selector);
   await assertReachable(
     "fill_form",
     locator,

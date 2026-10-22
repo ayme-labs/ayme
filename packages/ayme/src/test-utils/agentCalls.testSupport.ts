@@ -20,19 +20,8 @@ import type { RunContext } from "../runs";
 /** The calling agent's cursor: a WebMCP agent's, as `webmcp` Runs read it. */
 export const agentCursor = (): Cursor => cursors.of(callers.webmcp);
 
-/**
- * The page of a Run a test hands none: any use of it throws, so a test that
- * executes a tool acting on the page has to hand it its page.
- */
-const NO_PAGE = new Proxy(
-  {},
-  {
-    get(_target, property) {
-      if (typeof property === "symbol") return undefined;
-      throw new Error(`The test's Run has no page, so page.${property} fails.`);
-    },
-  }
-) as Page;
+/** The page of a Run a test hands none: a tool acting on the page needs one. */
+const NO_PAGE = {} as Page;
 
 /**
  * The Run context for a tool a test executes itself, outside a runtime

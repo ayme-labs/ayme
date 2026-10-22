@@ -168,7 +168,7 @@ function elementToolExecution(
     if (definition.needsReach)
       await assertReachable(
         definition.name,
-        locatorOf(context.page, target),
+        context.page.locator(target.selector),
         target.element,
         definition.needsReach
       );
@@ -291,11 +291,6 @@ export async function resolveElementTarget(
       )
     );
   return { element: elements[0]!, selector: requested };
-}
-
-/** Package-internal: `page`'s locator for a resolved element. */
-export function locatorOf(page: Page, target: ResolvedTarget) {
-  return page.locator(target.selector);
 }
 
 export function requireCurrentDocument(): Document {

@@ -4,7 +4,6 @@
 // Structural Action. Published only: the Goal Loop never offers it.
 import type { JsonSchema } from "../../shared";
 import {
-  locatorOf,
   requireCurrentDocument,
   resolveElementTarget,
   type PublishedElementTool,
@@ -97,7 +96,7 @@ export const screenshotTool: PublishedElementTool = {
         request.target,
         requireCurrentDocument()
       );
-      bytes = await locatorOf(page, target).screenshot(options);
+      bytes = await page.locator(target.selector).screenshot(options);
       subject = `element ${request.target}`;
     } else {
       bytes = await page.screenshot({
