@@ -21,7 +21,7 @@ export const connectTool: ServerToolFactory = ({ pairing }) => ({
   },
   async call({ url }) {
     try {
-      return textResult(connectLink(String(url), pairing));
+      return textResult(connectLink(url as string, pairing));
     } catch (error) {
       return errorResult(errorText(error));
     }

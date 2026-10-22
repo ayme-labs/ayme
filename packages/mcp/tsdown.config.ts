@@ -4,6 +4,8 @@ export default defineConfig({
   clean: true,
   // Omit build-machine source paths, not copyright or license comments.
   inputOptions: { experimental: { attachDebugInfo: "none" } },
+  // The private workspace package, copied into the output instead of imported.
+  deps: { alwaysBundle: ["@ayme-dev/core"] },
   dts: true,
   entry: {
     // The `ayme` command, which runs in Node.

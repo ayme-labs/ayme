@@ -13,6 +13,11 @@
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",
       "default": "./dist/testing.mjs"
+    },
+    "./tool-input": {
+      "types": "./dist/toolInput.d.mts",
+      "import": "./dist/toolInput.mjs",
+      "default": "./dist/toolInput.mjs"
     }
   },
   "scripts": {
@@ -39,5 +44,5 @@
     "vitest": "^4.1.11"
   },
   "license": "FSL-1.1-ALv2",
-  "description": "Shared structural observation, capture history, and projection"
+  "description": "Shared structural observation, capture history, and projection, and the check of a tool's input against its schema"
 }

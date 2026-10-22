@@ -60,8 +60,8 @@ export { rootTargetPath } from "./pomTree";
 export type { RegisteredPomTarget } from "./pomTree";
 // The runtime's own input validation, so the Inspector's run card reports
 // every violation before Run that the call would fail on.
-export { toolInputViolations } from "./schemaValidation";
-export type { SchemaViolation } from "./schemaValidation";
+export { toolInputViolations } from "@ayme-dev/core/tool-input";
+export type { SchemaViolation } from "@ayme-dev/core/tool-input";
 export { subscribeToAgentImageRuns } from "./agentImageRuns";
 export type { AgentImageRun } from "./agentImageRuns";
 // The runtime session and its types are public (ADR-0031); this entry keeps

@@ -1024,6 +1024,9 @@ importers:
         specifier: ^4.5.4
         version: 4.6.5
     devDependencies:
+      "@ayme-dev/core":
+        specifier: workspace:*
+        version: link:../core
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../eslint-config

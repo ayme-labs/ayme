@@ -1,3 +1,7 @@
+import {
+  toolInputViolations,
+  violationSentences,
+} from "@ayme-dev/core/tool-input";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -29,7 +33,9 @@ import {
  * serves one agent, so every tool result also carries, as a text item after
  * the tool's own, a note of the tools that appeared, disappeared, became
  * available or unavailable or were hidden since the previous tool call;
- * before the first call the agent has seen no tools.
+ * before the first call the agent has seen no tools. A server tool's input
+ * is checked against its input schema before the tool runs, with arguments
+ * left out taken as `{}`; a page tool's input is the page's to check.
  */
 export function createMcpToolServer({
   name,
@@ -80,7 +86,12 @@ export function createMcpToolServer({
   const wasOffered = rememberOfferedNames(connection);
   const run = (name: string, input: Record<string, unknown>) => {
     const serverTool = serverTools.find((tool) => tool.name === name);
-    if (serverTool) return serverTool.call(input);
+    if (serverTool) {
+      const violations = toolInputViolations(serverTool.inputSchema, input);
+      if (violations.length > 0)
+        return errorResult(`ToolInputError: ${violationSentences(violations)}`);
+      return serverTool.call(input);
+    }
     return callPageTool(
       connection,
       name,
