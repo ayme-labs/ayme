@@ -124,6 +124,12 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(failed.changes_before).toContain("Drifted before the failure");
     expect(failed.changes).toContain("Item 1");
     expect(failed.changes).not.toContain("Drifted");
+    // The Run log keeps the error alone.
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "click_then_fail",
+      status: "failed",
+      error: "TypeError: The tool failed after its click.",
+    });
     // The Caller received both parts with the error.
     const next = await add(by);
     expect(next.changes_before).toBeUndefined();

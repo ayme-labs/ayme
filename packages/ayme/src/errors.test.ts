@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   asSentence,
   AymeError,
-  errorText,
   RefResolutionError,
   RuntimeStateError,
   ToolInputError,
@@ -48,20 +47,5 @@ describe("Ayme errors", () => {
     ["Stop!", "Stop!"],
   ])("closes %o as a sentence", (text, sentence) => {
     expect(asSentence(text)).toBe(sentence);
-  });
-
-  it("follows an error's text with the Change Record a failed action left on it", () => {
-    const error = Object.assign(new TypeError("Timeout 1000ms."), {
-      page_changed: true,
-      changes_before: "- e2 status: Saved",
-      changes: '- e3 dialog "Discard?"',
-    });
-
-    expect(errorText(error)).toBe(
-      'TypeError: Timeout 1000ms.\n\nchanges_before:\n- e2 status: Saved\n\nchanges:\n- e3 dialog "Discard?"'
-    );
-    expect(
-      errorText(Object.assign(new Error("Failed."), { page_changed: false }))
-    ).toBe("Failed.");
   });
 });
