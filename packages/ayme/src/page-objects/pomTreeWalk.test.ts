@@ -9,6 +9,7 @@ import { ayme } from "./decorators";
 import { rooted } from "../test-utils/pomRoot.testSupport";
 import { pomGroups, rootTargetPath } from "./pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
+import { litePageDriver } from "./litePageDriver";
 
 const page = createPage();
 
@@ -99,7 +100,11 @@ describe("one observation of a Page Object", () => {
       items: [item("#src", [item("#lib", [item("#util")])])],
     };
 
-    const { instances } = await observePageObject(tree, fileTree);
+    const { instances } = await observePageObject(
+      litePageDriver,
+      tree,
+      fileTree
+    );
     const byPath = new Map(
       instances.map((instance) => [instance.path, instance])
     );
@@ -132,6 +137,7 @@ describe("one observation of a Page Object", () => {
     const tree = { items: [item("#src", [nested])] };
 
     const { instances, memberObservations } = await observePageObject(
+      litePageDriver,
       tree,
       fileTree
     );
@@ -175,7 +181,11 @@ describe("one observation of a Page Object", () => {
       new Node(page.locator("#inner"))
     );
 
-    const { instances } = await observePageObject({ node: root }, manifest);
+    const { instances } = await observePageObject(
+      litePageDriver,
+      { node: root },
+      manifest
+    );
 
     expect(pomGroups(manifest).map(({ key }) => key)).toEqual(["node"]);
     expect(
@@ -192,7 +202,11 @@ describe("one observation of a Page Object", () => {
     const src = item("#src");
     src.children.push(src);
 
-    const { instances } = await observePageObject({ items: [src] }, fileTree);
+    const { instances } = await observePageObject(
+      litePageDriver,
+      { items: [src] },
+      fileTree
+    );
 
     expect(instances.map(({ path }) => path)).toEqual([
       "",
@@ -208,10 +222,14 @@ describe("one observation of a Page Object", () => {
     `;
     const tree = { items: [item("#src", [item("#lib")])] };
 
-    const { targetSources } = await observePageObject(tree, fileTree);
+    const { targetSources } = await observePageObject(
+      litePageDriver,
+      tree,
+      fileTree
+    );
 
     expect(
-      resolveTargets(targetSources).map(({ path, element }) => [
+      resolveTargets(litePageDriver, targetSources).map(({ path, element }) => [
         path,
         element.id,
       ])

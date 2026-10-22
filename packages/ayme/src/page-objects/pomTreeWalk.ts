@@ -1,8 +1,4 @@
 import type { Locator } from "@playwright/test";
-import {
-  isPlaywrightLiteLocator,
-  resolveLocatorElements,
-} from "@ayme-dev/playwright-lite/internal";
 import type {
   PomComponentManifest,
   PomComponentMemberManifest,
@@ -15,7 +11,7 @@ import { modelOption } from "./decorators";
 import { errorText, RuntimeStateError } from "../shared";
 import type { ObservedPomRoot, PomInstanceObservation } from "./pomInstance";
 import { askPredicates, askPresence } from "./pomPredicates";
-import { observePomRoot } from "./pomRootObservation";
+import type { PageDriver } from "./pageDriver";
 import {
   componentsOf,
   occurrenceOf,
@@ -31,6 +27,7 @@ import {
  * locator that cannot be resolved holds none; its observation says why.
  */
 export function resolveTargets(
+  driver: PageDriver,
   sources: readonly PomTargetSource[]
 ): RegisteredPomTarget[] {
   // Each locator once: a member's root is also a source of its own.
@@ -39,7 +36,7 @@ export function resolveTargets(
     let elements = resolved.get(locator);
     if (!elements) {
       try {
-        elements = locatorElements(locator);
+        elements = driver.elementsOf(locator);
       } catch {
         elements = [];
       }
@@ -57,14 +54,17 @@ export function resolveTargets(
 
 /**
  * Package-internal: observes the registered Page Object `instance` of
- * `manifest` once: its instances, its members, and the elements they hold.
- * It reads the page and the Page Objects only; what to log is the caller's.
+ * `manifest` once, reading the page through `driver`: its instances, its
+ * members, and the elements they hold. It reads the page and the Page
+ * Objects only; what to log is the caller's.
  */
 export async function observePageObject(
+  driver: PageDriver,
   instance: object,
   manifest: PomManifest
 ): Promise<PageObjectObservation> {
   const walk: Walk = {
+    driver,
     label: manifest.className,
     components: componentsOf(manifest),
     instances: [],
@@ -108,6 +108,7 @@ export async function observePageObject(
 
 /** One walk over a registered Page Object's tree, and what it found. */
 type Walk = PageObjectObservation & {
+  driver: PageDriver;
   /** The registered Page Object's name, which its targets' paths start with. */
   label: string;
   components: ReadonlyMap<string, PomComponentManifest>;
@@ -190,7 +191,7 @@ async function observeInstance(
     walk.instances.push(observed);
     return { kind: "observed", observed, walk: false };
   }
-  const root = await observeRoot(instance);
+  const root = await observeRoot(walk.driver, instance);
   if (!root && kind === "item") return { kind: "rootless" };
   if (root) {
     observed.root = root.root;
@@ -262,7 +263,7 @@ async function walkMembers(
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
-        if (!isLocator(value))
+        if (!walk.driver.isLocator(value))
           throw new RuntimeStateError(
             `POM member ${memberPath} is not a browser locator.`
           );
@@ -272,7 +273,7 @@ async function walkMembers(
           locator: value,
           root: place.rootLocator,
         });
-        if (resolvesToRoot(value, place.rootElement)) {
+        if (resolvesToRoot(walk.driver, value, place.rootElement)) {
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
@@ -297,10 +298,14 @@ async function walkMembers(
  * it is the Page Object Root. By element, not by Locator identity: a getter
  * may build a fresh Locator on each read.
  */
-function resolvesToRoot(locator: Locator, rootElement: Element | undefined) {
+function resolvesToRoot(
+  driver: PageDriver,
+  locator: Locator,
+  rootElement: Element | undefined
+) {
   return (
     rootElement !== undefined &&
-    isRootElement(locatorElements(locator), [rootElement])
+    isRootElement(driver.elementsOf(locator), [rootElement])
   );
 }
 
@@ -439,18 +444,19 @@ type RootObservation = {
  * absent.
  */
 async function observeRoot(
+  driver: PageDriver,
   instance: object
 ): Promise<RootObservation | undefined> {
   // A rootless Page Object with no predicate is on every page.
   if (!modelOption(instance.constructor, "root")) return undefined;
   let locator: Locator | undefined;
   try {
-    locator = await readRoot(instance);
+    locator = await readRoot(driver, instance);
   } catch (error) {
     return { root: absentRoot, count: 0, error: errorText(error) };
   }
   if (!locator) return { root: absentRoot, count: 0 };
-  return { ...(await observePomRoot(locator)), locator };
+  return { ...(await driver.observeRoot(locator)), locator };
 }
 
 /**
@@ -459,11 +465,14 @@ async function observeRoot(
  * option, or when the answer is not a locator; a root predicate that throws,
  * throws.
  */
-async function readRoot(instance: object): Promise<Locator | undefined> {
+async function readRoot(
+  driver: PageDriver,
+  instance: object
+): Promise<Locator | undefined> {
   const predicate = modelOption(instance.constructor, "root");
   if (!predicate) return undefined;
   const root = await predicate(instance as never);
-  return isLocator(root) ? root : undefined;
+  return driver.isLocator(root) ? root : undefined;
 }
 
 const absentRoot: ObservedPomRoot = {
@@ -491,14 +500,6 @@ async function readMember(instance: object, member: PomMemberManifest) {
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === "function";
-}
-
-function isLocator(value: unknown): value is Locator {
-  return isPlaywrightLiteLocator(value);
-}
-
-function locatorElements(locator: Locator): Element[] {
-  return resolveLocatorElements(locator);
 }
 
 function asComponents(value: unknown): unknown[] {
