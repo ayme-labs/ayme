@@ -10,7 +10,8 @@ Map a user flow into a POM against the running app, in this order:
    outcome.
 3. **Write the POM** from what you observed, following
    [Page object design](page-object-design.md). Get each locator from
-   `generate_locator`, with the POM's root as `within` for its members; a ref
+   `generate_locator`: pass `groups`, one `{ within: <root ref>, targets: [...] }`
+   per root, plus a group without `within` for page-level members. A ref
    belongs to one snapshot and does not belong in code.
 4. **Verify** by calling each new action through Ayme's MCP server and
    confirming its effect on the page.
