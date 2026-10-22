@@ -711,11 +711,27 @@ function classDescription(
   const marker = findClassMarker(declaration);
   const description = marker && decoratorDescription(marker);
   if (description !== undefined) return { description };
-  for (const base of baseClassDeclarations(checker, declaration)) {
-    const inherited = classDescription(checker, base);
-    if (inherited.description !== undefined) return inherited;
-  }
-  return {};
+  const base = extendedClassDeclaration(checker, declaration);
+  return base ? classDescription(checker, base) : {};
+}
+
+/**
+ * The class `declaration` extends at runtime: the one its `extends` clause
+ * names, not a type-only base a merged interface adds.
+ */
+function extendedClassDeclaration(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+) {
+  const base = declaration.heritageClauses?.find(
+    (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+  )?.types[0];
+  return base
+    ? checker
+        .getTypeAtLocation(base)
+        .getSymbol()
+        ?.declarations?.find(ts.isClassDeclaration)
+    : undefined;
 }
 
 type ToolDescription = { authored?: string };

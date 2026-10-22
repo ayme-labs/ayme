@@ -584,6 +584,12 @@ describe("derivePomManifests", () => {
       }
     );
 
+    it("gives no description through a base that only a merged interface adds", () => {
+      expect(
+        manifestForClass("describedBasePom", "PersonalPage")
+      ).not.toHaveProperty("description");
+    });
+
     it("does not make a member typed as an undecorated class chain a Page Object Child", () => {
       expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
