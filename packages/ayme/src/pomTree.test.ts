@@ -7,7 +7,12 @@ import { createPage } from "./browserPage";
 import type { PomComponentManifest, PomManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { rooted } from "./pomRoot.testSupport";
-import { observePageObject, pomGroups, rootTargetPath } from "./pomTree";
+import {
+  observePageObject,
+  pomGroups,
+  resolveTargets,
+  rootTargetPath,
+} from "./pomTree";
 
 const page = createPage();
 
@@ -207,9 +212,14 @@ describe("one observation of a Page Object", () => {
     `;
     const tree = { items: [item("#src", [item("#lib")])] };
 
-    const { targets } = await observePageObject(tree, fileTree);
+    const { targetSources } = await observePageObject(tree, fileTree);
 
-    expect(targets.map(({ path, element }) => [path, element.id])).toEqual([
+    expect(
+      resolveTargets(targetSources).map(({ path, element }) => [
+        path,
+        element.id,
+      ])
+    ).toEqual([
       [rootTargetPath("FileTree.items[0]"), "src"],
       [rootTargetPath("FileTree.items[0].children[0]"), "lib"],
     ]);

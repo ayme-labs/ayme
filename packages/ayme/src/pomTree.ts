@@ -56,17 +56,38 @@ export type RegisteredPomTarget = {
   locator: string;
 };
 
+/**
+ * A locator a Page Object member or root holds, at the target path of that
+ * member or root. Resolved when the targets are read, so they are the
+ * elements it holds then.
+ */
+export type PomTargetSource = { path: string; locator: Locator };
+
+/** Package-internal: the elements `sources` hold now, in their order. */
+export function resolveTargets(
+  sources: readonly PomTargetSource[]
+): RegisteredPomTarget[] {
+  return sources.flatMap(({ path, locator }) => {
+    const name = locator.toString();
+    return locatorElements(locator).map((element) => ({
+      path,
+      element,
+      locator: name,
+    }));
+  });
+}
+
 /** Package-internal: what one observation of a registered Page Object found. */
 export type PageObjectObservation = {
   /** Every instance the walk found, parents before their members. */
   instances: PomInstanceObservation[];
   memberObservations: PomMemberObservation[];
   /**
-   * The elements its members and roots hold, one target per element and
-   * concrete member path, in declaration order. Paths through collections
-   * carry their item indices.
+   * The locators its members and roots hold, one per concrete member path,
+   * in declaration order. Paths through collections carry their item
+   * indices.
    */
-  targets: RegisteredPomTarget[];
+  targetSources: PomTargetSource[];
   /** The paths of the locator members that resolved to their root. */
   rootMemberPaths: Set<string>;
   /**
@@ -174,7 +195,7 @@ export async function observePageObject(
     components: componentsOf(manifest),
     instances: [],
     memberObservations: [],
-    targets: [],
+    targetSources: [],
     rootMemberPaths: new Set(),
     rootlessCollections: new Map(),
   };
@@ -204,7 +225,7 @@ export async function observePageObject(
   return {
     instances: walk.instances,
     memberObservations: walk.memberObservations,
-    targets: walk.targets,
+    targetSources: walk.targetSources,
     rootMemberPaths: walk.rootMemberPaths,
     rootlessCollections: walk.rootlessCollections,
   };
@@ -302,7 +323,13 @@ async function observeInstance(
     observed.rootLocator = root.locator;
     observed.rootError = root.error;
     observed.rootCount = root.count;
-    if (root.locator) pushRootTargets(walk, place.path, root.locator, root);
+    if (root.locator)
+      walk.targetSources.push({
+        path: rootTargetPath(
+          place.path ? `${walk.label}.${place.path}` : walk.label
+        ),
+        locator: root.locator,
+      });
     if (kind !== "page") {
       if (root.error !== undefined || !root.locator) {
         walk.memberObservations.push(
@@ -347,31 +374,6 @@ function rootObservation(path: string, error: string): PomMemberObservation {
   };
 }
 
-/**
- * Pushes the elements the root locator of the instance at `path` resolves
- * to as targets at the root target path. A root its observation found one
- * element or none for is not resolved again.
- */
-function pushRootTargets(
-  walk: Walk,
-  path: string,
-  root: Locator,
-  { count, root: observed }: RootObservation
-) {
-  const targetPath = rootTargetPath(
-    path ? `${walk.label}.${path}` : walk.label
-  );
-  const locator = root.toString();
-  const elements =
-    count === 0
-      ? []
-      : count === 1 && observed.element
-        ? [observed.element]
-        : locatorElements(root);
-  for (const element of elements)
-    walk.targets.push({ path: targetPath, element, locator });
-}
-
 async function walkMembers(
   walk: Walk,
   instance: object,
@@ -386,18 +388,12 @@ async function walkMembers(
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
-        if (!isLocator(value))
-          throw new RuntimeStateError(
-            `POM member ${memberPath} is not a browser locator.`
-          );
-        // Resolved once, for the root check and the targets.
-        const elements = locatorElements(value);
-        if (resolvesToRoot(elements, place.rootElement)) {
+        if (isLocator(value) && resolvesToRoot(value, place.rootElement)) {
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
         walk.memberObservations.push(
-          await observeLocator(walk, value, elements, member, memberPath)
+          await observeLocator(walk, value, member, memberPath)
         );
       } else
         await walkComponentMember(walk, value, member, place, nextAncestors);
@@ -414,34 +410,32 @@ async function walkMembers(
  * it is the Page Object Root. By element, not by Locator identity: a getter
  * may build a fresh Locator on each read.
  */
-function resolvesToRoot(
-  elements: readonly Element[],
-  rootElement: Element | undefined
-) {
-  return (
-    rootElement !== undefined &&
-    elements.length === 1 &&
-    elements[0] === rootElement
-  );
+function resolvesToRoot(locator: Locator, rootElement: Element | undefined) {
+  if (!rootElement) return false;
+  const elements = locatorElements(locator);
+  return elements.length === 1 && elements[0] === rootElement;
 }
 
 async function observeLocator(
   walk: Walk,
-  value: Locator,
-  elements: readonly Element[],
+  value: unknown,
   member: PomMemberManifest,
   memberPath: string
 ): Promise<PomMemberObservation> {
-  const observation: PomMemberObservation = {
+  if (!isLocator(value))
+    throw new RuntimeStateError(
+      `POM member ${memberPath} is not a browser locator.`
+    );
+  walk.targetSources.push({
+    path: joinPath(walk.label, memberPath),
+    locator: value,
+  });
+  return {
     memberName: memberPath,
     kind: "locator",
     access: member.access,
     count: await value.count(),
   };
-  const path = joinPath(walk.label, memberPath);
-  const locator = value.toString();
-  for (const element of elements) walk.targets.push({ path, element, locator });
-  return observation;
 }
 
 /**
