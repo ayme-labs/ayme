@@ -2,27 +2,27 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { captureAriaSnapshot, listRegisteredPomRoots, listRegisteredPoms } =
-  vi.hoisted(() => ({
+const { captureAriaSnapshot, pageObjectRoots, listRegisteredPoms } = vi.hoisted(
+  () => ({
     captureAriaSnapshot: vi.fn(),
-    listRegisteredPomRoots: vi.fn(),
+    pageObjectRoots: vi.fn(),
     listRegisteredPoms: vi.fn(),
-  }));
+  })
+);
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
-vi.mock("./registry", () => ({
-  getRegisteredPomStructure: async () => ({
-    roots: await listRegisteredPomRoots(),
-    absentElements: [],
-  }),
-  listRegisteredPoms,
-  announceRegisteredPomChange: () => {},
-}));
+vi.mock("./registry", () => ({ listRegisteredPoms }));
 
 import { ayme } from "./agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { providePageObjectStructure } from "./pageState";
 
 const ref = AriaRefSchema.parse;
+
+providePageObjectStructure(async () => ({
+  roots: await pageObjectRoots(),
+  absentElements: [],
+}));
 
 describe("the Ayme page state helper", () => {
   beforeEach(() => {
@@ -46,7 +46,7 @@ describe("the Ayme page state helper", () => {
       fullText: '- button "Save changes" [ref=e1]',
       refsByElement: new Map([[button, "e1"]]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     listRegisteredPoms.mockReturnValue([
       {
         manifest: {
@@ -91,7 +91,7 @@ describe("the Ayme page state helper", () => {
         [button, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
 
     const state = await ayme.getPageState();
 
@@ -149,7 +149,7 @@ describe("the Ayme page state helper", () => {
         [button, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "AccountPage.root", element: account },
     ]);
 
@@ -210,7 +210,7 @@ describe("the Ayme page state helper", () => {
           [billingButton, "e3"],
         ]),
       });
-    listRegisteredPomRoots
+    pageObjectRoots
       .mockResolvedValueOnce([
         { label: "Account.root", element: account },
         { label: "Billing.root", element: billing },
@@ -264,7 +264,7 @@ describe("the Ayme page state helper", () => {
         [button, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "AccountPage.root", element: account },
     ]);
 
@@ -293,7 +293,7 @@ describe("the Ayme page state helper", () => {
     captureAriaSnapshot
       .mockReturnValueOnce(rerenderedCapture)
       .mockReturnValueOnce(rerenderedCapture);
-    listRegisteredPomRoots.mockResolvedValue([
+    pageObjectRoots.mockResolvedValue([
       { label: "AccountPage.root", element: account },
     ]);
 
@@ -315,7 +315,7 @@ describe("the Ayme page state helper", () => {
       fullText: "- generic [ref=e1]:",
       refsByElement: new Map(),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
 
     const state = await ayme.getPageState();
 
@@ -339,7 +339,7 @@ describe("the Ayme page state helper", () => {
         [original, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     const retainedState = await ayme.getPageState();
 
     original.outerHTML = '<button id="save">Save changes</button>';
@@ -389,7 +389,7 @@ describe("the Ayme page state helper", () => {
       fullText: "- generic [ref=e1]",
       refsByElement: new Map([[document.body, "e1"]]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     const state = await ayme.getPageState();
 
     document.body.innerHTML = '<button id="added">Added</button>';
@@ -431,7 +431,7 @@ describe("the Ayme page state helper", () => {
         fullText: "- generic [ref=e1]",
         refsByElement: new Map([[document.body, "e1"]]),
       });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     const state = await ayme.getPageState();
     removed.remove();
 
@@ -455,7 +455,7 @@ describe("the Ayme page state helper", () => {
         [original, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     const state = await ayme.getPageState();
 
     document.body.innerHTML = `
@@ -497,7 +497,7 @@ describe("the Ayme page state helper", () => {
         [firstButton, "e2"],
       ]),
     });
-    listRegisteredPomRoots.mockResolvedValue([]);
+    pageObjectRoots.mockResolvedValue([]);
     await ayme.getPageState();
 
     const replacementDocument =

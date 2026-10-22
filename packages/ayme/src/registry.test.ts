@@ -2,16 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "./agentCalls.testSupport";
 import { checkedToolInput } from "./schemaValidation";
 
-const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
-  () => ({
-    locatorElements: new WeakMap<object, Element[]>(),
-    testLocators: new WeakSet<object>(),
-    pageStateResolutions: new Map<
-      string,
-      { node: { ref: string; element: Element } }
-    >(),
-  })
-);
+const {
+  locatorElements,
+  testLocators,
+  pageStateResolutions,
+  pageStateRecordedListeners,
+  pageObjectStructure,
+} = vi.hoisted(() => ({
+  pageObjectStructure: { source: undefined as unknown },
+  locatorElements: new WeakMap<object, Element[]>(),
+  testLocators: new WeakSet<object>(),
+  pageStateRecordedListeners: new Set<() => void>(),
+  pageStateResolutions: new Map<
+    string,
+    { node: { ref: string; element: Element } }
+  >(),
+}));
 vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@ayme-dev/playwright-lite/internal")
@@ -28,6 +34,13 @@ vi.mock("./pageState", async (importOriginal) => ({
       if (entry) return { status: "resolved", requestedRef: ref, ...entry };
       return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
     }),
+  onPageStateRecorded: (_doc: unknown, listener: () => void) => {
+    pageStateRecordedListeners.add(listener);
+    return () => pageStateRecordedListeners.delete(listener);
+  },
+  providePageObjectStructure: (source: unknown) => {
+    pageObjectStructure.source = source;
+  },
 }));
 vi.mock("./actionSequence", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./actionSequence")>()),
@@ -199,6 +212,18 @@ describe("live Page Object registry", () => {
       FakeMutationObserver.instances[0]?.disconnect
     ).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("gives page state its Page Object Roots only while a Page Object is registered", async () => {
+    const { registry, session } = await setup();
+    class FirstPage {}
+    registry.registerCompiledPom(FirstPage, emptyManifest("FirstPage"));
+
+    session.register(FirstPage);
+    expect(pageObjectStructure.source).toBe(registry.getRegisteredPomStructure);
+
+    session.unregister(FirstPage);
+    expect(pageObjectStructure.source).toBeUndefined();
   });
 
   it("coalesces DOM mutations and ignores unchanged observations", async () => {
@@ -993,7 +1018,7 @@ describe("live Page Object registry", () => {
       }),
     ]);
     subscriber.mockClear();
-    registry.announceRegisteredPomChange();
+    for (const listener of pageStateRecordedListeners) listener();
     expect(subscriber).toHaveBeenCalledOnce();
 
     vi.mocked(measurePomRoot).mockReset();

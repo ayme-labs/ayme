@@ -9,7 +9,7 @@ import {
   resolveElementTarget,
   type PublishedElementTool,
 } from "./elementTools";
-import { INSPECTOR_HOST_SELECTOR } from "./pageState";
+import { INSPECTOR_HOST_SELECTOR } from "./inspectorMarks";
 import { requireAymeRuntimePage } from "./registry";
 import {
   screenshotRequest,

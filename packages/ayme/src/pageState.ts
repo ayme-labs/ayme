@@ -19,10 +19,6 @@ import {
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import { InteractionHistory, type ToolCall } from "./interactionHistory";
 import type { Cursor } from "./cursors";
-import {
-  announceRegisteredPomChange,
-  getRegisteredPomStructure,
-} from "./registry";
 
 import {
   placeCapturedRoots,
@@ -33,6 +29,7 @@ import {
 import { parseCapturedTree } from "./capturedTree";
 import { pomLabelProjection, type PomLabels } from "./pomLabels";
 import { RuntimeStateError, ToolInputError } from "./errors";
+import { INSPECTOR_HOST_SELECTOR } from "./inspectorMarks";
 
 export type { AriaRef };
 
@@ -105,36 +102,28 @@ export function pageStateNodeEntry(node: ProjectedStructuralNode): {
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
 /**
- * Marks an Inspector host mounted for dogfooding: the panel is then part of
- * the page agents see.
+ * The Page Object Roots a capture places: present roots are labelled, and
+ * absent ones are left out of it.
  */
-export const INSPECTOR_DOGFOOD_ATTRIBUTE = "data-ayme-inspector-dogfood";
+export type PageObjectStructure = {
+  roots: readonly { label: string; element: Element }[];
+  absentElements: readonly Element[];
+};
+
+type PageObjectStructureSource = () => Promise<PageObjectStructure>;
+
+let pageObjectStructure: PageObjectStructureSource | undefined;
 
 /**
- * Package-internal: the mark on the Inspector's host while the runtime
- * hit-tests what a click would reach under the panel; the Inspector's own
- * stylesheet then takes everything in it out of hit testing.
+ * Package-internal: where captures read the Page Object Roots from, set
+ * while the registry observes the page. Unset, a capture places none, as
+ * when no Page Object is registered.
  */
-export const INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE =
-  "data-ayme-hit-test-through";
-
-/**
- * Package-internal: whether `records` are only the runtime's own hit-test
- * marks on the Inspector's host, which are no activity of the page: an
- * observer that took them for one would measure, mark and probe without end.
- */
-export function onlyHitTestMarks(records: readonly MutationRecord[]): boolean {
-  return (
-    records.length > 0 &&
-    records.every(
-      (record) =>
-        record.type === "attributes" &&
-        record.attributeName === INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE
-    )
-  );
+export function providePageObjectStructure(
+  source: PageObjectStructureSource | undefined
+): void {
+  pageObjectStructure = source;
 }
-/** Package-internal: the Inspector's host, unless it is mounted for dogfooding. */
-export const INSPECTOR_HOST_SELECTOR = `[data-ayme-inspector-host]:not([${INSPECTOR_DOGFOOD_ATTRIBUTE}])`;
 
 type PageStateIgnorePredicate = (element: Element) => boolean;
 
@@ -293,6 +282,17 @@ export async function getPageStateForElements(
 }
 
 /**
+ * Package-internal: calls `listener` each time a page state of
+ * `currentDocument` is recorded, until the returned function is called.
+ */
+export function onPageStateRecorded(
+  currentDocument: Document,
+  listener: () => void
+): () => void {
+  return getPageStateSession(currentDocument).onRecorded(listener);
+}
+
+/**
  * Package-internal: the Structural Ref the agent's latest recorded page
  * state gave `element`, when it gave it exactly one; undefined until then.
  */
@@ -344,6 +344,7 @@ class PageStateSession {
         elementsByRef: ReadonlyMap<AriaRef, Element>;
       }
     | undefined;
+  private readonly recordedListeners = new Set<() => void>();
 
   constructor(private readonly currentDocument: Document) {
     this.history = new InteractionHistory(
@@ -495,9 +496,14 @@ class PageStateSession {
       elementsByRef,
     };
     this.latestRefsByElement = undefined;
-    // An Availability Reason names the ref this capture may have just given
-    // the element in the way, so the tools are read again.
-    announceRegisteredPomChange();
+    for (const listener of this.recordedListeners) listener();
+  }
+
+  onRecorded(listener: () => void): () => void {
+    this.recordedListeners.add(listener);
+    return () => {
+      this.recordedListeners.delete(listener);
+    };
   }
 
   /**
@@ -628,7 +634,10 @@ async function captureCurrentPageState(
   root: Element,
   refFactory: SyntheticRootRefFactory
 ): Promise<CapturedPageState> {
-  const structure = await getRegisteredPomStructure();
+  const structure = (await pageObjectStructure?.()) ?? {
+    roots: [],
+    absentElements: [],
+  };
   const registrations = structure.roots.filter(
     (registration) =>
       registration.element.ownerDocument === root.ownerDocument &&

@@ -26,8 +26,10 @@ import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
 import {
   getInteractionHistory,
   latestPageStateRef,
-  onlyHitTestMarks,
+  onPageStateRecorded,
+  providePageObjectStructure,
 } from "./pageState";
+import { onlyHitTestMarks } from "./inspectorMarks";
 import {
   askPredicates,
   askPresence,
@@ -153,6 +155,7 @@ const waitingPoms = new Set<ObservedRegisteredPom>();
 const subscribers = new Set<() => void>();
 let mutationObserver: MutationObserver | undefined;
 let stopWatchingNavigations: (() => void) | undefined;
+let stopWatchingPageStates: (() => void) | undefined;
 let probeTimer: ReturnType<typeof setTimeout> | undefined;
 let observedWindow: Window | null = null;
 let probeLifetime = 0;
@@ -382,6 +385,13 @@ function startObservingPage() {
   stopWatchingNavigations = getInteractionHistory(document).onNavigation(
     schedulePomMemberProbe
   );
+  // An Availability Reason names the ref a recorded page state may have just
+  // given the element in the way, so the tools are read again.
+  stopWatchingPageStates = onPageStateRecorded(
+    document,
+    announceObstructedRoots
+  );
+  providePageObjectStructure(getRegisteredPomStructure);
   schedulePomMemberProbe();
 }
 
@@ -394,6 +404,9 @@ function stopObservingPage() {
   observedWindow = null;
   stopWatchingNavigations?.();
   stopWatchingNavigations = undefined;
+  stopWatchingPageStates?.();
+  stopWatchingPageStates = undefined;
+  providePageObjectStructure(undefined);
   mutationObserver?.disconnect();
   mutationObserver = undefined;
   if (probeTimer !== undefined) clearTimeout(probeTimer);
@@ -725,11 +738,11 @@ function notifySubscribers() {
 }
 
 /**
- * Package-internal: tells the subscribers to read the tools again although
- * no observation changed, as when a recorded page state gave the element in
- * an unavailable root's way its ref.
+ * Tells the subscribers to read the tools again although no observation
+ * changed, as when a recorded page state gave the element in an unavailable
+ * root's way its ref.
  */
-export function announceRegisteredPomChange() {
+function announceObstructedRoots() {
   const obstructed = [...registeredPoms].some((registration) =>
     registration.instances?.all.some(
       (instance) => instance.root?.inTheWay.length
