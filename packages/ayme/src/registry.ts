@@ -586,13 +586,18 @@ function isRootPresent<T extends ObservedPomRoot>(
 /**
  * Package-internal: every element the registered Page Objects' members hold,
  * one target per element and concrete member path, in registration and
- * declaration order, as an observation run now finds them. Paths through
+ * declaration order, as the latest observation found them. An observation
+ * runs first only when the page changed since the last one, so a reader
+ * called on every render does not walk the tree again. Paths through
  * collections carry their item indices.
  */
 export async function listRegisteredPomTargets(): Promise<
   RegisteredPomTarget[]
 > {
-  await probeRegisteredPomMembers();
+  // A change made in this task has not reached the observer's callback yet.
+  const records = mutationObserver?.takeRecords() ?? [];
+  if (records.length && !onlyHitTestMarks(records)) schedulePomMemberProbe();
+  if (probePending || probeInFlight) await probeRegisteredPomMembers();
   return [...registeredPoms].flatMap((registration) => registration.targets);
 }
 

@@ -203,4 +203,39 @@ describe("registered Page Object targets", () => {
       },
     ]);
   });
+
+  it("reads the latest observation until the page changes, and a change made just before at once", async () => {
+    document.body.innerHTML = '<ul><li class="item">Milk</li></ul>';
+    let rootReads = 0;
+    class ListPage {
+      readonly items = page.locator(".item");
+    }
+    ayme({
+      root: () => {
+        rootReads += 1;
+        return page.locator("ul");
+      },
+    })(ListPage);
+    registerCompiledPom(ListPage, {
+      className: "ListPage",
+      tools: [],
+      members: [{ memberName: "items", kind: "locator", access: "field" }],
+      components: [],
+    });
+    session.register(ListPage);
+    const items = async () =>
+      (await listRegisteredPomTargets())
+        .filter(({ path }) => path === "ListPage.items")
+        .map(({ element }) => element.textContent);
+
+    expect(await items()).toEqual(["Milk"]);
+    const reads = rootReads;
+    expect(await items()).toEqual(["Milk"]);
+    expect(rootReads).toBe(reads);
+
+    document
+      .querySelector("ul")!
+      .insertAdjacentHTML("beforeend", '<li class="item">Eggs</li>');
+    expect(await items()).toEqual(["Milk", "Eggs"]);
+  });
 });
