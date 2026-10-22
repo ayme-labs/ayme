@@ -154,9 +154,18 @@ export type ToolDescriptor = {
 
 /**
  * A registered Page Object's tool, as the registry describes it. It runs
- * through `ayme.tools.run`, as a Run.
+ * through `ayme.tools.run`, as a Run, and its result is the `ActionResult`
+ * of what changed on the page.
  */
-export type RegisteredPomTool = ToolDescriptor & {
+export type RegisteredPomTool = {
+  name: string;
+  /** The description its author wrote; none when there is nothing to say. */
+  description?: string;
+  /**
+   * The other Page Objects the action may return, which the page shows
+   * afterwards, by class name.
+   */
+  returnPoms?: readonly string[];
   pomId: string;
   componentClassName?: string;
   methodName: string;

@@ -1,3 +1,4 @@
+import { agentDescription } from "./actionTool";
 import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
 import {
   requiredParamsOf,
@@ -46,7 +47,7 @@ export function buildToolOptions(): ToolOption[] {
       : specsOfParameters(t.parameters);
     return {
       name: t.name,
-      description: t.description,
+      description: agentDescription(t, { required: true }),
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown, run: StartChildRun) =>
         run(

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  actionFacts,
+  agentDescription,
   inputParameters,
   inputSchemaFor,
   methodArguments,
-  toolDescription,
 } from "./actionTool";
 import type { ToolManifest, ToolParameter } from "./contracts";
 
@@ -24,32 +25,55 @@ function tool(overrides: Partial<ToolManifest> = {}): ToolManifest {
   };
 }
 
-describe("toolDescription", () => {
-  it("says what an action without a description does", () => {
-    expect(toolDescription(tool())).toBe("Run open.");
-  });
-
-  it("tells agents to pass a rest parameter's arguments as a list", () => {
+describe("actionFacts", () => {
+  it("keeps the author's description and the other Page Objects it returns", () => {
     expect(
-      toolDescription(
-        tool({ description: "Take a rest parameter.", parameters: [refs] })
-      )
-    ).toBe(
-      "Take a rest parameter. refs is a rest parameter: pass its arguments as a list."
-    );
-  });
-
-  it("names the Page Objects an action may return", () => {
-    expect(
-      toolDescription(
+      actionFacts(
         tool({
           description: "Open a related POM.",
-          returnPoms: ["FirstReturnPom", "SecondReturnPom"],
-        })
+          returnPoms: ["Page", "FirstReturnPom", "SecondReturnPom"],
+        }),
+        "Page"
       )
-    ).toBe(
-      "Open a related POM. Potential return POMs: FirstReturnPom, SecondReturnPom."
+    ).toStrictEqual({
+      description: "Open a related POM.",
+      returnPoms: ["FirstReturnPom", "SecondReturnPom"],
+    });
+  });
+
+  it("says nothing for a bare action that returns nothing or itself", () => {
+    expect(actionFacts(tool(), "Page")).toStrictEqual({});
+    expect(actionFacts(tool({ returnPoms: ["Page"] }), "Page")).toStrictEqual(
+      {}
     );
+  });
+});
+
+describe("agentDescription", () => {
+  it("says nothing for a tool with nothing to say", () => {
+    expect(agentDescription({ name: "Page.items.open" })).toBeUndefined();
+  });
+
+  it("runs the action for an adapter that requires a description", () => {
+    expect(
+      agentDescription({ name: "Page.items.open" }, { required: true })
+    ).toBe("Run open.");
+  });
+
+  it("names the Page Objects the page shows afterwards", () => {
+    expect(
+      agentDescription(
+        {
+          name: "Page.open",
+          description: "Open a related POM.",
+          returnPoms: ["FirstReturnPom", "SecondReturnPom"],
+        },
+        { required: true }
+      )
+    ).toBe("Open a related POM. Then shows FirstReturnPom or SecondReturnPom.");
+    expect(
+      agentDescription({ name: "Page.open", returnPoms: ["Dialog"] })
+    ).toBe("Then shows Dialog.");
   });
 });
 
