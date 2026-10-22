@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ArrowRightIcon,
   BoxIcon,
@@ -88,8 +89,8 @@ export function structureLens({
 }): Lens {
   const rows = [...structureRows(structure.roots)];
   const selectedRef = selection.kind === "node" ? selection.ref : undefined;
-  // The app stores the shown chains as the selection moves on, and a
-  // toggle stores them with the toggle.
+  // A picked wrapper the fold hides unfolds its chain, which then stays
+  // unfolded like one the person unfolded.
   const shown = shownUnfolded(structure.roots, unfoldedChains, selectedRef);
   const shownRows = [
     ...treeRows(structure.roots, (chain) => shown.has(chain[0]!.ref!)),
@@ -110,6 +111,11 @@ export function structureLens({
         onPick={(ref) => onSelect({ kind: "node", ref })}
         onToggle={toggle}
         onHover={onHover}
+        store={
+          shown === unfoldedChains
+            ? undefined
+            : () => onUnfoldedChainsChange(shown)
+        }
       />
     ),
     searchEntries: rows.flatMap(({ node }): SearchEntry[] =>
@@ -159,6 +165,7 @@ function StructureTreeView({
   onPick,
   onToggle,
   onHover,
+  store,
 }: {
   rows: readonly TreeRow[];
   capture: StructureCapture;
@@ -166,7 +173,10 @@ function StructureTreeView({
   onPick: (ref: string) => void;
   onToggle: (outer: RefNode) => void;
   onHover: OnHover;
+  /** Stores the unfolded chains as this tree shows them, when they differ. */
+  store?: () => void;
 }) {
+  useEffect(() => store?.(), [store]);
   return (
     <div className="flex flex-col gap-1">
       {capture.error && (

@@ -3,7 +3,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { StructureTree } from "../domain/structure";
-import { shownUnfolded } from "../domain/treeRows";
 import { DetailPane } from "../../panel";
 import {
   type Lens,
@@ -171,17 +170,6 @@ function renderLens({
     const [unfoldedChains, setUnfoldedChains] = useState<ReadonlySet<string>>(
       new Set()
     );
-    // As the app does, the chains shown around the old selection are kept.
-    const select = (next: Selection) => {
-      setUnfoldedChains(
-        shownUnfolded(
-          tree.roots,
-          unfoldedChains,
-          selection.kind === "node" ? selection.ref : undefined
-        )
-      );
-      setSelection(next);
-    };
     const structure = structureLens({
       structure: tree,
       unfoldedChains,
@@ -189,7 +177,7 @@ function renderLens({
       capture: { loading: false },
       selection,
       onSelect: (next) => {
-        select(next);
+        setSelection(next);
         onSelect(next);
       },
       onHover,
@@ -202,7 +190,7 @@ function renderLens({
           lenses={[structure]}
           activeLens={activeLens}
           onLensChange={setActiveLens}
-          onSelect={select}
+          onSelect={setSelection}
           onHover={onHover}
         />
         <DetailPane>

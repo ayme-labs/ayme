@@ -7,5 +7,5 @@ export {
   structureRows,
 } from "./domain/structure";
 export { buildStructureTree } from "./infrastructure/structureTree";
-export { shownUnfolded, unfoldedOnPage } from "./domain/treeRows";
+export { unfoldedOnPage } from "./domain/treeRows";
 export { structureLens } from "./presentation/structureLens";

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   type KeyboardEvent,
@@ -85,12 +86,14 @@ export function ModelTree({
   const bothOpen = objectsOpen && modelsOpen;
 
   const selectedPath = selection.kind === "object" ? selection.path : undefined;
-  // The objects around the selection show open; the app stores that as the
-  // selection moves on, and a toggle stores it with the toggle.
+  // The objects around the selection show open, and stay open once shown.
   const shown = revealSelection(objects, objectTree, selectedPath);
   const rows = [...objectRows(objects, shown.open)];
   const setOpen = (path: string, open: boolean) =>
     onObjectTreeChange({ ...shown, open: { ...shown.open, [path]: open } });
+  useEffect(() => {
+    if (shown !== objectTree) onObjectTreeChange(shown);
+  }, [shown, objectTree, onObjectTreeChange]);
 
   // An object that closes on its own, as it leaves the page, takes the rows
   // under it away; focus on one of them moves to the closest row left.

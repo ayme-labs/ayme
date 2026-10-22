@@ -7,7 +7,6 @@ import {
   viewStateKey,
   withSelection,
 } from "./viewState";
-import { component, page } from "../page-model/test-utils/pageModel";
 
 // Unit tests: which parts of a stored view state the Inspector comes back
 // to after a reload.
@@ -98,31 +97,9 @@ it("forgets which selection the Model tree opened up when the selection changes,
     },
   };
 
-  expect(withSelection(current, { kind: "node", ref: "e3" }, [])).toEqual({
+  expect(withSelection(current, { kind: "node", ref: "e3" })).toEqual({
     ...current,
     selection: { kind: "node", ref: "e3" },
     objectTree: { open: { "InboxPage.taskDialog": false } },
-  });
-});
-
-it("keeps the objects the Model tree opened around the old selection open", () => {
-  const taskForm = "InboxPage.taskDialog.taskForm";
-  const current: ViewState = {
-    ...defaultViewState,
-    selection: { kind: "object", path: taskForm },
-  };
-  const objects = [
-    page("InboxPage", {
-      children: [
-        component("taskDialog", "TaskDialog", {
-          live: false,
-          children: [component("taskForm", "TaskForm", { live: false })],
-        }),
-      ],
-    }),
-  ];
-
-  expect(withSelection(current, { kind: "page" }, objects).objectTree).toEqual({
-    open: { "InboxPage.taskDialog": true },
   });
 });
