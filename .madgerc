@@ -1,0 +1,8 @@
+{
+  "fileExtensions": ["ts", "tsx", "mts", "js", "mjs"],
+  "excludeRegExp": ["/fixtures/"],
+  "detectiveOptions": {
+    "ts": { "skipTypeImports": true },
+    "tsx": { "skipTypeImports": true }
+  }
+}

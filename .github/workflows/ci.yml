@@ -149,6 +149,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: pnpm run commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
       - run: pnpm run boundaries
+      - run: pnpm run cycles
       - run: pnpm run docs:check
       # Docs and workflows state the supported Playwright range outside any
       # package, so --affected and Turbo's cache would miss a change to them.

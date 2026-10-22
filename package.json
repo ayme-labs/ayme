@@ -9,7 +9,8 @@
   "scripts": {
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
-    "check": "pnpm run boundaries && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
+    "cycles": "madge --circular --no-spinner packages/*/src",
+    "check": "pnpm run boundaries && pnpm run cycles && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
     "prepare": "lefthook install && scripts/link-cloud-browsers.sh",
     "release:version": "node scripts/release-version.mjs",
     "hooks:install": "lefthook install",
@@ -31,6 +32,7 @@
     "eslint": "^10.9.1",
     "lefthook": "^2.1.8",
     "lint-staged": "^17.3.0",
+    "madge": "^8.0.0",
     "prettier": "^3.9.6",
     "turbo": "^2.11.3",
     "typescript": "^6.0.3",
