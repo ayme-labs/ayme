@@ -14,7 +14,7 @@ vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   captureAriaSnapshot,
 }));
 vi.mock("../page-objects/registry", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../page-objects/registry")>()),
+  ...(await importOriginal<object>()),
   requireAymeRuntimePage,
 }));
 

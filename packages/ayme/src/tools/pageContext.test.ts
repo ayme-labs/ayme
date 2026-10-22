@@ -8,7 +8,7 @@ const { getPageStateForDocument, getPomDefinitions } = vi.hoisted(() => ({
 }));
 
 vi.mock("../page-state/pageState", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../page-state/pageState")>()),
+  ...(await importOriginal<object>()),
   getPageStateForDocument,
 }));
 vi.mock("../page-objects/pomDefinitions", () => ({ getPomDefinitions }));

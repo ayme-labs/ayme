@@ -71,8 +71,7 @@ function frontDoors(slice, files, { tests }) {
     ...(tests ? {} : { ignores: testCode }),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for import() as a value and as a type. A test types
-      // what vi.mock and vi.importActual load, which they name by file.
+      // The same rules for import() as a value and as a type.
       "no-restricted-syntax": [
         "error",
         ...patterns.flatMap(({ regex, message }) => [
@@ -81,19 +80,15 @@ function frontDoors(slice, files, { tests }) {
             message,
           },
           {
-            selector: `TSImportType[source.value=${selectorRegex(regex)}]${tests ? ":not(CallExpression[callee.object.name=vi][callee.property.name=/^(mock|importActual)$/] *)" : ""}`,
+            selector: `TSImportType[source.value=${selectorRegex(regex)}]`,
             message,
           },
         ]),
-        ...(tests
-          ? []
-          : [
-              {
-                selector: "ImportExpression[source.type!=Literal]",
-                message:
-                  "Name the module in import() with a string literal, so lint can check it.",
-              },
-            ]),
+        {
+          selector: "ImportExpression[source.type!=Literal]",
+          message:
+            "Name the module in import() with a string literal, so lint can check it.",
+        },
       ],
     },
   };

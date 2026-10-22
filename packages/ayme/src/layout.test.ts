@@ -72,6 +72,16 @@ const refusals: [path: string, code: string, message: string][] = [
     "Import another slice through its index.ts.",
   ],
   [
+    "src/tools/misplaced.test.ts",
+    'export const load = () => vi.importActual<typeof import("../runs/application/run")>("../runs");',
+    "Import another slice through its index.ts.",
+  ],
+  [
+    "src/tools/misplaced.test.ts",
+    "export const load = () => import(`../runs/application/run`);",
+    "Name the module in import() with a string literal",
+  ],
+  [
     "src/tools/misplaced.ts",
     'export { startSession } from "../test-utils/session.testSupport";',
     "Only test code may use test code.",
@@ -114,19 +124,6 @@ it(
       await lint(
         "src/goal-loop/test-utils/misplaced.ts",
         'export { createAyme } from "../../runtime";\n'
-      )
-    ).toEqual([]);
-    // A vi.mock factory types the module it mocks, named by its file.
-    expect(
-      await lint(
-        "src/tools/misplaced.test.ts",
-        [
-          'import { vi } from "vitest";',
-          'vi.mock("../page-objects/registry", async (importOriginal) => ({',
-          '  ...(await importOriginal<typeof import("../page-objects/registry")>()),',
-          "}));",
-          "",
-        ].join("\n")
       )
     ).toEqual([]);
   }
