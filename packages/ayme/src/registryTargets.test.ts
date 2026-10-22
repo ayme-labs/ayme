@@ -6,11 +6,8 @@ import { createPage } from "./browserPage";
 
 import { ayme } from "./decorators";
 import { rooted, rootOf } from "./pomRoot.testSupport";
-import {
-  listRegisteredPomTargets,
-  registerCompiledPom,
-  rootTargetPath,
-} from "./registry";
+import { rootTargetPath } from "./pomTree";
+import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
 
 describe("registered Page Object targets", () => {
@@ -205,5 +202,60 @@ describe("registered Page Object targets", () => {
         locator: "locator('.item').first()",
       },
     ]);
+  });
+
+  it("reads the latest observation until the page changes, and a change made just before at once", async () => {
+    document.body.innerHTML = '<ul><li class="item">Milk</li></ul>';
+    let rootReads = 0;
+    class ListPage {
+      readonly items = page.locator(".item");
+    }
+    ayme({
+      root: () => {
+        rootReads += 1;
+        return page.locator("ul");
+      },
+    })(ListPage);
+    registerCompiledPom(ListPage, {
+      className: "ListPage",
+      tools: [],
+      members: [{ memberName: "items", kind: "locator", access: "field" }],
+      components: [],
+    });
+    session.register(ListPage);
+    const items = async () =>
+      (await listRegisteredPomTargets())
+        .filter(({ path }) => path === "ListPage.items")
+        .map(({ element }) => element.textContent);
+
+    expect(await items()).toEqual(["Milk"]);
+    const reads = rootReads;
+    expect(await items()).toEqual(["Milk"]);
+    expect(rootReads).toBe(reads);
+
+    document
+      .querySelector("ul")!
+      .insertAdjacentHTML("beforeend", '<li class="item">Eggs</li>');
+    expect(await items()).toEqual(["Milk", "Eggs"]);
+  });
+
+  it("lists what a member's locator holds now, after a change no observation follows", async () => {
+    document.body.innerHTML = '<input type="checkbox" class="done" />';
+    class Todo {
+      readonly checked = page.locator(".done:checked");
+    }
+    registerCompiledPom(Todo, {
+      className: "Todo",
+      tools: [],
+      members: [{ memberName: "checked", kind: "locator", access: "field" }],
+      components: [],
+    });
+    session.register(Todo);
+    const checked = async () =>
+      (await listRegisteredPomTargets()).map(({ path }) => path);
+
+    expect(await checked()).toEqual([]);
+    document.querySelector<HTMLInputElement>(".done")!.checked = true;
+    expect(await checked()).toEqual(["Todo.checked"]);
   });
 });

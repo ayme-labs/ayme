@@ -686,4 +686,80 @@ describe("Page Object Root by option", () => {
     await call();
     expect(deleted).toEqual(["First", "First"]);
   });
+
+  it("lets a collection tool act on a nested instance of its class, labelled at its full depth, without adding tools", async () => {
+    document.body.innerHTML = `
+      <ul>
+        <li id="src">src
+          <ul><li id="lib">lib<ul><li id="util">util.ts</li></ul></li></ul>
+        </li>
+      </ul>
+    `;
+    const expanded: string[] = [];
+    class TreeItem {
+      readonly container: Locator;
+      constructor(
+        readonly id: string,
+        readonly children: TreeItem[] = []
+      ) {
+        this.container = page.locator(`#${id}`);
+      }
+      expand() {
+        expanded.push(this.id);
+      }
+    }
+    ayme({ root: (self: TreeItem) => self.container })(TreeItem);
+    class FileTree {
+      items = [
+        new TreeItem("src", [new TreeItem("lib", [new TreeItem("util")])]),
+      ];
+    }
+    registerCompiledPom(FileTree, {
+      className: "FileTree",
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "TreeItem",
+          collection: true,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "TreeItem",
+          members: [
+            locator("container"),
+            {
+              memberName: "children",
+              kind: "component",
+              access: "field",
+              componentClassName: "TreeItem",
+              collection: true,
+            },
+          ],
+          tools: [action("expand", "FileTree.items.expand")],
+        },
+      ],
+    });
+    session.pom.register(FileTree);
+    await probeRegisteredPomMembers();
+
+    expect(names()).toEqual(["FileTree.items.expand"]);
+    const { text } = await agent.getPageState();
+    const util = text.match(
+      /(e\d+) FileTree\.items\[0\]\.children\[0\]\.children\[0\]/
+    )?.[1];
+    if (!util) throw new Error("Expected a ref for the deepest item.");
+    const tool = listAvailablePomTools().find(
+      ({ name }) => name === "FileTree.items.expand"
+    );
+    if (!tool)
+      throw new Error("Expected FileTree.items.expand to be available.");
+
+    await tool.execute({ ref: util, args: {} }, runContext());
+
+    expect(expanded).toEqual(["util"]);
+  });
 });

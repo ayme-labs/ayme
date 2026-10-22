@@ -48,7 +48,6 @@ export {
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
-  rootTargetPath,
   subscribeToRegisteredPoms,
   requireAymeRuntimePage,
 } from "./registry";
@@ -56,8 +55,9 @@ export type {
   CollectionToolItem,
   PageObjectConstructor,
   RegisteredPom,
-  RegisteredPomTarget,
 } from "./registry";
+export { rootTargetPath } from "./pomTree";
+export type { RegisteredPomTarget } from "./pomTree";
 // The runtime's own input validation, so the Inspector's run card reports
 // every violation before Run that the call would fail on.
 export { toolInputViolations } from "@ayme-dev/core/tool-input";
