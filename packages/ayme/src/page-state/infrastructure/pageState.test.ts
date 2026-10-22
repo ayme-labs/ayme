@@ -15,14 +15,13 @@ import {
   type ProjectedStructuralNode,
 } from "@ayme-dev/core/structural-observation";
 import {
-  captureBeforeActionForDocument,
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
+  getPageStateSession,
   latestPageStateElement,
   lookAtPageStateForDocument,
   providePageObjectStructure,
   resolvePageStateRefs,
-  startActionForDocument,
 } from "./pageState";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
 import { getPageStateTool } from "../../tools";
@@ -456,11 +455,11 @@ describe("get_page_state", () => {
 
     // The page changed since, so the action's before capture is recorded
     // and the element map is the new capture's.
-    const actionId = await startActionForDocument(document, {
+    const actionId = await getPageStateSession(document).startAction({
       tool: "click",
       args: {},
     });
-    await captureBeforeActionForDocument(document, actionId);
+    await getPageStateSession(document).captureBefore(actionId);
 
     expect(latestPageStateElement(document, ref("s_1"))).toBe(root);
   });

@@ -10,15 +10,10 @@
 import {
   PageIdSchema,
   type AriaRef,
-  type StructuralActionId,
-  type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 import { browserMonotonicClock, ToolInputError } from "../../shared";
 import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
-import {
-  InteractionHistory,
-  type ToolCall,
-} from "../domain/interactionHistory";
+import { InteractionHistory } from "../domain/interactionHistory";
 import { watchSameDocumentNavigations } from "./navigation";
 import {
   capturePage,
@@ -117,32 +112,6 @@ export async function lookAtPageStateForDocument(
   currentDocument: Document
 ): Promise<PageStateLook> {
   return getPageStateSession(currentDocument).look();
-}
-
-/**
- * Package-internal: start a Structural Action for a tool call. An action
- * needs a page to compare against, so a session that has observed nothing
- * yet captures once first.
- */
-export async function startActionForDocument(
-  currentDocument: Document,
-  call: ToolCall
-): Promise<StructuralActionId> {
-  return getPageStateSession(currentDocument).startAction(call);
-}
-
-/**
- * Package-internal: the before capture of an action that has started: the
- * page right before its tool runs, recorded as the action's "before"
- * observation only when it differs from the latest observation, so an idle
- * page between two Runs costs no observation. Moves no cursor. Returns the
- * observation when one was recorded.
- */
-export async function captureBeforeActionForDocument(
-  currentDocument: Document,
-  actionId: StructuralActionId
-): Promise<StructuralObservationEntry | undefined> {
-  return getPageStateSession(currentDocument).captureBefore(actionId);
 }
 
 /**
