@@ -683,6 +683,41 @@ it("shows how a child Page Object member is declared, and goes to its Page Objec
   });
 });
 
+it("names a member's owner, Page Object and model in full on their links", async () => {
+  renderLens({ selection: { kind: "member", path: "TodoPage.items" } });
+
+  await expect
+    .poll(() =>
+      detail.ownerLink.getByTitle("TodoPage", { exact: true }).count()
+    )
+    .toBe(1);
+  expect(
+    await detail
+      .objectLink("TodoPage.items")
+      .getByTitle("TodoPage.items", { exact: true })
+      .count()
+  ).toBe(1);
+  expect(
+    await detail.modelLink.getByTitle("TodoItem", { exact: true }).count()
+  ).toBe(1);
+});
+
+it("names the tree's objects and the models in full on hover", async () => {
+  renderLens();
+
+  await expect
+    .poll(() =>
+      lens
+        .object("TodoPage.archiveDialog")
+        .getByTitle("archiveDialog", { exact: true })
+        .count()
+    )
+    .toBe(1);
+  expect(
+    await lens.model("TodoItem").getByTitle("TodoItem", { exact: true }).count()
+  ).toBe(1);
+});
+
 it("goes from a child Page Object member to its model", async () => {
   const { onSelect } = renderLens({
     selection: { kind: "member", path: "TodoPage.items" },

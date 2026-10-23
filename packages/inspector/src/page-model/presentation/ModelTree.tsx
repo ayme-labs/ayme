@@ -23,7 +23,7 @@ import {
   revealSelection,
   type ObjectTree,
 } from "../domain/objectTree";
-import { Divider, rowFocusRing } from "../../shared";
+import { Divider, QualifiedName, rowFocusRing } from "../../shared";
 import {
   defaultPreferences,
   maxModelSplit as maxSplit,
@@ -184,14 +184,14 @@ export function ModelTree({
                     className="size-3.5 flex-none text-muted-foreground"
                     aria-hidden
                   />
-                  <span
+                  <QualifiedName
+                    name={model.className}
                     className={cn(
-                      "truncate font-mono",
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                      "font-mono",
                       !live && "text-muted-foreground"
                     )}
-                  >
-                    {model.className}
-                  </span>
+                  />
                   <span className="flex-1" />
                   <LiveMark live={live} />
                 </button>
@@ -309,13 +309,16 @@ function TreeRow({
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
       <span
         className={cn(
-          "font-mono whitespace-nowrap",
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          "min-w-0 truncate font-mono",
           live === false && "text-muted-foreground"
         )}
+        title={name}
       >
         {name}
       </span>
-      <span className="min-w-0 truncate text-xs text-muted-foreground">
+      {/* The type gives way first. */}
+      <span className="min-w-0 shrink-[1000] truncate text-xs text-muted-foreground">
         {type}
       </span>
       <span className="flex-1" />

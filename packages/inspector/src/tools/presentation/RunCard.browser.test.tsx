@@ -647,6 +647,45 @@ describe("a collection action", () => {
     );
   });
 
+  it("names each item's chip by the item's name and label", async () => {
+    const { card } = renderCard({ tool: rename, items: [milk, eggs] });
+
+    await card.openArguments();
+
+    await expect
+      .poll(() =>
+        card.root.getByRole("radio", { name: "[1] Eggs", exact: true }).count()
+      )
+      .toBe(1);
+  });
+
+  it("cuts a long item label to its chip, naming it in full on hover", async () => {
+    // Wider than the card, which takes the page's width.
+    const label =
+      "Aleksandra Wiśniewska-Kowalczyk — Senior Product Design Engineer, Platform Infrastructure €12345678.90 · ".repeat(
+        4
+      );
+    const long = anItem("ListPage.items[2]", { ref: "e9", label });
+    const { card } = renderCard({ tool: rename, items: [milk, long] });
+
+    await card.openArguments();
+
+    const chip = card.items.filter({ hasText: label });
+    const shown = chip.getByTitle(label, { exact: true });
+    await expect.poll(() => shown.count()).toBe(1);
+    // Cut on one line, not wrapped out of the chip.
+    expect(
+      await shown.evaluate((text) => text.scrollWidth > text.clientWidth)
+    ).toBe(true);
+    const [chipBox, formBox] = await Promise.all([
+      chip.boundingBox(),
+      card.root.boundingBox(),
+    ]);
+    expect(chipBox!.x + chipBox!.width).toBeLessThanOrEqual(
+      formBox!.x + formBox!.width
+    );
+  });
+
   it("is off once its form is open with no item on the page", async () => {
     const { card, onRun } = renderCard({ tool: rename, items: [] });
 
@@ -710,10 +749,23 @@ describe("the last result", () => {
 
     await expect
       .poll(() => card.lastResult.textContent())
-      .toContain("Failed · 1004 ms");
+      .toContain("Failed · 1.0 s");
     expect(await card.lastResult.textContent()).toContain(
       "Timeout 1000ms exceeded."
     );
+  });
+
+  it("shows no duration for a run a reload cut short", async () => {
+    const reloaded = aRun({
+      status: "failed",
+      error: "The page reloaded before the run returned.",
+    });
+    delete reloaded.durationMs;
+    const { card } = renderCard({ tool: addItem, runs: [reloaded] });
+
+    await expect
+      .poll(() => card.lastResult.textContent())
+      .toBe("FailedThe page reloaded before the run returned.");
   });
 
   it("links to the last successful run in Runs", async () => {

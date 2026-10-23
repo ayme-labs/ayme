@@ -27,4 +27,5 @@ export {
 } from "./view/controls";
 export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./view/InspectorRoot";
+export { QualifiedName } from "./view/QualifiedName";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

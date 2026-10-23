@@ -132,9 +132,9 @@ export class RunEntry extends PanelPart {
   async interactionList(): Promise<RunInteraction[]> {
     return await this.interactions.evaluateAll((items) =>
       items.map((item) => {
-        const [operation = "", value] = [...item.querySelectorAll("span")].map(
-          (span) => span.textContent ?? ""
-        );
+        const [operation = "", value] = [
+          ...item.querySelectorAll(":scope > span"),
+        ].map((span) => span.textContent ?? "");
         return {
           operation,
           target: item.querySelector("button")?.textContent ?? "",

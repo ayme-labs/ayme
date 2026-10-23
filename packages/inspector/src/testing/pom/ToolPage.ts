@@ -8,6 +8,7 @@ import { WhatTheModelSees } from "./WhatTheModelSees";
 export class ToolPage extends PanelPart {
   /** The tool's name. */
   readonly title: Locator;
+  /** Its description; a tool without one shows none. */
   readonly description: Locator;
   /** What kind of tool it is, e.g. "Browser tool" or "Node Peek tool". */
   readonly kind: Locator;
@@ -27,5 +28,12 @@ export class ToolPage extends PanelPart {
     });
     this.modelSees = new WhatTheModelSees(this.root);
     this.card = new RunCard(this.root.getByRole("form"));
+  }
+
+  /** Its description's text, or "" for a tool without one. */
+  async descriptionText(): Promise<string> {
+    return (await this.description.count())
+      ? ((await this.description.textContent()) ?? "")
+      : "";
   }
 }

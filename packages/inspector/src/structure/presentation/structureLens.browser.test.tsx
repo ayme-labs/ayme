@@ -216,6 +216,19 @@ it("shows the page structure as a tree, each node tagged with its member", async
   expect(await lens.rows.last().textContent()).toBe('"Milk"');
 });
 
+it("names each node and text in full on hover, read in its own direction", async () => {
+  renderLens();
+
+  const heading = lens.node("e2").getByTitle("Groceries", { exact: true });
+  await expect.poll(() => heading.getAttribute("dir")).toBe("auto");
+  expect(
+    await lens.rows
+      .last()
+      .getByTitle("Milk", { exact: true })
+      .getAttribute("dir")
+  ).toBe("auto");
+});
+
 it("highlights a node on the page while it's hovered", async () => {
   const onHover = vi.fn();
   renderLens({ onHover });
@@ -260,6 +273,16 @@ it("links each member to the Page Object that owns it", async () => {
     kind: "object",
     path: "ListPage",
   });
+});
+
+it("names a member in full on its link, which says what it opens", async () => {
+  renderLens({ initialSelection: { kind: "node", ref: "e3" } });
+  const link = node.memberLinks.filter({ hasText: "ListPage.newItemInput" });
+
+  await expect
+    .poll(() => link.getAttribute("title"))
+    .toBe("ListPage.newItemInput");
+  expect(await link.getAttribute("aria-description")).toBe("Opens ListPage");
 });
 
 it("links every member to something the panel can show", async () => {

@@ -48,7 +48,7 @@ export function PageDetail({
   onOpenObject: (node: PageObjectNode) => void;
 }) {
   return (
-    <div className="grid gap-4.5">
+    <div className="grid grid-cols-1 gap-4.5">
       <DetailHead
         title="Page /"
         kind={`${host} · ${plural(modelCount, "page object model", "page object models")}`}
@@ -74,7 +74,7 @@ export function PageDetail({
       </DetailSection>
       {tools.length > 0 && (
         <DetailSection title="Tools" count={tools.length} icon={WrenchIcon}>
-          <div className="grid gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {tools.map((toolName) => (
               <Fragment key={toolName}>{renderRun({ toolName })}</Fragment>
             ))}
@@ -109,7 +109,7 @@ export function ObjectDetail({
 }) {
   const count = node.itemCount ?? 0;
   return (
-    <div className="grid gap-4.5">
+    <div className="grid grid-cols-1 gap-4.5">
       <DetailHead
         title={node.path}
         model={node.className}
@@ -208,7 +208,7 @@ export function ModelDetail({
 }) {
   const onPage = instances.length > 0;
   return (
-    <div className="grid gap-4.5">
+    <div className="grid grid-cols-1 gap-4.5">
       <DetailHead
         title={model.className}
         kind="Page object model"
@@ -315,7 +315,7 @@ export function MemberDetail({
   const { owner } = member;
   const ownerLabel = owner.kind === "object" ? owner.path : owner.className;
   return (
-    <div className="grid gap-4.5">
+    <div className="grid grid-cols-1 gap-4.5">
       <DetailHead
         title={member.path}
         kind={`${locator ? "Locator" : "Child page object"} · ${kind}`}
@@ -325,7 +325,7 @@ export function MemberDetail({
           live: member.live,
         }}
       />
-      <dl className="grid gap-1.5 text-xs">
+      <dl className="grid grid-cols-1 gap-1.5 text-xs">
         <Fact term="Owner">
           <button
             type="button"
@@ -347,12 +347,14 @@ export function MemberDetail({
             ) : (
               <BracesIcon className="size-3" aria-hidden />
             )}
-            {ownerLabel}
+            <span className="min-w-0 truncate" title={ownerLabel}>
+              {ownerLabel}
+            </span>
             <ChevronRightIcon className="size-3" aria-hidden />
           </button>
         </Fact>
         <Fact term="Declared as">
-          <code className="font-mono">
+          <code className="font-mono [overflow-wrap:anywhere]">
             {locator ? member.name : `${member.name}: ${kind}`}
           </code>
         </Fact>
@@ -367,7 +369,9 @@ export function MemberDetail({
               onClick={() => onOpenObject(member.objectPath!)}
             >
               <BoxIcon className="size-3" aria-hidden />
-              {member.objectPath}
+              <span className="min-w-0 truncate" title={member.objectPath}>
+                {member.objectPath}
+              </span>
               <ChevronRightIcon className="size-3" aria-hidden />
             </button>
           </Fact>
@@ -382,7 +386,7 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
     <div
       role="group"
       aria-label={term}
-      className="grid grid-cols-[--spacing(27.5)_1fr] items-center gap-2"
+      className="grid grid-cols-[--spacing(27.5)_minmax(0,1fr)] items-center gap-2"
     >
       <dt className="text-muted-foreground">{term}</dt>
       <dd className="min-w-0">{children}</dd>
@@ -406,8 +410,10 @@ function DetailHead({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <div className="grid min-w-0 flex-1 gap-1">
-        <h3 className="font-mono text-sm font-semibold break-all">{title}</h3>
+      <div className="grid min-w-0 flex-1 grid-cols-1 gap-1">
+        <h3 className="font-mono text-sm font-semibold [overflow-wrap:anywhere]">
+          {title}
+        </h3>
         {(model || kind) && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {model && (
@@ -418,7 +424,9 @@ function DetailHead({
                 onClick={() => onOpenModel?.(model)}
               >
                 <BracesIcon className="size-3" aria-hidden />
-                <span className="font-mono">{model}</span>
+                <span className="min-w-0 truncate font-mono" title={model}>
+                  {model}
+                </span>
                 <ChevronRightIcon className="size-3" aria-hidden />
               </button>
             )}
@@ -452,7 +460,7 @@ function DetailSection({
   children: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="grid gap-1">
+    <section aria-label={title} className="grid grid-cols-1 gap-1">
       <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
         <Icon className="size-3.5" aria-hidden />
         {title} · {count}
@@ -475,7 +483,7 @@ function Actions({
   if (!actions.length) return null;
   return (
     <DetailSection title="Actions" count={actions.length} icon={ZapIcon}>
-      <div className="grid gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {actions.map((action) =>
           action.live ? (
             <Fragment key={action.toolName}>
@@ -500,11 +508,16 @@ function OffPageAction({ action }: { action: ObjectAction }) {
       role="group"
       aria-label={action.name}
       aria-disabled
-      className="grid gap-1 rounded-lg border border-dashed px-3 py-2.5 opacity-60"
+      className="grid grid-cols-1 gap-1 rounded-lg border border-dashed px-3 py-2.5 opacity-60"
     >
       <div className="flex items-center gap-1.5">
         <ZapIcon className="size-3.5 text-muted-foreground" aria-hidden />
-        <span className="font-mono text-xs font-semibold">{action.name}</span>
+        <span
+          className="min-w-0 truncate font-mono text-xs font-semibold"
+          title={action.name}
+        >
+          {action.name}
+        </span>
         <span className="truncate font-mono text-xs text-muted-foreground">
           {action.signature}
         </span>
@@ -662,11 +675,16 @@ function MemberName({
           "truncate font-mono text-xs",
           live === false && "text-muted-foreground"
         )}
+        title={name}
       >
         {name}
       </span>
       {kind && (
-        <span className="text-xs whitespace-nowrap text-muted-foreground">
+        // Past the row's width the kind gives way before the name.
+        <span
+          className="min-w-0 shrink-[1000] truncate text-xs text-muted-foreground"
+          title={kind}
+        >
           {kind}
         </span>
       )}
