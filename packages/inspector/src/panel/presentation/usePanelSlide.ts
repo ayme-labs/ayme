@@ -9,7 +9,9 @@ import type { Layout } from "../domain/preferences";
  * the panel from where it is. A reload or a drop after a drag doesn't slide,
  * and reduced motion places the panel at once.
  *
- * Returns the ref for the panel and the call to make before choosing a layout.
+ * Returns the ref for the panel, the call to make before choosing a layout
+ * that should slide, and the call that stops a slide under way, which gives
+ * how far from its place the panel showed.
  */
 export function usePanelSlide(layout: Layout) {
   const panel = useRef<HTMLElement>(null);
@@ -17,11 +19,11 @@ export function usePanelSlide(layout: Layout) {
   const slide = useRef<Animation>(undefined);
 
   useLayoutEffect(() => {
+    slide.current?.cancel();
     const start = from.current;
     from.current = undefined;
     const element = panel.current;
     if (!start || !element) return;
-    slide.current?.cancel();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const end = element.getBoundingClientRect();
     // The motion tokens, which an animation's options can't reference.
@@ -43,9 +45,16 @@ export function usePanelSlide(layout: Layout) {
   }, [layout]);
 
   const willChoose = () => {
-    from.current = panel.current?.getBoundingClientRect();
+    from.current = panel.current!.getBoundingClientRect();
   };
-  return [panel, willChoose] as const;
+  const stop = () => {
+    const element = panel.current!;
+    const shown = element.getBoundingClientRect();
+    slide.current?.cancel();
+    const placed = element.getBoundingClientRect();
+    return { x: shown.x - placed.x, y: shown.y - placed.y };
+  };
+  return [panel, willChoose, stop] as const;
 }
 
 /**

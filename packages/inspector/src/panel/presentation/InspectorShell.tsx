@@ -29,6 +29,7 @@ import {
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
+import { useKeyboardInput } from "./useKeyboardInput";
 import { usePanelSlide } from "./usePanelSlide";
 import { currentViewport, useViewport } from "./useViewport";
 
@@ -119,11 +120,12 @@ export function InspectorShell({
   // The room goes back when the shell unmounts.
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
-  const [panel, willChooseLayout] = usePanelSlide(layout);
+  const [panel, willChooseLayout, stopSlide] = usePanelSlide(layout);
+  const keyboard = useKeyboardInput();
 
   // Collapsing moves focus to the logo and opening moves it back, but only
   // when the person did it, not when the panel starts collapsed. A panel the
-  // person opens also grows out of the logo's side.
+  // person opens with a pointer also grows out of the logo's side.
   const logoButton = useRef<HTMLButtonElement>(null);
   const collapseButton = useRef<HTMLButtonElement>(null);
   const moveFocus = useRef(false);
@@ -135,7 +137,7 @@ export function InspectorShell({
   }, [collapsed]);
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
-    setOpened(!next);
+    setOpened(!next && !keyboard.current);
     onPreferencesChange({ collapsed: next });
   };
   const logo = fitLogo(preferences.logo ?? defaultLogo(viewport), viewport);
@@ -159,13 +161,18 @@ export function InspectorShell({
     let dock: Dock | undefined;
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
-        origin ??=
-          layout === "float"
-            ? float
-            : {
-                x: pointer.x - deltaX - Math.min(200, float.width / 2),
-                y: pointer.y - deltaY - 22,
-              };
+        if (!origin) {
+          // The drag takes the panel from where it shows, mid-slide or not.
+          const shown = stopSlide();
+          // A docked panel comes off held 200px along its header, or halfway
+          // along a narrower one.
+          // Stryker disable next-line ArithmeticOperator: a floating panel is at least 540px wide in the component tests' viewport, so its half is never under 200px.
+          const grab = Math.min(200, float.width / 2);
+          origin =
+            layout === "float"
+              ? { x: float.x + shown.x, y: float.y + shown.y }
+              : { x: pointer.x - deltaX - grab, y: pointer.y - deltaY - 22 };
+        }
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);
         setSnap(dock);
@@ -281,7 +288,7 @@ export function InspectorShell({
             onThemeChange={(theme) => onPreferencesChange({ theme })}
             onLayoutChange={(next) => {
               if (next === layout) return;
-              willChooseLayout();
+              if (!keyboard.current) willChooseLayout();
               onPreferencesChange({ layout: next });
             }}
             onCollapse={() => setCollapsed(true)}

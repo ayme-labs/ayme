@@ -123,14 +123,20 @@ describe("docking", () => {
       .toEqual({ x: 680, y: 0, width: 600, height: 800 });
   });
 
-  it("floats again when a docked header is dragged", async () => {
+  it("floats again under the pointer when a docked header is dragged", async () => {
     renderShell({ layout: "left", float: floating, sideWidth: 600 });
+    const title = (await header.title.boundingBox())!;
 
     await header.dragBy(300, 200);
 
     await expect.poll(() => header.layoutMenu.current()).toBe("Floating");
-    const { width, height } = await shell.box();
-    expect({ width, height }).toEqual({ width: 700, height: 600 });
+    // Held 200px along the header and 22px down it.
+    expect(await shell.box()).toEqual({
+      x: title.x + title.width / 2 + 300 - 200,
+      y: title.y + title.height / 2 + 200 - 22,
+      width: 700,
+      height: 600,
+    });
   });
 
   it.each([
@@ -280,21 +286,67 @@ describe("motion", () => {
     expect(Element.prototype.animate).not.toHaveBeenCalled();
   });
 
+  it("drags from where the panel shows mid-slide, and stops the slide", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "right", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Floating");
+    holdSlide(100);
+    const midway = await shell.box();
+
+    await header.dragBy(-50, 20);
+
+    // Layout places the panel on a 1/64px grid.
+    await expect
+      .poll(async () => {
+        const { x, y } = await shell.box();
+        return [Math.round(x - midway.x), Math.round(y - midway.y)];
+      })
+      .toEqual([-50, 20]);
+    expect(await animations()).toEqual([]);
+  });
+
+  it("docks from the menu at once when chosen by keyboard", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
   it("fades in when opened from the logo, but not when it starts open", async () => {
     renderShell({ layout: "float", float: floating });
-    const root = lastRoot();
     // The shell renders at once, so a fade would already be under way.
-    expect(root.querySelector("aside")!.getAnimations()).toEqual([]);
+    expect(await animations()).toEqual([]);
+    const fades = await recordTransitions();
 
-    const fades: string[] = [];
-    root.addEventListener("transitionrun", (event) => {
-      const { propertyName, target } = event as TransitionEvent;
-      if ((target as Element).localName === "aside") fades.push(propertyName);
-    });
     await header.collapse();
     await logo.open();
 
-    await expect.poll(() => fades).toContain("opacity");
+    await expect.poll(fades).toContain("opacity");
+  });
+
+  it("fades in again when opened with a pointer after a key", async () => {
+    renderShell({ layout: "float", float: floating });
+    await header.collapseButton.press("Enter");
+    const fades = await recordTransitions();
+
+    await logo.open();
+
+    await expect.poll(fades).toContain("opacity");
+  });
+
+  it("opens from the logo at once when opened by keyboard", async () => {
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const fades = await recordTransitions();
+
+    await logo.root.press("Enter");
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    await nextFrames();
+    expect(await fades()).toEqual([]);
   });
 
   it.each([
@@ -305,17 +357,49 @@ describe("motion", () => {
     "grows out of its corner nearest the logo when %s",
     async (_how, layout, logoAt, corner) => {
       renderShell({ layout, float: floating, sideWidth: 600, logo: logoAt });
-      const root = lastRoot();
-      await shell.box();
 
-      expect(root.querySelector("aside")!.style.transformOrigin).toBe(corner);
+      expect(
+        await inspector.panel.evaluate(
+          (panel) => (panel as HTMLElement).style.transformOrigin
+        )
+      ).toBe(corner);
     }
   );
 });
 
-/** The shadow root the last renderShell made. */
-function lastRoot() {
-  return document.body.lastElementChild!.shadowRoot!;
+/** What the panel animates now, by the property each animation moves. */
+function animations() {
+  return inspector.panel.evaluate((panel) =>
+    panel
+      .getAnimations()
+      .map((animation) => (animation as CSSTransition).transitionProperty)
+  );
+}
+
+/**
+ * Records the transitions the panel starts from now on, through a collapse
+ * and an opening, and returns the call that reads them.
+ */
+async function recordTransitions() {
+  type Recording = Element & { started?: string[] };
+  await inspector.container.evaluate((container: Recording) => {
+    const started: string[] = [];
+    container.started = started;
+    container.addEventListener("transitionrun", (event) => {
+      const { propertyName, target } = event as TransitionEvent;
+      if ((target as Element).matches('[aria-label="ayme"]'))
+        started.push(propertyName);
+    });
+  });
+  return () =>
+    inspector.container.evaluate((container: Recording) => container.started);
+}
+
+/** Waits until the browser has drawn twice, so a transition would have started. */
+function nextFrames() {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  );
 }
 
 describe("the host page", () => {
