@@ -99,6 +99,13 @@ function renderRuns(props: Partial<RunsProps> = {}) {
   };
 }
 
+/** Whether a row of the timeline fades in as it appears. */
+function fadesIn(row: typeof runsView.runs) {
+  return row.evaluate((item) =>
+    getComputedStyle(item).transitionProperty.includes("opacity")
+  );
+}
+
 describe("Runs", () => {
   it("lists the runs, newest first", async () => {
     renderRuns();
@@ -311,11 +318,6 @@ describe("Runs", () => {
   });
 
   it("fades in a run that starts while it shows, not the runs it opened with", async () => {
-    /** Whether a row of the timeline fades in as it appears. */
-    const fadesIn = (row: typeof runsView.runs) =>
-      row.evaluate((item) =>
-        getComputedStyle(item).transitionProperty.includes("opacity")
-      );
     const opened = aRun({
       id: "1",
       toolName: "goal",
@@ -330,6 +332,18 @@ describe("Runs", () => {
     expect(await fadesIn(runsView.run(0).root)).toBe(true);
     expect(await fadesIn(runsView.run(1).root)).toBe(false);
     expect(await fadesIn(runsView.run(1).childRuns.first())).toBe(false);
+  });
+
+  it("doesn't fade in a run that started while it was closed", async () => {
+    const { showRuns } = renderRuns({ runs: [addMilk] });
+    await runsView.header.click();
+    await expect.poll(() => runsView.timeline.count()).toBe(0);
+    showRuns([aRun({ id: "2", startedAt: Date.now() }), addMilk]);
+
+    await runsView.header.click();
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await fadesIn(runsView.run(0).root)).toBe(false);
   });
 
   it("expands a run it's asked to show", async () => {
@@ -416,6 +430,17 @@ describe("a run's result", () => {
     await expect.poll(() => copied.count()).toBe(1);
     await expect.poll(() => copied.count(), { timeout: 3000 }).toBe(0);
     expect(await run.copyResultButton.count()).toBe(1);
+  });
+
+  it("tells assistive technology it copied", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+
+    await run.copyResultButton.click();
+
+    await expect
+      .poll(() => run.card.getByRole("status").textContent())
+      .toBe("Copied");
   });
 
   it("stays put on a page that offers no clipboard", async () => {

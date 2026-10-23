@@ -17,8 +17,9 @@ export type DragHandlers = {
  * Pointer drags that follow the pointer on the window from the press on a
  * handle, so a drag keeps going when the pointer leaves the handle. Once the
  * press becomes a drag, the handle captures the pointer, so the cursor and
- * hover stay the handle's over the page. Only the pressing pointer drives
- * it. Only one drag runs at a time; unmounting ends it.
+ * hover stay the handle's over the page. Only the pointer that pressed
+ * drives it. One drag runs at a time: a new press ends the one before, so a
+ * drag whose release never came can't hold on, and unmounting ends it too.
  */
 export function usePointerDrag() {
   const endCurrent = useRef<() => void>(undefined);
