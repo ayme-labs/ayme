@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { ChevronDownIcon, ChevronRightIcon, CodeIcon } from "lucide-react";
+import { ChevronRightIcon, CodeIcon } from "lucide-react";
 import { parse, render } from "sugar-high/core";
 import * as json from "sugar-high/lang/json";
 import * as typescript from "sugar-high/lang/typescript";
@@ -49,17 +49,21 @@ export function WhatTheModelSeesView({
         aria-controls={contentId}
         onClick={onToggle}
         className={cn(
-          "mb-2 flex w-full items-center gap-1.5 rounded-sm text-left text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase hover:text-foreground",
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          "mb-2 flex w-full items-center gap-1.5 rounded-sm text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground",
           focusRing
         )}
       >
-        {open ? (
-          <ChevronDownIcon className="size-3.5" aria-hidden />
-        ) : (
-          <ChevronRightIcon className="size-3.5" aria-hidden />
-        )}
+        <ChevronRightIcon
+          // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+          className={cn("size-3", open && "rotate-90")}
+          aria-hidden
+        />
         <CodeIcon className="size-3.5" aria-hidden />
-        What the model sees · {summary(pageState, definitions, schemas)}
+        What the model sees ·{" "}
+        <span className="font-normal tracking-normal normal-case">
+          {summary(pageState, definitions, schemas)}
+        </span>
       </button>
       {open && (
         <div id={contentId} className="grid gap-2.5">

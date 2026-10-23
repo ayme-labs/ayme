@@ -310,6 +310,28 @@ describe("Runs", () => {
       .toBe("No runs for this selection yet. Switch to All to see every run.");
   });
 
+  it("fades in a run that starts while it shows, not the runs it opened with", async () => {
+    /** Whether a row of the timeline fades in as it appears. */
+    const fadesIn = (row: typeof runsView.runs) =>
+      row.evaluate((item) =>
+        getComputedStyle(item).transitionProperty.includes("opacity")
+      );
+    const opened = aRun({
+      id: "1",
+      toolName: "goal",
+      children: [aChildRun()],
+    });
+    const { showRuns } = renderRuns({ runs: [opened] });
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+
+    showRuns([aRun({ id: "2", startedAt: Date.now() + 60_000 }), opened]);
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await fadesIn(runsView.run(0).root)).toBe(true);
+    expect(await fadesIn(runsView.run(1).root)).toBe(false);
+    expect(await fadesIn(runsView.run(1).childRuns.first())).toBe(false);
+  });
+
   it("expands a run it's asked to show", async () => {
     const { focusRun } = renderRuns();
     const run = runsView.latest("ListPage.addItem");
@@ -379,6 +401,44 @@ describe("a run's result", () => {
     await expect
       .poll(() => navigator.clipboard.writeText)
       .toHaveBeenCalledExactlyOnceWith('"Milk"');
+  });
+
+  it("says it copied, for a moment", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+    const copied = run.card.getByRole("button", {
+      name: "Copied",
+      exact: true,
+    });
+
+    await run.copyResultButton.click();
+
+    await expect.poll(() => copied.count()).toBe(1);
+    await expect.poll(() => copied.count(), { timeout: 3000 }).toBe(0);
+    expect(await run.copyResultButton.count()).toBe(1);
+  });
+
+  it("stays put on a page that offers no clipboard", async () => {
+    // A page served over plain http from another machine has none.
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    const errors: unknown[] = [];
+    const recordError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener("error", recordError);
+    try {
+      renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+      const run = runsView.run(0);
+
+      await run.copyResultButton.click();
+
+      expect(errors).toEqual([]);
+      expect(await run.copyResultButton.count()).toBe(1);
+    } finally {
+      window.removeEventListener("error", recordError);
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   it("isn't there when the tool returned undefined", async () => {

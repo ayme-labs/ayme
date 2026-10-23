@@ -14,6 +14,18 @@
  */
 @custom-variant dark (&:is(.dark, .dark *));
 
+/*
+ * Hover styles only where a fine pointer hovers. Tailwind's own variant
+ * checks `hover: hover` alone; on touch, a tap would leave them stuck on.
+ */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 :root,
 :host {
   --background: var(--color-neutral-50);

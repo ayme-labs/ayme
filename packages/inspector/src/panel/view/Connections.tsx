@@ -1,4 +1,4 @@
-import { CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { Popover } from "radix-ui";
 
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
@@ -60,12 +60,15 @@ export function Connections({
   webMCP,
   tools,
   onCopy,
+  copied,
 }: {
   agent: AgentConnectionStatus;
   webMCP: PublicationStatus;
   /** The tools the session lists, which WebMCP publishes but for some. */
   tools: readonly Readonly<{ name: string; group?: string }>[];
   onCopy: (text: string) => void;
+  /** The snippet just copied, whose Copy says so. */
+  copied?: string;
 }) {
   const container = usePortalContainer();
   const pill = agentPill(agent);
@@ -106,14 +109,20 @@ export function Connections({
           align="start"
           sideOffset={6}
           collisionPadding={8}
-          className="z-50 flex w-78 max-w-(--radix-popover-content-available-width) flex-col gap-3 rounded-lg border bg-popover p-4 pt-3.5 text-popover-foreground shadow-md outline-none"
+          className="z-50 flex w-78 max-w-(--radix-popover-content-available-width) origin-(--radix-popover-content-transform-origin) flex-col gap-3 rounded-lg border bg-popover p-4 pt-3.5 text-popover-foreground shadow-lg outline-none transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]"
         >
-          <h3 className="text-sm font-medium">Connections</h3>
-          <Row name="Agent" row={agentRow(agent)} onCopy={onCopy} />
+          <h3 className="text-sm font-semibold">Connections</h3>
+          <Row
+            name="Agent"
+            row={agentRow(agent)}
+            onCopy={onCopy}
+            copied={copied}
+          />
           <Row
             name="WebMCP"
             row={webMcpRow(webMCP, webMcpToolCount(tools))}
             onCopy={onCopy}
+            copied={copied}
           />
           <a
             href={DOCS}
@@ -134,10 +143,12 @@ function Row({
   name,
   row,
   onCopy,
+  copied,
 }: {
   name: string;
   row: ConnectionRow;
   onCopy: (text: string) => void;
+  copied: string | undefined;
 }) {
   return (
     <section
@@ -146,7 +157,7 @@ function Row({
     >
       <div className="flex items-center gap-2">
         <Dot tone={row.tone} />
-        <h4 className="flex-1 text-[13px] font-medium">{name}</h4>
+        <h4 className="flex-1 text-xs font-semibold">{name}</h4>
         <span
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           className={cn("text-xs font-medium", labelClass[row.tone])}
@@ -178,7 +189,7 @@ function Row({
           <button
             type="button"
             aria-label={`Copy ${row.snippet}`}
-            title="Copy"
+            title={copied === row.snippet ? "Copied" : "Copy"}
             className={cn(
               "inline-grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
               focusRing,
@@ -186,7 +197,11 @@ function Row({
             )}
             onClick={() => onCopy(row.snippet!)}
           >
-            <CopyIcon className="size-3.5" />
+            {copied === row.snippet ? (
+              <CheckIcon className="size-3.5" />
+            ) : (
+              <CopyIcon className="size-3.5" />
+            )}
           </button>
         </div>
       )}

@@ -286,7 +286,7 @@ function TreeRow({
         live === undefined ? undefined : live ? "On this page" : "Not on page"
       }
       className={rowClass(selected)}
-      style={{ paddingLeft: 4 + depth * 16 }}
+      style={{ paddingLeft: 8 + depth * 16 }}
       onClick={onClick}
       onKeyDown={onKeyDown}
       onMouseEnter={onMouseEnter}
@@ -304,9 +304,7 @@ function TreeRow({
             onOpenChange?.(!open);
           }}
         >
-          <ChevronRightIcon
-            className={cn("size-3 transition-transform", open && "rotate-90")}
-          />
+          <ChevronRightIcon className={cn("size-3", open && "rotate-90")} />
         </span>
       )}
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
@@ -353,13 +351,14 @@ function Pane({
         type="button"
         aria-expanded={open}
         className={cn(
-          "flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground",
+          "flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground",
           rowFocusRing
         )}
         onClick={onToggle}
       >
         <ChevronRightIcon
-          className={cn("size-3 transition-transform", open && "rotate-90")}
+          // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+          className={cn("size-3", open && "rotate-90")}
           aria-hidden
         />
         {title}

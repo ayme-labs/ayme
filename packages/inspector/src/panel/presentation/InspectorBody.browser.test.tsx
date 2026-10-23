@@ -94,6 +94,35 @@ it("widens the navigator as its divider is dragged, within the room the detail k
   await expect.poll(async () => (await box(navigator)).width).toBe(480);
 });
 
+it("follows only the pointer that pressed the divider", async () => {
+  renderBody("float", { width: 760, height: 700 });
+  await expect.poll(async () => (await box(navigator)).width).toBe(290);
+  const { x, y, width, height } = await box(navigatorDivider);
+  const touch = (pointerId: number, deltaX: number, buttons = 1) => ({
+    pointerId,
+    pointerType: "touch",
+    isPrimary: pointerId === 1,
+    button: 0,
+    buttons,
+    clientX: x + width / 2 + deltaX,
+    clientY: y + height / 2,
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+  });
+
+  await navigatorDivider.dispatchEvent("pointerdown", touch(1, 0));
+  await navigatorDivider.dispatchEvent("pointermove", touch(1, 60));
+  // A second finger moving and lifting neither moves nor ends the drag.
+  await navigatorDivider.dispatchEvent("pointermove", touch(2, 150));
+  await navigatorDivider.dispatchEvent("pointerup", touch(2, 150, 0));
+  await expect.poll(async () => (await box(navigator)).width).toBe(350);
+  await navigatorDivider.dispatchEvent("pointermove", touch(1, 80));
+  await navigatorDivider.dispatchEvent("pointerup", touch(1, 80, 0));
+
+  await expect.poll(async () => (await box(navigator)).width).toBe(370);
+});
+
 it("grows Runs as the divider above it is dragged up", async () => {
   renderBody("float", { width: 760, height: 700 });
   await expect.poll(async () => (await box(runs)).height).toBe(250);
