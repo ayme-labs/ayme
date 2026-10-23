@@ -5,10 +5,10 @@ import type { RunFocus } from "../domain/run";
 
 /**
  * The timeline's own state: which runs are closed, which results are open,
- * the run a focus brings into view, opened and flashing briefly, and the
- * result just copied.
+ * the run a focus brings into view, opened and flashing briefly, the
+ * result just copied, and when the timeline last opened.
  */
-export function useRunsTimeline(focus: RunFocus | undefined) {
+export function useRunsTimeline(focus: RunFocus | undefined, open: boolean) {
   const [closedRuns, setClosedRuns] = useState<ReadonlySet<string>>(new Set());
   const [openResults, setOpenResults] = useState<ReadonlySet<string>>(
     new Set()
@@ -16,6 +16,12 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
   const [flashing, setFlashing] = useState<string>();
   const { copied, copy } = useCopy();
   const timeline = useRef<HTMLOListElement>(null);
+  const [shownAt, setShownAt] = useState(Date.now);
+  const [shown, setShown] = useState(open);
+  if (open !== shown) {
+    setShown(open);
+    setShownAt(Date.now());
+  }
 
   useEffect(() => {
     if (!focus) return;
@@ -45,6 +51,7 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
     copiedResult: copied,
     copyResult: copy,
     openImage: openImageFullSize,
+    shownAt,
   };
 }
 

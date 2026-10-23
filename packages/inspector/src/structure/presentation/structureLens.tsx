@@ -26,7 +26,6 @@ import {
   Empty,
   focusRing,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
-  rowFocusRing,
   WhatTheModelSees,
 } from "../../shared";
 import type {
@@ -305,7 +304,6 @@ function NodeRow({
       className={cn(
         rowClass,
         "cursor-default hover:bg-muted",
-        rowFocusRing,
         node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
       style={{ paddingLeft: rowIndent(depth) }}
@@ -320,7 +318,10 @@ function NodeRow({
           // The wrappers' state, not the row's: the row's children show either way.
           aria-expanded={!outer}
           data-chain={toggle.ref}
-          className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
+          className={cn(
+            "absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground",
+            focusRing
+          )}
           style={{ left: rowIndent(depth) - 15 }}
           onClick={(event) => {
             event.stopPropagation();
@@ -383,7 +384,10 @@ function NodeRow({
       )}
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-baseline gap-1.5 text-left"
+        className={cn(
+          "flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm text-left",
+          focusRing
+        )}
       >
         <span className="shrink-0 text-primary">{node.ref}</span>
         <span className="shrink-0">{node.role}</span>

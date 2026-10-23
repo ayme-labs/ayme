@@ -1,4 +1,4 @@
-import { useState, type RefObject } from "react";
+import type { RefObject } from "react";
 import type { BuiltInCaller, Caller } from "@ayme-dev/ayme";
 import {
   AppWindowIcon,
@@ -59,6 +59,8 @@ export type RunsViewProps = {
   copiedResult: string | undefined;
   /** Opens a run's image, given its data URL, full size. */
   openImage: (src: string) => void;
+  /** When the timeline last opened: a run that starts after it fades in. */
+  shownAt: number;
 };
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
@@ -174,13 +176,13 @@ function Timeline({
   runs,
   empty,
   timeline,
+  shownAt,
   ...row
-}: Pick<RunsViewProps, "runs" | "timeline"> &
+}: Pick<RunsViewProps, "runs" | "timeline" | "shownAt"> &
   RowProps & {
     /** What it says when there are no runs. */
     empty: string;
   }) {
-  const [shownAt] = useState(Date.now);
   return (
     <div className="min-h-0 flex-1 overflow-auto px-3.5 pt-2.5 pb-3">
       {runs.length ? (
@@ -500,6 +502,9 @@ function RunResult({
           Result
         </button>
         <span className="flex-1" />
+        <span role="status" className="sr-only">
+          {copied ? "Copied" : ""}
+        </span>
         <Button
           variant="ghost"
           size="sm"

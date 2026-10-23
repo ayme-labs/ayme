@@ -183,6 +183,9 @@ function Row({
       ))}
       {row.snippet && (
         <div className="flex items-center gap-1.5">
+          <span role="status" className="sr-only">
+            {copied === row.snippet ? "Copied" : ""}
+          </span>
           <code className="flex-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] select-all">
             {row.snippet}
           </code>
