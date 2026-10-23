@@ -129,6 +129,7 @@ export function ValueRowsView({
                 type="button"
                 aria-label={`Remove ${name} ${n}`}
                 className={cn(
+                  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                   "grid size-6.5 place-items-center rounded-md text-muted-foreground hover:bg-muted",
                   focusRing,
                   pressableIcon
@@ -155,6 +156,7 @@ export function ValueRowsView({
           type="button"
           aria-label={`Add to ${name}`}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "h-6 rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground",
             focusRing,
             pressable

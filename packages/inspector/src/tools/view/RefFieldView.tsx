@@ -99,6 +99,7 @@ export function RefFieldView({
           <span className="flex-1" />
           <ChevronDownIcon
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "size-3.5 flex-none text-muted-foreground",
               open && "rotate-180"
             )}

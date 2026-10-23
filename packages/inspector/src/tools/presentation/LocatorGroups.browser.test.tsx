@@ -155,6 +155,27 @@ describe("choosing targets", () => {
   });
 });
 
+it("stops picking on the page when the form goes away", async () => {
+  const stop = vi.fn();
+  const { form } = renderCard({ onPick: () => stop });
+  await form.pickButton(1).click();
+
+  unmounts.pop()!();
+
+  expect(stop).toHaveBeenCalledOnce();
+});
+
+it("goes away cleanly when it isn't picking", () => {
+  const errors = vi.fn();
+  window.addEventListener("error", errors);
+  renderCard();
+
+  unmounts.pop()!();
+
+  window.removeEventListener("error", errors);
+  expect(errors).not.toHaveBeenCalled();
+});
+
 describe("containers", () => {
   it("sets a container per group, and a new group starts on the page", async () => {
     const { card, form, onRun } = renderCard();

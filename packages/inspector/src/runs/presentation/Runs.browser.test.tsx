@@ -372,6 +372,14 @@ describe("Runs", () => {
       .toBe("No runs for this selection yet. Switch to All to see every run.");
   });
 
+  it("says no run has happened yet, with nothing selected to narrow to", async () => {
+    renderRuns({ runs: [], scopeLabel: "This page" });
+
+    await expect
+      .poll(() => runsView.empty.textContent())
+      .toBe("No runs yet. Runs from this panel and from agents show here.");
+  });
+
   it("fades in a run that starts while it shows, not the runs it opened with", async () => {
     const opened = aRun({
       id: "1",
@@ -387,6 +395,18 @@ describe("Runs", () => {
     expect(await fadesIn(runsView.run(0).root)).toBe(true);
     expect(await fadesIn(runsView.run(1).root)).toBe(false);
     expect(await fadesIn(runsView.run(1).childRuns.first())).toBe(false);
+  });
+
+  it("doesn't fade in a run that started the moment it opened", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000);
+    const { showRuns } = renderRuns({ runs: [] });
+    vi.useRealTimers();
+
+    showRuns([aRun({ startedAt: 1_000_000 })]);
+
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+    expect(await fadesIn(runsView.run(0).root)).toBe(false);
   });
 
   it("doesn't fade in a run that started while it was closed", async () => {

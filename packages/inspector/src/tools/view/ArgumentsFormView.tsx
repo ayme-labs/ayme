@@ -257,6 +257,7 @@ function FieldRow({
               type="button"
               aria-label={`Remove ${name} ${index + 1}`}
               className={cn(
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                 "grid size-7.5 flex-none place-items-center rounded-md text-muted-foreground hover:bg-muted",
                 focusRing,
                 pressableIcon
@@ -271,6 +272,7 @@ function FieldRow({
           type="button"
           aria-label={`Add to ${name}`}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "h-6 self-start rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground",
             focusRing,
             pressable
