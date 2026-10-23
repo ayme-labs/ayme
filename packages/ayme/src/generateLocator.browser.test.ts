@@ -328,12 +328,6 @@ describe("generate_locator in Chromium", () => {
     ]);
   });
 
-  it("keeps the closing punctuation of a reason that already ends a sentence", async () => {
-    const result = await run({ groups: [{ targets: ["##"] }] });
-
-    expect(errorAt(result, 0, 0)).toMatch(/CSS\.escape it\?$/);
-  });
-
   it("fails a group whose container cannot be resolved, and a target outside its container, and keeps the other groups", async () => {
     const dialog = await ref("dialog", "Archive order");
     const confirm = await ref("button", "Confirm archive");
@@ -360,6 +354,18 @@ describe("generate_locator in Chromium", () => {
       new RegExp(`not inside the container "${account}"`)
     );
     expect(elementsOf(page, locatorAt(result, 2, 0))).toEqual([element("h1")]);
+  });
+
+  it("refuses an unparseable target with the parser's diagnosis and no advice", async () => {
+    const result = await run({ groups: [{ targets: ["", "#["] }] });
+
+    for (const [entry, target] of ["", "#["].entries()) {
+      const error = errorAt(result, 0, entry);
+      expect(error).toMatch(
+        /it is neither a Structural Ref nor a selector this runtime supports: Unexpected token "#?" while parsing css selector "(#\[)?"\.$/
+      );
+      expect(error).toContain(`"${target}"`);
+    }
   });
 
   it("gives an agent the same result through the published tool", async () => {

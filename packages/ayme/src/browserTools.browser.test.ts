@@ -400,6 +400,22 @@ describe("Browser Tools in Chromium", () => {
   });
 
   it.each([
+    ["", 'Unexpected token "" while parsing css selector "".'],
+    ["#[", 'Unexpected token "#" while parsing css selector "#[".'],
+  ])(
+    "refuses the unparseable target %j with the parser's diagnosis and no advice",
+    async (target, diagnosis) => {
+      for (const [tool, input] of [
+        ["click", { target }],
+        ["fill", { target, text: "a" }],
+      ] as const)
+        expect(await call(tool, input).catch(errorText)).toBe(
+          `ToolInputError: Cannot ${tool} "${target}": it is neither a Structural Ref nor a selector this runtime supports: ${diagnosis}`
+        );
+    }
+  );
+
+  it.each([
     "root.getByRole('button', { name: 'Save' })",
     "this.page.locator('#save')",
     "page.frameLocator('iframe').getByRole('button')",
