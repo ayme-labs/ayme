@@ -233,11 +233,15 @@ const LOCATOR_EXPRESSION =
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
  * a Structural Ref, else a selector, which must match exactly one element.
+ * With `scope`, a selector is matched inside the element that selector
+ * addresses, and the selector returned is relative to it; a Structural Ref
+ * names its element wherever it is.
  */
 export async function resolveElementTarget(
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
-  currentDocument: Document
+  currentDocument: Document,
+  scope?: string
 ): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
     const node = await resolveRef(requested, definition.label, currentDocument);
@@ -259,7 +263,11 @@ export async function resolveElementTarget(
   const page = requireAymeRuntimePage();
   let elements: Element[];
   try {
-    elements = resolveLocatorElements(page.locator(requested));
+    elements = resolveLocatorElements(
+      scope === undefined
+        ? page.locator(requested)
+        : page.locator(scope).locator(requested)
+    );
   } catch (error) {
     throw new ToolInputError(
       failure(
