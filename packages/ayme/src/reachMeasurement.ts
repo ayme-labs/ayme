@@ -23,7 +23,9 @@ import {
  * playwright-lite's own hit test found at the point it would click, when
  * that point is in a part of the element shown now. Otherwise the element is
  * not hit-tested: the call scrolls it into view first and tests it there,
- * as it does every element, since that scroll also moves one partly shown.
+ * as it does every element, since that scroll also moves one partly shown;
+ * unless a modal layer opened over the rest of the page hid it, whose hidden
+ * ancestor is then the `blocker`, and nothing is scrolled.
  * Presence
  * describes the current layout, not content a scroll handler might create.
  * It names no kind of widget: a Page Object Root and an element a Browser
@@ -151,6 +153,24 @@ export function blockingAncestor(element: Element): Element | undefined {
 }
 
 /**
+ * The ancestor a modal layer opened over the rest of the page hid, when
+ * `element` lies in it and takes no pointer events: what a modal library
+ * (such as Radix) does instead of the native `:modal` or `inert`, hiding the
+ * page's content from assistive technology and turning off its pointer
+ * events. It blocks every click on `element` wherever `element` is
+ * scrolled, so an element out of view is judged by it without the scroll a
+ * hit test would need.
+ */
+// ponytail: a descendant that turns pointer events back on where the click
+// lands is not looked for; the hit test after the call's scroll still is.
+function hiddenBehindLayer(element: Element): Element | undefined {
+  if (styleOf(element).pointerEvents !== "none") return undefined;
+  for (let node: Element | null = element; node; node = parentElement(node))
+    if (node.getAttribute("aria-hidden") === "true") return node;
+  return undefined;
+}
+
+/**
  * Package-internal: measures `element`, the one element `locator` resolves
  * to, as a Page Object Root: present only while the locator finds it
  * visible; see `ReachMeasurement`.
@@ -179,7 +199,10 @@ export function measureReach(page: Page, element: Element): ReachMeasurement {
     if (!isPresent(element, shown)) return absent;
     const blocker = blockingAncestor(element);
     if (blocker) return { present: true, available: false, blocker };
-    return inTheWay(page, element, clickTarget(page, element, shown));
+    const target = clickTarget(page, element, shown);
+    const layer = target ? undefined : hiddenBehindLayer(element);
+    if (layer) return { present: true, available: false, blocker: layer };
+    return inTheWay(page, element, target);
   });
 }
 
@@ -197,15 +220,20 @@ export async function measureReachAtCall(
   locator: Locator,
   element: Element
 ): Promise<ReachMeasurement> {
-  if (!isPresent(element, shownParts(element, "current"))) return absent;
-  const blocker = blockingAncestor(element);
+  const shown = shownParts(element, "current");
+  if (!isPresent(element, shown)) return absent;
+  const page = locator.page();
+  const blocker =
+    blockingAncestor(element) ??
+    (clickTarget(page, element, shown)
+      ? undefined
+      : hiddenBehindLayer(element));
   if (blocker) return { present: true, available: false, blocker };
   try {
     await locator.scrollIntoViewIfNeeded();
   } catch {
     return reached;
   }
-  const page = locator.page();
   return inTheWay(page, element, pointerHitTarget(page, element));
 }
 
