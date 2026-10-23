@@ -12,5 +12,5 @@ export type RunsProps = Omit<
 
 /** Runs: the timeline of the runs made from the panel, newest first. */
 export function Runs({ focus, ...props }: RunsProps) {
-  return <RunsView {...props} {...useRunsTimeline(focus)} />;
+  return <RunsView {...props} {...useRunsTimeline(focus, props.open)} />;
 }

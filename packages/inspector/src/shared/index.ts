@@ -15,8 +15,16 @@ export {
 export { type Look, usePageLook } from "./infrastructure/usePageLook";
 export { useTabState } from "./infrastructure/tabStorage";
 export { usePointerDrag } from "./presentation/pointerDrag";
+export { useCopy } from "./presentation/useCopy";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
+export {
+  chip,
+  focusRing,
+  pressable,
+  pressableIcon,
+  rowFocusRing,
+} from "./view/controls";
 export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./view/InspectorRoot";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

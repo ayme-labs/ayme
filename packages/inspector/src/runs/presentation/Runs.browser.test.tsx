@@ -99,6 +99,13 @@ function renderRuns(props: Partial<RunsProps> = {}) {
   };
 }
 
+/** Whether a row of the timeline fades in as it appears. */
+function fadesIn(row: typeof runsView.runs) {
+  return row.evaluate((item) =>
+    getComputedStyle(item).transitionProperty.includes("opacity")
+  );
+}
+
 describe("Runs", () => {
   it("lists the runs, newest first", async () => {
     renderRuns();
@@ -310,6 +317,55 @@ describe("Runs", () => {
       .toBe("No runs for this selection yet. Switch to All to see every run.");
   });
 
+  it("says no run has happened yet, with nothing selected to narrow to", async () => {
+    renderRuns({ runs: [], scopeLabel: "This page" });
+
+    await expect
+      .poll(() => runsView.empty.textContent())
+      .toBe("No runs yet. Runs from this panel and from agents show here.");
+  });
+
+  it("fades in a run that starts while it shows, not the runs it opened with", async () => {
+    const opened = aRun({
+      id: "1",
+      toolName: "goal",
+      children: [aChildRun()],
+    });
+    const { showRuns } = renderRuns({ runs: [opened] });
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+
+    showRuns([aRun({ id: "2", startedAt: Date.now() + 60_000 }), opened]);
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await fadesIn(runsView.run(0).root)).toBe(true);
+    expect(await fadesIn(runsView.run(1).root)).toBe(false);
+    expect(await fadesIn(runsView.run(1).childRuns.first())).toBe(false);
+  });
+
+  it("doesn't fade in a run that started the moment it opened", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000);
+    const { showRuns } = renderRuns({ runs: [] });
+    vi.useRealTimers();
+
+    showRuns([aRun({ startedAt: 1_000_000 })]);
+
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+    expect(await fadesIn(runsView.run(0).root)).toBe(false);
+  });
+
+  it("doesn't fade in a run that started while it was closed", async () => {
+    const { showRuns } = renderRuns({ runs: [addMilk] });
+    await runsView.header.click();
+    await expect.poll(() => runsView.timeline.count()).toBe(0);
+    showRuns([aRun({ id: "2", startedAt: Date.now() }), addMilk]);
+
+    await runsView.header.click();
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await fadesIn(runsView.run(0).root)).toBe(false);
+  });
+
   it("expands a run it's asked to show", async () => {
     const { focusRun } = renderRuns();
     const run = runsView.latest("ListPage.addItem");
@@ -379,6 +435,75 @@ describe("a run's result", () => {
     await expect
       .poll(() => navigator.clipboard.writeText)
       .toHaveBeenCalledExactlyOnceWith('"Milk"');
+  });
+
+  it("says it copied, for a moment", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+    const copied = run.card.getByRole("button", {
+      name: "Copied",
+      exact: true,
+    });
+
+    await run.copyResultButton.click();
+
+    await expect.poll(() => copied.count()).toBe(1);
+    await expect.poll(() => copied.count(), { timeout: 3000 }).toBe(0);
+    expect(await run.copyResultButton.count()).toBe(1);
+  });
+
+  it("tells assistive technology it copied", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+    expect(await run.card.getByRole("status").textContent()).toBe("");
+
+    await run.copyResultButton.click();
+
+    await expect
+      .poll(() => run.card.getByRole("status").textContent())
+      .toBe("Copied");
+  });
+
+  it("says it copied only on the run it copied, when another has the same result", async () => {
+    renderRuns({
+      runs: [
+        aRun({ id: "2", result: '"Milk"' }),
+        aRun({ id: "1", result: '"Milk"' }),
+      ],
+    });
+
+    await runsView.run(0).copyResultButton.click();
+
+    await expect
+      .poll(() => runsView.run(0).card.getByRole("status").textContent())
+      .toBe("Copied");
+    expect(await runsView.run(1).card.getByRole("status").textContent()).toBe(
+      ""
+    );
+    expect(await runsView.run(1).copyResultButton.count()).toBe(1);
+  });
+
+  it("stays put on a page that offers no clipboard", async () => {
+    // A page served over plain http from another machine has none.
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    const errors: unknown[] = [];
+    const recordError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener("error", recordError);
+    try {
+      renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+      const run = runsView.run(0);
+
+      await run.copyResultButton.click();
+
+      expect(errors).toEqual([]);
+      expect(await run.copyResultButton.count()).toBe(1);
+    } finally {
+      window.removeEventListener("error", recordError);
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   it("isn't there when the tool returned undefined", async () => {

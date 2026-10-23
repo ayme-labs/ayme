@@ -32,7 +32,7 @@ export function Fab({
       aria-label="Open ayme"
       title="Drag to move. Click to open."
       aria-expanded={false}
-      className="pointer-events-auto absolute flex size-12 cursor-grab touch-none items-center justify-center rounded-full bg-primary p-2.5 shadow-lg inset-ring inset-ring-white/15 shadow-primary/40 transition-transform duration-(--duration-fast) ease-(--ease-out) active:scale-[0.97] active:cursor-grabbing"
+      className="pointer-events-auto absolute flex size-12 cursor-grab touch-none items-center justify-center rounded-full bg-primary p-2.5 shadow-lg inset-ring inset-ring-white/15 shadow-primary/40 transition-transform duration-(--duration-fast) ease-(--ease-out) outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:cursor-grabbing motion-safe:active:scale-[0.97]"
       style={{ left: position.x, top: position.y }}
       onPointerDown={(event) => {
         dragged.current = false;
