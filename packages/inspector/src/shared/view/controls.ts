@@ -30,7 +30,11 @@ export const pressable =
 export const pressableIcon =
   "transition-[scale,background-color,color] duration-(--duration-fast) ease-(--ease-out) motion-safe:active:scale-95";
 
-/** Press feedback for a full-width row in a tree or list. */
-export const rowPress = "";
+/**
+ * Press feedback for a full-width row in a tree or list: its background
+ * changes the instant it's pressed, with no transition, so the row answers
+ * on pointer-down without moving the rows around it.
+ */
+export const rowPress = "active:bg-accent";
 
 // Stryker restore StringLiteral

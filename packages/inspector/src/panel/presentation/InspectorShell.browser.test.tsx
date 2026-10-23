@@ -133,6 +133,24 @@ describe("docking", () => {
     expect({ width, height }).toEqual({ width: 700, height: 600 });
   });
 
+  // The drag takes hold of the title's centre: the floating panel keeps it
+  // as far along its width as it was along the docked one, and as far down.
+  it("floats a docked panel with the pointer where it took hold of the header", async () => {
+    renderShell({ layout: "left", float: floating, sideWidth: 600 });
+    const title = await header.title.boundingBox();
+    const grab = {
+      x: title!.x + title!.width / 2,
+      y: title!.y + title!.height / 2,
+    };
+
+    await header.dragBy(300, 200);
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Floating");
+    const { x, y } = await shell.box();
+    expect(x).toBeCloseTo(grab.x + 300 - (grab.x / 600) * 700);
+    expect(y).toBeCloseTo(200);
+  });
+
   it.each([
     ["left", "right", 120, 0, { x: 0, y: 0, width: 720, height: 800 }],
     ["right", "left", -120, 0, { x: 560, y: 0, width: 720, height: 800 }],
