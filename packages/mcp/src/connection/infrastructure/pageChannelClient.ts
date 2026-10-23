@@ -66,16 +66,20 @@ export function openPageChannel(
     retryDelayMs: (attempt) => Math.min(500 * attempt, 2000),
     ...(WebSocketClass ? { WebSocket: WebSocketClass } : {}),
     onOpen() {
+      // A socket that was still opening when the channel closed says
+      // nothing: a hello would let tRPC reconnect it (see `live`).
+      if (closed) return;
       const reopened = opened;
       opened = true;
-      void client.hello
-        .mutate(hello())
+      void live()
+        .hello.mutate(hello())
         .then((welcome) => {
+          if (closed) return;
           const parsed = PageWelcomeSchema.parse(welcome);
           imageFolder = parsed.imageFolder;
           onWelcome(parsed);
           if (reopened && reported && !sendAtOnce("publishTools", reported))
-            return client.publishTools.mutate(reported);
+            return live().publishTools.mutate(reported);
         })
         // The channel closed before the hello went out.
         .catch(() => {});

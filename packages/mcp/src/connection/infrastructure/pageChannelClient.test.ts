@@ -57,6 +57,18 @@ async function startServer(call: object, port = 0) {
   return { url: `ws://127.0.0.1:${listening}`, port: listening, paths };
 }
 
+/** A WebSocket class that counts the sockets the channel opens. */
+function countingWebSocket() {
+  let count = 0;
+  class CountingWebSocket extends globalThis.WebSocket {
+    constructor(address: string | URL) {
+      super(address);
+      count += 1;
+    }
+  }
+  return { WebSocket: CountingWebSocket, attempts: () => count };
+}
+
 describe("openPageChannel", () => {
   it("reports tools that changed during a call before the call's answer", async () => {
     const { url, paths } = await startServer({
@@ -99,21 +111,23 @@ describe("openPageChannel", () => {
       name: "click",
       input: {},
     });
-    let connections = 0;
-    server!.on("connection", () => (connections += 1));
+    const { WebSocket, attempts } = countingWebSocket();
     channel = openPageChannel(() => url, {
       hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
       onWelcome: () => {},
       onDisconnected: () => {},
       onUnknownPairing: () => {},
+      WebSocket,
     });
+    let started = false;
     let finish!: () => void;
     const running = new Promise<void>((resolve) => (finish = resolve));
     channel.answerCalls(async ({ callId }) => {
+      started = true;
       await running;
       return { callId, ok: true as const, result: "done" };
     });
-    await expect.poll(() => paths).toContain("calls");
+    await expect.poll(() => started).toBe(true);
 
     // As when the page's Ayme setup is disposed while one of its tools runs.
     channel.close();
@@ -123,8 +137,27 @@ describe("openPageChannel", () => {
     // A reopened channel would say hello again as the tab's page, and the
     // server would send the tab's calls to a page that no longer runs them.
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    expect(connections).toBe(1);
+    expect(attempts()).toBe(1);
     expect(paths).not.toContain("answer");
+  });
+
+  it("says nothing on a socket that opens after the channel closed", async () => {
+    const { url, paths } = await startServer({});
+    const { WebSocket, attempts } = countingWebSocket();
+    channel = openPageChannel(() => url, {
+      hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
+      onWelcome: () => {},
+      onDisconnected: () => {},
+      onUnknownPairing: () => {},
+      WebSocket,
+    });
+    void channel.publishTools([]).catch(() => {});
+    // As when the page's Ayme setup is disposed while its socket opens.
+    channel.close();
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(attempts()).toBe(1);
+    expect(paths).toEqual([]);
   });
 
   it("says it lost the server when its socket closes, and keeps reconnecting", async () => {

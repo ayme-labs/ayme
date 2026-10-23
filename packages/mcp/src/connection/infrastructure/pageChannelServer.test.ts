@@ -36,8 +36,15 @@ async function startServer() {
   return { connection, url: `ws://127.0.0.1:${port}/token` };
 }
 
-/** A page of the tab `tab-1` that answers its calls with `run`. */
-function openPage(url: string, run: () => Promise<unknown>) {
+/**
+ * A page of the tab `tab-1` that offers `tools` and answers its calls with
+ * `run`.
+ */
+function openPage(
+  url: string,
+  run: () => Promise<unknown>,
+  tools: PageTool[] = [CLICK]
+) {
   const channel = openPageChannel(() => url, {
     hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
     onWelcome: () => {},
@@ -50,7 +57,7 @@ function openPage(url: string, run: () => Promise<unknown>) {
     ok: true,
     result: await run(),
   }));
-  void channel.publishTools([CLICK]);
+  void channel.publishTools(tools);
   return channel;
 }
 
@@ -68,8 +75,12 @@ it("sends the tab's calls to its new channel after the old one closed during a c
   // As when the page's Ayme setup is disposed and started again while a
   // tool runs, in the same document.
   first.close();
-  openPage(url, async () => "from the new channel");
-  await expect.poll(() => connection.offers("click")).toBe(true);
+  openPage(url, async () => "from the new channel", [
+    CLICK,
+    { ...CLICK, name: "onlyOnTheNewChannel" },
+  ]);
+  // The new channel paired before the old one's call ends.
+  await expect.poll(() => connection.offers("onlyOnTheNewChannel")).toBe(true);
   finish("from the old channel");
   await running;
   // Time for a closed channel that answers on a reopened socket to say
