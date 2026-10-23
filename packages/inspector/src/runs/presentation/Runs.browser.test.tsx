@@ -435,6 +435,7 @@ describe("a run's result", () => {
   it("tells assistive technology it copied", async () => {
     renderRuns({ runs: [aRun({ result: '"Milk"' })] });
     const run = runsView.run(0);
+    expect(await run.card.getByRole("status").textContent()).toBe("");
 
     await run.copyResultButton.click();
 
