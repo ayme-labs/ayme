@@ -202,6 +202,22 @@ describe("live Page Object registry", () => {
     ).toThrow(message);
   });
 
+  it("labels an uncompiled class whose static name is not a string", async () => {
+    const registry = await import("./registry");
+    class SymbolNamed {}
+    Object.defineProperty(SymbolNamed, "name", {
+      value: Symbol("SignInPage"),
+    });
+
+    expect(() => registry.constructPageObject(SymbolNamed, {} as Page)).toThrow(
+      expect.objectContaining({
+        name: "RuntimeStateError",
+        message:
+          "An anonymous page object class has no compiler-derived Ayme metadata.",
+      })
+    );
+  });
+
   it("observes while at least one Page Object is registered", async () => {
     const { registry, session } = await setup();
 

@@ -212,7 +212,10 @@ export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
 }
 
 function uncompiledPageObjectError(PomClass: PageObjectConstructor) {
-  const label = PomClass.name || "An anonymous page object class";
+  // A static `name` can be overridden with any value.
+  const { name } = PomClass as { name: unknown };
+  const label =
+    typeof name === "string" && name ? name : "An anonymous page object class";
   return new RuntimeStateError(
     `${label} has no compiler-derived Ayme metadata.`
   );
