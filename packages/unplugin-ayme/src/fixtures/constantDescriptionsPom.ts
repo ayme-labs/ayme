@@ -1,5 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 
+const DESCRIPTION = "description";
+const onlyAvailability = { available: () => true };
+
 @ayme({ description: `A page that ` + ("saves " + "a name.") })
 export class ConstantDescriptionsPom {
   @ayme.action({
@@ -21,4 +24,10 @@ export class ConstantDescriptionsPom {
     description: "Redo." satisfies string,
   })
   redo() {}
+
+  @ayme.action({ [DESCRIPTION]: "Copy the name." })
+  copy() {}
+
+  @ayme.action({ ...onlyAvailability })
+  paste() {}
 }

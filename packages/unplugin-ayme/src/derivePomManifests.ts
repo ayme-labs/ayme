@@ -134,7 +134,7 @@ function memberRole(
   const memberName = member.name.text;
 
   if (ts.isMethodDeclaration(member)) {
-    const description = toolDescription(member, memberName);
+    const description = toolDescription(checker, member, memberName);
     if (description)
       return { role: "action", member, methodName: memberName, description };
     const child =
@@ -690,43 +690,65 @@ function findClassMarker(declaration: ts.ClassDeclaration) {
  * The `description` option of a decorator, if it has one. It must be a
  * constant string; `owner` names the class or action in the error otherwise.
  */
-function decoratorDescription(decorator: ts.Decorator, owner: string) {
+function decoratorDescription(
+  checker: ts.TypeChecker,
+  decorator: ts.Decorator,
+  owner: string
+) {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
   const options = decorator.expression.arguments[0];
   if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
-  // The last `description` wins, and a spread after it may replace it.
-  let property: ts.ObjectLiteralElementLike | undefined;
+  // The last element that sets `description` wins.
+  let last: ts.ObjectLiteralElementLike | undefined;
+  let readable = false;
   for (const element of options.properties) {
-    if (isDescriptionProperty(element)) property = element;
-    else if (property && ts.isSpreadAssignment(element))
-      throw new Error(
-        `The description of ${owner} is followed by a spread (${location(
-          element
-        )}).`
-      );
+    const sets = setsDescription(checker, element);
+    if (sets === "no") continue;
+    last = element;
+    readable = sets === "yes";
   }
-  if (!property) return undefined;
-  const description = ts.isPropertyAssignment(property)
-    ? constantString(property.initializer)
+  if (!last) return undefined;
+  if (!readable)
+    throw new Error(
+      `The description of ${owner} may come from a spread or a computed key (${location(
+        last
+      )}).`
+    );
+  const description = ts.isPropertyAssignment(last)
+    ? constantString(last.initializer)
     : undefined;
   if (description !== undefined) return description;
   throw new Error(
-    `The description of ${owner} is not a constant string (${location(
-      property
-    )}).`
+    `The description of ${owner} is not a constant string (${location(last)}).`
   );
 }
 
-function isDescriptionProperty(element: ts.ObjectLiteralElementLike) {
-  const name =
-    element.name && ts.isComputedPropertyName(element.name)
-      ? element.name.expression
-      : element.name;
-  return (
-    name !== undefined &&
-    (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) &&
-    name.text === "description"
-  );
+/**
+ * Whether an options element sets `description`: "maybe" for a spread whose
+ * type has one and a computed key whose value the type checker can't tell.
+ */
+function setsDescription(
+  checker: ts.TypeChecker,
+  element: ts.ObjectLiteralElementLike
+): "yes" | "no" | "maybe" {
+  if (ts.isSpreadAssignment(element))
+    return checker
+      .getTypeAtLocation(element.expression)
+      .getProperty("description")
+      ? "maybe"
+      : "no";
+  const name = element.name;
+  if (!name) return "no";
+  if (!ts.isComputedPropertyName(name))
+    return (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) &&
+      name.text === "description"
+      ? "yes"
+      : "no";
+  const key = checker.getTypeAtLocation(name.expression);
+  if (key.isStringLiteral()) return key.value === "description" ? "yes" : "no";
+  return key.isNumberLiteral() || key.flags & ts.TypeFlags.ESSymbolLike
+    ? "no"
+    : "maybe";
 }
 
 function location(node: ts.Node) {
@@ -772,7 +794,11 @@ function classDescription(
   const marker = findClassMarker(declaration);
   const description =
     marker &&
-    decoratorDescription(marker, `Page Object ${declaration.name?.text}`);
+    decoratorDescription(
+      checker,
+      marker,
+      `Page Object ${declaration.name?.text}`
+    );
   if (description !== undefined) return { description };
   const base = extendedClassDeclaration(checker, declaration);
   return base ? classDescription(checker, base) : {};
@@ -800,6 +826,7 @@ function extendedClassDeclaration(
 type ToolDescription = { authored?: string };
 
 function toolDescription(
+  checker: ts.TypeChecker,
   declaration: ts.MethodDeclaration,
   methodName: string
 ): ToolDescription | undefined {
@@ -811,6 +838,7 @@ function toolDescription(
     ? declaration.parent.name?.text
     : undefined;
   const authored = decoratorDescription(
+    checker,
     marker,
     `Page Object Action ${className}.${methodName}`
   );

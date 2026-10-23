@@ -76,8 +76,14 @@ describe("derivePomManifests", () => {
             toolName: "ConstantDescriptionsPom.redo",
             description: "Redo.",
           },
+          {
+            toolName: "ConstantDescriptionsPom.copy",
+            description: "Copy the name.",
+          },
+          { toolName: "ConstantDescriptionsPom.paste" },
         ],
       });
+      expect(manifest?.tools.at(-1)).not.toHaveProperty("description");
     });
 
     it.each([
@@ -97,14 +103,21 @@ describe("derivePomManifests", () => {
     );
   });
 
-  it("fails the build for a spread after a description", () => {
-    const fileName = path.resolve(
-      "src/fixtures/computedDescriptions/spreadActionPom.ts"
-    );
-    expect(() => derivePomManifests(fileName)).toThrow(
-      `The description of Page Object Action SpreadActionPom.read is followed by a spread (${fileName}:9).`
-    );
-  });
+  it.each([
+    ["spreadActionPom", "SpreadActionPom.read", 9],
+    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", 7],
+    ["computedKeyActionPom", "ComputedKeyActionPom.read", 7],
+  ])(
+    "fails the build for %s, whose description may come from a spread or a computed key",
+    (fixture, action, line) => {
+      const fileName = path.resolve(
+        `src/fixtures/computedDescriptions/${fixture}.ts`
+      );
+      expect(() => derivePomManifests(fileName)).toThrow(
+        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${line}).`
+      );
+    }
+  );
 
   it.each(["privateRootPom", "protectedRootPom"])(
     "leaves a non-public member named root out of %s like any other non-public member",
