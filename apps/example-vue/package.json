@@ -19,7 +19,7 @@
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#b8e667f2f4b54896ad3059964fbde993fbacc9eb",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#9f39340948ad0565df835d003c62522e18fa3593",
     "@ayme-dev/vue": "workspace:*",
     "@ayme-dev/webmcp": "workspace:*",
     "@lucide/vue": "^1.47.0",

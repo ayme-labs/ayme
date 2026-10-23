@@ -537,6 +537,17 @@ describe("Browser Tools in Chromium", () => {
     expect(value("#email")).toBe("z");
   });
 
+  it.each(["", "Foo", "Shift+Foo", "Foo+a"])(
+    "refuses the unknown key %j before pressing anything",
+    async (key) => {
+      document.querySelector<HTMLInputElement>("#email")!.focus();
+      expect(await call("press_key", { key }).catch(errorText)).toBe(
+        `ToolInputError: Cannot press "${key}": it is not a key name or a character.`
+      );
+      expect(log).not.toContain("keydown email");
+    }
+  );
+
   it("offers each single-element tool to the Goal Loop only for the elements its filter keeps", async () => {
     const targets = await listElementToolTargets();
     const refs = Object.fromEntries(
