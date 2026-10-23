@@ -212,6 +212,27 @@ describe("Runs", () => {
     expect(await target.textContent()).toBe("ListPage.addItemButton");
   });
 
+  it("names an Interaction's target by its member's whole name", async () => {
+    renderRuns();
+    const run = runsView.latest("ListPage.addItem");
+
+    await expect
+      .poll(() =>
+        run.interactions
+          .getByRole("button", { name: "ListPage.addItemButton", exact: true })
+          .count()
+      )
+      .toBe(1);
+    expect(
+      await run.interactions
+        .getByRole("button", {
+          name: "getByRole('textbox', { name: 'New item' })",
+          exact: true,
+        })
+        .count()
+    ).toBe(1);
+  });
+
   it("marks the runs from before the page last loaded as earlier page rows", async () => {
     renderRuns({
       runs: [

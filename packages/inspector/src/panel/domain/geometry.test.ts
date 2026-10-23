@@ -53,6 +53,29 @@ describe("fitFloat", () => {
     });
   });
 
+  it("moves a panel in when the viewport shrinks below its height, so it fits whole", () => {
+    // Saved fully visible at 1440×900, at the page's right edge.
+    const panel = { x: 876, y: 24, width: 540, height: 800 };
+
+    expect(fitFloat(panel, zoomed)).toEqual({
+      x: 180,
+      y: 0,
+      width: 540,
+      height: 450,
+    });
+  });
+
+  it("moves a panel in when the viewport narrows below its width", () => {
+    const panel = { x: 100, y: 24, width: 800, height: 600 };
+
+    expect(fitFloat(panel, { width: 700, height: 900 })).toEqual({
+      x: 0,
+      y: 24,
+      width: 700,
+      height: 600,
+    });
+  });
+
   it("raises a short panel to its minimum height, still on the page", () => {
     const panel = { x: 100, y: 300, width: 540, height: 400 };
 
@@ -82,5 +105,13 @@ describe("fitFloat", () => {
     expect(fitFloat({ ...panel, y: 880 }, { width: 1440, height: 900 }).y).toBe(
       850
     );
+  });
+
+  it("keeps a panel moved partly off either side by 120px of it", () => {
+    const panel = { x: 1380, y: 24, width: 540, height: 600 };
+    const page = { width: 1440, height: 900 };
+
+    expect(fitFloat(panel, page).x).toBe(1320);
+    expect(fitFloat({ ...panel, x: -500 }, page).x).toBe(-420);
   });
 });

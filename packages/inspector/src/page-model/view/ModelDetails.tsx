@@ -215,7 +215,7 @@ export function ModelDetail({
         {...(onPage ? {} : { status: { label: "Not on page", live: false } })}
       />
       {(model.description || !onPage) && (
-        <p className="-mt-2 text-xs leading-normal text-muted-foreground">
+        <p className="-mt-2 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">
           {[
             model.description,
             !onPage &&
@@ -431,7 +431,11 @@ function DetailHead({
                 <ChevronRightIcon className="size-3" aria-hidden />
               </button>
             )}
-            {kind && <span>{kind}</span>}
+            {kind && (
+              <span className="min-w-0 truncate" title={kind}>
+                {kind}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -528,7 +532,7 @@ function OffPageAction({ action }: { action: ObjectAction }) {
         </Badge>
       </div>
       {action.description && (
-        <p className="text-xs leading-normal text-muted-foreground">
+        <p className="text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">
           {action.description}
         </p>
       )}

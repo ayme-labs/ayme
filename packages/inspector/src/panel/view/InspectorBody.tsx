@@ -44,7 +44,9 @@ export function InspectorBodyView({
       className="flex min-h-0 flex-1 flex-col data-[layout=bottom]:flex-row"
       style={sizes}
     >
-      <div className="flex min-h-0 min-w-0 flex-1">
+      {/* Docked to the bottom, the navigator, its first child, grows no wider
+          than `--navigator-max`. */}
+      <div className="flex min-h-0 min-w-0 flex-1 in-data-[layout=bottom]:[&>:first-child]:max-w-(--navigator-max)">
         {navigator}
         <Divider
           orientation="vertical"

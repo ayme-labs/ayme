@@ -85,8 +85,10 @@ export function RunsView({
     <>
       <div
         className={cn(
+          // Narrower than its controls, as Runs' narrowest column, the scope
+          // and Clear wrap below the title.
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-          "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
+          "flex min-h-region-header flex-none flex-wrap items-center gap-2 py-1 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
       >
@@ -610,6 +612,8 @@ function InteractionRow({
         <button
           type="button"
           data-gone={member === undefined || undefined}
+          // Named by the member whole: its two parts would read apart.
+          aria-label={member}
           title={title}
           className="max-w-57.5 min-w-0 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
           // The hover highlight finds the member's element while it's there.

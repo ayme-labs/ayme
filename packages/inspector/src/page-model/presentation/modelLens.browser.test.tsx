@@ -718,6 +718,35 @@ it("names the tree's objects and the models in full on hover", async () => {
   ).toBe(1);
 });
 
+// Whether the detail pane scrolls sideways.
+const sideways = () =>
+  page
+    .getByRole("region", { name: "Selected" })
+    .evaluate((pane) => pane.scrollWidth > pane.clientWidth);
+
+const longClassName =
+  "EnterpriseSubscriptionBillingReconciliationDashboardInvoiceLineItemRowWithOutstandingBalanceAndCreditNotes";
+
+it("keeps a member's long kind within the pane, and names it in full on hover", async () => {
+  renderLens({
+    selection: { kind: "member", path: "BillingPage.lineItem" },
+    pageModel: {
+      objects: [
+        pageObject("BillingPage", {
+          children: [component("lineItem", longClassName)],
+        }),
+      ],
+      models: [],
+    },
+  });
+  const kind = `Child page object · ${longClassName}`;
+
+  await expect
+    .poll(() => detail.root.getByTitle(kind, { exact: true }).count())
+    .toBe(1);
+  expect(await sideways()).toBe(false);
+});
+
 it("goes from a child Page Object member to its model", async () => {
   const { onSelect } = renderLens({
     selection: { kind: "member", path: "TodoPage.items" },
@@ -775,6 +804,34 @@ it("dims a model's actions as not on page when none of its objects is, without r
     await confirm.evaluate((element) => getComputedStyle(element).opacity)
   ).not.toBe("1");
   expect(renderRun).not.toHaveBeenCalled();
+});
+
+it("wraps a model's description and its actions' descriptions within the pane when it is not on the page", async () => {
+  renderLens({
+    selection: { kind: "model", className: longClassName },
+    pageModel: {
+      objects: [],
+      models: [
+        {
+          className: longClassName,
+          members: [],
+          actions: [
+            {
+              name: "reconcile",
+              description: `Clicks ${longClassName}.reconcileAgainstExternalAccountingSystemButton.`,
+              signature: "()",
+              toolNames: [`BillingPage.lineItem.reconcile`],
+              liveToolNames: [],
+            },
+          ],
+          instancePaths: [],
+        },
+      ],
+    },
+  });
+
+  await expect.poll(() => detail.offPageAction("reconcile").count()).toBe(1);
+  expect(await sideways()).toBe(false);
 });
 
 it("searches the page's objects, models, actions and members", async () => {
