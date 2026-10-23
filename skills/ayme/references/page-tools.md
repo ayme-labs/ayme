@@ -8,10 +8,11 @@ tools are missing, read [Browser setup](browser-setup.md).
 - When a ref fails to resolve, call `snapshot` and use the ref it prints for
   that node; if that ref fails the same way, use a selector such as
   `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
-  collection tool the ref of the item's Page Object Root. A nested item
-  takes the tool of the highest collection on its label's path whose items
-  are the same Page Object class: `FilesPage.items[0].children[0]` goes to
-  `FilesPage.items.expand`, and no `FilesPage.items.children.expand` exists.
+  collection tool the ref of the item's Page Object Root. A nested Page
+  Object takes the tool of the first place on its label's path that holds
+  the same Page Object class, a collection's items or a single child:
+  `FilesPage.items[0].children[0]` goes to `FilesPage.items.expand`, and no
+  `FilesPage.items.children.expand` exists.
   A subclass has tools of its own, so the tool list may hold a deeper path,
   such as `ProjectsPage.pinned.subtasks.*` for the subtasks of pinned rows;
   [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
