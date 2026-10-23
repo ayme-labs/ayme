@@ -1,6 +1,5 @@
-import { chromium } from "playwright";
-
 import { PlaywrightA } from "./cycle-playwright-a";
+import { tainted } from "./playwright-runtime";
 
 export class PlaywrightB {
   openA() {
@@ -8,6 +7,6 @@ export class PlaywrightB {
   }
 
   browser() {
-    return chromium;
+    return tainted;
   }
 }

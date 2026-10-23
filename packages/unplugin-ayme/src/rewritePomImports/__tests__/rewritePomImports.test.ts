@@ -130,5 +130,14 @@ describe("rewritePomImports", () => {
       'import { PlaywrightA } from "./cycle-barrel";'
     );
     expect(source).toContain('from "./cycle-barrel"');
+    expect(source).not.toContain('from "./cycle-playwright-a"');
+  });
+
+  it("leaves a module unchanged when only its second import of a Playwright module is used", () => {
+    const source = rewrittenImport(
+      'import { repeated } from "./cycle-barrel";'
+    );
+    expect(source).toContain('from "./cycle-barrel"');
+    expect(source).not.toContain('from "./repeated-import"');
   });
 });
