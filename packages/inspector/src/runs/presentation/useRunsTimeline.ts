@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useCopy } from "../../shared";
 import type { RunFocus } from "../domain/run";
 
 /**
  * The timeline's own state: which runs are closed, which results are open,
- * and the run a focus brings into view, opened and flashing briefly.
+ * the run a focus brings into view, opened and flashing briefly, and the
+ * result just copied.
  */
 export function useRunsTimeline(focus: RunFocus | undefined) {
   const [closedRuns, setClosedRuns] = useState<ReadonlySet<string>>(new Set());
@@ -12,6 +14,7 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
     new Set()
   );
   const [flashing, setFlashing] = useState<string>();
+  const { copied, copy } = useCopy();
   const timeline = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
@@ -39,7 +42,8 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
     toggleRun: (id: string) => setClosedRuns((closed) => toggled(closed, id)),
     toggleResult: (id: string) =>
       setOpenResults((opened) => toggled(opened, id)),
-    copyResult: (text: string) => void copy(text),
+    copiedResult: copied,
+    copyResult: copy,
     openImage: openImageFullSize,
   };
 }
@@ -49,14 +53,6 @@ function toggled(set: ReadonlySet<string>, id: string) {
   const next = new Set(set);
   if (!next.delete(id)) next.add(id);
   return next;
-}
-
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // The page can deny the clipboard; the result can still be selected.
-  }
 }
 
 /**
