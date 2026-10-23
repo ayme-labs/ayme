@@ -31,7 +31,6 @@ export {
   renderActionParameters,
   renderPomDefinitions,
   renderSchema,
-  requireAymeRuntimePage,
   rootTargetPath,
   subscribeToRegisteredPoms,
 } from "./page-objects";

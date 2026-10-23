@@ -6,8 +6,8 @@ import { expect, it } from "vitest";
 const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 const LOCAL_IMPORT =
   /(?:import|export)\s*(?:[^"']*?\sfrom\s*)?["'](\.\/[^"']+)["']|import\(\s*["'](\.\/[^"']+)["']\s*\)/g;
-// Text only the browser runtime carries: the Page Object registry's and
-// Playwright Lite's.
+// Text only the browser runtime carries: the runtime's own and Playwright
+// Lite's.
 const RUNTIME_MARKERS = [
   "The Ayme browser runtime is not configured.",
   "Target page, context or browser has been closed",

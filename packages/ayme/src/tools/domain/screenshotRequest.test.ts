@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ToolInputError } from "../shared";
+import { ToolInputError } from "../../shared";
 import { screenshotRequest } from "./screenshotRequest";
 
 const NOW = new Date("2026-10-07T15:37:24.123Z");

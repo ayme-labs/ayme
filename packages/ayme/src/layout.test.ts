@@ -27,6 +27,26 @@ const refusals: [path: string, code: string, message: string][] = [
     "domain may only depend on the allowed horizontal layers",
   ],
   [
+    "src/tools/application/misplaced.ts",
+    'export { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";',
+    "application may only depend on the allowed horizontal layers",
+  ],
+  [
+    "src/tools/application/misplaced.ts",
+    'export { generateLocator } from "@ayme-dev/playwright-lite/internal";',
+    "Only tools' infrastructure may use Playwright Lite.",
+  ],
+  [
+    "src/tools/domain/misplaced.ts",
+    'export type Lite = import("@ayme-dev/playwright-lite").Page;',
+    "Only tools' infrastructure may use Playwright Lite.",
+  ],
+  [
+    "src/tools/application/misplaced.ts",
+    'export { createRunQueue } from "../../runs/application/run";',
+    "Import another slice through its index.ts.",
+  ],
+  [
     "src/goal-loop/domain/misplaced.ts",
     'export { createDecisionEndpoint } from "../index";',
     "Inside a slice, import the module itself, not the slice's index.ts.",

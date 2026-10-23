@@ -112,7 +112,7 @@ describe("Action Availability", () => {
       });
       expect(published("Panel.remove")).toMatchObject(expected);
       // The Goal Loop offers available tools only.
-      const offered = buildToolOptions().map((option) => option.key);
+      const offered = buildToolOptions(page).map((option) => option.key);
       if (expected.available) {
         expect(offered).toContain("Panel.remove");
       } else {

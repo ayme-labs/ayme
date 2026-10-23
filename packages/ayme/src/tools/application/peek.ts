@@ -1,5 +1,5 @@
-import type { JsonValue } from "../shared";
-import { RuntimeStateError } from "../shared";
+import type { JsonValue } from "../../shared";
+import { RuntimeStateError } from "../../shared";
 
 /** Reads a Peek's current values when an agent asks. It may be async. */
 export type PeekRead = () => unknown;

@@ -2,16 +2,15 @@
 // Playwright MCP's tools at the revision the README pins. Field names and
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
-import type { JsonSchema } from "../shared";
+import type { Locator, Page } from "@playwright/test";
+import type { JsonSchema } from "../../shared";
 import {
-  ACTION_RESULT_NOTE,
   assertReachable,
   runAction,
   type ElementInput,
-} from "../page-state";
+} from "../../page-state";
 import {
   listCustomTools,
-  locatorOf,
   registerElementTool,
   requireCurrentDocument,
   resolveElementTarget,
@@ -19,17 +18,20 @@ import {
   type PublishedElementTool,
   type ElementToolDefinition,
   type RegisteredElementTool,
-  type ResolvedTarget,
 } from "./elementTools";
-import { generateLocatorTool } from "./generateLocator";
+import {
+  isCheckableElement,
+  isClickableElement,
+  isFillableElement,
+  isSelectElement,
+  isUncheckableElement,
+} from "../domain/elementFilters";
 import {
   navigateBackTool,
   navigateForwardTool,
   reloadTool,
 } from "./historyTools";
 import { navigateTool } from "./navigateTool";
-import { requireAymeRuntimePage } from "../page-objects";
-import { screenshotTool } from "./screenshotTool";
 
 // --- Input schemas ---
 
@@ -81,12 +83,13 @@ function clickOptions(input: Fields) {
   };
 }
 
+/** A single-element Browser Tool; `perform` acts on the element's locator. */
 function browserTool(
   name: string,
   description: string,
   inputSchema: JsonSchema,
   needsReach: ElementInput,
-  perform: (target: ResolvedTarget, input: Fields) => Promise<unknown>
+  perform: (locator: Locator, input: Fields) => Promise<unknown>
 ): ElementToolDefinition {
   return {
     name,
@@ -97,8 +100,8 @@ function browserTool(
     needsReach,
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
-    perform: async (target, input) => {
-      await perform(target, input);
+    perform: async (target, input, { page }) => {
+      await perform(page.locator(target.selector), input);
     },
   };
 }
@@ -115,8 +118,7 @@ const clickDefinition = browserTool(
     modifiers: MODIFIERS,
   }),
   "click",
-  async (target, input) => {
-    const locator = locatorOf(target);
+  async (locator, input) => {
     if (input.doubleClick === true) await locator.dblclick(clickOptions(input));
     else await locator.click(clickOptions(input));
   }
@@ -127,7 +129,7 @@ const hoverDefinition = browserTool(
   "Move the pointer over one element.",
   elementInput(),
   "click",
-  async (target) => locatorOf(target).hover()
+  async (locator) => locator.hover()
 );
 
 const typeDefinition = browserTool(
@@ -149,8 +151,7 @@ const typeDefinition = browserTool(
     ["text"]
   ),
   "focus",
-  async (target, input) => {
-    const locator = locatorOf(target);
+  async (locator, input) => {
     const text = input.text as string;
     if (input.slowly === true) await locator.pressSequentially(text);
     else await locator.fill(text);
@@ -165,7 +166,7 @@ const fillDefinition = browserTool(
     "text",
   ]),
   "focus",
-  async (target, input) => locatorOf(target).fill(input.text as string)
+  async (locator, input) => locator.fill(input.text as string)
 );
 
 const checkDefinition = browserTool(
@@ -173,7 +174,7 @@ const checkDefinition = browserTool(
   "Check one checkbox or radio button.",
   elementInput(),
   "click",
-  async (target) => locatorOf(target).check()
+  async (locator) => locator.check()
 );
 
 const uncheckDefinition = browserTool(
@@ -181,7 +182,7 @@ const uncheckDefinition = browserTool(
   "Uncheck one checkbox.",
   elementInput(),
   "click",
-  async (target) => locatorOf(target).uncheck()
+  async (locator) => locator.uncheck()
 );
 
 const selectOptionDefinition = browserTool(
@@ -198,108 +199,11 @@ const selectOptionDefinition = browserTool(
     ["values"]
   ),
   "focus",
-  async (target, input) =>
-    locatorOf(target).selectOption(input.values as string[])
+  async (locator, input) => locator.selectOption(input.values as string[])
 );
 
-// --- Built-in filters ---
-
-const INTERACTIVE_ROLE_SELECTOR = [
-  "a[href]",
-  "button",
-  "input",
-  "select",
-  "summary",
-  "textarea",
-  "[contenteditable='']",
-  "[contenteditable='true']",
-  "[contenteditable='plaintext-only']",
-  "[role=button]",
-  "[role=checkbox]",
-  "[role=combobox]",
-  "[role=link]",
-  "[role=menuitem]",
-  "[role=menuitemcheckbox]",
-  "[role=menuitemradio]",
-  "[role=option]",
-  "[role=radio]",
-  "[role=searchbox]",
-  "[role=slider]",
-  "[role=spinbutton]",
-  "[role=switch]",
-  "[role=tab]",
-  "[role=textbox]",
-].join(",");
-
-/** Playwright fills these input types; any other type cannot be filled. */
-const FILLABLE_INPUT_TYPES = new Set([
-  "color",
-  "date",
-  "datetime-local",
-  "email",
-  "month",
-  "number",
-  "password",
-  "range",
-  "search",
-  "tel",
-  "text",
-  "time",
-  "url",
-  "week",
-]);
-
-function isDisabled(element: Element): boolean {
-  return element.matches(":disabled, [aria-disabled='true']");
-}
-
-/** The filter of click and hover: not disabled, interactive or pointer-cursored. */
-export function isClickableElement(element: Element): boolean {
-  if (isDisabled(element)) return false;
-  return (
-    element.matches(INTERACTIVE_ROLE_SELECTOR) ||
-    element.ownerDocument.defaultView?.getComputedStyle(element).cursor ===
-      "pointer"
-  );
-}
-
-/** The filter of type and fill: an element text can actually be entered into. */
-export function isFillableElement(element: Element): boolean {
-  if (isDisabled(element)) return false;
-  if (
-    element.matches(
-      "[contenteditable=''], [contenteditable='true'], [contenteditable='plaintext-only']"
-    )
-  )
-    return true;
-  if (element instanceof HTMLTextAreaElement) return !element.readOnly;
-  if (element instanceof HTMLInputElement)
-    return !element.readOnly && FILLABLE_INPUT_TYPES.has(element.type);
-  return false;
-}
-
-const UNCHECKABLE_SELECTOR =
-  "input[type=checkbox], [role=checkbox], [role=menuitemcheckbox], [role=switch]";
-
-/** The filter of check: a checkbox, radio button or switch that is not disabled. */
-export function isCheckableElement(element: Element): boolean {
-  if (isDisabled(element)) return false;
-  return element.matches(
-    `${UNCHECKABLE_SELECTOR}, input[type=radio], [role=radio], [role=menuitemradio]`
-  );
-}
-
-/** The filter of uncheck: a checkbox or switch; a radio button cannot be unchecked. */
-export function isUncheckableElement(element: Element): boolean {
-  return !isDisabled(element) && element.matches(UNCHECKABLE_SELECTOR);
-}
-
-/** The filter of select_option: a select element that is not disabled. */
-export function isSelectElement(element: Element): boolean {
-  return element instanceof HTMLSelectElement && !isDisabled(element);
-}
-
-const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
+/** Package-internal: the single-element Browser Tools, in publication order. */
+export const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
   registerElementTool(clickDefinition, isClickableElement),
   registerElementTool(hoverDefinition, isClickableElement),
   registerElementTool(typeDefinition, isFillableElement),
@@ -363,13 +267,18 @@ type FormField = {
   value: string;
 };
 
-async function fillField(field: FormField, currentDocument: Document) {
+async function fillField(
+  page: Page,
+  field: FormField,
+  currentDocument: Document
+) {
   const target = await resolveElementTarget(
+    page,
     { label: `fill the field "${field.name}" at`, targetField: "target" },
     field.target,
     currentDocument
   );
-  const locator = locatorOf(target);
+  const locator = page.locator(target.selector);
   await assertReachable(
     "fill_form",
     locator,
@@ -389,16 +298,17 @@ async function fillField(field: FormField, currentDocument: Document) {
 }
 
 /**
- * Fill the fields in order and stop at the first failure. The result names the
- * fields filled and the one that failed; filled fields stay filled.
+ * Package-internal: fill the fields in order and stop at the first failure.
+ * The result names the fields filled and the one that failed; filled fields
+ * stay filled.
  */
-const fillFormTool: PublishedElementTool = {
+export const fillFormTool: PublishedElementTool = {
   name: "fill_form",
   description:
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const { fields } = input as { fields: FormField[] };
     const currentDocument = requireCurrentDocument();
     return runAction(
@@ -409,7 +319,7 @@ const fillFormTool: PublishedElementTool = {
         const filled: string[] = [];
         for (const field of fields) {
           try {
-            await fillField(field, currentDocument);
+            await fillField(page, field, currentDocument);
           } catch (error) {
             return {
               filled,
@@ -440,19 +350,19 @@ const pressKeySchema: JsonSchema = {
   additionalProperties: false,
 };
 
-/** Press a key on the focused element. */
-const pressKeyTool: PublishedElementTool = {
+/** Package-internal: press a key on the focused element. */
+export const pressKeyTool: PublishedElementTool = {
   name: "press_key",
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const { key } = input as { key: string };
     return runAction(
       requireCurrentDocument(),
       cursor,
       { tool: "press_key", args: input },
-      () => requireAymeRuntimePage().keyboard.press(key)
+      () => page.keyboard.press(key)
     );
   },
 };
@@ -470,31 +380,3 @@ export const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
   navigateForwardTool,
   reloadTool,
 ];
-
-/**
- * A Browser Tool that acts on the page, as published: its description ends
- * with how the action result reports what changed. Only Ayme's own Browser
- * Tools carry the sentence; a Page Object Tool or Custom Tool is published
- * with the description its author wrote, and the Goal Loop offers its model
- * every tool's own description.
- */
-function withActionResultNote(
-  tool: PublishedElementTool
-): PublishedElementTool {
-  return { ...tool, description: `${tool.description} ${ACTION_RESULT_NOTE}` };
-}
-
-/** Computed once, so a Browser Tool resolves to the same object across publications. */
-const PUBLISHED_BROWSER_TOOLS: readonly PublishedElementTool[] = [
-  ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => withActionResultNote(tool)),
-  withActionResultNote(fillFormTool),
-  withActionResultNote(pressKeyTool),
-  generateLocatorTool,
-  screenshotTool,
-  ...NAVIGATION_TOOLS.map(withActionResultNote),
-];
-
-/** Package-internal: every Browser Tool as published, in publication order. */
-export function listPublishedBrowserTools(): readonly PublishedElementTool[] {
-  return PUBLISHED_BROWSER_TOOLS;
-}
