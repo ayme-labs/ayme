@@ -1,7 +1,9 @@
+import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 
 // Private workspace packages, copied into the output instead of imported.
 const bundled = ["@ayme-dev/playwright-lite", "@ayme-dev/core"];
+const ownSource = join(import.meta.dirname, "src") + sep;
 
 export default defineConfig({
   clean: true,
@@ -26,4 +28,11 @@ export default defineConfig({
     "src/testing.ts",
   ],
   format: ["esm"],
+  treeshake: {
+    // A module of the package sets up on import only the state its own
+    // exports use, so an entry keeps none of the modules a slice's index.ts
+    // re-exports that it does not use. The bundled packages keep the
+    // bundler's own analysis.
+    moduleSideEffects: (id) => (id.startsWith(ownSource) ? false : undefined),
+  },
 });
