@@ -110,6 +110,10 @@ only changes the UI, such as opening a menu or filling a field, needs none: a
 bare `@ayme.action` on `openCreateMenu()` says as much as "Open the create
 menu." would.
 
+A description is a constant string: a string literal, a template literal
+without `${...}`, or a `+` concatenation of those. The build plugin reads it
+from the source and fails the build on any other expression.
+
 ## Describe what a POM stands for in the product
 
 `@ayme({ description })` says the same for the surface as an action's

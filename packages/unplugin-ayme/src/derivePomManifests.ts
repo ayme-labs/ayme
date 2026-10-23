@@ -134,7 +134,7 @@ function memberRole(
   const memberName = member.name.text;
 
   if (ts.isMethodDeclaration(member)) {
-    const description = toolDescription(member);
+    const description = toolDescription(member, memberName);
     if (description)
       return { role: "action", member, methodName: memberName, description };
     const child =
@@ -686,19 +686,49 @@ function findClassMarker(declaration: ts.ClassDeclaration) {
   );
 }
 
-/** The literal `description` option of a decorator, if it has one. */
-function decoratorDescription(decorator: ts.Decorator) {
+/**
+ * The `description` option of a decorator, if it has one. It must be a
+ * constant string; `owner` names the class or action in the error otherwise.
+ */
+function decoratorDescription(decorator: ts.Decorator, owner: string) {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
   const options = decorator.expression.arguments[0];
   if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
-  for (const property of options.properties) {
-    if (
-      ts.isPropertyAssignment(property) &&
+  const property = options.properties.find(
+    (property) =>
+      property.name &&
       ts.isIdentifier(property.name) &&
-      property.name.text === "description" &&
-      ts.isStringLiteral(property.initializer)
-    )
-      return property.initializer.text;
+      property.name.text === "description"
+  );
+  if (!property) return undefined;
+  const description = ts.isPropertyAssignment(property)
+    ? constantString(property.initializer)
+    : undefined;
+  if (description !== undefined) return description;
+  const source = property.getSourceFile();
+  const { line } = source.getLineAndCharacterOfPosition(property.getStart());
+  throw new Error(
+    `The description of ${owner} is not a constant string (${source.fileName}:${
+      line + 1
+    }).`
+  );
+}
+
+/**
+ * The value of a string literal, a template literal without substitutions, or
+ * a `+` concatenation of those, if `expression` is one.
+ */
+function constantString(expression: ts.Expression): string | undefined {
+  if (ts.isStringLiteralLike(expression)) return expression.text;
+  if (ts.isParenthesizedExpression(expression))
+    return constantString(expression.expression);
+  if (
+    ts.isBinaryExpression(expression) &&
+    expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    const left = constantString(expression.left);
+    const right = constantString(expression.right);
+    return left === undefined || right === undefined ? undefined : left + right;
   }
   return undefined;
 }
@@ -712,7 +742,9 @@ function classDescription(
   declaration: ts.ClassDeclaration
 ): { description?: string } {
   const marker = findClassMarker(declaration);
-  const description = marker && decoratorDescription(marker);
+  const description =
+    marker &&
+    decoratorDescription(marker, `Page Object ${declaration.name?.text}`);
   if (description !== undefined) return { description };
   const base = extendedClassDeclaration(checker, declaration);
   return base ? classDescription(checker, base) : {};
@@ -740,13 +772,20 @@ function extendedClassDeclaration(
 type ToolDescription = { authored?: string };
 
 function toolDescription(
-  declaration: ts.MethodDeclaration
+  declaration: ts.MethodDeclaration,
+  methodName: string
 ): ToolDescription | undefined {
   const marker = (ts.getDecorators(declaration) ?? []).find((decorator) =>
     isMemberMarker(decorator, "ayme", "action")
   );
   if (!marker) return undefined;
-  const authored = decoratorDescription(marker);
+  const className = ts.isClassLike(declaration.parent)
+    ? declaration.parent.name?.text
+    : undefined;
+  const authored = decoratorDescription(
+    marker,
+    `Page Object Action ${className}.${methodName}`
+  );
   return authored === undefined ? {} : { authored };
 }
 

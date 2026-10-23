@@ -53,6 +53,39 @@ describe("derivePomManifests", () => {
         ],
       });
     });
+
+    it("folds concatenated literals and templates without substitutions into the descriptions", () => {
+      const manifest = manifestFor("constantDescriptionsPom");
+
+      expect(manifest).toMatchObject({
+        description: "A page that saves a name.",
+        tools: [
+          {
+            toolName: "ConstantDescriptionsPom.save",
+            description: "Save the name, then show it.",
+          },
+          {
+            toolName: "ConstantDescriptionsPom.clear",
+            description: "Clear the name.",
+          },
+        ],
+      });
+    });
+
+    it.each([
+      ["templateActionPom", "Page Object Action TemplateActionPom.show", 8],
+      ["variableClassPom", "Page Object VariableClassPom", 5],
+    ])(
+      "fails the build for the description of %s, which is not a constant string",
+      (fixture, owner, line) => {
+        const fileName = path.resolve(
+          `src/fixtures/computedDescriptions/${fixture}.ts`
+        );
+        expect(() => derivePomManifests(fileName)).toThrow(
+          `The description of ${owner} is not a constant string (${fileName}:${line}).`
+        );
+      }
+    );
   });
 
   it.each(["privateRootPom", "protectedRootPom"])(
