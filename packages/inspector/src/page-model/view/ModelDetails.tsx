@@ -330,6 +330,7 @@ export function MemberDetail({
           <button
             type="button"
             aria-label={`Open its owner ${ownerLabel}`}
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             className={cn(chip, "font-mono")}
             onClick={() =>
               owner.kind === "object"
@@ -361,6 +362,7 @@ export function MemberDetail({
             <button
               type="button"
               aria-label={`Open ${member.objectPath}`}
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               className={cn(chip, "font-mono")}
               onClick={() => onOpenObject(member.objectPath!)}
             >

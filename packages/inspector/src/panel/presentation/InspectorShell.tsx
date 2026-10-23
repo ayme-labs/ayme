@@ -325,6 +325,7 @@ function SnapPreview({
     <div
       // It grows from the edge it docks to.
       className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55 transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]",
         origin[dock]
       )}

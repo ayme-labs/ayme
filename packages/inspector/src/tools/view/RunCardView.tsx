@@ -131,6 +131,7 @@ export function RunCardView({
                 aria-expanded={open}
                 aria-label={`${open ? "Hide" : "Show"} the arguments for ${tool.action}`}
                 className={cn(
+                  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                   "-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted",
                   rowFocusRing,
                   rowPress
@@ -139,6 +140,7 @@ export function RunCardView({
               >
                 <ChevronRightIcon
                   className={cn(
+                    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                     "size-3 flex-none text-muted-foreground",
                     open && "rotate-90"
                   )}
@@ -187,6 +189,7 @@ export function RunCardView({
                     type="button"
                     aria-pressed={(json !== undefined) === (mode === "JSON")}
                     className={cn(
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                       "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
                       focusRing,
                       pressable
@@ -310,6 +313,7 @@ export function JsonEditor({
           disabled={error !== undefined}
           title={error ? "Fix the JSON to format it" : "Pretty-print the JSON"}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "cursor-pointer rounded-sm text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground",
             focusRing
           )}
@@ -448,6 +452,7 @@ function LastResult({
           <button
             type="button"
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "cursor-pointer rounded-sm text-xs font-semibold whitespace-nowrap underline underline-offset-2",
               focusRing
             )}
