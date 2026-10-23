@@ -333,7 +333,7 @@ it("C8: throws for a model the compiler did not reach", () => {
       child: PageObjectUser,
       childProps: { model: UncompiledModel },
     })
-  ).toThrow("The imported page object has no compiler-derived Ayme metadata.");
+  ).toThrow("UncompiledModel has no compiler-derived Ayme metadata.");
 });
 
 it("C11: runs a goal with the owner's goalLoop through the value every component gets", async () => {
