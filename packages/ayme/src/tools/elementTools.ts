@@ -267,11 +267,13 @@ export async function resolveElementTarget(
   try {
     elements = resolveLocatorElements(page.locator(requested));
   } catch (error) {
+    // The parser's diagnosis stays; the advice Playwright ends it with goes.
+    const diagnosis = (
+      error instanceof Error ? error.message : String(error)
+    ).replace(/\.? Did you mean to CSS\.escape it\?$/, "");
     throw new ToolInputError(
       failure(
-        `it is neither a Structural Ref nor a selector this runtime supports: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `it is neither a Structural Ref nor a selector this runtime supports: ${diagnosis}`,
         hint
       )
     );
