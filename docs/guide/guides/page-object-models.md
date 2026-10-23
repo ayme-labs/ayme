@@ -147,6 +147,7 @@ export class ListItem extends AppComponent {
 ```
 
 - A collection's actions are published once for all its items: `ListPage.items.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
+- A collection tool also takes the ref of an instance of its item model nested at any depth below the collection. A tree whose `TreeItem` holds `children(): TreeItem[]` gets no `FilesPage.items.children.expand`: the item the page state labels `FilesPage.items[0].children[0]` goes to `FilesPage.items.expand`. A nested instance goes to the tools of its model's highest place on its path, and models match by class, so a subclass has tools of its own: when `pinned()` returns `PinnedTaskRow`, a subclass of `TaskRow` whose `subtasks()` return `TaskRow`, the pinned rows go to `ProjectsPage.pinned.*` and their subtasks, at every depth, to `ProjectsPage.pinned.subtasks.*`.
 - A single child's actions take their input directly: a marked `confirm` on `ArchiveDialog` would be `ListPage.archiveDialog.confirm`.
 
 ## Action availability
