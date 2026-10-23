@@ -78,6 +78,7 @@ export function NavigatorView({
               type="button"
               aria-pressed={lens.id === activeLens}
               className={cn(
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                 "h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
                 focusRing,
                 pressable
@@ -103,6 +104,7 @@ export function NavigatorView({
                   <button
                     type="button"
                     className={cn(
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                       "flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted",
                       rowFocusRing,
                       rowPress

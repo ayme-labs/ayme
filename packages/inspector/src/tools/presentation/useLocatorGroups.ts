@@ -36,6 +36,7 @@ export function useLocatorGroups({
   const stopPicking = useRef<() => void>(undefined);
 
   useEffect(() => onChange(groups), [groups, onChange]);
+  // Stryker disable next-line ArrayDeclaration: a dependency list that never changes runs the effect once, as an empty one does.
   useEffect(() => () => stopPicking.current?.(), []);
 
   const outcomes = useMemo(
