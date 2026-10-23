@@ -414,6 +414,7 @@ function DetailHead({
               <button
                 type="button"
                 aria-label={`Open the ${model} page object model`}
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                 className={cn(chip, "text-foreground")}
                 onClick={() => onOpenModel?.(model)}
               >

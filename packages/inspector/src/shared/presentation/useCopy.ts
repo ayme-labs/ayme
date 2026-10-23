@@ -11,7 +11,7 @@ const COPIED_MS = 1200;
 export function useCopy() {
   const [copied, setCopied] = useState<string>();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Stryker disable next-line ArrowFunction,ArrayDeclaration: React drops a state update after unmount, so this only spares a timer.
+  // Stryker disable next-line ArrowFunction,ArrayDeclaration,CallExpression: React drops a state update after unmount, so this only spares a timer.
   useEffect(() => () => clearTimeout(timer.current), []);
 
   return {

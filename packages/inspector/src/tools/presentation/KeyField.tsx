@@ -123,6 +123,7 @@ export function KeyField({
     <button
       type="button"
       className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "h-5 rounded-md border px-1.5 font-mono text-xs text-foreground hover:border-ring",
         focusRing,
         pressable

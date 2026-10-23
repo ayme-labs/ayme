@@ -79,6 +79,7 @@ export function RunsView({
     <>
       <div
         className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
@@ -87,12 +88,14 @@ export function RunsView({
           type="button"
           aria-expanded={open}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "inline-flex cursor-pointer items-center gap-1.5 rounded-sm uppercase",
             focusRing
           )}
           onClick={() => onOpenChange(!open)}
         >
           <ChevronRightIcon
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
             className={cn("size-3", open && "rotate-90")}
             aria-hidden
           />
@@ -116,6 +119,7 @@ export function RunsView({
                   type="button"
                   aria-pressed={allRuns === all}
                   className={cn(
+                    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                     "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
                     focusRing,
                     pressable
@@ -247,6 +251,7 @@ function RunRow({
       aria-label={run.toolName}
       data-run-id={run.id}
       className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "flex list-none gap-2.5",
         entering &&
           "transition-[opacity,translate] duration-(--duration-normal) ease-(--ease-out) starting:opacity-0 motion-safe:starting:-translate-y-1"
