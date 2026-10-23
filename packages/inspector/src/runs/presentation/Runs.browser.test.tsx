@@ -381,6 +381,21 @@ describe("a run's result", () => {
       .toHaveBeenCalledExactlyOnceWith('"Milk"');
   });
 
+  it("says it copied, for a moment", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+    const copied = run.card.getByRole("button", {
+      name: "Copied",
+      exact: true,
+    });
+
+    await run.copyResultButton.click();
+
+    await expect.poll(() => copied.count()).toBe(1);
+    await expect.poll(() => copied.count(), { timeout: 3000 }).toBe(0);
+    expect(await run.copyResultButton.count()).toBe(1);
+  });
+
   it("isn't there when the tool returned undefined", async () => {
     renderRuns({ runs: [aRun({ durationMs: 320 })] });
     const run = runsView.run(0);

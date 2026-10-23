@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import {
-  ArrowRightIcon,
   BoxIcon,
   BracesIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -24,10 +22,10 @@ import {
   type TreeRow,
 } from "../domain/treeRows";
 import {
+  chip,
   Empty,
   focusRing,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
-  pressable,
   rowFocusRing,
   rowPress,
   WhatTheModelSees,
@@ -243,7 +241,7 @@ function StructureTreeView({
 // Rows never scroll sideways: past the panel's width the name is cut
 // first, the member tag only past its share.
 const rowClass =
-  "relative flex items-baseline gap-1.5 overflow-hidden rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
+  "relative flex items-baseline gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
 const nameClass =
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
@@ -295,7 +293,6 @@ function NodeRow({
   const outer = folded && hasRef(folded.outer) ? folded.outer : undefined;
   const hidden = folded?.hidden ?? 0;
   const toggle = outer ?? (unfolded ? node : undefined);
-  const Chevron = outer ? ChevronRightIcon : ChevronDownIcon;
   return (
     <div
       role="treeitem"
@@ -341,7 +338,10 @@ function NodeRow({
               );
           }}
         >
-          <Chevron className="size-3" aria-hidden />
+          <ChevronRightIcon
+            className={cn("size-3", !outer && "rotate-90")}
+            aria-hidden
+          />
         </button>
       )}
       {outer && (
@@ -350,7 +350,10 @@ function NodeRow({
             type="button"
             aria-label={`${outer.ref} generic`}
             aria-pressed={outer.ref === selectedRef}
-            className="shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline"
+            className={cn(
+              "shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline",
+              focusRing
+            )}
             onClick={(event) => {
               event.stopPropagation();
               onPick(outer.ref);
@@ -366,7 +369,7 @@ function NodeRow({
               type="button"
               tabIndex={-1}
               aria-hidden
-              className="shrink-0 self-center rounded-full border bg-muted px-1.5 font-sans text-[10px] leading-4 text-muted-foreground hover:text-foreground"
+              className="shrink-0 self-center rounded-full border bg-muted px-1.5 font-sans text-[11px] leading-4 text-muted-foreground hover:text-foreground"
               onClick={(event) => {
                 event.stopPropagation();
                 onToggle(outer);
@@ -441,16 +444,12 @@ function NodeDetail({
                 key={member}
                 type="button"
                 title={`Open ${opens}`}
-                className={cn(
-                  "inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border bg-card px-2.5 text-xs hover:border-ring",
-                  focusRing,
-                  pressable
-                )}
+                className={cn(chip, "max-w-full")}
                 onClick={() => onOpenOwner(owner)}
               >
-                <Icon className="size-3.5 flex-none" aria-hidden />
+                <Icon className="size-3 flex-none" aria-hidden />
                 <span className="truncate font-mono">{member}</span>
-                <ArrowRightIcon className="size-3.5 flex-none" aria-hidden />
+                <ChevronRightIcon className="size-3 flex-none" aria-hidden />
               </button>
             );
           })}

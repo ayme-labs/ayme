@@ -15,8 +15,10 @@ export type DragHandlers = {
 
 /**
  * Pointer drags that follow the pointer on the window from the press on a
- * handle, so a drag keeps going when the pointer leaves the handle. Only one
- * drag runs at a time; unmounting ends it.
+ * handle, so a drag keeps going when the pointer leaves the handle. Once the
+ * press becomes a drag, the handle captures the pointer, so the cursor and
+ * hover stay the handle's over the page. Only the pressing pointer drives
+ * it. Only one drag runs at a time; unmounting ends it.
  */
 export function usePointerDrag() {
   const endCurrent = useRef<() => void>(undefined);
@@ -25,20 +27,27 @@ export function usePointerDrag() {
   return (event: PointerEvent, { onMove, onEnd }: DragHandlers) => {
     if (event.button !== 0) return;
     endCurrent.current?.();
+    const handle = event.currentTarget;
+    const { pointerId } = event;
     const startX = event.clientX;
     const startY = event.clientY;
     let moved = false;
 
     const move = (moveEvent: globalThis.PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
       if (!moved && Math.abs(deltaX) + Math.abs(deltaY) < DRAG_THRESHOLD)
         return;
+      if (!moved) capture(handle, pointerId);
       moved = true;
       moveEvent.preventDefault();
       onMove(deltaX, deltaY, { x: moveEvent.clientX, y: moveEvent.clientY });
     };
-    const end = () => {
+    const end = (endEvent?: globalThis.PointerEvent) => {
+      if (endEvent && endEvent.pointerId !== pointerId) return;
+      if (handle.hasPointerCapture(pointerId))
+        handle.releasePointerCapture(pointerId);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
@@ -50,4 +59,13 @@ export function usePointerDrag() {
     window.addEventListener("pointercancel", end);
     endCurrent.current = end;
   };
+}
+
+function capture(handle: Element, pointerId: number) {
+  try {
+    handle.setPointerCapture(pointerId);
+  } catch {
+    // A pointer the browser doesn't have, like a dispatched one, can't be
+    // captured; the drag follows it on the window all the same.
+  }
 }

@@ -45,10 +45,10 @@ const cornerGrip =
   "z-30 size-5 after:size-4 after:border-0 after:bg-transparent active:after:bg-transparent";
 
 const handleClass: Record<Handle, string> = {
-  left: `${edgeGrip} inset-y-0 -left-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] active:after:scale-y-125`,
-  right: `${edgeGrip} inset-y-0 -right-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] active:after:scale-y-125`,
-  top: `${edgeGrip} inset-x-0 -top-[4.5px] h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 active:after:scale-x-125`,
-  bottom: `${edgeGrip} inset-x-0 -bottom-[4.5px] h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 active:after:scale-x-125`,
+  left: `${edgeGrip} inset-y-0 -left-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] motion-safe:active:after:scale-y-125`,
+  right: `${edgeGrip} inset-y-0 -right-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] motion-safe:active:after:scale-y-125`,
+  top: `${edgeGrip} inset-x-0 -top-[4.5px] h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 motion-safe:active:after:scale-x-125`,
+  bottom: `${edgeGrip} inset-x-0 -bottom-[4.5px] h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 motion-safe:active:after:scale-x-125`,
   "top-left": `${cornerGrip} -top-2 -left-2 cursor-nwse-resize after:top-[6px] after:left-[6px] after:rounded-tl-[15px] after:border-t-3 after:border-l-3`,
   "top-right": `${cornerGrip} -top-2 -right-2 cursor-nesw-resize after:top-[6px] after:right-[6px] after:rounded-tr-[15px] after:border-t-3 after:border-r-3`,
   "bottom-left": `${cornerGrip} -bottom-2 -left-2 cursor-nesw-resize after:bottom-[6px] after:left-[6px] after:rounded-bl-[15px] after:border-b-3 after:border-l-3`,
@@ -271,6 +271,8 @@ export function InspectorShell({
       </aside>
       {snap && (
         <SnapPreview
+          // A new edge's preview enters again.
+          key={snap}
           dock={snap}
           sideWidth={sideWidth}
           bottomHeight={bottomHeight}
@@ -279,6 +281,14 @@ export function InspectorShell({
     </>
   );
 }
+
+// Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
+const origin: Record<Dock, string> = {
+  left: "origin-left",
+  right: "origin-right",
+  bottom: "origin-bottom",
+};
+// Stryker restore StringLiteral,ObjectLiteral
 
 /** Where the panel docks if it's dropped now. */
 function SnapPreview({
@@ -313,7 +323,11 @@ function SnapPreview({
   };
   return (
     <div
-      className="pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55"
+      // It grows from the edge it docks to.
+      className={cn(
+        "pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55 transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]",
+        origin[dock]
+      )}
       style={style[dock]}
     >
       <span className="inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-sm font-semibold text-primary-foreground">

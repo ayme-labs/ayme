@@ -97,7 +97,7 @@ export function RefFieldView({
           <span className="flex-1" />
           <ChevronDownIcon
             className={cn(
-              "size-3.5 flex-none text-muted-foreground transition-transform",
+              "size-3.5 flex-none text-muted-foreground",
               open && "rotate-180"
             )}
             aria-hidden
@@ -163,7 +163,7 @@ function PickBanner({
       {prompt}
       <button
         type="button"
-        className="h-6.5 rounded-full bg-white/20 px-2.5 text-xs font-semibold hover:bg-white/30"
+        className="h-6.5 rounded-full bg-white/20 px-2.5 text-xs font-semibold outline-none hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-primary-foreground"
         onClick={onCancel}
       >
         Cancel picking

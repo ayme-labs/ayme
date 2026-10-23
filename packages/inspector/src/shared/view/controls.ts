@@ -30,6 +30,12 @@ export const pressable =
 export const pressableIcon =
   "transition-[scale,background-color,color] duration-(--duration-fast) ease-(--ease-out) motion-safe:active:scale-95";
 
+/**
+ * A chip that opens what it names, a page object or a model, with its
+ * focus ring and press feedback: one shape wherever it shows.
+ */
+export const chip = `inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 text-xs hover:border-ring ${focusRing} ${pressable}`;
+
 /** Press feedback for a full-width row in a tree or list. */
 export const rowPress = "";
 

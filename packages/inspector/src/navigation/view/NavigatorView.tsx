@@ -78,7 +78,7 @@ export function NavigatorView({
               type="button"
               aria-pressed={lens.id === activeLens}
               className={cn(
-                "h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+                "h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
                 focusRing,
                 pressable
               )}
@@ -112,7 +112,7 @@ export function NavigatorView({
                     onMouseLeave={() => onHover?.(undefined)}
                   >
                     <span className="flex max-w-full items-center gap-1.5">
-                      <span className="w-13 flex-none text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      <span className="w-13 flex-none text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                         {result.entry.kind}
                       </span>
                       <span

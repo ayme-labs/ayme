@@ -139,7 +139,7 @@ export function RunCardView({
               >
                 <ChevronRightIcon
                   className={cn(
-                    "size-3.5 flex-none text-muted-foreground transition-transform",
+                    "size-3 flex-none text-muted-foreground",
                     open && "rotate-90"
                   )}
                   aria-hidden
@@ -161,7 +161,7 @@ export function RunCardView({
           )}
           {reasonLine}
           {tool.description && (
-            <p className="m-0 text-xs text-muted-foreground">
+            <p className="m-0 text-xs leading-normal text-muted-foreground">
               {tool.description}
             </p>
           )}
@@ -187,7 +187,7 @@ export function RunCardView({
                     type="button"
                     aria-pressed={(json !== undefined) === (mode === "JSON")}
                     className={cn(
-                      "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+                      "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
                       focusRing,
                       pressable
                     )}
@@ -309,7 +309,10 @@ export function JsonEditor({
           type="button"
           disabled={error !== undefined}
           title={error ? "Fix the JSON to format it" : "Pretty-print the JSON"}
-          className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground"
+          className={cn(
+            "cursor-pointer rounded-sm text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground",
+            focusRing
+          )}
           onClick={() => {
             onFormat();
             // Formatted lines start at the left edge; show them from there.
@@ -444,7 +447,10 @@ function LastResult({
         {lastSuccess && (
           <button
             type="button"
-            className="cursor-pointer text-xs font-semibold underline underline-offset-2"
+            className={cn(
+              "cursor-pointer rounded-sm text-xs font-semibold whitespace-nowrap underline underline-offset-2",
+              focusRing
+            )}
             onClick={() => onShowRun(lastSuccess.id)}
           >
             {lastSuccess === run ? "Show in runs" : "Last success ›"}
