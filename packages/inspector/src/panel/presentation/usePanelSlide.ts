@@ -48,7 +48,9 @@ export function usePanelSlide(layout: Layout) {
     from.current = panel.current!.getBoundingClientRect();
   };
   const stop = () => {
-    const element = panel.current!;
+    const element = panel.current;
+    // A drag can outlive the panel, collapsed by a key while it's held.
+    if (!element) return { x: 0, y: 0 };
     const shown = element.getBoundingClientRect();
     slide.current?.cancel();
     const placed = element.getBoundingClientRect();

@@ -29,8 +29,8 @@ import {
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
-import { useKeyboardInput } from "./useKeyboardInput";
 import { usePanelSlide } from "./usePanelSlide";
+import { usePointerClick } from "./usePointerClick";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -121,7 +121,7 @@ export function InspectorShell({
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
   const [panel, willChooseLayout, stopSlide] = usePanelSlide(layout);
-  const keyboard = useKeyboardInput();
+  const pointerClick = usePointerClick();
 
   // Collapsing moves focus to the logo and opening moves it back, but only
   // when the person did it, not when the panel starts collapsed. A panel the
@@ -137,7 +137,7 @@ export function InspectorShell({
   }, [collapsed]);
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
-    setOpened(!next && !keyboard.current);
+    setOpened(!next && pointerClick.current);
     onPreferencesChange({ collapsed: next });
   };
   const logo = fitLogo(preferences.logo ?? defaultLogo(viewport), viewport);
@@ -288,7 +288,7 @@ export function InspectorShell({
             onThemeChange={(theme) => onPreferencesChange({ theme })}
             onLayoutChange={(next) => {
               if (next === layout) return;
-              if (!keyboard.current) willChooseLayout();
+              if (pointerClick.current) willChooseLayout();
               onPreferencesChange({ layout: next });
             }}
             onCollapse={() => setCollapsed(true)}

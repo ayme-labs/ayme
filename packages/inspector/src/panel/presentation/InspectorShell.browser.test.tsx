@@ -316,6 +316,20 @@ describe("motion", () => {
     expect(Element.prototype.animate).not.toHaveBeenCalled();
   });
 
+  it("docks from the menu at once when a screen reader chooses it", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.trigger.press("Enter");
+
+    // A screen reader clicks without a pointer or a key.
+    await header.layoutMenu
+      .option("Dock right")
+      .evaluate((option) => (option as HTMLElement).click());
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
   it("fades in when opened from the logo, but not when it starts open", async () => {
     renderShell({ layout: "float", float: floating });
     // The shell renders at once, so a fade would already be under way.
@@ -347,6 +361,46 @@ describe("motion", () => {
     await expect.poll(() => shell.box()).toEqual(floating);
     await nextFrames();
     expect(await fades()).toEqual([]);
+  });
+
+  it("opens from the logo at once when a screen reader clicks it", async () => {
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const fades = await recordTransitions();
+
+    await logo.root.evaluate((logo) => (logo as HTMLElement).click());
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    await nextFrames();
+    expect(await fades()).toEqual([]);
+  });
+
+  it("lets a drag held through a collapse by key go on, and opens where it left the panel", async () => {
+    renderShell({ layout: "float", float: floating });
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener("error", onError);
+    const pointer = (clientX: number, buttons: number) => ({
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons,
+      clientX,
+      clientY: 60,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+
+    await header.title.dispatchEvent("pointerdown", pointer(500, 1));
+    await header.collapseButton.press("Enter");
+    await logo.root.dispatchEvent("pointermove", pointer(560, 1));
+    await logo.root.dispatchEvent("pointerup", pointer(560, 0));
+
+    window.removeEventListener("error", onError);
+    expect(errors).toEqual([]);
+    await logo.open();
+    await expect.poll(() => shell.box()).toEqual({ ...floating, x: 460 });
   });
 
   it.each([
