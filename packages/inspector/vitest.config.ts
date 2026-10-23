@@ -39,7 +39,11 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
-            provider: playwright(),
+            // Reduced motion, so a test reads the panel's final geometry
+            // at once. The fixture app's e2e tests cover full motion.
+            provider: playwright({
+              contextOptions: { reducedMotion: "reduce" },
+            }),
             instances: [{ browser: "chromium" }],
             // A desktop viewport: the panel's layouts are sized for one.
             viewport: { width: 1280, height: 800 },

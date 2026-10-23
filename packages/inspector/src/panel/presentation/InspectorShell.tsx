@@ -14,10 +14,13 @@ import {
   defaultFloat,
   defaultLogo,
   dockAt,
+  dockedRect,
   fitBottomHeight,
   fitFloat,
   fitLogo,
   fitSideWidth,
+  LOGO_SIZE,
+  nearestCorner,
   resizeFloat,
   type Dock,
   type HostReservation,
@@ -26,6 +29,8 @@ import {
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
+import { usePanelSlide } from "./usePanelSlide";
+import { usePointerClick } from "./usePointerClick";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -115,11 +120,16 @@ export function InspectorShell({
   // The room goes back when the shell unmounts.
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
+  const [panel, willChooseLayout, stopSlide] = usePanelSlide(layout);
+  const pointerClick = usePointerClick();
+
   // Collapsing moves focus to the logo and opening moves it back, but only
-  // when the person did it, not when the panel starts collapsed.
+  // when the person did it, not when the panel starts collapsed. A panel the
+  // person opens with a pointer also grows out of the logo's side.
   const logoButton = useRef<HTMLButtonElement>(null);
   const collapseButton = useRef<HTMLButtonElement>(null);
   const moveFocus = useRef(false);
+  const [opened, setOpened] = useState(false);
   useEffect(() => {
     if (!moveFocus.current) return;
     moveFocus.current = false;
@@ -127,14 +137,16 @@ export function InspectorShell({
   }, [collapsed]);
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
+    setOpened(!next && pointerClick.current);
     onPreferencesChange({ collapsed: next });
   };
+  const logo = fitLogo(preferences.logo ?? defaultLogo(viewport), viewport);
 
   if (collapsed)
     return (
       <Fab
         ref={logoButton}
-        position={fitLogo(preferences.logo ?? defaultLogo(viewport), viewport)}
+        position={logo}
         viewport={viewport}
         onMove={(logo) => onPreferencesChange({ logo })}
         onOpen={() => setCollapsed(false)}
@@ -149,13 +161,18 @@ export function InspectorShell({
     let dock: Dock | undefined;
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
-        origin ??=
-          layout === "float"
-            ? float
-            : {
-                x: pointer.x - deltaX - Math.min(200, float.width / 2),
-                y: pointer.y - deltaY - 22,
-              };
+        if (!origin) {
+          // The drag takes the panel from where it shows, mid-slide or not.
+          const shown = stopSlide();
+          // A docked panel comes off held 200px along its header, or halfway
+          // along a narrower one.
+          // Stryker disable next-line ArithmeticOperator: a floating panel is at least 540px wide in the component tests' viewport, so its half is never under 200px.
+          const grab = Math.min(200, float.width / 2);
+          origin =
+            layout === "float"
+              ? { x: float.x + shown.x, y: float.y + shown.y }
+              : { x: pointer.x - deltaX - grab, y: pointer.y - deltaY - 22 };
+        }
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);
         setSnap(dock);
@@ -216,13 +233,18 @@ export function InspectorShell({
     right: { right: 0, top: 0, bottom: 0, width: sideWidth },
     bottom: { left: 0, right: 0, bottom: 0, height: bottomHeight },
   };
+  const box =
+    layout === "float" ? float : dockedRect(layout, dockedSize, viewport);
+  const logoCentre = { x: logo.x + LOGO_SIZE / 2, y: logo.y + LOGO_SIZE / 2 };
 
   return (
     <>
       <aside
+        ref={panel}
         aria-label="ayme"
+        data-opened={opened || undefined}
         className={cn(
-          "@container pointer-events-auto absolute border bg-background",
+          "@container pointer-events-auto absolute border bg-background transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) data-opened:starting:opacity-0 data-opened:motion-safe:starting:scale-[0.97]",
           {
             float: "rounded-xl shadow-2xl",
             left: "border-y-0 border-l-0 shadow-lg",
@@ -230,7 +252,10 @@ export function InspectorShell({
             bottom: "border-x-0 border-b-0 shadow-lg",
           }[layout]
         )}
-        style={placement[layout]}
+        style={{
+          ...placement[layout],
+          transformOrigin: nearestCorner(box, logoCentre),
+        }}
       >
         {resizeHandles[layout].map((handle) => (
           <div
@@ -261,7 +286,11 @@ export function InspectorShell({
             layout={layout}
             theme={preferences.theme}
             onThemeChange={(theme) => onPreferencesChange({ theme })}
-            onLayoutChange={(next) => onPreferencesChange({ layout: next })}
+            onLayoutChange={(next) => {
+              if (next === layout) return;
+              if (pointerClick.current) willChooseLayout();
+              onPreferencesChange({ layout: next });
+            }}
             onCollapse={() => setCollapsed(true)}
             onPointerDown={startMove}
             collapseRef={collapseButton}

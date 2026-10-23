@@ -127,6 +127,28 @@ export function dockAt(pointer: Point, viewport: Viewport): Dock | undefined {
   return undefined;
 }
 
+/**
+ * Where a panel docked to an edge sits: its width on the left or right, its
+ * height at the bottom, the viewport's full length along the edge.
+ */
+export function dockedRect(dock: Dock, size: number, viewport: Viewport): Rect {
+  return {
+    left: { x: 0, y: 0, width: size, height: viewport.height },
+    right: {
+      x: viewport.width - size,
+      y: 0,
+      width: size,
+      height: viewport.height,
+    },
+    bottom: {
+      x: 0,
+      y: viewport.height - size,
+      width: viewport.width,
+      height: size,
+    },
+  }[dock];
+}
+
 /** The logo's first place: the page's bottom right. */
 export function defaultLogo(viewport: Viewport): Point {
   return fitLogo({ x: Infinity, y: Infinity }, viewport);
@@ -137,4 +159,16 @@ export function fitLogo(point: Point, viewport: Viewport): Point {
     x: clamp(point.x, LOGO_MARGIN, viewport.width - LOGO_SIZE - LOGO_MARGIN),
     y: clamp(point.y, LOGO_MARGIN, viewport.height - LOGO_SIZE - LOGO_MARGIN),
   };
+}
+
+/**
+ * The corner of a rectangle nearest a point, as a CSS position such as
+ * "bottom right".
+ */
+export function nearestCorner(rect: Rect, point: Point) {
+  // Stryker disable next-line EqualityOperator: on the middle line both corners are as near.
+  const y = point.y < rect.y + rect.height / 2 ? "top" : "bottom";
+  // Stryker disable next-line EqualityOperator: as above.
+  const x = point.x < rect.x + rect.width / 2 ? "left" : "right";
+  return `${y} ${x}` as const;
 }

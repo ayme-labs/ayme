@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import { renderPart } from "../../testing/renderPart";
@@ -123,14 +123,20 @@ describe("docking", () => {
       .toEqual({ x: 680, y: 0, width: 600, height: 800 });
   });
 
-  it("floats again when a docked header is dragged", async () => {
+  it("floats again under the pointer when a docked header is dragged", async () => {
     renderShell({ layout: "left", float: floating, sideWidth: 600 });
+    const title = (await header.title.boundingBox())!;
 
     await header.dragBy(300, 200);
 
     await expect.poll(() => header.layoutMenu.current()).toBe("Floating");
-    const { width, height } = await shell.box();
-    expect({ width, height }).toEqual({ width: 700, height: 600 });
+    // Held 200px along the header and 22px down it.
+    expect(await shell.box()).toEqual({
+      x: title.x + title.width / 2 + 300 - 200,
+      y: title.y + title.height / 2 + 200 - 22,
+      width: 700,
+      height: 600,
+    });
   });
 
   it.each([
@@ -172,6 +178,283 @@ describe("collapsed", () => {
     expect(await inspector.panel.count()).toBe(0);
   });
 });
+
+describe("motion", () => {
+  // The component tests run with reduced motion (vitest.config.ts). The
+  // slide asks for the preference itself, so these tests can turn it off.
+  function slides() {
+    const matchMedia = window.matchMedia.bind(window);
+    vi.spyOn(window, "matchMedia").mockImplementation((query) =>
+      query === "(prefers-reduced-motion: reduce)"
+        ? ({ matches: false } as MediaQueryList)
+        : matchMedia(query)
+    );
+    const animate = vi.spyOn(Element.prototype, "animate");
+    /** The last slide, held at a moment of it. */
+    return (time: number) => {
+      const slide = animate.mock.results.at(-1)?.value as Animation;
+      slide.pause();
+      slide.currentTime = time;
+      return slide;
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("opens from the logo and docks from the menu in place at once, with reduced motion", async () => {
+    renderShell({
+      collapsed: true,
+      layout: "float",
+      float: floating,
+      sideWidth: 600,
+    });
+
+    await logo.open();
+    expect(await shell.box()).toEqual(floating);
+
+    await header.layoutMenu.choose("Dock right");
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
+  it("slides to a layout chosen from the menu, at its new size from the start", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.layoutMenu.choose("Dock right");
+
+    const { duration, easing } = holdSlide(0).effect!.getTiming();
+    expect({ duration, easing }).toEqual({
+      duration: 200,
+      easing: "cubic-bezier(0.77, 0, 0.175, 1)",
+    });
+    expect(await shell.box()).toEqual({
+      x: 400,
+      y: 40,
+      width: 600,
+      height: 800,
+    });
+    holdSlide(200);
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
+  it("turns from where the panel is when another layout is chosen mid-slide", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Dock right");
+    holdSlide(100);
+    const midway = await shell.box();
+
+    await header.layoutMenu.choose("Dock left");
+
+    holdSlide(0);
+    expect(await shell.box()).toEqual(midway);
+    holdSlide(200);
+    expect(await shell.box()).toEqual({ x: 0, y: 0, width: 600, height: 800 });
+  });
+
+  it("slides down to the bottom from where it was", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "float", float: floating, bottomHeight: 300 });
+
+    await header.layoutMenu.choose("Dock to bottom");
+
+    holdSlide(0);
+    const { x, y } = await shell.box();
+    expect({ x, y }).toEqual({ x: 400, y: 40 });
+  });
+
+  it("doesn't slide into a dock it's dropped on, after its own layout was chosen from the menu", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.layoutMenu.choose("Floating");
+    await header.dropAt(4, 300);
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock left");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
+  it("drags from where the panel shows mid-slide, and stops the slide", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "right", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Floating");
+    holdSlide(100);
+    const midway = await shell.box();
+
+    await header.dragBy(-50, 20);
+
+    // Layout places the panel on a 1/64px grid.
+    await expect
+      .poll(async () => {
+        const { x, y } = await shell.box();
+        return [Math.round(x - midway.x), Math.round(y - midway.y)];
+      })
+      .toEqual([-50, 20]);
+    expect(await animations()).toEqual([]);
+  });
+
+  it("docks from the menu at once when chosen by keyboard", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
+  it("docks from the menu at once when a screen reader chooses it", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.trigger.press("Enter");
+
+    // A screen reader clicks without a pointer or a key.
+    await header.layoutMenu
+      .option("Dock right")
+      .evaluate((option) => (option as HTMLElement).click());
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
+  it("fades in when opened from the logo, but not when it starts open", async () => {
+    renderShell({ layout: "float", float: floating });
+    // The shell renders at once, so a fade would already be under way.
+    expect(await animations()).toEqual([]);
+    const fades = await recordTransitions();
+
+    await header.collapse();
+    await logo.open();
+
+    await expect.poll(fades).toContain("opacity");
+  });
+
+  it("fades in again when opened with a pointer after a key", async () => {
+    renderShell({ layout: "float", float: floating });
+    await header.collapseButton.press("Enter");
+    const fades = await recordTransitions();
+
+    await logo.open();
+
+    await expect.poll(fades).toContain("opacity");
+  });
+
+  it("opens from the logo at once when opened by keyboard", async () => {
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const fades = await recordTransitions();
+
+    await logo.root.press("Enter");
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    await nextFrames();
+    expect(await fades()).toEqual([]);
+  });
+
+  it("opens from the logo at once when a screen reader clicks it", async () => {
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const fades = await recordTransitions();
+
+    await logo.root.evaluate((logo) => (logo as HTMLElement).click());
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    await nextFrames();
+    expect(await fades()).toEqual([]);
+  });
+
+  it("lets a drag held through a collapse by key go on, and opens where it left the panel", async () => {
+    renderShell({ layout: "float", float: floating });
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener("error", onError);
+    const pointer = (clientX: number, buttons: number) => ({
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons,
+      clientX,
+      clientY: 60,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+
+    await header.title.dispatchEvent("pointerdown", pointer(500, 1));
+    await header.collapseButton.press("Enter");
+    await logo.root.dispatchEvent("pointermove", pointer(560, 1));
+    await logo.root.dispatchEvent("pointerup", pointer(560, 0));
+
+    window.removeEventListener("error", onError);
+    expect(errors).toEqual([]);
+    await logo.open();
+    await expect.poll(() => shell.box()).toEqual({ ...floating, x: 460 });
+  });
+
+  it.each([
+    ["docked", "left", { x: 676, y: 676 }, "right bottom"],
+    ["floating", "float", { x: 740, y: 330 }, "right bottom"],
+    ["floating", "float", { x: 700, y: 290 }, "left top"],
+  ] as const)(
+    "grows out of its corner nearest the logo when %s",
+    async (_how, layout, logoAt, corner) => {
+      renderShell({ layout, float: floating, sideWidth: 600, logo: logoAt });
+
+      expect(
+        await inspector.panel.evaluate(
+          (panel) => (panel as HTMLElement).style.transformOrigin
+        )
+      ).toBe(corner);
+    }
+  );
+});
+
+/** What the panel animates now, by the property each animation moves. */
+function animations() {
+  return inspector.panel.evaluate((panel) =>
+    panel
+      .getAnimations()
+      .map((animation) => (animation as CSSTransition).transitionProperty)
+  );
+}
+
+/**
+ * Records the transitions the panel starts from now on, through a collapse
+ * and an opening, and returns the call that reads them.
+ */
+async function recordTransitions() {
+  type Recording = Element & { started?: string[] };
+  await inspector.container.evaluate((container: Recording) => {
+    const started: string[] = [];
+    container.started = started;
+    container.addEventListener("transitionrun", (event) => {
+      const { propertyName, target } = event as TransitionEvent;
+      if ((target as Element).matches('[aria-label="ayme"]'))
+        started.push(propertyName);
+    });
+  });
+  return () =>
+    inspector.container.evaluate((container: Recording) => container.started);
+}
+
+/** Waits until the browser has drawn twice, so a transition would have started. */
+function nextFrames() {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  );
+}
 
 describe("the host page", () => {
   // The host page's content: the first thing in its body, full width.

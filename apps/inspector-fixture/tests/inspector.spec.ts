@@ -87,6 +87,46 @@ test("a docked panel sits beside the page, and floating it gives the space back"
   await expect.poll(pageLeft).toBe(before);
 });
 
+test.describe("with motion on", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("a layout chosen from the menu moves the panel there", async ({
+    page,
+    inspector,
+  }) => {
+    const { header, shell } = inspector;
+    const floating = await shell.box();
+    const { height } = page.viewportSize()!;
+
+    await header.layoutMenu.choose("Dock left");
+    await expect
+      .poll(() => shell.box())
+      .toEqual({ x: 0, y: 0, width: 640, height });
+
+    await header.layoutMenu.choose("Floating");
+    await expect.poll(() => shell.box()).toEqual(floating);
+  });
+
+  test("the panel opened from the logo grows back to where it was", async ({
+    inspector,
+  }) => {
+    const before = await inspector.shell.box();
+    await inspector.collapse();
+
+    await inspector.logo.open();
+
+    await expect.poll(() => inspector.shell.box()).toEqual(before);
+    await expect
+      .poll(() =>
+        inspector.panel.evaluate((panel) => {
+          const { opacity, scale } = getComputedStyle(panel);
+          return { opacity, scale };
+        })
+      )
+      .toEqual({ opacity: "1", scale: "none" });
+  });
+});
+
 test("the page highlights what's hovered in the panel and what's selected, at once", async ({
   page,
   inspector,

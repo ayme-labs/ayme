@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resizeFloat } from "./geometry";
+import { dockedRect, nearestCorner, resizeFloat } from "./geometry";
 
 describe("resizeFloat", () => {
   // A phone-sized viewport: the panel can't reach its minimum size here.
@@ -26,5 +26,30 @@ describe("resizeFloat", () => {
       width: 300,
       height: 500,
     });
+  });
+});
+
+describe("nearestCorner", () => {
+  const panel = { x: 400, y: 40, width: 700, height: 600 };
+
+  it.each([
+    [{ x: 100, y: 0 }, "top left"],
+    [{ x: 1200, y: 100 }, "top right"],
+    [{ x: 300, y: 700 }, "bottom left"],
+    [{ x: 1000, y: 500 }, "bottom right"],
+  ] as const)("finds the corner nearest %o: %s", (point, corner) => {
+    expect(nearestCorner(panel, point)).toBe(corner);
+  });
+});
+
+describe("dockedRect", () => {
+  const viewport = { width: 1280, height: 800 };
+
+  it.each([
+    ["left", 600, { x: 0, y: 0, width: 600, height: 800 }],
+    ["right", 600, { x: 680, y: 0, width: 600, height: 800 }],
+    ["bottom", 300, { x: 0, y: 500, width: 1280, height: 300 }],
+  ] as const)("places a panel docked %s", (dock, size, rect) => {
+    expect(dockedRect(dock, size, viewport)).toEqual(rect);
   });
 });
