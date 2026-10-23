@@ -1,8 +1,4 @@
 import type { Locator } from "@playwright/test";
-import {
-  isPlaywrightLiteLocator,
-  resolveLocatorElements,
-} from "@ayme-dev/playwright-lite/internal";
 import type {
   PomComponentManifest,
   PomComponentMemberManifest,
@@ -10,73 +6,32 @@ import type {
   PomMemberManifest,
   PomMemberObservation,
   ToolManifest,
-} from "../shared";
-import { modelOption } from "./decorators";
-import { errorText, RuntimeStateError } from "../shared";
+} from "../../shared";
+import { modelOption } from "../domain/decorators";
+import { errorText, RuntimeStateError } from "../../shared";
 import {
-  askPredicates,
-  askPresence,
+  absentPomRoot,
+  type ObservedPomRoot,
   type PomInstanceObservation,
-} from "./pomInstance";
-import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
-
-/**
- * Package-internal: a place in a Page Object's tree where component tools
- * live: one per component member path the tools reach, e.g. "items[].details".
- */
-export type PomGroup = {
-  component: PomComponentManifest;
-  /**
-   * Its path without item indices, e.g. "items[].details": the component
-   * path of its tools and of the instances they act on.
-   */
-  key: string;
-  /** Its path as tool names spell it, e.g. "items.details". */
-  toolPath: string;
-  /**
-   * For a group that goes through a collection, the key of the items a ref
-   * names, e.g. "items[]" for "items[].details".
-   */
-  collectionKey?: string;
-};
-
-/**
- * An element a Page Object member holds, at the member's concrete path, e.g.
- * "ListPage.items[0].nameButton", or at `rootTargetPath` of a Page Object's
- * path for its root.
- */
-export type RegisteredPomTarget = {
-  path: string;
-  element: Element;
-  /**
-   * The member's locator, as its `toString()` reads, e.g.
-   * "getByRole('button', { name: 'Add item' })": the locator an Interaction
-   * on the member names.
-   */
-  locator: string;
-};
-
-/**
- * A locator a Page Object member or root holds, at the target path of that
- * member or root. Resolved when the targets are read, so they are the
- * elements it holds then.
- */
-export type PomTargetSource = {
-  path: string;
-  locator: Locator;
-  /**
-   * For a member of an instance with a root, that root's locator: the
-   * member holds no targets while it resolves to the root's one element,
-   * since it is the root.
-   */
-  root?: Locator;
-};
+} from "../domain/pomInstance";
+import { askPredicates, askPresence } from "./pomPredicates";
+import type { PageDriver } from "./pageDriver";
+import {
+  componentsOf,
+  occurrenceOf,
+  rootTargetPath,
+  type Occurrences,
+  type PageObjectObservation,
+  type PomTargetSource,
+  type RegisteredPomTarget,
+} from "../domain/pomTree";
 
 /**
  * Package-internal: the elements `sources` hold now, in their order. A
  * locator that cannot be resolved holds none; its observation says why.
  */
 export function resolveTargets(
+  driver: PageDriver,
   sources: readonly PomTargetSource[]
 ): RegisteredPomTarget[] {
   // Each locator once: a member's root is also a source of its own.
@@ -85,7 +40,7 @@ export function resolveTargets(
     let elements = resolved.get(locator);
     if (!elements) {
       try {
-        elements = locatorElements(locator);
+        elements = driver.elementsOf(locator);
       } catch {
         elements = [];
       }
@@ -101,120 +56,19 @@ export function resolveTargets(
   });
 }
 
-/** Package-internal: what one observation of a registered Page Object found. */
-export type PageObjectObservation = {
-  /** Every instance the walk found, parents before their members. */
-  instances: PomInstanceObservation[];
-  memberObservations: PomMemberObservation[];
-  /**
-   * The locators its members and roots hold, one per concrete member path,
-   * in declaration order. Paths through collections carry their item
-   * indices.
-   */
-  targetSources: PomTargetSource[];
-  /** The paths of the locator members that resolved to their root. */
-  rootMemberPaths: Set<string>;
-  /**
-   * The collections holding an item that declares no root, by path, e.g.
-   * "owners" or "items[1].tags", with the item's class name.
-   */
-  rootlessCollections: Map<string, string>;
-};
-
-/**
- * Package-internal: the path of the target that is the Page Object Root of
- * the instance at `path`, e.g. "ListPage.items[0].@root". The segment is one
- * no member is named, so a member named `root` never shares a path with it.
- */
-export function rootTargetPath(path: string) {
-  return `${path}.@root`;
-}
-
-/**
- * Package-internal: the places `manifest`'s component tools live, a group's
- * own before the ones nested in it, in declaration order. A class that
- * already appears higher on a path ends that path: the manifest alone
- * would repeat it forever. Its instances there belong to its first
- * occurrence, which `observePageObject` follows.
- */
-export function pomGroups(manifest: PomManifest): PomGroup[] {
-  const components = componentsOf(manifest);
-  const groups: PomGroup[] = [];
-  const visit = (
-    members: readonly PomMemberManifest[],
-    path: readonly PomComponentMemberManifest[],
-    occurrences: Occurrences
-  ) => {
-    for (const member of members) {
-      if (member.kind !== "component") continue;
-      const component = components.get(member.componentClassName);
-      if (!component) continue;
-      const memberPath = [...path, member];
-      const key = componentKey(memberPath);
-      const { repeatOf, below } = occurrenceOf(
-        occurrences,
-        component.className,
-        key
-      );
-      if (repeatOf !== undefined) continue;
-      const itemDepth = memberPath
-        .map((step) => step.collection)
-        .lastIndexOf(true);
-      groups.push({
-        component,
-        key,
-        toolPath: memberPath.map((step) => step.memberName).join("."),
-        ...(itemDepth < 0
-          ? {}
-          : {
-              collectionKey: componentKey(memberPath.slice(0, itemDepth + 1)),
-            }),
-      });
-      visit(component.members, memberPath, below);
-    }
-  };
-  visit(manifest.members, [], new Map());
-  return groups;
-}
-
-/**
- * The classes on a path through the tree, each with the key of its first
- * occurrence there.
- */
-type Occurrences = ReadonlyMap<string, string>;
-
-/**
- * Where the class `className` at `key` belongs on a path with
- * `occurrences`: a class that already appears higher on it belongs to its
- * first occurrence, `repeatOf`. `below` is what the path holds under it.
- */
-function occurrenceOf(
-  occurrences: Occurrences,
-  className: string,
-  key: string
-): { repeatOf: string | undefined; below: Occurrences } {
-  const first = occurrences.get(className);
-  return first === undefined
-    ? { repeatOf: undefined, below: new Map(occurrences).set(className, key) }
-    : { repeatOf: first, below: occurrences };
-}
-
-function componentKey(path: readonly PomComponentMemberManifest[]) {
-  return path
-    .map((member) => `${member.memberName}${member.collection ? "[]" : ""}`)
-    .join(".");
-}
-
 /**
  * Package-internal: observes the registered Page Object `instance` of
- * `manifest` once: its instances, its members, and the elements they hold.
- * It reads the page and the Page Objects only; what to log is the caller's.
+ * `manifest` once, reading the page through `driver`: its instances, its
+ * members, and the elements they hold. It reads the page and the Page
+ * Objects only; what to log is the caller's.
  */
 export async function observePageObject(
+  driver: PageDriver,
   instance: object,
   manifest: PomManifest
 ): Promise<PageObjectObservation> {
   const walk: Walk = {
+    driver,
     label: manifest.className,
     components: componentsOf(manifest),
     instances: [],
@@ -256,14 +110,9 @@ export async function observePageObject(
   };
 }
 
-function componentsOf(manifest: PomManifest) {
-  return new Map(
-    manifest.components.map((component) => [component.className, component])
-  );
-}
-
 /** One walk over a registered Page Object's tree, and what it found. */
 type Walk = PageObjectObservation & {
+  driver: PageDriver;
   /** The registered Page Object's name, which its targets' paths start with. */
   label: string;
   components: ReadonlyMap<string, PomComponentManifest>;
@@ -346,7 +195,7 @@ async function observeInstance(
     walk.instances.push(observed);
     return { kind: "observed", observed, walk: false };
   }
-  const root = await observeRoot(instance);
+  const root = await observeRoot(walk.driver, instance);
   if (!root && kind === "item") return { kind: "rootless" };
   if (root) {
     observed.root = root.root;
@@ -418,7 +267,7 @@ async function walkMembers(
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
-        if (!isLocator(value))
+        if (!walk.driver.isLocator(value))
           throw new RuntimeStateError(
             `POM member ${memberPath} is not a browser locator.`
           );
@@ -428,7 +277,7 @@ async function walkMembers(
           locator: value,
           root: place.rootLocator,
         });
-        if (resolvesToRoot(value, place.rootElement)) {
+        if (resolvesToRoot(walk.driver, value, place.rootElement)) {
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
@@ -453,10 +302,14 @@ async function walkMembers(
  * it is the Page Object Root. By element, not by Locator identity: a getter
  * may build a fresh Locator on each read.
  */
-function resolvesToRoot(locator: Locator, rootElement: Element | undefined) {
+function resolvesToRoot(
+  driver: PageDriver,
+  locator: Locator,
+  rootElement: Element | undefined
+) {
   return (
     rootElement !== undefined &&
-    isRootElement(locatorElements(locator), [rootElement])
+    isRootElement(driver.elementsOf(locator), [rootElement])
   );
 }
 
@@ -595,18 +448,19 @@ type RootObservation = {
  * absent.
  */
 async function observeRoot(
+  driver: PageDriver,
   instance: object
 ): Promise<RootObservation | undefined> {
   // A rootless Page Object with no predicate is on every page.
   if (!modelOption(instance.constructor, "root")) return undefined;
   let locator: Locator | undefined;
   try {
-    locator = await readRoot(instance);
+    locator = await readRoot(driver, instance);
   } catch (error) {
-    return { root: absentRoot, count: 0, error: errorText(error) };
+    return { root: absentPomRoot, count: 0, error: errorText(error) };
   }
-  if (!locator) return { root: absentRoot, count: 0 };
-  return { ...(await observePomRoot(locator)), locator };
+  if (!locator) return { root: absentPomRoot, count: 0 };
+  return { ...(await driver.observeRoot(locator)), locator };
 }
 
 /**
@@ -615,19 +469,15 @@ async function observeRoot(
  * option, or when the answer is not a locator; a root predicate that throws,
  * throws.
  */
-async function readRoot(instance: object): Promise<Locator | undefined> {
+async function readRoot(
+  driver: PageDriver,
+  instance: object
+): Promise<Locator | undefined> {
   const predicate = modelOption(instance.constructor, "root");
   if (!predicate) return undefined;
   const root = await predicate(instance as never);
-  return isLocator(root) ? root : undefined;
+  return driver.isLocator(root) ? root : undefined;
 }
-
-const absentRoot: ObservedPomRoot = {
-  element: undefined,
-  present: false,
-  available: false,
-  inTheWay: [],
-};
 
 function joinPath(prefix: string, name: string) {
   return prefix ? `${prefix}.${name}` : name;
@@ -647,14 +497,6 @@ async function readMember(instance: object, member: PomMemberManifest) {
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === "function";
-}
-
-function isLocator(value: unknown): value is Locator {
-  return isPlaywrightLiteLocator(value);
-}
-
-function locatorElements(locator: Locator): Element[] {
-  return resolveLocatorElements(locator);
 }
 
 function asComponents(value: unknown): unknown[] {

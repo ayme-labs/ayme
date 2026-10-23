@@ -13,10 +13,13 @@ const { captureAriaSnapshot, pageObjectStructure, requireAymeRuntimePage } =
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   captureAriaSnapshot,
 }));
-vi.mock("../page-objects/registry", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  requireAymeRuntimePage,
-}));
+vi.mock(
+  "../page-objects/infrastructure/runtimePage",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    requireAymeRuntimePage,
+  })
+);
 
 const waitForSettled = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ stable: true })

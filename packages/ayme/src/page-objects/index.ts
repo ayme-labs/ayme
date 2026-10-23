@@ -1,7 +1,12 @@
-export { agentDescription, inputSchemaFor } from "./actionTool";
-export { createPage } from "./browserPage";
-export type { CreatePageOptions } from "./browserPage";
-export { ayme } from "./decorators";
+export { agentDescription, inputSchemaFor } from "./domain/actionTool";
+export { createPage } from "./infrastructure/browserPage";
+export type { CreatePageOptions } from "./infrastructure/browserPage";
+export {
+  constructPageObject,
+  registerCompiledPom,
+} from "./application/compiledPoms";
+export type { PageObjectConstructor } from "./application/compiledPoms";
+export { ayme } from "./domain/decorators";
 export type {
   ActionAvailability,
   AvailabilityPredicate,
@@ -9,32 +14,31 @@ export type {
   AymeModelOptions,
   PresencePredicate,
   RootPredicate,
-} from "./decorators";
+} from "./domain/decorators";
 export {
   renderActionParameters,
   renderPomDefinitions,
   renderSchema,
-} from "./pomDefinitionText";
-export { getPomDefinitions } from "./pomDefinitions";
-export { rootTargetPath } from "./pomTree";
-export type { RegisteredPomTarget } from "./pomTree";
+} from "./domain/pomDefinitionText";
+export { rootTargetPath } from "./domain/pomTree";
+export type { RegisteredPomTarget } from "./domain/pomTree";
+export { getPomDefinitions } from "./infrastructure/registeredPomDefinitions";
 export {
-  constructPageObject,
-  createAymeRuntime,
   listAvailablePomTools,
   listCollectionToolItems,
   listRegisteredPoms,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
-  registerCompiledPom,
   registerPageObject,
-  requireAymeRuntimePage,
   subscribeToRegisteredPoms,
-} from "./registry";
+} from "./infrastructure/registry";
 export type {
   CallerAwarePomTool,
   CollectionToolItem,
-  PageObjectConstructor,
   RegisteredPom,
-} from "./registry";
+} from "./infrastructure/registry";
+export {
+  createAymeRuntime,
+  requireAymeRuntimePage,
+} from "./infrastructure/runtimePage";

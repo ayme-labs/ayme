@@ -1,31 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { inTheWayOf, measurePomRoot } from "../page-state";
-
-/**
- * Package-internal: what one observation of a Page Object Root found
- * (ADR-0035): whether it is on the page, whether a click would reach it,
- * and, for a present root a click would not reach, what is in the way. The
- * runtime reports the measurement, never a kind of widget.
- */
-export type ObservedPomRoot = {
-  /** Its element, while the locator resolved to that one element throughout. */
-  element: Element | undefined;
-  present: boolean;
-  available: boolean;
-  /**
-   * What an Availability Reason may name as in the way of a present root a
-   * click would not reach (see `inTheWayOf`); empty for every other root.
-   */
-  inTheWay: readonly Element[];
-};
-
-const absent: ObservedPomRoot = {
-  element: undefined,
-  present: false,
-  available: false,
-  inTheWay: [],
-};
+import { inTheWayOf, measurePomRoot } from "../../page-state";
+import { absentPomRoot, type ObservedPomRoot } from "../domain/pomInstance";
 
 /**
  * Package-internal: observes one Page Object Root without scrolling or
@@ -44,7 +20,9 @@ export async function observePomRoot(
   return {
     count,
     root:
-      root && current.length === 1 && current[0] === element ? root : absent,
+      root && current.length === 1 && current[0] === element
+        ? root
+        : absentPomRoot,
   };
 }
 
@@ -53,7 +31,7 @@ async function observeElement(
   element: Element
 ): Promise<ObservedPomRoot> {
   const measurement = await measurePomRoot(locator, element);
-  if (!measurement.present) return { ...absent, element };
+  if (!measurement.present) return { ...absentPomRoot, element };
   return {
     element,
     present: true,

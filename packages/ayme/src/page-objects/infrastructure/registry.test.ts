@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runContext } from "../test-utils/agentCalls.testSupport";
-import { checkedToolInput } from "../shared";
+import { runContext } from "../../test-utils/agentCalls.testSupport";
+import { checkedToolInput } from "../../shared";
 
 const {
   locatorElements,
@@ -26,7 +26,7 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
-vi.mock("../page-state/pageState", async (importOriginal) => ({
+vi.mock("../../page-state/pageState", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
     refs.map((ref) => {
@@ -42,7 +42,7 @@ vi.mock("../page-state/pageState", async (importOriginal) => ({
     pageObjectStructure.source = source;
   },
 }));
-vi.mock("../page-state/actionSequence", async (importOriginal) => ({
+vi.mock("../../page-state/actionSequence", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   runAction: vi.fn(
     async (
@@ -62,9 +62,9 @@ vi.mock("../page-state/actionSequence", async (importOriginal) => ({
   ),
 }));
 import type { Locator, Page } from "@playwright/test";
-import type { PomManifest } from "../shared";
-import type { AymePage } from "../runtime";
-import type { TestSession } from "../test-utils/session.testSupport";
+import type { PomManifest } from "../../shared";
+import type { AymePage } from "../../runtime";
+import type { TestSession } from "../../test-utils/session.testSupport";
 
 function brandedLocator(
   overrides: Record<string, unknown> = {},
@@ -111,10 +111,11 @@ let started: TestSession | undefined;
 /** Imports a fresh registry and starts a session on a page of its own. */
 async function setup() {
   const registry = await import("./registry");
-  const { startSession } = await import("../test-utils/session.testSupport");
+  const { startSession } = await import("../../test-utils/session.testSupport");
   // The decorators the registry reads: the module reset makes them fresh too.
-  const { ayme } = await import("./decorators");
-  const { rootOf, rooted } = await import("../test-utils/pomRoot.testSupport");
+  const { ayme } = await import("../domain/decorators");
+  const { rootOf, rooted } =
+    await import("../../test-utils/pomRoot.testSupport");
   const session = startSession({} as AymePage);
   started = session;
   return { registry, session, ayme, rootOf, rooted };
@@ -139,14 +140,15 @@ describe("live Page Object registry", () => {
 
   it("allows one runtime owner and permits a fresh owner after disposal", async () => {
     const registry = await import("./registry");
+    const { createAymeRuntime } = await import("./runtimePage");
     const firstPage = {} as Page;
-    const first = registry.createAymeRuntime(firstPage);
+    const first = createAymeRuntime(firstPage);
 
     expect(first.page).toBe(firstPage);
-    expect(() => registry.createAymeRuntime({} as Page)).toThrow(
+    expect(() => createAymeRuntime({} as Page)).toThrow(
       "The Ayme runtime already has an active owner."
     );
-    expect(() => registry.createAymeRuntime({} as Page)).toThrow(
+    expect(() => createAymeRuntime({} as Page)).toThrow(
       expect.objectContaining({
         name: "RuntimeStateError",
         kind: "runtime",
@@ -166,7 +168,7 @@ describe("live Page Object registry", () => {
     ).toHaveBeenCalledOnce();
 
     const secondPage = {} as Page;
-    const second = registry.createAymeRuntime(secondPage);
+    const second = createAymeRuntime(secondPage);
     expect(second.page).toBe(secondPage);
     second.dispose();
   });
@@ -988,7 +990,7 @@ describe("live Page Object registry", () => {
 
   it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
     const { registry, session, ayme, rootOf } = await setup();
-    const { measurePomRoot } = await import("../page-state");
+    const { measurePomRoot } = await import("../../page-state");
     vi.mocked(measurePomRoot).mockResolvedValue({
       present: true,
       available: false,

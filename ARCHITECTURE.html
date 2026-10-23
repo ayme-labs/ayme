@@ -813,7 +813,7 @@
         "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection",
         "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
         "evidence": {
-          "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/browserPage.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
+          "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
           "inferred": false,
           "mixed": false
         }
@@ -1070,7 +1070,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/ayme/src/page-objects/browserPage.ts`, `packages/core/src/capture/`",
+          "text": "verified: `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `packages/core/src/capture/`",
           "inferred": false,
           "mixed": false
         }

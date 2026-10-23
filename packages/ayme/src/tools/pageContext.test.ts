@@ -11,7 +11,9 @@ vi.mock("../page-state/pageState", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getPageStateForDocument,
 }));
-vi.mock("../page-objects/pomDefinitions", () => ({ getPomDefinitions }));
+vi.mock("../page-objects/infrastructure/registeredPomDefinitions", () => ({
+  getPomDefinitions,
+}));
 
 import { getPageContextForDocument, getPageContextTool } from "./pageContext";
 import { agentCursor, runContext } from "../test-utils/agentCalls.testSupport";

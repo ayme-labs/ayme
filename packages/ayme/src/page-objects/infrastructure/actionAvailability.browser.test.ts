@@ -4,14 +4,14 @@ import type { Page } from "@playwright/test";
 import {
   ayme as agent,
   runContext,
-} from "../test-utils/agentCalls.testSupport";
-import type { PomManifest, ToolManifest } from "../shared";
-import { ayme } from "./decorators";
+} from "../../test-utils/agentCalls.testSupport";
+import type { PomManifest, ToolManifest } from "../../shared";
+import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
-import { buildToolOptions } from "../goal-loop";
-import { configurePageStateIgnore } from "../page-state";
-import { rootOf, rooted } from "../test-utils/pomRoot.testSupport";
-import { createAyme, listTools, type Ayme } from "../runtime";
+import { buildToolOptions } from "../../goal-loop";
+import { configurePageStateIgnore } from "../../page-state";
+import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
+import { createAyme, listTools, type Ayme } from "../../runtime";
 import {
   listAvailablePomTools,
   listCollectionToolItems,

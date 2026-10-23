@@ -32,6 +32,11 @@ const refusals: [path: string, code: string, message: string][] = [
     "Inside a slice, import the module itself, not the slice's index.ts.",
   ],
   [
+    "src/page-objects/application/misplaced.ts",
+    'export { litePageDriver } from "../infrastructure/litePageDriver";',
+    "application may only depend on the allowed horizontal layers",
+  ],
+  [
     "src/page-state/misplaced.ts",
     'export { createPage } from "../page-objects";',
     "page-state may only use shared",
