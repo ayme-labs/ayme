@@ -2,10 +2,10 @@
 // per-step scores behind its Handover, which only tests may import.
 import type { Page } from "@playwright/test";
 
-import type { GoalLoopRunResult, GoalLoopRunResultStore } from "./goalLoop";
-import { goalLoopRunResultKey } from "./goalLoopRunResultKey";
+import type { GoalLoopRunResult, GoalLoopRunResultStore } from "./goal-loop";
+import { goalLoopRunResultKey } from "./goal-loop";
 
-export type { GoalLoopRunResult, GoalLoopStepScore } from "./goalLoop";
+export type { GoalLoopRunResult, GoalLoopStepScore } from "./goal-loop";
 
 type WithStore = typeof globalThis & {
   [goalLoopRunResultKey]?: GoalLoopRunResultStore;

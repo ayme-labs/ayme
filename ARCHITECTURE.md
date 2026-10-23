@@ -45,7 +45,7 @@ in-browser agents and the app's own code call on the running page.
 - **Decision model provider**
   - Provides: Jev, the System One decision model the Goal Loop asks at each step, served by
     TypeSafe directly or through OpenRouter
-  - Evidence: verified: [packages/ayme/src/server.ts](packages/ayme/src/server.ts)
+  - Evidence: verified: [packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts](packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts)
 - **WebMCP driver**
   - Provides: `document.modelContext`, the page's tool registry for in-browser agents, from
     Chrome's WebMCP flag or a polyfill the app loads
@@ -64,9 +64,9 @@ in-browser agents and the app's own code call on the running page.
   (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`; bundles Playwright
   Lite, the team's pinned fork of Playwright that runs Page Object Models against the
   live DOM
-- Evidence: verified: [packages/ayme/src/runtime.ts](packages/ayme/src/runtime.ts), [packages/ayme/src/webMcp.ts](packages/ayme/src/webMcp.ts),
-  [packages/ayme/src/inspector.ts](packages/ayme/src/inspector.ts), [packages/ayme/src/agentConnection.ts](packages/ayme/src/agentConnection.ts),
-  [packages/ayme/src/browserPage.ts](packages/ayme/src/browserPage.ts), [docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md](docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md)
+- Evidence: verified: [packages/ayme/src/runtime/runtime.ts](packages/ayme/src/runtime/runtime.ts), [packages/ayme/src/runtime/webMcp.ts](packages/ayme/src/runtime/webMcp.ts),
+  [packages/ayme/src/runtime/inspector.ts](packages/ayme/src/runtime/inspector.ts), [packages/ayme/src/runtime/agentConnection.ts](packages/ayme/src/runtime/agentConnection.ts),
+  [packages/ayme/src/page-objects/browserPage.ts](packages/ayme/src/page-objects/browserPage.ts), [docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md](docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md)
 
 ### Build plugin
 
@@ -100,7 +100,7 @@ in-browser agents and the app's own code call on the running page.
   backend): pairs with the agent's MCP server beside the page and offers the process's
   Peek Tools, `peek.node.<name>`
 - Technology: `createAyme` from `@ayme-dev/ayme` in Node, loading `@ayme-dev/mcp/process`
-- Evidence: verified: [packages/ayme/src/agentConnection.ts](packages/ayme/src/agentConnection.ts), [packages/mcp/src/process/](packages/mcp/src/process/),
+- Evidence: verified: [packages/ayme/src/runtime/agentConnection.ts](packages/ayme/src/runtime/agentConnection.ts), [packages/mcp/src/process/](packages/mcp/src/process/),
   [packages/mcp/README.md](packages/mcp/README.md)
 
 ### Decision Endpoint
@@ -109,7 +109,7 @@ in-browser agents and the app's own code call on the running page.
   request, adds the provider key and Jev model, forwards it to the provider and relays the
   answer; Ayme ships the handler, the app mounts and gates it
 - Technology: Fetch-API request handler from `@ayme-dev/ayme/server`
-- Evidence: verified: [packages/ayme/src/server.ts](packages/ayme/src/server.ts), [docs/guide/reference/decision-endpoint.md](docs/guide/reference/decision-endpoint.md),
+- Evidence: verified: [packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts](packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts), [docs/guide/reference/decision-endpoint.md](docs/guide/reference/decision-endpoint.md),
   [docs/adr/0022-build-decision-requests-in-the-browser.md](docs/adr/0022-build-decision-requests-in-the-browser.md)
 
 ### Playground
@@ -146,7 +146,7 @@ in-browser agents and the app's own code call on the running page.
       `usePageObject`, `ayme.tools.list()` and `ayme.tools.run()` calls,
       Custom Tool and Peek registrations
     - ← tool definitions, results and Change Records
-  - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md), [packages/ayme/src/runtime.ts](packages/ayme/src/runtime.ts)
+  - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md), [packages/ayme/src/runtime/runtime.ts](packages/ayme/src/runtime/runtime.ts)
 - **Playground visitors → Playground**
   - Flows:
     - → list edits and Inspector runs
@@ -174,7 +174,7 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → `POST { state, questions }` per Goal Loop step
     - ← the provider's decision, or an `{ error }` body
-  - Evidence: verified: [packages/ayme/src/decisionEndpoint.ts](packages/ayme/src/decisionEndpoint.ts), [packages/ayme/src/goalLoop.ts](packages/ayme/src/goalLoop.ts)
+  - Evidence: verified: [packages/ayme/src/goal-loop/infrastructure/decisionEndpoint.ts](packages/ayme/src/goal-loop/infrastructure/decisionEndpoint.ts), [packages/ayme/src/goal-loop/application/goalLoop.ts](packages/ayme/src/goal-loop/application/goalLoop.ts)
 - **Browser runtime → WebMCP driver**
   - Flows:
     - → `registerTool` for each active tool, kept in step with the registry
@@ -183,7 +183,7 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → DOM reads, clicks, fills and key presses
     - ← the page structure captured into Structural Page State
-  - Evidence: verified: [packages/ayme/src/browserPage.ts](packages/ayme/src/browserPage.ts), [packages/core/src/capture/](packages/core/src/capture/)
+  - Evidence: verified: [packages/ayme/src/page-objects/browserPage.ts](packages/ayme/src/page-objects/browserPage.ts), [packages/core/src/capture/](packages/core/src/capture/)
 - **App Process runtime → Ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results
@@ -193,7 +193,7 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → the decision request with the bearer key and the pinned Jev model
     - ← the provider's status and body
-  - Evidence: verified: [packages/ayme/src/server.ts](packages/ayme/src/server.ts)
+  - Evidence: verified: [packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts](packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts)
 
 ## Environments
 
@@ -264,7 +264,7 @@ in-browser agents and the app's own code call on the running page.
   - **Host application**: the app itself, in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
   - **Decision model provider**: the live API, reached only through the Decision Endpoint
-    - Evidence: verified: [packages/ayme/src/server.ts](packages/ayme/src/server.ts)
+    - Evidence: verified: [packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts](packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts)
   - **WebMCP driver**: whatever the user's browser or the app's polyfill supplies
     - Evidence: verified: [docs/guide/guides/publish-tools.md](docs/guide/guides/publish-tools.md)
 

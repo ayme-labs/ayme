@@ -792,7 +792,7 @@
         "name": "Decision model provider",
         "provides": "Jev, the System One decision model the Goal Loop asks at each step, served by TypeSafe directly or through OpenRouter",
         "evidence": {
-          "text": "verified: `packages/ayme/src/server.ts`",
+          "text": "verified: `packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -813,7 +813,7 @@
         "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection",
         "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
         "evidence": {
-          "text": "verified: `packages/ayme/src/runtime.ts`, `packages/ayme/src/webMcp.ts`, `packages/ayme/src/inspector.ts`, `packages/ayme/src/agentConnection.ts`, `packages/ayme/src/browserPage.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
+          "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/browserPage.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
           "inferred": false,
           "mixed": false
         }
@@ -843,7 +843,7 @@
         "responsibility": "the Ayme session inside a Node process of the host app (its dev server or backend): pairs with the agent's MCP server beside the page and offers the process's Peek Tools, `peek.node.<name>`",
         "technology": "`createAyme` from `@ayme-dev/ayme` in Node, loading `@ayme-dev/mcp/process`",
         "evidence": {
-          "text": "verified: `packages/ayme/src/agentConnection.ts`, `packages/mcp/src/process/`, `packages/mcp/README.md`",
+          "text": "verified: `packages/ayme/src/runtime/agentConnection.ts`, `packages/mcp/src/process/`, `packages/mcp/README.md`",
           "inferred": false,
           "mixed": false
         }
@@ -853,7 +853,7 @@
         "responsibility": "the one route in the host app's backend that gates each Goal Loop decision request, adds the provider key and Jev model, forwards it to the provider and relays the answer; Ayme ships the handler, the app mounts and gates it",
         "technology": "Fetch-API request handler from `@ayme-dev/ayme/server`",
         "evidence": {
-          "text": "verified: `packages/ayme/src/server.ts`, `docs/guide/reference/decision-endpoint.md`, `docs/adr/0022-build-decision-requests-in-the-browser.md`",
+          "text": "verified: `packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts`, `docs/guide/reference/decision-endpoint.md`, `docs/adr/0022-build-decision-requests-in-the-browser.md`",
           "inferred": false,
           "mixed": false
         }
@@ -941,7 +941,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `docs/guide/guides/in-app-assistant.md`, `packages/ayme/src/runtime.ts`",
+          "text": "verified: `docs/guide/guides/in-app-assistant.md`, `packages/ayme/src/runtime/runtime.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -1036,7 +1036,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/ayme/src/decisionEndpoint.ts`, `packages/ayme/src/goalLoop.ts`",
+          "text": "verified: `packages/ayme/src/goal-loop/infrastructure/decisionEndpoint.ts`, `packages/ayme/src/goal-loop/application/goalLoop.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -1070,7 +1070,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/ayme/src/browserPage.ts`, `packages/core/src/capture/`",
+          "text": "verified: `packages/ayme/src/page-objects/browserPage.ts`, `packages/core/src/capture/`",
           "inferred": false,
           "mixed": false
         }
@@ -1108,7 +1108,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/ayme/src/server.ts`",
+          "text": "verified: `packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -1332,7 +1332,7 @@
           "Decision model provider": {
             "how": "the live API, reached only through the Decision Endpoint",
             "evidence": {
-              "text": "verified: `packages/ayme/src/server.ts`",
+              "text": "verified: `packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts`",
               "inferred": false,
               "mixed": false
             }

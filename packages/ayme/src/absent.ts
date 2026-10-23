@@ -8,23 +8,28 @@
  * the two entries' values the framework packages and the plugin's generated
  * code use; a missing one fails the build, naming it.
  */
-import type { PageObjectConstructor } from "./registry";
-import type { Run } from "./runLog";
-import type { ToolInfo } from "./publishedTools";
-import type { Ayme, AymeOptions, AymeWebMcpPublicationStatus } from "./runtime";
-import { RuntimeStateError } from "./errors";
+import type { PageObjectConstructor } from "./page-objects";
+import type { Run } from "./runs";
+import type {
+  Ayme,
+  AymeOptions,
+  AymeWebMcpPublicationStatus,
+  ToolInfo,
+} from "./runtime";
+import { RuntimeStateError } from "./shared";
 
-export { isJsonPrimitive, isJsonValue } from "./contracts";
-export { ayme } from "./decorators";
-export { callers } from "./callers";
-export { DecisionEndpointError } from "./decisionWire";
 export {
   AymeError,
+  callers,
+  isJsonPrimitive,
+  isJsonValue,
   RefResolutionError,
   RuntimeStateError,
   ToolInputError,
-} from "./errors";
-export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtimeOptions";
+} from "./shared";
+export { ayme } from "./page-objects";
+export { DecisionEndpointError } from "./goal-loop";
+export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtime";
 
 const REMOVED = "Ayme was removed from this build.";
 
