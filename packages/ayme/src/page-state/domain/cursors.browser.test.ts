@@ -6,7 +6,7 @@ import {
   type ActionFailure,
   type Ayme,
   type CustomTool,
-} from "../index";
+} from "../..";
 
 // Runtime object seam: every Caller name reads its Change Records from its
 // own cursor, the page that Caller last received, through `ayme.tools.run`.

@@ -1,22 +1,20 @@
-export {
-  ACTION_RESULT_NOTE,
-  runAction,
-  startNavigation,
-} from "./actionSequence";
-export type { ActionFailure, ActionResult } from "./actionSequence";
-export { renderChangeRecord } from "./changeRecord";
-export { cursors } from "./cursors";
-export type { Cursor } from "./cursors";
+export { ACTION_RESULT_NOTE } from "./domain/actionResult";
+export type { ActionFailure, ActionResult } from "./domain/actionResult";
+export { runAction } from "./infrastructure/actions";
+export { renderChangeRecord } from "./domain/changeRecord";
+export type { Cursor } from "./domain/cursors";
 export {
   assertReachable,
   assertRootReachable,
   inTheWayOf,
   reaches,
-} from "./elementReach";
-export type { ElementInput } from "./elementReach";
+} from "./infrastructure/elementReach";
+export type { ElementInput } from "./infrastructure/elementReach";
+export { startNavigation } from "./infrastructure/navigation";
 export {
   capturePageState,
   configurePageStateIgnore,
+  cursors,
   getInteractionHistory,
   getPageStateCaptureForDocument,
   getPageStateForDocument,
@@ -25,11 +23,18 @@ export {
   latestPageStateRef,
   lookAtPageStateForDocument,
   onPageStateRecorded,
-  pageStateNodeEntry,
   providePageObjectStructure,
   resolvePageStateRef,
   resolvePageStateRefs,
-} from "./pageState";
+} from "./infrastructure/pageState";
+export {
+  inReachBatch,
+  measurePomRoot,
+} from "./infrastructure/reachMeasurement";
+export { refFailure, refHint, selectorFailure } from "./domain/refFailures";
+export { registerRefSelectorEngine } from "./infrastructure/refSelectorEngine";
+export { resolveRef } from "./infrastructure/refTarget";
+export { pageStateNodeEntry } from "./domain/structuralPageState";
 export type {
   AriaRef,
   AymeNode,
@@ -37,13 +42,13 @@ export type {
   PageStateCapture,
   PageStateLook,
   RefResolution,
-} from "./pageState";
-export { inReachBatch, measurePomRoot } from "./reachMeasurement";
-export { registerRefSelectorEngine } from "./refSelectorEngine";
-export { refFailure, refHint, resolveRef, selectorFailure } from "./refTarget";
+} from "./domain/structuralPageState";
 export {
   assertAvailable,
   obstructionReason,
   unavailableError,
-} from "./toolAvailability";
-export type { LatestRefLookup, ToolAvailability } from "./toolAvailability";
+} from "./domain/toolAvailability";
+export type {
+  LatestRefLookup,
+  ToolAvailability,
+} from "./domain/toolAvailability";

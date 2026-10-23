@@ -888,7 +888,7 @@ const pageRendering: TreeRendering<
  * prunable nodes exploded, then `pageRendering`. This forest is derived for
  * serialization only; the ref options and the Change Record keep walking the
  * full capture, so the refs the model reads are the capture's.
- * (`pageState.ts` and `changeRecord.ts` compose the stages by hand.)
+ * (`structuralPageState.ts` and `changeRecord.ts` compose the stages by hand.)
  */
 function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
   const shown = structuralNodeForest(pageTree.getRootNodes()).explode(

@@ -6,11 +6,11 @@ import {
   listAvailablePomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
-} from "../page-objects";
-import { ayme } from "../test-utils/agentCalls.testSupport";
-import { rootOf } from "../test-utils/pomRoot.testSupport";
-import { createAyme } from "../runtime";
-import type { PomManifest, ToolManifest } from "../shared";
+} from "../../page-objects";
+import { ayme } from "../../test-utils/agentCalls.testSupport";
+import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { createAyme } from "../../runtime";
+import type { PomManifest, ToolManifest } from "../../shared";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName,

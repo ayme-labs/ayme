@@ -4,25 +4,28 @@ import {
   type StructuralActionId,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import { agentCursor } from "../test-utils/agentCalls.testSupport";
+import { agentCursor } from "../../test-utils/agentCalls.testSupport";
 
-import type { PomManifest, ToolManifest } from "../shared";
-import type { DecisionResponse } from "../goal-loop";
+import type { PomManifest, ToolManifest } from "../../shared";
+import type { DecisionResponse } from "../../goal-loop";
 import {
   ayme as model,
   createPage,
   probeRegisteredPomMembers,
   registerCompiledPom,
-} from "../page-objects";
-import { configureGoalLoop, type GoalLoopDecisionFunction } from "../goal-loop";
+} from "../../page-objects";
+import {
+  configureGoalLoop,
+  type GoalLoopDecisionFunction,
+} from "../../goal-loop";
 import {
   getInteractionHistory,
   getPageStateForElements,
   resolvePageStateRefs,
-} from "./pageState";
-import { rootOf } from "../test-utils/pomRoot.testSupport";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { createAyme } from "../runtime";
+} from "../infrastructure/pageState";
+import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { createAyme } from "../../runtime";
 
 type ActionResultShape = {
   page_changed: boolean;

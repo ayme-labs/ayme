@@ -1,15 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { resolveRequestedRef } from "./refResolution";
 
-const resolvePageStateRefs = vi.hoisted(() => vi.fn());
-vi.mock("./pageState", () => ({ resolvePageStateRefs }));
-
-import { resolveRef } from "./refTarget";
-
+const resolvePageStateRefs = vi.fn();
 const element = {} as Element;
 const resolve = (requested: string) =>
-  resolveRef(requested, "click", {} as Document);
+  resolveRequestedRef(requested, "click", resolvePageStateRefs);
 
-describe("resolveRef", () => {
+describe("resolveRequestedRef", () => {
   it("resolves a ref to the node it addresses now", async () => {
     const node = { ref: "e4", element };
     resolvePageStateRefs.mockResolvedValueOnce([
