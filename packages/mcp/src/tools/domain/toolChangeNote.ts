@@ -6,10 +6,7 @@ import { HIDDEN_BECAUSE, type PageTool } from "../../contract";
  * A tool the agent sees: its name, whether a call can run it now, and what
  * it was told about the tool's parameters and purpose.
  */
-export type SeenTool = Pick<
-  PageTool,
-  "name" | "available" | "reason" | "description" | "inputSchema"
->;
+export type SeenTool = PageTool;
 
 /**
  * The tools the agent sees, and the names of the reported tools it does not
