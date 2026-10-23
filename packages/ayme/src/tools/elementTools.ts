@@ -239,16 +239,28 @@ const LOCATOR_EXPRESSION =
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
  * a Structural Ref, else a selector, which must match exactly one element.
- * With `scope`, a selector is matched inside the element that selector
- * addresses, and the selector returned is relative to it; a Structural Ref
- * names its element wherever it is.
+ * With `within`, a selector is matched among the elements inside that
+ * container, and only the element is returned: a selector that holds there
+ * need not address the element on the whole page. A Structural Ref names its
+ * element wherever it is.
  */
 export async function resolveElementTarget(
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
+  currentDocument: Document
+): Promise<ResolvedTarget>;
+export async function resolveElementTarget(
+  definition: Pick<ElementToolDefinition, "label" | "targetField">,
+  requested: string,
   currentDocument: Document,
-  scope?: string
-): Promise<ResolvedTarget> {
+  within: Element | undefined
+): Promise<Omit<ResolvedTarget, "selector">>;
+export async function resolveElementTarget(
+  definition: Pick<ElementToolDefinition, "label" | "targetField">,
+  requested: string,
+  currentDocument: Document,
+  within?: Element
+): Promise<ResolvedTarget | Omit<ResolvedTarget, "selector">> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
     const node = await resolveRef(requested, definition.label, currentDocument);
     return {
@@ -269,11 +281,7 @@ export async function resolveElementTarget(
   const page = requireAymeRuntimePage();
   let elements: Element[];
   try {
-    elements = resolveLocatorElements(
-      scope === undefined
-        ? page.locator(requested)
-        : page.locator(scope).locator(requested)
-    );
+    elements = resolveLocatorElements(page.locator(requested));
   } catch (error) {
     throw new ToolInputError(
       failure(
@@ -284,6 +292,8 @@ export async function resolveElementTarget(
       )
     );
   }
+  if (within)
+    elements = elements.filter((element) => isInside(element, within));
   if (elements.length === 0)
     throw new RefResolutionError(
       failure("the selector matches no element", hint)
@@ -294,7 +304,18 @@ export async function resolveElementTarget(
         `the selector matches ${elements.length} elements; it must match exactly one`
       )
     );
-  return { element: elements[0]!, selector: requested };
+  return within
+    ? { element: elements[0]! }
+    : { element: elements[0]!, selector: requested };
+}
+
+/** Package-internal: whether `element` lies inside `container`, across shadow roots. */
+export function isInside(element: Element, container: Element): boolean {
+  for (let node = element.parentNode; node;) {
+    if (node === container) return true;
+    node = node instanceof ShadowRoot ? node.host : node.parentNode;
+  }
+  return false;
 }
 
 /** Package-internal: the browser Page's locator for a resolved element. */

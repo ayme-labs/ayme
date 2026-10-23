@@ -253,6 +253,16 @@ describe("generate_locator in Chromium", () => {
     );
   });
 
+  it("matches a selector target inside a container given as a capture selector", async () => {
+    const result = await run({
+      groups: [{ targets: ["text=Cancel"], within: "*css=#dialog" }],
+    });
+
+    expect(
+      elementsOf(page.locator("#dialog"), locatorAt(result, 0, 0))
+    ).toEqual([element("#dialog button")]);
+  });
+
   it("returns a container-relative locator where the page-level one needs .nth()", async () => {
     document.body.innerHTML = `
       <ul>

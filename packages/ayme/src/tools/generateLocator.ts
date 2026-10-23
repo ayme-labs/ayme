@@ -11,6 +11,7 @@ import type { JsonSchema } from "../shared";
 import { asSentence } from "../shared";
 import {
   requireCurrentDocument,
+  isInside,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
@@ -56,31 +57,11 @@ const inputSchema: JsonSchema = {
 const TARGET_LABEL = "generate a locator for";
 const WITHIN_LABEL = "scope locators to";
 
-/**
- * Resolve a target or container, a selector inside `scope` when given, or
- * throw the error its entry reports.
- */
-const resolve = (
-  label: string,
-  requested: string,
-  currentDocument: Document,
-  scope?: string
-) =>
-  resolveElementTarget(
-    { label, targetField: "target" },
-    requested,
-    currentDocument,
-    scope
-  );
-
-/** Whether `element` lies inside `container`, across shadow roots. */
-function isInside(element: Element, container: Element): boolean {
-  for (let node = element.parentNode; node;) {
-    if (node === container) return true;
-    node = node instanceof ShadowRoot ? node.host : node.parentNode;
-  }
-  return false;
-}
+/** The definition a target or container resolves under, named by `label`. */
+const definition = (label: string) => ({
+  label,
+  targetField: "target" as const,
+});
 
 /**
  * The Locator Recommendation for `element`, relative to `container` when one
@@ -106,7 +87,7 @@ function recommendLocator(
 const reason = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-type Container = { within: string; element: Element; selector: string };
+type Container = { within: string; element: Element };
 
 async function entryFor(
   target: string,
@@ -123,11 +104,11 @@ async function entryFor(
   });
   let element: Element;
   try {
-    ({ element } = await resolve(
-      TARGET_LABEL,
+    ({ element } = await resolveElementTarget(
+      definition(TARGET_LABEL),
       target,
       currentDocument,
-      container?.selector
+      container?.element
     ));
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
@@ -148,12 +129,12 @@ async function groupFor(
   let container: Container | undefined;
   if (group.within !== undefined)
     try {
-      const { element, selector } = await resolve(
-        WITHIN_LABEL,
+      const { element } = await resolveElementTarget(
+        definition(WITHIN_LABEL),
         group.within,
         currentDocument
       );
-      container = { within: group.within, element, selector };
+      container = { within: group.within, element };
     } catch (error) {
       return { within: group.within, error: asSentence(reason(error)) };
     }
