@@ -13,7 +13,9 @@ tools are missing, read [Browser setup](browser-setup.md).
   are the same Page Object class: `FilesPage.items[0].children[0]` goes to
   `FilesPage.items.expand`, and no `FilesPage.items.children.expand` exists.
   A subclass has tools of its own, so the tool list may hold a deeper path,
-  such as `ProjectsPage.pinned.subtasks.*` for the subtasks of pinned rows.
+  such as `ProjectsPage.pinned.subtasks.*` for the subtasks of pinned rows;
+  [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
+  has the rule.
   [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
