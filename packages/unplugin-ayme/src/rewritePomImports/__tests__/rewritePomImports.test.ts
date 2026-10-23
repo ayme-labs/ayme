@@ -101,4 +101,43 @@ describe("rewritePomImports", () => {
     );
     expect(source).not.toContain("playwright-barrel");
   });
+
+  it("bypasses Page Object modules that import each other", () => {
+    const source = rewrittenImport(
+      'import { SummaryPage } from "./cycle-barrel";'
+    );
+    expect(source).toContain('import { SummaryPage } from "./cycle-summary";');
+  });
+
+  it("bypasses an import cycle through a side-effect import", () => {
+    const source = rewrittenImport(
+      'import { sideEffectB } from "./cycle-barrel";'
+    );
+    expect(source).toContain(
+      'import { sideEffectB } from "./cycle-side-effect-b";'
+    );
+  });
+
+  it("bypasses an import cycle through a re-export", () => {
+    const source = rewrittenImport(
+      'import { ReexportA } from "./cycle-barrel";'
+    );
+    expect(source).toContain('import { ReexportA } from "./cycle-reexport-a";');
+  });
+
+  it("leaves a module unchanged when its import cycle reaches Playwright", () => {
+    const source = rewrittenImport(
+      'import { PlaywrightA } from "./cycle-barrel";'
+    );
+    expect(source).toContain('from "./cycle-barrel"');
+    expect(source).not.toContain('from "./cycle-playwright-a"');
+  });
+
+  it("leaves a module unchanged when only its second import of a Playwright module is used", () => {
+    const source = rewrittenImport(
+      'import { repeated } from "./cycle-barrel";'
+    );
+    expect(source).toContain('from "./cycle-barrel"');
+    expect(source).not.toContain('from "./repeated-import"');
+  });
 });
