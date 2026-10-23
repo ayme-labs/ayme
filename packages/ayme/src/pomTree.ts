@@ -383,7 +383,10 @@ async function observeInstance(
   observed.present = root
     ? root.root.present
     : (presence.present ?? place.present);
-  if (observed.present)
+  // A root a click would not reach decides availability before any
+  // predicate does, so its predicates are not asked: behind a layer each read
+  // can wait out the action timeout, for an answer nobody uses (#962).
+  if (observed.present && observed.root?.available !== false)
     observed.predicates = await askPredicates(instance, tools);
   walk.instances.push(observed);
   return {

@@ -433,6 +433,75 @@ describe("Action Availability", () => {
     ]);
   });
 
+  it("does not ask the predicates of an item a click would not reach, and still asks the reachable item's", async () => {
+    document.body.style.margin = "0";
+    document.body.innerHTML = `
+      <ul style="margin:0;padding:0;list-style:none">
+        <li id="open" style="height:40px">Open</li>
+        <li id="covered" style="height:40px">Covered</li>
+      </ul>
+      <div role="dialog" aria-label="Busy" style="position:fixed;left:0;right:0;top:40px;height:40px"></div>`;
+    const asked: string[] = [];
+    class Row {
+      constructor(
+        readonly id: string,
+        readonly root: ReturnType<Page["locator"]>
+      ) {}
+      archive() {}
+    }
+    ayme({ root: rootOf })(Row);
+    withAvailability(Row, "archive", (self: Row) => {
+      asked.push(self.id);
+      return `${self.id} is read-only`;
+    });
+    class Inbox {
+      rows = [
+        new Row("open", page.locator("#open")),
+        new Row("covered", page.locator("#covered")),
+      ];
+    }
+    registerCompiledPom(Inbox, {
+      className: "Inbox",
+      members: [
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "field",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "Row",
+          members: [root],
+          tools: [action("archive", "Inbox.rows.archive")],
+        },
+      ],
+    } satisfies PomManifest);
+    session.pom.register(Inbox);
+    await probeRegisteredPomMembers();
+    const { text } = await agent.getPageState();
+    const busy = text.match(/(e\d+) dialog "Busy"/)?.[1];
+    if (!busy) throw new Error("Expected a ref for the dialog.");
+
+    expect(asked).toContain("open");
+    expect(asked).not.toContain("covered");
+    expect(
+      listCollectionToolItems()
+        .get("Inbox.rows.archive")
+        ?.map(({ label, available, reason }) => ({ label, available, reason }))
+    ).toEqual([
+      { label: "Inbox.rows[0]", available: false, reason: "open is read-only" },
+      {
+        label: "Inbox.rows[1]",
+        available: false,
+        reason: `a click would not reach it; ${busy} is in the way`,
+      },
+    ]);
+  });
+
   it("refuses a collection action owned by an item's singular child by that child's own verdict", async () => {
     document.body.innerHTML =
       '<ul><li id="clean"><button id="clean-save">Save</button></li><li id="dirty"><button id="dirty-save" data-dirty>Save</button></li></ul>';

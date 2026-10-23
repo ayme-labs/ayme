@@ -73,7 +73,8 @@ export type PomInstanceObservation = {
   rootCount?: number;
   /**
    * What each action's availability predicate answered, by method name.
-   * Asked only while the instance is present; actions without one are absent.
+   * Asked only while the instance is present and a click would reach its
+   * root, if it has one; actions without one are absent.
    */
   predicates: ReadonlyMap<string, PredicateAnswer>;
 };
