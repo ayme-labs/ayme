@@ -291,7 +291,7 @@ function RunEntryCard({
   return (
     <div
       data-run-card=""
-      data-flashing={flashing || undefined}
+      data-flashing={flashing}
       className={cn(
         "overflow-hidden rounded-lg border bg-card transition-shadow duration-200",
         flashing && "ring-2 ring-ring"
