@@ -2,10 +2,16 @@ import { expect, it } from "vitest";
 
 import { toolChangeNote, type SeenTool } from "./toolChangeNote";
 
-const available = (name: string): SeenTool => ({ name, available: true });
+const noInput = { type: "object" };
+const available = (name: string): SeenTool => ({
+  name,
+  available: true,
+  inputSchema: noInput,
+});
 const unavailable = (name: string, reason?: string): SeenTool => ({
   name,
   available: false,
+  inputSchema: noInput,
   ...(reason === undefined ? {} : { reason }),
 });
 const state = (tools: (string | SeenTool)[], hidden: string[] = []) => ({
@@ -107,4 +113,53 @@ it("says which App Process tool is newly hidden, and why", () => {
       state(["peek.node.jobs"], ["peek.node.jobs"])
     )
   ).toBeUndefined();
+});
+
+it("names the tools whose parameters or description changed under the same name", () => {
+  const search = (property: string, description?: string): SeenTool => ({
+    name: "SurveyListPage.search",
+    available: true,
+    inputSchema: {
+      type: "object",
+      properties: { [property]: { type: "string" } },
+      required: [property],
+    },
+    ...(description === undefined ? {} : { description }),
+  });
+  expect(
+    toolChangeNote(
+      state(["snapshot", search("name")]),
+      state(["snapshot", search("text")])
+    )
+  ).toBe(
+    "The connected tools changed since your previous call. Changed: SurveyListPage.search (parameters). ayme_list_tools lists the current tools; ayme_call runs any of them."
+  );
+  expect(
+    toolChangeNote(
+      state([search("name")]),
+      state([search("name", "Finds a survey by name")])
+    )
+  ).toContain("Changed: SurveyListPage.search (description).");
+  expect(
+    toolChangeNote(
+      state([search("name", "Finds a survey")]),
+      state([search("text", "Finds a survey by text")])
+    )
+  ).toContain("Changed: SurveyListPage.search (parameters, description).");
+});
+
+it("gives no note when a tool's schema is equal but built anew, in another key order", () => {
+  const before: SeenTool = {
+    name: "Cart.add",
+    available: true,
+    description: "Adds an item",
+    inputSchema: { type: "object", properties: { sku: { type: "string" } } },
+  };
+  const after: SeenTool = {
+    available: true,
+    description: "Adds an item",
+    name: "Cart.add",
+    inputSchema: { properties: { sku: { type: "string" } }, type: "object" },
+  };
+  expect(toolChangeNote(state([before]), state([after]))).toBeUndefined();
 });
