@@ -30,7 +30,12 @@ export const pressable =
 export const pressableIcon =
   "transition-[scale,background-color,color] duration-(--duration-fast) ease-(--ease-out) motion-safe:active:scale-95";
 
-/** Press feedback for a full-width row in a tree or list. */
-export const rowPress = "";
+/**
+ * Press feedback for a full-width row in a tree or list, scaled less than a
+ * button's: a row is wide, so 0.97 would pull its ends in by several pixels.
+ * Its hover background still snaps. Reduced motion drops the scale.
+ */
+export const rowPress =
+  "transition-[scale] duration-(--duration-fast) ease-(--ease-out) motion-safe:active:scale-[0.98]";
 
 // Stryker restore StringLiteral

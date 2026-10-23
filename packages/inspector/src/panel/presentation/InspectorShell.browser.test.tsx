@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import { renderPart } from "../../testing/renderPart";
@@ -170,6 +170,92 @@ describe("collapsed", () => {
       .poll(() => logo.root.boundingBox())
       .toEqual({ x: 300, y: 150, width: 48, height: 48 });
     expect(await inspector.panel.count()).toBe(0);
+  });
+});
+
+describe("motion", () => {
+  // The component tests run with reduced motion (vitest.config.ts). The
+  // slide asks for the preference itself, so these tests can turn it off.
+  function slides() {
+    const matchMedia = window.matchMedia.bind(window);
+    vi.spyOn(window, "matchMedia").mockImplementation((query) =>
+      query === "(prefers-reduced-motion: reduce)"
+        ? ({ matches: false } as MediaQueryList)
+        : matchMedia(query)
+    );
+    const animate = vi.spyOn(Element.prototype, "animate");
+    /** The last slide, held at a moment of it. */
+    return (time: number) => {
+      const slide = animate.mock.results.at(-1)?.value as Animation;
+      slide.pause();
+      slide.currentTime = time;
+      return slide;
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("opens from the logo and docks from the menu in place at once, with reduced motion", async () => {
+    renderShell({
+      collapsed: true,
+      layout: "float",
+      float: floating,
+      sideWidth: 600,
+    });
+
+    await logo.open();
+    expect(await shell.box()).toEqual(floating);
+
+    await header.layoutMenu.choose("Dock right");
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
+  it("slides to a layout chosen from the menu, at its new size from the start", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.layoutMenu.choose("Dock right");
+
+    const { duration, easing } = holdSlide(0).effect!.getTiming();
+    expect({ duration, easing }).toEqual({
+      duration: 200,
+      easing: "cubic-bezier(0.77, 0, 0.175, 1)",
+    });
+    expect(await shell.box()).toEqual({
+      x: 400,
+      y: 40,
+      width: 600,
+      height: 800,
+    });
+    holdSlide(200);
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
+  it("turns from where the panel is when another layout is chosen mid-slide", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Dock right");
+    holdSlide(100);
+    const midway = await shell.box();
+
+    await header.layoutMenu.choose("Dock left");
+
+    holdSlide(0);
+    expect(await shell.box()).toEqual(midway);
+    holdSlide(200);
+    expect(await shell.box()).toEqual({ x: 0, y: 0, width: 600, height: 800 });
   });
 });
 

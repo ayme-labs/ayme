@@ -25,6 +25,9 @@ export default defineConfig({
   use: {
     ...devices["Desktop Chrome"],
     baseURL,
+    // Reduced motion, so a test reads the panel's final geometry at once.
+    // Tests of the panel's motion turn it back on.
+    reducedMotion: "reduce",
   },
   webServer: {
     // Serves every fixture page; /unpublished.html has publication off.

@@ -14,10 +14,13 @@ import {
   defaultFloat,
   defaultLogo,
   dockAt,
+  dockedRect,
   fitBottomHeight,
   fitFloat,
   fitLogo,
   fitSideWidth,
+  LOGO_SIZE,
+  nearestCorner,
   resizeFloat,
   type Dock,
   type HostReservation,
@@ -26,6 +29,7 @@ import {
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
+import { usePanelSlide } from "./usePanelSlide";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -115,11 +119,15 @@ export function InspectorShell({
   // The room goes back when the shell unmounts.
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
+  const [panel, willChooseLayout] = usePanelSlide(layout);
+
   // Collapsing moves focus to the logo and opening moves it back, but only
-  // when the person did it, not when the panel starts collapsed.
+  // when the person did it, not when the panel starts collapsed. A panel the
+  // person opens also grows out of the logo's side.
   const logoButton = useRef<HTMLButtonElement>(null);
   const collapseButton = useRef<HTMLButtonElement>(null);
   const moveFocus = useRef(false);
+  const [opened, setOpened] = useState(false);
   useEffect(() => {
     if (!moveFocus.current) return;
     moveFocus.current = false;
@@ -127,14 +135,16 @@ export function InspectorShell({
   }, [collapsed]);
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
+    setOpened(!next);
     onPreferencesChange({ collapsed: next });
   };
+  const logo = fitLogo(preferences.logo ?? defaultLogo(viewport), viewport);
 
   if (collapsed)
     return (
       <Fab
         ref={logoButton}
-        position={fitLogo(preferences.logo ?? defaultLogo(viewport), viewport)}
+        position={logo}
         viewport={viewport}
         onMove={(logo) => onPreferencesChange({ logo })}
         onOpen={() => setCollapsed(false)}
@@ -216,13 +226,18 @@ export function InspectorShell({
     right: { right: 0, top: 0, bottom: 0, width: sideWidth },
     bottom: { left: 0, right: 0, bottom: 0, height: bottomHeight },
   };
+  const box =
+    layout === "float" ? float : dockedRect(layout, dockedSize, viewport);
+  const logoCentre = { x: logo.x + LOGO_SIZE / 2, y: logo.y + LOGO_SIZE / 2 };
 
   return (
     <>
       <aside
+        ref={panel}
         aria-label="ayme"
+        data-opened={opened || undefined}
         className={cn(
-          "@container pointer-events-auto absolute border bg-background",
+          "@container pointer-events-auto absolute border bg-background transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) data-opened:starting:opacity-0 data-opened:motion-safe:starting:scale-[0.97]",
           {
             float: "rounded-xl shadow-2xl",
             left: "border-y-0 border-l-0 shadow-lg",
@@ -230,7 +245,10 @@ export function InspectorShell({
             bottom: "border-x-0 border-b-0 shadow-lg",
           }[layout]
         )}
-        style={placement[layout]}
+        style={{
+          ...placement[layout],
+          transformOrigin: nearestCorner(box, logoCentre),
+        }}
       >
         {resizeHandles[layout].map((handle) => (
           <div
@@ -261,7 +279,11 @@ export function InspectorShell({
             layout={layout}
             theme={preferences.theme}
             onThemeChange={(theme) => onPreferencesChange({ theme })}
-            onLayoutChange={(next) => onPreferencesChange({ layout: next })}
+            onLayoutChange={(next) => {
+              if (next === layout) return;
+              willChooseLayout();
+              onPreferencesChange({ layout: next });
+            }}
             onCollapse={() => setCollapsed(true)}
             onPointerDown={startMove}
             collapseRef={collapseButton}
