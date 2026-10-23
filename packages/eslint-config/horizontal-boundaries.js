@@ -95,6 +95,15 @@ export function horizontalBoundaries({
       settings: {
         "boundaries/root-path": packageRoot,
         "boundaries/elements": layerElements(sourceRoot),
+        // A type written as `import("./x").T`, which the plugin doesn't read
+        // by default.
+        "boundaries/additional-dependency-nodes": [
+          {
+            selector: "TSImportType > Literal",
+            kind: "type",
+            name: "import-type",
+          },
+        ],
         // TypeScript's resolution, so `./Runs.js` reaches `Runs.tsx` as the
         // compiler does.
         "import/resolver": {
