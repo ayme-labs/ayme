@@ -206,14 +206,18 @@ export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
 }
 
+function uncompiledPageObjectError(PomClass: PageObjectConstructor) {
+  const label = PomClass.name || "An anonymous page object class";
+  return new RuntimeStateError(
+    `${label} has no compiler-derived Ayme metadata.`
+  );
+}
+
 export function constructPageObject<T extends object>(
   PomClass: PageObjectConstructor<T>,
   page: Page
 ): T {
-  if (!compiledPoms.has(PomClass))
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
+  if (!compiledPoms.has(PomClass)) throw uncompiledPageObjectError(PomClass);
   return new PomClass(page);
 }
 
@@ -222,10 +226,7 @@ export function registerPageObject<T extends object>(
   instance: T
 ) {
   const compiledPom = compiledPoms.get(PomClass);
-  if (!compiledPom)
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
+  if (!compiledPom) throw uncompiledPageObjectError(PomClass);
   const registration: ObservedRegisteredPom = {
     id: compiledPom.className,
     pomClass: PomClass,
