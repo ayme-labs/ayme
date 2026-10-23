@@ -13,6 +13,13 @@ it("appends the server's address and token to the app URL as its fragment", () =
   );
 });
 
+it("refuses a string that does not parse as a URL, quoting it", () => {
+  for (const url of ["", "not a url"])
+    expect(() => connectLink(url, pairing), url).toThrow(
+      `Expected an http or https URL, got "${url}".`
+    );
+});
+
 it("reads the pairing back from a connect link's fragment", () => {
   const link = new URL(connectLink("http://localhost:5173/", pairing));
   expect(pairingFromFragment(link.hash)).toEqual(pairing);
