@@ -24,7 +24,9 @@ import type { PageChannelRouter } from "./pageChannelRouter";
  * `onDisconnected` or `onUnknownPairing` runs. On any other close the
  * channel reconnects by itself, and `onLost` runs, unless `onClose` is
  * given: then it closes for good and `onClose` runs, as for an App
- * Process, which looks for a server again.
+ * Process, which looks for a server again. A channel closed for good sends
+ * nothing more, so it never says hello again in place of the channel that
+ * replaced it.
  */
 export function openPageChannel(
   url: () => string,
@@ -51,6 +53,7 @@ export function openPageChannel(
   // server pairs each socket afresh.
   let reported: PageTool[] | undefined;
   let opened = false;
+  let closed = false;
   let imageFolder: string | undefined;
   // Who follows the App Processes' tools: they hear of none once the
   // socket closes, and the subscription gives them again once it reopens.
@@ -63,16 +66,20 @@ export function openPageChannel(
     retryDelayMs: (attempt) => Math.min(500 * attempt, 2000),
     ...(WebSocketClass ? { WebSocket: WebSocketClass } : {}),
     onOpen() {
+      // A socket that was still opening when the channel closed says
+      // nothing: a hello would let tRPC reconnect it (see `live`).
+      if (closed) return;
       const reopened = opened;
       opened = true;
-      void client.hello
-        .mutate(hello())
+      void live()
+        .hello.mutate(hello())
         .then((welcome) => {
+          if (closed) return;
           const parsed = PageWelcomeSchema.parse(welcome);
           imageFolder = parsed.imageFolder;
           onWelcome(parsed);
           if (reopened && reported && !sendAtOnce("publishTools", reported))
-            return client.publishTools.mutate(reported);
+            return live().publishTools.mutate(reported);
         })
         // The channel closed before the hello went out.
         .catch(() => {});
@@ -84,6 +91,7 @@ export function openPageChannel(
         code === DISCONNECTED_CLOSE_CODE || code === UNKNOWN_PAIRING_CLOSE_CODE;
       if (!known && !onClose) return onLost?.();
       // Closing here stops the client from reconnecting.
+      closed = true;
       void socket.close();
       if (code === DISCONNECTED_CLOSE_CODE) onDisconnected();
       else if (code === UNKNOWN_PAIRING_CLOSE_CODE) onUnknownPairing();
@@ -93,6 +101,15 @@ export function openPageChannel(
   const client = createTRPCClient<PageChannelRouter>({
     links: [wsLink({ client: socket })],
   });
+  // tRPC reopens a closed socket for its next request. A call that ends
+  // after the channel closed would answer on a reopened socket, which says
+  // hello as the tab's page in place of the channel that replaced this one,
+  // and the server would send the tab's calls where none runs them (#968).
+  const live = () => {
+    if (closed)
+      throw new Error("The channel to the Ayme MCP server is closed.");
+    return client;
+  };
   // The tRPC client sends a request in a later task, to batch it with
   // others. A document that started loading another may unload before that
   // task runs, and what it said would be lost (#578). So an answer and the
@@ -106,7 +123,7 @@ export function openPageChannel(
     input: unknown
   ) => {
     const { connection } = socket;
-    if (connection?.state !== "open") return false;
+    if (closed || connection?.state !== "open") return false;
     connection.ws.send(
       JSON.stringify({
         id: path,
@@ -123,16 +140,16 @@ export function openPageChannel(
     async publishTools(tools) {
       reported = [...tools];
       if (!sendAtOnce("publishTools", reported))
-        await client.publishTools.mutate(reported);
+        await live().publishTools.mutate(reported);
     },
     answerCalls(handler) {
-      const subscription = client.calls.subscribe(undefined, {
+      const subscription = live().calls.subscribe(undefined, {
         onData(data) {
           const call = ToolCallSchema.parse(data);
           void handler(call)
             .then((outcome) => {
               if (!sendAtOnce("answer", outcome))
-                return client.answer.mutate(outcome);
+                return live().answer.mutate(outcome);
             })
             // The channel closed before the answer went out.
             .catch(() => {});
@@ -142,11 +159,11 @@ export function openPageChannel(
     },
     async reportNavigating(navigating) {
       if (!sendAtOnce("navigating", navigating))
-        await client.navigating.mutate(navigating);
+        await live().navigating.mutate(navigating);
     },
     followProcessTools(listener) {
       processToolListeners.add(listener);
-      const subscription = client.processTools.subscribe(undefined, {
+      const subscription = live().processTools.subscribe(undefined, {
         onData(data) {
           listener(PageToolListSchema.parse(data));
         },
@@ -160,7 +177,7 @@ export function openPageChannel(
       };
     },
     followHiddenTools(listener) {
-      const subscription = client.hiddenTools.subscribe(undefined, {
+      const subscription = live().hiddenTools.subscribe(undefined, {
         onData(data) {
           listener(HiddenToolListSchema.parse(data));
         },
@@ -171,10 +188,11 @@ export function openPageChannel(
     },
     async callProcessTool(name, input) {
       return ToolCallOutcomeSchema.parse(
-        await client.callProcessTool.mutate({ name, input })
+        await live().callProcessTool.mutate({ name, input })
       );
     },
     close() {
+      closed = true;
       void socket.close();
     },
   };
