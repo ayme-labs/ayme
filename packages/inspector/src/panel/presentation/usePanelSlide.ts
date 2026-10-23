@@ -27,9 +27,16 @@ export function usePanelSlide(layout: Layout) {
     // The motion tokens, which an animation's options can't reference.
     const style = getComputedStyle(element);
     slide.current = element.animate(
-      { translate: [`${start.x - end.x}px ${start.y - end.y}px`, "0 0"] },
+      {
+        translate: [
+          `${start.x - end.x}px ${start.y - end.y}px`,
+          // Stryker disable next-line StringLiteral: an empty last frame ends at the panel's own translate, none, as "0 0" does.
+          "0 0",
+        ],
+      },
       {
         duration: milliseconds(style.getPropertyValue("--duration-normal")),
+        // Stryker disable next-line MethodExpression: Chrome hands the token back trimmed; another browser may keep its leading space.
         easing: style.getPropertyValue("--ease-in-out").trim(),
       }
     );
@@ -44,7 +51,7 @@ export function usePanelSlide(layout: Layout) {
 /**
  * A CSS time in milliseconds. The built stylesheet writes "200ms" as ".2s".
  */
-function milliseconds(time: string) {
+export function milliseconds(time: string) {
   const value = parseFloat(time);
   return time.trim().endsWith("ms") ? value : value * 1000;
 }

@@ -257,7 +257,66 @@ describe("motion", () => {
     holdSlide(200);
     expect(await shell.box()).toEqual({ x: 0, y: 0, width: 600, height: 800 });
   });
+
+  it("slides down to the bottom from where it was", async () => {
+    const holdSlide = slides();
+    renderShell({ layout: "float", float: floating, bottomHeight: 300 });
+
+    await header.layoutMenu.choose("Dock to bottom");
+
+    holdSlide(0);
+    const { x, y } = await shell.box();
+    expect({ x, y }).toEqual({ x: 400, y: 40 });
+  });
+
+  it("doesn't slide into a dock it's dropped on, after its own layout was chosen from the menu", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.layoutMenu.choose("Floating");
+    await header.dropAt(4, 300);
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock left");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
+  it("fades in when opened from the logo, but not when it starts open", async () => {
+    renderShell({ layout: "float", float: floating });
+    const root = lastRoot();
+    // The shell renders at once, so a fade would already be under way.
+    expect(root.querySelector("aside")!.getAnimations()).toEqual([]);
+
+    const fades: string[] = [];
+    root.addEventListener("transitionrun", (event) => {
+      const { propertyName, target } = event as TransitionEvent;
+      if ((target as Element).localName === "aside") fades.push(propertyName);
+    });
+    await header.collapse();
+    await logo.open();
+
+    await expect.poll(() => fades).toContain("opacity");
+  });
+
+  it.each([
+    ["docked", "left", { x: 676, y: 676 }, "right bottom"],
+    ["floating", "float", { x: 740, y: 330 }, "right bottom"],
+    ["floating", "float", { x: 700, y: 290 }, "left top"],
+  ] as const)(
+    "grows out of its corner nearest the logo when %s",
+    async (_how, layout, logoAt, corner) => {
+      renderShell({ layout, float: floating, sideWidth: 600, logo: logoAt });
+      const root = lastRoot();
+      await shell.box();
+
+      expect(root.querySelector("aside")!.style.transformOrigin).toBe(corner);
+    }
+  );
 });
+
+/** The shadow root the last renderShell made. */
+function lastRoot() {
+  return document.body.lastElementChild!.shadowRoot!;
+}
 
 describe("the host page", () => {
   // The host page's content: the first thing in its body, full width.

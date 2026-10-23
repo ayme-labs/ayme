@@ -166,7 +166,9 @@ export function fitLogo(point: Point, viewport: Viewport): Point {
  * "bottom right".
  */
 export function nearestCorner(rect: Rect, point: Point) {
+  // Stryker disable next-line EqualityOperator: on the middle line both corners are as near.
   const y = point.y < rect.y + rect.height / 2 ? "top" : "bottom";
+  // Stryker disable next-line EqualityOperator: as above.
   const x = point.x < rect.x + rect.width / 2 ? "left" : "right";
   return `${y} ${x}` as const;
 }
