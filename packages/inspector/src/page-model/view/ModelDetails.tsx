@@ -22,6 +22,7 @@ import type {
 import type { OnHover, RenderRun } from "../../navigation";
 import { hoverHandlers } from "./hover";
 import { LiveMark } from "./LiveMark";
+import { focusRing, pressable, rowFocusRing, rowPress } from "../../shared";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
@@ -329,7 +330,11 @@ export function MemberDetail({
           <button
             type="button"
             aria-label={`Open its owner ${ownerLabel}`}
-            className="inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 font-mono hover:border-ring"
+            className={cn(
+              "inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 font-mono hover:border-ring",
+              focusRing,
+              pressable
+            )}
             onClick={() =>
               owner.kind === "object"
                 ? onOpenObject(owner.path)
@@ -360,7 +365,11 @@ export function MemberDetail({
             <button
               type="button"
               aria-label={`Open ${member.objectPath}`}
-              className="inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 font-mono hover:border-ring"
+              className={cn(
+                "inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 font-mono hover:border-ring",
+                focusRing,
+                pressable
+              )}
               onClick={() => onOpenObject(member.objectPath!)}
             >
               <BoxIcon className="size-3" aria-hidden />
@@ -411,7 +420,11 @@ function DetailHead({
               <button
                 type="button"
                 aria-label={`Open the ${model} page object model`}
-                className="inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 text-foreground hover:border-ring"
+                className={cn(
+                  "inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 text-foreground hover:border-ring",
+                  focusRing,
+                  pressable
+                )}
                 onClick={() => onOpenModel?.(model)}
               >
                 <BracesIcon className="size-3" aria-hidden />
@@ -517,9 +530,12 @@ function OffPageAction({ action }: { action: ObjectAction }) {
   );
 }
 
-const rowClass =
+const rowClass = cn(
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-  "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50";
+  "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-muted",
+  rowFocusRing,
+  rowPress
+);
 
 /** A row that goes somewhere: a child Page Object, an instance or a model. */
 function LinkRow({

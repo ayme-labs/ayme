@@ -12,7 +12,11 @@ import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { Run } from "../../runs";
-import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared";
+import {
+  focusRing,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  pressable,
+} from "../../shared";
 import { inputClass } from "../view/ArgumentsFormView";
 import {
   changedFields,
@@ -312,7 +316,11 @@ function FieldControl({
             type="button"
             role="radio"
             aria-checked={option.value === value}
-            className="rounded-sm px-2.5 py-1 text-xs text-muted-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs"
+            className={cn(
+              "rounded-sm px-2.5 py-1 text-xs text-muted-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs",
+              focusRing,
+              pressable
+            )}
             onClick={() => onChange(option.value)}
           >
             {option.label}

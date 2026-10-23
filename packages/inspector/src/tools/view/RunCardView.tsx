@@ -14,6 +14,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
+import { focusRing, pressable, rowFocusRing, rowPress } from "../../shared";
 import {
   RunImageView,
   type ChildRun,
@@ -129,7 +130,11 @@ export function RunCardView({
                 type="button"
                 aria-expanded={open}
                 aria-label={`${open ? "Hide" : "Show"} the arguments for ${tool.action}`}
-                className="-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted"
+                className={cn(
+                  "-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted",
+                  rowFocusRing,
+                  rowPress
+                )}
                 onClick={toggleOpen}
               >
                 <ChevronRightIcon
@@ -181,7 +186,11 @@ export function RunCardView({
                     key={mode}
                     type="button"
                     aria-pressed={(json !== undefined) === (mode === "JSON")}
-                    className="h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                    className={cn(
+                      "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+                      focusRing,
+                      pressable
+                    )}
                     onClick={() => showJson(mode === "JSON")}
                   >
                     {mode}
@@ -215,6 +224,8 @@ export function RunCardView({
                         aria-checked={on}
                         className={cn(
                           "inline-flex h-6.5 items-center gap-1.25 rounded-full border border-input bg-background px-2.25 text-xs hover:border-ring",
+                          focusRing,
+                          pressable,
                           on &&
                             "border-primary bg-primary/10 font-semibold text-primary"
                         )}

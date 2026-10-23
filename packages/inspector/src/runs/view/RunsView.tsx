@@ -25,6 +25,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
+import { focusRing, pressable, rowFocusRing, rowPress } from "../../shared";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { RunImageView } from "./RunImageView";
 
@@ -88,7 +89,10 @@ export function RunsView({
         <button
           type="button"
           aria-expanded={open}
-          className="inline-flex cursor-pointer items-center gap-1.5 uppercase"
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-1.5 rounded-sm uppercase",
+            focusRing
+          )}
           onClick={() => onOpenChange(!open)}
         >
           <ChevronRightIcon
@@ -114,7 +118,11 @@ export function RunsView({
                   key={label}
                   type="button"
                   aria-pressed={allRuns === all}
-                  className="h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                  className={cn(
+                    "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+                    focusRing,
+                    pressable
+                  )}
                   onClick={() => onAllRunsChange(all)}
                 >
                   {label}
@@ -299,7 +307,11 @@ function RunEntryCard({
       <button
         type="button"
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left"
+        className={cn(
+          "flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left",
+          rowFocusRing,
+          rowPress
+        )}
         onClick={onToggle}
       >
         {run.by !== undefined && <CallerMark by={run.by} />}
@@ -433,7 +445,11 @@ function RunResult({
         <button
           type="button"
           aria-expanded={open}
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted"
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted",
+            focusRing,
+            pressable
+          )}
           onClick={onToggle}
         >
           <ChevronRightIcon

@@ -18,12 +18,15 @@ import { DropdownMenu } from "radix-ui";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { AymeMark } from "../../shared";
+import { AymeMark, focusRing, pressableIcon } from "../../shared";
 import type { Layout, ThemePreference } from "../domain/preferences";
 
-const iconButton =
+const iconButton = cn(
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-  "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
+  "inline-grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
+  focusRing,
+  pressableIcon
+);
 
 /**
  * The panel's header: the ayme title, the status after it, the theme

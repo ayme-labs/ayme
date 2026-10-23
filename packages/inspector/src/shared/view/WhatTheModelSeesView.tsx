@@ -4,6 +4,10 @@ import { parse, render } from "sugar-high/core";
 import * as json from "sugar-high/lang/json";
 import * as typescript from "sugar-high/lang/typescript";
 
+import { cn } from "@ayme-dev/design-system/lib/utils";
+
+import { focusRing } from "./controls";
+
 /** A tool's input schema, as an agent receives it. */
 export type ToolSchema = { name: string; inputSchema: unknown };
 
@@ -44,7 +48,10 @@ export function WhatTheModelSeesView({
         aria-expanded={open}
         aria-controls={contentId}
         onClick={onToggle}
-        className="mb-2 flex w-full items-center gap-1.5 text-left text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase hover:text-foreground"
+        className={cn(
+          "mb-2 flex w-full items-center gap-1.5 rounded-sm text-left text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase hover:text-foreground",
+          focusRing
+        )}
       >
         {open ? (
           <ChevronDownIcon className="size-3.5" aria-hidden />

@@ -15,6 +15,7 @@ import {
   type PublicationStatus,
   type Tone,
 } from "../domain/connections";
+import { focusRing, pressable, pressableIcon } from "../../shared";
 
 const DOCS =
   "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md";
@@ -77,7 +78,9 @@ export function Connections({
         title={name}
         // Stryker disable StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
         className={cn(
-          "relative ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-2 text-xs font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-accent",
+          "relative ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-2 text-xs font-medium hover:bg-accent aria-expanded:bg-accent",
+          focusRing,
+          pressable,
           agent.state === "off" && "text-muted-foreground"
         )}
         // Stryker restore StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator
@@ -176,7 +179,11 @@ function Row({
             type="button"
             aria-label={`Copy ${row.snippet}`}
             title="Copy"
-            className="inline-grid size-6 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            className={cn(
+              "inline-grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
+              focusRing,
+              pressableIcon
+            )}
             onClick={() => onCopy(row.snippet!)}
           >
             <CopyIcon className="size-3.5" />

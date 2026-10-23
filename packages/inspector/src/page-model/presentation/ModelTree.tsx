@@ -23,7 +23,7 @@ import {
   revealSelection,
   type ObjectTree,
 } from "../domain/objectTree";
-import { Divider } from "../../shared";
+import { Divider, rowFocusRing, rowPress } from "../../shared";
 import {
   defaultPreferences,
   maxModelSplit as maxSplit,
@@ -230,7 +230,9 @@ function rowElement(tree: HTMLElement | null, path: string) {
 
 function rowClass(selected: boolean) {
   return cn(
-    "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
+    "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left hover:bg-muted",
+    rowFocusRing,
+    rowPress,
     selected && "bg-accent hover:bg-accent"
   );
 }
@@ -350,7 +352,10 @@ function Pane({
       <button
         type="button"
         aria-expanded={open}
-        className="flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
+        className={cn(
+          "flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground",
+          rowFocusRing
+        )}
         onClick={onToggle}
       >
         <ChevronRightIcon

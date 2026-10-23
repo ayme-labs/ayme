@@ -2,7 +2,13 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared";
+import {
+  focusRing,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  pressable,
+  rowFocusRing,
+  rowPress,
+} from "../../shared";
 
 import type { HighlightTarget, OnHover } from "../domain/highlight";
 import type { LegendCounts, Lens, LensId } from "../domain/lens";
@@ -71,7 +77,11 @@ export function NavigatorView({
               key={lens.id}
               type="button"
               aria-pressed={lens.id === activeLens}
-              className="h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+              className={cn(
+                "h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs",
+                focusRing,
+                pressable
+              )}
               onClick={() => onLensChange(lens.id)}
             >
               {lens.label}
@@ -92,7 +102,11 @@ export function NavigatorView({
                 <li key={result.entry.key}>
                   <button
                     type="button"
-                    className="flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted"
+                    className={cn(
+                      "flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted",
+                      rowFocusRing,
+                      rowPress
+                    )}
                     onClick={() => pick(result)}
                     onMouseEnter={() => onHover?.(highlightOf(result))}
                     onMouseLeave={() => onHover?.(undefined)}

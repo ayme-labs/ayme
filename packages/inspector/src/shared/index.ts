@@ -17,6 +17,13 @@ export { useTabState } from "./infrastructure/tabStorage";
 export { usePointerDrag } from "./presentation/pointerDrag";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
+export {
+  focusRing,
+  pressable,
+  pressableIcon,
+  rowFocusRing,
+  rowPress,
+} from "./view/controls";
 export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./view/InspectorRoot";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

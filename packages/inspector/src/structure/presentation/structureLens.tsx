@@ -25,7 +25,11 @@ import {
 } from "../domain/treeRows";
 import {
   Empty,
+  focusRing,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  pressable,
+  rowFocusRing,
+  rowPress,
   WhatTheModelSees,
 } from "../../shared";
 import type {
@@ -305,6 +309,8 @@ function NodeRow({
       className={cn(
         rowClass,
         "cursor-default hover:bg-muted",
+        rowFocusRing,
+        rowPress,
         node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
       style={{ paddingLeft: rowIndent(depth) }}
@@ -435,7 +441,11 @@ function NodeDetail({
                 key={member}
                 type="button"
                 title={`Open ${opens}`}
-                className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border bg-card px-2.5 text-xs hover:border-ring"
+                className={cn(
+                  "inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border bg-card px-2.5 text-xs hover:border-ring",
+                  focusRing,
+                  pressable
+                )}
                 onClick={() => onOpenOwner(owner)}
               >
                 <Icon className="size-3.5 flex-none" aria-hidden />

@@ -2,8 +2,9 @@ import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { Separator } from "@ayme-dev/design-system/components/separator";
+import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { WhatTheModelSees } from "../../shared";
+import { focusRing, pressable, WhatTheModelSees } from "../../shared";
 import {
   type Lens,
   NavItem,
@@ -180,7 +181,11 @@ function ToolPage({
             aria-label={`Open the ${pomClassName} page object model`}
             title={`Open the ${pomClassName} page object model`}
             onClick={() => onSelect({ kind: "model", className: pomClassName })}
-            className="inline-flex h-5.5 items-center gap-1 rounded-md border bg-card px-1.5 text-xs text-primary hover:border-ring"
+            className={cn(
+              "inline-flex h-5.5 items-center gap-1 rounded-md border bg-card px-1.5 text-xs text-primary hover:border-ring",
+              focusRing,
+              pressable
+            )}
           >
             <BracesIcon className="size-3" aria-hidden />
             <span className="font-mono">{pomClassName}</span>
