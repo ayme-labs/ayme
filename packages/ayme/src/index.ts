@@ -1,5 +1,17 @@
-export { isJsonPrimitive, isJsonValue } from "./contracts";
+export {
+  AymeError,
+  callers,
+  isJsonPrimitive,
+  isJsonValue,
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+} from "./shared";
 export type {
+  AymeErrorKind,
+  BuiltInCaller,
+  Caller,
+  Handover,
   JsonPrimitive,
   JsonSchema,
   JsonValue,
@@ -8,23 +20,23 @@ export type {
   PomDefinitionsResult,
   PomMemberObservation,
   RegisteredPomTool,
+  RuntimeStateErrorCode,
   ToolDescriptor,
-} from "./contracts";
-export { ayme } from "./decorators";
+} from "./shared";
+export { ayme, createPage } from "./page-objects";
 export type {
   ActionAvailability,
   AvailabilityPredicate,
   AymeActionOptions,
   AymeModelOptions,
+  CreatePageOptions,
   PresencePredicate,
   RootPredicate,
-} from "./decorators";
-export { createPage } from "./browserPage";
-export type { CreatePageOptions } from "./browserPage";
+} from "./page-objects";
 export { createAyme } from "./runtime";
 export type {
-  Ayme,
   AgentConnectionOptions,
+  Ayme,
   AymeOptions,
   AymePage,
   AymePom,
@@ -32,32 +44,33 @@ export type {
   AymeWebMcp,
   AymeWebMcpOptions,
   AymeWebMcpPublicationStatus,
-  GoalLoopDecisionFunction,
   ToolInfo,
 } from "./runtime";
-export { callers } from "./run";
-export type { BuiltInCaller, Caller, ToolRunOptions } from "./run";
-export type { AymeRuns, Run } from "./runLog";
-export type { Interaction } from "./interactions";
-export type { PeekRead, PeekResult } from "./peek";
-export type { BuiltInTools, ToolInput, ToolResult } from "./toolTypes";
-export type { Handover } from "./handover";
-export { decisionEndpoint } from "./decisionEndpoint";
+export { decisionEndpoint, DecisionEndpointError } from "./goal-loop";
 export type {
+  DecisionEndpointErrorCode,
   DecisionEndpointOptions,
   DecisionRequest,
   DecisionResponse,
-} from "./decisionEndpoint";
-export { DecisionEndpointError } from "./decisionWire";
-export type { DecisionEndpointErrorCode } from "./decisionWire";
-export {
-  AymeError,
-  RefResolutionError,
-  RuntimeStateError,
-  ToolInputError,
-} from "./errors";
-export type { AymeErrorKind, RuntimeStateErrorCode } from "./errors";
-export type { ActionFailure, ActionResult } from "./actionSequence";
-export type { CustomTool, CustomToolContext } from "./elementTools";
-export type { PageContext, PageContextPayload } from "./pageContext";
-export type { AriaRef, AymeNode, PageState, RefResolution } from "./pageState";
+  GoalLoopDecisionFunction,
+} from "./goal-loop";
+export type { AymeRuns, Interaction, Run, ToolRunOptions } from "./runs";
+export type {
+  BuiltInTools,
+  CustomTool,
+  CustomToolContext,
+  PageContext,
+  PageContextPayload,
+  PeekRead,
+  PeekResult,
+  ToolInput,
+  ToolResult,
+} from "./tools";
+export type {
+  ActionFailure,
+  ActionResult,
+  AriaRef,
+  AymeNode,
+  PageState,
+  RefResolution,
+} from "./page-state";
