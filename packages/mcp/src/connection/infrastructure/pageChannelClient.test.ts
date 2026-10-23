@@ -23,8 +23,8 @@ afterEach(async () => {
 
 /**
  * A server that records the procedures the page calls, in the order their
- * frames arrive, and sends `call` once the page subscribes to calls. It
- * listens on `port`, or on a free one.
+ * frames arrive, welcomes the page, and sends `call` once the page
+ * subscribes to calls. It listens on `port`, or on a free one.
  */
 async function startServer(call: object, port = 0) {
   const paths: string[] = [];
@@ -35,6 +35,13 @@ async function startServer(call: object, port = 0) {
       for (const request of [parsed].flat()) {
         const path = request.params?.path ?? request.method;
         paths.push(path);
+        if (path === "hello")
+          socket.send(
+            JSON.stringify({
+              id: request.id,
+              result: { type: "data", data: {} },
+            })
+          );
         if (path === "calls")
           socket.send(
             JSON.stringify({
@@ -84,6 +91,40 @@ describe("openPageChannel", () => {
     await expect.poll(() => paths).toContain("answer");
     const answered = paths.lastIndexOf("answer");
     expect(paths.lastIndexOf("publishTools")).toBeLessThan(answered);
+  });
+
+  it("stays closed when a call it was running ends after it closed", async () => {
+    const { url, paths } = await startServer({
+      callId: "call-1",
+      name: "click",
+      input: {},
+    });
+    let connections = 0;
+    server!.on("connection", () => (connections += 1));
+    channel = openPageChannel(() => url, {
+      hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
+      onWelcome: () => {},
+      onDisconnected: () => {},
+      onUnknownPairing: () => {},
+    });
+    let finish!: () => void;
+    const running = new Promise<void>((resolve) => (finish = resolve));
+    channel.answerCalls(async ({ callId }) => {
+      await running;
+      return { callId, ok: true as const, result: "done" };
+    });
+    await expect.poll(() => paths).toContain("calls");
+
+    // As when the page's Ayme setup is disposed while one of its tools runs.
+    channel.close();
+    await expect.poll(() => server!.clients.size).toBe(0);
+    finish();
+
+    // A reopened channel would say hello again as the tab's page, and the
+    // server would send the tab's calls to a page that no longer runs them.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(connections).toBe(1);
+    expect(paths).not.toContain("answer");
   });
 
   it("says it lost the server when its socket closes, and keeps reconnecting", async () => {
