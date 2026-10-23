@@ -695,4 +695,15 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });
+
+  it("leaves it to the hit test after the scroll when its shadow content takes pointer events again", async () => {
+    openLayerOver('<section id="row"></section>');
+    document.querySelector("#row")!.attachShadow({ mode: "open" }).innerHTML =
+      '<button style="pointer-events: auto; width: 100%">Row</button>';
+    await assertRootReachable(
+      "ListPage.rows.open",
+      createPage().locator("#row")
+    );
+    expect(window.scrollY).toBeGreaterThan(0);
+  });
 });

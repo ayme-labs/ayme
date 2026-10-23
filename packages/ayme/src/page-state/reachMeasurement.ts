@@ -155,29 +155,36 @@ export function blockingAncestor(element: Element): Element | undefined {
  * `element` lies in it and takes no pointer events: what a modal library
  * (such as Radix) does instead of the native `:modal` or `inert`, hiding the
  * page's content from assistive technology and turning off its pointer
- * events. While no descendant turns them back on either, it blocks every
+ * events. While nothing it renders turns them back on, it blocks every
  * click on `element` wherever `element` is scrolled, so an element out of
  * view is judged by it without the scroll a hit test would need.
  */
-// ponytail: a shadow root's content is not looked into for pointer events
-// turned back on; the hit test after the call's scroll still is.
 function hiddenBehindLayer(element: Element): Element | undefined {
-  if (takesPointerEvents(element)) return undefined;
-  for (let node: Element | null = element; node; node = parentElement(node))
-    if (node.getAttribute("aria-hidden") === "true") return node;
-  return undefined;
+  let hidden: Element | undefined;
+  for (
+    let node: Element | null = element;
+    node && !hidden;
+    node = parentElement(node)
+  )
+    if (node.getAttribute("aria-hidden") === "true") hidden = node;
+  return hidden && !takesPointerEvents(element) ? hidden : undefined;
 }
 
-/** Whether `element` or a descendant of it takes pointer events. */
+/**
+ * Whether `element` or anything it renders takes pointer events: its
+ * descendants, the content of its open shadow root and the elements assigned
+ * to its slots.
+ */
 function takesPointerEvents(element: Element): boolean {
   if (styleOf(element).pointerEvents !== "none") return true;
-  const walker = element.ownerDocument.createTreeWalker(
-    element,
-    NodeFilter.SHOW_ELEMENT
-  );
-  for (let node = walker.nextNode(); node; node = walker.nextNode())
-    if (styleOf(node as Element).pointerEvents !== "none") return true;
-  return false;
+  const rendered = [
+    ...element.children,
+    ...(element.shadowRoot?.children ?? []),
+    ...(element instanceof HTMLSlotElement
+      ? element.assignedElements({ flatten: true })
+      : []),
+  ];
+  return rendered.some(takesPointerEvents);
 }
 
 /**
