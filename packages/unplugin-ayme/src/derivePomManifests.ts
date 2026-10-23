@@ -694,24 +694,45 @@ function decoratorDescription(decorator: ts.Decorator, owner: string) {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
   const options = decorator.expression.arguments[0];
   if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
-  const property = options.properties.find(
-    (property) =>
-      property.name &&
-      ts.isIdentifier(property.name) &&
-      property.name.text === "description"
-  );
+  // The last `description` wins, and a spread after it may replace it.
+  let property: ts.ObjectLiteralElementLike | undefined;
+  for (const element of options.properties) {
+    if (isDescriptionProperty(element)) property = element;
+    else if (property && ts.isSpreadAssignment(element))
+      throw new Error(
+        `The description of ${owner} is followed by a spread (${location(
+          element
+        )}).`
+      );
+  }
   if (!property) return undefined;
   const description = ts.isPropertyAssignment(property)
     ? constantString(property.initializer)
     : undefined;
   if (description !== undefined) return description;
-  const source = property.getSourceFile();
-  const { line } = source.getLineAndCharacterOfPosition(property.getStart());
   throw new Error(
-    `The description of ${owner} is not a constant string (${source.fileName}:${
-      line + 1
-    }).`
+    `The description of ${owner} is not a constant string (${location(
+      property
+    )}).`
   );
+}
+
+function isDescriptionProperty(element: ts.ObjectLiteralElementLike) {
+  const name =
+    element.name && ts.isComputedPropertyName(element.name)
+      ? element.name.expression
+      : element.name;
+  return (
+    name !== undefined &&
+    (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) &&
+    name.text === "description"
+  );
+}
+
+function location(node: ts.Node) {
+  const source = node.getSourceFile();
+  const { line } = source.getLineAndCharacterOfPosition(node.getStart());
+  return `${source.fileName}:${line + 1}`;
 }
 
 /**
@@ -719,9 +740,16 @@ function decoratorDescription(decorator: ts.Decorator, owner: string) {
  * a `+` concatenation of those, if `expression` is one.
  */
 function constantString(expression: ts.Expression): string | undefined {
-  if (ts.isStringLiteralLike(expression)) return expression.text;
-  if (ts.isParenthesizedExpression(expression))
+  // Parentheses, `as`, `satisfies` and `!` leave the value as it is.
+  if (
+    ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isTypeAssertionExpression(expression)
+  )
     return constantString(expression.expression);
+  if (ts.isStringLiteralLike(expression)) return expression.text;
   if (
     ts.isBinaryExpression(expression) &&
     expression.operatorToken.kind === ts.SyntaxKind.PlusToken

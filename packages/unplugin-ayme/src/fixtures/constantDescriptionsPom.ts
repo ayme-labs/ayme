@@ -11,4 +11,14 @@ export class ConstantDescriptionsPom {
 
   @ayme.action({ description: `Clear the name.` })
   clear() {}
+
+  // prettier-ignore
+  @ayme.action({ "description": ("Undo " as const) + "the last change."! })
+  undo() {}
+
+  @ayme.action({
+    ...{ available: () => true },
+    description: "Redo." satisfies string,
+  })
+  redo() {}
 }

@@ -68,6 +68,14 @@ describe("derivePomManifests", () => {
             toolName: "ConstantDescriptionsPom.clear",
             description: "Clear the name.",
           },
+          {
+            toolName: "ConstantDescriptionsPom.undo",
+            description: "Undo the last change.",
+          },
+          {
+            toolName: "ConstantDescriptionsPom.redo",
+            description: "Redo.",
+          },
         ],
       });
     });
@@ -75,6 +83,7 @@ describe("derivePomManifests", () => {
     it.each([
       ["templateActionPom", "Page Object Action TemplateActionPom.show", 8],
       ["variableClassPom", "Page Object VariableClassPom", 5],
+      ["quotedKeyPom", "Page Object Action QuotedKeyPom.save", 8],
     ])(
       "fails the build for the description of %s, which is not a constant string",
       (fixture, owner, line) => {
@@ -85,6 +94,15 @@ describe("derivePomManifests", () => {
           `The description of ${owner} is not a constant string (${fileName}:${line}).`
         );
       }
+    );
+  });
+
+  it("fails the build for a spread after a description", () => {
+    const fileName = path.resolve(
+      "src/fixtures/computedDescriptions/spreadActionPom.ts"
+    );
+    expect(() => derivePomManifests(fileName)).toThrow(
+      `The description of Page Object Action SpreadActionPom.read is followed by a spread (${fileName}:9).`
     );
   });
 
