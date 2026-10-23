@@ -207,7 +207,8 @@ function importDeclarationUsesExport(
   statement: ts.ImportDeclaration,
   checker: ts.TypeChecker,
   importedFile?: ts.SourceFile,
-  program?: ts.Program
+  program?: ts.Program,
+  visited?: Set<string>
 ) {
   const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
   const exportSymbol = moduleSymbol
@@ -229,7 +230,8 @@ function importDeclarationUsesExport(
       binding,
       importedFile,
       program,
-      checker
+      checker,
+      visited
     );
   }
 
@@ -240,7 +242,8 @@ function importDeclarationUsesExport(
       binding,
       importedFile,
       program,
-      checker
+      checker,
+      visited
     );
   }
 
@@ -255,6 +258,7 @@ function importDeclarationUsesExport(
       importedFile,
       program,
       checker,
+      visited,
       importedName
     );
   });
@@ -266,19 +270,25 @@ function taintedImportReferencesExport(
   importedFile: ts.SourceFile | undefined,
   program: ts.Program | undefined,
   checker: ts.TypeChecker,
+  visited?: Set<string>,
   importedName?: string
 ) {
   if (!binding) return false;
-  const tainted =
-    !importedFile || !program
-      ? true
-      : hasPlaywrightRuntimeEdge(importedFile, program, checker, importedName);
-  return (
-    tainted &&
-    declarations.some((declaration) =>
+  if (
+    !declarations.some((declaration) =>
       declarationReferences(declaration, binding, checker)
     )
-  );
+  )
+    return false;
+  return !importedFile || !program
+    ? true
+    : hasPlaywrightRuntimeEdge(
+        importedFile,
+        program,
+        checker,
+        importedName,
+        visited
+      );
 }
 
 function declarationReferences(
@@ -400,7 +410,15 @@ function hasPlaywrightRuntimeEdge(
           )
             return true;
         } else if (!statement.importClause) {
-          if (hasPlaywrightRuntimeEdge(importedFile, program, checker))
+          if (
+            hasPlaywrightRuntimeEdge(
+              importedFile,
+              program,
+              checker,
+              undefined,
+              visited
+            )
+          )
             return true;
         } else if (
           importDeclarationUsesExport(
@@ -409,7 +427,8 @@ function hasPlaywrightRuntimeEdge(
             statement,
             checker,
             importedFile,
-            program
+            program,
+            visited
           )
         ) {
           return true;
