@@ -772,8 +772,15 @@ function createRegisteredTool(
   return tool;
 }
 
-/** What a call acts on: an instance the last observation read, and its root. */
-type CallTarget = { instance: object; root: Locator | undefined };
+/**
+ * What a call of the published tool `toolName` acts on: an instance the last
+ * observation read, and its root.
+ */
+type CallTarget = {
+  toolName: string;
+  instance: object;
+  root: Locator | undefined;
+};
 
 /**
  * The target of a call of the tool `toolName` on `observed`, as the last
@@ -795,7 +802,7 @@ function callTarget(
       !rootHolds(observed.item))
   )
     throw unavailableError(toolName, { present: false });
-  return { instance: observed.instance, root: observed.rootLocator };
+  return { toolName, instance: observed.instance, root: observed.rootLocator };
 }
 
 /**
@@ -983,7 +990,7 @@ function pomLabel(registration: ObservedRegisteredPom, path: string) {
  * not tell for a root it had to scroll to.
  */
 async function performPageObjectAction(
-  { instance, root }: CallTarget,
+  { toolName, instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
   cursor: Cursor
@@ -999,7 +1006,7 @@ async function performPageObjectAction(
     tool.parameters,
     argumentValues(tool, args)
   );
-  if (root) await assertRootReachable(tool.toolName, root);
+  if (root) await assertRootReachable(toolName, root);
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
