@@ -230,6 +230,39 @@ describe("generate_locator in Chromium", () => {
     expect(elementsOf(page, pageLevel)).toEqual([rowButton]);
   });
 
+  it("matches a selector target inside its group's container, not across the page", async () => {
+    const row = await ref("listitem", "Order 2");
+
+    const result = await run({
+      groups: [
+        { targets: ['role=button[name="Delete"]'], within: row },
+        { targets: ["button", "text=Order 1"], within: "#dialog" },
+      ],
+    });
+
+    const relative = locatorAt(result, 0, 0);
+    expect(relative).toBe("getByRole('button', { name: 'Delete' })");
+    expect(elementsOf(page.locator("#row-2"), relative)).toEqual([
+      element("#row-2 button"),
+    ]);
+    expect(errorAt(result, 1, 0)).toBe(
+      'Cannot generate a locator for "button": the selector matches 2 elements; it must match exactly one.'
+    );
+    expect(errorAt(result, 1, 1)).toMatch(
+      /"text=Order 1": the selector matches no element/
+    );
+  });
+
+  it("matches a selector target inside a container given as a capture selector", async () => {
+    const result = await run({
+      groups: [{ targets: ["text=Cancel"], within: "*css=#dialog" }],
+    });
+
+    expect(
+      elementsOf(page.locator("#dialog"), locatorAt(result, 0, 0))
+    ).toEqual([element("#dialog button")]);
+  });
+
   it("returns a container-relative locator where the page-level one needs .nth()", async () => {
     document.body.innerHTML = `
       <ul>
@@ -297,7 +330,11 @@ describe("generate_locator in Chromium", () => {
     expect(errorAt(result, 0, 2)).toMatch(/matches no element/);
     expect(errorAt(result, 0, 3)).toMatch(/matches 2 elements/);
     expect(elementsOf(page, locatorAt(result, 0, 4))).toEqual([element("h1")]);
-    expect(errorAt(result, 1, 0)).toMatch(/not inside the container "e\d+"/);
+    expect(errorAt(result, 1, 0)).toMatch(
+      new RegExp(
+        `^Cannot generate a locator for ref "${cancel}": it is not inside the container "e\\d+"`
+      )
+    );
   });
 
   it("returns a page-level locator for a Page Object Root's synthetic ref", async () => {
@@ -421,7 +458,9 @@ describe("generate_locator when the generator fails", () => {
               {
                 target: heading,
                 error: expect.stringMatching(
-                  new RegExp(`^Cannot generate a locator for "${heading}": `)
+                  new RegExp(
+                    `^Cannot generate a locator for ref "${heading}": `
+                  )
                 ),
               },
             ],

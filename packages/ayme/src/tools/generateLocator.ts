@@ -2,6 +2,7 @@
 // Recommendations for Page Object Model code. It reads and never acts, so it
 // records no Structural Action and leaves the Goal Loop's operations alone.
 import {
+  parseStructuralRef,
   refFromSelector,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
@@ -10,10 +11,12 @@ import type { JsonSchema } from "../shared";
 import { asSentence } from "../shared";
 import {
   requireCurrentDocument,
+  isInside,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
 } from "./elementTools";
+import { refFailure, selectorFailure } from "../page-state";
 import { requireAymeRuntimePage } from "../page-objects";
 import type { ToolResult } from "./toolTypes";
 
@@ -39,7 +42,7 @@ const inputSchema: JsonSchema = {
           within: {
             ...TARGET_SCHEMA,
             description:
-              "The container the locators are relative to, such as a component's root. Omitted: relative to the page.",
+              "The container the locators are relative to, such as a component's root; selector targets are matched inside it. Omitted: relative to the page.",
           },
         },
         required: ["targets"],
@@ -54,28 +57,11 @@ const inputSchema: JsonSchema = {
 const TARGET_LABEL = "generate a locator for";
 const WITHIN_LABEL = "scope locators to";
 
-/** Resolve a target or container, or throw the error its entry reports. */
-async function resolve(
-  label: string,
-  requested: string,
-  currentDocument: Document
-): Promise<Element> {
-  const { element } = await resolveElementTarget(
-    { label, targetField: "target" },
-    requested,
-    currentDocument
-  );
-  return element;
-}
-
-/** Whether `element` lies inside `container`, across shadow roots. */
-function isInside(element: Element, container: Element): boolean {
-  for (let node = element.parentNode; node;) {
-    if (node === container) return true;
-    node = node instanceof ShadowRoot ? node.host : node.parentNode;
-  }
-  return false;
-}
+/** The definition a target or container resolves under, named by `label`. */
+const definition = (label: string) => ({
+  label,
+  targetField: "target" as const,
+});
 
 /**
  * The Locator Recommendation for `element`, relative to `container` when one
@@ -110,11 +96,20 @@ async function entryFor(
 ): Promise<Entry> {
   const fail = (why: string) => ({
     target,
-    error: asSentence(`Cannot ${TARGET_LABEL} "${target}": ${why}`),
+    error: (parseStructuralRef(target) ? refFailure : selectorFailure)(
+      TARGET_LABEL,
+      target,
+      why
+    ),
   });
   let element: Element;
   try {
-    element = await resolve(TARGET_LABEL, target, currentDocument);
+    ({ element } = await resolveElementTarget(
+      definition(TARGET_LABEL),
+      target,
+      currentDocument,
+      container?.element
+    ));
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
   }
@@ -134,10 +129,12 @@ async function groupFor(
   let container: Container | undefined;
   if (group.within !== undefined)
     try {
-      container = {
-        within: group.within,
-        element: await resolve(WITHIN_LABEL, group.within, currentDocument),
-      };
+      const { element } = await resolveElementTarget(
+        definition(WITHIN_LABEL),
+        group.within,
+        currentDocument
+      );
+      container = { within: group.within, element };
     } catch (error) {
       return { within: group.within, error: asSentence(reason(error)) };
     }
@@ -158,7 +155,7 @@ export const generateLocatorTool: PublishedElementTool = {
   description: [
     "Generate Playwright locators for elements, to write into Page Object Model code; does not act on the page.",
     "Structural Refs are capture-scoped: use them in tool calls, never in code. The locators are what belongs in a page object.",
-    "Group targets by the container they belong to: a group's locators are relative to its `within` container, ready for a component's `root`, or to the page without one.",
+    "Group targets by the container they belong to: a group's locators are relative to its `within` container, ready for a component's `root`, or to the page without one. Selector targets are matched inside the container.",
     "Each locator is checked to match exactly its element. A target that cannot be resolved fails on its own entry, and a container on its own group.",
   ].join(" "),
   // Stryker restore StringLiteral
