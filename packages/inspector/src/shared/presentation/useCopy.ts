@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 const COPIED_MS = 1200;
 
 /**
- * Copying to the clipboard, and the text just copied, for a moment after,
- * so the Copy button that copied it can say so.
+ * Copying to the clipboard, and what was just copied, for a moment after,
+ * so the Copy button that copied it can say so: the text, or the key it was
+ * copied under where two buttons can copy the same text.
  */
 export function useCopy() {
   const [copied, setCopied] = useState<string>();
@@ -15,10 +16,10 @@ export function useCopy() {
 
   return {
     copied,
-    copy: (text: string) => {
+    copy: (text: string, key = text) => {
       void navigator.clipboard?.writeText(text).then(
         () => {
-          setCopied(text);
+          setCopied(key);
           // Stryker disable next-line CallExpression: a second copy restarts the moment, which only a clock shows.
           clearTimeout(timer.current);
           timer.current = setTimeout(() => setCopied(undefined), COPIED_MS);

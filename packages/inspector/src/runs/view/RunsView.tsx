@@ -53,9 +53,9 @@ export type RunsViewProps = {
   flashing: string | undefined;
   toggleRun: (id: string) => void;
   toggleResult: (id: string) => void;
-  /** Copies a run's result. */
-  copyResult: (text: string) => void;
-  /** The result just copied, whose Copy says so. */
+  /** Copies a run's result, given the run's id. */
+  copyResult: (id: string, text: string) => void;
+  /** The run whose result was just copied, whose Copy says so. */
   copiedResult: string | undefined;
   /** Opens a run's image, given its data URL, full size. */
   openImage: (src: string) => void;
@@ -276,8 +276,8 @@ function RunRow({
           flashing={flashing === run.id}
           onToggle={() => toggleRun(run.id)}
           onToggleResult={() => toggleResult(run.id)}
-          onCopyResult={copyResult}
-          resultCopied={run.result === copiedResult}
+          onCopyResult={(text) => copyResult(run.id, text)}
+          resultCopied={run.id === copiedResult}
           onOpenImage={openImage}
           onHover={onHover}
         />

@@ -444,6 +444,25 @@ describe("a run's result", () => {
       .toBe("Copied");
   });
 
+  it("says it copied only on the run it copied, when another has the same result", async () => {
+    renderRuns({
+      runs: [
+        aRun({ id: "2", result: '"Milk"' }),
+        aRun({ id: "1", result: '"Milk"' }),
+      ],
+    });
+
+    await runsView.run(0).copyResultButton.click();
+
+    await expect
+      .poll(() => runsView.run(0).card.getByRole("status").textContent())
+      .toBe("Copied");
+    expect(await runsView.run(1).card.getByRole("status").textContent()).toBe(
+      ""
+    );
+    expect(await runsView.run(1).copyResultButton.count()).toBe(1);
+  });
+
   it("stays put on a page that offers no clipboard", async () => {
     // A page served over plain http from another machine has none.
     Object.defineProperty(navigator, "clipboard", {
