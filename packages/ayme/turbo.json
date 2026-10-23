@@ -6,6 +6,7 @@
       "dependsOn": ["^typecheck", "^build"]
     },
     "test": {
+      "dependsOn": ["build", "^build"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/docs/guide/start/quickstart-*.md",
@@ -40,6 +41,12 @@
         "$TURBO_ROOT$/packages/webmcp/README.md",
         "$TURBO_ROOT$/packages/webmcp/LICENSE"
       ]
+    },
+    "test:crap": {
+      "dependsOn": ["build", "^build"]
+    },
+    "test:mutation": {
+      "dependsOn": ["build", "^build"]
     }
   }
 }
