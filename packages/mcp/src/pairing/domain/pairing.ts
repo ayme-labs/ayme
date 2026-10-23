@@ -33,7 +33,9 @@ export function socketUrl({ address, token }: Pairing): string {
 export function connectLink(url: string, pairing: Pairing): string {
   const link = URL.canParse(url) ? new URL(url) : undefined;
   if (link?.protocol !== "http:" && link?.protocol !== "https:")
-    throw new Error(`Expected an http or https URL, got "${url}".`);
+    throw new Error(
+      `Expected an http or https URL, got ${JSON.stringify(url)}.`
+    );
   link.hash = `ayme=${socketUrl(pairing)}`;
   return link.href;
 }

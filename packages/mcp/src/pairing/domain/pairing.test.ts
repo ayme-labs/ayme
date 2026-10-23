@@ -18,6 +18,9 @@ it("refuses a string that does not parse as a URL, quoting it", () => {
     expect(() => connectLink(url, pairing), url).toThrow(
       `Expected an http or https URL, got "${url}".`
     );
+  expect(() => connectLink('"\n', pairing)).toThrow(
+    'Expected an http or https URL, got "\\"\\n".'
+  );
 });
 
 it("reads the pairing back from a connect link's fragment", () => {
