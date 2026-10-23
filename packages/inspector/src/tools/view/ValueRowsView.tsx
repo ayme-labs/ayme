@@ -65,6 +65,7 @@ export function ValueRowsView({
           aria-hidden
           className={cn(
             columns,
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase"
           )}
         >

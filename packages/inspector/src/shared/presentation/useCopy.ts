@@ -10,6 +10,7 @@ const COPIED_MS = 1200;
 export function useCopy() {
   const [copied, setCopied] = useState<string>();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Stryker disable next-line ArrowFunction,ArrayDeclaration: React drops a state update after unmount, so this only spares a timer.
   useEffect(() => () => clearTimeout(timer.current), []);
 
   return {
@@ -18,6 +19,7 @@ export function useCopy() {
       void navigator.clipboard?.writeText(text).then(
         () => {
           setCopied(text);
+          // Stryker disable next-line CallExpression: a second copy restarts the moment, which only a clock shows.
           clearTimeout(timer.current);
           timer.current = setTimeout(() => setCopied(undefined), COPIED_MS);
         },

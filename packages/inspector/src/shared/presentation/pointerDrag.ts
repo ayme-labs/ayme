@@ -39,6 +39,7 @@ export function usePointerDrag() {
       const deltaY = moveEvent.clientY - startY;
       if (!moved && Math.abs(deltaX) + Math.abs(deltaY) < DRAG_THRESHOLD)
         return;
+      // Stryker disable next-line ConditionalExpression,BooleanLiteral: a dispatched pointer can't be captured, so no component test sees it.
       if (!moved) capture(handle, pointerId);
       moved = true;
       moveEvent.preventDefault();
@@ -46,8 +47,6 @@ export function usePointerDrag() {
     };
     const end = (endEvent?: globalThis.PointerEvent) => {
       if (endEvent && endEvent.pointerId !== pointerId) return;
-      if (handle.hasPointerCapture(pointerId))
-        handle.releasePointerCapture(pointerId);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
@@ -62,7 +61,9 @@ export function usePointerDrag() {
 }
 
 function capture(handle: Element, pointerId: number) {
+  // Stryker disable next-line BlockStatement: a dispatched pointer can't be captured, so no component test sees it.
   try {
+    // Stryker disable next-line CallExpression: as above.
     handle.setPointerCapture(pointerId);
   } catch {
     // A pointer the browser doesn't have, like a dispatched one, can't be

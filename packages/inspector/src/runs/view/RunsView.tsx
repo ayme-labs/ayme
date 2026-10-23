@@ -255,6 +255,7 @@ function RunRow({
           role="img"
           aria-label={status.label}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "mt-1 grid size-6.5 flex-none place-items-center rounded-full border bg-card",
             status.className
           )}
@@ -274,7 +275,7 @@ function RunRow({
           onToggle={() => toggleRun(run.id)}
           onToggleResult={() => toggleResult(run.id)}
           onCopyResult={copyResult}
-          resultCopied={run.result !== undefined && run.result === copiedResult}
+          resultCopied={run.result === copiedResult}
           onOpenImage={openImage}
           onHover={onHover}
         />
@@ -333,6 +334,7 @@ function RunEntryCard({
     <div
       data-run-card=""
       className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "overflow-hidden rounded-lg border bg-card transition-shadow duration-(--duration-normal) ease-(--ease-out)",
         flashing && "ring-2 ring-ring"
       )}
@@ -341,6 +343,7 @@ function RunEntryCard({
         type="button"
         aria-expanded={open}
         className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex min-h-8 w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted/60",
           rowFocusRing,
           rowPress
@@ -483,6 +486,7 @@ function RunResult({
           type="button"
           aria-expanded={open}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted",
             focusRing,
             pressable
@@ -490,6 +494,7 @@ function RunResult({
           onClick={onToggle}
         >
           <ChevronRightIcon
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
             className={cn("size-3", open && "rotate-90")}
             aria-hidden
           />

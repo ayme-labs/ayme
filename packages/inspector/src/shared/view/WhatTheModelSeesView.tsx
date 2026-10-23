@@ -49,11 +49,13 @@ export function WhatTheModelSeesView({
         aria-controls={contentId}
         onClick={onToggle}
         className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "mb-2 flex w-full items-center gap-1.5 rounded-sm text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground",
           focusRing
         )}
       >
         <ChevronRightIcon
+          // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
           className={cn("size-3", open && "rotate-90")}
           aria-hidden
         />

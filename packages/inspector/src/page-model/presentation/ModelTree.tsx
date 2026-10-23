@@ -357,6 +357,7 @@ function Pane({
         onClick={onToggle}
       >
         <ChevronRightIcon
+          // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
           className={cn("size-3", open && "rotate-90")}
           aria-hidden
         />
