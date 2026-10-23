@@ -25,7 +25,13 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
-import { focusRing, pressable, rowFocusRing } from "../../shared";
+import {
+  focusRing,
+  pressable,
+  QualifiedName,
+  rowFocusRing,
+} from "../../shared";
+import { formatDuration } from "../domain/duration";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { RunImageView } from "./RunImageView";
 
@@ -79,8 +85,10 @@ export function RunsView({
     <>
       <div
         className={cn(
+          // Narrower than its controls, as Runs' narrowest column, the scope
+          // and Clear wrap below the title.
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-          "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
+          "flex min-h-region-header flex-none flex-wrap items-center gap-2 py-1 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
       >
@@ -357,11 +365,15 @@ function RunEntryCard({
         onClick={onToggle}
       >
         {run.by !== undefined && <CallerMark by={run.by} />}
-        <span className="truncate font-mono text-xs font-semibold">
-          {run.toolName}
-        </span>
+        <QualifiedName
+          name={run.toolName}
+          className="font-mono text-xs font-semibold"
+        />
         {run.item && (
-          <span className="rounded-md border px-1.5 font-mono text-xs text-muted-foreground">
+          <span
+            className="max-w-[45%] min-w-0 truncate rounded-md border px-1.5 font-mono text-xs text-muted-foreground"
+            title={run.item.pathBelowPage}
+          >
             {run.item.pathBelowPage}
           </span>
         )}
@@ -374,10 +386,10 @@ function RunEntryCard({
             Earlier page
           </span>
         )}
-        <span className="text-xs whitespace-nowrap text-muted-foreground">
+        <span className="flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
           {run.status === "running"
             ? "Running…"
-            : `${run.durationMs === undefined ? "" : `${run.durationMs} ms · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
+            : `${run.durationMs === undefined ? "" : `${formatDuration(run.durationMs)} · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
         </span>
       </button>
       {open && (
@@ -408,7 +420,7 @@ function RunEntryCard({
             <p
               role="note"
               aria-label="Error"
-              className="mx-2.5 mt-0 mb-2 font-mono text-xs text-destructive"
+              className="mx-2.5 mt-0 mb-2 font-mono text-xs text-destructive [overflow-wrap:anywhere]"
             >
               {run.error}
             </p>
@@ -586,6 +598,10 @@ function InteractionRow({
       ? undefined
       : JSON.stringify(interaction.value);
   const member = interaction.member;
+  const title =
+    member === undefined
+      ? `Not on the page when the run ended: ${interaction.locator}`
+      : `${member}: ${interaction.locator}. Hover to highlight it on the page.`;
   return (
     <li className="flex min-h-6 list-none items-center gap-2 text-xs">
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
@@ -596,17 +612,19 @@ function InteractionRow({
         <button
           type="button"
           data-gone={member === undefined || undefined}
-          title={
-            member === undefined
-              ? `Not on the page when the run ended: ${interaction.locator}`
-              : `${interaction.locator}. Hover to highlight it on the page.`
-          }
-          className="max-w-57.5 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
+          // Named by the member whole: its two parts would read apart.
+          aria-label={member}
+          title={title}
+          className="max-w-57.5 min-w-0 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
           // The hover highlight finds the member's element while it's there.
           onMouseEnter={() => member !== undefined && onHover({ path: member })}
           onMouseLeave={() => member !== undefined && onHover(undefined)}
         >
-          {member ?? interaction.locator}
+          {member === undefined ? (
+            interaction.locator
+          ) : (
+            <QualifiedName name={member} title={title} />
+          )}
         </button>
       )}
       {value !== undefined && (

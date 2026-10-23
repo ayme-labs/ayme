@@ -14,8 +14,14 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
-import { focusRing, pressable, rowFocusRing } from "../../shared";
 import {
+  focusRing,
+  pressable,
+  QualifiedName,
+  rowFocusRing,
+} from "../../shared";
+import {
+  formatDuration,
   RunImageView,
   type ChildRun,
   type CollectionItem,
@@ -107,9 +113,10 @@ export function RunCardView({
   const name = (
     <>
       <ZapIcon className="size-3.5 flex-none text-primary" aria-hidden />
-      <span className="truncate font-mono text-xs font-semibold">
-        {tool.action}
-      </span>
+      <QualifiedName
+        name={tool.action}
+        className="font-mono text-xs font-semibold"
+      />
     </>
   );
   const reasonLine = <ReasonLine reason={reason} />;
@@ -162,7 +169,7 @@ export function RunCardView({
           )}
           {reasonLine}
           {tool.description && (
-            <p className="m-0 text-xs leading-normal text-muted-foreground">
+            <p className="m-0 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">
               {tool.description}
             </p>
           )}
@@ -225,7 +232,8 @@ export function RunCardView({
                         role="radio"
                         aria-checked={on}
                         className={cn(
-                          "inline-flex h-6.5 items-center gap-1.25 rounded-full border border-input bg-background px-2.25 text-xs hover:border-ring",
+                          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                          "inline-flex h-6.5 max-w-full items-center gap-1.25 rounded-full border border-input bg-background px-2.25 text-xs hover:border-ring",
                           focusRing,
                           pressable,
                           on &&
@@ -235,8 +243,15 @@ export function RunCardView({
                         onMouseEnter={() => onHover?.({ path: candidate.path })}
                         onMouseLeave={() => onHover?.(undefined)}
                       >
-                        <span className="font-mono">{candidate.name}</span>{" "}
-                        {candidate.label}
+                        <span className="flex-none font-mono">
+                          {candidate.name}
+                        </span>
+                        <span
+                          className="min-w-0 truncate"
+                          title={candidate.label}
+                        >
+                          {candidate.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -419,7 +434,7 @@ function LastResult({
   const interactions = `${count} ${count === 1 ? "interaction" : "interactions"}`;
   // A run interrupted by a reload has no known duration.
   const duration =
-    run.durationMs === undefined ? "" : ` · ${run.durationMs} ms`;
+    run.durationMs === undefined ? "" : ` · ${formatDuration(run.durationMs)}`;
   const label =
     run.status === "running"
       ? "Running…"
@@ -446,7 +461,7 @@ function LastResult({
           <CheckIcon className="size-3.5" aria-hidden />
         )}
         {run.status === "failed" && <XIcon className="size-3.5" aria-hidden />}
-        <span>{label}</span>
+        <span className="tabular-nums">{label}</span>
         <span className="flex-1" />
         {lastSuccess && (
           <button
@@ -464,7 +479,9 @@ function LastResult({
         )}
       </div>
       {run.status === "failed" && (
-        <p className="m-0 font-mono text-xs break-words">{run.error}</p>
+        <p className="m-0 font-mono text-xs [overflow-wrap:anywhere]">
+          {run.error}
+        </p>
       )}
       {run.status === "succeeded" && run.image && (
         <RunImageView image={run.image} onOpen={onOpenImage} />

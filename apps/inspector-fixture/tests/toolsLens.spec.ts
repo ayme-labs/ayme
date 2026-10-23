@@ -38,7 +38,9 @@ test("each tool's page shows the description and schema an agent gets", async ({
     await expect(toolPage.title).toHaveText(tool.name);
     await toolPage.modelSees.open();
 
-    await expect(toolPage.description).toHaveText(panelDescription(tool));
+    await expect
+      .poll(() => toolPage.descriptionText())
+      .toBe(panelDescription(tool));
     expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
       tool.inputSchema
     );

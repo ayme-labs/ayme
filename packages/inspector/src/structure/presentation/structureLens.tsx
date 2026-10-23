@@ -216,7 +216,7 @@ function StructureTreeView({
                 className={rowClass}
                 style={{ paddingLeft: rowIndent(row.depth) }}
               >
-                <span className={nameClass}>
+                <span dir="auto" className={nameClass} title={row.node.name}>
                   {JSON.stringify(row.node.name)}
                 </span>
               </div>
@@ -395,10 +395,13 @@ function NodeRow({
         <span className="shrink-0 text-primary">{node.ref}</span>
         <span className="shrink-0">{node.role}</span>
         {node.name && (
-          <span className={nameClass}>{JSON.stringify(node.name)}</span>
+          <span dir="auto" className={nameClass} title={node.name}>
+            {JSON.stringify(node.name)}
+          </span>
         )}
         {node.member && (
           <span
+            data-member-tag
             className="ml-auto max-w-[45%] min-w-0 truncate pl-1.5 text-xs text-muted-foreground"
             title={node.member}
           >
@@ -424,10 +427,10 @@ function NodeDetail({
   const members = node.memberLinks ?? [];
   const tools = elementTools.filter((tool) => tool.refs.includes(node.ref));
   return (
-    <article aria-label="Structure node" className="grid gap-3">
+    <article aria-label="Structure node" className="grid grid-cols-1 gap-3">
       <div className="flex items-start gap-2.5">
         <div className="grid min-w-0 flex-1 gap-0.5">
-          <h2 className="font-mono text-sm font-semibold break-all">
+          <h2 className="font-mono text-sm font-semibold [overflow-wrap:anywhere]">
             {nodeLabel(node)}
           </h2>
           <p className="text-xs text-muted-foreground">Structure node</p>
@@ -448,9 +451,9 @@ function NodeDetail({
               <button
                 key={member}
                 type="button"
-                title={`Open ${opens}`}
-                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-                className={cn(chip, "max-w-full")}
+                title={member}
+                aria-description={`Opens ${opens}`}
+                className={chip}
                 onClick={() => onOpenOwner(owner)}
               >
                 <Icon className="size-3 flex-none" aria-hidden />
@@ -467,7 +470,7 @@ function NodeDetail({
         </p>
       )}
       {tools.length > 0 && (
-        <section aria-label="Tools" className="grid gap-2">
+        <section aria-label="Tools" className="grid grid-cols-1 gap-2">
           <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <WrenchIcon className="size-3.5" aria-hidden />
             Tools · {tools.length}

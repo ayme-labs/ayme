@@ -32,8 +32,9 @@ export const pressableIcon =
 
 /**
  * A chip that opens what it names, a page object or a model, with its
- * focus ring and press feedback: one shape wherever it shows.
+ * focus ring and press feedback: one shape wherever it shows. It never
+ * grows past its container: the name inside is the part that gives way.
  */
-export const chip = `inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 text-xs hover:border-ring ${focusRing} ${pressable}`;
+export const chip = `inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border bg-card px-2 text-xs hover:border-ring [&>svg]:flex-none ${focusRing} ${pressable}`;
 
 // Stryker restore StringLiteral
