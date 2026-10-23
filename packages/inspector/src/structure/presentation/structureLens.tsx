@@ -27,7 +27,6 @@ import {
   focusRing,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
   rowFocusRing,
-  rowPress,
   WhatTheModelSees,
 } from "../../shared";
 import type {
@@ -307,7 +306,6 @@ function NodeRow({
         rowClass,
         "cursor-default hover:bg-muted",
         rowFocusRing,
-        rowPress,
         node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
       style={{ paddingLeft: rowIndent(depth) }}

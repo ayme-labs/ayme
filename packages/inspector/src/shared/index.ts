@@ -24,7 +24,6 @@ export {
   pressable,
   pressableIcon,
   rowFocusRing,
-  rowPress,
 } from "./view/controls";
 export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./view/InspectorRoot";

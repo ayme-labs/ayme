@@ -36,7 +36,4 @@ export const pressableIcon =
  */
 export const chip = `inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 text-xs hover:border-ring ${focusRing} ${pressable}`;
 
-/** Press feedback for a full-width row in a tree or list. */
-export const rowPress = "";
-
 // Stryker restore StringLiteral

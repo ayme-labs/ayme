@@ -7,7 +7,6 @@ import {
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
   pressable,
   rowFocusRing,
-  rowPress,
 } from "../../shared";
 
 import type { HighlightTarget, OnHover } from "../domain/highlight";
@@ -104,8 +103,7 @@ export function NavigatorView({
                     type="button"
                     className={cn(
                       "flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted",
-                      rowFocusRing,
-                      rowPress
+                      rowFocusRing
                     )}
                     onClick={() => pick(result)}
                     onMouseEnter={() => onHover?.(highlightOf(result))}

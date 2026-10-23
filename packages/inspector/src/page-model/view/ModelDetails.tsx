@@ -22,7 +22,7 @@ import type {
 import type { OnHover, RenderRun } from "../../navigation";
 import { hoverHandlers } from "./hover";
 import { LiveMark } from "./LiveMark";
-import { chip, rowFocusRing, rowPress } from "../../shared";
+import { chip, rowFocusRing } from "../../shared";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
@@ -525,8 +525,7 @@ function OffPageAction({ action }: { action: ObjectAction }) {
 const rowClass = cn(
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-muted",
-  rowFocusRing,
-  rowPress
+  rowFocusRing
 );
 
 /** A row that goes somewhere: a child Page Object, an instance or a model. */
