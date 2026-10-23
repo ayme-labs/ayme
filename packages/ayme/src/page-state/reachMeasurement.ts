@@ -155,17 +155,29 @@ export function blockingAncestor(element: Element): Element | undefined {
  * `element` lies in it and takes no pointer events: what a modal library
  * (such as Radix) does instead of the native `:modal` or `inert`, hiding the
  * page's content from assistive technology and turning off its pointer
- * events. It blocks every click on `element` wherever `element` is
- * scrolled, so an element out of view is judged by it without the scroll a
- * hit test would need.
+ * events. While no descendant turns them back on either, it blocks every
+ * click on `element` wherever `element` is scrolled, so an element out of
+ * view is judged by it without the scroll a hit test would need.
  */
-// ponytail: a descendant that turns pointer events back on where the click
-// lands is not looked for; the hit test after the call's scroll still is.
+// ponytail: a shadow root's content is not looked into for pointer events
+// turned back on; the hit test after the call's scroll still is.
 function hiddenBehindLayer(element: Element): Element | undefined {
-  if (styleOf(element).pointerEvents !== "none") return undefined;
+  if (takesPointerEvents(element)) return undefined;
   for (let node: Element | null = element; node; node = parentElement(node))
     if (node.getAttribute("aria-hidden") === "true") return node;
   return undefined;
+}
+
+/** Whether `element` or a descendant of it takes pointer events. */
+function takesPointerEvents(element: Element): boolean {
+  if (styleOf(element).pointerEvents !== "none") return true;
+  const walker = element.ownerDocument.createTreeWalker(
+    element,
+    NodeFilter.SHOW_ELEMENT
+  );
+  for (let node = walker.nextNode(); node; node = walker.nextNode())
+    if (styleOf(node as Element).pointerEvents !== "none") return true;
+  return false;
 }
 
 /**

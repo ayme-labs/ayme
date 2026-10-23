@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage, requireAymeRuntimePage } from "../page-objects";
 import { listElementTools } from "../tools";
-import { reaches } from "./elementReach";
+import { assertRootReachable, reaches } from "./elementReach";
 import { errorText } from "../shared";
 import { buildToolOptions, planArguments } from "../goal-loop";
 import { lookAtPageStateForDocument } from "./pageState";
@@ -648,4 +648,51 @@ describe("Element reach timing in Chromium", () => {
     },
     60_000
   );
+});
+
+// A modal library such as Radix hides the rest of the page from assistive
+// technology and turns off its pointer events; a root out of view there is
+// refused where it is, before the call's own scroll.
+describe("a call on a Page Object Root out of view behind a modal layer, in Chromium", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    document.body.removeAttribute("style");
+    window.scrollTo(0, 0);
+  });
+
+  function openLayerOver(root: string) {
+    document.body.innerHTML = `
+      <div id="app">
+        <div style="height: 3000px"></div>
+        ${root}
+      </div>
+      <div role="menu" style="position: fixed; top: 0; pointer-events: auto">Menu</div>
+    `;
+    document.body.style.pointerEvents = "none";
+    document.querySelector("#app")!.setAttribute("aria-hidden", "true");
+  }
+
+  it("refuses it under the tool's name without scrolling", async () => {
+    openLayerOver('<section id="row">Row</section>');
+    const error = await assertRootReachable(
+      "ListPage.rows.open",
+      createPage().locator("#row")
+    ).then(() => "no error", errorText);
+
+    expect(error).toBe(
+      "RuntimeStateError: ListPage.rows.open is unavailable: a click would not reach it."
+    );
+    expect(window.scrollY).toBe(0);
+  });
+
+  it("leaves it to the hit test after the scroll when part of it takes pointer events again", async () => {
+    openLayerOver(
+      '<section id="row"><button style="pointer-events: auto; width: 100%">Row</button></section>'
+    );
+    await assertRootReachable(
+      "ListPage.rows.open",
+      createPage().locator("#row")
+    );
+    expect(window.scrollY).toBeGreaterThan(0);
+  });
 });
