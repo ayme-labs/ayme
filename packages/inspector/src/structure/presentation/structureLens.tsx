@@ -26,7 +26,6 @@ import {
   Empty,
   focusRing,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
-  rowFocusRing,
   rowPress,
   WhatTheModelSees,
 } from "../../shared";
@@ -306,7 +305,6 @@ function NodeRow({
       className={cn(
         rowClass,
         "cursor-default hover:bg-muted",
-        rowFocusRing,
         rowPress,
         node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
@@ -322,7 +320,11 @@ function NodeRow({
           // The wrappers' state, not the row's: the row's children show either way.
           aria-expanded={!outer}
           data-chain={toggle.ref}
-          className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground",
+            focusRing
+          )}
           style={{ left: rowIndent(depth) - 15 }}
           onClick={(event) => {
             event.stopPropagation();
@@ -351,6 +353,7 @@ function NodeRow({
             aria-label={`${outer.ref} generic`}
             aria-pressed={outer.ref === selectedRef}
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline",
               focusRing
             )}
@@ -385,7 +388,10 @@ function NodeRow({
       )}
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-baseline gap-1.5 text-left"
+        className={cn(
+          "flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm text-left",
+          focusRing
+        )}
       >
         <span className="shrink-0 text-primary">{node.ref}</span>
         <span className="shrink-0">{node.role}</span>

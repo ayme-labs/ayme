@@ -315,7 +315,8 @@ export function JsonEditor({
           className={cn(
             // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "cursor-pointer rounded-sm text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground",
-            focusRing
+            focusRing,
+            pressable
           )}
           onClick={() => {
             onFormat();
@@ -454,7 +455,8 @@ function LastResult({
             className={cn(
               // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "cursor-pointer rounded-sm text-xs font-semibold whitespace-nowrap underline underline-offset-2",
-              focusRing
+              focusRing,
+              pressable
             )}
             onClick={() => onShowRun(lastSuccess.id)}
           >

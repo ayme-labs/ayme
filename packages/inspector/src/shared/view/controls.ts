@@ -38,9 +38,11 @@ export const chip = `inline-flex h-6 items-center gap-1 rounded-full border bg-c
 
 /**
  * Press feedback for a full-width row in a tree or list: its background
- * changes the instant it's pressed, with no transition, so the row answers
- * on pointer-down without moving the rows around it.
+ * takes a step past its hover colour the instant it's pressed, with no
+ * transition, so the row answers on pointer-down without moving the rows
+ * around it.
  */
-export const rowPress = "active:bg-accent";
+export const rowPress =
+  "active:bg-[color-mix(in_oklab,var(--muted),var(--foreground)_8%)]";
 
 // Stryker restore StringLiteral

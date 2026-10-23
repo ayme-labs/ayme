@@ -5,6 +5,8 @@ import { ChevronDownIcon, CrosshairIcon } from "lucide-react";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
+import { pressable } from "../../shared";
+
 import type { RefNode, RefTreeRow } from "../domain/refTree";
 import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
 
@@ -163,7 +165,11 @@ function PickBanner({
       {prompt}
       <button
         type="button"
-        className="h-6.5 rounded-full bg-white/20 px-2.5 text-xs font-semibold outline-none hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-primary-foreground"
+        className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          "h-6.5 rounded-full bg-white/20 px-2.5 text-xs font-semibold outline-none hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-primary-foreground",
+          pressable
+        )}
         onClick={onCancel}
       >
         Cancel picking

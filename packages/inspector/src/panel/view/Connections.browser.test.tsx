@@ -28,11 +28,13 @@ function renderConnections({
   webMCP = { state: "disabled", message: "" },
   tools = [],
   onCopy = vi.fn(),
+  copied,
 }: {
   agent: AgentConnectionStatus;
   webMCP?: PublicationStatus;
   tools?: readonly { name: string; group?: string }[];
   onCopy?: (text: string) => void;
+  copied?: string;
 }) {
   unmounts.push(
     renderPart(
@@ -41,6 +43,7 @@ function renderConnections({
         webMCP={webMCP}
         tools={tools}
         onCopy={onCopy}
+        copied={copied}
       />
     )
   );
@@ -195,6 +198,19 @@ it("copies the option that turns a path on", async () => {
     ["agentConnection: true"],
     ["webMCP: { enabled: true }"],
   ]);
+});
+
+it("tells assistive technology which option it copied", async () => {
+  renderConnections({ agent: agents.off, copied: "agentConnection: true" });
+
+  await connections.open();
+
+  await expect
+    .poll(() => connections.agent.root.getByRole("status").textContent())
+    .toBe("Copied");
+  expect(await connections.webMCP.root.getByRole("status").textContent()).toBe(
+    ""
+  );
 });
 
 it("offers nothing to copy for a path that is on", async () => {
