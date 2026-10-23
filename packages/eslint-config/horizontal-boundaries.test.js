@@ -126,6 +126,17 @@ test("an import written with a .js extension resolves as TypeScript does", async
   );
 });
 
+test("a type written as import() is a dependency", async () => {
+  const [result] = await eslint.lintText(
+    'export type View = typeof import("../view/RunList").RunList;\n',
+    { filePath: join(packageRoot, "src/runs/domain/file.ts") }
+  );
+  assert.deepEqual(
+    result.messages.map((message) => message.ruleId),
+    ["horizontal-boundaries/dependencies"]
+  );
+});
+
 test("the rule holds across slices", async () => {
   assert.equal(
     await refused("src/runs/domain/file.ts", "../../tools/view/ToolList"),
