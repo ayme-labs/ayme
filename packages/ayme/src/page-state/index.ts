@@ -1,4 +1,4 @@
-export { ACTION_RESULT_NOTE } from "./domain/actionResult";
+export { ACTION_RESULT_NOTE, readRenderedChange } from "./domain/actionResult";
 export type { ActionFailure, ActionResult } from "./domain/actionResult";
 export { runAction } from "./infrastructure/actions";
 export { renderChangeRecord } from "./domain/changeRecord";
