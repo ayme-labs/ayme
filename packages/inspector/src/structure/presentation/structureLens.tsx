@@ -321,6 +321,7 @@ function NodeRow({
           aria-expanded={!outer}
           data-chain={toggle.ref}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground",
             focusRing
           )}
@@ -340,6 +341,7 @@ function NodeRow({
           }}
         >
           <ChevronRightIcon
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,BooleanLiteral: Tailwind classes are styling, which no test reads.
             className={cn("size-3", !outer && "rotate-90")}
             aria-hidden
           />
@@ -352,6 +354,7 @@ function NodeRow({
             aria-label={`${outer.ref} generic`}
             aria-pressed={outer.ref === selectedRef}
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline",
               focusRing
             )}
@@ -448,6 +451,7 @@ function NodeDetail({
                 key={member}
                 type="button"
                 title={`Open ${opens}`}
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                 className={cn(chip, "max-w-full")}
                 onClick={() => onOpenOwner(owner)}
               >

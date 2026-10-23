@@ -230,6 +230,7 @@ function rowElement(tree: HTMLElement | null, path: string) {
 
 function rowClass(selected: boolean) {
   return cn(
+    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
     "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left hover:bg-muted",
     rowFocusRing,
     rowPress,
@@ -286,6 +287,7 @@ function TreeRow({
         live === undefined ? undefined : live ? "On this page" : "Not on page"
       }
       className={rowClass(selected)}
+      // Stryker disable next-line ObjectLiteral,ArithmeticOperator: the indent is styling, which no test reads.
       style={{ paddingLeft: 8 + depth * 16 }}
       onClick={onClick}
       onKeyDown={onKeyDown}
@@ -304,7 +306,10 @@ function TreeRow({
             onOpenChange?.(!open);
           }}
         >
-          <ChevronRightIcon className={cn("size-3", open && "rotate-90")} />
+          <ChevronRightIcon
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+            className={cn("size-3", open && "rotate-90")}
+          />
         </span>
       )}
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
@@ -351,6 +356,7 @@ function Pane({
         type="button"
         aria-expanded={open}
         className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground",
           rowFocusRing
         )}

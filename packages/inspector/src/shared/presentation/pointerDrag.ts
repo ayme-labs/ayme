@@ -40,7 +40,7 @@ export function usePointerDrag() {
       const deltaY = moveEvent.clientY - startY;
       if (!moved && Math.abs(deltaX) + Math.abs(deltaY) < DRAG_THRESHOLD)
         return;
-      // Stryker disable next-line ConditionalExpression,BooleanLiteral: a dispatched pointer can't be captured, so no component test sees it.
+      // Stryker disable next-line ConditionalExpression,BooleanLiteral,CallExpression: a dispatched pointer can't be captured, so no component test sees it.
       if (!moved) capture(handle, pointerId);
       moved = true;
       moveEvent.preventDefault();
@@ -61,6 +61,7 @@ export function usePointerDrag() {
   };
 }
 
+// Stryker disable next-line BlockStatement: a dispatched pointer can't be captured, so no component test sees it.
 function capture(handle: Element, pointerId: number) {
   // Stryker disable next-line BlockStatement: a dispatched pointer can't be captured, so no component test sees it.
   try {
