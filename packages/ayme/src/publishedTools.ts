@@ -12,7 +12,12 @@ import {
   listCustomTools,
   type PublishedElementTool,
 } from "./elementTools";
-import { listRegisteredPomTools, type CallerAwarePomTool } from "./registry";
+import { returnPomPaths } from "./actionTool";
+import {
+  listRegisteredPomTools,
+  publishedToolPrefixes,
+  type CallerAwarePomTool,
+} from "./registry";
 import type { ToolAvailability } from "./pomInstance";
 import { RuntimeStateError } from "./errors";
 import { listPeekTools, type PeekTool } from "./peek";
@@ -50,6 +55,13 @@ export type PublishedToolInfo = Readonly<{
    * which the page shows afterwards.
    */
   returnPoms?: readonly string[];
+  /**
+   * For a Page Object Tool: the prefixes the tools of each of its
+   * `returnPoms` are published under, by class name, e.g.
+   * `{ ResponseFilterPopover: ["SurveyResponsesPage.filter"] }`. A class
+   * whose actions no registered Page Object publishes has no entry.
+   */
+  returnPomPaths?: Readonly<Record<string, readonly string[]>>;
   inputSchema: JsonSchema;
   group: PublishedToolGroup;
 }>;
@@ -203,6 +215,7 @@ export async function listElementToolTargets(
 
 /** Each tool's reading. */
 function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
+  const prefixes = publishedToolPrefixes();
   return Object.freeze(
     tools.map(({ tool, group, available, reason }) =>
       Object.freeze({
@@ -211,7 +224,10 @@ function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
           ? {}
           : { description: tool.description }),
         ...("returnPoms" in tool && tool.returnPoms
-          ? { returnPoms: tool.returnPoms }
+          ? {
+              returnPoms: tool.returnPoms,
+              ...returnPomPaths(tool.returnPoms, prefixes),
+            }
           : {}),
         inputSchema: tool.inputSchema,
         group,
