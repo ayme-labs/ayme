@@ -49,7 +49,7 @@ export function useRunsTimeline(focus: RunFocus | undefined, open: boolean) {
     toggleResult: (id: string) =>
       setOpenResults((opened) => toggled(opened, id)),
     copiedResult: copied,
-    copyResult: copy,
+    copyResult: (id: string, text: string) => copy(text, id),
     openImage: openImageFullSize,
     shownAt,
   };

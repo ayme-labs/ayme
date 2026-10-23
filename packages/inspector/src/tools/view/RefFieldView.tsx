@@ -166,6 +166,7 @@ function PickBanner({
       <button
         type="button"
         className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "h-6.5 rounded-full bg-white/20 px-2.5 text-xs font-semibold outline-none hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-primary-foreground",
           pressable
         )}
