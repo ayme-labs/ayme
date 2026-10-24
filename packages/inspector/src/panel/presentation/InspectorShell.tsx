@@ -161,6 +161,7 @@ export function InspectorShell({
     const gliding = glide.gliding();
     let origin: Point | undefined;
     let dock: Dock | undefined;
+    // Stryker disable next-line ArrayDeclaration: a sample without a time is never among the last 100ms, so the release speed leaves it out.
     const path: Sample[] = [];
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
