@@ -50,17 +50,20 @@ function simplify(samples: readonly SpringSample[]) {
     const end = samples[to];
     let farthest = -1;
     let distance = TOLERANCE;
+    // Stryker disable next-line EqualityOperator: the end sample lies on the line, so reading it too changes nothing.
     for (let index = from + 1; index < to; index += 1) {
       const { at, value } = samples[index];
       const share = (at - start.at) / (end.at - start.at);
       const off = Math.abs(
         value - (start.value + share * (end.value - start.value))
       );
+      // Stryker disable next-line EqualityOperator: of two samples just as far off the line, keeping either keeps it as close.
       if (off > distance) {
         distance = off;
         farthest = index;
       }
     }
+    // Stryker disable next-line EqualityOperator: the farthest sample is never the first, so it's never 0.
     if (farthest < 0) return;
     kept.add(farthest);
     keepBetween(from, farthest);
@@ -94,6 +97,7 @@ export function releaseVelocity(
   );
   const first = recent[0];
   const last = recent.at(-1);
+  // Stryker disable next-line LogicalOperator: the first and the last come from one list, so neither is there without the other.
   if (!first || !last || last.time === first.time) return { x: 0, y: 0 };
   const seconds = (releasedAt - first.time) / 1000;
   return { x: (last.x - first.x) / seconds, y: (last.y - first.y) / seconds };

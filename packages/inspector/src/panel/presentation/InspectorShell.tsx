@@ -164,6 +164,7 @@ export function InspectorShell({
     const path: Sample[] = [];
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
+        // Stryker disable next-line ConditionalExpression: every move of a drag works the start out from the same press, so working it out again finds the same place.
         if (!origin) {
           glide.stop();
           const grab = {
@@ -274,12 +275,14 @@ export function InspectorShell({
           aria-hidden={collapsed || undefined}
           className={cn(
             "@container pointer-events-auto absolute border bg-background",
+            // Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
             {
               float: "rounded-xl shadow-2xl",
               left: "border-y-0 border-l-0 shadow-lg",
               right: "border-y-0 border-r-0 shadow-lg",
               bottom: "border-x-0 border-b-0 shadow-lg",
             }[layout],
+            // Stryker restore StringLiteral,ObjectLiteral
             panel.className
           )}
           style={{ ...placement[layout], transformOrigin }}

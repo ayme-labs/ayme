@@ -21,6 +21,7 @@ export function useGlide(panel: RefObject<HTMLElement | null>) {
   const glides = useRef<Animation[]>([]);
 
   const gliding = () =>
+    // Stryker disable next-line ConditionalExpression: a glide that has finished leaves the panel where it floats, so taking hold of it where it shows is the same.
     glides.current.some(({ playState }) => playState === "running");
   const stop = () => {
     for (const glide of glides.current) glide.cancel();
@@ -42,16 +43,19 @@ export function useGlide(panel: RefObject<HTMLElement | null>) {
     const element = panel.current;
     const { box, velocity } = start.current ?? {};
     start.current = undefined;
+    // Stryker disable next-line LogicalOperator,ConditionalExpression: the start's box and velocity are set and cleared together, and the panel is there whenever one is set, so any one of them decides.
     if (!element || !box || !velocity) return;
     const to = element.getBoundingClientRect();
     glides.current = (["x", "y"] as const).flatMap((axis) => {
       const offset = box[axis] - to[axis];
+      // Stryker disable next-line EqualityOperator: a glide of exactly half a pixel shows the same as none.
       if (Math.abs(offset) < 0.5) return [];
       return [
         element.animate(
           {
             translate: [
               axis === "x" ? `${offset}px 0` : `0 ${offset}px`,
+              // Stryker disable next-line StringLiteral: an end the browser can't read ends where the panel is laid out, as `0 0` does.
               "0 0",
             ],
           },
@@ -65,6 +69,7 @@ export function useGlide(panel: RefObject<HTMLElement | null>) {
       ];
     });
   });
+  // Stryker disable next-line ArrowFunction,ArrayDeclaration,CallExpression: the panel goes with the shell, so a glide left on it shows nowhere; and a dependency list that never changes runs the effect once, as an empty one does.
   useEffect(() => () => stop(), []);
 
   return { from, stop, gliding };

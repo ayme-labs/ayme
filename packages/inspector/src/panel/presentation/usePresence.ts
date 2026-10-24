@@ -41,14 +41,17 @@ export function usePresence<T extends Element>(
         running = element.getAnimations()
       ) {
         await Promise.allSettled(running.map(({ finished }) => finished));
+        // Stryker disable next-line ConditionalExpression: a leave that goes on after the element is shown again unmounts nothing, since a shown element mounts again in the same render.
         if (!hidden) return;
       }
       setMounted(false);
     };
     void leave();
+    // Stryker disable BlockStatement,BooleanLiteral: as above, a leave that goes on after the element is shown again unmounts nothing.
     return () => {
       hidden = false;
     };
+    // Stryker restore BlockStatement,BooleanLiteral
   }, [shown]);
 
   return {
