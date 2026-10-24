@@ -8,19 +8,17 @@ tools are missing, read [Browser setup](browser-setup.md).
 - When a ref fails to resolve, call `snapshot` and use the ref it prints for
   that node; if that ref fails the same way, use a selector such as
   `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
-  collection tool the ref of the item's Page Object Root. A nested Page
-  Object takes the tool of the first place on its label's path that holds
-  the same Page Object class, a collection's items or a single child:
-  `FilesPage.items[0].children[0]` goes to `FilesPage.items.expand`, and no
-  `FilesPage.items.children.expand` exists.
-  A subclass has tools of its own, so the tool list may hold a deeper path,
-  such as `ProjectsPage.pinned.subtasks.*` for the subtasks of pinned rows;
-  [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
-  has the rule.
+  collection tool the ref of the item's Page Object Root.
   [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
+- A nested item may have no tools under its own path. When the page state
+  labels it `FilesPage.items[0].children[0]` and the tool list has no
+  `FilesPage.items.children.expand`, call the nearest tool above it on that
+  path, `FilesPage.items.expand`, with its ref.
+  [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
+  says which tool takes which nested item.
 - When `goal` hands over with `needs_value` because none of a parameter's
   allowed values belongs in it, the loop offered that parameter only its
   allowed values, so a Goal Value of a type it does not take changes nothing.
