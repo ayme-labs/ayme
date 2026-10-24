@@ -239,28 +239,16 @@ const LOCATOR_EXPRESSION =
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
  * a Structural Ref, else a selector, which must match exactly one element.
- * With `within`, a selector is matched among the elements inside that
- * container, and only the element is returned: a selector that holds there
- * need not address the element on the whole page. A Structural Ref names its
- * element wherever it is.
+ * With `scope`, a selector is matched as `page.locator(scope).locator(…)`
+ * matches it, and the selector returned is that chain; a Structural Ref names
+ * its element wherever it is.
  */
 export async function resolveElementTarget(
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
-  currentDocument: Document
-): Promise<ResolvedTarget>;
-export async function resolveElementTarget(
-  definition: Pick<ElementToolDefinition, "label" | "targetField">,
-  requested: string,
   currentDocument: Document,
-  within: Element | undefined
-): Promise<Omit<ResolvedTarget, "selector">>;
-export async function resolveElementTarget(
-  definition: Pick<ElementToolDefinition, "label" | "targetField">,
-  requested: string,
-  currentDocument: Document,
-  within?: Element
-): Promise<ResolvedTarget | Omit<ResolvedTarget, "selector">> {
+  scope?: string
+): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
     const node = await resolveRef(requested, definition.label, currentDocument);
     return {
@@ -278,10 +266,13 @@ export async function resolveElementTarget(
     throw new ToolInputError(
       failure("it is a Playwright locator expression, which tools do not take")
     );
-  const page = requireAymeRuntimePage();
+  // Chained as Playwright's Locator.locator chains a selector.
+  const selector = scope === undefined ? requested : `${scope} >> ${requested}`;
   let elements: Element[];
   try {
-    elements = resolveLocatorElements(page.locator(requested));
+    elements = resolveLocatorElements(
+      requireAymeRuntimePage().locator(selector)
+    );
   } catch (error) {
     // The parser's diagnosis stays; the advice Playwright ends it with goes.
     const diagnosis = (
@@ -294,8 +285,6 @@ export async function resolveElementTarget(
       )
     );
   }
-  if (within)
-    elements = elements.filter((element) => isInside(element, within));
   if (elements.length === 0)
     throw new RefResolutionError(
       failure("the selector matches no element", hint)
@@ -306,18 +295,7 @@ export async function resolveElementTarget(
         `the selector matches ${elements.length} elements; it must match exactly one`
       )
     );
-  return within
-    ? { element: elements[0]! }
-    : { element: elements[0]!, selector: requested };
-}
-
-/** Package-internal: whether `element` lies inside `container`, across shadow roots. */
-export function isInside(element: Element, container: Element): boolean {
-  for (let node = element.parentNode; node;) {
-    if (node === container) return true;
-    node = node instanceof ShadowRoot ? node.host : node.parentNode;
-  }
-  return false;
+  return { element: elements[0]!, selector };
 }
 
 /** Package-internal: the browser Page's locator for a resolved element. */

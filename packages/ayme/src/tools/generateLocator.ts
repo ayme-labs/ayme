@@ -6,12 +6,14 @@ import {
   refFromSelector,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
-import { generateLocator } from "@ayme-dev/playwright-lite/internal";
+import {
+  generateLocator,
+  resolveLocatorElements,
+} from "@ayme-dev/playwright-lite/internal";
 import type { JsonSchema } from "../shared";
 import { asSentence } from "../shared";
 import {
   requireCurrentDocument,
-  isInside,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
@@ -87,33 +89,39 @@ function recommendLocator(
 const reason = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-type Container = { within: string; element: Element };
+type Container = { within: string; element: Element; selector: string };
+
+/** Whether `container.locator(selector)` finds `element`, as Page Object code would. */
+function holds(container: Container, selector: string, element: Element) {
+  return resolveLocatorElements(
+    requireAymeRuntimePage().locator(container.selector).locator(selector)
+  ).includes(element);
+}
 
 async function entryFor(
   target: string,
   container: Container | undefined,
   currentDocument: Document
 ): Promise<Entry> {
+  // A selector is matched inside the container; a Structural Ref names its
+  // element wherever it is, so it is checked to be inside.
+  const isRef = parseStructuralRef(target) !== undefined;
   const fail = (why: string) => ({
     target,
-    error: (parseStructuralRef(target) ? refFailure : selectorFailure)(
-      TARGET_LABEL,
-      target,
-      why
-    ),
+    error: (isRef ? refFailure : selectorFailure)(TARGET_LABEL, target, why),
   });
-  let element: Element;
+  let element: Element, selector: string;
   try {
-    ({ element } = await resolveElementTarget(
+    ({ element, selector } = await resolveElementTarget(
       definition(TARGET_LABEL),
       target,
       currentDocument,
-      container?.element
+      isRef ? undefined : container?.selector
     ));
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
   }
-  if (container && !isInside(element, container.element))
+  if (container && isRef && !holds(container, selector, element))
     return fail(`it is not inside the container "${container.within}"`);
   try {
     return { target, locator: recommendLocator(element, container?.element) };
@@ -129,12 +137,12 @@ async function groupFor(
   let container: Container | undefined;
   if (group.within !== undefined)
     try {
-      const { element } = await resolveElementTarget(
+      const { element, selector } = await resolveElementTarget(
         definition(WITHIN_LABEL),
         group.within,
         currentDocument
       );
-      container = { within: group.within, element };
+      container = { within: group.within, element, selector };
     } catch (error) {
       return { within: group.within, error: asSentence(reason(error)) };
     }
