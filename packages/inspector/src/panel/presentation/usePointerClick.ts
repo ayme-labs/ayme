@@ -10,14 +10,31 @@ export function usePointerClick() {
   const pointer = useRef(true);
   // Stryker disable ArrayDeclaration: a dependency list that never changes runs the effect once, as an empty one does.
   useEffect(() => {
+    // A menu item a pointer was pressed on elsewhere and let go of on it
+    // clicks itself from within that pointerup, and counts no clicks.
+    let releasing = false;
+    const release = () => {
+      releasing = true;
+    };
+    const released = () => {
+      releasing = false;
+    };
     // A click no pointer made, from a key or a screen reader, counts none.
     const onClick = (event: MouseEvent) => {
-      pointer.current = event.detail > 0;
+      pointer.current = event.detail > 0 || releasing;
     };
-    // Captured, so it's set before the click's own handlers read it.
+    // Captured, so each is set before the page's own handlers run, and
+    // the release is let go of only once they all have.
+    window.addEventListener("pointerup", release, true);
+    window.addEventListener("pointerup", released);
     window.addEventListener("click", onClick, true);
-    // Stryker disable next-line ArrowFunction,BlockStatement,CallExpression,StringLiteral,BooleanLiteral: a listener left after the panel goes away changes nothing anyone sees.
-    return () => window.removeEventListener("click", onClick, true);
+    // Stryker disable ArrowFunction,BlockStatement,CallExpression,StringLiteral,BooleanLiteral: listeners left after the panel goes away change nothing anyone sees.
+    return () => {
+      window.removeEventListener("pointerup", release, true);
+      window.removeEventListener("pointerup", released);
+      window.removeEventListener("click", onClick, true);
+    };
+    // Stryker restore ArrowFunction,BlockStatement,CallExpression,StringLiteral,BooleanLiteral
   }, []);
   // Stryker restore ArrayDeclaration
   return pointer;

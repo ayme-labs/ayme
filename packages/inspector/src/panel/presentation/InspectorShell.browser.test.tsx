@@ -305,9 +305,35 @@ describe("motion", () => {
     expect(await animations()).toEqual([]);
   });
 
-  it("docks from the menu at once when chosen by keyboard", async () => {
+  it("slides to a layout chosen by pressing the menu's button and letting go on it", async () => {
     slides();
     renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    const pointer = {
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    };
+
+    await header.layoutMenu.trigger.dispatchEvent("pointerdown", {
+      ...pointer,
+      buttons: 1,
+    });
+    await header.layoutMenu
+      .option("Dock right")
+      .dispatchEvent("pointerup", { ...pointer, buttons: 0 });
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).toHaveBeenCalled();
+  });
+
+  it("docks from the menu at once when chosen by keyboard, after a pointer", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.title.click();
 
     await header.layoutMenu.trigger.press("Enter");
     await header.layoutMenu.option("Dock right").press("Enter");
