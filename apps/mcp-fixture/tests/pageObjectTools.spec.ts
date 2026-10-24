@@ -55,14 +55,18 @@ test("every result notes the tools that appeared or disappeared since the previo
   connect,
   page,
 }) => {
+  // Connecting waits until the MCP tool list has the page's tools, so the
+  // agent has seen them.
   await connect();
-  const afterPairing = await agent.call("ayme_list_tools");
-  expect(afterPairing.note).toContain("Appeared:");
-  expect(afterPairing.note).toContain("snapshot");
   expect((await agent.call("ayme_list_tools")).note).toBeUndefined();
 
-  await showBasket(page);
-  await expect.poll(() => agent.pageToolNames()).toContain(BASKET_TOOL);
+  // From here the agent waits for the server's list change and doesn't re-list.
+  const listChanged = async (change: () => Promise<void>) => {
+    const changes = agent.toolListChanges();
+    await change();
+    await expect.poll(() => agent.toolListChanges()).toBeGreaterThan(changes);
+  };
+  await listChanged(() => showBasket(page));
   const listed = await agent.call("ayme_list_tools");
   // The tool's own result stays as it is; the note follows it.
   expect(
@@ -74,16 +78,14 @@ test("every result notes the tools that appeared or disappeared since the previo
   expect(listed.note).not.toContain("Disappeared");
   expect((await agent.call(BASKET_TOOL)).note).toBeUndefined();
 
-  await hideBasket(page);
-  await expect.poll(() => agent.pageToolNames()).not.toContain(BASKET_TOOL);
+  await listChanged(() => hideBasket(page));
   const called = await agent.call("ayme_call", { tool: "snapshot" });
   expect(called.isError, called.text).toBe(false);
   expect(JSON.parse(called.text).structure).toContain('heading "Groceries"');
   expect(called.note).toContain(`Disappeared: ${BASKET_TOOLS}.`);
   expect(called.note).not.toContain("Appeared");
 
-  await showBasket(page);
-  await expect.poll(() => agent.pageToolNames()).toContain(BASKET_TOOL);
+  await listChanged(() => showBasket(page));
   const connected = await agent.call("ayme_connect", { url: page.url() });
   expect(connected.note).toContain(`Appeared: ${BASKET_TOOLS}`);
 });

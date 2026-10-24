@@ -31,9 +31,12 @@ import {
  * when a tool merely becomes available or unavailable: the list has no
  * field for that, and a cached list would churn (ADR-0035). One server
  * serves one agent, so every tool result also carries, as a text item after
- * the tool's own, a note of the tools that appeared, disappeared, became
- * available or unavailable or were hidden since the previous tool call;
- * before the first call the agent has seen no tools. A server tool's input
+ * the tool's own, a note of the tools that appeared, disappeared, changed
+ * their parameters or description, became available or unavailable or were
+ * hidden since the previous tool call or,
+ * when later, the agent's last read of the tool list; an agent that has
+ * done neither has seen no tools. The list says nothing of availability,
+ * so a tool it first served counts as available. A server tool's input
  * is checked against its input schema before the tool runs, with arguments
  * left out taken as `{}`; a page tool's input is the page's to check.
  */
@@ -72,16 +75,36 @@ export function createMcpToolServer({
     if (server.transport) void server.sendToolListChanged().catch(() => {});
   });
 
-  server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: [
-      ...serverTools.map(({ name, description, inputSchema }) => ({
+  // The tools as of the previous result or tool list, whichever came later.
+  let seen: ToolState = { tools: [], hidden: [] };
+
+  server.setRequestHandler(ListToolsRequestSchema, () => {
+    const tools = pageTools();
+    // The list shows each tool's description and input schema but neither
+    // availability nor hidden tools, so the agent keeps what it last heard
+    // of those, and takes a tool new to it as available.
+    seen = {
+      tools: tools.map(({ name, description, inputSchema }) => ({
+        ...(seen.tools.find((tool) => tool.name === name) ?? {
+          available: true,
+        }),
         name,
         description,
         inputSchema,
       })),
-      ...pageTools().map(mcpPageTool),
-    ],
-  }));
+      hidden: seen.hidden,
+    };
+    return {
+      tools: [
+        ...serverTools.map(({ name, description, inputSchema }) => ({
+          name,
+          description,
+          inputSchema,
+        })),
+        ...tools.map(mcpPageTool),
+      ],
+    };
+  });
 
   const wasOffered = rememberOfferedNames(connection);
   const run = (name: string, input: Record<string, unknown>) => {
@@ -104,19 +127,14 @@ export function createMcpToolServer({
     );
   };
 
-  // The tools as of the previous result, taken once that result is ready.
-  let seen: ToolState = { tools: [], hidden: [] };
   server.setRequestHandler(
     CallToolRequestSchema,
     async (request): Promise<ToolResult> => {
       const { name, arguments: input = {} } = request.params;
       const result = await run(name, input);
+      // Taken once the result is ready.
       const current: ToolState = {
-        tools: pageTools().map(({ name, available, reason }) => ({
-          name,
-          available,
-          reason,
-        })),
+        tools: pageTools(),
         hidden: connection.hidden,
       };
       const note = toolChangeNote(seen, current);

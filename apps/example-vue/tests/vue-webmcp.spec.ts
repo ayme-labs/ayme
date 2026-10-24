@@ -493,7 +493,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           ref: {
             type: "string",
             description:
-              "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+              "Structural Ref of the instance's Page Object Root, as labelled in the page state. Also takes the ref of an instance of the same class nested under one, at any depth.",
           },
           args: {
             type: "object",
@@ -515,7 +515,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           ref: {
             type: "string",
             description:
-              "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+              "Structural Ref of the instance's Page Object Root, as labelled in the page state. Also takes the ref of an instance of the same class nested under one, at any depth.",
           },
           args: {
             type: "object",
