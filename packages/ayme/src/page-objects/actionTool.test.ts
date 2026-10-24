@@ -115,6 +115,16 @@ describe("returned Page Objects by their published tool prefixes", () => {
     ).toBe("Then shows SettingsPage.");
   });
 
+  it("keeps a class named like an Object property bare when it has no prefix", () => {
+    expect(
+      agentDescription({
+        name: "Page.open",
+        returnPoms: ["Dialog", "constructor"],
+        returnPomPaths: { Dialog: ["Page.dialog"] },
+      })
+    ).toBe("Then shows Page.dialog (Dialog) or constructor.");
+  });
+
   it("keeps only the returned classes that have a prefix", () => {
     const prefixes = new Map([
       ["Dialog", ["Page.dialog"]],

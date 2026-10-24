@@ -92,7 +92,10 @@ type DescribedTool = {
  * that is its one prefix, as for a page, or it has none.
  */
 function shownPom(className: string, tool: DescribedTool): string {
-  const paths = tool.returnPomPaths?.[className] ?? [];
+  const paths =
+    tool.returnPomPaths && Object.hasOwn(tool.returnPomPaths, className)
+      ? tool.returnPomPaths[className]!
+      : [];
   if (!paths.length || (paths.length === 1 && paths[0] === className))
     return className;
   return `${paths.join(", ")} (${className})`;
