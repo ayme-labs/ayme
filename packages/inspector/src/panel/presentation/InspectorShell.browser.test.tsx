@@ -568,6 +568,53 @@ describe("motion", () => {
     expect(await glides()).toEqual([]);
   });
 
+  it("lands at once when the layout it's gliding to is chosen again by keyboard", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Dock right");
+    await holdGlides(100);
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => glides()).toEqual([]);
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
+  it("grows the rest of the way out of the logo at once when a layout is chosen by keyboard", async () => {
+    await emulateMotion("no-preference");
+    renderShell({
+      collapsed: true,
+      layout: "float",
+      float: floating,
+      sideWidth: 600,
+    });
+    await logo.open();
+    await inspector.panel.evaluate((panel) => {
+      for (const animation of panel.getAnimations()) {
+        animation.pause();
+        animation.currentTime = 0;
+      }
+    });
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(await transitions()).toEqual([]);
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
   it("keeps its glide when the layout it's gliding to is chosen again", async () => {
     await emulateMotion("no-preference");
     renderShell({ layout: "float", float: floating, sideWidth: 600 });
@@ -867,6 +914,41 @@ describe("motion", () => {
         .locator("..")
         .evaluate((frame) => frame.getAnimations().length)
     ).toBe(0);
+  });
+
+  it("lands a gliding panel when collapsed by keyboard, so it opens again still", async () => {
+    await glideToFloat();
+    // The menu hands focus back to its button once it has gone.
+    await expect
+      .poll(() =>
+        header.layoutMenu.trigger.evaluate((trigger) =>
+          trigger.matches(":focus")
+        )
+      )
+      .toBe(true);
+
+    await header.collapseButton.press("Enter");
+    expect(await aside.count()).toBe(0);
+    await logo.root.press("Enter");
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    expect(await glides()).toEqual([]);
+  });
+
+  it("goes on gliding as it shrinks into the logo, collapsed with a pointer", async () => {
+    await glideToFloat();
+
+    // A plain click waits until the gliding panel holds still.
+    await header.collapseButton.click({ force: true });
+
+    expect(
+      await aside.evaluate(
+        (panel) =>
+          panel
+            .getAnimations()
+            .filter((animation) => !(animation instanceof CSSTransition)).length
+      )
+    ).toBe(2);
   });
 
   it("lets a drag held through a collapse by key go on, and opens where it left the panel", async () => {

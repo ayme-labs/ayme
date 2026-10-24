@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { PortalContainerProvider } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
@@ -13,16 +13,18 @@ export function InspectorRootView({
   rootRef,
   dark,
   switching,
+  portalContainer,
+  portalRef,
   children,
 }: {
   rootRef: Ref<HTMLDivElement>;
   dark: boolean;
   switching: boolean;
+  /** The container popovers and menus portal into, once it's mounted. */
+  portalContainer: HTMLElement | null;
+  portalRef: Ref<HTMLDivElement>;
   children: ReactNode;
 }) {
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
-    null
-  );
   return (
     <div
       ref={rootRef}
@@ -36,7 +38,7 @@ export function InspectorRootView({
       <PortalContainerProvider value={portalContainer}>
         {children}
         <div
-          ref={setPortalContainer}
+          ref={portalRef}
           className="pointer-events-auto"
           data-ayme-inspector-portal
         />

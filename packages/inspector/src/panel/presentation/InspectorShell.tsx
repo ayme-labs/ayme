@@ -141,6 +141,8 @@ export function InspectorShell({
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
     setMoving(pointerClick.current);
+    // A key or a screen reader lands a glide under way too.
+    if (!pointerClick.current) glide.stop();
     onPreferencesChange({ collapsed: next });
   };
   // Collapsing, the panel shrinks toward the logo as the logo grows in;
@@ -325,11 +327,12 @@ export function InspectorShell({
               theme={preferences.theme}
               onThemeChange={(theme) => onPreferencesChange({ theme })}
               onLayoutChange={(next) => {
-                if (next !== layout) {
-                  // A layout chosen by a key or a screen reader lands at once.
-                  if (pointerClick.current) glide.from();
-                  else glide.stop();
-                }
+                // A layout chosen by a key or a screen reader lands at once,
+                // the opening and any glide with it, though it's the same one.
+                if (!pointerClick.current) {
+                  glide.stop();
+                  panel.finish();
+                } else if (next !== layout) glide.from();
                 onPreferencesChange({ layout: next });
               }}
               onCollapse={() => setCollapsed(true)}
