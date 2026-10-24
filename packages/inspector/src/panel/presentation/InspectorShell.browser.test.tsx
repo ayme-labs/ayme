@@ -338,11 +338,18 @@ describe("motion", () => {
     return new KeyframeEffect(null, null, { easing }).getTiming().easing;
   }
 
-  /** Moves every glide on to a moment of it, to play on from there. */
-  function seekGlides(time: number) {
+  /**
+   * Moves every glide on to a moment of it, to play on from there at a tenth
+   * of its speed. The glides slow on their own, not with the timeline: in CI,
+   * a glide let go under a slowed timeline went back to long before its start.
+   */
+  function slowGlides(time: number) {
     return inspector.panel.evaluate((panel, at) => {
-      for (const animation of panel.getAnimations())
-        if (!(animation instanceof CSSTransition)) animation.currentTime = at;
+      for (const animation of panel.getAnimations()) {
+        if (animation instanceof CSSTransition) continue;
+        animation.playbackRate = 0.1;
+        animation.currentTime = at;
+      }
     }, time);
   }
 
@@ -390,8 +397,8 @@ describe("motion", () => {
     await emulateMotion("no-preference");
     renderShell({ layout: "right", float: floating, sideWidth: 600 });
     await header.layoutMenu.choose("Floating");
-    await slowAnimations(0.1);
-    await seekGlides(100);
+    await slowGlides(100);
+    expect(await glides()).toHaveLength(2);
   }
 
   it("glides to a layout chosen from the menu from where it was, at its new size from the start", async () => {
@@ -634,7 +641,6 @@ describe("motion", () => {
     await expect
       .poll(async () => (await glides())[0]?.time)
       .toBeGreaterThan(held);
-    await slowAnimations(1);
     await expect.poll(() => shell.box()).toEqual(floating);
   });
 
