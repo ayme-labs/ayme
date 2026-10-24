@@ -6,14 +6,20 @@ import type { RunFocus } from "../domain/run";
 /**
  * The timeline's own state: which runs are closed, which results are open,
  * the run a focus brings into view, opened and flashing briefly, the
- * result just copied, and when the timeline last opened.
+ * result just copied, and when the timeline last opened. Once a focus is in
+ * view, `onFocusShown` lets it go, so a remount doesn't show it again.
  */
-export function useRunsTimeline(focus: RunFocus | undefined, open: boolean) {
+export function useRunsTimeline(
+  focus: RunFocus | undefined,
+  open: boolean,
+  onFocusShown?: () => void
+) {
   const [closedRuns, setClosedRuns] = useState<ReadonlySet<string>>(new Set());
   const [openResults, setOpenResults] = useState<ReadonlySet<string>>(
     new Set()
   );
-  const [flashing, setFlashing] = useState<string>();
+  // The focus itself, not its run, so asking for a run again flashes anew.
+  const [flashing, setFlashing] = useState<RunFocus>();
   const { copied, copy } = useCopy();
   const timeline = useRef<HTMLOListElement>(null);
   const [shownAt, setShownAt] = useState(Date.now);
@@ -31,20 +37,25 @@ export function useRunsTimeline(focus: RunFocus | undefined, open: boolean) {
       return next;
     });
     setOpenResults((opened) => new Set(opened).add(focus.runId));
-    setFlashing(focus.runId);
+    setFlashing(focus);
     const row = timeline.current?.querySelector(
       `[data-run-id="${focus.runId}"]`
     );
     row?.scrollIntoView({ block: "nearest" });
+    onFocusShown?.();
+  }, [focus]);
+
+  useEffect(() => {
+    if (!flashing) return;
     const timer = setTimeout(() => setFlashing(undefined), 1800);
     return () => clearTimeout(timer);
-  }, [focus]);
+  }, [flashing]);
 
   return {
     timeline,
     closedRuns,
     openResults,
-    flashing,
+    flashing: flashing?.runId,
     toggleRun: (id: string) => setClosedRuns((closed) => toggled(closed, id)),
     toggleResult: (id: string) =>
       setOpenResults((opened) => toggled(opened, id)),

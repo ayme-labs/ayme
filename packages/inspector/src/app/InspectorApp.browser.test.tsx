@@ -253,6 +253,27 @@ describe("the Inspector", () => {
       .toBe(JSON.stringify({ saved: true }, null, 2));
   });
 
+  it("shows a run it was asked to show once, not again when the panel reopens", async () => {
+    const tool = saveTool("editor");
+    mockRegistry([editor("editor", tool)], [tool]);
+    startedAyme.tools.run.mockResolvedValue({ saved: true });
+    renderApp();
+    const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    const run = inspector.runs.latest("Editor.save");
+    await save.lastSuccessLink.click();
+    await expect
+      .poll(() => run.result.textContent())
+      .toBe(JSON.stringify({ saved: true }, null, 2));
+
+    await inspector.collapse();
+    await inspector.open();
+
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.resultToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(await run.result.count()).toBe(0);
+  });
+
   it("shows the last success's result after a failed run", async () => {
     const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
