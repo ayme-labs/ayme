@@ -31,7 +31,9 @@ export function InspectorRootView({
       data-ayme-inspector-root
       data-theme-switching={switching || undefined}
       className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "font-sans text-sm text-foreground antialiased",
+        // Stryker disable next-line StringLiteral: the host resets the page's colour scheme, so the light one shows as none does.
         dark ? "dark scheme-dark" : "scheme-light"
       )}
     >
