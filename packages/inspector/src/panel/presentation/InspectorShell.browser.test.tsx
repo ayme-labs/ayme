@@ -342,6 +342,35 @@ describe("motion", () => {
     expect(Element.prototype.animate).not.toHaveBeenCalled();
   });
 
+  it("slides to a layout chosen by a click that counts a press, though no release came just before it", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.trigger.press("Enter");
+
+    await header.layoutMenu
+      .option("Dock right")
+      .dispatchEvent("click", { detail: 1, bubbles: true, composed: true });
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).toHaveBeenCalled();
+  });
+
+  it("docks from the menu at once when chosen by keyboard, after a pointer let go where something stopped it", async () => {
+    slides();
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    // As picking an element on the page does.
+    const stop = (event: Event) => event.stopImmediatePropagation();
+    window.addEventListener("pointerup", stop, true);
+    await header.title.click();
+    window.removeEventListener("pointerup", stop, true);
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(Element.prototype.animate).not.toHaveBeenCalled();
+  });
+
   it("docks from the menu at once when a screen reader chooses it", async () => {
     slides();
     renderShell({ layout: "float", float: floating, sideWidth: 600 });
