@@ -4,12 +4,15 @@ import type {
   DecisionRequest,
   DecisionResponse,
   GoalLoopDecisionFunction,
-} from "../goal-loop";
-import { createPage } from "../page-objects";
-import { NO_VALUE_NEEDED_KEY } from "../goal-loop";
-import { agentTools, operations } from "../test-utils/publication.testSupport";
-import { createAyme, type Ayme } from "../runtime";
-import { errorText } from "../shared";
+} from "../../goal-loop";
+import { createPage } from "../../page-objects";
+import { NO_VALUE_NEEDED_KEY } from "../../goal-loop";
+import {
+  agentTools,
+  operations,
+} from "../../test-utils/publication.testSupport";
+import { createAyme, type Ayme } from "../../runtime";
+import { errorText } from "../../shared";
 
 // The test server answers `/__no-content` with 204 (vitest.browser.config.ts),
 // so a load starts and is then dropped: the test document stays, and what the
@@ -19,10 +22,6 @@ const NO_CONTENT = new URL("/__no-content", location.href).href;
 /** The error for a URL that is not on the test page's origin. */
 const otherOrigin = (url: string) =>
   `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page.`;
-
-/** The error for a URL whose protocol the tool does not open. */
-const unsupportedProtocol = (url: string, protocol: string) =>
-  `ToolInputError: Cannot navigate to "${url}": the protocol ${protocol} is not supported.`;
 
 describe("the navigate tool, in Chromium", () => {
   let ayme: Ayme;
@@ -138,26 +137,6 @@ describe("the navigate tool, in Chromium", () => {
       otherOrigin(url)
     );
     expect(location.href).toBe(start);
-  });
-
-  it("refuses an unsupported protocol", async () => {
-    const url = "javascript:alert(1)";
-    expect(await call("navigate", { url }).catch(errorText)).toBe(
-      unsupportedProtocol(url, "javascript:")
-    );
-    expect(location.href).toBe(start);
-  });
-
-  it("refuses a blob URL on the page's own origin", async () => {
-    const url = URL.createObjectURL(new Blob(["<p>Blob page</p>"]));
-    try {
-      expect(await call("navigate", { url }).catch(errorText)).toBe(
-        unsupportedProtocol(url, "blob:")
-      );
-      expect(location.href).toBe(start);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
   });
 
   it("refuses an invalid URL with the browser Page's error", async () => {

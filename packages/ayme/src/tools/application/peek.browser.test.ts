@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { DecisionRequest, GoalLoopDecisionFunction } from "../goal-loop";
-import type { ToolManifest } from "../shared";
+import type {
+  DecisionRequest,
+  GoalLoopDecisionFunction,
+} from "../../goal-loop";
+import type { ToolManifest } from "../../shared";
 import {
   ayme as model,
   createPage,
   registerCompiledPom,
-} from "../page-objects";
-import { RuntimeStateError, ToolInputError } from "../shared";
-import { rootOf } from "../test-utils/pomRoot.testSupport";
-import { createAyme, type Ayme, type AymeOptions } from "../runtime";
+} from "../../page-objects";
+import { RuntimeStateError, ToolInputError } from "../../shared";
+import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { createAyme, type Ayme, type AymeOptions } from "../../runtime";
 
 // Runtime object seam: an app adds Peeks with `ayme.peek` and reads them as
 // Peek Tools through `ayme.tools`, the set the Agent Connection's page client
@@ -19,7 +22,7 @@ import { createAyme, type Ayme, type AymeOptions } from "../runtime";
 // session they are started with: the dev gate only needs their options on,
 // and a real page client would scan for an agent's Ayme MCP server.
 const connected = vi.hoisted(() => ({ sessions: [] as unknown[] }));
-vi.mock("../runtime/agentConnection", () => ({
+vi.mock("../../runtime/agentConnection", () => ({
   loadProcessConnection: async () => {
     throw new Error("A page never loads an App Process's connection.");
   },
@@ -30,7 +33,7 @@ vi.mock("../runtime/agentConnection", () => ({
     },
   }),
 }));
-vi.mock("../runtime/inspector", () => ({
+vi.mock("../../runtime/inspector", () => ({
   loadInspector: async () => ({
     mountInspector: () => ({ dispose() {} }),
   }),

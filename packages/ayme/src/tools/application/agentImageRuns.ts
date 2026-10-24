@@ -1,6 +1,6 @@
 // The agent's calls through `ayme mcp` whose result is an image, such as a
 // screenshot, which the page client reports for the Inspector's Runs.
-import type { ImageResult } from "./toolTypes";
+import type { ImageResult } from "../domain/toolTypes";
 
 /** An agent's call whose result is an image. */
 export type AgentImageRun = {

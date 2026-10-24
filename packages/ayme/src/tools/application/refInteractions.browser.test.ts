@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { ayme, runContext } from "../test-utils/agentCalls.testSupport";
+import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
 import {
   createAymeRuntime,
   createPage,
@@ -9,7 +9,7 @@ import {
   probeRegisteredPomMembers,
   registerCompiledPom,
   registerPageObject,
-} from "../page-objects";
+} from "../../page-objects";
 
 describe("Structural Ref interactions in Chromium", () => {
   afterEach(() => {
@@ -41,11 +41,12 @@ describe("Structural Ref interactions in Chromium", () => {
       dialog.classList.add("open");
     });
 
-    const runtime = createAymeRuntime(createPage());
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const openRef = structuralRefFor(state.text, "Open dialog");
-      const result = await ayme.click(openRef);
+      const result = await ayme.click(page, openRef);
       expect(result.page_changed).toBe(true);
       expect(result.settled).toBe(true);
       expect(result.changes).toBeDefined();
@@ -72,11 +73,12 @@ describe("Structural Ref interactions in Chromium", () => {
       }, 300);
     });
 
-    const runtime = createAymeRuntime(createPage());
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const buttonRef = structuralRefFor(state.text, "Attribute-only");
-      const result = await ayme.click(buttonRef);
+      const result = await ayme.click(page, buttonRef);
       expect(result.page_changed).toBe(true);
       expect(result.settled).toBe(true);
       expect(button.getAttribute("aria-label")).toBe("Phase two");
@@ -93,7 +95,7 @@ describe("Structural Ref interactions in Chromium", () => {
     try {
       const state = await ayme.getPageState();
       const noopRef = structuralRefFor(state.text, "No-op");
-      const result = await ayme.click(noopRef);
+      const result = await ayme.click(page, noopRef);
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);
       expect(result.changes).toBeUndefined();
@@ -115,11 +117,12 @@ describe("Structural Ref interactions in Chromium", () => {
       }, 50);
     });
 
-    const runtime = createAymeRuntime(createPage());
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const startRef = structuralRefFor(state.text, "Start churn");
-      const result = await ayme.click(startRef);
+      const result = await ayme.click(page, startRef);
       expect(result.page_changed).toBe(true);
       expect(result.settled).toBe(false);
     } finally {
@@ -142,11 +145,12 @@ describe("Structural Ref interactions in Chromium", () => {
       throw new Error("Expected list fixture elements.");
     removeButton.addEventListener("click", () => apple.remove());
 
-    const runtime = createAymeRuntime(createPage());
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const removeRef = structuralRefFor(state.text, "Remove Apple");
-      const result = await ayme.click(removeRef);
+      const result = await ayme.click(page, removeRef);
       expect(result.page_changed).toBe(true);
       expect(result.changes).toBeDefined();
       expect(result.changes).toContain("<removed>");
@@ -164,11 +168,12 @@ describe("Structural Ref interactions in Chromium", () => {
       button.textContent = "Toggled";
     });
 
-    const runtime = createAymeRuntime(createPage());
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
     try {
       const state = await ayme.getPageState();
       const toggleRef = structuralRefFor(state.text, "Toggle label");
-      const result = await ayme.click(toggleRef);
+      const result = await ayme.click(page, toggleRef);
       expect(result.page_changed).toBe(true);
       expect(result.changes).toBeDefined();
       expect(result.changes).toContain("<changed>");

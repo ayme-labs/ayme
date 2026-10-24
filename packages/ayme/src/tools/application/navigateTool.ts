@@ -1,13 +1,12 @@
 // The `navigate` Browser Tool: opens a URL on the page's own origin through
 // the browser Page's `goto`, mirroring Playwright MCP's `browser_navigate`.
-import type { JsonSchema } from "../shared";
-import { runAction, startNavigation } from "../page-state";
+import type { JsonSchema } from "../../shared";
+import { runAction, startNavigation } from "../../page-state";
 import {
   requireCurrentDocument,
   type PublishedElementTool,
 } from "./elementTools";
-import { ToolInputError } from "../shared";
-import { requireAymeRuntimePage } from "../page-objects";
+import { navigationDestination } from "../domain/navigationDestination";
 
 /** The application's own navigation, given in runtime setup as `navigate`. */
 type RouterNavigate = (url: string) => unknown;
@@ -57,25 +56,17 @@ export const navigateTool: PublishedElementTool = {
     "Open a URL on the page's own origin, or a path relative to the current page.",
   inputSchema: navigateSchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const { url } = input as { url: string };
     const currentDocument = requireCurrentDocument();
-    const page = requireAymeRuntimePage();
-    const destination = URL.parse(url, currentDocument.baseURI);
+    const destination = navigationDestination(
+      url,
+      currentDocument.baseURI,
+      currentDocument.location.origin
+    );
     // The browser Page rejects an invalid URL with its own error before it
     // navigates.
     if (!destination) await page.goto(url);
-    // Only http(s) documents run this runtime; a same-origin blob: URL
-    // would pass the origin check below.
-    if (destination && !["http:", "https:"].includes(destination.protocol))
-      throw new ToolInputError(
-        `Cannot navigate to "${url}": the protocol ${destination.protocol} is not supported.`
-      );
-    const { origin } = currentDocument.location;
-    if (destination && destination.origin !== origin)
-      throw new ToolInputError(
-        `Cannot navigate to "${url}": it is not on the page's own origin, ${origin}. Leaving the origin would lose the connection to this page.`
-      );
     const { navigate } = routerStore;
     return runAction(
       currentDocument,

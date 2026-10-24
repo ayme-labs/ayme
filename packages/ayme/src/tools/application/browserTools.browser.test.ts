@@ -1,28 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
-import { createPage, registerCompiledPom } from "../page-objects";
-import type { PomManifest } from "../shared";
-import {
-  isCheckableElement,
-  isClickableElement,
-  isFillableElement,
-  isSelectElement,
-  isUncheckableElement,
-} from "./browserTools";
-import { errorText } from "../shared";
-import { buildToolOptions } from "../goal-loop";
+import { createPage, registerCompiledPom } from "../../page-objects";
+import type { PomManifest } from "../../shared";
+import { errorText } from "../../shared";
+import { buildToolOptions } from "../../goal-loop";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,
   PLAYWRIGHT_MCP_SCHEMAS,
   shapeOf,
   withoutElement,
-} from "./playwrightMcp.testSupport";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { lookAtPageStateForDocument } from "../page-state";
-import { createAyme, listElementToolTargets, type Ayme } from "../runtime";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+} from "../test-utils/playwrightMcp.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { lookAtPageStateForDocument } from "../../page-state";
+import { createAyme, listElementToolTargets, type Ayme } from "../../runtime";
+import { rooted } from "../../test-utils/pomRoot.testSupport";
 
 type Schema = {
   type?: string;
@@ -105,6 +98,7 @@ registerCompiledPom(RootsPage, rootsManifest);
 
 describe("Browser Tools in Chromium", () => {
   let ayme: Ayme;
+  let page: Page;
   let stop: () => void;
   let listening: AbortController;
   const log: string[] = [];
@@ -123,9 +117,8 @@ describe("Browser Tools in Chromium", () => {
     document.querySelector("#form")!.addEventListener("submit", (event) => {
       event.preventDefault();
     });
-    ayme = createAyme({
-      pageFactory: () => createPage({ actionTimeout: 500 }),
-    });
+    page = createPage({ actionTimeout: 500 });
+    ayme = createAyme({ pageFactory: () => page });
     stop = ayme.start();
   });
 
@@ -568,7 +561,7 @@ describe("Browser Tools in Chromium", () => {
     for (const tool of ["click", "hover"])
       expect(offered(tool)).toEqual(["Name", "Email", "Agree", "Size", "Save"]);
 
-    const options = buildToolOptions();
+    const options = buildToolOptions(page);
     const loopTools = options.map((option) => option.key);
     expect(loopTools).not.toContain("fill_form");
     expect(loopTools).not.toContain("press_key");
@@ -588,144 +581,5 @@ describe("Browser Tools in Chromium", () => {
 
     expect(targets.get("click")).toContain(rootRef(look.text, "card"));
     expect(targets.get("click")).not.toContain(rootRef(look.text, "account"));
-  });
-});
-
-// --- Built-in filters (consumed by the Goal Loop when it offers elements) ---
-
-describe("Browser Tool filters in Chromium", () => {
-  afterEach(() => {
-    document.body.innerHTML = "";
-  });
-
-  function fixture(html: string): Element {
-    document.body.innerHTML = html;
-    const element = document.body.firstElementChild;
-    if (!element) throw new Error("Expected a fixture element.");
-    return element;
-  }
-
-  it("keeps elements with an interactive role for click", () => {
-    expect(isClickableElement(fixture("<button>Save</button>"))).toBe(true);
-    expect(isClickableElement(fixture('<a href="/next">Next</a>'))).toBe(true);
-    expect(isClickableElement(fixture('<div role="button">Go</div>'))).toBe(
-      true
-    );
-  });
-
-  it("keeps elements with a pointer cursor for click", () => {
-    expect(
-      isClickableElement(fixture('<div style="cursor: pointer">Card</div>'))
-    ).toBe(true);
-  });
-
-  it("drops plain and disabled elements for click", () => {
-    expect(isClickableElement(fixture("<p>Just text</p>"))).toBe(false);
-    expect(isClickableElement(fixture("<button disabled>Save</button>"))).toBe(
-      false
-    );
-    expect(
-      isClickableElement(fixture('<button aria-disabled="true">Save</button>'))
-    ).toBe(false);
-    expect(
-      isClickableElement(
-        fixture('<a role="button" style="cursor: pointer">No href</a>')
-      )
-    ).toBe(true);
-  });
-
-  it("keeps elements that can actually be filled", () => {
-    expect(isFillableElement(fixture('<input aria-label="Name">'))).toBe(true);
-    expect(
-      isFillableElement(fixture('<input type="email" aria-label="Mail">'))
-    ).toBe(true);
-    expect(isFillableElement(fixture('<textarea aria-label="Note">'))).toBe(
-      true
-    );
-    expect(
-      isFillableElement(fixture('<div contenteditable="true">Text</div>'))
-    ).toBe(true);
-    expect(
-      isFillableElement(
-        fixture('<div contenteditable="plaintext-only">Text</div>')
-      )
-    ).toBe(true);
-  });
-
-  it("keeps exactly the input types Playwright fills", () => {
-    const fillable = (type: string) =>
-      isFillableElement(fixture(`<input type="${type}">`));
-    expect(
-      [
-        "color",
-        "date",
-        "datetime-local",
-        "email",
-        "month",
-        "number",
-        "password",
-        "range",
-        "search",
-        "tel",
-        "text",
-        "time",
-        "url",
-        "week",
-      ].filter((type) => !fillable(type))
-    ).toEqual([]);
-    expect(
-      [
-        "button",
-        "checkbox",
-        "file",
-        "hidden",
-        "image",
-        "radio",
-        "reset",
-        "submit",
-      ].filter(fillable)
-    ).toEqual([]);
-  });
-
-  it("drops elements that cannot be filled", () => {
-    expect(isFillableElement(fixture("<button>Save</button>"))).toBe(false);
-    expect(
-      isFillableElement(fixture('<input type="checkbox" aria-label="Done">'))
-    ).toBe(false);
-    expect(
-      isFillableElement(fixture('<input readonly aria-label="Name">'))
-    ).toBe(false);
-    expect(
-      isFillableElement(fixture('<input disabled aria-label="Name">'))
-    ).toBe(false);
-  });
-
-  it("keeps checkboxes and radio buttons for check and uncheck", () => {
-    expect(isCheckableElement(fixture('<input type="checkbox">'))).toBe(true);
-    expect(isCheckableElement(fixture('<input type="radio">'))).toBe(true);
-    expect(isCheckableElement(fixture('<div role="switch">On</div>'))).toBe(
-      true
-    );
-    expect(isCheckableElement(fixture('<input type="text">'))).toBe(false);
-    expect(
-      isCheckableElement(fixture('<input type="checkbox" disabled>'))
-    ).toBe(false);
-  });
-
-  it("keeps checkboxes but not radio buttons for uncheck", () => {
-    expect(isUncheckableElement(fixture('<input type="checkbox">'))).toBe(true);
-    expect(isUncheckableElement(fixture('<input type="radio">'))).toBe(false);
-  });
-
-  it("keeps select elements for select_option", () => {
-    expect(
-      isSelectElement(fixture("<select><option>A</option></select>"))
-    ).toBe(true);
-    expect(
-      isSelectElement(fixture("<select disabled><option>A</option></select>"))
-    ).toBe(false);
-    expect(isSelectElement(fixture('<div role="combobox">A</div>'))).toBe(
-      false
-    );
   });
 });

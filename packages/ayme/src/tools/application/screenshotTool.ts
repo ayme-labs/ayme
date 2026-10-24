@@ -2,21 +2,19 @@
 // image, as Playwright MCP's browser_take_screenshot does. playwright-lite
 // renders it from the DOM. It reads and never acts, so it records no
 // Structural Action. Published only: the Goal Loop never offers it.
-import type { JsonSchema } from "../shared";
+import type { JsonSchema } from "../../shared";
 import {
-  locatorOf,
   requireCurrentDocument,
   resolveElementTarget,
   type PublishedElementTool,
 } from "./elementTools";
-import { INSPECTOR_HOST_SELECTOR } from "../shared";
-import { requireAymeRuntimePage } from "../page-objects";
+import { INSPECTOR_HOST_SELECTOR } from "../../shared";
 import {
   screenshotRequest,
   type ImageType,
   type ScreenshotInput,
-} from "./screenshotRequest";
-import type { ToolResult } from "./toolTypes";
+} from "../domain/screenshotRequest";
+import type { ToolResult } from "../domain/toolTypes";
 
 const inputSchema: JsonSchema = {
   type: "object",
@@ -80,7 +78,7 @@ export const screenshotTool: PublishedElementTool = {
   description:
     "Take a screenshot of the viewport, the full page or one element. To act on the page, use the snapshot's Structural Refs, not the image.",
   inputSchema,
-  execute: async (input) => {
+  execute: async (input, { page }) => {
     const request = screenshotRequest(input as ScreenshotInput, new Date());
     const options = {
       type: request.type,
@@ -93,14 +91,15 @@ export const screenshotTool: PublishedElementTool = {
     let subject: string;
     if (request.target !== undefined) {
       const target = await resolveElementTarget(
+        page,
         { label: "take a screenshot of", targetField: "target" },
         request.target,
         requireCurrentDocument()
       );
-      bytes = await locatorOf(target).screenshot(options);
+      bytes = await page.locator(target.selector).screenshot(options);
       subject = `element ${request.target}`;
     } else {
-      bytes = await requireAymeRuntimePage().screenshot({
+      bytes = await page.screenshot({
         ...options,
         fullPage: request.fullPage,
       });

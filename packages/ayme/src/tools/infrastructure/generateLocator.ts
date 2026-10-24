@@ -6,21 +6,21 @@ import {
   refFromSelector,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
+import type { Page } from "@playwright/test";
 import {
   generateLocator,
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
-import type { JsonSchema } from "../shared";
-import { asSentence } from "../shared";
+import type { JsonSchema } from "../../shared";
+import { asSentence } from "../../shared";
 import {
   requireCurrentDocument,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
-} from "./elementTools";
-import { refFailure, selectorFailure } from "../page-state";
-import { requireAymeRuntimePage } from "../page-objects";
-import type { ToolResult } from "./toolTypes";
+} from "../application/elementTools";
+import { refFailure, selectorFailure } from "../../page-state";
+import type { ToolResult } from "../domain/toolTypes";
 
 type Result = ToolResult<"generate_locator">;
 type Group = Result["groups"][number];
@@ -72,10 +72,11 @@ const definition = (label: string) => ({
  * Structural Ref.
  */
 function recommendLocator(
+  page: Page,
   element: Element,
   container: Element | undefined
 ): PlaywrightLocatorString {
-  const locator = generateLocator(requireAymeRuntimePage(), element, {
+  const locator = generateLocator(page, element, {
     ...(container ? { root: container } : {}),
   });
   if (refFromSelector(locator))
@@ -92,13 +93,19 @@ const reason = (error: unknown) =>
 type Container = { within: string; element: Element; selector: string };
 
 /** Whether `container.locator(selector)` finds `element`, as Page Object code would. */
-function holds(container: Container, selector: string, element: Element) {
+function holds(
+  page: Page,
+  container: Container,
+  selector: string,
+  element: Element
+) {
   return resolveLocatorElements(
-    requireAymeRuntimePage().locator(container.selector).locator(selector)
+    page.locator(container.selector).locator(selector)
   ).includes(element);
 }
 
 async function entryFor(
+  page: Page,
   target: string,
   container: Container | undefined,
   currentDocument: Document
@@ -113,6 +120,7 @@ async function entryFor(
   let element: Element, selector: string;
   try {
     ({ element, selector } = await resolveElementTarget(
+      page,
       definition(TARGET_LABEL),
       target,
       currentDocument,
@@ -121,16 +129,20 @@ async function entryFor(
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
   }
-  if (container && isRef && !holds(container, selector, element))
+  if (container && isRef && !holds(page, container, selector, element))
     return fail(`it is not inside the container "${container.within}"`);
   try {
-    return { target, locator: recommendLocator(element, container?.element) };
+    return {
+      target,
+      locator: recommendLocator(page, element, container?.element),
+    };
   } catch (error) {
     return fail(reason(error));
   }
 }
 
 async function groupFor(
+  page: Page,
   group: { targets: string[]; within?: string },
   currentDocument: Document
 ): Promise<Group> {
@@ -138,6 +150,7 @@ async function groupFor(
   if (group.within !== undefined)
     try {
       const { element, selector } = await resolveElementTarget(
+        page,
         definition(WITHIN_LABEL),
         group.within,
         currentDocument
@@ -148,7 +161,7 @@ async function groupFor(
     }
   const locators: Entry[] = [];
   for (const target of group.targets)
-    locators.push(await entryFor(target, container, currentDocument));
+    locators.push(await entryFor(page, target, container, currentDocument));
   return {
     ...(group.within !== undefined ? { within: group.within } : {}),
     locators,
@@ -168,14 +181,14 @@ export const generateLocatorTool: PublishedElementTool = {
   ].join(" "),
   // Stryker restore StringLiteral
   inputSchema,
-  execute: async (input) => {
+  execute: async (input, { page }) => {
     const { groups } = input as {
       groups: { targets: string[]; within?: string }[];
     };
     const currentDocument = requireCurrentDocument();
     const result: Result = { groups: [] };
     for (const group of groups)
-      result.groups.push(await groupFor(group, currentDocument));
+      result.groups.push(await groupFor(page, group, currentDocument));
     return result;
   },
 };
