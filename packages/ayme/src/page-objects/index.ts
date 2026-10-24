@@ -1,4 +1,4 @@
-export { agentDescription, inputSchemaFor } from "./actionTool";
+export { agentDescription, inputSchemaFor, returnPomPaths } from "./actionTool";
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";
 export { ayme } from "./decorators";
@@ -27,6 +27,7 @@ export {
   listRegisteredPomTargets,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
+  publishedToolPrefixes,
   registerCompiledPom,
   registerPageObject,
   requireAymeRuntimePage,

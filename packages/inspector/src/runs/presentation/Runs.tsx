@@ -8,9 +8,16 @@ export type RunsProps = Omit<
 > & {
   /** Brings a run into view. */
   focus?: RunFocus;
+  /** Called once the focused run is in view, so the focus can be let go. */
+  onFocusShown?: () => void;
 };
 
 /** Runs: the timeline of the runs made from the panel, newest first. */
-export function Runs({ focus, ...props }: RunsProps) {
-  return <RunsView {...props} {...useRunsTimeline(focus, props.open)} />;
+export function Runs({ focus, onFocusShown, ...props }: RunsProps) {
+  return (
+    <RunsView
+      {...props}
+      {...useRunsTimeline(focus, props.open, onFocusShown)}
+    />
+  );
 }
