@@ -53,7 +53,71 @@ describe("derivePomManifests", () => {
         ],
       });
     });
+
+    it("folds concatenated literals and templates without substitutions into the descriptions", () => {
+      const manifest = manifestFor("constantDescriptionsPom");
+
+      expect(manifest).toMatchObject({
+        description: "A page that saves a name.",
+        tools: [
+          {
+            toolName: "ConstantDescriptionsPom.save",
+            description: "Save the name, then show it.",
+          },
+          {
+            toolName: "ConstantDescriptionsPom.clear",
+            description: "Clear the name.",
+          },
+          {
+            toolName: "ConstantDescriptionsPom.undo",
+            description: "Undo the last change.",
+          },
+          {
+            toolName: "ConstantDescriptionsPom.redo",
+            description: "Redo.",
+          },
+          {
+            toolName: "ConstantDescriptionsPom.copy",
+            description: "Copy the name.",
+          },
+          { toolName: "ConstantDescriptionsPom.paste" },
+        ],
+      });
+      expect(manifest?.tools.at(-1)).not.toHaveProperty("description");
+    });
+
+    it.each([
+      ["templateActionPom", "Page Object Action TemplateActionPom.show", 8],
+      ["variableClassPom", "Page Object VariableClassPom", 5],
+      ["quotedKeyPom", "Page Object Action QuotedKeyPom.save", 8],
+    ])(
+      "fails the build for the description of %s, which is not a constant string",
+      (fixture, owner, line) => {
+        const fileName = path.resolve(
+          `src/fixtures/computedDescriptions/${fixture}.ts`
+        );
+        expect(() => derivePomManifests(fileName)).toThrow(
+          `The description of ${owner} is not a constant string (${fileName}:${line}).`
+        );
+      }
+    );
   });
+
+  it.each([
+    ["spreadActionPom", "SpreadActionPom.read", 9],
+    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", 7],
+    ["computedKeyActionPom", "ComputedKeyActionPom.read", 7],
+  ])(
+    "fails the build for %s, whose description may come from a spread or a computed key",
+    (fixture, action, line) => {
+      const fileName = path.resolve(
+        `src/fixtures/computedDescriptions/${fixture}.ts`
+      );
+      expect(() => derivePomManifests(fileName)).toThrow(
+        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${line}).`
+      );
+    }
+  );
 
   it.each(["privateRootPom", "protectedRootPom"])(
     "leaves a non-public member named root out of %s like any other non-public member",
