@@ -149,6 +149,35 @@ export class ListItem extends AppComponent {
 - A collection's actions are published once for all its items: `ListPage.items.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
 - A single child's actions take their input directly: a marked `confirm` on `ArchiveDialog` would be `ListPage.archiveDialog.confirm`.
 
+A collection's items can hold items of their own model:
+
+```ts
+export class ListItem extends AppComponent {
+  async subItems(): Promise<ListItem[]> {
+    // ...
+  }
+
+  @ayme.action
+  async archive() {
+    // ...
+  }
+}
+```
+
+The page state gives every item a ref, however deep:
+
+```text
+- e5 ListPage.items[0]: Groceries
+  - e9 ListPage.items[0].subItems[0]: Milk
+```
+
+`ListPage.items.archive` takes either ref:
+
+```ts
+ListPage.items.archive({ ref: "e5" }); // archives Groceries
+ListPage.items.archive({ ref: "e9" }); // archives Milk
+```
+
 ## Action availability
 
 An action that is possible only in some states, such as removing a dashboard that is not built in, declares when it can run with `available`: an availability predicate that gets the live Page Object and answers `true`, `false`, or a string that says why not. The action keeps its natural Page Object, and the tool stays listed either way:
