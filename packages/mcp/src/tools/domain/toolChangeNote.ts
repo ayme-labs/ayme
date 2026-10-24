@@ -1,7 +1,12 @@
+import { isDeepStrictEqual } from "node:util";
+
 import { HIDDEN_BECAUSE, type PageTool } from "../../contract";
 
-/** A tool the agent sees: its name, and whether a call can run it now. */
-export type SeenTool = Pick<PageTool, "name" | "available" | "reason">;
+/**
+ * A tool the agent sees: its name, whether a call can run it now, and what
+ * it was told about the tool's parameters and purpose.
+ */
+export type SeenTool = PageTool;
 
 /**
  * The tools the agent sees, and the names of the reported tools it does not
@@ -22,9 +27,21 @@ const asAppeared = (tool: SeenTool) =>
     ? tool.name
     : `${tool.name} (unavailable${tool.reason === undefined ? "" : `: ${tool.reason}`})`;
 
+/** A changed tool's name, with which of its parameters and description changed. */
+const asChanged = (tool: SeenTool, before: SeenTool) => {
+  const parts = [
+    isDeepStrictEqual(tool.inputSchema, before.inputSchema)
+      ? undefined
+      : "parameters",
+    tool.description === before.description ? undefined : "description",
+  ].filter((part) => part !== undefined);
+  return parts.length === 0 ? undefined : `${tool.name} (${parts.join(", ")})`;
+};
+
 /**
  * The note on a tool result that tells the agent which tools of the page
- * and App Processes appeared, disappeared, became available or unavailable
+ * and App Processes appeared, disappeared, changed their parameters or
+ * description, became available or unavailable
  * (with the reason) or were newly hidden since its previous call, so an
  * agent that never re-reads the MCP tool list still notices. No note when
  * nothing of that changed.
@@ -39,6 +56,9 @@ export function toolChangeNote(
     ({ name }) => !current.tools.some((tool) => tool.name === name)
   );
   const stayed = current.tools.filter(({ name }) => before.has(name));
+  const changed = stayed
+    .map((tool) => asChanged(tool, before.get(tool.name)!))
+    .filter((line) => line !== undefined);
   const becameAvailable = stayed.filter(
     (tool) => tool.available && !before.get(tool.name)!.available
   );
@@ -55,6 +75,7 @@ export function toolChangeNote(
     disappeared.length > 0
       ? `Disappeared: ${disappeared.map(({ name }) => name).join(", ")}.`
       : undefined,
+    changed.length > 0 ? `Changed: ${changed.join(", ")}.` : undefined,
     becameAvailable.length > 0
       ? `Became available: ${becameAvailable.map(({ name }) => name).join(", ")}.`
       : undefined,

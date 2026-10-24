@@ -134,7 +134,7 @@ function memberRole(
   const memberName = member.name.text;
 
   if (ts.isMethodDeclaration(member)) {
-    const description = toolDescription(member);
+    const description = toolDescription(checker, member, memberName);
     if (description)
       return { role: "action", member, methodName: memberName, description };
     const child =
@@ -686,19 +686,99 @@ function findClassMarker(declaration: ts.ClassDeclaration) {
   );
 }
 
-/** The literal `description` option of a decorator, if it has one. */
-function decoratorDescription(decorator: ts.Decorator) {
+/**
+ * The `description` option of a decorator, if it has one. It must be a
+ * constant string; `owner` names the class or action in the error otherwise.
+ */
+function decoratorDescription(
+  checker: ts.TypeChecker,
+  decorator: ts.Decorator,
+  owner: string
+) {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
   const options = decorator.expression.arguments[0];
   if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
-  for (const property of options.properties) {
-    if (
-      ts.isPropertyAssignment(property) &&
-      ts.isIdentifier(property.name) &&
-      property.name.text === "description" &&
-      ts.isStringLiteral(property.initializer)
-    )
-      return property.initializer.text;
+  // The last element that sets `description` wins.
+  let last: ts.ObjectLiteralElementLike | undefined;
+  let readable = false;
+  for (const element of options.properties) {
+    const sets = setsDescription(checker, element);
+    if (sets === "no") continue;
+    last = element;
+    readable = sets === "yes";
+  }
+  if (!last) return undefined;
+  if (!readable)
+    throw new Error(
+      `The description of ${owner} may come from a spread or a computed key (${location(
+        last
+      )}).`
+    );
+  const description = ts.isPropertyAssignment(last)
+    ? constantString(last.initializer)
+    : undefined;
+  if (description !== undefined) return description;
+  throw new Error(
+    `The description of ${owner} is not a constant string (${location(last)}).`
+  );
+}
+
+/**
+ * Whether an options element sets `description`: "maybe" for a spread whose
+ * type has one and a computed key whose value the type checker can't tell.
+ */
+function setsDescription(
+  checker: ts.TypeChecker,
+  element: ts.ObjectLiteralElementLike
+): "yes" | "no" | "maybe" {
+  if (ts.isSpreadAssignment(element))
+    return checker
+      .getTypeAtLocation(element.expression)
+      .getProperty("description")
+      ? "maybe"
+      : "no";
+  const name = element.name;
+  if (!name) return "no";
+  if (!ts.isComputedPropertyName(name))
+    return (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) &&
+      name.text === "description"
+      ? "yes"
+      : "no";
+  const key = checker.getTypeAtLocation(name.expression);
+  if (key.isStringLiteral()) return key.value === "description" ? "yes" : "no";
+  return key.isNumberLiteral() || key.flags & ts.TypeFlags.ESSymbolLike
+    ? "no"
+    : "maybe";
+}
+
+function location(node: ts.Node) {
+  const source = node.getSourceFile();
+  const { line } = source.getLineAndCharacterOfPosition(node.getStart());
+  return `${source.fileName}:${line + 1}`;
+}
+
+/**
+ * The value of a string literal, a template literal without substitutions, or
+ * a `+` concatenation of those, if `expression` is one.
+ */
+function constantString(expression: ts.Expression): string | undefined {
+  // Parentheses, `as`, `satisfies` and `!` leave the value as it is.
+  if (
+    ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isTypeAssertionExpression(expression)
+  )
+    return constantString(expression.expression);
+  if (ts.isStringLiteralLike(expression)) return expression.text;
+  if (
+    ts.isBinaryExpression(expression) &&
+    expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    const left = constantString(expression.left);
+    const right = constantString(expression.right);
+    return left === undefined || right === undefined ? undefined : left + right;
   }
   return undefined;
 }
@@ -712,7 +792,13 @@ function classDescription(
   declaration: ts.ClassDeclaration
 ): { description?: string } {
   const marker = findClassMarker(declaration);
-  const description = marker && decoratorDescription(marker);
+  const description =
+    marker &&
+    decoratorDescription(
+      checker,
+      marker,
+      `Page Object ${declaration.name?.text}`
+    );
   if (description !== undefined) return { description };
   const base = extendedClassDeclaration(checker, declaration);
   return base ? classDescription(checker, base) : {};
@@ -740,13 +826,22 @@ function extendedClassDeclaration(
 type ToolDescription = { authored?: string };
 
 function toolDescription(
-  declaration: ts.MethodDeclaration
+  checker: ts.TypeChecker,
+  declaration: ts.MethodDeclaration,
+  methodName: string
 ): ToolDescription | undefined {
   const marker = (ts.getDecorators(declaration) ?? []).find((decorator) =>
     isMemberMarker(decorator, "ayme", "action")
   );
   if (!marker) return undefined;
-  const authored = decoratorDescription(marker);
+  const className = ts.isClassLike(declaration.parent)
+    ? declaration.parent.name?.text
+    : undefined;
+  const authored = decoratorDescription(
+    checker,
+    marker,
+    `Page Object Action ${className}.${methodName}`
+  );
   return authored === undefined ? {} : { authored };
 }
 
