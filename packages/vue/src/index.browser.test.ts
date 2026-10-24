@@ -460,7 +460,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", () => {
       useAyme({ pageFactory });
       usePageObject(Uncompiled);
     })
-  ).toThrow("The imported page object has no compiler-derived Ayme metadata.");
+  ).toThrow("Uncompiled has no compiler-derived Ayme metadata.");
 });
 
 it("C5: follows the session's status, and a retry is the session's own", async () => {
