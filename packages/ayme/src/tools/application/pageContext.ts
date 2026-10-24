@@ -1,22 +1,18 @@
-import type { JsonValue, PomDefinition, ToolDescriptor } from "../shared";
+import type { JsonValue, PomDefinition, ToolDescriptor } from "../../shared";
 import {
   getPageStateForDocument,
   type AriaRef,
   type PageState,
-} from "../page-state";
-import { getPomDefinitions, renderPomDefinitions } from "../page-objects";
-import type { Cursor } from "../page-state";
-import type { RunContext } from "../runs";
+} from "../../page-state";
+import { getPomDefinitions, renderPomDefinitions } from "../../page-objects";
+import type { Cursor } from "../../page-state";
+import type { RunContext } from "../../runs";
+import type { PageContextPayload } from "../domain/toolTypes";
 
 export type PageContext = {
   readonly structure: string;
   readonly pomDefinitions: readonly PomDefinition[];
   resolve(...refs: AriaRef[]): ReturnType<PageState["resolve"]>;
-};
-
-export type PageContextPayload = {
-  readonly structure: string;
-  readonly pomDefinitions: string;
 };
 
 export const getPageStateTool = {

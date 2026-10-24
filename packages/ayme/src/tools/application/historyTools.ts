@@ -2,13 +2,12 @@
 // page through its history or reload it through the browser Page's `goBack`,
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
-import type { JsonSchema } from "../shared";
-import { runAction, startNavigation } from "../page-state";
+import type { JsonSchema } from "../../shared";
+import { runAction, startNavigation } from "../../page-state";
 import {
   requireCurrentDocument,
   type PublishedElementTool,
 } from "./elementTools";
-import { requireAymeRuntimePage } from "../page-objects";
 
 const noInputSchema: JsonSchema = {
   type: "object",
@@ -34,9 +33,8 @@ function traversalTool(
     description,
     inputSchema: noInputSchema,
     execute: async (input, context) => {
-      const { cursor } = context;
+      const { cursor, page } = context;
       const currentDocument = requireCurrentDocument();
-      const page = requireAymeRuntimePage();
       const traverse = () =>
         direction === "back" ? page.goBack() : page.goForward();
       const navigation = currentDocument.defaultView?.navigation;
@@ -109,9 +107,8 @@ export const reloadTool: PublishedElementTool = {
   description: "Reload the current page.",
   inputSchema: noInputSchema,
   execute: async (input, context) => {
-    const { cursor } = context;
+    const { cursor, page } = context;
     const currentDocument = requireCurrentDocument();
-    const page = requireAymeRuntimePage();
     return runAction(
       currentDocument,
       cursor,

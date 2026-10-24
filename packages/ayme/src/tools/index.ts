@@ -1,38 +1,40 @@
 export {
   recordAgentImageRun,
   subscribeToAgentImageRuns,
-} from "./agentImageRuns";
-export type { AgentImageRun } from "./agentImageRuns";
-export {
-  listElementTools,
-  listPublishedBrowserTools,
-  NAVIGATION_TOOLS,
-} from "./browserTools";
+} from "./application/agentImageRuns";
+export type { AgentImageRun } from "./application/agentImageRuns";
+export { listElementTools, NAVIGATION_TOOLS } from "./application/browserTools";
 export {
   acceptedRefNodes,
   configureCustomTools,
   listCustomTools,
-} from "./elementTools";
+} from "./application/elementTools";
 export type {
   CustomTool,
   CustomToolContext,
   PublishedElementTool,
   TargetField,
-} from "./elementTools";
-export { configureRouterNavigate } from "./navigateTool";
+} from "./application/elementTools";
+export { listPublishedBrowserTools } from "./infrastructure/publishedBrowserTools";
+export { configureRouterNavigate } from "./application/navigateTool";
 export {
   getPageContextForDocument,
   getPageContextTool,
   getPageStateTool,
   getPomDefinitionText,
-} from "./pageContext";
-export type { PageContext, PageContextPayload } from "./pageContext";
+} from "./application/pageContext";
+export type { PageContext } from "./application/pageContext";
 export {
   addPeek,
   isPeekTool,
   listPeekTools,
   peekToolName,
   subscribeToPeekTools,
-} from "./peek";
-export type { PeekRead, PeekResult, PeekTool } from "./peek";
-export type { BuiltInTools, ToolInput, ToolResult } from "./toolTypes";
+} from "./application/peek";
+export type { PeekRead, PeekResult, PeekTool } from "./application/peek";
+export type {
+  BuiltInTools,
+  PageContextPayload,
+  ToolInput,
+  ToolResult,
+} from "./domain/toolTypes";
