@@ -139,7 +139,6 @@ type ObservedRegisteredPom = RegisteredPom & {
  */
 export type CollectionToolItem = RegisteredPomRoot & ToolAvailability;
 
-let browserPage: Page | undefined;
 let runtimeOwner: object | undefined;
 const compiledPoms = new WeakMap<object, PomManifest>();
 const registeredPoms = new Set<ObservedRegisteredPom>();
@@ -166,12 +165,6 @@ const layoutEvents = [
   "animationcancel",
 ] as const;
 
-export function requireAymeRuntimePage(): Page {
-  if (!browserPage)
-    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
-  return browserPage;
-}
-
 export function createAymeRuntime(page?: object) {
   if (runtimeOwner)
     throw new RuntimeStateError(
@@ -180,11 +173,9 @@ export function createAymeRuntime(page?: object) {
     );
 
   resetRegisteredPoms();
-  browserPage = undefined;
   const owner = {};
   const runtimePage = page ?? createPage();
   runtimeOwner = owner;
-  browserPage = runtimePage as Page;
   // The page's locators for Structural Refs resolve through Ayme's engine.
   registerRefSelectorEngine();
 
@@ -193,7 +184,6 @@ export function createAymeRuntime(page?: object) {
     dispose() {
       if (runtimeOwner !== owner) return;
       resetRegisteredPoms();
-      browserPage = undefined;
       runtimeOwner = undefined;
     },
   };
