@@ -171,6 +171,53 @@ describe("live Page Object registry", () => {
     second.dispose();
   });
 
+  it("names the uncompiled class when constructing or registering it", async () => {
+    const registry = await import("./registry");
+    class SignInPage {}
+    const uncompiled = expect.objectContaining({
+      name: "RuntimeStateError",
+      message: "SignInPage has no compiler-derived Ayme metadata.",
+    });
+
+    expect(() => registry.constructPageObject(SignInPage, {} as Page)).toThrow(
+      uncompiled
+    );
+    expect(() =>
+      registry.registerPageObject(SignInPage, new SignInPage())
+    ).toThrow(uncompiled);
+  });
+
+  it("labels an anonymous uncompiled class", async () => {
+    const registry = await import("./registry");
+    const Anonymous = (() => class {})();
+    const message =
+      "An anonymous page object class has no compiler-derived Ayme metadata.";
+
+    expect(Anonymous.name).toBe("");
+    expect(() => registry.constructPageObject(Anonymous, {} as Page)).toThrow(
+      message
+    );
+    expect(() =>
+      registry.registerPageObject(Anonymous, new Anonymous())
+    ).toThrow(message);
+  });
+
+  it("labels an uncompiled class whose static name is not a string", async () => {
+    const registry = await import("./registry");
+    class SymbolNamed {}
+    Object.defineProperty(SymbolNamed, "name", {
+      value: Symbol("SignInPage"),
+    });
+
+    expect(() => registry.constructPageObject(SymbolNamed, {} as Page)).toThrow(
+      expect.objectContaining({
+        name: "RuntimeStateError",
+        message:
+          "An anonymous page object class has no compiler-derived Ayme metadata.",
+      })
+    );
+  });
+
   it("observes while at least one Page Object is registered", async () => {
     const { registry, session } = await setup();
 
