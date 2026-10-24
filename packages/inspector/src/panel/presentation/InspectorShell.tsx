@@ -167,7 +167,6 @@ export function InspectorShell({
     if (event.button !== 0 || !currentTarget.contains(target as Node)) return;
     panel.finish();
     const shown = panel.ref.current!.getBoundingClientRect();
-    const gliding = glide.gliding();
     let origin: Point | undefined;
     let dock: Dock | undefined;
     // Stryker disable next-line ArrayDeclaration: a sample without a time is never among the last 100ms, so the release speed leaves it out.
@@ -177,19 +176,10 @@ export function InspectorShell({
         // Stryker disable next-line ConditionalExpression: every move of a drag works the start out from the same press, so working it out again finds the same place.
         if (!origin) {
           glide.stop();
-          const grab = {
-            x: pointer.x - deltaX - shown.x,
-            y: pointer.y - deltaY - shown.y,
-          };
-          origin =
-            layout === "float"
-              ? gliding
-                ? shown
-                : float
-              : {
-                  x: pointer.x - deltaX - (grab.x / shown.width) * float.width,
-                  y: pointer.y - deltaY - grab.y,
-                };
+          // From where it shows, held at the same share of its width: a
+          // floating panel shows at its own width, so it starts where it is.
+          const along = (pointer.x - deltaX - shown.x) / shown.width;
+          origin = { x: pointer.x - deltaX - along * float.width, y: shown.y };
         }
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);

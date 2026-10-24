@@ -32,9 +32,6 @@ export function useGlide(panel: RefObject<HTMLElement | null>) {
   const start = useRef<{ box: DOMRect; velocity: Point }>(undefined);
   const glides = useRef<Glide[]>([]);
 
-  const gliding = () =>
-    // Stryker disable next-line ConditionalExpression,MethodExpression: a glide that has finished, or none, leaves the panel where it floats, so taking hold of it where it shows is the same; and both axes start and end together.
-    glides.current.some(({ animation }) => animation.playState === "running");
   const stop = () => {
     for (const { animation } of glides.current) animation.cancel();
     glides.current = [];
@@ -105,5 +102,5 @@ export function useGlide(panel: RefObject<HTMLElement | null>) {
   // Stryker disable next-line ArrowFunction,ArrayDeclaration,CallExpression: the panel goes with the shell, so a glide left on it shows nowhere; and a dependency list that never changes runs the effect once, as an empty one does.
   useEffect(() => () => stop(), []);
 
-  return { from, stop, gliding, hold, resume };
+  return { from, stop, hold, resume };
 }
