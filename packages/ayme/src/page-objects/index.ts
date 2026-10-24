@@ -30,7 +30,6 @@ export {
   publishedToolPrefixes,
   registerCompiledPom,
   registerPageObject,
-  requireAymeRuntimePage,
   subscribeToRegisteredPoms,
 } from "./registry";
 export type {

@@ -14,9 +14,12 @@ Slices, from the bottom up:
 
 The entries (`index.ts`, `internal.ts`, `absent.ts`, `server.ts`, `testing.ts`) stay at the top of `src/` and use the slices' front doors. No slice uses an entry. `server.ts`, the `./server` entry, only re-exports the Decision Endpoint's handler from `goal-loop`.
 
-Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (the network, the DOM and Playwright Lite's page). `goal-loop` and `runs` are layered. The others are not yet, each for its own reason: `page-state`'s Page State Session mixes DOM capture with its rules, `page-objects`' registry mixes registration with watching the DOM and creating the page, and every tool in `tools` calls Playwright Lite directly. `shared` and `runtime` stay unlayered.
+Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (the network, the DOM and Playwright Lite's page). `page-state`, `goal-loop`, `runs` and `tools` are layered. `page-objects` is not yet: its registry mixes registration with watching the DOM and creating the page. `shared` and `runtime` stay unlayered.
 
 - Every file of a layered slice sits in a layer folder, except its `index.ts`.
+- A `domain` rule may read an `Element` it is handed, as the Goal Loop's questions and the Browser Tools' element filters do; capturing the page or acting on it is not a rule.
+- In `page-state`, the Page State Session reads the page only through its capture port. The per-document stores (the sessions, the cursors, the Page Object structure source, the ignore predicate) and the functions other slices reach a document's session through live in `infrastructure/pageState.ts`. `domain` and `application` hold no module state.
+- In `tools`, a tool runs in `application` against the browser Page its Run carries, a Playwright `Page`, and keeps its name, description, input schema and the reach it needs beside its execution. `infrastructure` holds what uses Playwright Lite itself: `generate_locator`, and the list of published Browser Tools, which includes it. Lint checks that no other tools module imports Playwright Lite; [`eslint.config.js`](eslint.config.js) names the one exception and why.
 - Another slice is reached through its `index.ts`, which re-exports only what other slices, the entries and tests use, and only names its own slice declares. Inside a slice, a module imports the module it needs, never its own slice's `index.ts`.
 - A module sets up on import only the state its own exports use, so the build drops the modules an entry does not use: `src/builtEntries.test.ts` checks that the built `./server` and `./absent` entries carry no browser runtime.
 

@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import type { Cursor } from "../../page-state";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
@@ -16,6 +17,8 @@ export type RunContext = {
   readonly cursor: Cursor;
   /** Starts a child Run of this Run. */
   readonly run: StartChildRun;
+  /** The browser Page the Run acts on: its runtime session's, child Runs included. */
+  readonly page: Page;
 };
 
 /**
