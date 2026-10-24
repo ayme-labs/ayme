@@ -652,6 +652,26 @@ export function listRegisteredPomTools(): ({
 }
 
 /**
+ * Package-internal: the prefixes the registered Page Objects' tools are
+ * published under, by the class whose actions they are, e.g.
+ * `ResponseFilterPopover` → `["SurveyResponsesPage.filter"]`, so a tool that
+ * returns a class can name the tools an agent calls next. A class whose
+ * actions no registered Page Object publishes has none.
+ */
+export function publishedToolPrefixes(): Map<string, string[]> {
+  const prefixes = new Map<string, string[]>();
+  for (const registration of registeredPoms)
+    for (const tool of registration.tools) {
+      const className =
+        tool.componentClassName ?? registration.manifest.className;
+      const prefix = tool.name.slice(0, tool.name.lastIndexOf("."));
+      const known = prefixes.get(className) ?? [];
+      if (!known.includes(prefix)) prefixes.set(className, [...known, prefix]);
+    }
+  return prefixes;
+}
+
+/**
  * `instance`'s availability for `methodName` now. An observation whose root
  * element has since left the page is stale: the instance reads as absent
  * until the next probe observes it again, so no call runs on it.
