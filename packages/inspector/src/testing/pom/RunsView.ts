@@ -76,6 +76,11 @@ export class RunEntry extends PanelPart {
     );
   }
 
+  /** Whether it flashes, having just been brought into view. */
+  async flashing() {
+    return (await this.card.getAttribute("data-flashing")) === "true";
+  }
+
   /** Its child runs' tools, in the order it started them. */
   async childTools(): Promise<string[]> {
     return await this.childRuns.evaluateAll((items) =>

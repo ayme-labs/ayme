@@ -348,6 +348,7 @@ function RunEntryCard({
   return (
     <div
       data-run-card=""
+      data-flashing={flashing}
       className={cn(
         // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "overflow-hidden rounded-lg border bg-card transition-shadow duration-(--duration-normal) ease-(--ease-out)",
