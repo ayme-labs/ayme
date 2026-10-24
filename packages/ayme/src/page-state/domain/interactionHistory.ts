@@ -6,7 +6,6 @@
 
 import {
   MonotonicTimeMsSchema,
-  PageIdSchema,
   StructuralActionIdFactory,
   StructuralObservationSession,
   type StructuralTree,
@@ -36,8 +35,6 @@ export type RecordedAction = ToolCall & {
   readonly failed?: true;
 };
 
-let documentCount = 0;
-
 /**
  * A document's interaction history (ADR-0027): a core Structural Observation
  * Session driven from the browser and the tool call behind each Structural
@@ -52,7 +49,7 @@ let documentCount = 0;
  * apps. A retention rule replaces this.
  */
 export class InteractionHistory {
-  readonly pageId: PageId = PageIdSchema.parse(`document_${++documentCount}`);
+  readonly pageId: PageId;
   readonly observations: StructuralObservationSession;
   private readonly actionIds = new StructuralActionIdFactory();
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
@@ -67,26 +64,38 @@ export class InteractionHistory {
   private readonly clock: MonotonicClock;
   private readonly navigationListeners = new Set<() => void>();
 
-  constructor(currentDocument: Document, clock: MonotonicClock) {
+  /**
+   * Starts with the document's first Visit, at `url`; the host reports each
+   * same-document navigation after it through `recordNavigation`.
+   */
+  constructor({
+    pageId,
+    url,
+    clock,
+  }: {
+    pageId: PageId;
+    url: string;
+    clock: MonotonicClock;
+  }) {
+    this.pageId = pageId;
     this.clock = strictlyIncreasing(clock);
     this.observations = new StructuralObservationSession({
       clock: this.clock,
     });
+    this.observations.recordNavigation({ pageId, url, cause: "initial" });
+  }
+
+  /**
+   * Record a same-document navigation to `url`, which starts a new Visit,
+   * then tell the navigation listeners.
+   */
+  recordNavigation(url: string): void {
     this.observations.recordNavigation({
       pageId: this.pageId,
-      url: currentDocument.URL,
-      cause: "initial",
+      url,
+      cause: "navigate",
     });
-    const view = currentDocument.defaultView;
-    if (view)
-      watchSameDocumentNavigations(view, () => {
-        this.observations.recordNavigation({
-          pageId: this.pageId,
-          url: currentDocument.URL,
-          cause: "navigate",
-        });
-        for (const listener of this.navigationListeners) listener();
-      });
+    for (const listener of this.navigationListeners) listener();
   }
 
   /**
@@ -283,33 +292,4 @@ function strictlyIncreasing(clock: MonotonicClock): MonotonicClock {
       return MonotonicTimeMsSchema.parse(last);
     },
   };
-}
-
-/**
- * Call `onNavigate` after every same-document navigation: through the
- * Navigation API where the browser has one, otherwise through `popstate`,
- * `hashchange` (a fragment navigation such as assigning `location.hash`) and
- * wrapped `history.pushState` / `replaceState`, which fire no event. A URL
- * reported twice is recorded once.
- */
-function watchSameDocumentNavigations(view: Window, onNavigate: () => void) {
-  const navigation = (
-    view as Window & {
-      navigation?: Pick<EventTarget, "addEventListener">;
-    }
-  ).navigation;
-  if (navigation) {
-    navigation.addEventListener("currententrychange", onNavigate);
-    return;
-  }
-  view.addEventListener("popstate", onNavigate);
-  view.addEventListener("hashchange", onNavigate);
-  const history = view.history;
-  for (const method of ["pushState", "replaceState"] as const) {
-    const original = history[method];
-    history[method] = function (this: History, ...args) {
-      original.apply(this, args);
-      onNavigate();
-    };
-  }
 }

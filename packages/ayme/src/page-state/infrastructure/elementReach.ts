@@ -1,12 +1,13 @@
 import type { Locator, Page } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { containsThroughShadow, parentElement } from "../shared";
+import { containsThroughShadow, parentElement } from "../../shared";
 import { latestPageStateRef } from "./pageState";
 import {
   assertAvailable,
   obstructionReason,
+  unfocusableReason,
   type LatestRefLookup,
-} from "./toolAvailability";
+} from "../domain/toolAvailability";
 import {
   blockingAncestor,
   measureReach,
@@ -101,11 +102,7 @@ async function unreachableReason(
 ): Promise<string | undefined> {
   if (input === "focus") {
     const blocker = blockingAncestor(element);
-    if (!blocker) return undefined;
-    const ref = latestRefOf(blocker);
-    return ref === undefined
-      ? "it cannot take focus"
-      : `it cannot take focus; ${ref} is in the way`;
+    return blocker && unfocusableReason(blocker, latestRefOf);
   }
   const measurement = await measureReachAtCall(locator, element);
   if (measurement.available) return undefined;

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createPage, requireAymeRuntimePage } from "../page-objects";
-import { listElementTools } from "../tools";
+import { createPage, requireAymeRuntimePage } from "../../page-objects";
+import { listElementTools } from "../../tools";
 import { assertRootReachable, reaches } from "./elementReach";
-import { errorText } from "../shared";
-import { buildToolOptions, planArguments } from "../goal-loop";
+import { errorText } from "../../shared";
+import { buildToolOptions, planArguments } from "../../goal-loop";
 import { lookAtPageStateForDocument } from "./pageState";
-import { agentTools } from "../test-utils/publication.testSupport";
-import { createAyme, listElementToolTargets } from "../runtime";
+import { agentTools } from "../../test-utils/publication.testSupport";
+import { createAyme, listElementToolTargets } from "../../runtime";
 
 // A refusal answers before Playwright's actionability wait would time out.
 const ACTION_TIMEOUT = 500;

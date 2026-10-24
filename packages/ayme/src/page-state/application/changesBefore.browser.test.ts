@@ -8,12 +8,12 @@ import {
   type Ayme,
   type CustomTool,
   type Run,
-} from "../index";
-import { ACTION_RESULT_NOTE } from "./actionSequence";
-import { listElementTools } from "../tools";
-import { renderChangeRecord } from "./changeRecord";
-import { getInteractionHistory } from "./pageState";
-import { agentTools } from "../test-utils/publication.testSupport";
+} from "../..";
+import { ACTION_RESULT_NOTE } from "../domain/actionResult";
+import { listElementTools } from "../../tools";
+import { renderChangeRecord } from "../domain/changeRecord";
+import { getInteractionHistory } from "../infrastructure/pageState";
+import { agentTools } from "../../test-utils/publication.testSupport";
 
 // Runtime object seam: an action's result reports what changed on the page
 // before it, since its Caller last received the page, apart from what the

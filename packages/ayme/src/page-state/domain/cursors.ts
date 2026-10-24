@@ -1,7 +1,7 @@
 // Runtime, not publication: the Change Record cursors, beside the Run log.
 
 import type { StructuralObservationEntry } from "@ayme-dev/core/structural-observation";
-import type { Caller } from "../shared";
+import type { Caller } from "../../shared";
 
 /**
  * Where a reader of the page stands: the observation it last received, the
@@ -48,9 +48,3 @@ export function createCursors(): Cursors {
     fork: (from) => cursorAt(from.current()),
   };
 }
-
-/**
- * The document's cursors. Module state is the document's: a new document
- * starts with none, as it starts with an empty Run log.
- */
-export const cursors: Cursors = createCursors();

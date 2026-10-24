@@ -26,7 +26,7 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
-vi.mock("../page-state/pageState", async (importOriginal) => ({
+vi.mock("../page-state/infrastructure/pageState", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
     refs.map((ref) => {
@@ -42,7 +42,7 @@ vi.mock("../page-state/pageState", async (importOriginal) => ({
     pageObjectStructure.source = source;
   },
 }));
-vi.mock("../page-state/actionSequence", async (importOriginal) => ({
+vi.mock("../page-state/infrastructure/actions", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   runAction: vi.fn(
     async (
