@@ -40,6 +40,18 @@ export function springEasing(velocity = 0): string {
 }
 
 /**
+ * How fast the spring goes `seconds` into a run it started at `velocity`,
+ * both as a share of the distance per second.
+ */
+export function springVelocity(velocity: number, seconds: number): number {
+  const omega = (2 * Math.PI) / spring.response;
+  return (
+    (velocity + omega * (omega - velocity) * seconds) *
+    Math.exp(-omega * seconds)
+  );
+}
+
+/**
  * The samples a line through them needs to keep within the tolerance of all
  * of them (Ramer–Douglas–Peucker): few where the spring is nearly straight.
  */
@@ -98,7 +110,8 @@ export function releaseVelocity(
   const first = recent[0];
   const last = recent.at(-1);
   // Stryker disable next-line LogicalOperator: the first and the last come from one list, so neither is there without the other.
-  if (!first || !last || last.time === first.time) return { x: 0, y: 0 };
+  if (!first || !last) return { x: 0, y: 0 };
+  if (last.time === first.time) return { x: 0, y: 0 };
   const seconds = (releasedAt - first.time) / 1000;
   return { x: (last.x - first.x) / seconds, y: (last.y - first.y) / seconds };
 }

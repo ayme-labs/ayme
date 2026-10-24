@@ -29,6 +29,7 @@ import { releaseVelocity, type Sample } from "../domain/motion";
 import type { Layout, Point, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
 import { useGlide } from "./useGlide";
+import { usePointerClick } from "./usePointerClick";
 import { usePresence } from "./usePresence";
 import { currentViewport, useViewport } from "./useViewport";
 
@@ -88,9 +89,10 @@ function isCorner(handle: Handle): handle is Corner {
  * the preferences it's given and reports every change as a patch; its body
  * is the children. While docked, it asks the host page for room.
  *
- * What the person does moves it on a spring: it shrinks into the logo and
- * grows back out of it, glides to a dock picked from the layout menu, and
- * settles into the dock it's dropped on at the speed it was let go.
+ * What the person does with a pointer moves it on a spring: it shrinks into
+ * the logo and grows back out of it, glides to a dock picked from the layout
+ * menu, and settles into the dock it's dropped on at the speed it was let
+ * go. What a key or a screen reader does lands at once.
  */
 export function InspectorShell({
   preferences,
@@ -124,12 +126,13 @@ export function InspectorShell({
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
   // Collapsing moves focus to the logo and opening moves it back, but only
-  // when the person did it, not when the panel starts collapsed. Only then
-  // do the panel and the logo animate in.
+  // when the person did it, not when the panel starts collapsed. Only when
+  // they did it with a pointer do the panel and the logo move.
+  const pointerClick = usePointerClick();
   const logoButton = useRef<HTMLButtonElement>(null);
   const collapseButton = useRef<HTMLButtonElement>(null);
   const moveFocus = useRef(false);
-  const [toggled, setToggled] = useState(false);
+  const [moving, setMoving] = useState(false);
   useEffect(() => {
     if (!moveFocus.current) return;
     moveFocus.current = false;
@@ -137,13 +140,13 @@ export function InspectorShell({
   }, [collapsed]);
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
-    setToggled(true);
+    setMoving(pointerClick.current);
     onPreferencesChange({ collapsed: next });
   };
   // Collapsing, the panel shrinks toward the logo as the logo grows in;
   // opening is the same path back.
-  const panel = usePresence<HTMLElement>(!collapsed, toggled);
-  const logo = usePresence<HTMLDivElement>(collapsed, toggled);
+  const panel = usePresence<HTMLElement>(!collapsed, moving);
+  const logo = usePresence<HTMLDivElement>(collapsed, moving);
   const glide = useGlide(panel.ref);
   const logoPosition = fitLogo(
     preferences.logo ?? defaultLogo(viewport),
@@ -153,10 +156,16 @@ export function InspectorShell({
   // Dragging the header moves a floating panel and floats a docked one,
   // under the pointer; dropping it on an edge docks it there. A docked panel
   // floats with the pointer as far along its header, and as far down, as
-  // where it was taken hold of. A panel still gliding is taken from where it
-  // shows.
+  // where it was taken hold of. The press takes hold of the panel where it
+  // shows: grown all the way out of the logo, and held still mid-glide until
+  // it moves, or goes on gliding once let go.
   const startMove = (event: PointerEvent) => {
     event.preventDefault();
+    // Only the main button drags, and only on the header itself: React hands
+    // the header presses in the layout menu too, through the menu's portal.
+    const { currentTarget, target } = event;
+    if (event.button !== 0 || !currentTarget.contains(target as Node)) return;
+    panel.finish();
     const shown = panel.ref.current!.getBoundingClientRect();
     const gliding = glide.gliding();
     let origin: Point | undefined;
@@ -194,12 +203,16 @@ export function InspectorShell({
       },
       onEnd: (moved) => {
         setSnap(undefined);
+        glide.resume();
         if (!moved || !dock) return;
         // It settles into the dock carrying the speed it was let go at.
         glide.from(releaseVelocity(path, performance.now()));
         onPreferencesChange({ layout: dock });
       },
     });
+    // Held once the drag has started: starting it lets go of any drag before,
+    // which lets its glide go on.
+    glide.hold();
   };
 
   const startResize = (event: PointerEvent, handle: Handle) => {
@@ -270,6 +283,7 @@ export function InspectorShell({
         <aside
           ref={panel.ref}
           aria-label="ayme"
+          data-presence
           data-state={panel.state}
           // Leaving, it's out of reach and out of the accessibility tree.
           inert={collapsed}
@@ -310,15 +324,22 @@ export function InspectorShell({
             />
           ))}
           {/* The panel's content clips to its rounded frame; the handles, outside
-            this, straddle the border. */}
-          <div className="flex size-full flex-col overflow-hidden rounded-[inherit]">
+            this, straddle the border. It carries the panel's surface, which
+            eases across a theme switch while the frame keeps its own
+            transitions; the frame's own fill shows only past its rounded
+            corners (inspector.css). */}
+          <div className="flex size-full flex-col overflow-hidden rounded-[inherit] bg-background">
             <Header
               status={status}
               layout={layout}
               theme={preferences.theme}
               onThemeChange={(theme) => onPreferencesChange({ theme })}
               onLayoutChange={(next) => {
-                if (next !== layout) glide.from();
+                if (next !== layout) {
+                  // A layout chosen by a key or a screen reader lands at once.
+                  if (pointerClick.current) glide.from();
+                  else glide.stop();
+                }
                 onPreferencesChange({ layout: next });
               }}
               onCollapse={() => setCollapsed(true)}

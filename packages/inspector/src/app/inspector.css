@@ -100,9 +100,12 @@
  * shadow, and nothing else. Text and borders switch at once: every element
  * has a border colour and inherits a text colour, so easing those starts five
  * transitions on each, which stalls a large tree for a second or more.
+ * The panel's and the logo's frames keep their own transitions, which they
+ * enter and leave on and which this would cut short; the panel's surface
+ * also sits on an element inside its frame, so it still eases across.
  */
 [data-ayme-inspector-root][data-theme-switching],
-[data-ayme-inspector-root][data-theme-switching] *,
+[data-ayme-inspector-root][data-theme-switching] *:not([data-presence]),
 [data-ayme-inspector-root][data-theme-switching] *::before,
 [data-ayme-inspector-root][data-theme-switching] *::after {
   transition-property: background-color, fill, box-shadow;

@@ -275,9 +275,16 @@ describe("motion", () => {
     });
   }
 
+  /** Plays every animation at this share of its speed. */
+  async function slowAnimations(rate: number) {
+    await cdp().send("Animation.enable");
+    await cdp().send("Animation.setPlaybackRate", { playbackRate: rate });
+  }
+
   afterEach(async () => {
     vi.restoreAllMocks();
     await emulateMotion("reduce");
+    await slowAnimations(1);
   });
 
   // The panel and the logo leave hidden from the accessibility tree, which
@@ -329,6 +336,62 @@ describe("motion", () => {
   /** An easing as the browser writes it back. */
   function asTheBrowserWrites(easing: string) {
     return new KeyframeEffect(null, null, { easing }).getTiming().easing;
+  }
+
+  /** Moves every glide on to a moment of it, to play on from there. */
+  function seekGlides(time: number) {
+    return inspector.panel.evaluate((panel, at) => {
+      for (const animation of panel.getAnimations())
+        if (!(animation instanceof CSSTransition)) animation.currentTime = at;
+    }, time);
+  }
+
+  /** How fast the panel glides at a moment of its glides, in px/ms. */
+  async function glideSpeed(time: number) {
+    await holdGlides(time);
+    const from = await shell.box();
+    await holdGlides(time + 0.5);
+    const to = await shell.box();
+    return { x: (to.x - from.x) / 0.5, y: (to.y - from.y) / 0.5 };
+  }
+
+  /** A pointer event's details, with the main button unless told another. */
+  function pointer(
+    clientX: number,
+    clientY: number,
+    buttons: number,
+    button = 0
+  ) {
+    return {
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      button,
+      buttons,
+      clientX,
+      clientY,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    };
+  }
+
+  /** Where a press on the header's title lands. */
+  async function onTitle() {
+    const box = (await header.title.boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+
+  /**
+   * Starts a glide from the right dock to where the panel floats, slowed to
+   * a tenth, and moves it on to 100 ms in, where it goes fast.
+   */
+  async function glideToFloat() {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "right", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Floating");
+    await slowAnimations(0.1);
+    await seekGlides(100);
   }
 
   it("glides to a layout chosen from the menu from where it was, at its new size from the start", async () => {
@@ -387,6 +450,117 @@ describe("motion", () => {
     expect(await shell.box()).toEqual({ x: 0, y: 0, width: 600, height: 800 });
   });
 
+  // Dock left lies the other way, so the panel first carries on to the
+  // right, then turns. The new glide's easing starts on a straight line a
+  // few ms long, which reads a little slow on a spring pulling this hard.
+  it("carries its speed into another layout chosen mid-glide", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Dock right");
+    const before = await glideSpeed(100);
+    await holdGlides(100);
+
+    await header.layoutMenu.choose("Dock left");
+
+    const after = await glideSpeed(0);
+    for (const axis of ["x", "y"] as const) {
+      expect(after[axis] / before[axis]).toBeGreaterThan(0.6);
+      expect(after[axis] / before[axis]).toBeLessThan(1.2);
+    }
+  });
+
+  it("moves at once to a layout chosen by keyboard mid-glide", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.choose("Dock right");
+    await holdGlides(100);
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock left").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock left");
+    expect(await glides()).toEqual([]);
+    expect(await shell.box()).toEqual({ x: 0, y: 0, width: 600, height: 800 });
+  });
+
+  it("glides to a layout chosen by pressing the menu's button and letting go on it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    const trigger = (await header.layoutMenu.trigger.boundingBox())!;
+
+    await header.layoutMenu.trigger.dispatchEvent(
+      "pointerdown",
+      pointer(trigger.x + 5, trigger.y + 5, 1)
+    );
+    const option = header.layoutMenu.option("Dock right");
+    const item = (await option.boundingBox())!;
+    await option.dispatchEvent("pointerup", pointer(item.x + 5, item.y + 5, 0));
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(await glides()).toHaveLength(2);
+  });
+
+  it("glides to a layout chosen by a click that counts a press, though no release came just before it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.trigger.press("Enter");
+
+    await header.layoutMenu
+      .option("Dock right")
+      .dispatchEvent("click", { detail: 1, bubbles: true, composed: true });
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(await glides()).toHaveLength(2);
+  });
+
+  it("docks from the menu at once when chosen by keyboard, after a pointer", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.title.click();
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(await glides()).toEqual([]);
+    expect(await shell.box()).toEqual({
+      x: 680,
+      y: 0,
+      width: 600,
+      height: 800,
+    });
+  });
+
+  it("docks from the menu at once when chosen by keyboard, after a pointer let go where something stopped it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    // As picking an element on the page does.
+    const stop = (event: Event) => event.stopImmediatePropagation();
+    window.addEventListener("pointerup", stop, true);
+    await header.title.click();
+    window.removeEventListener("pointerup", stop, true);
+
+    await header.layoutMenu.trigger.press("Enter");
+    await header.layoutMenu.option("Dock right").press("Enter");
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(await glides()).toEqual([]);
+  });
+
+  it("docks from the menu at once when a screen reader chooses it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+    await header.layoutMenu.trigger.press("Enter");
+
+    // A screen reader clicks without a pointer or a key.
+    await header.layoutMenu
+      .option("Dock right")
+      .evaluate((option) => (option as HTMLElement).click());
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    expect(await glides()).toEqual([]);
+  });
+
   it("keeps its glide when the layout it's gliding to is chosen again", async () => {
     await emulateMotion("no-preference");
     renderShell({ layout: "float", float: floating, sideWidth: 600 });
@@ -419,6 +593,75 @@ describe("motion", () => {
       })
       .toEqual([100, 50]);
     expect(await glides()).toEqual([]);
+  });
+
+  it("holds a gliding panel still where its header is pressed, and drags it from there", async () => {
+    await glideToFloat();
+    const at = await onTitle();
+
+    await header.title.dispatchEvent("pointerdown", pointer(at.x, at.y, 1));
+    const pressed = await shell.box();
+    // Long enough for the glide to have gone on several pixels.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(await shell.box()).toEqual(pressed);
+    await header.title.dispatchEvent(
+      "pointermove",
+      pointer(at.x - 100, at.y + 50, 1)
+    );
+    await header.title.dispatchEvent(
+      "pointerup",
+      pointer(at.x - 100, at.y + 50, 0)
+    );
+
+    // Layout places the panel on a 1/64px grid.
+    await expect
+      .poll(async () => {
+        const { x, y } = await shell.box();
+        return [Math.round(x - pressed.x), Math.round(y - pressed.y)];
+      })
+      .toEqual([-100, 50]);
+    expect(await glides()).toEqual([]);
+  });
+
+  it("glides on once its pressed header is let go without moving", async () => {
+    await glideToFloat();
+    const at = await onTitle();
+    await header.title.dispatchEvent("pointerdown", pointer(at.x, at.y, 1));
+    const [{ time: held }] = await glides();
+
+    await header.title.dispatchEvent("pointerup", pointer(at.x, at.y, 0));
+
+    await expect
+      .poll(async () => (await glides())[0]?.time)
+      .toBeGreaterThan(held);
+    await slowAnimations(1);
+    await expect.poll(() => shell.box()).toEqual(floating);
+  });
+
+  it("goes on gliding through a press of another button on its header", async () => {
+    await glideToFloat();
+    const at = await onTitle();
+
+    await header.title.dispatchEvent("pointerdown", pointer(at.x, at.y, 2, 2));
+    const pressed = await shell.box();
+
+    await expect.poll(() => shell.box()).not.toEqual(pressed);
+  });
+
+  // React hands the header presses in the menu, which it portals elsewhere.
+  it("goes on gliding through a press in its layout menu", async () => {
+    await glideToFloat();
+    await header.layoutMenu.trigger.press("Enter");
+    const option = header.layoutMenu.option("Dock left");
+    const item = (await option.boundingBox())!;
+
+    await option.dispatchEvent(
+      "pointerdown",
+      pointer(item.x + 5, item.y + 5, 1)
+    );
+    const pressed = await shell.box();
+
+    await expect.poll(() => shell.box()).not.toEqual(pressed);
   });
 
   // Each move of the drag comes 10 ms after the one before, by the clock
@@ -476,7 +719,7 @@ describe("motion", () => {
     expect(await glides()).toEqual([]);
   });
 
-  it("drags a panel still growing out of the logo from where it's going", async () => {
+  it("drags a panel still growing out of the logo at its full size, from where it's going", async () => {
     await emulateMotion("no-preference");
     renderShell({ collapsed: true, layout: "float", float: floating });
     await logo.open();
@@ -488,10 +731,8 @@ describe("motion", () => {
     });
 
     await header.dragBy(-100, 50);
-    await inspector.panel.evaluate((panel) => {
-      for (const animation of panel.getAnimations()) animation.finish();
-    });
 
+    expect(await transitions()).toEqual([]);
     await expect
       .poll(() => shell.box())
       .toEqual({ ...floating, x: 300, y: 90 });
@@ -528,7 +769,8 @@ describe("motion", () => {
 
     await inspector.collapse();
     expect(await aside.count()).toBe(1);
-    await logo.root.press("Enter");
+    // A plain click waits until the growing logo holds still.
+    await logo.root.click({ force: true });
 
     await expect.poll(() => logoButton.count()).toBe(0);
     expect(await inspector.panel.evaluate((panel) => "same" in panel)).toBe(
@@ -552,6 +794,123 @@ describe("motion", () => {
     await expect
       .poll(async () => (await started()).slice(closing).sort())
       .toEqual(["opacity", "scale"]);
+  });
+
+  it("grows out of the logo again when opened with a pointer after a key", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating });
+    await header.collapseButton.press("Enter");
+    const started = await recordTransitions();
+
+    await logo.open();
+
+    await expect
+      .poll(async () => (await started()).sort())
+      .toEqual(["opacity", "scale"]);
+  });
+
+  // A tap's click can come once its release is long done.
+  it("grows out of the logo when a tap's click opens it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const started = await recordTransitions();
+
+    await logo.root.dispatchEvent("click", { detail: 1 });
+
+    await expect
+      .poll(async () => (await started()).sort())
+      .toEqual(["opacity", "scale"]);
+  });
+
+  it("opens from the logo at once when opened by keyboard", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const started = await recordTransitions();
+
+    await logo.root.press("Enter");
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    expect(await logoButton.count()).toBe(0);
+    await nextFrames();
+    expect(await started()).toEqual([]);
+  });
+
+  it("opens from the logo at once when a screen reader clicks it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    const started = await recordTransitions();
+
+    await logo.root.evaluate((logo) => (logo as HTMLElement).click());
+
+    await expect.poll(() => shell.box()).toEqual(floating);
+    expect(await logoButton.count()).toBe(0);
+    await nextFrames();
+    expect(await started()).toEqual([]);
+  });
+
+  it("collapses into the logo at once when collapsed by keyboard", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating });
+
+    await header.collapseButton.press("Enter");
+
+    expect(await aside.count()).toBe(0);
+    await nextFrames();
+    expect(
+      await logoButton
+        .locator("..")
+        .evaluate((frame) => frame.getAnimations().length)
+    ).toBe(0);
+  });
+
+  it("lets a drag held through a collapse by key go on, and opens where it left the panel", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating });
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener("error", onError);
+
+    await header.title.dispatchEvent("pointerdown", pointer(500, 60, 1));
+    await header.collapseButton.press("Enter");
+    await logo.root.dispatchEvent("pointermove", pointer(560, 60, 1));
+    await logo.root.dispatchEvent("pointerup", pointer(560, 60, 0));
+
+    window.removeEventListener("error", onError);
+    expect(errors).toEqual([]);
+    await logo.open();
+    await expect.poll(() => shell.box()).toEqual({ ...floating, x: 460 });
+  });
+
+  it("keeps growing out of the logo through a theme switch", async () => {
+    await emulateMotion("no-preference");
+    await slowAnimations(0.1);
+    renderShell({ collapsed: true, layout: "float", float: floating });
+    await logo.open();
+    await expect
+      .poll(async () => (await transitions()).sort())
+      .toEqual(["opacity", "scale"]);
+
+    await switchToDark();
+
+    expect((await transitions()).sort()).toEqual(["opacity", "scale"]);
+  });
+
+  it("eases its surface across a theme switch", async () => {
+    await slowAnimations(0.1);
+    renderShell({ layout: "float", float: floating });
+    const surface = header.root.locator("..");
+    // Drawn before the switch, as the person sees it.
+    await nextFrames();
+
+    await switchToDark();
+
+    expect(
+      await surface.evaluate((element) =>
+        element
+          .getAnimations()
+          .map((animation) => (animation as CSSTransition).transitionProperty)
+      )
+    ).toEqual(["background-color"]);
   });
 
   it.each([
@@ -607,7 +966,23 @@ describe("motion", () => {
         (container: Recording) => container.started ?? []
       );
   }
+
+  /** Switches the root to dark, marked as switching, as InspectorRoot does. */
+  function switchToDark() {
+    return inspector.container.evaluate((root) => {
+      root.setAttribute("data-theme-switching", "");
+      root.classList.replace("scheme-light", "scheme-dark");
+      root.classList.add("dark");
+    });
+  }
 });
+
+/** Waits until the browser has drawn twice, so a transition would have started. */
+function nextFrames() {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  );
+}
 
 describe("the host page", () => {
   // The host page's content: the first thing in its body, full width.

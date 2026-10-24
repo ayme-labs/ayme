@@ -35,6 +35,7 @@ export function Fab({
   return (
     <div
       ref={presence.ref}
+      data-presence
       data-state={presence.state}
       inert={presence.state === "closed"}
       aria-hidden={presence.state === "closed" || undefined}

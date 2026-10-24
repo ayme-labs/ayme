@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import css from "virtual:ayme-inspector-css";
 
-import { releaseVelocity, spring, springEasing } from "./motion";
+import {
+  releaseVelocity,
+  spring,
+  springEasing,
+  springVelocity,
+} from "./motion";
 
 /** The progress a `linear()` easing reaches at a share of its duration. */
 function progressAt(easing: string, at: number) {
@@ -72,6 +77,25 @@ describe("springEasing", () => {
   it("first carries on past its start when handed a velocity away", () => {
     expect(progressAt(springEasing(-10), share(0.02))).toBeLessThan(-0.05);
     expect(progressAt(springEasing(-10), 1)).toBe(1);
+  });
+});
+
+describe("springVelocity", () => {
+  it("starts at the velocity it's handed", () => {
+    expect(springVelocity(5, 0)).toBe(5);
+  });
+
+  // A critically damped spring from rest goes ω/e of the way per second
+  // after 1/ω seconds. Handed v, it goes (2ω - v)/e² after 2/ω.
+  it("follows the spring's speed from rest", () => {
+    expect(springVelocity(0, 1 / omega)).toBeCloseTo(omega / Math.E);
+  });
+
+  it("follows the spring's speed from the velocity it's handed", () => {
+    expect(springVelocity(omega, 2 / omega)).toBeCloseTo(omega / Math.E ** 2);
+    expect(springVelocity(-10, 2 / omega)).toBeCloseTo(
+      (2 * omega + 10) / Math.E ** 2
+    );
   });
 });
 
