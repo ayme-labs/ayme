@@ -182,6 +182,22 @@ it("counts the tools the tool list served as seen, so a result notes only what c
   );
 });
 
+it("counts the parameters and description the tool list served as seen, and notes a later change to them", async () => {
+  const agent = await connectAgent();
+  await agent.publish([tool("SurveyListPage.search")]);
+  await agent.client.listTools();
+  expect(await agent.call("ayme_noop")).toEqual(["ok"]);
+
+  await agent.publish([
+    {
+      ...tool("SurveyListPage.search"),
+      inputSchema: { properties: { text: { type: "string" } } },
+    },
+  ]);
+  const [, note] = await agent.call("ayme_noop");
+  expect(note).toContain("Changed: SurveyListPage.search (parameters).");
+});
+
 it("still notes the availability the tool list leaves out, once", async () => {
   const agent = await connectAgent();
   await agent.publish([

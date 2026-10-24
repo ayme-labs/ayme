@@ -31,8 +31,9 @@ import {
  * when a tool merely becomes available or unavailable: the list has no
  * field for that, and a cached list would churn (ADR-0035). One server
  * serves one agent, so every tool result also carries, as a text item after
- * the tool's own, a note of the tools that appeared, disappeared, became
- * available or unavailable or were hidden since the previous tool call or,
+ * the tool's own, a note of the tools that appeared, disappeared, changed
+ * their parameters or description, became available or unavailable or were
+ * hidden since the previous tool call or,
  * when later, the agent's last read of the tool list; an agent that has
  * done neither has seen no tools. The list says nothing of availability,
  * so a tool it first served counts as available. A server tool's input
@@ -79,17 +80,18 @@ export function createMcpToolServer({
 
   server.setRequestHandler(ListToolsRequestSchema, () => {
     const tools = pageTools();
-    // The list shows neither availability nor hidden tools, so the agent
-    // keeps what it last heard of those, and takes a tool new to it as
-    // available.
+    // The list shows each tool's description and input schema but neither
+    // availability nor hidden tools, so the agent keeps what it last heard
+    // of those, and takes a tool new to it as available.
     seen = {
-      tools: tools.map(
-        ({ name }) =>
-          seen.tools.find((tool) => tool.name === name) ?? {
-            name,
-            available: true,
-          }
-      ),
+      tools: tools.map(({ name, description, inputSchema }) => ({
+        ...(seen.tools.find((tool) => tool.name === name) ?? {
+          available: true,
+        }),
+        name,
+        description,
+        inputSchema,
+      })),
       hidden: seen.hidden,
     };
     return {
