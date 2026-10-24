@@ -221,7 +221,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", () => {
 
   expect(() =>
     runInInjectionContext(root, () => injectPageObject(Uncompiled))
-  ).toThrow("The imported page object has no compiler-derived Ayme metadata.");
+  ).toThrow("Uncompiled has no compiler-derived Ayme metadata.");
 });
 
 it("C11: returns the session as ayme, so a goal runs with the owner's goalLoop", async () => {

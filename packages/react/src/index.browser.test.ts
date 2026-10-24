@@ -591,9 +591,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", async () => {
   }
   await expect(
     act(async () => root().render(h(AymeProvider, { pageFactory }, h(Child))))
-  ).rejects.toThrow(
-    "The imported page object has no compiler-derived Ayme metadata."
-  );
+  ).rejects.toThrow("Uncompiled has no compiler-derived Ayme metadata.");
 });
 
 // usePeek seam: the hook's contract with `ayme.peek`, which it adapts

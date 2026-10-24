@@ -68,11 +68,13 @@ test("an App Process's tool goes when it exits, and the agent's next result says
   await listed(agent, TOOL);
   await agent.call("ayme_list_tools");
 
+  // The agent waits for the server's list change and doesn't re-list.
+  const changes = agent.toolListChanges();
   await appProcess.exit();
 
   await expect
-    .poll(() => agent.toolNames(), { message: agent.log })
-    .not.toContain(TOOL);
+    .poll(() => agent.toolListChanges(), { message: agent.log })
+    .toBeGreaterThan(changes);
   const { note } = await agent.call("ayme_list_tools");
   expect(note).toContain(`Disappeared: ${TOOL}.`);
 });
