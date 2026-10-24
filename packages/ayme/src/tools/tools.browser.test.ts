@@ -170,6 +170,49 @@ registerCompiledPom(ListPage, {
   ],
 });
 
+/**
+ * A page whose filter popover is its member `filter`, and whose action shows
+ * that popover or a list item, which ListPage reaches through `items`.
+ */
+class ResponsesPage {
+  readonly filter = { showOnly() {} };
+  openFilter() {}
+}
+
+registerCompiledPom(ResponsesPage, {
+  className: "ResponsesPage",
+  members: [
+    {
+      memberName: "filter",
+      kind: "component",
+      access: "field",
+      componentClassName: "FilterPopover",
+      collection: false,
+    },
+  ],
+  tools: [
+    {
+      methodName: "openFilter",
+      toolName: "ResponsesPage.openFilter",
+      parameters: [],
+      returnPoms: ["FilterPopover", "ListItem", "UnreachedPopover"],
+    },
+  ],
+  components: [
+    {
+      className: "FilterPopover",
+      members: [],
+      tools: [
+        {
+          methodName: "showOnly",
+          toolName: "showOnly",
+          parameters: [],
+        },
+      ],
+    },
+  ],
+});
+
 /** A Custom Tool with its own filter. */
 const highlight: CustomTool = {
   name: "highlight",
@@ -504,6 +547,29 @@ describe("the session's tools in Chromium", () => {
     expect(listed("BarePage.close")).not.toHaveProperty("returnPoms");
     expect(label("BarePage.open")).toBe("Then shows SettingsPage.");
     expect(label("BarePage.close")).toBe("Run close.");
+  });
+
+  it("names a returned class by the prefixes its tools are published under", async () => {
+    await startSession();
+    cleanups.push(registered(ResponsesPage), registered(ListPage));
+    await probeRegisteredPomMembers();
+    const listed = ayme.tools
+      .list()
+      .find((tool) => tool.name === "ResponsesPage.openFilter");
+    const label = buildToolOptions().find(
+      ({ key }) => key === "ResponsesPage.openFilter"
+    )?.label;
+
+    expect(listed).toMatchObject({
+      returnPomPaths: {
+        FilterPopover: ["ResponsesPage.filter"],
+        ListItem: ["ListPage.items"],
+      },
+    });
+    expect(listed?.returnPomPaths).not.toHaveProperty("UnreachedPopover");
+    expect(label).toBe(
+      "Then shows ResponsesPage.filter (FilterPopover) or ListPage.items (ListItem) or UnreachedPopover."
+    );
   });
 
   it("passes a rest parameter's list to the action as separate arguments", async () => {
