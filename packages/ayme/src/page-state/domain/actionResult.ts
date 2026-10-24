@@ -64,9 +64,26 @@ export type ChangeRecordStarts = {
 };
 
 /**
- * Read an action's Change Record through core, in its two parts: from the
- * Caller's cursor to the action's before, and from there to `after`. A part
- * with nothing to read, or no change, is left out.
+ * Read the Change Record from observation `from` to `to` through core,
+ * rendered with each side's Page Object labels. Absent when nothing changed.
+ */
+export async function readRenderedChange(
+  history: InteractionHistory,
+  from: StructuralObservationEntry,
+  to: StructuralObservationEntry
+): Promise<string | undefined> {
+  const change = await history.readChange(from, to);
+  if (!change.hasAnyChanges()) return undefined;
+  return renderChangeRecord(change, {
+    before: history.pomLabels(from),
+    after: history.pomLabels(to),
+  });
+}
+
+/**
+ * Read an action's Change Record in its two parts: from the Caller's cursor
+ * to the action's before, and from there to `after`. A part with nothing to
+ * read, or no change, is left out.
  */
 export async function readChangeRecord(
   history: InteractionHistory,
@@ -76,29 +93,13 @@ export async function readChangeRecord(
   const start = before ?? after;
   const [changesBefore, changes] = await Promise.all([
     received && received !== start
-      ? history.readChange(received, start)
+      ? readRenderedChange(history, received, start)
       : undefined,
-    history.readChange(start, after),
+    readRenderedChange(history, start, after),
   ]);
-  const beforeChanged = changesBefore?.hasAnyChanges() ?? false;
-  const actionChanged = changes.hasAnyChanges();
   return {
-    page_changed: beforeChanged || actionChanged,
-    ...(beforeChanged
-      ? {
-          changes_before: renderChangeRecord(changesBefore!, {
-            before: history.pomLabels(received!),
-            after: history.pomLabels(start),
-          }),
-        }
-      : {}),
-    ...(actionChanged
-      ? {
-          changes: renderChangeRecord(changes, {
-            before: history.pomLabels(start),
-            after: history.pomLabels(after),
-          }),
-        }
-      : {}),
+    page_changed: changesBefore !== undefined || changes !== undefined,
+    ...(changesBefore !== undefined ? { changes_before: changesBefore } : {}),
+    ...(changes !== undefined ? { changes } : {}),
   };
 }
