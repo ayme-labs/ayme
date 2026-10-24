@@ -94,6 +94,7 @@ export function useRunning(
         onOpenChange={setOpen}
         onClear={runtime.clearRuns}
         focus={focus}
+        onFocusShown={() => setFocus(undefined)}
         onHover={highlight.hover}
       />
     </RunsRegion>

@@ -1,4 +1,8 @@
-export { agentDescription, inputSchemaFor } from "./domain/actionTool";
+export {
+  agentDescription,
+  inputSchemaFor,
+  returnPomPaths,
+} from "./domain/actionTool";
 export { createPage } from "./infrastructure/browserPage";
 export type { CreatePageOptions } from "./infrastructure/browserPage";
 export {
@@ -30,6 +34,7 @@ export {
   listRegisteredPomTargets,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
+  publishedToolPrefixes,
   registerPageObject,
   subscribeToRegisteredPoms,
 } from "./infrastructure/registry";
@@ -38,7 +43,4 @@ export type {
   CollectionToolItem,
   RegisteredPom,
 } from "./infrastructure/registry";
-export {
-  createAymeRuntime,
-  requireAymeRuntimePage,
-} from "./infrastructure/runtimePage";
+export { createAymeRuntime } from "./infrastructure/aymeRuntime";

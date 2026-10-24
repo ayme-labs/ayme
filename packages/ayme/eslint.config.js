@@ -51,7 +51,7 @@ function selectorRegex(regex) {
   return `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
 }
 
-function frontDoors(slice, files, { tests }) {
+function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
   const patterns = [
     {
       regex: deepImport(slice),
@@ -65,10 +65,12 @@ function frontDoors(slice, files, { tests }) {
             message: "Only test code may use test code.",
           },
         ]),
+    ...restricted,
   ];
+  const ignored = [...(tests ? [] : testCode), ...ignores];
   return {
     files,
-    ...(tests ? {} : { ignores: testCode }),
+    ...(ignored.length ? { ignores: ignored } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
       // The same rules for import() as a value and as a type.
@@ -98,8 +100,14 @@ export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // The other slices aren't layered yet; packages/ayme/AGENTS.md says why.
-    enforcedSlices: ["runs", "page-objects", "goal-loop"],
+    // shared and runtime stay unlayered, as packages/ayme/AGENTS.md says.
+    enforcedSlices: [
+      "page-state",
+      "runs",
+      "page-objects",
+      "goal-loop",
+      "tools",
+    ],
   }),
   {
     files: [sourceFiles],
@@ -161,6 +169,25 @@ export default [
       { tests: true }
     ),
   ]),
+  // Only tools' infrastructure uses Playwright Lite: the rest of the slice
+  // acts on the page its Run hands it. A later block replaces the rule
+  // config above for its files, so it repeats the slice's front doors.
+  // elementTools.ts resolves a selector target with Playwright Lite until
+  // page-state does (#943).
+  frontDoors(
+    "tools",
+    ["src/tools/domain/**/*.ts", "src/tools/application/**/*.ts"],
+    {
+      tests: false,
+      ignores: ["src/tools/application/elementTools.ts"],
+      restricted: [
+        {
+          regex: "^@ayme-dev/playwright-lite(/.*)?$",
+          message: "Only tools' infrastructure may use Playwright Lite.",
+        },
+      ],
+    }
+  ),
   // The entries, the package's own tests and the shared test harnesses,
   // which use the slices' front doors.
   frontDoors(undefined, ["src/*.ts"], { tests: false }),

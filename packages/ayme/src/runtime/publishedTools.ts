@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import type { JsonSchema } from "../shared";
 import { getPursueGoalTool, type GoalTool } from "../goal-loop";
 import {
@@ -18,6 +19,8 @@ import {
 } from "../page-state";
 import {
   listRegisteredPomTools,
+  publishedToolPrefixes,
+  returnPomPaths,
   type CallerAwarePomTool,
 } from "../page-objects";
 import type { ToolAvailability } from "../page-state";
@@ -55,6 +58,13 @@ export type PublishedToolInfo = Readonly<{
    * which the page shows afterwards.
    */
   returnPoms?: readonly string[];
+  /**
+   * For a Page Object Tool: the prefixes the tools of each of its
+   * `returnPoms` are published under, by class name, e.g.
+   * `{ ResponseFilterPopover: ["SurveyResponsesPage.filter"] }`. A class
+   * whose actions no registered Page Object publishes has no entry.
+   */
+  returnPomPaths?: Readonly<Record<string, readonly string[]>>;
   inputSchema: JsonSchema;
   group: PublishedToolGroup;
 }>;
@@ -184,15 +194,28 @@ export function listPeekToolInfo(): readonly ToolInfo[] {
   );
 }
 
+// The started session's page, for what reads it outside any Run: the
+// Inspector's element tool targets. A Run is handed its page instead.
+let startedPage: Page | undefined;
+
+/** Package-internal: store or clear the started session's page. Called by `start()` and `stop()`. */
+export function configureStartedPage(page: Page | undefined): void {
+  startedPage = page;
+}
+
 /**
  * The refs each available single-element tool can take in `capture` (a look at the current
  * page when absent), by tool name, in tree order: the same closed set the Goal
  * Loop offers for that tool's ref. Pass the look the Inspector shows,
- * so the refs match its structure.
+ * so the refs match its structure. Reach is measured on the started
+ * session's page.
  */
 export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
+  const page = startedPage;
+  if (!page)
+    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   const elementTools = listElementTools();
   const current = capture ?? (await lookAtPageStateForDocument(document));
   return inReachBatch(
@@ -200,7 +223,9 @@ export async function listElementToolTargets(
       new Map(
         elementTools.map(({ tool, filter }) => [
           tool.name,
-          acceptedRefNodes(filter, current).map((node) => node.ref),
+          acceptedRefNodes((element) => filter(element, page), current).map(
+            (node) => node.ref
+          ),
         ])
       )
   );
@@ -208,6 +233,7 @@ export async function listElementToolTargets(
 
 /** Each tool's reading. */
 function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
+  const prefixes = publishedToolPrefixes();
   return Object.freeze(
     tools.map(({ tool, group, available, reason }) =>
       Object.freeze({
@@ -216,7 +242,10 @@ function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
           ? {}
           : { description: tool.description }),
         ...("returnPoms" in tool && tool.returnPoms
-          ? { returnPoms: tool.returnPoms }
+          ? {
+              returnPoms: tool.returnPoms,
+              ...returnPomPaths(tool.returnPoms, prefixes),
+            }
           : {}),
         inputSchema: tool.inputSchema,
         group,

@@ -26,23 +26,30 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
-vi.mock("../../page-state/pageState", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
-    refs.map((ref) => {
-      const entry = pageStateResolutions.get(ref);
-      if (entry) return { status: "resolved", requestedRef: ref, ...entry };
-      return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
-    }),
-  onPageStateRecorded: (_doc: unknown, listener: () => void) => {
-    pageStateRecordedListeners.add(listener);
-    return () => pageStateRecordedListeners.delete(listener);
-  },
-  providePageObjectStructure: (source: unknown) => {
-    pageObjectStructure.source = source;
-  },
-}));
-vi.mock("../../page-state/actionSequence", async (importOriginal) => ({
+vi.mock(
+  "../../page-state/infrastructure/pageState",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
+      refs.map((ref) => {
+        const entry = pageStateResolutions.get(ref);
+        if (entry) return { status: "resolved", requestedRef: ref, ...entry };
+        return {
+          status: "unresolved",
+          requestedRef: ref,
+          reason: "unknown-ref",
+        };
+      }),
+    onPageStateRecorded: (_doc: unknown, listener: () => void) => {
+      pageStateRecordedListeners.add(listener);
+      return () => pageStateRecordedListeners.delete(listener);
+    },
+    providePageObjectStructure: (source: unknown) => {
+      pageObjectStructure.source = source;
+    },
+  })
+);
+vi.mock("../../page-state/infrastructure/actions", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   runAction: vi.fn(
     async (
@@ -140,7 +147,7 @@ describe("live Page Object registry", () => {
 
   it("allows one runtime owner and permits a fresh owner after disposal", async () => {
     const registry = await import("./registry");
-    const { createAymeRuntime } = await import("./runtimePage");
+    const { createAymeRuntime } = await import("./aymeRuntime");
     const firstPage = {} as Page;
     const first = createAymeRuntime(firstPage);
 
@@ -171,6 +178,53 @@ describe("live Page Object registry", () => {
     const second = createAymeRuntime(secondPage);
     expect(second.page).toBe(secondPage);
     second.dispose();
+  });
+
+  it("names the uncompiled class when constructing or registering it", async () => {
+    const registry = await import("./registry");
+    class SignInPage {}
+    const uncompiled = expect.objectContaining({
+      name: "RuntimeStateError",
+      message: "SignInPage has no compiler-derived Ayme metadata.",
+    });
+
+    expect(() => registry.constructPageObject(SignInPage, {} as Page)).toThrow(
+      uncompiled
+    );
+    expect(() =>
+      registry.registerPageObject(SignInPage, new SignInPage())
+    ).toThrow(uncompiled);
+  });
+
+  it("labels an anonymous uncompiled class", async () => {
+    const registry = await import("./registry");
+    const Anonymous = (() => class {})();
+    const message =
+      "An anonymous page object class has no compiler-derived Ayme metadata.";
+
+    expect(Anonymous.name).toBe("");
+    expect(() => registry.constructPageObject(Anonymous, {} as Page)).toThrow(
+      message
+    );
+    expect(() =>
+      registry.registerPageObject(Anonymous, new Anonymous())
+    ).toThrow(message);
+  });
+
+  it("labels an uncompiled class whose static name is not a string", async () => {
+    const registry = await import("./registry");
+    class SymbolNamed {}
+    Object.defineProperty(SymbolNamed, "name", {
+      value: Symbol("SignInPage"),
+    });
+
+    expect(() => registry.constructPageObject(SymbolNamed, {} as Page)).toThrow(
+      expect.objectContaining({
+        name: "RuntimeStateError",
+        message:
+          "An anonymous page object class has no compiler-derived Ayme metadata.",
+      })
+    );
   });
 
   it("observes while at least one Page Object is registered", async () => {

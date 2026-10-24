@@ -18,11 +18,18 @@ export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
 /** Package-internal: the manifest the build compiled for `PomClass`. */
 export function compiledManifestOf(PomClass: object): PomManifest {
   const manifest = compiledPoms.get(PomClass);
-  if (!manifest)
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
+  if (!manifest) throw uncompiledPageObjectError(PomClass);
   return manifest;
+}
+
+function uncompiledPageObjectError(PomClass: object) {
+  // A static `name` can be overridden with any value.
+  const { name } = PomClass as { name: unknown };
+  const label =
+    typeof name === "string" && name ? name : "An anonymous page object class";
+  return new RuntimeStateError(
+    `${label} has no compiler-derived Ayme metadata.`
+  );
 }
 
 export function constructPageObject<T extends object>(

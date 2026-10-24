@@ -6,6 +6,7 @@ import {
   inputParameters,
   inputSchemaFor,
   methodArguments,
+  returnPomPaths,
 } from "./actionTool";
 import type { ToolManifest, ToolParameter } from "../../shared";
 
@@ -75,6 +76,65 @@ describe("agentDescription", () => {
     expect(
       agentDescription({ name: "Page.open", returnPoms: ["Dialog"] })
     ).toBe("Then shows Dialog.");
+  });
+});
+
+describe("returned Page Objects by their published tool prefixes", () => {
+  it("names the prefix after the authored description, with the class", () => {
+    expect(
+      agentDescription({
+        name: "SurveyResponsesPage.openFilter",
+        description: "Filter the responses.",
+        returnPoms: ["ResponseFilterPopover"],
+        returnPomPaths: {
+          ResponseFilterPopover: ["SurveyResponsesPage.filter"],
+        },
+      })
+    ).toBe(
+      "Filter the responses. Then shows SurveyResponsesPage.filter (ResponseFilterPopover)."
+    );
+  });
+
+  it("names every prefix of a class reached under several", () => {
+    expect(
+      agentDescription({
+        name: "Page.open",
+        returnPoms: ["Dialog", "Other"],
+        returnPomPaths: { Dialog: ["Page.dialog", "Page.items"] },
+      })
+    ).toBe("Then shows Page.dialog, Page.items (Dialog) or Other.");
+  });
+
+  it("names a page, whose prefix is its class, once", () => {
+    expect(
+      agentDescription({
+        name: "Page.open",
+        returnPoms: ["SettingsPage"],
+        returnPomPaths: { SettingsPage: ["SettingsPage"] },
+      })
+    ).toBe("Then shows SettingsPage.");
+  });
+
+  it("keeps a class named like an Object property bare when it has no prefix", () => {
+    expect(
+      agentDescription({
+        name: "Page.open",
+        returnPoms: ["Dialog", "constructor"],
+        returnPomPaths: { Dialog: ["Page.dialog"] },
+      })
+    ).toBe("Then shows Page.dialog (Dialog) or constructor.");
+  });
+
+  it("keeps only the returned classes that have a prefix", () => {
+    const prefixes = new Map([
+      ["Dialog", ["Page.dialog"]],
+      ["Unreturned", ["Page.unreturned"]],
+    ]);
+    expect(returnPomPaths(["Dialog", "Unreached"], prefixes)).toStrictEqual({
+      returnPomPaths: { Dialog: ["Page.dialog"] },
+    });
+    expect(returnPomPaths(["Unreached"], prefixes)).toStrictEqual({});
+    expect(returnPomPaths(undefined, prefixes)).toStrictEqual({});
   });
 });
 

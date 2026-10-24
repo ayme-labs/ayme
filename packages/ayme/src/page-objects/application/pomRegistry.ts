@@ -424,6 +424,27 @@ export function createPomRegistry(driver: PageDriver) {
   }
 
   /**
+   * Package-internal: the prefixes the registered Page Objects' tools are
+   * published under, by the class whose actions they are, e.g.
+   * `ResponseFilterPopover` → `["SurveyResponsesPage.filter"]`, so a tool
+   * that returns a class can name the tools an agent calls next. A class
+   * whose actions no registered Page Object publishes has none.
+   */
+  function publishedToolPrefixes(): Map<string, string[]> {
+    const prefixes = new Map<string, string[]>();
+    for (const registration of registeredPoms)
+      for (const tool of registration.tools) {
+        const className =
+          tool.componentClassName ?? registration.manifest.className;
+        const prefix = tool.name.slice(0, tool.name.lastIndexOf("."));
+        const known = prefixes.get(className) ?? [];
+        if (!known.includes(prefix))
+          prefixes.set(className, [...known, prefix]);
+      }
+    return prefixes;
+  }
+
+  /**
    * Package-internal: the available Page Object tools, the ones a call can
    * run now, with the run that takes a caller.
    */
@@ -485,6 +506,7 @@ export function createPomRegistry(driver: PageDriver) {
     listRegisteredPomTools,
     listRegisteredPoms,
     probeRegisteredPomMembers,
+    publishedToolPrefixes,
     registerPageObject,
     resetRegisteredPoms,
     subscribeToRegisteredPoms,
@@ -600,8 +622,15 @@ function createTool(
   return tool;
 }
 
-/** What a call acts on: an instance the last observation read, and its root. */
-type CallTarget = { instance: object; root: Locator | undefined };
+/**
+ * What a call of the published tool `toolName` acts on: an instance the last
+ * observation read, and its root.
+ */
+type CallTarget = {
+  toolName: string;
+  instance: object;
+  root: Locator | undefined;
+};
 
 /**
  * The target of a call of the tool `toolName` on `observed`, as the last
@@ -624,7 +653,7 @@ function callTarget(
       !rootHolds(driver, observed.item))
   )
     throw unavailableError(toolName, { present: false });
-  return { instance: observed.instance, root: observed.rootLocator };
+  return { toolName, instance: observed.instance, root: observed.rootLocator };
 }
 
 /**
@@ -695,7 +724,7 @@ function createCollectionTool(
  * not tell for a root it had to scroll to.
  */
 async function performPageObjectAction(
-  { instance, root }: CallTarget,
+  { toolName, instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
   cursor: Cursor
@@ -711,7 +740,7 @@ async function performPageObjectAction(
     tool.parameters,
     argumentValues(tool, args)
   );
-  if (root) await assertRootReachable(tool.toolName, root);
+  if (root) await assertRootReachable(toolName, root);
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
