@@ -5,7 +5,7 @@ import { vi } from "vitest";
 // that shows every element and lets every click reach it; a test measures
 // another by overriding `measurePomRoot`, `measureReach`,
 // `measureReachAtCall` or `blockingAncestor`.
-vi.mock("./page-state/reachMeasurement", () => ({
+vi.mock("./page-state/infrastructure/reachMeasurement", () => ({
   measurePomRoot: vi.fn(async () => ({ present: true, available: true })),
   measureReach: vi.fn(() => ({ present: true, available: true })),
   measureReachAtCall: vi.fn(async () => ({ present: true, available: true })),
