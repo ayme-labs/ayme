@@ -132,11 +132,7 @@ export function createMcpToolServer({
       const result = await run(name, input);
       // Taken once the result is ready.
       const current: ToolState = {
-        tools: pageTools().map(({ name, available, reason }) => ({
-          name,
-          available,
-          reason,
-        })),
+        tools: pageTools(),
         hidden: connection.hidden,
       };
       const note = toolChangeNote(seen, current);
