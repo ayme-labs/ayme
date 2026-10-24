@@ -78,10 +78,12 @@ When the page's tools changed since the agent's previous call, the result ends
 with a separate text item such as `The connected tools changed since your
 previous call. Appeared: Basket.readHeading. Became unavailable: Panel.remove
 (No item is selected). ayme_list_tools lists the current tools; ayme_call runs
-any of them.` It lists the tools that appeared or disappeared and the ones that
-became available or unavailable, with the reason in parentheses when there is
-one; a tool that appears unavailable reads `Appeared: Panel.remove
-(unavailable: No item is selected).` For agents that never re-read the tool
+any of them.` It lists the tools that appeared or disappeared, the ones that
+kept their name but changed their parameters or description (`Changed:
+SurveyListPage.search (parameters, description).`), and the ones that became
+available or unavailable, with the reason in parentheses when there is one; a
+tool that appears unavailable reads `Appeared: Panel.remove (unavailable: No
+item is selected).` For agents that never re-read the tool
 list, `ayme_list_tools` lists the page's current tools with their input
 schemas, whether each is available and, when it is not, why, and `ayme_call`
 runs any of them by name.

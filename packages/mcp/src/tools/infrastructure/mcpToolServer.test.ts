@@ -112,7 +112,7 @@ it("announces a changed tool list on presence only, and lists an unavailable too
 it("notes the tools that became available or unavailable, and ayme_list_tools carries each tool's availability and reason", async () => {
   const agent = await connectAgent();
   await agent.publish([tool("Panel.remove"), tool("Panel.copy")]);
-  // Before its first call the agent has seen no tools.
+  // An agent that never read the tool list has seen no tools.
   const [, appeared] = await agent.call("ayme_noop");
   expect(appeared).toBe(
     "The connected tools changed since your previous call. Appeared: Panel.remove, Panel.copy. ayme_list_tools lists the current tools; ayme_call runs any of them."
@@ -156,6 +156,61 @@ it("notes the tools that became available or unavailable, and ayme_list_tools ca
     available: false,
     reason: "No item is selected",
   });
+});
+
+it("counts the tools the tool list served as seen, so a result notes only what changed after it", async () => {
+  const agent = await connectAgent();
+  await agent.publish([tool("Panel.remove"), tool("Panel.copy")]);
+  await agent.client.listTools();
+  expect(await agent.call("ayme_noop")).toEqual(["ok"]);
+
+  await agent.publish([
+    tool("Panel.remove"),
+    tool("Panel.copy"),
+    tool("Panel.paste"),
+  ]);
+  await agent.client.listTools();
+  await agent.publish([
+    tool("Panel.remove"),
+    tool("Panel.copy"),
+    tool("Panel.paste"),
+    tool("Panel.cut"),
+  ]);
+  const [, note] = await agent.call("ayme_noop");
+  expect(note).toBe(
+    "The connected tools changed since your previous call. Appeared: Panel.cut. ayme_list_tools lists the current tools; ayme_call runs any of them."
+  );
+});
+
+it("counts the parameters and description the tool list served as seen, and notes a later change to them", async () => {
+  const agent = await connectAgent();
+  await agent.publish([tool("SurveyListPage.search")]);
+  await agent.client.listTools();
+  expect(await agent.call("ayme_noop")).toEqual(["ok"]);
+
+  await agent.publish([
+    {
+      ...tool("SurveyListPage.search"),
+      inputSchema: { properties: { text: { type: "string" } } },
+    },
+  ]);
+  const [, note] = await agent.call("ayme_noop");
+  expect(note).toContain("Changed: SurveyListPage.search (parameters).");
+});
+
+it("still notes the availability the tool list leaves out, once", async () => {
+  const agent = await connectAgent();
+  await agent.publish([
+    tool("Panel.remove", { available: false, reason: "No item is selected" }),
+  ]);
+  await agent.client.listTools();
+  const [, note] = await agent.call("ayme_noop");
+  expect(note).toContain(
+    "Became unavailable: Panel.remove (No item is selected)."
+  );
+
+  await agent.client.listTools();
+  expect(await agent.call("ayme_noop")).toEqual(["ok"]);
 });
 
 it("refuses a server tool's input that breaks its input schema, naming every problem", async () => {

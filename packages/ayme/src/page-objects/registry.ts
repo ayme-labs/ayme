@@ -211,14 +211,21 @@ export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
 }
 
+function uncompiledPageObjectError(PomClass: PageObjectConstructor) {
+  // A static `name` can be overridden with any value.
+  const { name } = PomClass as { name: unknown };
+  const label =
+    typeof name === "string" && name ? name : "An anonymous page object class";
+  return new RuntimeStateError(
+    `${label} has no compiler-derived Ayme metadata.`
+  );
+}
+
 export function constructPageObject<T extends object>(
   PomClass: PageObjectConstructor<T>,
   page: Page
 ): T {
-  if (!compiledPoms.has(PomClass))
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
+  if (!compiledPoms.has(PomClass)) throw uncompiledPageObjectError(PomClass);
   return new PomClass(page);
 }
 
@@ -227,10 +234,7 @@ export function registerPageObject<T extends object>(
   instance: T
 ) {
   const compiledPom = compiledPoms.get(PomClass);
-  if (!compiledPom)
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
+  if (!compiledPom) throw uncompiledPageObjectError(PomClass);
   const registration: ObservedRegisteredPom = {
     id: compiledPom.className,
     pomClass: PomClass,
@@ -648,6 +652,26 @@ export function listRegisteredPomTools(): ({
 }
 
 /**
+ * Package-internal: the prefixes the registered Page Objects' tools are
+ * published under, by the class whose actions they are, e.g.
+ * `ResponseFilterPopover` → `["SurveyResponsesPage.filter"]`, so a tool that
+ * returns a class can name the tools an agent calls next. A class whose
+ * actions no registered Page Object publishes has none.
+ */
+export function publishedToolPrefixes(): Map<string, string[]> {
+  const prefixes = new Map<string, string[]>();
+  for (const registration of registeredPoms)
+    for (const tool of registration.tools) {
+      const className =
+        tool.componentClassName ?? registration.manifest.className;
+      const prefix = tool.name.slice(0, tool.name.lastIndexOf("."));
+      const known = prefixes.get(className) ?? [];
+      if (!known.includes(prefix)) prefixes.set(className, [...known, prefix]);
+    }
+  return prefixes;
+}
+
+/**
  * `instance`'s availability for `methodName` now. An observation whose root
  * element has since left the page is stale: the instance reads as absent
  * until the next probe observes it again, so no call runs on it.
@@ -772,8 +796,15 @@ function createRegisteredTool(
   return tool;
 }
 
-/** What a call acts on: an instance the last observation read, and its root. */
-type CallTarget = { instance: object; root: Locator | undefined };
+/**
+ * What a call of the published tool `toolName` acts on: an instance the last
+ * observation read, and its root.
+ */
+type CallTarget = {
+  toolName: string;
+  instance: object;
+  root: Locator | undefined;
+};
 
 /**
  * The target of a call of the tool `toolName` on `observed`, as the last
@@ -795,7 +826,7 @@ function callTarget(
       !rootHolds(observed.item))
   )
     throw unavailableError(toolName, { present: false });
-  return { instance: observed.instance, root: observed.rootLocator };
+  return { toolName, instance: observed.instance, root: observed.rootLocator };
 }
 
 /**
@@ -904,7 +935,7 @@ function refComponentToolManifest(
       schema: {
         type: "string",
         description:
-          "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+          "Structural Ref of the instance's Page Object Root, as labelled in the page state. Also takes the ref of an instance of the same class nested under one, at any depth.",
       } satisfies JsonSchema,
     },
     {
@@ -983,7 +1014,7 @@ function pomLabel(registration: ObservedRegisteredPom, path: string) {
  * not tell for a root it had to scroll to.
  */
 async function performPageObjectAction(
-  { instance, root }: CallTarget,
+  { toolName, instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
   cursor: Cursor
@@ -999,7 +1030,7 @@ async function performPageObjectAction(
     tool.parameters,
     argumentValues(tool, args)
   );
-  if (root) await assertRootReachable(tool.toolName, root);
+  if (root) await assertRootReachable(toolName, root);
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>

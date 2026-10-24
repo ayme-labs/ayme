@@ -13,7 +13,7 @@ import {
   cursors,
   getInteractionHistory,
   getPageStateCaptureForDocument,
-  renderChangeRecord,
+  readRenderedChange,
 } from "../../page-state";
 import type { RunContext, StartChildRun } from "../../runs";
 import {
@@ -280,13 +280,9 @@ export async function pursueGoal(
     const received = loop.current();
     if (received) {
       const from = interactions.received(cursor) ?? received;
-      const changes = await interactions.readChange(from, received);
+      const changes = await readRenderedChange(interactions, from, received);
       cursor.move(received);
-      if (changes.hasAnyChanges())
-        handover.changes = renderChangeRecord(changes, {
-          before: interactions.pomLabels(from),
-          after: interactions.pomLabels(received),
-        });
+      if (changes !== undefined) handover.changes = changes;
     }
     const result = { handover, stepScores };
     runResultStore.last = result;

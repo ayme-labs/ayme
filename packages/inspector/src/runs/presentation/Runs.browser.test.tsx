@@ -320,6 +320,18 @@ describe("Runs", () => {
 
     await expect.poll(() => run.interactions.count()).toBe(2);
   });
+
+  it("flashes a run it's asked to show, for a moment each time", async () => {
+    const { focusRun } = renderRuns();
+    const run = runsView.latest("ListPage.addItem");
+
+    focusRun("1");
+    await expect.poll(() => run.flashing()).toBe(true);
+    await expect.poll(() => run.flashing(), { timeout: 4000 }).toBe(false);
+    focusRun("1");
+
+    await expect.poll(() => run.flashing()).toBe(true);
+  });
 });
 
 describe("a run's result", () => {
