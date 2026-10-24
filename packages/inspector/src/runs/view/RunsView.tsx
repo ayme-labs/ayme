@@ -25,7 +25,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
-import { focusRing, pressable, rowFocusRing } from "../../shared";
+import { focusRing, pressable, rowFocusRing, rowPress } from "../../shared";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { RunImageView } from "./RunImageView";
 
@@ -352,7 +352,8 @@ function RunEntryCard({
         className={cn(
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex min-h-8 w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted/60",
-          rowFocusRing
+          rowFocusRing,
+          rowPress
         )}
         onClick={onToggle}
       >

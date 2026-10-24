@@ -12,6 +12,16 @@ const unmeasured: BodyMeasure = {
 };
 
 /**
+ * The size layout gives an element. Unlike getBoundingClientRect's box, it
+ * doesn't shrink while the panel grows in from a smaller scale, which no
+ * resize would report the end of. Without layout (jsdom), it's 0.
+ */
+function laidOut(element: Element) {
+  const { width, height } = getComputedStyle(element);
+  return { width: parseFloat(width) || 0, height: parseFloat(height) || 0 };
+}
+
+/**
  * The body's size and its regions' sizes, kept current as any of them
  * resizes. The body's first child is the row holding the navigator first;
  * its last child is Runs.
@@ -26,14 +36,14 @@ export function useBodyMeasure(watch: unknown) {
     const runs = element?.lastElementChild;
     if (!element || !navigator || !runs) return;
     const read = () => {
-      const bodyBox = element.getBoundingClientRect();
-      const runsBox = runs.getBoundingClientRect();
+      const bodySize = laidOut(element);
+      const runsSize = laidOut(runs);
       setMeasure({
-        width: bodyBox.width,
-        height: bodyBox.height,
-        navigatorWidth: navigator.getBoundingClientRect().width,
-        runsWidth: runsBox.width,
-        runsHeight: runsBox.height,
+        width: bodySize.width,
+        height: bodySize.height,
+        navigatorWidth: laidOut(navigator).width,
+        runsWidth: runsSize.width,
+        runsHeight: runsSize.height,
       });
     };
     read();

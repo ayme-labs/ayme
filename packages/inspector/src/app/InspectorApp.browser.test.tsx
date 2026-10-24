@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cdp } from "vitest/browser";
+// The Playwright provider gives `cdp()` its calls.
+import type {} from "@vitest/browser-playwright";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import {
@@ -622,5 +625,93 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.container.getAttribute("class"))
       .toMatch(/\bdark\b/);
+  });
+});
+
+describe("switching the theme", () => {
+  // The switch's transitions play at a tenth of their speed, so a second
+  // switch lands while the first still eases.
+  async function slowAnimations(rate: number) {
+    await cdp().send("Animation.enable");
+    await cdp().send("Animation.setPlaybackRate", { playbackRate: rate });
+  }
+
+  afterEach(() => slowAnimations(1));
+
+  /**
+   * Records each time the panel is marked as switching and let go, with how
+   * many of its colour transitions still ran as it was let go, and returns
+   * the call that reads them.
+   */
+  async function recordSwitches() {
+    type Recording = Element & { switches?: string[] };
+    await inspector.container.evaluate((container: Recording) => {
+      const switches: string[] = [];
+      container.switches = switches;
+      new MutationObserver(() => {
+        if (container.hasAttribute("data-theme-switching"))
+          switches.push("marked");
+        else {
+          const easing = container
+            .getAnimations({ subtree: true })
+            .filter(
+              (animation) =>
+                animation instanceof CSSTransition &&
+                animation.playState === "running"
+            ).length;
+          switches.push(`let go with ${easing} still easing`);
+        }
+      }).observe(container, { attributeFilter: ["data-theme-switching"] });
+    });
+    return () =>
+      inspector.container.evaluate(
+        (container: Recording) => container.switches ?? []
+      );
+  }
+
+  it("eases the panel's colours across, then lets go once they have", async () => {
+    renderApp();
+    await inspector.header.themeSwitch.choose("Light");
+    await slowAnimations(0.1);
+    const switches = await recordSwitches();
+
+    await inspector.header.themeSwitch.choose("Dark");
+
+    await expect
+      .poll(switches, { timeout: 5000 })
+      .toEqual(["marked", "let go with 0 still easing"]);
+  });
+
+  it("lets go once the colours have eased, though something else in the panel keeps moving", async () => {
+    renderApp();
+    await inspector.header.themeSwitch.choose("Light");
+    // A stand-in for a spinner.
+    await inspector.panel.evaluate((panel) => {
+      panel.animate(
+        { opacity: [1, 0.9] },
+        { duration: 1000, iterations: Infinity }
+      );
+    });
+    const switches = await recordSwitches();
+
+    await inspector.header.themeSwitch.choose("Dark");
+
+    await expect
+      .poll(switches)
+      .toEqual(["marked", "let go with 0 still easing"]);
+  });
+
+  it("lets go only once a switch back mid-switch has eased", async () => {
+    renderApp();
+    await inspector.header.themeSwitch.choose("Light");
+    await slowAnimations(0.1);
+    const switches = await recordSwitches();
+
+    await inspector.header.themeSwitch.choose("Dark");
+    await inspector.header.themeSwitch.choose("Light");
+
+    await expect
+      .poll(switches, { timeout: 5000 })
+      .toEqual(["marked", "let go with 0 still easing"]);
   });
 });

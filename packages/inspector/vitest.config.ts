@@ -39,7 +39,11 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
-            provider: playwright(),
+            // The panel's reduced motion only fades, so a box read after a
+            // change is where it ends.
+            provider: playwright({
+              contextOptions: { reducedMotion: "reduce" },
+            }),
             instances: [{ browser: "chromium" }],
             // A desktop viewport: the panel's layouts are sized for one.
             viewport: { width: 1280, height: 800 },
