@@ -147,7 +147,7 @@ export class ListItem extends AppComponent {
 ```
 
 - A collection's actions are published once for all its items: `ListPage.items.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
-- An item can hold items of its own model, such as a `ListItem` with `async subItems(): Promise<ListItem[]>`. Those get no tools of their own: `ListPage.items.archive` takes the ref of a sub-item too, at any depth, though the page state labels it `ListPage.items[0].subItems[0]`. A subclass of `ListItem` counts as another model: when `pinned()` returns `PinnedItem`, which extends `ListItem`, the sub-items of a pinned item use `ListPage.pinned.subItems.archive`.
+- An item can hold items of its own model, such as a `ListItem` with `async subItems(): Promise<ListItem[]>`. `ListPage.items.archive` takes the ref of a sub-item too, at any depth, though the page state labels it `ListPage.items[0].subItems[0]`. A subclass of `ListItem` counts as another model: when `pinned()` returns `PinnedItem`, which extends `ListItem`, the sub-items of a pinned item use `ListPage.pinned.subItems.archive`.
 - A single child's actions take their input directly: a marked `confirm` on `ArchiveDialog` would be `ListPage.archiveDialog.confirm`.
 
 ## Action availability

@@ -13,10 +13,9 @@ tools are missing, read [Browser setup](browser-setup.md).
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
-- A nested item may have no tools under its own path. When the page state
-  labels it `ListPage.items[0].subItems[0]` and the tool list has no
-  `ListPage.items.subItems.archive`, call the nearest tool above it on that
-  path, `ListPage.items.archive`, with its ref.
+- Call a nested item, such as one the page state labels
+  `ListPage.items[0].subItems[0]`, through the nearest tool above it on that
+  path, such as `ListPage.items.archive`, with its ref.
   [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
   says which tool takes which nested item.
 - When `goal` hands over with `needs_value` because none of a parameter's
