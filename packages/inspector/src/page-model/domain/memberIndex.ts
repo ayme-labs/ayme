@@ -43,8 +43,8 @@ export type MemberIndex = {
    * collection, its items and their members.
    */
   within(path: string, options?: NameOptions): ReadonlySet<string>;
-  /** The items a collection action runs on, by its tool's name. */
-  collectionItems(toolName: string): readonly PageObjectNode[];
+  /** The items a rooted action runs on, by its tool's name. */
+  toolInstances(toolName: string): readonly PageObjectNode[];
 };
 
 type NameOptions = {
@@ -70,7 +70,7 @@ export function indexMembers(
   const byPath = new Map<string, IndexedMember>();
   const parents = new Map<PageObjectNode, PageObjectNode>();
   const instances = new Map<string, PageObjectNode[]>();
-  const collections: PageObjectNode[] = [];
+  const toolInstances: PageObjectNode[] = [];
   const add = (
     index: Map<string, IndexedMember>,
     key: string,
@@ -85,8 +85,8 @@ export function indexMembers(
       if (parent) parents.set(node, parent);
       const self = { path: node.path, owner: node };
       add(byPath, node.path, self);
-      if (node.kind === "collection") collections.push(node);
-      else {
+      if (node.kind !== "collection") {
+        toolInstances.push(node);
         add(byTarget, rootTargetPath(node.path), self);
         const ofClass = instances.get(node.className) ?? [];
         ofClass.push(node);
@@ -158,13 +158,12 @@ export function indexMembers(
           locator ? [path] : [...subtreePaths(owner)]
         )
       ),
-    collectionItems: (toolName) => [
+    toolInstances: (toolName) => [
       ...new Map(
-        collections
+        toolInstances
           .filter(({ actions }) =>
             actions.some((action) => action.toolName === toolName)
           )
-          .flatMap(({ children }) => children)
           .map((item) => [item.path, item])
       ).values(),
     ],

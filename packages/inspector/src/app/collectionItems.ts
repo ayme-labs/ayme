@@ -1,4 +1,4 @@
-import type { CollectionToolItem } from "@ayme-dev/ayme/internal";
+import type { RootedToolInstance } from "@ayme-dev/ayme/internal";
 
 import { type MemberIndex, pathBelowPage } from "../page-model";
 import {
@@ -9,7 +9,7 @@ import {
 import type { CollectionItem } from "../runs";
 
 /**
- * A collection action's items on the page, by its tool's name, in page
+ * A rooted action's items on the page, by its tool's name, in page
  * order, labelled by what they show, each with the registry's `verdicts`
  * on whether the action would run on it. A verdict is matched by the
  * element its item's ref names in `elementsByRef`, the page state the
@@ -20,11 +20,11 @@ export function itemsOf(
   toolName: string,
   members: MemberIndex,
   structure: StructureTree,
-  verdicts: readonly CollectionToolItem[] = [],
+  verdicts: readonly RootedToolInstance[] = [],
   elementsByRef: ReadonlyMap<string, Element> = new Map()
 ): CollectionItem[] {
   const rows = [...structureRows(structure.roots)];
-  return members.collectionItems(toolName).flatMap((item) => {
+  return members.toolInstances(toolName).flatMap((item) => {
     const node = rows.find(
       ({ node }) => node.ref !== undefined && node.members.includes(item.path)
     )?.node;

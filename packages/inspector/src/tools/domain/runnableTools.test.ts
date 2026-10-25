@@ -20,7 +20,7 @@ const rename: RegisteredPom["tools"][number] = {
   pomId: "ListPage",
   componentClassName: "ListItem",
   componentPath: "items[]",
-  collectionPath: "items[]",
+  rooted: true,
   methodName: "rename",
   name: "ListPage.items.rename",
   description: "Rename this item.",
@@ -77,7 +77,7 @@ it("runs a Page Object action with its parameters", () => {
   });
 });
 
-it("runs a collection action on an item, with the action's own arguments", () => {
+it("runs a rooted action on an item, with the action's own arguments", () => {
   const tools = listRunnableTools(
     [listPage],
     [{ ...rename, inputSchema: rename.inputSchema, available: true }]
@@ -85,7 +85,7 @@ it("runs a collection action on an item, with the action's own arguments", () =>
 
   expect(tools.get("ListPage.items.rename")).toMatchObject({
     action: "rename",
-    collection: "ListPage.items[]",
+    rooted: true,
     argumentsSchema: { properties: { text: { type: "string" } } },
     present: true,
     available: true,

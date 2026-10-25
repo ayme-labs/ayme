@@ -6,7 +6,7 @@ import { collection, page } from "../page-model/test-utils/pageModel";
 import type { StructureNode } from "../structure";
 import { itemsOf } from "./collectionItems";
 
-// Unit tests: a collection action's items as the run card offers them. The
+// Unit tests: a rooted action's items as the run card offers them. The
 // page model, the structure and the registry's verdicts are hand-written: a
 // list page with two items, the second one covered.
 

@@ -34,6 +34,60 @@ describe("collection instances targeted by ref", () => {
     document.body.innerHTML = "";
   });
 
+  it("runs the current instance when a re-render replaces the model on the same root", async () => {
+    document.body.innerHTML =
+      '<ul><li id="item"><button>Archive</button></li></ul>';
+    const page = createPage();
+    const session = startSession(page);
+    const oldArchive = vi.fn();
+    const currentArchive = vi.fn();
+    let archive = oldArchive;
+    class ItemsPage {
+      get items() {
+        return [rooted(page.locator("#item"), { archive })];
+      }
+    }
+    registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "getter",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("archive", "Archive")],
+        },
+      ],
+    });
+    try {
+      session.register(ItemsPage);
+      await probeRegisteredPomMembers();
+      const tool = listAvailablePomTools().find(
+        (tool) => tool.name === "ItemsPage.items.archive"
+      )!;
+      const { getPageStateForDocument } = await import("../../page-state");
+      const ref = refInPageState(
+        (await getPageStateForDocument(document)).text,
+        "ItemsPage.items[0]"
+      );
+      archive = currentArchive;
+      document.querySelector("button")!.textContent = "Archive current";
+      await tool.execute({ ref }, runContext());
+      expect(currentArchive).toHaveBeenCalledOnce();
+      expect(oldArchive).not.toHaveBeenCalled();
+    } finally {
+      session.stop();
+    }
+  });
+
   it("targets the second of three instances by ref", async () => {
     document.body.innerHTML = `
       <ul>
@@ -236,7 +290,7 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call ItemsPage.items.archive on ref "${ref}": it is no longer on the page.`
+        `Cannot call ItemsPage.items.archive (Item) on ref "${ref}": it is no longer on the page.`
       );
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
@@ -293,12 +347,12 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref: "button.save", args: {} }, runContext())
       ).rejects.toThrow(
-        'Cannot call ItemsPage.items.archive on ref "button.save": not a Structural Ref.'
+        'Cannot call ItemsPage.items.archive (Item) on ref "button.save": not a Structural Ref.'
       );
       await expect(
         archiveTool.execute({ ref: "[ref=e7]", args: {} }, runContext())
       ).rejects.toThrow(
-        'Cannot call ItemsPage.items.archive on ref "[ref=e7]": not a Structural Ref. It writes the Structural Ref e7 another way.'
+        'Cannot call ItemsPage.items.archive (Item) on ref "[ref=e7]": not a Structural Ref. It writes the Structural Ref e7 another way.'
       );
 
       const { getPageStateForDocument } = await import("../../page-state");
@@ -307,7 +361,7 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref: headingRef, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call ItemsPage.items.archive on ref "${headingRef}": it is not an instance of Item at ItemsPage.items.`
+        `Cannot call ItemsPage.items.archive (Item) on ref "${headingRef}": it is not a root of Item.`
       );
 
       expect(archive).not.toHaveBeenCalled();
@@ -528,7 +582,7 @@ describe("collection instances targeted by ref", () => {
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "ItemsPage.items[1].child");
 
       await openTool.execute({ ref, args: {} }, runContext());
 

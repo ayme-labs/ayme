@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export type RunRequest = {
   toolName: string;
   /**
-   * For a collection action, the item it runs on, by path, e.g.
+   * For a rooted action, the item it runs on, by path, e.g.
    * "ListPage.items[1]". Without it, the run card lets the person pick one.
    */
   item?: string;

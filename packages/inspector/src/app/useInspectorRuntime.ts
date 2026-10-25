@@ -45,7 +45,7 @@ export function useInspectorRuntime({
     structureVisible,
     onLook: highlight.onLook,
   });
-  const { registeredPoms, pomDefinitions, collectionItems, refreshPageState } =
+  const { registeredPoms, pomDefinitions, toolInstances, refreshPageState } =
     inspector;
   const onRunSettled = useCallback(
     () => refreshPageState(),
@@ -54,10 +54,10 @@ export function useInspectorRuntime({
   // A Run's item is the one its ref names in the latest look at the page.
   const latestStructure = useRef(emptyStructure);
   const latestElementsByRef = useRef<ReadonlyMap<string, Element>>(new Map());
-  const latestCollectionItems = useRef(collectionItems);
+  const latestCollectionItems = useRef(toolInstances);
   useEffect(() => {
-    latestCollectionItems.current = collectionItems;
-  }, [collectionItems]);
+    latestCollectionItems.current = toolInstances;
+  }, [toolInstances]);
   const itemOf = useCallback(
     (toolName: string, ref: string) =>
       latestMembers.current &&
@@ -140,7 +140,7 @@ export function useInspectorRuntime({
     pageModel,
     /**
      * The page model by member path: what a member or group path stands
-     * for, and the items a collection action runs on.
+     * for, and the items a rooted action runs on.
      */
     members,
     /**
@@ -182,7 +182,7 @@ export function useInspectorRuntime({
      */
     elementTools,
     /**
-     * A collection action's items on the page, by its tool's name, each with
+     * A rooted action's items on the page, by its tool's name, each with
      * whether the action would run on it.
      */
     itemsOf: (toolName: string) =>
@@ -190,7 +190,7 @@ export function useInspectorRuntime({
         toolName,
         members,
         structure,
-        collectionItems.get(toolName),
+        toolInstances.get(toolName),
         elementsByRef
       ),
     /** The runs made from the panel, newest first. */

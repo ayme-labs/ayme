@@ -3,10 +3,15 @@ import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
 
+// Its list renders the page and stays out of page state. The editor around
+// that list is the visible root an agent can address.
+const editorRoot = (self: FillForm) => self.root.locator("..");
+
 /**
  * `fill_form`'s form in a run card: every field on the page as a row, by
  * its name. The rows changed are filled, numbered in fill order.
  */
+@ayme({ root: editorRoot })
 export class FillForm extends PanelPart {
   /** The rows of the list of fields, in fill order. */
   readonly rows: Locator;

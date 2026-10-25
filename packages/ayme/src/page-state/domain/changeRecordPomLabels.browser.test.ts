@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
@@ -106,7 +107,10 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
   }
 
   const run = async (tool: string) =>
-    (await agentTools().call(tool, {})) as ActionResultShape;
+    (await agentTools().call(tool, {
+      ref: await rootRef(tool.slice(0, tool.lastIndexOf("."))),
+      args: {},
+    })) as ActionResultShape;
 
   /** The first line of a rendered forest: the root's own line. */
   const firstLine = (text: string | undefined) => text?.split("\n")[0];

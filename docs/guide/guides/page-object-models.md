@@ -114,7 +114,7 @@ export class ListItem extends AppComponent {
 }
 ```
 
-- The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name, and a collection item's `ref` is that element's.
+- The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name, and every rooted instance's `ref` is that element's.
 - `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. `root` and `present` are inherited separately: a drawer that extends `AppComponent` and adds `present` is present while its root is on the page and it is open.
 - The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. Only the option anchors a model: a model whose class chain declares none is root-less, also when it has a member named `root`.
 - A root-less class must be reached from exactly one place across registered Page Objects. Reaching it through two members, through a collection, or through separately registered Page Objects makes it ambiguous. At registration, Ayme logs an error naming the class and the places that reach it, and withholds only that class's tools. A collection's item class and every Page Object Child below it need a decorator `root` option, including an inherited one; a member named `root` alone does not count. Re-registering after adding a root restores the tools. What a model without a root is present for is in the [reference](../reference/ayme.md#page-object-root).
@@ -147,7 +147,8 @@ export class ListItem extends AppComponent {
 ```
 
 - A collection's actions are published once for all its items: `ListPage.items.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
-- A single child's actions take their input directly: a marked `confirm` on `ArchiveDialog` would be `ListPage.archiveDialog.confirm`.
+- Every class with a `root` option follows the same rule, including pages and single children. A marked `confirm` on rooted `ArchiveDialog` would be `ListPage.archiveDialog.confirm({ ref: "e12" })`, using the dialog's own root ref.
+- A root-less class takes the action's arguments directly, without `ref` or an `args` wrapper.
 
 A collection's items can hold items of their own model:
 

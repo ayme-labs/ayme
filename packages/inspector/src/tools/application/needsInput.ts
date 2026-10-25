@@ -2,11 +2,11 @@ import type { RunnableTool } from "../domain/runnableTools";
 
 /**
  * Whether Run must open the form before it runs the tool: the tool has a
- * required argument the view doesn't give, or it's a collection action whose
+ * required argument the view doesn't give, or it's a rooted action whose
  * item isn't given.
  */
 export function needsInput(
-  tool: Pick<RunnableTool, "argumentsSchema" | "collection">,
+  tool: Pick<RunnableTool, "argumentsSchema" | "rooted">,
   {
     itemGiven,
     givenArguments = [],
@@ -17,7 +17,7 @@ export function needsInput(
   }
 ) {
   return (
-    (tool.collection !== undefined && !itemGiven) ||
+    (tool.rooted === true && !itemGiven) ||
     (tool.argumentsSchema.required ?? []).some(
       (name) => !givenArguments.includes(name)
     )

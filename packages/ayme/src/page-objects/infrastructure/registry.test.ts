@@ -1378,16 +1378,27 @@ describe("live Page Object registry", () => {
 
     let dialogRootCount = 1;
     let panelRootCount = 0;
+    const dialogElement = { isConnected: true } as Element;
+    const panelElement = { isConnected: true } as Element;
+    pageStateResolutions.set("e21", {
+      node: { ref: "e21", element: dialogElement },
+    });
+    pageStateResolutions.set("e22", {
+      node: { ref: "e22", element: panelElement },
+    });
     const confirm = vi.fn();
     const save = vi.fn();
     class NestedPage {
       readonly dialog = rooted(
-        brandedLocator({ count: async () => dialogRootCount }),
+        brandedLocator({ count: async () => dialogRootCount }, dialogElement),
         {
           confirm,
-          panel: rooted(brandedLocator({ count: async () => panelRootCount }), {
-            save,
-          }),
+          panel: rooted(
+            brandedLocator({ count: async () => panelRootCount }, panelElement),
+            {
+              save,
+            }
+          ),
         }
       );
     }
@@ -1433,7 +1444,7 @@ describe("live Page Object registry", () => {
     ]);
 
     const confirmTool = registry.listAvailablePomTools()[0];
-    await confirmTool?.execute({}, runContext());
+    await confirmTool?.execute({ ref: "e21" }, runContext());
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
@@ -1445,7 +1456,7 @@ describe("live Page Object registry", () => {
     ]);
 
     const nestedTool = registry.listAvailablePomTools()[1];
-    await nestedTool?.execute({}, runContext());
+    await nestedTool?.execute({ ref: "e22" }, runContext());
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
@@ -1675,7 +1686,7 @@ describe("live Page Object registry", () => {
     await expect(
       tool.execute({ ref: "e2", args: {} }, runContext())
     ).rejects.toThrow(
-      'Cannot call ItemsPage.items.archive on ref "e2": it is not an instance of Item at ItemsPage.items.'
+      'Cannot call ItemsPage.items.archive (Item) on ref "e2": it is not a root of Item.'
     );
     expect(addedArchive).not.toHaveBeenCalled();
 

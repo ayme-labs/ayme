@@ -67,17 +67,15 @@ class Label {}
 describe("the places of a Page Object's tools", () => {
   it("lists each place once, a group's own before its nested ones, and ends a path at a class that repeats", () => {
     expect(
-      pomGroups(fileTree).map(({ key, toolPath, collectionKey }) => ({
+      pomGroups(fileTree).map(({ key, toolPath }) => ({
         key,
         toolPath,
-        collectionKey,
       }))
     ).toEqual([
-      { key: "items[]", toolPath: "items", collectionKey: "items[]" },
+      { key: "items[]", toolPath: "items" },
       {
         key: "items[].label",
         toolPath: "items.label",
-        collectionKey: "items[]",
       },
     ]);
   });
@@ -105,9 +103,6 @@ describe("one observation of a Page Object", () => {
       tree,
       fileTree
     );
-    const byPath = new Map(
-      instances.map((instance) => [instance.path, instance])
-    );
 
     expect(
       instances.map(({ path, componentPath }) => [path, componentPath])
@@ -120,11 +115,6 @@ describe("one observation of a Page Object", () => {
       ["items[0].children[0].label", "items[].label"],
       ["items[0].label", "items[].label"],
     ]);
-    // Each item is the one a ref to its root names, and its children act
-    // through it.
-    const lib = byPath.get("items[0].children[0]");
-    expect(lib?.item).toBe(lib);
-    expect(byPath.get("items[0].children[0].label")?.item).toBe(lib);
   });
 
   it("keeps an instance of a repeated class out of its first occurrence without a root of its own", async () => {

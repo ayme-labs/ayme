@@ -28,7 +28,7 @@ import type {
   ToolOption,
   TupleSpec,
 } from "./goalLoopOperations";
-import type { CollectionToolItem } from "../../page-objects";
+import type { RootedToolInstance } from "../../page-objects";
 
 /**
  * What the Goal Loop asks the model, and how an answer maps back to what it
@@ -265,7 +265,7 @@ function describeNode(node: StructuralNode): string {
  * left out, each with why.
  */
 function instanceOptions(
-  roots: readonly CollectionToolItem[],
+  roots: readonly RootedToolInstance[],
   capture: PageStateCapture
 ): { options: ArgumentOption[]; leftOut: LeftOutItem[] } {
   const refsByElement = new Map<Element, AriaRef>();

@@ -392,6 +392,7 @@ describe("the session's tools in Chromium", () => {
     document.body.innerHTML = `<ul><li id="item" hidden>Draft</li></ul>`;
     await startSession();
     cleanups.push(registered(ListPage));
+    await probeRegisteredPomMembers();
     const archive = () =>
       ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
     await expect
@@ -402,7 +403,7 @@ describe("the session's tools in Chromium", () => {
     await expect(
       ayme.tools.run("ListPage.items.archive", { ref: "e1", args: {} })
     ).rejects.toThrow(
-      "ListPage.items.archive is unavailable: its Page Object is not on the page."
+      'Cannot call ListPage.items.archive (ListItem) on ref "e1": it is not a root of ListItem.'
     );
 
     document.querySelector("#item")!.removeAttribute("hidden");
@@ -416,6 +417,7 @@ describe("the session's tools in Chromium", () => {
     document.body.innerHTML = `<ul><li id="item">Draft</li></ul><dialog id="confirm" aria-label="Archive item"><button>Confirm</button></dialog>`;
     await startSession();
     cleanups.push(registered(ListPage));
+    await probeRegisteredPomMembers();
     const archive = () =>
       ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
     await expect.poll(archive).toMatchObject({ available: true });
@@ -441,7 +443,7 @@ describe("the session's tools in Chromium", () => {
     await expect(
       ayme.tools.run("ListPage.items.archive", { ref: item, args: {} })
     ).rejects.toThrow(
-      `ListPage.items.archive is unavailable: a click would not reach it; ${dialog} is in the way.`
+      `ListItem on ref "${item}" is unavailable: a click would not reach it; ${dialog} is in the way.`
     );
     expect(document.querySelector("#item")!.hasAttribute("hidden")).toBe(false);
 

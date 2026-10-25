@@ -12,7 +12,7 @@ import {
 import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
 import type { DecisionRequest, DecisionResponse } from "../domain/decisionWire";
 import type { PageStateCapture } from "../../page-state";
-import type { CollectionToolItem } from "../../page-objects";
+import type { RootedToolInstance } from "../../page-objects";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -133,7 +133,7 @@ export const lookalikeClickTool: GoalLoopOperation = {
 };
 
 /** A collection item the tool is unavailable on, so never offered. */
-export const archivedItem: CollectionToolItem = {
+export const archivedItem: RootedToolInstance = {
   label: "items[archived]",
   element: document.createElement("li"),
   present: true,
@@ -147,7 +147,7 @@ export const archivedItem: CollectionToolItem = {
  */
 export const collectionTool = (
   capture: PageStateCapture,
-  unavailable: CollectionToolItem[] = []
+  unavailable: RootedToolInstance[] = []
 ): GoalLoopOperation =>
   archiveTool([
     ...[...capture.elementsByRef.values()].map((element, index) => ({
@@ -164,7 +164,7 @@ export const collectionTool = (
  * order, so items left out can come before the ones offered.
  */
 export const archiveTool = (
-  roots: readonly CollectionToolItem[]
+  roots: readonly RootedToolInstance[]
 ): GoalLoopOperation => ({
   name: "List.archive",
   description: "Archive an item.",

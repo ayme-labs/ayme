@@ -1,14 +1,14 @@
 import {
   agentDescription,
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   publishedToolPrefixes,
   returnPomPaths,
 } from "../../page-objects";
 import { listElementTools, NAVIGATION_TOOLS } from "../../tools";
 import {
   requiredParamsOf,
-  specsOfCollectionTool,
+  specsOfRootedTool,
   specsOfElementToolSchema,
   specsOfObjectSchema,
   specsOfParameters,
@@ -53,12 +53,12 @@ export function buildToolOptions(page: Page): ToolOption[] {
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
-  const collectionRoots = listCollectionToolItems();
+  const rootedInstances = listRootedToolInstances();
   const prefixes = publishedToolPrefixes();
   const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
-    const roots = collectionRoots.get(t.name);
+    const roots = rootedInstances.get(t.name);
     const args = roots
-      ? specsOfCollectionTool(t.parameters, roots)
+      ? specsOfRootedTool(t.parameters, roots)
       : specsOfParameters(t.parameters);
     return {
       name: t.name,

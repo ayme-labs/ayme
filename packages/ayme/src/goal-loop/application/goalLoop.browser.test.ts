@@ -422,7 +422,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("save", "App.save")])
@@ -440,7 +440,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [actionWithParam("fill", "App.fill")])
@@ -461,7 +461,7 @@ describe("Goal Loop goal in Chromium", () => {
         throw thrown;
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("fail", "App.fail")])
@@ -800,7 +800,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([name, description]);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -868,7 +868,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([name, stars]);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -925,7 +925,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([quantity, price]);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1150,7 +1150,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push(labels);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1207,7 +1207,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push(labels);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1379,7 +1379,7 @@ describe("Goal Loop goal in Chromium", () => {
         document.querySelector("main")!.appendChild(row);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("add", "App.add")])
@@ -1655,7 +1655,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -1719,7 +1719,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("save", "App.save")])
@@ -1765,7 +1765,7 @@ describe("Goal Loop goal in Chromium", () => {
       }
       wait() {}
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -1819,7 +1819,7 @@ describe("Goal Loop goal in Chromium", () => {
         }
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("fill", "App.fill")])
@@ -2584,7 +2584,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([mode, confirm]);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -2649,7 +2649,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([order]);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -3148,17 +3148,14 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "open the second item", maxSteps: 5 });
 
-    // The instance is addressed through the last collection, not through the
-    // singular child the action lives on.
+    // The instance is addressed through the singular child's own root.
     const descriptions = Object.values(
       offeredElements(criteriaOf(requests[1]!).ref!)
     );
     expect(descriptions).toEqual([
-      expect.stringContaining("ItemsPage.items[0]"),
-      expect.stringContaining("ItemsPage.items[1]"),
+      expect.stringContaining("ItemsPage.items[0].child"),
+      expect.stringContaining("ItemsPage.items[1].child"),
     ]);
-    for (const description of descriptions)
-      expect(description).not.toContain("child");
     expect(opened).toEqual([1]);
   });
 
@@ -3496,7 +3493,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([value]);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(

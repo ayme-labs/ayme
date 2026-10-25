@@ -104,9 +104,9 @@ The first request also asks which [Goal Value](#goal-values) the next operation 
 
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
 - A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
-- A required choice of a collection item ends with "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A ref within the cap has no such option.
+- A required choice of a rooted Page Object instance ends with "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A Browser Tool ref within the cap has no such option.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
-- An item of a collection is offered while its action is available on it and the page state gives it a ref. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
+- Every rooted Page Object instance, including a single child or page, is offered while its action is available on it and the page state gives it a ref. A root-less Page Object Tool offers no items. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
 - The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
 

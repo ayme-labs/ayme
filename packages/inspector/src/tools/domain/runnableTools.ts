@@ -11,15 +11,15 @@ export type RunnableTool = {
   action: string;
   description?: string;
   /**
-   * The arguments a person fills in: the tool's input, or for a collection
-   * action the action's own arguments, without the item's ref.
+   * The arguments a person fills in: the tool's input, or for a rooted
+   * action the action's own arguments, without the instance's ref.
    */
   argumentsSchema: JsonSchema;
   /**
-   * For a collection action, where its items are, e.g. "ListPage.items[]".
-   * Its input is then `{ ref, args }`: the item's ref and its arguments.
+   * Whether the action takes `{ ref, args }`: the instance's root ref and
+   * the action's arguments.
    */
-  collection?: string;
+  rooted?: boolean;
   /**
    * Whether the session lists it: a Page Object action's Page Object is on
    * the page. Every other tool is present. An absent action has no Run.
@@ -122,24 +122,23 @@ export function listRunnableTools(
 }
 
 function pageObjectTool(
-  tool: RegisteredPomTool & { collectionPath?: string },
+  tool: RegisteredPomTool & { rooted?: boolean },
   availability: Pick<RunnableTool, "present" | "available" | "reason">
 ): RunnableTool {
-  const collection = tool.collectionPath;
   const base = {
     name: tool.name,
     action: tool.methodName,
     description: tool.description,
     ...availability,
   };
-  if (collection === undefined)
+  if (!tool.rooted)
     return { ...base, argumentsSchema: schemaOf(tool.parameters) };
-  // A collection action takes { ref, args }; the item picker gives the ref.
+  // A rooted action takes { ref, args }; the item picker gives the ref.
   const args = tool.parameters.find((parameter) => parameter.name === "args");
   return {
     ...base,
     argumentsSchema: args?.schema ?? { type: "object" },
-    collection: `${tool.pomId}.${collection}`,
+    rooted: true,
   };
 }
 

@@ -21,11 +21,6 @@ export type PomGroup = {
   key: string;
   /** Its path as tool names spell it, e.g. "items.details". */
   toolPath: string;
-  /**
-   * For a group that goes through a collection, the key of the items a ref
-   * names, e.g. "items[]" for "items[].details".
-   */
-  collectionKey?: string;
 };
 
 /**
@@ -111,18 +106,10 @@ export function pomGroups(manifest: PomManifest): PomGroup[] {
         key
       );
       if (repeatOf !== undefined) continue;
-      const itemDepth = memberPath
-        .map((step) => step.collection)
-        .lastIndexOf(true);
       groups.push({
         component,
         key,
         toolPath: memberPath.map((step) => step.memberName).join("."),
-        ...(itemDepth < 0
-          ? {}
-          : {
-              collectionKey: componentKey(memberPath.slice(0, itemDepth + 1)),
-            }),
       });
       visit(component.members, memberPath, below);
     }

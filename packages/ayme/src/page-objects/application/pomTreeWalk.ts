@@ -80,7 +80,6 @@ export async function observePageObject(
     path: "",
     componentPath: "",
     occurrences: new Map(),
-    item: undefined,
     present: true,
   };
   const page = await observeInstance(walk, instance, manifest.tools, {
@@ -117,7 +116,7 @@ type Walk = PageObjectObservation & {
 };
 
 /** Where in the walk an instance's members are. */
-type Place = Pick<PomInstanceObservation, "path" | "item"> & {
+type Place = Pick<PomInstanceObservation, "path"> & {
   componentPath: string;
   occurrences: Occurrences;
   /**
@@ -175,12 +174,10 @@ async function observeInstance(
     path: place.path,
     instance,
     componentPath: kind === "page" ? undefined : place.componentPath,
-    item: place.item,
     present: false,
     root: undefined,
     predicates: new Map(),
   };
-  if (kind === "item") observed.item = observed;
   const presence = await askPresence(instance);
   if (presence.present === false) {
     observed.presenceError = presence.error;
@@ -364,7 +361,6 @@ async function walkComponentMember(
       kind: member.collection ? "item" : "child",
       path,
       componentPath,
-      item: place.item,
       present: place.present,
     });
     // An instance of a class that appears higher on its path, reached
@@ -374,7 +370,6 @@ async function walkComponentMember(
     const { observed } = child;
     if (repeatOf?.includes("[]") && observed.rootLocator) {
       observed.componentPath = repeatOf;
-      observed.item = observed;
     }
     if (!child.walk) continue;
     await walkMembers(
@@ -385,7 +380,6 @@ async function walkComponentMember(
         path,
         componentPath: observed.componentPath ?? componentPath,
         occurrences: below,
-        item: observed.item,
         present: observed.present,
         rootElement: child.rootElement,
         rootLocator: observed.rootLocator,

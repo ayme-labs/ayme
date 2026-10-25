@@ -29,7 +29,7 @@ export type { RegisteredPomTarget } from "./domain/pomTree";
 export { getPomDefinitions } from "./infrastructure/registeredPomDefinitions";
 export {
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPoms,
   listRegisteredPomTargets,
   listRegisteredPomTools,
@@ -40,7 +40,7 @@ export {
 } from "./infrastructure/registry";
 export type {
   CallerAwarePomTool,
-  CollectionToolItem,
+  RootedToolInstance,
   RegisteredPom,
 } from "./infrastructure/registry";
 export { createAymeRuntime } from "./infrastructure/aymeRuntime";

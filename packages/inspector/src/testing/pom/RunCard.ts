@@ -38,7 +38,7 @@ export class RunCard extends PanelPart {
   readonly schemaErrors: Locator;
   /** Pretty-prints the JSON editor's text. */
   readonly formatButton: Locator;
-  /** The items a collection action can run on. */
+  /** The items a rooted action can run on. */
   readonly items: Locator;
   /** The last run's status, its duration, and its error. */
   readonly lastResult: Locator;
@@ -71,7 +71,7 @@ export class RunCard extends PanelPart {
       exact: true,
     });
     this.items = root
-      .getByRole("radiogroup", { name: "Item" })
+      .getByRole("radiogroup", { name: "Instance" })
       .getByRole("radio");
     this.lastResult = root.getByRole("status", { name: "Last result" });
     this.lastSuccessLink = this.lastResult.getByRole("button", {
@@ -117,10 +117,9 @@ export class RunCard extends PanelPart {
       await this.argumentsToggle.click();
   }
 
-  /** Chooses the item a collection action runs on, by what it shows. */
+  /** Chooses the item a rooted action runs on, by what it shows. */
   @ayme.action({
-    description:
-      "Chooses the item a collection action runs on, by what it shows.",
+    description: "Chooses the item a rooted action runs on, by what it shows.",
   })
   async pickItem(label: string) {
     await this.items.filter({ hasText: label }).click();

@@ -30,9 +30,9 @@ export type RunCardProps = {
    * the foot.
    */
   head?: boolean;
-  /** For a collection action: the item it runs on, when the view has one. */
+  /** For a rooted action: the item it runs on, when the view has one. */
   item?: CollectionItem;
-  /** For a collection action without an item: the items to pick from. */
+  /** For a rooted action without an item: the items to pick from. */
   items?: readonly CollectionItem[];
   /**
    * The Structural Ref the view runs the tool on, e.g. a structure node's:
@@ -52,7 +52,7 @@ export type RunCardProps = {
    * How its signature and its JSON fields' types read, as agents read them.
    */
   schemaText: SchemaText;
-  /** Runs the tool with its input, on the item for a collection action. */
+  /** Runs the tool with its input, on the item for a rooted action. */
   onRun: (input: ToolArguments, item?: CollectionItem) => void;
   /** Shows a run in Runs. */
   onShowRun: (runId: string) => void;

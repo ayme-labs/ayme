@@ -58,6 +58,14 @@ export function collection(
     const children = items.map((contents, index) =>
       objectNode(`${path}[${index}]`, `[${index}]`, "item", className, contents)
     );
+    for (const child of children)
+      if (toolNames.length)
+        child.actions = toolNames.map((toolName) => ({
+          name: toolName,
+          signature: "()",
+          toolName,
+          live: child.live,
+        }));
     return {
       path,
       key: path,

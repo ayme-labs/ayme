@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
@@ -117,7 +118,10 @@ describe("Change Record baseline in Chromium", () => {
     await readStructure();
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
-    const result = await act("App.noop", {});
+    const result = await act("App.noop", {
+      ref: await rootRef("App"),
+      args: {},
+    });
 
     // The action itself changed nothing: only the first part has a change.
     expect(result.page_changed).toBe(true);
@@ -191,22 +195,36 @@ describe("Change Record baseline in Chromium", () => {
 
   it("counts a change made while the decision function is pending into that step's page_changed", async () => {
     let step = 0;
-    const decide: GoalLoopDecisionFunction =
-      async (): Promise<DecisionResponse> => {
-        const first = step++ === 0;
-        if (first) document.body.insertAdjacentHTML("beforeend", TOAST);
+    const decide: GoalLoopDecisionFunction = async (
+      request
+    ): Promise<DecisionResponse> => {
+      if (!("operation" in request.questions))
         return {
           model: "typesafe/jev-1.13",
           answers: {
-            operation: {
+            ref: {
               type: "choice",
-              choice: first ? "App.noop" : "none",
+              choice: Object.keys(
+                (request.questions.ref as { criteria: object }).criteria
+              )[0]!,
               confidence: 1,
             },
-            goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
           },
         };
+      const first = step++ === 0;
+      if (first) document.body.insertAdjacentHTML("beforeend", TOAST);
+      return {
+        model: "typesafe/jev-1.13",
+        answers: {
+          operation: {
+            type: "choice",
+            choice: first ? "App.noop" : "none",
+            confidence: 1,
+          },
+          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
+        },
       };
+    };
 
     await startWithNoopPom(decide);
 

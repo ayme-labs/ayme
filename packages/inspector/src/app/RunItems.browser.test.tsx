@@ -14,7 +14,7 @@ import { renderInspector } from "./renderInspector";
 import { startedAyme } from "../tools/test-utils/startedAyme";
 import { Inspector } from "../testing";
 
-// Component tests: a collection action's Runs by any Caller are on the item
+// Component tests: a rooted action's Runs by any Caller are on the item
 // their ref named, so an item's scope lists them. The runtime is replaced by
 // fixture targets, a look at the host page and a stand-in Run log.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
@@ -54,7 +54,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     subscribeToAgentImageRuns: () => () => {},
     listRegisteredPomTargets: vi.fn(),
     listAvailablePomTools: vi.fn(() => []),
-    listCollectionToolItems: vi.fn(() => new Map()),
+    listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -69,7 +69,7 @@ const archive: RegisteredPom["tools"][number] = {
   parameters: [],
   componentClassName: "ListItem",
   componentPath: "items[]",
-  collectionPath: "items[]",
+  rooted: true,
 };
 const listPage: RegisteredPom = {
   id: "ListPage",

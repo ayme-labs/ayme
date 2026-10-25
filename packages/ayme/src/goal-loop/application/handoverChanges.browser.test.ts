@@ -190,7 +190,23 @@ describe("Handover changes in Chromium", () => {
  */
 function operations(steps: string[]): GoalLoopDecisionFunction {
   let step = 0;
-  return async (): Promise<DecisionResponse> => {
+  return async (request): Promise<DecisionResponse> => {
+    if (!("operation" in request.questions))
+      return {
+        model: "typesafe/jev-1.13",
+        answers: Object.fromEntries(
+          Object.entries(request.questions).map(([id, question]) => [
+            id,
+            {
+              type: "choice",
+              choice: Object.keys(
+                (question as { criteria: object }).criteria
+              )[0]!,
+              confidence: 1,
+            },
+          ])
+        ),
+      };
     const operation = steps[Math.min(step++, steps.length - 1)]!;
     const done = operation === "done";
     return {

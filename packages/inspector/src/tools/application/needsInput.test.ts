@@ -33,20 +33,20 @@ it("needs input when an argument is required", () => {
   ).toBe(true);
 });
 
-it("needs input when a collection action has no item", () => {
+it("needs input when a rooted action has no item", () => {
   const archive = {
     argumentsSchema: noArguments,
-    collection: "ListPage.items[]",
+    rooted: true,
   };
 
   expect(needsInput(archive, { itemGiven: false })).toBe(true);
   expect(needsInput(archive, { itemGiven: true })).toBe(false);
 });
 
-it("needs input when a collection action on its item has a required argument", () => {
+it("needs input when a rooted action on its item has a required argument", () => {
   expect(
     needsInput(
-      { argumentsSchema: requiredText, collection: "ListPage.items[]" },
+      { argumentsSchema: requiredText, rooted: true },
       { itemGiven: true }
     )
   ).toBe(true);

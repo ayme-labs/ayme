@@ -12,7 +12,7 @@ Page state works without WebMCP publication. An agent reads it with the `snapsho
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks an item of a Page Object collection. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
+Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks a rooted Page Object instance, including a page or single child. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |

@@ -27,7 +27,8 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
   );
 
   await executePublishedTool(page, "Inspector.navigator.showLens", {
-    name: "Tools",
+    ref: await new AgentView(page).ref('navigation "Navigator"'),
+    args: { name: "Tools" },
   });
 
   await expect(inspector.navigator.lens("Tools")).toHaveAttribute(
@@ -43,7 +44,8 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
   // A search in progress does not stop the agent from opening a run card,
   // and the card's own actions come alive with it.
   await executePublishedTool(page, "Inspector.navigator.search", {
-    query: "addItem",
+    ref: await new AgentView(page).ref('navigation "Navigator"'),
+    args: { query: "addItem" },
   });
   await executePublishedTool(page, "Inspector.tool", {
     name: "ListPage.addItem",
@@ -67,7 +69,9 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   const openForm = async (tool: string, ...actions: string[]) => {
     await executePublishedTool(page, "Inspector.tool", { name: tool });
     await expect.poll(toolNames).toContain(`${card}.openArguments`);
-    await executePublishedTool(page, `${card}.openArguments`, {});
+    await executePublishedTool(page, `${card}.openArguments`, {
+      ref: await agent.ref(`form "${tool.split(".").at(-1)}"`),
+    });
     await expect
       .poll(toolNames)
       .toEqual(expect.arrayContaining([`${card}.fill`, ...actions]));
@@ -78,14 +82,37 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   await openForm("fill_form", `${card}.fillForm.set`);
   const form = inspector.detail.toolPage.card.fillForm;
   await expect(form.control("Urgent")).not.toBeChecked();
+  // The editor's root surrounds the list that stays out of page state.
+  const { structure } = (await agent.call("snapshot", {})) as {
+    structure: string;
+  };
+  const editorRef = structure.match(
+    /(e\d+):\n\s+- e\d+:\n\s+- e\d+: Fields/
+  )?.[1];
+  if (!editorRef) throw new Error("Expected the form editor's root ref.");
   await executePublishedTool(page, `${card}.fillForm.set`, {
-    name: "Urgent",
-    value: true,
+    ref: editorRef,
+    args: { name: "Urgent", value: true },
   });
   await expect(form.control("Urgent")).toBeChecked();
 
   await openForm("generate_locator", `${card}.locatorGroups.toggleFromTree`);
   await openForm("goal", `${card}.values.fill`);
+});
+
+test("a rooted single instance is preselected and runs from the panel", async ({
+  page,
+  inspector,
+}) => {
+  await executePublishedTool(page, "Inspector.tool", {
+    name: "Inspector.navigator.search",
+  });
+  const card = inspector.detail.toolPage.card;
+  await card.openArguments();
+  await expect(card.items).toHaveCount(1);
+  await expect(card.items).toHaveAttribute("aria-checked", "true");
+  await card.run({ query: "ListPage.addItem" });
+  await expect(inspector.navigator.searchBox).toHaveValue("ListPage.addItem");
 });
 
 test("the page state an agent reads includes the panel", async ({

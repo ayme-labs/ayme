@@ -1,3 +1,4 @@
+import { rootRef } from "../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -130,8 +131,11 @@ describe("the one input check every Run passes, in Chromium", () => {
 
   it("refuses an unavailable tool's good input as unavailable", async () => {
     expect(
-      await call("InputPage.items.archive", { ref: "e404", args: {} })
-    ).toMatch(/^RuntimeStateError: InputPage\.items\.archive is unavailable/);
+      await call("InputPage.items.archive", {
+        ref: await rootRef("InputPage.items[0]"),
+        args: {},
+      })
+    ).toMatch(/^RuntimeStateError: Item on ref "e\d+" is unavailable/);
   });
 
   it("names a tool that does not exist before looking at its input", async () => {

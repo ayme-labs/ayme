@@ -23,7 +23,7 @@ export {
   getPomDefinitions,
   inputSchemaFor,
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPoms,
   listRegisteredPomTargets,
   probeRegisteredPomMembers,
@@ -68,7 +68,7 @@ export type {
   PublishedToolInfo,
 } from "./runtime";
 export type {
-  CollectionToolItem,
+  RootedToolInstance,
   PageObjectConstructor,
   RegisteredPom,
   RegisteredPomTarget,

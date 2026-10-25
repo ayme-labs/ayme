@@ -51,12 +51,6 @@ export type PomInstanceObservation = {
    */
   componentPath: string | undefined;
   /**
-   * The innermost collection item it is or lies in, e.g. the instance at
-   * "items[1]" for "items[1].details", or itself when it joined its first
-   * occurrence (see `walkComponentMember`); undefined outside collections.
-   */
-  item: PomInstanceObservation | undefined;
-  /**
    * Whether it is on the page (Page Object Presence): its presence
    * predicate, when its class declares one, holds, and its root, when it has
    * one, is present.

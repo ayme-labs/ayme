@@ -66,7 +66,7 @@ export function RunCardView({
   tool: RunnableTool;
   /** Whether it shows its head: the action's name, signature, description and Run. */
   head: boolean;
-  /** For a collection action without an item: the items to pick from. */
+  /** For a rooted action without an item: the items to pick from. */
   items: readonly CollectionItem[];
   /** Highlights an item on the page while it's hovered. */
   onHover?: OnHover;
@@ -214,7 +214,7 @@ export function RunCardView({
           {picking && (
             <div className="flex flex-col gap-1">
               <span className="flex items-baseline gap-1.5 text-xs font-semibold">
-                On item
+                Instance
                 <span className="font-mono text-xs font-medium text-muted-foreground">
                   ref
                 </span>
@@ -222,7 +222,7 @@ export function RunCardView({
               {items.length ? (
                 <div
                   role="radiogroup"
-                  aria-label="Item"
+                  aria-label="Instance"
                   className="flex flex-wrap gap-1.5"
                 >
                   {items.map((candidate) => {

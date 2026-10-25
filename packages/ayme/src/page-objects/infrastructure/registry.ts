@@ -10,7 +10,7 @@ export {
 } from "../application/compiledPoms";
 export type {
   CallerAwarePomTool,
-  CollectionToolItem,
+  RootedToolInstance,
   RegisteredPom,
   RegisteredPomRoot,
 } from "../application/pomRegistry";
@@ -22,7 +22,7 @@ export type {
 export const {
   getRegisteredPomStructure,
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPomRoots,
   listRegisteredPomTargets,
   listRegisteredPomTools,

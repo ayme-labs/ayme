@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RunnableTool } from "../domain/runnableTools";
+import { listRunnableTools, type RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure";
 import {
@@ -72,7 +72,7 @@ const rename: RunnableTool = {
     properties: { text: { type: "string" } },
     required: ["text"],
   },
-  collection: "ListPage.items[]",
+  rooted: true,
 };
 
 const milk = anItem("ListPage.items[0]", { ref: "e3", label: "Milk" });
@@ -635,7 +635,46 @@ describe("a single-element tool", () => {
   });
 });
 
-describe("a collection action", () => {
+it.each([undefined, "child"])(
+  "preselects and runs the single rooted instance at %s",
+  async (componentPath) => {
+    const name = componentPath ? "Shell.child.open" : "Shell.open";
+    const tool = {
+      pomId: "Shell",
+      methodName: "open",
+      name,
+      rooted: true,
+      ...(componentPath ? { componentPath, componentClassName: "Child" } : {}),
+      inputSchema: { type: "object" as const },
+      parameters: [
+        { name: "ref", optional: false, schema: { type: "string" as const } },
+        { name: "args", optional: true, schema: { type: "object" as const } },
+      ],
+    };
+    const registration = {
+      id: "Shell",
+      instance: {},
+      tools: [tool],
+      manifest: { className: "Shell", tools: [], members: [], components: [] },
+      memberObservations: [],
+      presentPaths: new Set([""]),
+      rootMemberPaths: new Set<string>(),
+    };
+    const runnable = listRunnableTools(
+      [registration],
+      [{ ...tool, available: true }]
+    ).get(name)!;
+    const instance = anItem(componentPath ? "Shell.child" : "Shell", {
+      ref: "e8",
+      label: "Menu",
+    });
+    const { card, onRun } = renderCard({ tool: runnable, items: [instance] });
+    await card.run();
+    expect(onRun).toHaveBeenCalledWith({ ref: "e8", args: {} }, instance);
+  }
+);
+
+describe("a rooted action", () => {
   it("runs on the item picked", async () => {
     const { card, onRun } = renderCard({ tool: rename, items: [milk, eggs] });
 

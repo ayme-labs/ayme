@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -14,7 +15,7 @@ import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
 import { createAyme, listTools, type Ayme } from "../../runtime";
 import {
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
@@ -121,10 +122,13 @@ describe("Action Availability", () => {
         if (!("reason" in expected))
           expect(published("Panel.remove")).not.toHaveProperty("reason");
         // The refusal carries the reason, or ends without one.
-        await expect(session.tools.run("Panel.remove", {})).rejects.toThrow(
+        const ref = await rootRef("Panel");
+        await expect(
+          session.tools.run("Panel.remove", { ref, args: {} })
+        ).rejects.toThrow(
           "reason" in expected
-            ? `Panel.remove is unavailable: ${expected.reason}.`
-            : "Panel.remove is unavailable."
+            ? `Panel on ref "${ref}" is unavailable: ${expected.reason}.`
+            : `Panel on ref "${ref}" is unavailable.`
         );
       }
     }
@@ -174,11 +178,17 @@ describe("Action Availability", () => {
       reason: "No item is selected",
     });
     expect(published("Panel.duplicate")).toMatchObject({ available: true });
-    await expect(session.tools.run("Panel.remove", {})).rejects.toThrow(
-      "Panel.remove is unavailable: No item is selected."
+    const ref = await rootRef("Panel");
+    await expect(
+      session.tools.run("Panel.remove", { ref, args: {} })
+    ).rejects.toThrow(
+      `Panel on ref "${ref}" is unavailable: No item is selected.`
     );
     expect(panel.removed).toBe(0);
-    await session.tools.run("Panel.duplicate", {});
+    await session.tools.run("Panel.duplicate", {
+      ref: await rootRef("Panel"),
+      args: {},
+    });
   });
 
   it("judges a page-level action by the page's own root, not by its components' roots", async () => {
@@ -349,7 +359,7 @@ describe("Action Availability", () => {
     await expect(
       tool.execute({ ref: draft, args: {} }, runContext())
     ).rejects.toThrow(
-      "Outbox.items.recall is unavailable: Only a sent item can be recalled."
+      `Item on ref "${draft}" is unavailable: Only a sent item can be recalled.`
     );
     expect(document.querySelector("#sent")!.getAttribute("data-state")).toBe(
       "sent"
@@ -423,10 +433,10 @@ describe("Action Availability", () => {
         { ref: covered, args: {} },
         runContext()
       )
-    ).rejects.toThrow(`Inbox.rows.archive is unavailable: ${reason}.`);
+    ).rejects.toThrow(`Row on ref "${covered}" is unavailable: ${reason}.`);
     expect(archived).not.toHaveBeenCalled();
     expect(
-      listCollectionToolItems()
+      listRootedToolInstances()
         .get("Inbox.rows.archive")
         ?.map(({ label, available, reason }) => ({ label, available, reason }))
     ).toEqual([
@@ -491,7 +501,7 @@ describe("Action Availability", () => {
     expect(asked).toContain("open");
     expect(asked).not.toContain("covered");
     expect(
-      listCollectionToolItems()
+      listRootedToolInstances()
         .get("Inbox.rows.archive")
         ?.map(({ label, available, reason }) => ({ label, available, reason }))
     ).toEqual([
@@ -572,12 +582,14 @@ describe("Action Availability", () => {
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      state.text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+      state.text.match(
+        new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]\\.editor`)
+      )?.[1];
     const clean = refOf(0);
     const dirty = refOf(1);
     if (!clean || !dirty) throw new Error("Expected refs for both items.");
 
-    // The ref names the item; the verdict is the item's editor's.
+    // The ref names the editor, whose own availability decides the call.
     expect(published("Outbox.items.editor.save")).toMatchObject({
       available: true,
     });
@@ -585,7 +597,7 @@ describe("Action Availability", () => {
     await expect(
       tool.execute({ ref: clean, args: {} }, runContext())
     ).rejects.toThrow(
-      "Outbox.items.editor.save is unavailable: Nothing to save."
+      `Editor on ref "${clean}" is unavailable: Nothing to save.`
     );
     await tool.execute({ ref: dirty, args: {} }, runContext());
     expect(
@@ -699,7 +711,7 @@ describe("Action Availability", () => {
 
   it("gives the reason without a ref when nothing in the way has one", async () => {
     document.body.innerHTML =
-      '<section id="panel" style="height:40px"><button>Act</button></section>';
+      '<section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     document.body.style.pointerEvents = "none";
     class Panel {
       root = page.locator("#panel");
@@ -805,14 +817,14 @@ describe("Action Availability", () => {
     // the registry's subscribers hear nothing.
     const changes = vi.fn();
     const unsubscribe = subscribeToRegisteredPoms(changes);
-    await agent.getPageState();
+    const panelRef = await rootRef("Panel");
     expect(changes).not.toHaveBeenCalled();
     unsubscribe();
 
     // The page did not change, so no observation ran between the predicate
     // changing its mind and the call: the call goes by the last observation.
     verdict = "Nothing is selected";
-    await listed("Panel.remove")!.tool.execute({}, runContext());
+    await listed("Panel.remove")!.tool.execute({ ref: panelRef }, runContext());
     expect(panel.removed).toBe(1);
 
     await probeRegisteredPomMembers();
@@ -974,7 +986,9 @@ describe("Action Availability", () => {
     const { tool } = listed("Outbox.items.recall")!;
     await expect(
       tool.execute({ ref: draft, args: {} }, runContext())
-    ).rejects.toThrow("Outbox.items.recall is unavailable: Not sent yet.");
+    ).rejects.toThrow(
+      `Message on ref "${draft}" is unavailable: Not sent yet.`
+    );
     expect(outbox.items[0]!.recalled).toBe(false);
   });
 
@@ -982,7 +996,7 @@ describe("Action Availability", () => {
   // the call scrolls to it as its action would and tests it there (ADR-0041).
   it("scrolls to a below-fold root the observation could not hit-test, and runs the action", async () => {
     document.body.innerHTML =
-      '<div style="height:3000px"></div><section id="panel" style="height:40px"><button>Act</button></section>';
+      '<div style="height:3000px"></div><section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     const acted = vi.fn();
     class Panel {
       root = page.locator("#panel");
@@ -1002,7 +1016,10 @@ describe("Action Availability", () => {
 
     expect(published("Panel.act")).toMatchObject({ available: true });
     expect(window.scrollY).toBe(0);
-    await session.tools.run("Panel.act", {});
+    await session.tools.run("Panel.act", {
+      ref: await rootRef("Panel"),
+      args: {},
+    });
     expect(acted).toHaveBeenCalledOnce();
     expect(window.scrollY).toBeGreaterThan(0);
   });
@@ -1053,7 +1070,7 @@ describe("Action Availability", () => {
   it("refuses a call on a below-fold root covered where the scroll lands, naming the cover", async () => {
     document.body.innerHTML = `
       <div style="height:3000px"></div>
-      <section id="panel" style="height:40px"><button>Act</button></section>
+      <section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>
       <div style="height:3000px"></div>
       <div role="dialog" aria-label="Saving" style="position:fixed;left:0;right:0;top:30%;height:40%"></div>`;
     const acted = vi.fn();
@@ -1076,8 +1093,11 @@ describe("Action Availability", () => {
     expect(cover).toBeDefined();
 
     expect(published("Panel.act")).toMatchObject({ available: true });
-    await expect(session.tools.run("Panel.act", {})).rejects.toThrow(
-      `Panel.act is unavailable: a click would not reach it; ${cover} is in the way.`
+    const ref = await rootRef("Panel");
+    await expect(
+      session.tools.run("Panel.act", { ref, args: {} })
+    ).rejects.toThrow(
+      `Panel on ref "${ref}" is unavailable: a click would not reach it; ${cover} is in the way.`
     );
     expect(acted).not.toHaveBeenCalled();
     expect(window.scrollY).toBeGreaterThan(0);

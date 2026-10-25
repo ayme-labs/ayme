@@ -151,7 +151,7 @@ describe("a collection whose items are all behind a modal layer", () => {
 
       // In the way is the page's content the layer hid, as for an inert one.
       expect(error).toMatch(
-        /^RuntimeStateError: ListPage\.rows\.open is unavailable: a click would not reach it; e\d+ is in the way\.$/
+        /^RuntimeStateError: Row on ref "(?:e\d+|s_\w+)" is unavailable: a click would not reach it; e\d+ is in the way\.$/
       );
       expect(scrolled()).toEqual({ page: 0, list: 0 });
       expect(opened[2]).not.toHaveBeenCalled();
@@ -170,7 +170,7 @@ describe("a collection whose items are all behind a modal layer", () => {
         .then(() => "no error", errorText);
 
       expect(error).toMatch(
-        /^RuntimeStateError: ListPage\.rows\.open is unavailable: a click would not reach it(; e\d+ is in the way)?\.$/
+        /^RuntimeStateError: Row on ref "(?:e\d+|s_\w+)" is unavailable: a click would not reach it(; e\d+ is in the way)?\.$/
       );
       expect(opened[0]).not.toHaveBeenCalled();
     } finally {
@@ -195,7 +195,7 @@ describe("a collection whose items are all behind a modal layer", () => {
         .then(() => "no error", errorText);
 
       expect(error).toBe(
-        "RuntimeStateError: ListPage.rows.open is unavailable: a click would not reach it."
+        `RuntimeStateError: Row on ref "${refs[2]}" is unavailable: a click would not reach it.`
       );
       expect(scrolled().list).toBeGreaterThan(0);
       expect(opened[2]).not.toHaveBeenCalled();

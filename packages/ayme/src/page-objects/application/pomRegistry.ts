@@ -4,6 +4,7 @@ import type {
   PomMemberObservation,
   ToolManifest,
 } from "../../shared";
+import { modelOption } from "../domain/decorators";
 import { methodArguments } from "../domain/actionTool";
 import {
   assertAvailable,
@@ -28,15 +29,13 @@ import {
 import {
   pomGroups,
   type PageObjectObservation,
-  type PomGroup,
   type PomTargetSource,
   type RegisteredPomTarget,
 } from "../domain/pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
 import {
-  componentToolFacts,
+  pomToolFacts,
   listedInstead,
-  pageToolFacts,
   type ScopedPomTool,
 } from "../domain/pomTools";
 import {
@@ -116,10 +115,10 @@ type ObservedRegisteredPom = RegisteredPom & {
 };
 
 /**
- * A collection tool's item, labelled as the page state labels it, with
+ * A rooted tool's instance, labelled as the page state labels it, with
  * whether the tool would run on it now and why not.
  */
-export type CollectionToolItem = RegisteredPomRoot & ToolAvailability;
+export type RootedToolInstance = RegisteredPomRoot & ToolAvailability;
 
 /**
  * Package-internal: a registry of the Page Objects on one page, which it
@@ -171,7 +170,7 @@ export function createPomRegistry(driver: PageDriver) {
       targetSources: [],
       tools: [],
     };
-    // Its collection tools read the instances observed of this registration.
+    // Its rooted tools read the instances observed of this registration.
     registration.tools = createRegisteredTools(driver, registration);
     // A clash between the app's own classes is logged rather than thrown, so
     // it does not take down the component, or the session start, that
@@ -352,6 +351,7 @@ export function createPomRegistry(driver: PageDriver) {
     registration.rootMemberPaths = rootMemberPaths;
     registration.targetSources = targetSources;
     registration.instances = groupedInstances(instances);
+    registration.tools = createRegisteredTools(driver, registration);
     return !same;
   }
 
@@ -416,7 +416,7 @@ export function createPomRegistry(driver: PageDriver) {
    * whether it is present, available now, and why not (ADR-0035). A tool is
    * present while its Page Object, or the component instance it acts on,
    * is; available while that Page Object is available and the action's
-   * predicate, if it has one, holds. A collection action stands for every
+   * predicate, if it has one, holds. A rooted action stands for every
    * present instance: it is available while any instance is, and when none
    * is, its reason is the first present instance's. Of tools sharing a
    * name, the first available one wins, else the first present, else the
@@ -475,19 +475,18 @@ export function createPomRegistry(driver: PageDriver) {
   }
 
   /**
-   * Package-internal: the present items each tool that goes through a
-   * collection acts on, by tool name, labelled as the page state labels
-   * them, each with whether the tool would run on it now and why not. A
-   * tool whose path holds no collection is absent from the map.
+   * Package-internal: the present instances each rooted tool acts on, by
+   * tool name, labelled as the page state labels them, each with whether
+   * the tool would run on it now and why not. Root-less tools have no items.
    */
-  function listCollectionToolItems(): Map<string, CollectionToolItem[]> {
-    const itemsByTool = new Map<string, CollectionToolItem[]>();
+  function listRootedToolInstances(): Map<string, RootedToolInstance[]> {
+    const itemsByTool = new Map<string, RootedToolInstance[]>();
     for (const registration of registeredPoms) {
       for (const tool of registration.tools) {
-        if (tool.collectionPath === undefined) continue;
+        if (!tool.rooted) continue;
         itemsByTool.set(tool.name, [
           ...(itemsByTool.get(tool.name) ?? []),
-          ...collectionItemsOf(registration, tool),
+          ...rootedInstancesOf(registration, tool),
         ]);
       }
     }
@@ -520,7 +519,7 @@ export function createPomRegistry(driver: PageDriver) {
   return {
     getRegisteredPomStructure,
     listAvailablePomTools,
-    listCollectionToolItems,
+    listRootedToolInstances,
     listRegisteredPomRoots,
     listRegisteredPomTargets,
     listRegisteredPomTools,
@@ -581,16 +580,16 @@ function availabilityNow(
  * each with the tool's verdict on it: what the Goal Loop offers and what a
  * call on an item is refused by.
  */
-function collectionItemsOf(
+function rootedInstancesOf(
   registration: ObservedRegisteredPom,
   tool: ScopedPomTool
-): CollectionToolItem[] {
+): RootedToolInstance[] {
   return instancesOf(registration, tool).flatMap((instance) => {
-    const root = instance.item?.root;
-    return instance.item?.present && root && isRootPresent(root)
+    const root = instance.root;
+    return instance.present && root && isRootPresent(root)
       ? [
           {
-            label: `${registration.id}.${instance.item.path}`,
+            label: pomLabel(registration.id, instance.path),
             element: root.element,
             ...availabilityNow(instance, tool.methodName),
           },
@@ -604,25 +603,38 @@ function createRegisteredTools(
   registration: ObservedRegisteredPom
 ) {
   const { id, manifest } = registration;
-  const pageTools = manifest.tools.map((action) =>
-    createTool(driver, registration, pageToolFacts(id, action), action)
-  );
-  const componentTools = pomGroups(manifest).flatMap((group) =>
-    group.component.tools.map((action) =>
-      group.collectionKey === undefined
-        ? createTool(
-            driver,
-            registration,
-            componentToolFacts(id, group, action),
-            action
-          )
-        : createCollectionTool(driver, registration, group, action)
-    )
-  );
-  return [...pageTools, ...componentTools];
+  const scopes = [
+    { component: manifest, key: undefined, toolPath: undefined },
+    ...pomGroups(manifest),
+  ];
+  return scopes.flatMap(({ component, key, toolPath }) => {
+    const instance = registration.instances?.byComponentPath.get(key ?? "")?.[0]
+      ?.instance;
+    const rooted =
+      compiledRootDeclared(component) ??
+      (instance !== undefined &&
+        modelOption(instance.constructor, "root") !== undefined);
+    return component.tools.map((action) =>
+      createTool(
+        driver,
+        registration,
+        pomToolFacts(
+          id,
+          component.className,
+          toolPath === undefined
+            ? action.toolName
+            : `${id}.${toolPath}.${action.methodName}`,
+          key,
+          rooted,
+          action
+        ),
+        action
+      )
+    );
+  });
 }
 
-/** A tool that acts on the one instance the last observation found. */
+/** Runs a rooted instance by ref, or the sole root-less instance directly. */
 function createTool(
   driver: PageDriver,
   registration: ObservedRegisteredPom,
@@ -631,13 +643,44 @@ function createTool(
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
     ...facts,
-    execute: async (args, { cursor }) =>
-      performPageObjectAction(
-        callTarget(driver, tool.name, instancesOf(registration, tool)[0]),
+    execute: async (input, { cursor }) => {
+      let args = input;
+      let targetName = tool.name;
+      const instances = instancesOf(registration, tool);
+      let observed: PomInstanceObservation | undefined = instances[0];
+      if (tool.rooted) {
+        const { ref, args: actionArgs = {} } = input as {
+          ref: string;
+          args?: object;
+        };
+        args = actionArgs;
+        const className = tool.componentClassName ?? registration.id;
+        const label = `call ${tool.name} (${className}) on`;
+        const { element } = await resolveRef(ref, label, document);
+        const previous = instances.find(
+          (instance) => instance.root?.element === element
+        );
+        observed = instancesOf(registration, tool).find(
+          (instance) => instance.root?.element === element
+        );
+        // Ref resolution captures the page and may observe a replacement
+        // model. Keep the pre-call verdict only for the same live instance.
+        if (previous && (!observed || previous.instance === observed.instance))
+          observed = previous;
+        if (!observed)
+          throw new RefResolutionError(
+            refFailure(label, ref, `it is not a root of ${className}`)
+          );
+        targetName = `${className} on ref "${ref}"`;
+        assertAvailable(targetName, availabilityNow(observed, tool.methodName));
+      }
+      return performPageObjectAction(
+        callTarget(driver, targetName, observed),
         action,
         args,
         cursor
-      ),
+      );
+    },
   };
   return tool;
 }
@@ -682,50 +725,6 @@ function rootHolds(
   if (!element?.isConnected) return false;
   const elements = driver.elementsOf(observed.rootLocator);
   return elements.length === 1 && elements[0] === element;
-}
-
-/** A tool that acts on the collection item its ref names. */
-function createCollectionTool(
-  driver: PageDriver,
-  registration: ObservedRegisteredPom,
-  group: PomGroup,
-  action: ToolManifest
-): CallerAwarePomTool {
-  const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
-    const { ref, args = {} } = input as { ref: string; args?: object };
-    const toolPath = `${registration.id}.${group.toolPath}`;
-    const label = `call ${tool.name} on`;
-    const { element } = await resolveRef(ref, label, document);
-    // The instance the last observation found at the ref's element; an item
-    // it did not find is not on the page yet.
-    const observed = instancesOf(registration, tool).find(
-      (instance) => instance.item?.root?.element === element
-    );
-    if (!observed) {
-      throw new RefResolutionError(
-        refFailure(
-          label,
-          ref,
-          `it is not an instance of ${group.component.className} at ${toolPath}`
-        )
-      );
-    }
-    const item = collectionItemsOf(registration, tool).find(
-      (candidate) => candidate.element === element
-    );
-    assertAvailable(tool.name, item ?? { present: false, available: false });
-    return await performPageObjectAction(
-      callTarget(driver, tool.name, observed),
-      action,
-      args,
-      cursor
-    );
-  };
-  const tool: CallerAwarePomTool = {
-    ...componentToolFacts(registration.id, group, action),
-    execute,
-  };
-  return tool;
 }
 
 /**

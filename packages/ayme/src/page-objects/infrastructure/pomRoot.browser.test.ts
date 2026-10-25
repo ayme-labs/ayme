@@ -67,6 +67,229 @@ describe("Page Object Root by option", () => {
     vi.restoreAllMocks();
   });
 
+  it("requires each rooted page and single child's own ref, and offers both as Goal Loop items", async () => {
+    document.body.innerHTML =
+      '<main id="shell"><button id="child">Open</button></main>';
+    const opened: string[] = [];
+    class Child {
+      root = page.locator("#child");
+      open() {
+        opened.push("child");
+      }
+    }
+    ayme({ root: (self: Child) => self.root })(Child);
+    const childManifest = pageManifest("Child", [locator("root")]);
+    registerCompiledPom(Child, childManifest);
+    class Shell {
+      root = page.locator("#shell");
+      child = new Child();
+      open() {
+        opened.push("shell");
+      }
+    }
+    ayme({ root: (self: Shell) => self.root })(Shell);
+    registerCompiledPom(Shell, {
+      ...pageManifest("Shell", [
+        locator("root"),
+        {
+          memberName: "child",
+          kind: "component",
+          access: "field",
+          componentClassName: "Child",
+          collection: false,
+        },
+      ]),
+      components: [childManifest],
+    });
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+    for (const name of ["Shell.open", "Shell.child.open"])
+      expect(listed(name)?.inputSchema).toMatchObject({
+        required: expect.arrayContaining(["ref"]),
+        properties: { ref: { type: "string" } },
+      });
+    const state = await agent.getPageState();
+    const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
+    const childRef = state.text.match(/(\w+) Shell\.child\b/)![1]!;
+    const { buildToolOptions } = await import("../../goal-loop");
+    const options = buildToolOptions(page);
+    for (const name of ["Shell.open", "Shell.child.open"])
+      expect(
+        options.find(({ key }) => key === name)?.tool.args[0]?.closedSet
+      ).toMatchObject({
+        kind: "instance",
+        roots: [expect.objectContaining({ available: true })],
+      });
+    await session.tools.run("Shell.open", { ref: shellRef }, { by: "webmcp" });
+    await session.tools.run(
+      "Shell.child.open",
+      { ref: childRef },
+      { by: "webmcp" }
+    );
+    await expect(
+      session.tools.run("Shell.child.open", { ref: shellRef }, { by: "webmcp" })
+    ).rejects.toThrow(`ref "${shellRef}": it is not a root of Child`);
+    expect(opened).toEqual(["shell", "child"]);
+  });
+
+  it("takes direct arguments and offers no instances for a root-less class", async () => {
+    document.body.innerHTML = "<output></output>";
+    class Announcer {
+      announce(text: string) {
+        document.querySelector("output")!.textContent = text;
+      }
+    }
+    ayme(Announcer);
+    registerCompiledPom(Announcer, {
+      className: "Announcer",
+      members: [],
+      components: [],
+      tools: [
+        {
+          ...action("announce", "Announcer.announce"),
+          parameters: [
+            { name: "text", optional: false, schema: { type: "string" } },
+          ],
+        },
+      ],
+    });
+    session.pom.register(Announcer);
+    await probeRegisteredPomMembers();
+    expect(listed("Announcer.announce")?.inputSchema).toMatchObject({
+      properties: { text: { type: "string" } },
+      required: ["text"],
+    });
+    expect(
+      listed("Announcer.announce")?.inputSchema.properties
+    ).not.toHaveProperty("ref");
+    const { buildToolOptions } = await import("../../goal-loop");
+    const offered = buildToolOptions(page).find(
+      ({ key }) => key === "Announcer.announce"
+    )!;
+    expect(offered.tool.args).toMatchObject([
+      { name: "text", closedSet: null },
+    ]);
+    await session.tools.run(
+      "Announcer.announce",
+      { text: "Hello" },
+      { by: "webmcp" }
+    );
+    expect(document.querySelector("output")?.textContent).toBe("Hello");
+  });
+
+  it("runs a rooted instance inside an open shadow root by its own ref", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML =
+      '<section aria-label="Panel"><button>Open</button></section>';
+    class ShadowPanel {
+      root = page.getByRole("region", { name: "Panel" });
+      open() {
+        shadow.querySelector("button")!.textContent = "Opened";
+      }
+    }
+    ayme({ root: (self: ShadowPanel) => self.root })(ShadowPanel);
+    registerCompiledPom(
+      ShadowPanel,
+      pageManifest("ShadowPanel", [locator("root")])
+    );
+    session.pom.register(ShadowPanel);
+    await probeRegisteredPomMembers();
+    const ref = (await agent.getPageState()).text.match(
+      /(e\d+) region "Panel"/
+    )?.[1];
+    expect(ref).toBeDefined();
+    await session.tools.run("ShadowPanel.open", { ref }, { by: "webmcp" });
+    expect(shadow.querySelector("button")?.textContent).toBe("Opened");
+  });
+
+  it("offers only present connected roots and calls an instance after a withdrawn one", async () => {
+    document.body.innerHTML =
+      '<ul><li id="withdrawn">Withdrawn</li><li id="first">First</li><li id="second">Second</li><li id="hidden" hidden>Hidden</li></ul>';
+    const opened: string[] = [];
+    class Row {
+      constructor(readonly id: string) {}
+      get root() {
+        return page.locator(`#${this.id}`);
+      }
+      open() {
+        opened.push(this.id);
+      }
+    }
+    ayme({
+      root: (self: Row) => self.root,
+      present: (self: Row) => self.id !== "withdrawn",
+    })(Row);
+    const rowManifest = pageManifest("Row", [locator("root")]);
+    registerCompiledPom(Row, rowManifest);
+    class RowsPage {
+      rows = ["withdrawn", "first", "second", "hidden"].map(
+        (id) => new Row(id)
+      );
+    }
+    registerCompiledPom(RowsPage, {
+      className: "RowsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "field",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ],
+      components: [rowManifest],
+    });
+    session.pom.register(RowsPage);
+    await probeRegisteredPomMembers();
+    const { buildToolOptions } = await import("../../goal-loop");
+    const offered = () =>
+      buildToolOptions(page).find(({ key }) => key === "RowsPage.rows.open")!
+        .tool.args[0]!.closedSet;
+    expect(offered()).toMatchObject({
+      kind: "instance",
+      roots: [{ label: "RowsPage.rows[1]" }, { label: "RowsPage.rows[2]" }],
+    });
+    const state = await agent.getPageState();
+    const ref = state.text.match(/(e\d+) RowsPage\.rows\[2\]/)![1]!;
+    await session.tools.run("RowsPage.rows.open", { ref }, { by: "webmcp" });
+    expect(opened).toEqual(["second"]);
+    document.getElementById("first")!.remove();
+    // No probe follows the removal: the Goal Loop must leave out a stale root.
+    expect(offered()).toMatchObject({
+      kind: "instance",
+      roots: [{ label: "RowsPage.rows[2]" }],
+    });
+  });
+
+  it("refuses a ref when its instance's locator now holds another connected root", async () => {
+    document.body.innerHTML =
+      '<section id="panel" aria-label="Old">Old</section><section id="other" aria-label="New">New</section>';
+    const open = vi.fn();
+    class MovingPanel {
+      root = page.locator("#panel");
+      open = open;
+    }
+    ayme({ root: (self: MovingPanel) => self.root })(MovingPanel);
+    registerCompiledPom(
+      MovingPanel,
+      pageManifest("MovingPanel", [locator("root")])
+    );
+    session.pom.register(MovingPanel);
+    await probeRegisteredPomMembers();
+    const ref = (await agent.getPageState()).text.match(
+      /(e\d+) MovingPanel\b/
+    )![1]!;
+    document.getElementById("panel")!.id = "old";
+    document.getElementById("other")!.id = "panel";
+    await expect(
+      session.tools.run("MovingPanel.open", { ref }, { by: "webmcp" })
+    ).rejects.toThrow(`MovingPanel on ref "${ref}" is unavailable`);
+    expect(open).not.toHaveBeenCalled();
+  });
+
   it("anchors a model at the element its root option names: present while it is on the page, labelled by it, and measured at it", async () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu <button>Close</button></aside>';
@@ -262,7 +485,10 @@ describe("Page Object Root by option", () => {
       ({ name }) => name === "SideDrawer.open"
     );
     if (!tool) throw new Error("Expected SideDrawer.open to be available.");
-    await tool.execute({}, runContext());
+    const ref = (await agent.getPageState()).text.match(
+      /(\w+) SideDrawer\b/
+    )![1]!;
+    await tool.execute({ ref }, runContext());
     expect(drawer.opened).toBe(1);
 
     document.body.insertAdjacentHTML(
@@ -274,15 +500,15 @@ describe("Page Object Root by option", () => {
     // would run unmeasured: the call measures at the root the observation
     // found, under the overlay.
     anchor = page.locator("#nowhere");
-    await expect(tool.execute({}, runContext())).rejects.toThrow(
-      "SideDrawer.open is unavailable: a click would not reach it."
+    await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
+      `SideDrawer on ref "${ref}" is unavailable: a click would not reach it.`
     );
     expect(drawer.opened).toBe(1);
 
     // The root the observation found left the page: no call runs on it.
     document.getElementById("drawer")!.remove();
-    await expect(tool.execute({}, runContext())).rejects.toThrow(
-      "SideDrawer.open is unavailable: its Page Object is not on the page."
+    await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
+      `Cannot call SideDrawer.open (SideDrawer) on ref "${ref}": it is no longer on the page.`
     );
     expect(drawer.opened).toBe(1);
   });
