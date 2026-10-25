@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { PomManifest, ToolManifest } from "../shared";
-import type { AymePage } from "../runtime";
-import type { TestSession } from "../test-utils/session.testSupport";
+import type { PomManifest, ToolManifest } from "../../shared";
+import type { AymePage } from "../../runtime";
+import type { TestSession } from "../../test-utils/session.testSupport";
 
 class FakeMutationObserver {
   observe() {}
@@ -39,8 +39,8 @@ let started: TestSession | undefined;
 async function setup() {
   vi.resetModules();
   const registry = await import("./registry");
-  const definitions = await import("./pomDefinitions");
-  const { startSession } = await import("../test-utils/session.testSupport");
+  const definitions = await import("./registeredPomDefinitions");
+  const { startSession } = await import("../../test-utils/session.testSupport");
   const session = startSession({} as AymePage);
   started = session;
   return { registry, definitions, session };

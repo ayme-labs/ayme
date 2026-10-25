@@ -66,7 +66,7 @@ in-browser agents and the app's own code call on the running page.
   live DOM
 - Evidence: verified: [packages/ayme/src/runtime/runtime.ts](packages/ayme/src/runtime/runtime.ts), [packages/ayme/src/runtime/webMcp.ts](packages/ayme/src/runtime/webMcp.ts),
   [packages/ayme/src/runtime/inspector.ts](packages/ayme/src/runtime/inspector.ts), [packages/ayme/src/runtime/agentConnection.ts](packages/ayme/src/runtime/agentConnection.ts),
-  [packages/ayme/src/page-objects/browserPage.ts](packages/ayme/src/page-objects/browserPage.ts), [docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md](docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md)
+  [packages/ayme/src/page-objects/infrastructure/browserPage.ts](packages/ayme/src/page-objects/infrastructure/browserPage.ts), [docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md](docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md)
 
 ### Build plugin
 
@@ -183,7 +183,7 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → DOM reads, clicks, fills and key presses
     - ← the page structure captured into Structural Page State
-  - Evidence: verified: [packages/ayme/src/page-objects/browserPage.ts](packages/ayme/src/page-objects/browserPage.ts), [packages/core/src/capture/](packages/core/src/capture/)
+  - Evidence: verified: [packages/ayme/src/page-objects/infrastructure/browserPage.ts](packages/ayme/src/page-objects/infrastructure/browserPage.ts), [packages/core/src/capture/](packages/core/src/capture/)
 - **App Process runtime → Ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results

@@ -100,8 +100,14 @@ export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // The other slices aren't layered yet; packages/ayme/AGENTS.md says why.
-    enforcedSlices: ["page-state", "runs", "goal-loop", "tools"],
+    // shared and runtime stay unlayered, as packages/ayme/AGENTS.md says.
+    enforcedSlices: [
+      "page-state",
+      "runs",
+      "page-objects",
+      "goal-loop",
+      "tools",
+    ],
   }),
   {
     files: [sourceFiles],

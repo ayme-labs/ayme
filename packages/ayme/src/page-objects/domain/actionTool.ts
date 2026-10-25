@@ -1,4 +1,4 @@
-import type { JsonSchema, ToolManifest, ToolParameter } from "../shared";
+import type { JsonSchema, ToolManifest, ToolParameter } from "../../shared";
 
 /** A parameter as agents read it: whether they may leave it out, and its schema. */
 export type InputParameter = {

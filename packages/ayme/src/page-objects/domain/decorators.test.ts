@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ayme } from "../index";
+import { ayme } from "../../index";
 import { availabilityPredicateOf, modelOption } from "./decorators";
 
 // Vitest does not compile decorator syntax, so these tests apply the

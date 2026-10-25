@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
-import { createPage, type AymePage, type CreatePageOptions } from "../index";
+import { createPage, type AymePage, type CreatePageOptions } from "../../index";
 import { registerCompiledPom } from "./registry";
-import { createAyme } from "../runtime";
+import { createAyme } from "../../runtime";
 
 describe("createPage from the public entry in Chromium", () => {
   let stop: (() => void) | undefined;

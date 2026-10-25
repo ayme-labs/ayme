@@ -1,4 +1,8 @@
-import type { JsonSchema, PomDefinition, PomDefinitionAction } from "../shared";
+import type {
+  JsonSchema,
+  PomDefinition,
+  PomDefinitionAction,
+} from "../../shared";
 
 export function renderPomDefinitions(
   definitions: readonly PomDefinition[]
