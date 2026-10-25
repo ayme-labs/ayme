@@ -13,6 +13,7 @@ dist/
 coverage/
 reports/
 .stryker-tmp/
+stryker.log
 test-results/
 .vitest-attachments/
 apps/example-vue/goal-runs/

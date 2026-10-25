@@ -5,6 +5,9 @@
  *   pnpm analyze:changed                  compare the working tree with main
  *   pnpm analyze:changed --base <ref>     compare with another ref
  *   pnpm analyze:changed --skip-mutation  CRAP only
+ *   pnpm analyze:changed --incremental    reuse Stryker's last results for
+ *                                         mutants whose code and tests did
+ *                                         not change
  *
  * The report prints and is written to `reports/analyze-changed.md`. What an
  * agent does with it is in docs/testing.md#change-analysis.
@@ -32,10 +35,11 @@ function git(...args) {
 }
 
 function parseArgs(argv) {
-  const args = { base: undefined, mutation: true };
+  const args = { base: undefined, mutation: true, incremental: false };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--base") args.base = argv[(i += 1)];
     else if (argv[i] === "--skip-mutation") args.mutation = false;
+    else if (argv[i] === "--incremental") args.incremental = true;
     else throw new Error(`Unknown argument: ${argv[i]}`);
   }
   return args;
@@ -289,7 +293,28 @@ function survivors(packageDir, files) {
   return found;
 }
 
-function render({ base, packages, skipped, crapRows, mutantRows, mutation }) {
+/**
+ * How many mutant results Stryker reused, read from its `stryker.log`.
+ * Undefined when it had no earlier results to reuse.
+ */
+export function reusedResults(log) {
+  const match = /(\d+) of (\d+) mutant result\(s\) are reused/.exec(
+    log.replace(/\x1b\[[0-9;]*m/g, "")
+  );
+  return match
+    ? { reused: Number(match[1]), total: Number(match[2]) }
+    : undefined;
+}
+
+function render({
+  base,
+  packages,
+  skipped,
+  crapRows,
+  mutantRows,
+  mutation,
+  reuse,
+}) {
   const out = [`# Change analysis against ${base}`, ""];
   out.push(`Packages: ${packages.join(", ") || "none"}`, "");
   if (skipped.length > 0) {
@@ -317,6 +342,17 @@ function render({ base, packages, skipped, crapRows, mutantRows, mutation }) {
   for (const row of mutantRows) {
     out.push(
       `- ${row.file}:${row.line} ${row.status} ${row.mutator}: \`${row.replacement}\``
+    );
+  }
+  if (reuse && reuse.length > 0) {
+    const counts = reuse.map(({ name, result }) =>
+      result
+        ? `${name} ${result.reused} of ${result.total}`
+        : `${name} none, no earlier run`
+    );
+    out.push(
+      "",
+      `Results reused from an earlier run: ${counts.join("; ")}. A reused mutant keeps its earlier status, so a change outside its line that stops the tests from killing it does not show here. \`pnpm analyze:changed\` without \`--incremental\` tests every mutant again.`
     );
   }
   return `${out.join("\n")}\n`;
@@ -350,6 +386,7 @@ function main() {
 
   const crapRows = [];
   const mutantRows = [];
+  const reuse = [];
   if (packages.length > 0) {
     run("pnpm", [
       "exec",
@@ -361,7 +398,7 @@ function main() {
       ...packages.map((name) => `--filter=${name}`),
     ]);
   }
-  for (const [dir, { files }] of byPackage) {
+  for (const [dir, { name, files }] of byPackage) {
     const coverage = JSON.parse(
       fs.readFileSync(
         path.join(ROOT, dir, "coverage/crap/coverage-final.json"),
@@ -374,6 +411,8 @@ function main() {
       );
     }
     if (args.mutation) {
+      const log = path.join(ROOT, dir, "stryker.log");
+      fs.rmSync(log, { force: true });
       run(
         "pnpm",
         [
@@ -382,10 +421,19 @@ function main() {
           "run",
           "--mutate",
           mutateTargets(dir, files).join(","),
+          ...(args.incremental
+            ? ["--incremental", "--fileLogLevel", "info"]
+            : []),
         ],
         path.join(ROOT, dir)
       );
       mutantRows.push(...survivors(dir, files));
+      if (args.incremental) {
+        reuse.push({
+          name,
+          result: reusedResults(fs.readFileSync(log, "utf8")),
+        });
+      }
     }
   }
 
@@ -398,6 +446,7 @@ function main() {
       (a, b) => a.file.localeCompare(b.file) || a.line - b.line
     ),
     mutation: args.mutation,
+    reuse: args.mutation && args.incremental ? reuse : undefined,
   });
   fs.mkdirSync(path.dirname(REPORT), { recursive: true });
   fs.writeFileSync(REPORT, report);
