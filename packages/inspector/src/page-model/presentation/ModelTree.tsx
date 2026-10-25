@@ -23,7 +23,7 @@ import {
   revealSelection,
   type ObjectTree,
 } from "../domain/objectTree";
-import { Divider, rowFocusRing } from "../../shared";
+import { Divider, rowFocusRing, rowPress } from "../../shared";
 import {
   defaultPreferences,
   maxModelSplit as maxSplit,
@@ -233,6 +233,7 @@ function rowClass(selected: boolean) {
     // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
     "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left hover:bg-muted",
     rowFocusRing,
+    rowPress,
     selected && "bg-accent hover:bg-accent"
   );
 }

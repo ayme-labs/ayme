@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { rowFocusRing } from "../../shared";
+import { rowFocusRing, rowPress } from "../../shared";
 
 /** A row in a navigator tree or list. */
 export function NavItem({
@@ -18,6 +18,7 @@ export function NavItem({
       className={cn(
         "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left hover:bg-muted",
         rowFocusRing,
+        rowPress,
         selected && "bg-accent hover:bg-accent",
         className
       )}

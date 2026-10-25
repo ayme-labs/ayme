@@ -18,14 +18,19 @@ import {
   fitFloat,
   fitLogo,
   fitSideWidth,
+  LOGO_SIZE,
   resizeFloat,
   type Dock,
   type HostReservation,
   type Side,
 } from "../domain/geometry";
 import { Header, layoutNames } from "../view/Header";
-import type { Layout, Preferences } from "../domain/preferences";
+import { releaseVelocity, type Sample } from "../domain/motion";
+import type { Layout, Point, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
+import { useGlide } from "./useGlide";
+import { usePointerClick } from "./usePointerClick";
+import { usePresence } from "./usePresence";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -83,6 +88,11 @@ function isCorner(handle: Handle): handle is Corner {
  * dropped on an edge, resizes, and collapses to the draggable logo. It shows
  * the preferences it's given and reports every change as a patch; its body
  * is the children. While docked, it asks the host page for room.
+ *
+ * What the person does with a pointer moves it on a spring: it shrinks into
+ * the logo and grows back out of it, glides to a dock picked from the layout
+ * menu, and settles into the dock it's dropped on at the speed it was let
+ * go. What a key or a screen reader does lands at once.
  */
 export function InspectorShell({
   preferences,
@@ -116,10 +126,13 @@ export function InspectorShell({
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
   // Collapsing moves focus to the logo and opening moves it back, but only
-  // when the person did it, not when the panel starts collapsed.
+  // when the person did it, not when the panel starts collapsed. Only when
+  // they did it with a pointer do the panel and the logo move.
+  const pointerClick = usePointerClick();
   const logoButton = useRef<HTMLButtonElement>(null);
   const collapseButton = useRef<HTMLButtonElement>(null);
   const moveFocus = useRef(false);
+  const [moving, setMoving] = useState(false);
   useEffect(() => {
     if (!moveFocus.current) return;
     moveFocus.current = false;
@@ -127,51 +140,71 @@ export function InspectorShell({
   }, [collapsed]);
   const setCollapsed = (next: boolean) => {
     moveFocus.current = true;
+    setMoving(pointerClick.current);
+    // A key or a screen reader lands a glide under way too.
+    if (!pointerClick.current) glide.stop();
     onPreferencesChange({ collapsed: next });
   };
-
-  if (collapsed)
-    return (
-      <Fab
-        ref={logoButton}
-        position={fitLogo(preferences.logo ?? defaultLogo(viewport), viewport)}
-        viewport={viewport}
-        onMove={(logo) => onPreferencesChange({ logo })}
-        onOpen={() => setCollapsed(false)}
-      />
-    );
+  // Collapsing, the panel shrinks toward the logo as the logo grows in;
+  // opening is the same path back.
+  const panel = usePresence<HTMLElement>(!collapsed, moving);
+  const logo = usePresence<HTMLDivElement>(collapsed, moving);
+  const glide = useGlide(panel.ref);
+  const logoPosition = fitLogo(
+    preferences.logo ?? defaultLogo(viewport),
+    viewport
+  );
 
   // Dragging the header moves a floating panel and floats a docked one,
-  // under the pointer; dropping it on an edge docks it there.
+  // under the pointer; dropping it on an edge docks it there. A docked panel
+  // floats with the pointer as far along its header, and as far down, as
+  // where it was taken hold of. The press takes hold of the panel where it
+  // shows: grown all the way out of the logo, and held still mid-glide until
+  // it moves, or goes on gliding once let go.
   const startMove = (event: PointerEvent) => {
     event.preventDefault();
-    let origin: { x: number; y: number } | undefined;
+    // Only the main button drags, and only on the header itself: React hands
+    // the header presses in the layout menu too, through the menu's portal.
+    const { currentTarget, target } = event;
+    if (event.button !== 0 || !currentTarget.contains(target as Node)) return;
+    panel.finish();
+    const shown = panel.ref.current!.getBoundingClientRect();
+    let origin: Point | undefined;
     let dock: Dock | undefined;
+    // Stryker disable next-line ArrayDeclaration: a sample without a time is never among the last 100ms, so the release speed leaves it out.
+    const path: Sample[] = [];
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
-        origin ??=
-          layout === "float"
-            ? float
-            : {
-                x: pointer.x - deltaX - Math.min(200, float.width / 2),
-                y: pointer.y - deltaY - 22,
-              };
+        // Stryker disable next-line ConditionalExpression: every move of a drag works the start out from the same press, so working it out again finds the same place.
+        if (!origin) {
+          glide.stop();
+          // From where it shows, held at the same share of its width: a
+          // floating panel shows at its own width, so it starts where it is.
+          const along = (pointer.x - deltaX - shown.x) / shown.width;
+          origin = { x: pointer.x - deltaX - along * float.width, y: shown.y };
+        }
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);
         setSnap(dock);
-        onPreferencesChange({
-          layout: "float",
-          float: fitFloat(
-            { ...float, x: origin.x + deltaX, y: origin.y + deltaY },
-            viewportNow
-          ),
-        });
+        const moved = fitFloat(
+          { ...float, x: origin.x + deltaX, y: origin.y + deltaY },
+          viewportNow
+        );
+        path.push({ x: moved.x, y: moved.y, time: performance.now() });
+        onPreferencesChange({ layout: "float", float: moved });
       },
       onEnd: (moved) => {
         setSnap(undefined);
-        if (moved && dock) onPreferencesChange({ layout: dock });
+        glide.resume();
+        if (!moved || !dock) return;
+        // It settles into the dock carrying the speed it was let go at.
+        glide.from(releaseVelocity(path, performance.now()));
+        onPreferencesChange({ layout: dock });
       },
     });
+    // Held once the drag has started: starting it lets go of any drag before,
+    // which lets its glide go on.
+    glide.hold();
   };
 
   const startResize = (event: PointerEvent, handle: Handle) => {
@@ -216,59 +249,100 @@ export function InspectorShell({
     right: { right: 0, top: 0, bottom: 0, width: sideWidth },
     bottom: { left: 0, right: 0, bottom: 0, height: bottomHeight },
   };
+  // The panel scales about the logo's centre, so it grows out of the logo
+  // and shrinks back into it.
+  const corner: Record<Layout, Point> = {
+    float,
+    left: { x: 0, y: 0 },
+    right: { x: viewport.width - sideWidth, y: 0 },
+    bottom: { x: 0, y: viewport.height - bottomHeight },
+  };
+  const transformOrigin = `${logoPosition.x + LOGO_SIZE / 2 - corner[layout].x}px ${logoPosition.y + LOGO_SIZE / 2 - corner[layout].y}px`;
 
   return (
     <>
-      <aside
-        aria-label="ayme"
-        className={cn(
-          "@container pointer-events-auto absolute border bg-background",
-          {
-            float: "rounded-xl shadow-2xl",
-            left: "border-y-0 border-l-0 shadow-lg",
-            right: "border-y-0 border-r-0 shadow-lg",
-            bottom: "border-x-0 border-b-0 shadow-lg",
-          }[layout]
-        )}
-        style={placement[layout]}
-      >
-        {resizeHandles[layout].map((handle) => (
-          <div
-            key={handle}
-            role="separator"
-            aria-orientation={
-              isCorner(handle)
-                ? undefined
-                : handle === "left" || handle === "right"
-                  ? "vertical"
-                  : "horizontal"
-            }
-            aria-label={`Resize from the ${handle} ${isCorner(handle) ? "corner" : "edge"}`}
-            title="Drag to resize"
-            className={cn(
-              "absolute z-20 touch-none",
-              resizeGrip,
-              handleClass[handle]
-            )}
-            onPointerDown={(event) => startResize(event, handle)}
-          />
-        ))}
-        {/* The panel's content clips to its rounded frame; the handles, outside
-            this, straddle the border. */}
-        <div className="flex size-full flex-col overflow-hidden rounded-[inherit]">
-          <Header
-            status={status}
-            layout={layout}
-            theme={preferences.theme}
-            onThemeChange={(theme) => onPreferencesChange({ theme })}
-            onLayoutChange={(next) => onPreferencesChange({ layout: next })}
-            onCollapse={() => setCollapsed(true)}
-            onPointerDown={startMove}
-            collapseRef={collapseButton}
-          />
-          {children}
-        </div>
-      </aside>
+      {logo.mounted && (
+        <Fab
+          ref={logoButton}
+          presence={logo}
+          position={logoPosition}
+          viewport={viewport}
+          onMove={(position) => onPreferencesChange({ logo: position })}
+          onOpen={() => setCollapsed(false)}
+        />
+      )}
+      {panel.mounted && (
+        <aside
+          ref={panel.ref}
+          aria-label="ayme"
+          data-presence
+          data-state={panel.state}
+          // Leaving, it's out of reach and out of the accessibility tree.
+          inert={collapsed}
+          aria-hidden={collapsed || undefined}
+          className={cn(
+            "@container pointer-events-auto absolute border bg-background",
+            // Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
+            {
+              float: "rounded-xl shadow-2xl",
+              left: "border-y-0 border-l-0 shadow-lg",
+              right: "border-y-0 border-r-0 shadow-lg",
+              bottom: "border-x-0 border-b-0 shadow-lg",
+            }[layout],
+            // Stryker restore StringLiteral,ObjectLiteral
+            panel.className
+          )}
+          style={{ ...placement[layout], transformOrigin }}
+        >
+          {resizeHandles[layout].map((handle) => (
+            <div
+              key={handle}
+              role="separator"
+              aria-orientation={
+                isCorner(handle)
+                  ? undefined
+                  : handle === "left" || handle === "right"
+                    ? "vertical"
+                    : "horizontal"
+              }
+              aria-label={`Resize from the ${handle} ${isCorner(handle) ? "corner" : "edge"}`}
+              title="Drag to resize"
+              className={cn(
+                "absolute z-20 touch-none",
+                resizeGrip,
+                handleClass[handle]
+              )}
+              onPointerDown={(event) => startResize(event, handle)}
+            />
+          ))}
+          {/* The panel's content clips to its rounded frame; the handles, outside
+            this, straddle the border. It carries the panel's surface, which
+            eases across a theme switch while the frame keeps its own
+            transitions; the frame's own fill shows only past its rounded
+            corners (inspector.css). */}
+          <div className="flex size-full flex-col overflow-hidden rounded-[inherit] bg-background">
+            <Header
+              status={status}
+              layout={layout}
+              theme={preferences.theme}
+              onThemeChange={(theme) => onPreferencesChange({ theme })}
+              onLayoutChange={(next) => {
+                // A layout chosen by a key or a screen reader lands at once,
+                // the opening and any glide with it, though it's the same one.
+                if (!pointerClick.current) {
+                  glide.stop();
+                  panel.finish();
+                } else if (next !== layout) glide.from();
+                onPreferencesChange({ layout: next });
+              }}
+              onCollapse={() => setCollapsed(true)}
+              onPointerDown={startMove}
+              collapseRef={collapseButton}
+            />
+            {children}
+          </div>
+        </aside>
+      )}
       {snap && (
         <SnapPreview
           // A new edge's preview enters again.
