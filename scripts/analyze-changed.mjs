@@ -5,6 +5,9 @@
  *   pnpm analyze:changed                  compare the working tree with main
  *   pnpm analyze:changed --base <ref>     compare with another ref
  *   pnpm analyze:changed --skip-mutation  CRAP only
+ *   pnpm analyze:changed --incremental    reuse Stryker's last results for
+ *                                         mutants whose code and tests did
+ *                                         not change
  *
  * The report prints and is written to `reports/analyze-changed.md`. What an
  * agent does with it is in docs/testing.md#change-analysis.
@@ -32,10 +35,11 @@ function git(...args) {
 }
 
 function parseArgs(argv) {
-  const args = { base: undefined, mutation: true };
+  const args = { base: undefined, mutation: true, incremental: false };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--base") args.base = argv[(i += 1)];
     else if (argv[i] === "--skip-mutation") args.mutation = false;
+    else if (argv[i] === "--incremental") args.incremental = true;
     else throw new Error(`Unknown argument: ${argv[i]}`);
   }
   return args;
@@ -382,6 +386,7 @@ function main() {
           "run",
           "--mutate",
           mutateTargets(dir, files).join(","),
+          ...(args.incremental ? ["--incremental"] : []),
         ],
         path.join(ROOT, dir)
       );
