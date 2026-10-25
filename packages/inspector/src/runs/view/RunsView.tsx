@@ -361,7 +361,7 @@ function RunEntryCard({
         aria-expanded={open}
         className={cn(
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-          "flex min-h-8 w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted/60",
+          "flex min-h-8 w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-0.5 px-2.5 py-1.5 text-left hover:bg-muted/60",
           rowFocusRing,
           rowPress
         )}
@@ -389,7 +389,7 @@ function RunEntryCard({
             Earlier page
           </span>
         )}
-        <span className="flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+        <span className="ml-auto flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
           {run.status === "running"
             ? "Running…"
             : `${run.durationMs === undefined ? "" : `${formatDuration(run.durationMs)} · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
