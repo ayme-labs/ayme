@@ -29,29 +29,8 @@ import {
   type GoalLoopDecisionFunction,
   type StepScores,
 } from "./stepDecision";
-import { goalLoopRunResultKey } from "../domain/goalLoopRunResultKey";
 
 export type { GoalLoopDecisionFunction } from "./stepDecision";
-
-// --- Module-level goal loop configuration (parallel to configurePageStateIgnore) ---
-
-type GoalLoopStore = { decisionFn?: GoalLoopDecisionFunction };
-
-const goalLoopStore: GoalLoopStore = ((
-  globalThis as typeof globalThis & {
-    __aymeGoalLoopStore?: GoalLoopStore;
-  }
-).__aymeGoalLoopStore ??= {});
-
-/**
- * Package-internal: store or clear the decision function for the current
- * runtime session. Called by `start()` and `stop()` in `runtime.ts`.
- */
-export function configureGoalLoop(
-  decisionFn: GoalLoopDecisionFunction | undefined
-): void {
-  goalLoopStore.decisionFn = decisionFn;
-}
 
 /**
  * The `goal` tool; `execute` runs the loop for a Run, whose Caller the
@@ -62,16 +41,6 @@ export type GoalTool = ToolDescriptor & {
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
-/**
- * Package-internal: returns the `goal` tool when `goalLoop` is
- * configured, `null` otherwise.
- */
-export function getPursueGoalTool(): GoalTool | null {
-  const fn = goalLoopStore.decisionFn;
-  if (!fn) return null;
-  if (typeof document === "undefined") return null;
-  return createPursueGoalTool(fn, document);
-}
 // --- Internal run result (per-step scores; not part of the Handover) ---
 
 /**
@@ -88,12 +57,8 @@ export type GoalLoopRunResult = {
 
 export type GoalLoopRunResultStore = { last?: GoalLoopRunResult };
 
-/** Where the last run's result is kept; the testing entry reads it. */
-const runResultStore: GoalLoopRunResultStore = ((
-  globalThis as typeof globalThis & {
-    [goalLoopRunResultKey]?: GoalLoopRunResultStore;
-  }
-)[goalLoopRunResultKey] ??= {});
+/** Keeps a finished run's result, as the last run's. */
+export type RecordGoalLoopRunResult = (result: GoalLoopRunResult) => void;
 
 // --- Action execution (delegates to the shared action sequence) ---
 
@@ -194,10 +159,13 @@ async function executeToolAction(
 
 // --- The loop ---
 
-/** Create the `goal` tool bound to the given decision function and document. */
+/**
+ * Create the `goal` tool bound to the given decision function. Each run acts
+ * on its Run's Document, and `recordResult` keeps its result.
+ */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
-  currentDocument: Document
+  recordResult: RecordGoalLoopRunResult
 ): GoalTool {
   /** Runs the loop for the Run's Caller, which the Handover hands control back to. */
   const execute = async (
@@ -207,7 +175,7 @@ export function createPursueGoalTool(
     const result = await pursueGoal(
       input as GoalInput,
       decisionFn,
-      currentDocument,
+      recordResult,
       context
     );
     return result.handover as unknown as JsonValue;
@@ -251,14 +219,14 @@ export function createPursueGoalTool(
  * condition is reached.
  *
  * Returns a `GoalLoopRunResult` containing both the public Handover and the
- * internal per-step scores, and records it as the last run. The `goal` tool
+ * internal per-step scores, and hands it to `recordResult`. The `goal` tool
  * exposes only the Handover.
  */
 export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
-  currentDocument: Document,
-  { cursor, run: runChild, page }: RunContext
+  recordResult: RecordGoalLoopRunResult,
+  { cursor, run: runChild, page, document: currentDocument }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
@@ -285,7 +253,7 @@ export async function pursueGoal(
       if (changes !== undefined) handover.changes = changes;
     }
     const result = { handover, stepScores };
-    runResultStore.last = result;
+    recordResult(result);
     return result;
   };
 

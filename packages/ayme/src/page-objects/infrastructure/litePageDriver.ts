@@ -3,7 +3,7 @@ import {
   isPlaywrightLiteLocator,
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
-import { getInteractionHistory } from "../../page-state";
+import { getInteractionHistory, onPageStateRecorded } from "../../page-state";
 import { onlyHitTestMarks } from "../../shared";
 import type { PageDriver } from "../application/pageDriver";
 import { observePomRoot } from "./pomRootObservation";
@@ -59,4 +59,6 @@ export const litePageDriver: PageDriver = {
       },
     };
   },
+  onPageStateRecorded: (onRecorded) =>
+    onPageStateRecorded(document, onRecorded),
 };
