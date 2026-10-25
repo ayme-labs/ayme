@@ -88,7 +88,10 @@ export function toolsLens({
                         className="size-3.5 flex-none text-muted-foreground"
                         aria-hidden
                       />
-                      <QualifiedName name={tool.name} className="font-mono" />
+                      <QualifiedName
+                        name={tool.name}
+                        className="font-mono text-xs"
+                      />
                     </NavItem>
                     {side && (
                       // Beside the row's button, so the tool's name stays the
