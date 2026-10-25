@@ -34,10 +34,18 @@ jobs:
     outputs:
       analyze: ${{ steps.merge.outputs.analyze }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       # A push that only merges the base branch into the pull request leaves
       # the pull request's own changes as they were, so the report made for
-      # the commit before the merge still holds. Without one, for example
-      # when this push cancelled its run, the merge is analyzed.
+      # the commit before the merge still holds. It counts as only a merge
+      # when its tree is the clean merge of its parents, without a conflict
+      # resolved or a file edited on the way. A run has a report when it has
+      # a "Report written" step that succeeded. Without one, for example when
+      # this push cancelled that run or its analysis broke, the merge is
+      # analyzed.
       - id: merge
         env:
           GH_TOKEN: ${{ github.token }}
@@ -48,11 +56,17 @@ jobs:
         run: |
           report=
           if [ "$SYNCHRONIZE" = true ]; then
-            read -r before merged rest <<< "$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA" --jq '[.parents[].sha] | join(" ")')"
+            read -r _ before merged rest <<< "$(git rev-list --parents -n 1 "$HEAD_SHA")"
             if [ -n "${merged:-}" ] && [ -z "${rest:-}" ] &&
-              [[ "$(gh api "repos/$GITHUB_REPOSITORY/compare/$merged...$BASE_REF" --jq .status)" =~ ^(ahead|identical)$ ]]; then
-              report=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/change-analysis.yml/runs?head_sha=$before&status=success" \
-                --jq "[.workflow_runs[] | select(any(.pull_requests[]; .number == $PR))][0].html_url // empty")
+              git merge-base --is-ancestor "$merged" "origin/$BASE_REF" &&
+              [ "$(git merge-tree --write-tree "$before" "$merged" 2>/dev/null)" = "$(git rev-parse "$HEAD_SHA^{tree}")" ]; then
+              for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/change-analysis.yml/runs?head_sha=$before&status=success" \
+                --jq ".workflow_runs[] | select(any(.pull_requests[]; .number == $PR)) | .id"); do
+                if [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs" --jq '[.jobs[].steps[] | select(.name == "Report written" and .conclusion == "success")] | length')" -gt 0 ]; then
+                  report=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .html_url)
+                  break
+                fi
+              done
             fi
           fi
           if [ -n "$report" ]; then
@@ -61,6 +75,10 @@ jobs:
           else
             echo "analyze=true" >> "$GITHUB_OUTPUT"
           fi
+      # A merge after this one finds the report through this run.
+      - name: Report written
+        if: steps.merge.outputs.analyze == 'false'
+        run: "true"
 
   analyze:
     name: Analyze changed source
@@ -90,13 +108,18 @@ jobs:
           restore-keys: stryker-incremental-pr${{ github.event.pull_request.number }}-${{ hashFiles('pnpm-lock.yaml', 'patches/**', 'packages/test-config/*.js', 'packages/*/stryker.config.mjs', 'packages/*/vitest*.ts') }}-
       # A pull request's checkout is its merge commit, whose first parent is
       # the base it merges into. A dispatch compares with where it left main.
-      - run: pnpm analyze:changed ${BASE:+--base "$BASE"} ${INCREMENTAL:+--incremental}
+      - id: analysis
+        run: pnpm analyze:changed ${BASE:+--base "$BASE"} ${INCREMENTAL:+--incremental}
         continue-on-error: true
         env:
           BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
           INCREMENTAL: ${{ github.event_name == 'pull_request' && 'true' || '' }}
       - if: always()
         run: cat reports/analyze-changed.md >> "$GITHUB_STEP_SUMMARY" || echo "No report was written; see the analysis step's log." >> "$GITHUB_STEP_SUMMARY"
+      # The scope job of a later merge looks for this step.
+      - name: Report written
+        if: steps.analysis.outcome == 'success'
+        run: "true"
       # A cache entry cannot be overwritten, so each run saves under its own
       # key, also when a newer push cancels it.
       - if: always() && github.event_name == 'pull_request'
