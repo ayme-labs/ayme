@@ -18,12 +18,15 @@ import { DropdownMenu } from "radix-ui";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { AymeMark } from "../../shared";
+import { AymeMark, focusRing, pressableIcon } from "../../shared";
 import type { Layout, ThemePreference } from "../domain/preferences";
 
-const iconButton =
+const iconButton = cn(
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-  "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
+  "inline-grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
+  focusRing,
+  pressableIcon
+);
 
 /**
  * The panel's header: the ayme title, the status after it, the theme
@@ -84,7 +87,7 @@ export function Header({
         className={iconButton}
         onClick={onCollapse}
       >
-        <MinusIcon className="size-4" />
+        <MinusIcon className="size-3.5" />
       </button>
     </header>
   );
@@ -167,7 +170,7 @@ function LayoutMenu({
           aria-label="Layout"
           align="end"
           sideOffset={4}
-          className="z-50 flex min-w-47.5 flex-col rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+          className="z-50 flex min-w-47.5 origin-(--radix-dropdown-menu-content-transform-origin) flex-col rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]"
         >
           <DropdownMenu.RadioGroup
             value={layout}
@@ -179,7 +182,7 @@ function LayoutMenu({
                 <DropdownMenu.RadioItem
                   key={option}
                   value={option}
-                  className="flex h-7.5 cursor-pointer items-center gap-2 rounded-md px-2 text-xs outline-none data-highlighted:bg-muted"
+                  className="flex h-7.5 cursor-pointer items-center gap-2 rounded-sm px-2 text-xs outline-none data-highlighted:bg-muted"
                 >
                   <OptionIcon className="size-3.5 text-muted-foreground in-data-[state=checked]:text-primary" />
                   <span className="flex-1">{layoutNames[option]}</span>

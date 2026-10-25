@@ -621,10 +621,17 @@ describe("the Inspector", () => {
     await connections.open();
 
     await connections.agent.copyButton.click();
+    expect(await connections.agent.copyButton.getAttribute("title")).toBe(
+      "Copy"
+    );
     await connections.agent.copyButton.click();
 
     expect(writeText).toHaveBeenCalledTimes(2);
     expect(writeText).toHaveBeenLastCalledWith("agentConnection: true");
+    // Only a copy that went through says so.
+    await expect
+      .poll(() => connections.agent.copyButton.getAttribute("title"))
+      .toBe("Copied");
     writeText.mockRestore();
   });
 

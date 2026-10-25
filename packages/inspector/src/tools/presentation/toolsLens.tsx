@@ -2,8 +2,9 @@ import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { Separator } from "@ayme-dev/design-system/components/separator";
+import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { WhatTheModelSees } from "../../shared";
+import { chip, WhatTheModelSees } from "../../shared";
 import {
   type Lens,
   NavItem,
@@ -53,7 +54,7 @@ export function toolsLens({
           <section key={group} aria-labelledby={`tool-group-${group}`}>
             <h3
               id={`tool-group-${group}`}
-              className="mx-2 mt-3.5 mb-1 text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase"
+              className="mx-2 mt-3.5 mb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
             >
               {label} · {tools.length}
             </h3>
@@ -180,7 +181,8 @@ function ToolPage({
             aria-label={`Open the ${pomClassName} page object model`}
             title={`Open the ${pomClassName} page object model`}
             onClick={() => onSelect({ kind: "model", className: pomClassName })}
-            className="inline-flex h-5.5 items-center gap-1 rounded-md border bg-card px-1.5 text-xs text-primary hover:border-ring"
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            className={cn(chip, "text-foreground")}
           >
             <BracesIcon className="size-3" aria-hidden />
             <span className="font-mono">{pomClassName}</span>
@@ -193,7 +195,7 @@ function ToolPage({
             : toolKindLabels[tool.group]}
         </span>
       </div>
-      <p className="mt-2 mb-3 text-xs text-muted-foreground">
+      <p className="mt-2 mb-3 text-xs leading-normal text-muted-foreground">
         {tool.description}
       </p>
       {renderRun({ toolName: tool.name, head: false })}

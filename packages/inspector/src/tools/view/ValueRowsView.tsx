@@ -3,6 +3,7 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
+import { focusRing, pressable, pressableIcon } from "../../shared";
 import type { ValueRow, ValueType } from "../domain/valueRows";
 
 const inputClass =
@@ -64,7 +65,8 @@ export function ValueRowsView({
           aria-hidden
           className={cn(
             columns,
-            "font-mono text-[0.625rem] font-medium tracking-wider text-muted-foreground uppercase"
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase"
           )}
         >
           <span>Label</span>
@@ -126,7 +128,12 @@ export function ValueRowsView({
               <button
                 type="button"
                 aria-label={`Remove ${name} ${n}`}
-                className="grid size-6.5 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                className={cn(
+                  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                  "grid size-6.5 place-items-center rounded-md text-muted-foreground hover:bg-muted",
+                  focusRing,
+                  pressableIcon
+                )}
                 onClick={() => remove(index)}
               >
                 <XIcon className="size-3.5" aria-hidden />
@@ -148,7 +155,12 @@ export function ValueRowsView({
         <button
           type="button"
           aria-label={`Add to ${name}`}
-          className="h-6 rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "h-6 rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground",
+            focusRing,
+            pressable
+          )}
           disabled={maxEntries !== undefined && rows.length >= maxEntries}
           onClick={add}
         >

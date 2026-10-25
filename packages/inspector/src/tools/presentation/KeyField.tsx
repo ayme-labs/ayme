@@ -3,6 +3,7 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
+import { focusRing, pressable } from "../../shared";
 import {
   checkKey,
   keyOfEvent,
@@ -121,7 +122,12 @@ export function KeyField({
   const fixButton = fix && (
     <button
       type="button"
-      className="h-5 rounded-md border px-1.5 font-mono text-xs text-foreground hover:border-ring"
+      className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+        "h-5 rounded-md border px-1.5 font-mono text-xs text-foreground hover:border-ring",
+        focusRing,
+        pressable
+      )}
       // The field keeps focus, and searching, while the fix is taken.
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => (focused ? write(fix) : onChange(fix))}

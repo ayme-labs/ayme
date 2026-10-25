@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Run } from "../../runs";
+import { useCopy } from "../../shared";
 import {
   addTarget,
   groupOutcomes,
@@ -31,18 +32,12 @@ export function useLocatorGroups({
   const [treeOpen, setTreeOpen] = useState<number>();
   const [query, setQuery] = useState("");
   const [pickingInto, setPickingInto] = useState<number>();
-  const [copied, setCopied] = useState<string>();
+  const { copied, copy } = useCopy();
   const stopPicking = useRef<() => void>(undefined);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => onChange(groups), [groups, onChange]);
-  useEffect(
-    () => () => {
-      stopPicking.current?.();
-      clearTimeout(copiedTimer.current);
-    },
-    []
-  );
+  // Stryker disable next-line ArrayDeclaration: a dependency list that never changes runs the effect once, as an empty one does.
+  useEffect(() => () => stopPicking.current?.(), []);
 
   const outcomes = useMemo(
     () => groupOutcomes(groups, lastRun),
@@ -105,12 +100,6 @@ export function useLocatorGroups({
       setPickingInto(index);
       pickInto(index);
     },
-    copy: (locator: string) => {
-      void navigator.clipboard?.writeText(locator).then(() => {
-        setCopied(locator);
-        clearTimeout(copiedTimer.current);
-        copiedTimer.current = setTimeout(() => setCopied(undefined), 1200);
-      });
-    },
+    copy,
   };
 }

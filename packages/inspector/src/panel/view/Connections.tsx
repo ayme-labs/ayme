@@ -1,4 +1,4 @@
-import { CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { Popover } from "radix-ui";
 
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
@@ -15,6 +15,7 @@ import {
   type PublicationStatus,
   type Tone,
 } from "../domain/connections";
+import { focusRing, pressable, pressableIcon } from "../../shared";
 
 const DOCS =
   "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md";
@@ -59,12 +60,15 @@ export function Connections({
   webMCP,
   tools,
   onCopy,
+  copied,
 }: {
   agent: AgentConnectionStatus;
   webMCP: PublicationStatus;
   /** The tools the session lists, which WebMCP publishes but for some. */
   tools: readonly Readonly<{ name: string; group?: string }>[];
   onCopy: (text: string) => void;
+  /** The snippet just copied, whose Copy says so. */
+  copied?: string;
 }) {
   const container = usePortalContainer();
   const pill = agentPill(agent);
@@ -77,7 +81,9 @@ export function Connections({
         title={name}
         // Stryker disable StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
         className={cn(
-          "relative ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-2 text-xs font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-accent",
+          "relative ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-2 text-xs font-medium hover:bg-accent aria-expanded:bg-accent",
+          focusRing,
+          pressable,
           agent.state === "off" && "text-muted-foreground"
         )}
         // Stryker restore StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator
@@ -103,14 +109,20 @@ export function Connections({
           align="start"
           sideOffset={6}
           collisionPadding={8}
-          className="z-50 flex w-78 max-w-(--radix-popover-content-available-width) flex-col gap-3 rounded-lg border bg-popover p-4 pt-3.5 text-popover-foreground shadow-md outline-none"
+          className="z-50 flex w-78 max-w-(--radix-popover-content-available-width) origin-(--radix-popover-content-transform-origin) flex-col gap-3 rounded-lg border bg-popover p-4 pt-3.5 text-popover-foreground shadow-lg outline-none transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]"
         >
-          <h3 className="text-sm font-medium">Connections</h3>
-          <Row name="Agent" row={agentRow(agent)} onCopy={onCopy} />
+          <h3 className="text-sm font-semibold">Connections</h3>
+          <Row
+            name="Agent"
+            row={agentRow(agent)}
+            onCopy={onCopy}
+            copied={copied}
+          />
           <Row
             name="WebMCP"
             row={webMcpRow(webMCP, webMcpToolCount(tools))}
             onCopy={onCopy}
+            copied={copied}
           />
           <a
             href={DOCS}
@@ -131,10 +143,12 @@ function Row({
   name,
   row,
   onCopy,
+  copied,
 }: {
   name: string;
   row: ConnectionRow;
   onCopy: (text: string) => void;
+  copied: string | undefined;
 }) {
   return (
     <section
@@ -143,7 +157,7 @@ function Row({
     >
       <div className="flex items-center gap-2">
         <Dot tone={row.tone} />
-        <h4 className="flex-1 text-[13px] font-medium">{name}</h4>
+        <h4 className="flex-1 text-xs font-semibold">{name}</h4>
         <span
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           className={cn("text-xs font-medium", labelClass[row.tone])}
@@ -169,17 +183,28 @@ function Row({
       ))}
       {row.snippet && (
         <div className="flex items-center gap-1.5">
+          <span role="status" className="sr-only">
+            {copied === row.snippet ? "Copied" : ""}
+          </span>
           <code className="flex-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] select-all">
             {row.snippet}
           </code>
           <button
             type="button"
             aria-label={`Copy ${row.snippet}`}
-            title="Copy"
-            className="inline-grid size-6 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            title={copied === row.snippet ? "Copied" : "Copy"}
+            className={cn(
+              "inline-grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
+              focusRing,
+              pressableIcon
+            )}
             onClick={() => onCopy(row.snippet!)}
           >
-            <CopyIcon className="size-3.5" />
+            {copied === row.snippet ? (
+              <CheckIcon className="size-3.5" />
+            ) : (
+              <CopyIcon className="size-3.5" />
+            )}
           </button>
         </div>
       )}

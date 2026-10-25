@@ -12,7 +12,12 @@ import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { Run } from "../../runs";
-import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared";
+import {
+  focusRing,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  pressable,
+  pressableIcon,
+} from "../../shared";
 import { inputClass } from "../view/ArgumentsFormView";
 import {
   changedFields,
@@ -129,7 +134,12 @@ export function FillFormFields({
         {edits.size > 0 && (
           <button
             type="button"
-            className="h-5.5 rounded-sm border px-2 text-xs font-medium hover:border-ring"
+            className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "h-5.5 rounded-sm border px-2 text-xs font-medium hover:border-ring",
+              focusRing,
+              pressable
+            )}
             onClick={() => setEdits(new Map())}
           >
             Undo all
@@ -260,7 +270,12 @@ function FieldRow({
             type="button"
             aria-label={`Undo the change to ${name}`}
             title="Undo: keep what the page shows"
-            className="grid size-5.5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "grid size-5.5 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+              focusRing,
+              pressableIcon
+            )}
             onClick={() => onChange(undefined)}
           >
             <RotateCcwIcon className="size-3.5" aria-hidden />
@@ -312,7 +327,12 @@ function FieldControl({
             type="button"
             role="radio"
             aria-checked={option.value === value}
-            className="rounded-sm px-2.5 py-1 text-xs text-muted-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs"
+            className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "rounded-sm px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs dark:aria-checked:bg-neutral-700",
+              focusRing,
+              pressable
+            )}
             onClick={() => onChange(option.value)}
           >
             {option.label}
