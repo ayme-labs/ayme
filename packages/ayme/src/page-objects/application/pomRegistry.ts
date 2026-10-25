@@ -39,13 +39,20 @@ import {
   pageToolFacts,
   type ScopedPomTool,
 } from "../domain/pomTools";
-import { sameNamedClassRefusal } from "../domain/pomClasses";
+import {
+  rootlessClassRefusals,
+  sameNamedClassRefusal,
+} from "../domain/pomClasses";
 import {
   newObservationErrors,
   pomLabel,
   sameObservation,
 } from "../domain/observationReport";
-import { compiledManifestOf, type PageObjectConstructor } from "./compiledPoms";
+import {
+  compiledRootDeclared,
+  compiledManifestOf,
+  type PageObjectConstructor,
+} from "./compiledPoms";
 import type { PageDriver, PageWatch } from "./pageDriver";
 import type { Cursor } from "../../page-state";
 import type { RunContext } from "../../runs";
@@ -103,11 +110,6 @@ type ObservedRegisteredPom = RegisteredPom & {
    * observation has not found yet (ADR-0035).
    */
   instances: InstanceObservations | undefined;
-  /**
-   * The paths of the collection members the last observation found holding
-   * an item that declares no root, e.g. "owners" or "items[1].tags".
-   */
-  rootlessCollectionPaths: ReadonlySet<string>;
   /** The locators the last observation found its members and roots holding. */
   targetSources: readonly PomTargetSource[];
   tools: readonly CallerAwarePomTool[];
@@ -128,6 +130,7 @@ export function createPomRegistry(driver: PageDriver) {
   // Registrations refused for a same-named class, in the order they were
   // made: each gets in once the registration it clashes with is disposed.
   const waitingPoms = new Set<ObservedRegisteredPom>();
+  let refusedClasses = new Map<string, RuntimeStateError>();
   const subscribers = new Set<() => void>();
   let pageWatch: PageWatch | undefined;
   let stopWatchingPageStates: (() => void) | undefined;
@@ -146,6 +149,7 @@ export function createPomRegistry(driver: PageDriver) {
     const hadRegistrations = registeredPoms.size > 0;
     registeredPoms.clear();
     waitingPoms.clear();
+    refusedClasses.clear();
     stopObservingPage();
     if (hadRegistrations) notifySubscribers();
   }
@@ -164,7 +168,6 @@ export function createPomRegistry(driver: PageDriver) {
       presentPaths: new Set(),
       rootMemberPaths: new Set(),
       instances: undefined,
-      rootlessCollectionPaths: new Set(),
       targetSources: [],
       tools: [],
     };
@@ -205,6 +208,7 @@ export function createPomRegistry(driver: PageDriver) {
             waitingPoms.delete(waiting);
             admitRegisteredPom(waiting);
           }
+        refreshRootlessRefusals();
         notifySubscribers();
       },
     };
@@ -213,8 +217,27 @@ export function createPomRegistry(driver: PageDriver) {
   function admitRegisteredPom(registration: ObservedRegisteredPom) {
     const registryWasEmpty = registeredPoms.size === 0;
     registeredPoms.add(registration);
+    refreshRootlessRefusals();
     if (registryWasEmpty) startObservingPage();
     else schedulePomMemberProbe();
+  }
+
+  function refreshRootlessRefusals() {
+    const next = rootlessClassRefusals(
+      [...registeredPoms],
+      compiledRootDeclared
+    );
+    for (const [className, error] of next)
+      if (refusedClasses.get(className)?.message !== error.message)
+        console.error(error);
+    refusedClasses = next;
+  }
+
+  function classRefused(
+    registration: ObservedRegisteredPom,
+    tool: ScopedPomTool
+  ) {
+    return refusedClasses.has(tool.componentClassName ?? registration.id);
   }
 
   function startObservingPage() {
@@ -312,7 +335,6 @@ export function createPomRegistry(driver: PageDriver) {
     const last = {
       instances: registration.instances?.all,
       memberObservations: registration.memberObservations,
-      rootlessCollectionPaths: registration.rootlessCollectionPaths,
     };
     for (const error of newObservationErrors(
       registration.id,
@@ -328,9 +350,6 @@ export function createPomRegistry(driver: PageDriver) {
       instances.flatMap((instance) => (instance.present ? [instance.path] : []))
     );
     registration.rootMemberPaths = rootMemberPaths;
-    registration.rootlessCollectionPaths = new Set(
-      observation.rootlessCollections.keys()
-    );
     registration.targetSources = targetSources;
     registration.instances = groupedInstances(instances);
     return !same;
@@ -412,6 +431,7 @@ export function createPomRegistry(driver: PageDriver) {
     >();
     for (const registration of registeredPoms)
       for (const tool of registration.tools) {
+        if (classRefused(registration, tool)) continue;
         const availability = combinedAvailability(
           instancesOf(registration, tool).map((instance) =>
             availabilityNow(instance, tool.methodName)
@@ -635,23 +655,15 @@ type CallTarget = {
 /**
  * The target of a call of the tool `toolName` on `observed`, as the last
  * observation read it: the call runs no root predicate of its own. Refused
- * when the observation found no instance, or its root, or the root of the
- * collection item it lies in, has since left the page or resolves to
- * another element: a root-less child acts through its item, whose locator
- * may since address another item.
+ * when the observation found no instance, or its own root has since left
+ * the page or resolves to another element.
  */
 function callTarget(
   driver: PageDriver,
   toolName: string,
   observed: PomInstanceObservation | undefined
 ): CallTarget {
-  if (
-    !observed ||
-    !rootHolds(driver, observed) ||
-    (observed.item !== undefined &&
-      observed.item !== observed &&
-      !rootHolds(driver, observed.item))
-  )
+  if (!observed || !rootHolds(driver, observed))
     throw unavailableError(toolName, { present: false });
   return { toolName, instance: observed.instance, root: observed.rootLocator };
 }

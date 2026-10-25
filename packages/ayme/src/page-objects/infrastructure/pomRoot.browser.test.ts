@@ -13,7 +13,6 @@ import {
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
-  subscribeToRegisteredPoms,
 } from "./registry";
 import { createAyme, type Ayme } from "../../runtime";
 
@@ -428,18 +427,20 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual([]);
   });
 
-  it("records that a collection item without a root declares none, logs it once for the collection, and withdraws its tools", async () => {
+  it("refuses a root-less collection item at registration, also with a member named root", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    document.body.innerHTML = '<ul><li id="first">First</li></ul>';
     class Item {
-      root = page.locator("#first");
-      send() {}
+      root = page.locator("li");
+      open() {}
     }
     class Outbox {
-      items = [new Item(), new Item()];
+      items: Item[] = [];
     }
+    const item = pageManifest("Item", [locator("root")]);
+    registerCompiledPom(Item, item);
     registerCompiledPom(Outbox, {
-      className: "Outbox",
+      ...pageManifest("Outbox"),
+      tools: [],
       members: [
         {
           memberName: "items",
@@ -449,42 +450,17 @@ describe("Page Object Root by option", () => {
           collection: true,
         },
       ],
-      tools: [],
-      components: [
-        {
-          className: "Item",
-          members: [locator("root")],
-          tools: [action("send", "Outbox.items.send")],
-        },
-      ],
+      components: [item],
     });
     session.pom.register(Outbox);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Item" declares no root and is reached from more than one place: Outbox.items[].',
+      })
+    );
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
-    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
-      {
-        memberName: "items",
-        kind: "component-collection",
-        access: "field",
-        count: 2,
-      },
-      {
-        memberName: "items[0].root",
-        kind: "component-root",
-        count: 0,
-        error: "POM component items[0] declares no root.",
-      },
-      {
-        memberName: "items[1].root",
-        kind: "component-root",
-        count: 0,
-        error: "POM component items[1] declares no root.",
-      },
-    ]);
-    expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Outbox.items" is absent: its item class Item declares no root.'
-    );
-
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledOnce();
   });
@@ -596,31 +572,36 @@ describe("Page Object Root by option", () => {
     expect(logged).toHaveBeenCalledOnce();
   });
 
-  it("refuses a call on a root-less child of a collection item whose locator has since moved to another item", async () => {
-    document.body.innerHTML =
-      '<ul id="rows"><li id="first">First</li><li id="second">Second</li></ul>';
-    const deleted: string[] = [];
+  it("refuses a root-less child of a collection item while keeping its rooted parent's tools", async () => {
+    document.body.innerHTML = "<ul><li>First</li></ul>";
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    class Toolbar {
+      open() {}
+    }
     class Row {
-      readonly container: Locator;
-      readonly toolbar: Toolbar;
-      constructor(index: number) {
-        this.container = page.locator("#rows > li").nth(index);
-        this.toolbar = new Toolbar(this);
-      }
+      container = page.locator("li");
+      toolbar = new Toolbar();
+      open() {}
     }
     ayme({ root: (self: Row) => self.container })(Row);
-    // No root of its own: it acts through the row it belongs to.
-    class Toolbar {
-      constructor(private readonly row: Row) {}
-      async delete() {
-        deleted.push((await this.row.container.textContent()) ?? "");
-      }
-    }
     class Table {
-      rows = [new Row(0), new Row(1)];
+      rows = [new Row()];
     }
+    const toolbar = pageManifest("Toolbar");
+    const row = pageManifest("Row", [
+      {
+        memberName: "toolbar",
+        kind: "component",
+        access: "field",
+        componentClassName: "Toolbar",
+        collection: false,
+      },
+    ]);
+    registerCompiledPom(Toolbar, toolbar);
+    registerCompiledPom(Row, { ...row, components: [toolbar] });
     registerCompiledPom(Table, {
-      className: "Table",
+      ...pageManifest("Table"),
+      tools: [],
       members: [
         {
           memberName: "rows",
@@ -630,64 +611,17 @@ describe("Page Object Root by option", () => {
           collection: true,
         },
       ],
-      tools: [],
-      components: [
-        {
-          className: "Row",
-          members: [
-            locator("container"),
-            {
-              memberName: "toolbar",
-              kind: "component",
-              access: "field",
-              componentClassName: "Toolbar",
-              collection: false,
-            },
-          ],
-          tools: [],
-        },
-        {
-          className: "Toolbar",
-          members: [],
-          tools: [action("delete", "Table.rows.toolbar.delete")],
-        },
-      ],
+      components: [row, toolbar],
     });
     session.pom.register(Table);
-    await probeRegisteredPomMembers();
-    const { text } = await agent.getPageState();
-    const first = text.match(/(e\d+) Table\.rows\[0\]/)?.[1];
-    if (!first) throw new Error("Expected a ref for the first row.");
-    const tool = listAvailablePomTools().find(
-      ({ name }) => name === "Table.rows.toolbar.delete"
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Toolbar" declares no root and is reached from more than one place: Table.rows[].toolbar.',
+      })
     );
-    if (!tool)
-      throw new Error("Expected Table.rows.toolbar.delete to be available.");
-    const call = () => tool.execute({ ref: first, args: {} }, runContext());
-    await call();
-    expect(deleted).toEqual(["First"]);
-
-    // A page that reorders its rows on every change the registry announces.
-    // The call's capture observes the page and awaits one follow-up
-    // observation, which the reorder after the first makes it run and the
-    // reorder after the second leaves behind the page: the first row's ref
-    // still names its element, but the item locator that last observation
-    // saved now addresses the second row. A call that trusted the child
-    // alone would act on it.
-    const rows = document.getElementById("rows")!;
-    const reorder = () => rows.append(rows.firstElementChild!);
-    const unsubscribe = subscribeToRegisteredPoms(reorder);
-    reorder();
-    await expect(call()).rejects.toThrow(
-      "Table.rows.toolbar.delete is unavailable: its Page Object is not on the page."
-    );
-    expect(deleted).toEqual(["First"]);
-    unsubscribe();
-
-    // Observed again, the ref names the row the locator finds at its new place.
     await probeRegisteredPomMembers();
-    await call();
-    expect(deleted).toEqual(["First", "First"]);
+    expect(names()).toEqual(["Table.rows.open"]);
   });
 
   it("lets a collection tool act on a nested instance of its class, labelled at its full depth, without adding tools", async () => {

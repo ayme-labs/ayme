@@ -15,8 +15,6 @@ export type LastObservation = {
   /** Every instance it found; undefined before the first observation. */
   instances: readonly PomInstanceObservation[] | undefined;
   memberObservations: readonly PomMemberObservation[];
-  /** The paths of the collections it found holding an item with no root. */
-  rootlessCollectionPaths: ReadonlySet<string>;
 };
 
 /**
@@ -60,15 +58,14 @@ function sameMemberObservations(
 /**
  * Package-internal: what `observation` of the registered Page Object `pomId`
  * found wrong that `last` did not, one message each: a presence or root
- * predicate that threw, a root matching several elements, a collection
- * whose item class declares no root. A problem is reported again only when
+ * predicate that threw or a root matching several elements. A problem is reported again only when
  * it changed, or was gone and is back. A root matching none is ordinary
  * absence, never reported.
  */
 export function newObservationErrors(
   pomId: string,
   last: LastObservation,
-  { instances, rootlessCollections }: PageObjectObservation
+  { instances }: PageObjectObservation
 ): string[] {
   const errors: string[] = [];
   const previous = new Map<string, PomInstanceObservation>();
@@ -100,10 +97,5 @@ export function newObservationErrors(
         `The Page Object "${label}" is absent: its root matches ${instance.rootCount} elements.`
       );
   }
-  for (const [path, className] of rootlessCollections)
-    if (!last.rootlessCollectionPaths.has(path))
-      errors.push(
-        `The Page Object "${pomLabel(pomId, path)}" is absent: its item class ${className} declares no root.`
-      );
   return errors;
 }

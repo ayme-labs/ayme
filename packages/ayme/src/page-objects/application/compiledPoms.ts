@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import type { PomManifest } from "../../shared";
+import { modelOption } from "../domain/decorators";
+import type { PomComponentManifest, PomManifest } from "../../shared";
 import { RuntimeStateError } from "../../shared";
 
 export type PageObjectConstructor<T extends object = object> = new (
@@ -11,8 +12,24 @@ export type PageObjectConstructor<T extends object = object> = new (
 // before any runtime session exists.
 const compiledPoms = new WeakMap<object, PomManifest>();
 
+// Root declarations are known before any instances exist, even for empty
+// collections. An HMR replacement updates the same compiled declaration.
+const compiledRoots = new Map<string, boolean>();
+const declarationKey = (manifest: PomComponentManifest) =>
+  JSON.stringify([manifest.file, manifest.className]);
+
+export function compiledRootDeclared(
+  manifest: PomComponentManifest
+): boolean | undefined {
+  return compiledRoots.get(declarationKey(manifest));
+}
+
 export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
+  compiledRoots.set(
+    declarationKey(manifest),
+    modelOption(PomClass, "root") !== undefined
+  );
 }
 
 /** Package-internal: the manifest the build compiled for `PomClass`. */

@@ -73,11 +73,6 @@ export type PageObjectObservation = {
   targetSources: PomTargetSource[];
   /** The paths of the locator members that resolved to their root. */
   rootMemberPaths: Set<string>;
-  /**
-   * The collections holding an item that declares no root, by path, e.g.
-   * "owners" or "items[1].tags", with the item's class name.
-   */
-  rootlessCollections: Map<string, string>;
 };
 
 /**

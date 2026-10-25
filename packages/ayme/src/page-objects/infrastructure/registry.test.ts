@@ -380,6 +380,253 @@ describe("live Page Object registry", () => {
     expect(count).toHaveBeenCalledOnce();
   });
 
+  it("withholds a root-less class reached twice while keeping the other tools", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    class Shared {
+      readonly root = brandedLocator();
+      open() {}
+    }
+    class Page {
+      first = new Shared();
+      second = new Shared();
+      save() {}
+    }
+    const shared = { ...emptyManifest("Shared"), tools: [action("open")] };
+    registry.registerCompiledPom(Shared, shared);
+    // A loaded class of the same name in another module has its own root
+    // declaration. It is not reached by this registration.
+    const OtherShared = class Shared {
+      root = brandedLocator();
+    };
+    ayme({ root: rootOf })(OtherShared);
+    registry.registerCompiledPom(OtherShared, {
+      ...emptyManifest("Shared"),
+      file: "other/Shared.ts",
+    });
+    registry.registerCompiledPom(Page, {
+      ...emptyManifest("Page"),
+      tools: [{ ...action("save"), toolName: "Page.save" }],
+      members: ["first", "second"].map((memberName) => ({
+        memberName,
+        kind: "component" as const,
+        access: "field" as const,
+        componentClassName: "Shared",
+        collection: false,
+      })),
+      components: [shared],
+    });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Page);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Shared" declares no root and is reached from more than one place: Page.first, Page.second.',
+      })
+    );
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "Page.save",
+    ]);
+    class Unrelated {}
+    registry.registerCompiledPom(Unrelated, emptyManifest("Unrelated"));
+    session.register(Unrelated);
+    expect(logged).toHaveBeenCalledOnce();
+    session.stop();
+    const { startSession } =
+      await import("../../test-utils/session.testSupport");
+    const restarted = startSession({} as AymePage);
+    started = restarted;
+    restarted.register(Page);
+    expect(logged).toHaveBeenCalledTimes(2);
+    logged.mockRestore();
+  });
+
+  it("withdraws a shared root-less class on the second registration and restores it after disposal", async () => {
+    const { registry, session } = await setup();
+    class Shared {
+      open() {}
+    }
+    class First {
+      child = new Shared();
+      save() {}
+    }
+    class Second {
+      child = new Shared();
+      save() {}
+    }
+    const shared = { ...emptyManifest("Shared"), tools: [action("open")] };
+    registry.registerCompiledPom(Shared, shared);
+    for (const Model of [First, Second])
+      registry.registerCompiledPom(Model, {
+        ...emptyManifest(Model.name),
+        tools: [{ ...action("save"), toolName: `${Model.name}.save` }],
+        members: [
+          {
+            memberName: "child",
+            kind: "component",
+            access: "field",
+            componentClassName: "Shared",
+            collection: false,
+          },
+        ],
+        components: [shared],
+      });
+    session.register(First);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "First.save",
+      "First.child.open",
+    ]);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Second);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Shared" declares no root and is reached from more than one place: First.child, Second.child.',
+      })
+    );
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "First.save",
+      "Second.save",
+    ]);
+    session.unregister(Second);
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "First.save",
+      "First.child.open",
+    ]);
+    logged.mockRestore();
+  });
+
+  it("refuses a root-less descendant of an empty collection and restores its tools after a rooted HMR replacement", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    let Child = class Child {
+      root = brandedLocator({ count: async () => 1 });
+      open() {}
+    };
+    class Item {
+      root = brandedLocator({ count: async () => 1 });
+      child = new Child();
+      open() {}
+    }
+    ayme({ root: rootOf })(Item);
+    class Page {
+      items: Item[] = [];
+    }
+    const child = {
+      ...emptyManifest("Child"),
+      file: "Child.ts",
+      tools: [action("open")],
+    };
+    const item = {
+      ...emptyManifest("Item"),
+      members: [
+        {
+          memberName: "child",
+          kind: "component" as const,
+          access: "field" as const,
+          componentClassName: "Child",
+          collection: false,
+        },
+      ],
+      tools: [action("open")],
+    };
+    const manifest = {
+      ...emptyManifest("Page"),
+      members: [
+        {
+          memberName: "items",
+          kind: "component" as const,
+          access: "field" as const,
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [item, child],
+    };
+    registry.registerCompiledPom(Child, child);
+    registry.registerCompiledPom(Item, { ...item, components: [child] });
+    registry.registerCompiledPom(Page, manifest);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Page);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Child" declares no root and is reached from more than one place: Page.items[].child.',
+      })
+    );
+    await vi.runOnlyPendingTimersAsync();
+    expect(
+      registry.listRegisteredPomTools().map(({ tool }) => tool.name)
+    ).toEqual(["Page.items.open"]);
+    session.unregister(Page);
+    Child = class Child {
+      root = brandedLocator({ count: async () => 1 });
+      open() {}
+    };
+    ayme({ root: rootOf })(Child);
+    registry.registerCompiledPom(Child, { ...child });
+    const UpdatedPage = class Page {
+      items = [new Item()];
+    };
+    registry.registerCompiledPom(UpdatedPage, { ...manifest });
+    session.register(UpdatedPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "Page.items.open",
+      "Page.items.child.open",
+    ]);
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
+  });
+
+  it("allows repeated rooted classes with an inherited root and ignores action-return metadata", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    class Base {
+      root = brandedLocator({ count: async () => 1 });
+    }
+    ayme({ root: rootOf })(Base);
+    class Panel extends Base {
+      open() {}
+    }
+    class Returned {
+      open() {}
+    }
+    class Page {
+      first = new Panel();
+      second = new Panel();
+      open() {}
+    }
+    const panel = { ...emptyManifest("Panel"), tools: [action("open")] };
+    const returned = { ...emptyManifest("Returned"), tools: [action("open")] };
+    registry.registerCompiledPom(Panel, panel);
+    registry.registerCompiledPom(Returned, returned);
+    registry.registerCompiledPom(Page, {
+      ...emptyManifest("Page"),
+      tools: [
+        { ...action("open"), toolName: "Page.open", returnPoms: ["Returned"] },
+      ],
+      members: ["first", "second"].map((memberName) => ({
+        memberName,
+        kind: "component" as const,
+        access: "field" as const,
+        componentClassName: "Panel",
+        collection: false,
+      })),
+      components: [panel, returned],
+    });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Page);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "Page.open",
+      "Page.first.open",
+      "Page.second.open",
+    ]);
+    expect(logged).not.toHaveBeenCalled();
+    logged.mockRestore();
+  });
+
   it("rejects a distinct class whose name is already registered", async () => {
     const { registry, session } = await setup();
 

@@ -75,7 +75,6 @@ export async function observePageObject(
     memberObservations: [],
     targetSources: [],
     rootMemberPaths: new Set(),
-    rootlessCollections: new Map(),
   };
   const place: Place = {
     path: "",
@@ -88,7 +87,7 @@ export async function observePageObject(
     ...place,
     kind: "page",
   });
-  if (page.kind === "observed" && page.walk)
+  if (page.walk)
     await walkMembers(
       walk,
       instance,
@@ -106,7 +105,6 @@ export async function observePageObject(
     memberObservations: walk.memberObservations,
     targetSources: walk.targetSources,
     rootMemberPaths: walk.rootMemberPaths,
-    rootlessCollections: walk.rootlessCollections,
   };
 }
 
@@ -149,14 +147,11 @@ type InstancePlace = Omit<
 };
 
 /** What observing one instance found, and whether to walk its members. */
-type ObservedInstance =
-  | { kind: "rootless" }
-  | {
-      kind: "observed";
-      observed: PomInstanceObservation;
-      walk: boolean;
-      rootElement?: Element;
-    };
+type ObservedInstance = {
+  observed: PomInstanceObservation;
+  walk: boolean;
+  rootElement?: Element;
+};
 
 /**
  * Observes `instance` at `place`, records it in `walk`, and says whether its
@@ -166,10 +161,7 @@ type ObservedInstance =
  * one with a predicate by the predicate alone, and a root-less one with
  * neither as `place` says. A child whose root cannot be read is absent and
  * not walked, and the observation says why; the registered Page Object
- * itself is walked anyway. A collection item needs a root for its ref, which
- * the build refuses when every options object in the chain is an inline
- * literal naming no root; anything else is recorded here, at observation,
- * and the item is not observed. A child absent by its root is still walked:
+ * itself is walked anyway. A child absent by its root is still walked:
  * a present Page Object inside one that is not on the page stays listed
  * (ADR-0020).
  */
@@ -193,10 +185,9 @@ async function observeInstance(
   if (presence.present === false) {
     observed.presenceError = presence.error;
     walk.instances.push(observed);
-    return { kind: "observed", observed, walk: false };
+    return { observed, walk: false };
   }
   const root = await observeRoot(walk.driver, instance);
-  if (!root && kind === "item") return { kind: "rootless" };
   if (root) {
     observed.root = root.root;
     observed.rootLocator = root.locator;
@@ -220,7 +211,7 @@ async function observeInstance(
           )
         );
         walk.instances.push(observed);
-        return { kind: "observed", observed, walk: false };
+        return { observed, walk: false };
       }
       walk.memberObservations.push({
         memberName: `${place.path}.root`,
@@ -239,7 +230,6 @@ async function observeInstance(
     observed.predicates = await askPredicates(instance, tools);
   walk.instances.push(observed);
   return {
-    kind: "observed",
     observed,
     walk: true,
     rootElement: observed.root?.element,
@@ -377,13 +367,6 @@ async function walkComponentMember(
       item: place.item,
       present: place.present,
     });
-    if (child.kind === "rootless") {
-      walk.memberObservations.push(
-        rootObservation(path, `POM component ${path} declares no root.`)
-      );
-      walk.rootlessCollections.set(memberPath, manifest.className);
-      continue;
-    }
     // An instance of a class that appears higher on its path, reached
     // through a collection whose tools take a ref, is one of that first
     // occurrence's instances when it has a root of its own: the item a ref
