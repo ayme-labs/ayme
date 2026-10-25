@@ -322,7 +322,7 @@ describe("a Step Decision", () => {
       ).toMatchObject({
         kind: "stop",
         reason: "needs_value",
-        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: items[0] (no ref in the page state), items[1] (unavailable: already archived). Try a different approach.',
+        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: items[0] (no ref in the page state), items[1] on ref "e1" (unavailable: already archived). Try a different approach.',
         needs: { tool: "List.archive", parameters: ["ref"] },
       });
       expect(requests).toHaveLength(1);
@@ -453,7 +453,7 @@ describe("a Step Decision", () => {
 
       // The one item it can offer, then none of these.
       expect(questionsOf(requests[1]).ref!.criteria).toEqual({
-        e2: 'items[1] (button "Item 2")',
+        e2: 'items[1] on ref "e2" (button "Item 2")',
         [NONE_OF_THESE_KEY]: "None of these; the item is not offered.",
       });
       expect(criteriaKeys(requests[1], "ref")).toEqual([
@@ -466,7 +466,7 @@ describe("a Step Decision", () => {
       expect(verdict).toMatchObject({
         kind: "stop",
         reason: "no_fitting_option",
-        next: 'No element on the current page fits the operation "List.archive". Left out: items[0] (unavailable: already archived), items[2] (no ref in the page state), items[3] (unavailable). Navigate to a different page or try a different approach.',
+        next: 'No element on the current page fits the operation "List.archive". Left out: items[0] on ref "e1" (unavailable: already archived), items[2] (no ref in the page state), items[3] (unavailable). Navigate to a different page or try a different approach.',
       });
     });
   });

@@ -1,27 +1,6 @@
 import type { Locator } from "@playwright/test";
-import type {
-  PomComponentManifest,
-  PomComponentMemberManifest,
-  PomManifest,
-  PomMemberManifest,
-  PomMemberObservation,
-} from "../../shared";
+import type { PomManifest, PomMemberObservation } from "../../shared";
 import type { PomInstanceObservation } from "./pomInstance";
-
-/**
- * Package-internal: a place in a Page Object's tree where component tools
- * live: one per component member path the tools reach, e.g. "items[].details".
- */
-export type PomGroup = {
-  component: PomComponentManifest;
-  /**
-   * Its path without item indices, e.g. "items[].details": the component
-   * path of its tools and of the instances they act on.
-   */
-  key: string;
-  /** Its path as tool names spell it, e.g. "items.details". */
-  toolPath: string;
-};
 
 /**
  * An element a Page Object member holds, at the member's concrete path, e.g.
@@ -77,73 +56,6 @@ export type PageObjectObservation = {
  */
 export function rootTargetPath(path: string) {
   return `${path}.@root`;
-}
-
-/**
- * Package-internal: the places `manifest`'s component tools live, a group's
- * own before the ones nested in it, in declaration order. A class that
- * already appears higher on a path ends that path: the manifest alone
- * would repeat it forever. Its instances there belong to its first
- * occurrence, which `observePageObject` follows.
- */
-export function pomGroups(manifest: PomManifest): PomGroup[] {
-  const components = componentsOf(manifest);
-  const groups: PomGroup[] = [];
-  const visit = (
-    members: readonly PomMemberManifest[],
-    path: readonly PomComponentMemberManifest[],
-    occurrences: Occurrences
-  ) => {
-    for (const member of members) {
-      if (member.kind !== "component") continue;
-      const component = components.get(member.componentClassName);
-      if (!component) continue;
-      const memberPath = [...path, member];
-      const key = componentKey(memberPath);
-      const { repeatOf, below } = occurrenceOf(
-        occurrences,
-        component.className,
-        key
-      );
-      if (repeatOf !== undefined) continue;
-      groups.push({
-        component,
-        key,
-        toolPath: memberPath.map((step) => step.memberName).join("."),
-      });
-      visit(component.members, memberPath, below);
-    }
-  };
-  visit(manifest.members, [], new Map());
-  return groups;
-}
-
-/**
- * The classes on a path through the tree, each with the key of its first
- * occurrence there.
- */
-export type Occurrences = ReadonlyMap<string, string>;
-
-/**
- * Where the class `className` at `key` belongs on a path with
- * `occurrences`: a class that already appears higher on it belongs to its
- * first occurrence, `repeatOf`. `below` is what the path holds under it.
- */
-export function occurrenceOf(
-  occurrences: Occurrences,
-  className: string,
-  key: string
-): { repeatOf: string | undefined; below: Occurrences } {
-  const first = occurrences.get(className);
-  return first === undefined
-    ? { repeatOf: undefined, below: new Map(occurrences).set(className, key) }
-    : { repeatOf: first, below: occurrences };
-}
-
-function componentKey(path: readonly PomComponentMemberManifest[]) {
-  return path
-    .map((member) => `${member.memberName}${member.collection ? "[]" : ""}`)
-    .join(".");
 }
 
 /** Package-internal: the classes `manifest` reaches below its own, by name. */

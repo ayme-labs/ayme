@@ -71,11 +71,11 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails, 
     {
       model,
       questions: {
-        operation: { criteria: { "ListPage.items.archive": "", none: "" } },
+        operation: { criteria: { "ListItem.archive": "", none: "" } },
         goal_met: {},
       },
       answers: {
-        operation: { choice: "ListPage.items.archive" },
+        operation: { choice: "ListItem.archive" },
         goal_met: {},
       },
     },
@@ -117,7 +117,7 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails, 
   expect(run.reason).toBe("decide_failed");
   expect(run.steps).toEqual([
     {
-      operation: "ListPage.items.archive",
+      operation: "ListItem.archive",
       goalMetScore: 0.1,
       modelCalls: 3,
       runOff: true,
@@ -165,7 +165,7 @@ function stageOne(operation: string, state: Decision["state"]): Decision {
 it("reports done at the expected step, no fitting option, and state bytes per step", () => {
   // UTF-8 bytes, not characters: `["é"]` is six.
   const page = ["é"];
-  const history = [{ operation: "ListPage.items.archive", changes: "- é" }];
+  const history = [{ operation: "ListItem.archive", changes: "- é" }];
   const historyBytes = new TextEncoder().encode(JSON.stringify(history)).length;
   const runOf = (
     reason: string,
@@ -189,13 +189,13 @@ it("reports done at the expected step, no fitting option, and state bytes per st
       )
     ).run;
 
-  const doneAtTwo = runOf("done", ["ListPage.items.archive", "none"]);
+  const doneAtTwo = runOf("done", ["ListItem.archive", "none"]);
   const doneAtThree = runOf("done", [
-    "ListPage.items.archive",
-    "ListPage.items.archive",
+    "ListItem.archive",
+    "ListItem.archive",
     "none",
   ]);
-  const noFit = runOf("no_fitting_option", ["ListPage.items.archive", "none"]);
+  const noFit = runOf("no_fitting_option", ["ListItem.archive", "none"]);
 
   expect(doneAtTwo.steps.map((step) => step.pageBytes)).toEqual([6, 6]);
   expect(doneAtTwo.steps.map((step) => step.historyBytes)).toEqual([

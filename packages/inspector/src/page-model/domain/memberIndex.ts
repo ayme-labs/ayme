@@ -70,7 +70,6 @@ export function indexMembers(
   const byPath = new Map<string, IndexedMember>();
   const parents = new Map<PageObjectNode, PageObjectNode>();
   const instances = new Map<string, PageObjectNode[]>();
-  const toolInstances: PageObjectNode[] = [];
   const add = (
     index: Map<string, IndexedMember>,
     key: string,
@@ -86,7 +85,6 @@ export function indexMembers(
       const self = { path: node.path, owner: node };
       add(byPath, node.path, self);
       if (node.kind !== "collection") {
-        toolInstances.push(node);
         add(byTarget, rootTargetPath(node.path), self);
         const ofClass = instances.get(node.className) ?? [];
         ofClass.push(node);
@@ -158,15 +156,12 @@ export function indexMembers(
           locator ? [path] : [...subtreePaths(owner)]
         )
       ),
-    toolInstances: (toolName) => [
-      ...new Map(
-        toolInstances
-          .filter(({ actions }) =>
-            actions.some((action) => action.toolName === toolName)
-          )
-          .map((item) => [item.path, item])
-      ).values(),
-    ],
+    toolInstances: (toolName) =>
+      (
+        instances.get(toolName.slice(0, toolName.lastIndexOf("."))) ?? []
+      ).filter((node) =>
+        node.actions.some((action) => action.toolName === toolName)
+      ),
   };
 }
 

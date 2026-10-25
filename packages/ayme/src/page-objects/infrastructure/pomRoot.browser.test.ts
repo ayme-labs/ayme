@@ -21,7 +21,7 @@ import { createAyme, type Ayme } from "../../runtime";
 // session's tool list and the page state say about it.
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -103,7 +103,7 @@ describe("Page Object Root by option", () => {
     });
     session.pom.register(Shell);
     await probeRegisteredPomMembers();
-    for (const name of ["Shell.open", "Shell.child.open"])
+    for (const name of ["Shell.open", "Child.open"])
       expect(listed(name)?.inputSchema).toMatchObject({
         required: expect.arrayContaining(["ref"]),
         properties: { ref: { type: "string" } },
@@ -113,7 +113,7 @@ describe("Page Object Root by option", () => {
     const childRef = state.text.match(/(\w+) Shell\.child\b/)![1]!;
     const { buildToolOptions } = await import("../../goal-loop");
     const options = buildToolOptions(page);
-    for (const name of ["Shell.open", "Shell.child.open"])
+    for (const name of ["Shell.open", "Child.open"])
       expect(
         options.find(({ key }) => key === name)?.tool.args[0]?.closedSet
       ).toMatchObject({
@@ -121,13 +121,9 @@ describe("Page Object Root by option", () => {
         roots: [expect.objectContaining({ available: true })],
       });
     await session.tools.run("Shell.open", { ref: shellRef }, { by: "webmcp" });
-    await session.tools.run(
-      "Shell.child.open",
-      { ref: childRef },
-      { by: "webmcp" }
-    );
+    await session.tools.run("Child.open", { ref: childRef }, { by: "webmcp" });
     await expect(
-      session.tools.run("Shell.child.open", { ref: shellRef }, { by: "webmcp" })
+      session.tools.run("Child.open", { ref: shellRef }, { by: "webmcp" })
     ).rejects.toThrow(`ref "${shellRef}": it is not a root of Child`);
     expect(opened).toEqual(["shell", "child"]);
   });
@@ -246,21 +242,21 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     const { buildToolOptions } = await import("../../goal-loop");
     const offered = () =>
-      buildToolOptions(page).find(({ key }) => key === "RowsPage.rows.open")!
-        .tool.args[0]!.closedSet;
+      buildToolOptions(page).find(({ key }) => key === "Row.open")!.tool
+        .args[0]!.closedSet;
     expect(offered()).toMatchObject({
       kind: "instance",
-      roots: [{ label: "RowsPage.rows[1]" }, { label: "RowsPage.rows[2]" }],
+      roots: [{ label: "Row" }, { label: "Row" }],
     });
     const state = await agent.getPageState();
     const ref = state.text.match(/(e\d+) RowsPage\.rows\[2\]/)![1]!;
-    await session.tools.run("RowsPage.rows.open", { ref }, { by: "webmcp" });
+    await session.tools.run("Row.open", { ref }, { by: "webmcp" });
     expect(opened).toEqual(["second"]);
     document.getElementById("first")!.remove();
     // No probe follows the removal: the Goal Loop must leave out a stale root.
     expect(offered()).toMatchObject({
       kind: "instance",
-      roots: [{ label: "RowsPage.rows[2]" }],
+      roots: [{ label: "Row" }],
     });
   });
 
@@ -372,13 +368,13 @@ describe("Page Object Root by option", () => {
             { memberName: "element", kind: "locator", access: "getter" },
             { memberName: "sendButton", kind: "locator", access: "getter" },
           ],
-          tools: [action("send", "Outbox.items.send")],
+          tools: [action("Item.send", "Item.send")],
         },
       ],
     });
     const outbox = session.pom.register(Outbox);
     await probeRegisteredPomMembers();
-    expect(listed("Outbox.items.send")).toMatchObject({ available: true });
+    expect(listed("Item.send")).toMatchObject({ available: true });
     expect(observedMembers()).toEqual([
       "items",
       "items[0].root",
@@ -391,7 +387,7 @@ describe("Page Object Root by option", () => {
       text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
     const sent = refOf(1);
     if (!refOf(0) || !sent) throw new Error("Expected refs for both items.");
-    await session.tools.run("Outbox.items.send", { ref: sent });
+    await session.tools.run("Item.send", { ref: sent });
     expect(outbox.items.map((item) => item.sent)).toEqual([false, true]);
   });
 
@@ -434,7 +430,7 @@ describe("Page Object Root by option", () => {
     const component = (className: string) => ({
       className,
       members: [locator("container")],
-      tools: [action("open", `Shell.${className.toLowerCase()}.open`)],
+      tools: [action("open", `${className}.open`)],
     });
     registerCompiledPom(Shell, {
       className: "Shell",
@@ -448,7 +444,7 @@ describe("Page Object Root by option", () => {
     });
     const shell = session.pom.register(Shell);
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.menu.open", "Shell.panel.open"]);
+    expect(names()).toEqual(["Menu.open", "Panel.open"]);
     const { text } = await agent.getPageState();
     expect(text).toMatch(/e\d+ Shell\.menu\b/);
     expect(text).toMatch(/e\d+ Shell\.panel\b/);
@@ -456,11 +452,7 @@ describe("Page Object Root by option", () => {
 
     shell.drawer.expanded = true;
     await probeRegisteredPomMembers();
-    expect(names()).toEqual([
-      "Shell.menu.open",
-      "Shell.drawer.open",
-      "Shell.panel.open",
-    ]);
+    expect(names()).toEqual(["Menu.open", "Drawer.open", "Panel.open"]);
   });
 
   it("measures a call's reach at the root the observation found, and runs no root predicate with the call", async () => {
@@ -508,7 +500,7 @@ describe("Page Object Root by option", () => {
     // The root the observation found left the page: no call runs on it.
     document.getElementById("drawer")!.remove();
     await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
-      `Cannot call SideDrawer.open (SideDrawer) on ref "${ref}": it is no longer on the page.`
+      `Cannot call SideDrawer.open on ref "${ref}": it is no longer on the page.`
     );
     expect(drawer.opened).toBe(1);
   });
@@ -597,7 +589,7 @@ describe("Page Object Root by option", () => {
         {
           className: "Panel",
           members: panelMembers,
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
       ],
     });
@@ -621,15 +613,15 @@ describe("Page Object Root by option", () => {
     // The shell's root is under the overlay; the child has no root to
     // measure at, so its tool is available, and its member named root is an
     // ordinary member.
-    expect(listed("Shell.panel.close")).toEqual(
+    expect(listed("Panel.close")).toEqual(
       expect.objectContaining({ available: true })
     );
-    expect(listed("Shell.panel.close")).not.toHaveProperty("reason");
+    expect(listed("Panel.close")).not.toHaveProperty("reason");
     expect((await agent.getPageState()).text).not.toContain("Shell.panel");
     expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
       { memberName: "panel.root", kind: "locator", access: "field", count: 1 },
     ]);
-    await session.tools.run("Shell.panel.close", {});
+    await session.tools.run("Panel.close", {});
     expect(shell.panel.closed).toBe(true);
 
     document.getElementById("shell")!.remove();
@@ -646,7 +638,7 @@ describe("Page Object Root by option", () => {
     ayme({ present: (self: Panel) => self.expanded })(Panel);
     const shell = session.pom.register(shellWithPanel(Panel));
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.panel.close"]);
+    expect(names()).toEqual(["Panel.close"]);
 
     shell.panel.expanded = false;
     await probeRegisteredPomMembers();
@@ -722,7 +714,7 @@ describe("Page Object Root by option", () => {
         {
           className: "Panel",
           members: [],
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
       ],
     });
@@ -847,7 +839,7 @@ describe("Page Object Root by option", () => {
       })
     );
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Table.rows.open"]);
+    expect(names()).toEqual(["Row.open"]);
   });
 
   it("lets a collection tool act on a nested instance of its class, labelled at its full depth, without adding tools", async () => {
@@ -902,24 +894,23 @@ describe("Page Object Root by option", () => {
               collection: true,
             },
           ],
-          tools: [action("expand", "FileTree.items.expand")],
+          tools: [action("TreeItem.expand", "TreeItem.expand")],
         },
       ],
     });
     session.pom.register(FileTree);
     await probeRegisteredPomMembers();
 
-    expect(names()).toEqual(["FileTree.items.expand"]);
+    expect(names()).toEqual(["TreeItem.expand"]);
     const { text } = await agent.getPageState();
     const util = text.match(
       /(e\d+) FileTree\.items\[0\]\.children\[0\]\.children\[0\]/
     )?.[1];
     if (!util) throw new Error("Expected a ref for the deepest item.");
     const tool = listAvailablePomTools().find(
-      ({ name }) => name === "FileTree.items.expand"
+      ({ name }) => name === "TreeItem.expand"
     );
-    if (!tool)
-      throw new Error("Expected FileTree.items.expand to be available.");
+    if (!tool) throw new Error("Expected TreeItem.expand to be available.");
 
     await tool.execute({ ref: util, args: {} }, runContext());
 

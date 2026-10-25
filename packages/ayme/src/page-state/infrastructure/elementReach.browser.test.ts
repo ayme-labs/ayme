@@ -675,12 +675,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
   it("refuses it under the tool's name without scrolling", async () => {
     openLayerOver('<section id="row">Row</section>');
     const error = await assertRootReachable(
-      "ListPage.rows.open",
+      "Row.open",
       createPage().locator("#row")
     ).then(() => "no error", errorText);
 
     expect(error).toBe(
-      "RuntimeStateError: ListPage.rows.open is unavailable: a click would not reach it."
+      "RuntimeStateError: Row.open is unavailable: a click would not reach it."
     );
     expect(window.scrollY).toBe(0);
   });
@@ -689,10 +689,7 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver(
       '<section id="row"><button style="pointer-events: auto; width: 100%">Row</button></section>'
     );
-    await assertRootReachable(
-      "ListPage.rows.open",
-      createPage().locator("#row")
-    );
+    await assertRootReachable("Row.open", createPage().locator("#row"));
     expect(window.scrollY).toBeGreaterThan(0);
   });
 
@@ -700,10 +697,7 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver('<section id="row"></section>');
     document.querySelector("#row")!.attachShadow({ mode: "open" }).innerHTML =
       '<button style="pointer-events: auto; width: 100%">Row</button>';
-    await assertRootReachable(
-      "ListPage.rows.open",
-      createPage().locator("#row")
-    );
+    await assertRootReachable("Row.open", createPage().locator("#row"));
     expect(window.scrollY).toBeGreaterThan(0);
   });
 });

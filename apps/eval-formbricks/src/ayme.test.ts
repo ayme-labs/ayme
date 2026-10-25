@@ -52,12 +52,9 @@ describe("the Page Object Tools among a page's tools", () => {
         "fill_form",
         "goal",
         "snapshot",
-        "SurveyEditorPage.questions.setHeadline",
+        "Question.setHeadline",
       ])
-    ).toEqual([
-      "SignInPage.fillEmail",
-      "SurveyEditorPage.questions.setHeadline",
-    ]);
+    ).toEqual(["SignInPage.fillEmail", "Question.setHeadline"]);
   });
 });
 

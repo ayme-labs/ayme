@@ -28,7 +28,6 @@ export const {
   listRegisteredPomTools,
   listRegisteredPoms,
   probeRegisteredPomMembers,
-  publishedToolPrefixes,
   registerPageObject,
   resetRegisteredPoms,
   subscribeToRegisteredPoms,

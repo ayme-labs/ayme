@@ -239,7 +239,7 @@ describe("Change Record baseline in Chromium", () => {
 });
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],

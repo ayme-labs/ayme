@@ -88,7 +88,7 @@ export type PageObjectModel = {
   className: string;
   description?: string;
   members: readonly ModelMember[];
-  actions: readonly ModelAction[];
+  actions: readonly ObjectAction[];
   /** The paths of its Page Objects on the page now. */
   instancePaths: readonly string[];
 };
@@ -103,20 +103,6 @@ export type ModelMember = {
    * highlights it on every instance.
    */
   path: string;
-};
-
-export type ModelAction = {
-  name: string;
-  description?: string;
-  signature: string;
-  /** Its Page Object Tools: one per place the model is used. */
-  toolNames: readonly string[];
-  /** The ones that are live now: their Page Object is on the page. */
-  liveToolNames: readonly string[];
-};
-
-type RegisteredTool = RegisteredPom["tools"][number] & {
-  componentPath?: string;
 };
 
 /**
@@ -157,25 +143,15 @@ export function buildPageModel(
       .map((member) => modelMember(definition.name, member))
       .filter((member) => !rootMembers.has(member.path)),
     actions: definition.actions.map((action) => {
-      const toolNames = registrations.flatMap((registration) =>
-        (registration.tools as readonly RegisteredTool[])
-          .filter(
-            (tool) =>
-              tool.methodName === action.name &&
-              (tool.componentClassName ?? registration.manifest.className) ===
-                definition.name
-          )
-          .map((tool) => tool.name)
-      );
-      const unique = [...new Set(toolNames)];
+      const toolName = `${definition.name}.${action.name}`;
       return {
         name: action.name,
         ...(action.description === undefined
           ? {}
           : { description: action.description }),
         signature: signature(action.inputSchema),
-        toolNames: unique,
-        liveToolNames: unique.filter((name) => liveToolNames.has(name)),
+        toolName,
+        live: liveToolNames.has(toolName),
       };
     }),
     instancePaths: instances
@@ -233,7 +209,7 @@ function pageObject(
     kind: "page",
     className: manifest.className,
     live: registration.presentPaths.has(""),
-    ...objectParts(context, manifest, "", ""),
+    ...objectParts(context, manifest, ""),
   };
 }
 
@@ -253,11 +229,11 @@ type Context = {
 function objectParts(
   context: Context,
   model: {
+    className: string;
     members: readonly PomMemberManifest[];
     tools: readonly ToolManifest[];
   },
   path: string,
-  toolPath: string,
   ancestors: ReadonlySet<string> = new Set()
 ) {
   const members: ObjectMember[] = [];
@@ -269,9 +245,6 @@ function objectParts(
       : member.memberName;
     // The member that resolved to the root is the root, not a child.
     if (context.registration.rootMemberPaths.has(memberPath)) continue;
-    const memberToolPath = toolPath
-      ? `${toolPath}.${member.memberName}`
-      : member.memberName;
     if (member.kind === "locator") {
       const observation = context.observations.get(memberPath);
       members.push({
@@ -286,10 +259,17 @@ function objectParts(
 
     const component = context.components.get(member.componentClassName);
     const nested = new Set(ancestors).add(member.componentClassName);
-    const childParts = (childPath: string, childToolPath: string) =>
-      component && !ancestors.has(member.componentClassName)
-        ? objectParts(context, component, childPath, childToolPath, nested)
-        : { members: [], actions: [], children: [] };
+    const childParts = (childPath: string) =>
+      component &&
+      (!ancestors.has(member.componentClassName) ||
+        context.registration.presentPaths.has(childPath) ||
+        context.observations.has(`${childPath}.root`))
+        ? objectParts(context, component, childPath, nested)
+        : {
+            members: [],
+            actions: component ? actionsAt(context, component.tools) : [],
+            children: [],
+          };
 
     if (member.collection) {
       const count = context.observations.get(memberPath)?.count ?? 0;
@@ -301,7 +281,7 @@ function objectParts(
           kind: "item" as const,
           className: member.componentClassName,
           live: context.registration.presentPaths.has(itemPath),
-          ...childParts(itemPath, `${memberToolPath}[]`),
+          ...childParts(itemPath),
         };
       });
       const collection: UnkeyedNode = {
@@ -320,9 +300,7 @@ function objectParts(
           path: item.path,
           objectPath: item.path,
         })),
-        actions: component
-          ? actionsAt(context, component.tools, `${memberToolPath}[]`)
-          : [],
+        actions: component ? actionsAt(context, component.tools) : [],
         children: items,
       };
       children.push(collection);
@@ -346,7 +324,7 @@ function objectParts(
       kind: "component",
       className: member.componentClassName,
       live,
-      ...childParts(memberPath, memberToolPath),
+      ...childParts(memberPath),
     };
     children.push(child);
     members.push({
@@ -362,7 +340,7 @@ function objectParts(
 
   return {
     members,
-    actions: actionsAt(context, model.tools, path ? toolPath : undefined),
+    actions: actionsAt(context, model.tools),
     children,
   };
 }
@@ -370,15 +348,12 @@ function objectParts(
 /** The actions of a model at one place on the page, with their tools. */
 function actionsAt(
   context: Context,
-  tools: readonly ToolManifest[],
-  componentPath: string | undefined
+  tools: readonly ToolManifest[]
 ): ObjectAction[] {
-  const registered = context.registration.tools as readonly RegisteredTool[];
+  const registered = context.registration.tools;
   return tools.flatMap((action) => {
     const tool = registered.find(
-      (candidate) =>
-        candidate.methodName === action.methodName &&
-        candidate.componentPath === componentPath
+      (candidate) => candidate.name === action.toolName
     );
     if (!tool) return [];
     return [
@@ -457,17 +432,4 @@ function locatorState(observation: PomMemberObservation | undefined) {
 
 function plural(count: number, singular: string, pluralForm: string) {
   return `${count} ${count === 1 ? singular : pluralForm}`;
-}
-
-/**
- * A Page Object Model's actions as the run slot runs them: one per live
- * tool, or one not runnable when no Page Object of it is on the page.
- */
-export function modelActions(model: PageObjectModel): ObjectAction[] {
-  return model.actions.flatMap((action): ObjectAction[] => {
-    const live = action.liveToolNames;
-    if (live.length)
-      return live.map((toolName) => ({ ...action, toolName, live: true }));
-    return [{ ...action, toolName: "", live: false }];
-  });
 }

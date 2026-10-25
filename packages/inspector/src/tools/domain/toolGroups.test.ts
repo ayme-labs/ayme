@@ -16,7 +16,7 @@ const live = [
   tool("fill", "browser"),
   tool("highlight", "custom"),
   tool("ListPage.addItem", "pageObject"),
-  tool("ListPage.items.rename", "pageObject"),
+  tool("ListItem.rename", "pageObject"),
   tool("peek.cart", "peek"),
   tool("goal", "agent"),
 ];
@@ -28,7 +28,7 @@ describe("listTools", () => {
     expect(
       listTools(live).map(({ label, tools }) => [label, names(tools)])
     ).toEqual([
-      ["Page object tools", ["ListPage.addItem", "ListPage.items.rename"]],
+      ["Page object tools", ["ListPage.addItem", "ListItem.rename"]],
       ["Custom tools", ["highlight"]],
       ["Browser tools", ["click", "fill"]],
       ["Peek tools", ["peek.cart"]],
@@ -61,13 +61,8 @@ describe("listTools", () => {
 
 describe("attachToolModels", () => {
   it("gives each Page object tool the model whose action it is", () => {
-    const models = [
-      { className: "ListPage", tools: [{ name: "ListPage.addItem" }] },
-      { className: "ListItem", tools: [{ name: "ListPage.items.rename" }] },
-    ];
-
     expect(
-      attachToolModels(live, models).map(({ name, pomClassName }) => [
+      attachToolModels(live).map(({ name, pomClassName }) => [
         name,
         pomClassName,
       ])
@@ -77,7 +72,7 @@ describe("attachToolModels", () => {
       ["fill", undefined],
       ["highlight", undefined],
       ["ListPage.addItem", "ListPage"],
-      ["ListPage.items.rename", "ListItem"],
+      ["ListItem.rename", "ListItem"],
       ["peek.cart", undefined],
       ["goal", undefined],
     ]);

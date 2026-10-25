@@ -74,7 +74,7 @@ const manifest: PomManifest = {
       tools: [
         {
           methodName: "archive",
-          toolName: "archive",
+          toolName: "TodoItem.archive",
           description: "Archive this item.",
           parameters: [],
         },
@@ -89,7 +89,7 @@ const manifest: PomManifest = {
       tools: [
         {
           methodName: "confirm",
-          toolName: "confirm",
+          toolName: "ArchiveDialog.confirm",
           parameters: [],
         },
       ],
@@ -111,30 +111,24 @@ function tool(
   name: string,
   methodName: string,
   component?: { className: string; path: string }
-): RegisteredPomTool & { componentPath?: string } {
+): RegisteredPomTool {
   return {
-    pomId: "TodoPage",
+    className: component?.className ?? "TodoPage",
     name,
     methodName,
     description: "",
     inputSchema: noArguments,
     parameters: [],
-    ...(component
-      ? {
-          componentClassName: component.className,
-          componentPath: component.path,
-        }
-      : {}),
   };
 }
 
 const tools = [
   tool("TodoPage.addItem", "addItem"),
-  tool("TodoPage.items.archive", "archive", {
+  tool("TodoItem.archive", "archive", {
     className: "TodoItem",
     path: "items[]",
   }),
-  tool("TodoPage.archiveDialog.confirm", "confirm", {
+  tool("ArchiveDialog.confirm", "confirm", {
     className: "ArchiveDialog",
     path: "archiveDialog",
   }),
@@ -207,7 +201,7 @@ const definitions: PomDefinition[] = [
   },
 ];
 
-const live = new Set(["TodoPage.addItem", "TodoPage.items.archive"]);
+const live = new Set(["TodoPage.addItem", "TodoItem.archive"]);
 
 function objectAt(nodes: readonly PageObjectNode[], path: string) {
   const node = [...walk(nodes)].find((candidate) => candidate.path === path);
@@ -447,12 +441,12 @@ describe("the page model", () => {
       objectAt(objects, "TodoPage.items[1]").actions.map(
         ({ toolName, live }) => ({ toolName, live })
       )
-    ).toEqual([{ toolName: "TodoPage.items.archive", live: true }]);
+    ).toEqual([{ toolName: "TodoItem.archive", live: true }]);
     expect(
       objectAt(objects, "TodoPage.archiveDialog").actions.map(
         ({ toolName, live }) => ({ toolName, live })
       )
-    ).toEqual([{ toolName: "TodoPage.archiveDialog.confirm", live: false }]);
+    ).toEqual([{ toolName: "ArchiveDialog.confirm", live: false }]);
   });
 
   it("gives a collection inside a collection's items the actions that run on its items", () => {
@@ -483,7 +477,7 @@ describe("the page model", () => {
           tools: [
             {
               methodName: "remove",
-              toolName: "remove",
+              toolName: "Tag.remove",
               description: "Remove this tag.",
               parameters: [],
             },
@@ -505,7 +499,7 @@ describe("the page model", () => {
           manifest: tagged,
           tools: [
             ...tools,
-            tool("TodoPage.items.tags.remove", "remove", {
+            tool("Tag.remove", "remove", {
               className: "Tag",
               path: "items[].tags[]",
             }),
@@ -521,7 +515,7 @@ describe("the page model", () => {
       objectAt(objects, "TodoPage.items[1].tags").actions.map(
         ({ toolName }) => toolName
       )
-    ).toEqual(["TodoPage.items.tags.remove"]);
+    ).toEqual(["Tag.remove"]);
   });
 
   it("lists every model snapshot describes, with its instances on the page", () => {
@@ -581,8 +575,8 @@ describe("the page model", () => {
       {
         name: "confirm",
         signature: "()",
-        toolNames: ["TodoPage.archiveDialog.confirm"],
-        liveToolNames: [],
+        toolName: "ArchiveDialog.confirm",
+        live: false,
       },
     ]);
   });

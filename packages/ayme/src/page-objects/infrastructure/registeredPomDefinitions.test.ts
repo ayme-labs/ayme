@@ -14,7 +14,7 @@ const action = (
   description = `Run ${methodName}.`,
   returnPoms: readonly string[] = []
 ): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName: methodName,
   description,
   parameters: [{ name: "value", optional: false, schema: { type: "string" } }],
@@ -86,7 +86,9 @@ describe("POM definition catalog", () => {
           {
             className: "HiddenDialog",
             members: [],
-            tools: [action("details", "Open details.", ["DetailsPom"])],
+            tools: [
+              action("HiddenDialog.details", "Open details.", ["DetailsPom"]),
+            ],
           },
           { className: "DetailsPom", members: [], tools: [] },
           { className: "UnusedPom", members: [], tools: [] },

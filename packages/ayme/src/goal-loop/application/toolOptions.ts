@@ -2,8 +2,6 @@ import {
   agentDescription,
   listAvailablePomTools,
   listRootedToolInstances,
-  publishedToolPrefixes,
-  returnPomPaths,
 } from "../../page-objects";
 import { listElementTools, NAVIGATION_TOOLS } from "../../tools";
 import {
@@ -54,7 +52,6 @@ export function buildToolOptions(page: Page): ToolOption[] {
     args: specsOfObjectSchema(tool.inputSchema),
   }));
   const rootedInstances = listRootedToolInstances();
-  const prefixes = publishedToolPrefixes();
   const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
     const roots = rootedInstances.get(t.name);
     const args = roots
@@ -62,10 +59,7 @@ export function buildToolOptions(page: Page): ToolOption[] {
       : specsOfParameters(t.parameters);
     return {
       name: t.name,
-      description: agentDescription(
-        { ...t, ...returnPomPaths(t.returnPoms, prefixes) },
-        { required: true }
-      ),
+      description: agentDescription(t, { required: true }),
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown, run: StartChildRun) =>
         run(

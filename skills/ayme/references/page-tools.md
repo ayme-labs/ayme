@@ -1,7 +1,8 @@
 # Page tools
 
 Once the page is connected, its tools are the Browser Tools and the Page
-Object Tools it publishes. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
+Object Tools it publishes. Each Page Object Tool is named after its class and action,
+such as `ListItem.archive`, across all instances of the class. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
 lists every built-in tool with its input. To connect to the page, or when its
 tools are missing, read [Browser setup](browser-setup.md).
 
@@ -16,7 +17,7 @@ tools are missing, read [Browser setup](browser-setup.md).
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
 - Call a nested item, such as `e9 ListPage.items[0].subItems[0]`, through
-  its collection's tool: `ListPage.items.archive({ ref: "e9" })`.
+  its class's tool: `ListItem.archive({ ref: "e9" })`.
   [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
   has the example.
 - When `goal` hands over with `needs_value` because none of a parameter's

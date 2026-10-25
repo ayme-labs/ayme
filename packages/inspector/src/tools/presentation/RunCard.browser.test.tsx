@@ -62,7 +62,7 @@ const addItem: RunnableTool = {
 };
 
 const rename: RunnableTool = {
-  name: "ListPage.items.rename",
+  name: "ListItem.rename",
   action: "rename",
   description: "Rename this item.",
   present: true,
@@ -637,14 +637,13 @@ describe("a single-element tool", () => {
 
 it.each([undefined, "child"])(
   "preselects and runs the single rooted instance at %s",
-  async (componentPath) => {
-    const name = componentPath ? "Shell.child.open" : "Shell.open";
+  async (childPath) => {
+    const name = childPath ? "Child.open" : "Shell.open";
     const tool = {
-      pomId: "Shell",
+      className: childPath ? "Child" : "Shell",
       methodName: "open",
       name,
       rooted: true,
-      ...(componentPath ? { componentPath, componentClassName: "Child" } : {}),
       inputSchema: { type: "object" as const },
       parameters: [
         { name: "ref", optional: false, schema: { type: "string" as const } },
@@ -664,7 +663,7 @@ it.each([undefined, "child"])(
       [registration],
       [{ ...tool, available: true }]
     ).get(name)!;
-    const instance = anItem(componentPath ? "Shell.child" : "Shell", {
+    const instance = anItem(childPath ? "Shell.child" : "Shell", {
       ref: "e8",
       label: "Menu",
     });

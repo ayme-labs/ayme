@@ -61,14 +61,12 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
 });
 
 const archive: RegisteredPom["tools"][number] = {
-  pomId: "ListPage",
+  className: "ListItem",
   methodName: "archive",
-  name: "ListPage.items.archive",
+  name: "ListItem.archive",
   description: "Archive the item.",
   inputSchema: { type: "object" },
   parameters: [],
-  componentClassName: "ListItem",
-  componentPath: "items[]",
   rooted: true,
 };
 const listPage: RegisteredPom = {
@@ -198,11 +196,77 @@ it("scopes an agent's collection Run to the item its ref named when it started",
   await expect.poll(() => model.object("ListPage.items[1]").count()).toBe(1);
 
   startedAyme.runs
-    .start("ListPage.items.archive", { ref: "e3", args: {} }, "webmcp")
+    .start("ListItem.archive", { ref: "e3", args: {} }, "webmcp")
     .succeed();
 
   await model.object("ListPage.items[1]").click();
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   await model.object("ListPage.items[0]").click();
   await expect.poll(() => inspector.runs.runs.count()).toBe(0);
+});
+
+it("offers one instance when two class members resolve to the same root", async () => {
+  const milk = document.querySelector("li")!;
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue(
+    [0, 1].map((index) => ({
+      path: `ListPage.items[${index}].@root`,
+      element: milk,
+      locator: "locator('li').first()",
+    }))
+  );
+  const card = await inspector.tool("ListItem.archive");
+  await card.openArguments();
+  await expect.poll(() => card.items.count()).toBe(1);
+  expect(await card.items.getAttribute("aria-checked")).toBe("true");
+  await card.run();
+  expect(startedAyme.tools.run).toHaveBeenCalledWith("ListItem.archive", {
+    ref: "e2",
+    args: {},
+  });
+});
+
+it("does not assign a class instance to a custom tool sharing its namespace", async () => {
+  await inspector.navigator.showLens("Structure");
+  await expect.poll(() => inspector.structure.node("e3").count()).toBe(1);
+  startedAyme.runs.start("ListItem.inspect", { ref: "e3" }, "webmcp").succeed();
+  await inspector.navigator.showLens("Model");
+  await inspector.navigator.model.object("ListPage.items[1]").click();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(0);
+});
+
+it("shows a refused class run after its last instance has disappeared", async () => {
+  for (const unmount of unmounts.splice(0).reverse()) unmount();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...listPage,
+      memberObservations: [
+        { memberName: "items", kind: "component-collection", count: 0 },
+      ],
+      presentPaths: new Set([""]),
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([]);
+  vi.mocked(listAvailablePomTools).mockReturnValue([]);
+  startedAyme.tools.list.mockReturnValue([]);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const unmount = renderInspector(host.attachShadow({ mode: "open" }));
+  unmounts.push(() => {
+    unmount();
+    host.remove();
+  });
+  await inspector.navigator.showLens("Model");
+  await expect
+    .poll(() => inspector.navigator.model.object("ListPage.items[1]").count())
+    .toBe(0);
+  startedAyme.runs
+    .start("ListItem.archive", { ref: "e3", args: {} }, "webmcp")
+    .fail("Not a root of ListItem");
+  await expect.poll(() => inspector.runs.header.textContent()).toBe("Runs · 1");
+  if ((await inspector.runs.header.getAttribute("aria-expanded")) === "false")
+    await inspector.runs.header.click();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
+    "ListItem.archive"
+  );
 });

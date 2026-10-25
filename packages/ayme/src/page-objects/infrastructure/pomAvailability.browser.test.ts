@@ -22,7 +22,7 @@ import {
 } from "../../test-utils/session.testSupport";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -51,7 +51,7 @@ const manifest = (
     {
       className: "Panel",
       members: [{ memberName: "root", kind: "locator", access: "field" }],
-      tools: [action("close")],
+      tools: [action("Panel.close")],
     },
   ],
 });
@@ -92,7 +92,7 @@ describe("live Page Object availability", () => {
 
     sidebar.setAttribute("style", "width:240px;height:120px");
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.open", "Shell.sidebar.close"]);
+    expect(names()).toEqual(["Shell.open", "Panel.close"]);
     expect((await ayme.getPageState()).text).toContain("Shell.sidebar");
 
     document.body.insertAdjacentHTML(
@@ -114,7 +114,7 @@ describe("live Page Object availability", () => {
 
     sidebar.setAttribute("style", "width:240px;height:120px");
     await probeRegisteredPomMembers();
-    expect(names()).toContain("Shell.sidebar.close");
+    expect(names()).toContain("Panel.close");
     expect((await ayme.getPageState()).text).toContain("Shell.sidebar");
     sidebar.remove();
     await probeRegisteredPomMembers();
@@ -218,7 +218,7 @@ describe("live Page Object availability", () => {
     registerCompiledPom(Shell, manifest("Shell", [child("panels", true)]));
     session.register(Shell);
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.panels.close"]);
+    expect(names()).toEqual(["Panel.close"]);
     expect((await listRegisteredPomRoots()).map((root) => root.label)).toEqual([
       "Shell.panels[1]",
     ]);
@@ -236,7 +236,7 @@ describe("live Page Object availability", () => {
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     session.register(Shell);
-    await expect.poll(names).toEqual(["Shell.sidebar.close"]);
+    await expect.poll(names).toEqual(["Panel.close"]);
     const rule = document.querySelector<HTMLStyleElement>(
       "#availability-style"
     )!.sheet!.cssRules[0] as CSSStyleRule;
@@ -248,7 +248,7 @@ describe("live Page Object availability", () => {
     await expect.poll(names).toEqual([]);
     rule.style.visibility = "visible";
     window.dispatchEvent(new Event("transitionend"));
-    await expect.poll(names).toEqual(["Shell.sidebar.close"]);
+    await expect.poll(names).toEqual(["Panel.close"]);
   });
 
   it("does not publish a disposed registration after its async observation completes", async () => {
@@ -351,7 +351,7 @@ describe("live Page Object availability", () => {
     const restored = await ayme.getPageState();
     expect(restored.text).toContain("SIDEBAR CONTENT");
     expect(restored.text).toContain("Shell.sidebar");
-    expect(names()).toEqual(["Shell.sidebar.close"]);
+    expect(names()).toEqual(["Panel.close"]);
   });
 
   it("keeps modal-blocked content and POM labels while removing only its tools", async () => {
@@ -378,13 +378,13 @@ describe("live Page Object availability", () => {
       "Shell.second",
     ])
       expect(state.text).toContain(content);
-    expect(names()).toEqual(["Shell.first.close"]);
+    expect(names()).toEqual(["Panel.close"]);
     document.querySelector<HTMLDialogElement>("#first")!.close();
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.second.close"]);
+    expect(names()).toEqual(["Panel.close"]);
     document.querySelector<HTMLDialogElement>("#second")!.close();
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.background.close"]);
+    expect(names()).toEqual(["Panel.close"]);
   });
 
   it("excludes fully clipped POM content from the structural tree", async () => {
@@ -458,7 +458,7 @@ describe("live Page Object availability", () => {
       const [, state] = await result;
       expect(ticks).toBeGreaterThan(0);
       expect(state.text).toContain("SlowShell.panels[0]");
-      expect(names()).toEqual(["SlowShell.panels.close"]);
+      expect(names()).toEqual(["Panel.close"]);
     } finally {
       clearInterval(timer);
     }
@@ -498,6 +498,6 @@ describe("live Page Object availability", () => {
     const state = await ayme.getPageState();
     expect(state.text).toContain("Shell.dialog");
     expect(state.text).toContain("Confirm");
-    expect(names()).toEqual(["Shell.dialog.close"]);
+    expect(names()).toEqual(["Panel.close"]);
   });
 });

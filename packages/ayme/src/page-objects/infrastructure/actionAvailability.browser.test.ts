@@ -27,7 +27,7 @@ import {
 // tool list, a call and the Goal Loop's offer say about its actions.
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -101,7 +101,7 @@ describe("Action Availability", () => {
       registerCompiledPom(Panel, {
         className: "Panel",
         members: [root],
-        tools: [action("remove", "Panel.remove")],
+        tools: [action("Panel.remove", "Panel.remove")],
         components: [],
       });
       session.pom.register(Panel);
@@ -156,15 +156,15 @@ describe("Action Availability", () => {
     registerCompiledPom(Toolbar, {
       className: "Toolbar",
       members: [root],
-      tools: [action("reset", "Toolbar.reset")],
+      tools: [action("Toolbar.reset", "Toolbar.reset")],
       components: [],
     });
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
       tools: [
-        action("remove", "Panel.remove"),
-        action("duplicate", "Panel.duplicate"),
+        action("Panel.remove", "Panel.remove"),
+        action("Panel.duplicate", "Panel.duplicate"),
       ],
       components: [],
     });
@@ -213,19 +213,19 @@ describe("Action Availability", () => {
           collection: false,
         },
       ],
-      tools: [action("archive", "Shell.archive")],
+      tools: [action("Shell.archive", "Shell.archive")],
       components: [
         {
           className: "Panel",
           members: [root],
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
       ],
     });
     session.pom.register(Shell);
     await probeRegisteredPomMembers();
 
-    expect(published("Shell.panel.close")).toMatchObject({ available: true });
+    expect(published("Panel.close")).toMatchObject({ available: true });
     expect(published("Shell.archive")).toMatchObject({
       available: false,
       reason: "Nothing is selected",
@@ -259,8 +259,8 @@ describe("Action Availability", () => {
         { memberName: "removeButton", kind: "locator", access: "field" },
       ],
       tools: [
-        action("remove", "Panel.remove"),
-        action("duplicate", "Panel.duplicate"),
+        action("Panel.remove", "Panel.remove"),
+        action("Panel.duplicate", "Panel.duplicate"),
       ],
       components: [],
     });
@@ -293,7 +293,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Toolbar, {
       className: "Toolbar",
       members: [root],
-      tools: [action("reset", "Toolbar.reset")],
+      tools: [action("Toolbar.reset", "Toolbar.reset")],
       components: [],
     });
     session.pom.register(Toolbar);
@@ -337,7 +337,7 @@ describe("Action Availability", () => {
         {
           className: "Item",
           members: [root],
-          tools: [action("recall", "Outbox.items.recall")],
+          tools: [action("Item.recall", "Message.recall")],
         },
       ],
     } satisfies PomManifest);
@@ -353,9 +353,9 @@ describe("Action Availability", () => {
     const sent = refOf(1);
     if (!draft || !sent) throw new Error("Expected refs for both items.");
 
-    expect(published("Outbox.items.recall")).toMatchObject({ available: true });
-    expect(published("Outbox.items.recall")).not.toHaveProperty("reason");
-    const { tool } = listed("Outbox.items.recall")!;
+    expect(published("Message.recall")).toMatchObject({ available: true });
+    expect(published("Message.recall")).not.toHaveProperty("reason");
+    const { tool } = listed("Message.recall")!;
     await expect(
       tool.execute({ ref: draft, args: {} }, runContext())
     ).rejects.toThrow(
@@ -370,7 +370,7 @@ describe("Action Availability", () => {
     );
 
     await probeRegisteredPomMembers();
-    expect(published("Outbox.items.recall")).toMatchObject({
+    expect(published("Message.recall")).toMatchObject({
       available: false,
       reason: "Only a sent item can be recalled",
     });
@@ -411,7 +411,7 @@ describe("Action Availability", () => {
         {
           className: "Row",
           members: [root],
-          tools: [action("archive", "Inbox.rows.archive")],
+          tools: [action("Row.archive", "Row.archive")],
         },
       ],
     } satisfies PomManifest);
@@ -427,9 +427,9 @@ describe("Action Availability", () => {
       throw new Error("Expected refs for the row and the dialog.");
     const reason = `a click would not reach it; ${busy} is in the way`;
 
-    expect(published("Inbox.rows.archive")).toMatchObject({ available: true });
+    expect(published("Row.archive")).toMatchObject({ available: true });
     await expect(
-      listed("Inbox.rows.archive")!.tool.execute(
+      listed("Row.archive")!.tool.execute(
         { ref: covered, args: {} },
         runContext()
       )
@@ -437,11 +437,11 @@ describe("Action Availability", () => {
     expect(archived).not.toHaveBeenCalled();
     expect(
       listRootedToolInstances()
-        .get("Inbox.rows.archive")
+        .get("Row.archive")
         ?.map(({ label, available, reason }) => ({ label, available, reason }))
     ).toEqual([
-      { label: "Inbox.rows[0]", available: true, reason: undefined },
-      { label: "Inbox.rows[1]", available: false, reason },
+      { label: "Row", available: true, reason: undefined },
+      { label: "Row", available: false, reason },
     ]);
   });
 
@@ -488,7 +488,7 @@ describe("Action Availability", () => {
         {
           className: "Row",
           members: [root],
-          tools: [action("archive", "Inbox.rows.archive")],
+          tools: [action("Row.archive", "Row.archive")],
         },
       ],
     } satisfies PomManifest);
@@ -502,12 +502,12 @@ describe("Action Availability", () => {
     expect(asked).not.toContain("covered");
     expect(
       listRootedToolInstances()
-        .get("Inbox.rows.archive")
+        .get("Row.archive")
         ?.map(({ label, available, reason }) => ({ label, available, reason }))
     ).toEqual([
-      { label: "Inbox.rows[0]", available: false, reason: "open is read-only" },
+      { label: "Row", available: false, reason: "open is read-only" },
       {
-        label: "Inbox.rows[1]",
+        label: "Row",
         available: false,
         reason: `a click would not reach it; ${busy} is in the way`,
       },
@@ -574,7 +574,7 @@ describe("Action Availability", () => {
         {
           className: "Editor",
           members: [root],
-          tools: [action("save", "Outbox.items.editor.save")],
+          tools: [action("Editor.save", "Editor.save")],
         },
       ],
     } satisfies PomManifest);
@@ -590,10 +590,10 @@ describe("Action Availability", () => {
     if (!clean || !dirty) throw new Error("Expected refs for both items.");
 
     // The ref names the editor, whose own availability decides the call.
-    expect(published("Outbox.items.editor.save")).toMatchObject({
+    expect(published("Editor.save")).toMatchObject({
       available: true,
     });
-    const { tool } = listed("Outbox.items.editor.save")!;
+    const { tool } = listed("Editor.save")!;
     await expect(
       tool.execute({ ref: clean, args: {} }, runContext())
     ).rejects.toThrow(
@@ -644,7 +644,7 @@ describe("Action Availability", () => {
         {
           className: "Panel",
           members: [root],
-          tools: [action("close", "close")],
+          tools: [action("close", "Panel.close")],
         },
       ],
     });
@@ -665,32 +665,37 @@ describe("Action Availability", () => {
     expect(overlay).toBeDefined();
     expect(frozen).toBeDefined();
 
-    expect(published("Shell.covered.close")).toMatchObject({
+    const instance = (id: string) =>
+      listRootedToolInstances()
+        .get("Panel.close")
+        ?.find(({ element }) => element.id === id);
+    expect(published("Panel.close")).toMatchObject({ available: true });
+    expect(instance("covered")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${overlay} is in the way`,
     });
-    expect(published("Shell.frozen.close")).toMatchObject({
+    expect(instance("frozen")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${frozen} is in the way`,
     });
-    expect(published("Shell.held.close")).toMatchObject({
+    expect(instance("held")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
-    expect(published("Shell.blocked.close")).toMatchObject({ available: true });
+    expect(instance("blocked")).toMatchObject({ available: true });
 
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
     // Until the agent's page state shows the modal, nothing names it: the
     // reason never falls back to an element around it.
     await probeRegisteredPomMembers();
-    expect(published("Shell.blocked.close")).toMatchObject({
+    expect(instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
     const after = await agent.getPageState();
     const modal = after.text.match(/(e\d+) dialog "Archive item"/)?.[1];
     expect(modal).toBeDefined();
-    expect(published("Shell.blocked.close")).toMatchObject({
+    expect(instance("blocked")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${modal} is in the way`,
     });
@@ -703,7 +708,7 @@ describe("Action Availability", () => {
     const { text: quiet } = await agent.getPageState();
     expect(quiet).toMatch(/e\d+ region "Dialogs"/);
     expect(quiet).not.toContain('dialog "Confirm"');
-    expect(published("Shell.blocked.close")).toMatchObject({
+    expect(instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
@@ -721,7 +726,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -746,7 +751,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -772,7 +777,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     session.pom.register(Panel);
@@ -807,7 +812,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     const panel = session.pom.register(Panel);
@@ -847,7 +852,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     session.pom.register(Panel);
@@ -869,8 +874,8 @@ describe("Action Availability", () => {
       className: "Rootless",
       members: [],
       tools: [
-        action("open", "Rootless.open"),
-        action("close", "Rootless.close"),
+        action("Rootless.open", "Rootless.open"),
+        action("Rootless.close", "Rootless.close"),
       ],
       components: [],
     });
@@ -905,7 +910,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     session.pom.register(Panel);
@@ -970,7 +975,7 @@ describe("Action Availability", () => {
         {
           className: "Message",
           members: [root],
-          tools: [action("recall", "Outbox.items.recall")],
+          tools: [action("Message.recall", "Message.recall")],
         },
       ],
     } satisfies PomManifest);
@@ -983,7 +988,7 @@ describe("Action Availability", () => {
     )?.[1];
     if (!draft) throw new Error("Expected a ref for the draft.");
 
-    const { tool } = listed("Outbox.items.recall")!;
+    const { tool } = listed("Message.recall")!;
     await expect(
       tool.execute({ ref: draft, args: {} }, runContext())
     ).rejects.toThrow(
@@ -1008,7 +1013,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -1043,7 +1048,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -1084,7 +1089,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);

@@ -13,7 +13,7 @@ import { createAyme } from "../../runtime";
 import type { PomManifest, ToolManifest } from "../../shared";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],

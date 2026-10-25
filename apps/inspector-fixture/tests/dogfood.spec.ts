@@ -21,12 +21,12 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     expect.arrayContaining([
       "ListPage.addItem",
       "Inspector.open",
-      "Inspector.navigator.showLens",
-      "Inspector.runs.clear",
+      "Navigator.showLens",
+      "RunsView.clear",
     ])
   );
 
-  await executePublishedTool(page, "Inspector.navigator.showLens", {
+  await executePublishedTool(page, "Navigator.showLens", {
     ref: await new AgentView(page).ref('navigation "Navigator"'),
     args: { name: "Tools" },
   });
@@ -39,11 +39,11 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     .poll(async () =>
       Object.values(await inspector.navigator.tools.listed()).flat()
     )
-    .toContain("Inspector.navigator.showLens");
+    .toContain("Navigator.showLens");
 
   // A search in progress does not stop the agent from opening a run card,
   // and the card's own actions come alive with it.
-  await executePublishedTool(page, "Inspector.navigator.search", {
+  await executePublishedTool(page, "Navigator.search", {
     ref: await new AgentView(page).ref('navigation "Navigator"'),
     args: { query: "addItem" },
   });
@@ -55,7 +55,7 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     .poll(async () =>
       (await new AgentView(page).tools()).map(({ name }) => name)
     )
-    .toContain("Inspector.detail.toolPage.card.fillJson");
+    .toContain("RunCard.fillJson");
 });
 
 test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
@@ -64,7 +64,7 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
 }) => {
   const agent = new AgentView(page);
   const toolNames = async () => (await agent.tools()).map(({ name }) => name);
-  const card = "Inspector.detail.toolPage.card";
+  const card = "RunCard";
   /** Opens a tool's card and its form, whose tools then list. */
   const openForm = async (tool: string, ...actions: string[]) => {
     await executePublishedTool(page, "Inspector.tool", { name: tool });
@@ -79,7 +79,7 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
 
   // The panel settles before the agent's 1 s action timeout applies.
   await inspector.navigator.showLens("Tools");
-  await openForm("fill_form", `${card}.fillForm.set`);
+  await openForm("fill_form", `FillForm.set`);
   const form = inspector.detail.toolPage.card.fillForm;
   await expect(form.control("Urgent")).not.toBeChecked();
   // The editor's root surrounds the list that stays out of page state.
@@ -90,14 +90,14 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
     /(e\d+):\n\s+- e\d+:\n\s+- e\d+: Fields/
   )?.[1];
   if (!editorRef) throw new Error("Expected the form editor's root ref.");
-  await executePublishedTool(page, `${card}.fillForm.set`, {
+  await executePublishedTool(page, `FillForm.set`, {
     ref: editorRef,
     args: { name: "Urgent", value: true },
   });
   await expect(form.control("Urgent")).toBeChecked();
 
-  await openForm("generate_locator", `${card}.locatorGroups.toggleFromTree`);
-  await openForm("goal", `${card}.values.fill`);
+  await openForm("generate_locator", `LocatorGroups.toggleFromTree`);
+  await openForm("goal", `ValueRows.fill`);
 });
 
 test("a rooted single instance is preselected and runs from the panel", async ({
@@ -105,7 +105,7 @@ test("a rooted single instance is preselected and runs from the panel", async ({
   inspector,
 }) => {
   await executePublishedTool(page, "Inspector.tool", {
-    name: "Inspector.navigator.search",
+    name: "Navigator.search",
   });
   const card = inspector.detail.toolPage.card;
   await card.openArguments();

@@ -27,7 +27,7 @@ export class ProjectsPage {
 }
 ```
 
-- Both decorators take an optional description, a constant string: a string literal, a template literal without `${...}`, or a `+` concatenation of those. The build reads it from the source and fails on any other expression. `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes without one over Ayme MCP. WebMCP requires a description, so there it gets `Run createProject.` for the action above. An action that returns another Page Object gets `Then shows <Model>.` after its description, or as its description when it has none. When the returned model is a member of another model, the sentence names the path its tools are published under, as in `Then shows SurveyResponsesPage.filter (ResponseFilterPopover).` A description says what the action means for the product beyond what an agent sees on the page: who may do it, and what it commits that outlives the page or reaches other people. An action that only changes the UI needs none. A model's description says the same for the surface: whose data it shows, how far it reaches (one project or the whole workspace), and what it holds that outlives the page. A model whose name and page say enough needs none. Agents read it in the model's definition, which the `snapshot` tool returns. A subclass inherits it, from the nearest base class that declares one, and may declare its own. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
+- Both decorators take an optional description, a constant string: a string literal, a template literal without `${...}`, or a `+` concatenation of those. The build reads it from the source and fails on any other expression. `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes without one over Ayme MCP. WebMCP requires a description, so there it gets `Run createProject.` for the action above. An action that returns another Page Object gets `Then shows <Model>.` after its description, or as its description when it has none. The sentence names the returned class, as in `Then shows ResponseFilterPopover.` A description says what the action means for the product beyond what an agent sees on the page: who may do it, and what it commits that outlives the page or reaches other people. An action that only changes the UI needs none. A model's description says the same for the surface: whose data it shows, how far it reaches (one project or the whole workspace), and what it holds that outlives the page. A model whose name and page say enough needs none. Agents read it in the model's definition, which the `snapshot` tool returns. A subclass inherits it, from the nearest base class that declares one, and may declare its own. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
 - Only marked actions become tools. Public members are not published on their own.
 - A class that extends an `@ayme` class is a Page Object Model too, even without the decorator. Its actions still need `@ayme.action`.
 - No Ayme base class is needed, and the same class keeps working in your Playwright tests.
@@ -123,7 +123,7 @@ Presence lists tools; availability says whether they would run. A present Page O
 
 ## Page Object Children
 
-A model can hold other Page Objects as Page Object Children: a field or getter typed as a model holds one, and an async method without parameters that returns an array of a model holds several, a collection. Their actions become tools too, named by the path from the registered model:
+A model can hold other Page Objects as Page Object Children: a field or getter typed as a model holds one, and an async method without parameters that returns an array of a model holds several, a collection. Their actions become tools too, named after their class:
 
 ```ts
 @ayme
@@ -146,9 +146,10 @@ export class ListItem extends AppComponent {
 }
 ```
 
-- A collection's actions are published once for all its items: `ListPage.items.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
-- Every class with a `root` option follows the same rule, including pages and single children. A marked `confirm` on rooted `ArchiveDialog` would be `ListPage.archiveDialog.confirm({ ref: "e12" })`, using the dialog's own root ref.
+- Each action is published once per class across every member and registration: `ListItem.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
+- Every class with a `root` option follows the same rule, including pages and single children. A marked `confirm` on rooted `ArchiveDialog` would be `ArchiveDialog.confirm({ ref: "e12" })`, using the dialog's own root ref.
 - A root-less class takes the action's arguments directly, without `ref` or an `args` wrapper.
+- Two instances of one class on the same root element count as one instance. A class tool stays listed while any instance is present.
 
 A collection's items can hold items of their own model:
 
@@ -172,11 +173,11 @@ The page state gives every item a ref, however deep:
   - e9 ListPage.items[0].subItems[0]: Milk
 ```
 
-`ListPage.items.archive` takes either ref:
+`ListItem.archive` takes either ref:
 
 ```ts
-ListPage.items.archive({ ref: "e5" }); // archives Groceries
-ListPage.items.archive({ ref: "e9" }); // archives Milk
+ListItem.archive({ ref: "e5" }); // archives Groceries
+ListItem.archive({ ref: "e9" }); // archives Milk
 ```
 
 ## Action availability

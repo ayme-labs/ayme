@@ -18,9 +18,7 @@ import { askPredicates, askPresence } from "./pomPredicates";
 import type { PageDriver } from "./pageDriver";
 import {
   componentsOf,
-  occurrenceOf,
   rootTargetPath,
-  type Occurrences,
   type PageObjectObservation,
   type PomTargetSource,
   type RegisteredPomTarget,
@@ -78,13 +76,12 @@ export async function observePageObject(
   };
   const place: Place = {
     path: "",
-    componentPath: "",
-    occurrences: new Map(),
     present: true,
   };
   const page = await observeInstance(walk, instance, manifest.tools, {
     ...place,
     kind: "page",
+    className: manifest.className,
   });
   if (page.walk)
     await walkMembers(
@@ -117,8 +114,6 @@ type Walk = PageObjectObservation & {
 
 /** Where in the walk an instance's members are. */
 type Place = Pick<PomInstanceObservation, "path"> & {
-  componentPath: string;
-  occurrences: Occurrences;
   /**
    * Whether the instance is present: what a root-less single child with no
    * predicate follows.
@@ -138,11 +133,9 @@ type Place = Pick<PomInstanceObservation, "path"> & {
  * single child, or a collection item. `present` is the presence a root-less
  * one with no predicate takes.
  */
-type InstancePlace = Omit<
-  Place,
-  "rootElement" | "rootLocator" | "occurrences"
-> & {
+type InstancePlace = Omit<Place, "rootElement" | "rootLocator"> & {
   kind: "page" | "child" | "item";
+  className: string;
 };
 
 /** What observing one instance found, and whether to walk its members. */
@@ -173,7 +166,7 @@ async function observeInstance(
   const observed: PomInstanceObservation = {
     path: place.path,
     instance,
-    componentPath: kind === "page" ? undefined : place.componentPath,
+    className: place.className,
     present: false,
     root: undefined,
     predicates: new Map(),
@@ -332,15 +325,6 @@ async function walkComponentMember(
       `No metadata found for component ${member.componentClassName}.`
     );
   const memberPath = joinPath(place.path, member.memberName);
-  const componentPath = joinPath(
-    place.componentPath,
-    `${member.memberName}${member.collection ? "[]" : ""}`
-  );
-  const { repeatOf, below } = occurrenceOf(
-    place.occurrences,
-    manifest.className,
-    componentPath
-  );
   const values = member.collection ? asComponents(value) : [value];
   if (member.collection)
     walk.memberObservations.push({
@@ -360,17 +344,10 @@ async function walkComponentMember(
     const child = await observeInstance(walk, component, manifest.tools, {
       kind: member.collection ? "item" : "child",
       path,
-      componentPath,
+      className: manifest.className,
       present: place.present,
     });
-    // An instance of a class that appears higher on its path, reached
-    // through a collection whose tools take a ref, is one of that first
-    // occurrence's instances when it has a root of its own: the item a ref
-    // to that root names. Without either, no tool reaches it.
     const { observed } = child;
-    if (repeatOf?.includes("[]") && observed.rootLocator) {
-      observed.componentPath = repeatOf;
-    }
     if (!child.walk) continue;
     await walkMembers(
       walk,
@@ -378,8 +355,6 @@ async function walkComponentMember(
       manifest.members,
       {
         path,
-        componentPath: observed.componentPath ?? componentPath,
-        occurrences: below,
         present: observed.present,
         rootElement: child.rootElement,
         rootLocator: observed.rootLocator,

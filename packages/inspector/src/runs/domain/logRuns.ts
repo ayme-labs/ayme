@@ -18,7 +18,7 @@ export function isPanelRun(run: Pick<Run, "by">): boolean {
 }
 
 /** The Page Object Model and Page Object a Page Object tool runs on. */
-export type RunTarget = { className: string; objectPath: string };
+export type RunTarget = { className: string; objectPath?: string };
 
 /**
  * What the panel knows of a Run beyond the log: the Page Object its tool
@@ -140,9 +140,7 @@ function noteTree(
   notes: Map<string, RunNotes>
 ) {
   notes.set(id, {
-    ...(className !== undefined && objectPath !== undefined
-      ? { target: { className, objectPath } }
-      : {}),
+    ...(className !== undefined ? { target: { className, objectPath } } : {}),
     ...(item ? { item } : {}),
     members: interactions.map(({ member }: RunInteraction) => member),
     ...(image?.savedTo === undefined ? {} : { savedTo: image.savedTo }),

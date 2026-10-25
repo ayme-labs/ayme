@@ -109,9 +109,9 @@ describe("a collection whose items are all behind a modal layer", () => {
   /** The collection's tool as the last observation listed it. */
   function listedOpen() {
     const listed = listRegisteredPomTools().find(
-      ({ tool }) => tool.name === "ListPage.rows.open"
+      ({ tool }) => tool.name === "Row.open"
     );
-    if (!listed) throw new Error("Expected ListPage.rows.open.");
+    if (!listed) throw new Error("Expected Row.open.");
     return listed;
   }
 

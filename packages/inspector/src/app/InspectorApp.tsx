@@ -54,17 +54,8 @@ export function InspectorApp() {
   });
   const { live, appProcess } = runtime.tools;
   const tools = useMemo(
-    () =>
-      attachToolModels(
-        [...live, ...appProcess],
-        runtime.pageModel.models.map((model) => ({
-          className: model.className,
-          tools: model.actions.flatMap((action) =>
-            action.toolNames.map((name) => ({ name }))
-          ),
-        }))
-      ),
-    [live, appProcess, runtime.pageModel]
+    () => attachToolModels([...live, ...appProcess]),
+    [live, appProcess]
   );
 
   const lenses: Lens[] = [

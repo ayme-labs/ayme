@@ -44,12 +44,8 @@ export type PomInstanceObservation = {
   path: string;
   /** The live Page Object the observation read: what a call on it acts on. */
   instance: object;
-  /**
-   * Its tools' component path, which has no item indices, e.g.
-   * "items[].details"; undefined for the page's own. A repeated class can
-   * take its first occurrence's path; see `walkComponentMember` in pomTree.ts.
-   */
-  componentPath: string | undefined;
+  /** The class whose tools act on this instance. */
+  className: string;
   /**
    * Whether it is on the page (Page Object Presence): its presence
    * predicate, when its class declares one, holds, and its root, when it has

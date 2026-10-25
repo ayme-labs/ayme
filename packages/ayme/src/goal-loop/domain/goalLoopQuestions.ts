@@ -275,9 +275,12 @@ function instanceOptions(
   const options: ArgumentOption[] = [];
   const leftOut: LeftOutItem[] = [];
   for (const root of roots) {
+    const ref = refsByElement.get(root.element);
+    const label =
+      ref === undefined ? root.label : `${root.label} on ref "${ref}"`;
     if (!root.available) {
       leftOut.push({
-        label: root.label,
+        label,
         why:
           root.reason === undefined
             ? "unavailable"
@@ -285,7 +288,6 @@ function instanceOptions(
       });
       continue;
     }
-    const ref = refsByElement.get(root.element);
     const node = ref === undefined ? null : capture.tree.getNode(ref);
     if (ref === undefined || node === null) {
       leftOut.push({ label: root.label, why: "no ref in the page state" });
@@ -293,7 +295,7 @@ function instanceOptions(
     }
     options.push({
       key: ref,
-      description: `${root.label} (${describeNode(node)})`,
+      description: `${label} (${describeNode(node)})`,
       value: ref,
     });
   }

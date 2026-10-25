@@ -77,7 +77,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
 
 function saveTool(pomId: string): RegisteredPomTool {
   return {
-    pomId,
+    className: pomId,
     methodName: "save",
     name: "Editor.save",
     description: "Save the editor.",

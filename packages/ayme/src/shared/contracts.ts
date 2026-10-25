@@ -144,8 +144,7 @@ export type RegisteredPomTool = {
    * afterwards, by class name.
    */
   returnPoms?: readonly string[];
-  pomId: string;
-  componentClassName?: string;
+  className: string;
   methodName: string;
   inputSchema: JsonSchema;
   /** Its parameters as agents read them. */

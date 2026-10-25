@@ -48,8 +48,11 @@ function runScopeOf(
   within: (path: string) => ReadonlySet<string>
 ): { label: RunScope["label"]; includes: Includes } {
   /** Whether a run's object is one of `paths`. */
-  const isOn = (paths: ReadonlySet<string>, objectPath: string | undefined) =>
-    objectPath !== undefined && paths.has(objectPath);
+  const isOn = (paths: ReadonlySet<string>, run: ChildRun) =>
+    run.objectPath !== undefined
+      ? paths.has(run.objectPath)
+      : run.className !== undefined &&
+        [...within(run.className)].some((path) => paths.has(path));
   switch (selection.kind) {
     case "page":
       return { label: "This page", includes: () => true };
@@ -57,7 +60,7 @@ function runScopeOf(
       const paths = within(selection.path);
       return {
         label: "This object",
-        includes: (run) => isOn(paths, run.objectPath),
+        includes: (run) => isOn(paths, run),
       };
     }
     case "model":
@@ -86,7 +89,7 @@ function runScopeOf(
               // A Custom Tool's `ref`, or a Browser Tool's `target`.
               run.arguments.ref === selection.ref ||
               run.arguments.target === selection.ref)) ||
-          paths.some((memberPaths) => isOn(memberPaths, run.objectPath)),
+          paths.some((memberPaths) => isOn(memberPaths, run)),
       };
     }
     case "tool":

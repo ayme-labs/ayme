@@ -24,11 +24,13 @@ export function itemsOf(
   elementsByRef: ReadonlyMap<string, Element> = new Map()
 ): CollectionItem[] {
   const rows = [...structureRows(structure.roots)];
+  const seen = new Set<string>();
   return members.toolInstances(toolName).flatMap((item) => {
     const node = rows.find(
       ({ node }) => node.ref !== undefined && node.members.includes(item.path)
     )?.node;
-    if (node?.ref === undefined) return [];
+    if (node?.ref === undefined || seen.has(node.ref)) return [];
+    seen.add(node.ref);
     const element = elementsByRef.get(node.ref);
     const verdict = verdicts.find((candidate) => candidate.element === element);
     return [

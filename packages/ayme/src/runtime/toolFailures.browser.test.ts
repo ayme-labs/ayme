@@ -54,7 +54,7 @@ const failingManifest: PomManifest = {
       tools: [
         {
           methodName: "archive",
-          toolName: "archive",
+          toolName: "Item.archive",
           description: "Archive the item.",
           parameters: [],
         },
@@ -145,12 +145,10 @@ describe("tool failures an agent gets, in Chromium", () => {
   it("returns a collection tool's ref that matches no element as a RefResolutionError", async () => {
     // The overlay blocks the item, which leaves its tool unavailable.
     document.querySelector("div")!.remove();
-    await expect
-      .poll(() => agentTools().names())
-      .toContain("FailingPage.items.archive");
+    await expect.poll(() => agentTools().names()).toContain("Item.archive");
 
     expect(
-      await agentCall("FailingPage.items.archive", {
+      await agentCall("Item.archive", {
         ref: "e404",
         args: {},
       }).catch(errorText)

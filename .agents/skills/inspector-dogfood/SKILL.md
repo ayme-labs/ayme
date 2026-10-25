@@ -15,8 +15,8 @@ state ignores. The inspector-fixture app's `/dogfood.html` mounts it the other
 way round, with `mountInspector({ dogfood: true })`: an open shadow root, the
 Agent Connection on, and the Inspector's own Page Object (the one its tests
 use, `@ayme-dev/inspector/testing`) registered beside the list app's. An agent
-connected through `ayme mcp` then gets `Inspector.*` tools and sees the panel
-in every snapshot and Change Record.
+connected through `ayme mcp` gets class tools such as `Inspector.open` and
+`Navigator.showLens`, and sees the panel in every snapshot and Change Record.
 
 Use it to check a change the way an agent would meet it: open the panel,
 switch lenses, open a run card, run a tool from the panel, read the Runs
@@ -62,15 +62,17 @@ Run every command inside the repository's Devbox shell.
    `@ayme-dev/mcp/testing` drive a Playwright page the same way.
 
 5. Drive the panel through its tools and read what comes back:
-   - `Inspector.open`, `Inspector.navigator.showLens` (Model, Structure,
-     Tools), `Inspector.navigator.search`;
-   - `Inspector.tool` opens a run card; `Inspector.detail.toolPage.card.*`
-     fills it; the generic `click` on the card's Run button runs the tool;
-   - `Inspector.runs.showAll` and a `snapshot` show the Runs timeline with
+   - `Inspector.open`, `Navigator.showLens` (Model, Structure,
+     Tools), `Navigator.search`;
+   - `Inspector.tool` opens a run card; `RunCard.openArguments` and `RunCard.fillJson`
+     fill it; the generic `click` on the card's Run button runs the tool;
+   - `RunsView.showAll` and a `snapshot` show the Runs timeline with
      each run's steps and result;
-   - `Inspector.structure.pick` and `Inspector.structure.memberOf` read the
+   - `StructureLens.pick` and `StructureLens.memberOf` read the
      Structure lens.
 
+   Rooted class tools take `{ ref, args }`, with the ref of that part's own root
+   from `snapshot`; root-less `Inspector` tools take their arguments directly.
    `ayme_list_tools` lists what is live right now; tools appear and
    disappear as views open and close, which is itself a check.
 
@@ -87,16 +89,15 @@ Run every command inside the repository's Devbox shell.
 ## What the page does not show
 
 - The Structure lens's tree and the search results stay out of the page
-  state, since they render that state. `Inspector.structure.memberOf` reads
+  state, since they render that state. `StructureLens.memberOf` reads
   the tree; it is the one read-only method that is a tool, because the
   page state does not show its answer. The other reads of the Page Object
   (the tool list, the run's steps, the theme) are plain test methods, since
   a `snapshot` already shows what they return. A ref chooser's tree on a
   run card is a capture of the page, and stays in.
-- Actions whose parameters the build plugin cannot schema (a `Record`, a rest
-  parameter, a `string | boolean` union) are not tools. Use the generic
-  Browser Tools on the run card for those.
-- `Inspector.*` tools exist only on the dogfood page. A production mount
+- Actions whose parameters the build plugin cannot schema are not tools.
+  Use the generic Browser Tools on the run card for those.
+- The Inspector's class tools exist only on the dogfood page. A production mount
   keeps the whole panel out of the page state.
 
 The page and its tests live in `apps/inspector-fixture` (`README.md`,

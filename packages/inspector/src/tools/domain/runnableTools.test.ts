@@ -9,7 +9,7 @@ import { listRunnableTools } from "./runnableTools";
 // hand-written.
 
 const addItem: RegisteredPom["tools"][number] = {
-  pomId: "ListPage",
+  className: "ListPage",
   methodName: "addItem",
   name: "ListPage.addItem",
   description: "Add an item to the list.",
@@ -17,12 +17,10 @@ const addItem: RegisteredPom["tools"][number] = {
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
 const rename: RegisteredPom["tools"][number] = {
-  pomId: "ListPage",
-  componentClassName: "ListItem",
-  componentPath: "items[]",
+  className: "ListItem",
   rooted: true,
   methodName: "rename",
-  name: "ListPage.items.rename",
+  name: "ListItem.rename",
   description: "Rename this item.",
   inputSchema: { type: "object" },
   parameters: [
@@ -83,7 +81,7 @@ it("runs a rooted action on an item, with the action's own arguments", () => {
     [{ ...rename, inputSchema: rename.inputSchema, available: true }]
   );
 
-  expect(tools.get("ListPage.items.rename")).toMatchObject({
+  expect(tools.get("ListItem.rename")).toMatchObject({
     action: "rename",
     rooted: true,
     argumentsSchema: { properties: { text: { type: "string" } } },

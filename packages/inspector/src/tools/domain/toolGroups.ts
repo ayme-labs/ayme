@@ -83,27 +83,16 @@ export function listTools(tools: readonly LiveTool[]): ToolGroupListing[] {
     .filter(({ tools }) => tools.length > 0);
 }
 
-/** A Page Object Model and the tools its actions publish as. */
-export type ToolModel = {
-  className: string;
-  tools: readonly { name: string }[];
-};
-
-/**
- * Adds to each Page object tool the Page Object Model whose action it is.
- * The first model that lists a tool's name owns it.
- */
+/** Links each Page Object Tool directly to its class namespace. */
 export function attachToolModels(
-  tools: readonly Omit<LiveTool, "pomClassName">[],
-  models: readonly ToolModel[]
+  tools: readonly Omit<LiveTool, "pomClassName">[]
 ): LiveTool[] {
-  const modelByTool = new Map<string, string>();
-  for (const model of models)
-    for (const { name } of model.tools)
-      if (!modelByTool.has(name)) modelByTool.set(name, model.className);
-  return tools.map((tool) => {
-    const pomClassName =
-      tool.group === "pageObject" ? modelByTool.get(tool.name) : undefined;
-    return pomClassName ? { ...tool, pomClassName } : { ...tool };
-  });
+  return tools.map((tool) =>
+    tool.group === "pageObject"
+      ? {
+          ...tool,
+          pomClassName: tool.name.slice(0, tool.name.lastIndexOf(".")),
+        }
+      : { ...tool }
+  );
 }

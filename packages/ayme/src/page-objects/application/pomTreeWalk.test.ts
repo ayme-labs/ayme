@@ -7,7 +7,7 @@ import { createPage } from "../infrastructure/browserPage";
 import type { PomComponentManifest, PomManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
-import { pomGroups, rootTargetPath } from "../domain/pomTree";
+import { rootTargetPath } from "../domain/pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
 import { litePageDriver } from "../infrastructure/litePageDriver";
 
@@ -28,7 +28,7 @@ const component = (
     collection,
   }) as const;
 const action = (methodName: string) => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName: methodName,
   parameters: [],
 });
@@ -41,12 +41,12 @@ const treeItem: PomComponentManifest = {
     component("children", "TreeItem", true),
     component("label", "Label"),
   ],
-  tools: [action("expand")],
+  tools: [action("TreeItem.expand")],
 };
 const label: PomComponentManifest = {
   className: "Label",
   members: [],
-  tools: [action("rename")],
+  tools: [action("Label.rename")],
 };
 const fileTree: PomManifest = {
   className: "FileTree",
@@ -64,29 +64,12 @@ function item(selector: string, children: object[] = []) {
 }
 class Label {}
 
-describe("the places of a Page Object's tools", () => {
-  it("lists each place once, a group's own before its nested ones, and ends a path at a class that repeats", () => {
-    expect(
-      pomGroups(fileTree).map(({ key, toolPath }) => ({
-        key,
-        toolPath,
-      }))
-    ).toEqual([
-      { key: "items[]", toolPath: "items" },
-      {
-        key: "items[].label",
-        toolPath: "items.label",
-      },
-    ]);
-  });
-});
-
 describe("one observation of a Page Object", () => {
   afterEach(() => {
     document.body.innerHTML = "";
   });
 
-  it("follows a class that repeats to every depth, and files its instances under its first occurrence", async () => {
+  it("follows a class that repeats to every depth and keeps each concrete path", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="src">src
@@ -104,20 +87,18 @@ describe("one observation of a Page Object", () => {
       fileTree
     );
 
-    expect(
-      instances.map(({ path, componentPath }) => [path, componentPath])
-    ).toEqual([
-      ["", undefined],
-      ["items[0]", "items[]"],
-      ["items[0].children[0]", "items[]"],
-      ["items[0].children[0].children[0]", "items[]"],
-      ["items[0].children[0].children[0].label", "items[].label"],
-      ["items[0].children[0].label", "items[].label"],
-      ["items[0].label", "items[].label"],
+    expect(instances.map(({ path, className }) => [path, className])).toEqual([
+      ["", "FileTree"],
+      ["items[0]", "TreeItem"],
+      ["items[0].children[0]", "TreeItem"],
+      ["items[0].children[0].children[0]", "TreeItem"],
+      ["items[0].children[0].children[0].label", "Label"],
+      ["items[0].children[0].label", "Label"],
+      ["items[0].label", "Label"],
     ]);
   });
 
-  it("keeps an instance of a repeated class out of its first occurrence without a root of its own", async () => {
+  it("observes a nested instance whose root answers no locator", async () => {
     document.body.innerHTML = '<ul><li id="src">src</li></ul>';
     // The nested item's root predicate answers no locator.
     const nested = rooted(undefined as unknown as Locator, {
@@ -133,7 +114,7 @@ describe("one observation of a Page Object", () => {
     );
 
     const found = instances.find(({ path }) => path === "items[0].children[0]");
-    expect(found?.componentPath).toBe("items[].children[]");
+    expect(found?.className).toBe("TreeItem");
     expect(found?.present).toBe(false);
     expect(memberObservations).toContainEqual({
       memberName: "items[0].children[0].root",
@@ -144,7 +125,7 @@ describe("one observation of a Page Object", () => {
     });
   });
 
-  it("files a class that repeats without a collection under no tool's place, but still observes it", async () => {
+  it("observes a class that repeats without a collection", async () => {
     document.body.innerHTML =
       '<section id="outer"><section id="inner"></section></section>';
     class Node {
@@ -162,7 +143,7 @@ describe("one observation of a Page Object", () => {
         {
           className: "Node",
           members: [locator("root"), component("child", "Node")],
-          tools: [action("open")],
+          tools: [action("Node.open")],
         },
       ],
     };
@@ -177,13 +158,10 @@ describe("one observation of a Page Object", () => {
       manifest
     );
 
-    expect(pomGroups(manifest).map(({ key }) => key)).toEqual(["node"]);
-    expect(
-      instances.map(({ path, componentPath }) => [path, componentPath])
-    ).toEqual([
-      ["", undefined],
-      ["node", "node"],
-      ["node.child", "node.child"],
+    expect(instances.map(({ path, className }) => [path, className])).toEqual([
+      ["", "Page"],
+      ["node", "Node"],
+      ["node.child", "Node"],
     ]);
   });
 
