@@ -88,6 +88,7 @@ export function derivePomManifestsFromProgram(
       return { manifest, components: reachableComponents(checker, references) };
     });
     rejectSameNamedClasses(declaration, components.keys());
+    rejectSharedRootlessClasses(checker, declaration);
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
     manifests.push({ ...rest, components: [...components.values()], tools });
@@ -166,11 +167,6 @@ function pomChild(
       ? componentCollectionDeclaration(checker, type, memberName)
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
-  if (access === "method" && rootState(checker, declaration) === "undeclared") {
-    throw new Error(
-      `Page Object Child "${memberName}" is a collection of ${declaration.name.text}, which declares no root; a collection item's ref needs one.`
-    );
-  }
   return {
     member: {
       memberName,
@@ -437,6 +433,46 @@ function rejectSameNamedClasses(
         }. Ayme tells the classes of a Page Object apart by name.`
       );
   }
+}
+
+/**
+ * Member paths identify instances; action return types do not. Guard edges on
+ * each path so a recursive rooted class still exposes its repeated children.
+ */
+function rejectSharedRootlessClasses(
+  checker: ts.TypeChecker,
+  page: ts.ClassDeclaration
+) {
+  const places = new Map<ts.ClassDeclaration, string>();
+  const visit = (
+    declaration: ts.ClassDeclaration,
+    path: string,
+    belowCollection: boolean,
+    edges: Set<ts.ClassElement>
+  ) => {
+    if (rootState(checker, declaration) === "undeclared") {
+      const previous = places.get(declaration);
+      if (previous || belowCollection)
+        throw new Error(
+          `Page Object class "${declaration.name!.text}" declares no root and is reached from multiple places: ${previous ? `${previous}, ${path}` : `${path} (below a collection)`}.`
+        );
+      places.set(declaration, path);
+    }
+    for (const member of classMembers(checker, declaration)) {
+      if (edges.has(member)) continue;
+      const role = memberRole(checker, member);
+      if (role?.role !== "child") continue;
+      const { member: child, declaration: target } = role.child;
+      if (!target || child.kind !== "component") continue;
+      visit(
+        target,
+        `${path}.${child.memberName}${child.collection ? "[]" : ""}`,
+        belowCollection || child.collection,
+        new Set(edges).add(member)
+      );
+    }
+  };
+  visit(page, page.name!.text, false, new Set());
 }
 
 function classMembers(

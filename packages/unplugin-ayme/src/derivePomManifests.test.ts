@@ -721,7 +721,7 @@ describe("derivePomManifests", () => {
     });
   });
 
-  it("builds a collection and a single child without checking a root", () => {
+  it("builds a single root-less child and a rooted collection", () => {
     const manifest = manifestForClass(
       "rootlessChildrenPom",
       "RootlessChildrenPom"
@@ -736,10 +736,53 @@ describe("derivePomManifests", () => {
     ).toEqual(["Toolbar", "Row"]);
   });
 
+  it("refuses a root-less class reached by two members of one Page Object", () => {
+    expect(() => manifestFor("sharedRootlessPom")).toThrow(
+      'Page Object class "Toolbar" declares no root and is reached from multiple places: SharedRootlessPom.first, SharedRootlessPom.second.'
+    );
+  });
+
+  it("counts paths through a shared rooted class separately", () => {
+    expect(() => manifestFor("sharedNestedRootlessPom")).toThrow(
+      'Page Object class "Toolbar" declares no root and is reached from multiple places: SharedNestedRootlessPom.first.toolbar, SharedNestedRootlessPom.second.toolbar.'
+    );
+  });
+
+  it("refuses a root-less child repeated by a recursive rooted parent", () => {
+    expect(() => manifestFor("recursiveRootlessDescendantPom")).toThrow(
+      'Page Object class "Toolbar" declares no root and is reached from multiple places: RecursiveRootlessDescendantPom.toolbar, RecursiveRootlessDescendantPom.next.toolbar.'
+    );
+  });
+
+  it("refuses a root-less descendant of a rooted collection item", () => {
+    expect(() => manifestFor("rootlessDescendantPom")).toThrow(
+      'Page Object class "Toolbar" declares no root and is reached from multiple places: RootlessDescendantPom.rows[].toolbar (below a collection).'
+    );
+  });
+
+  it("does not count action return types as places reaching a root-less class", () => {
+    const manifest = manifestForClass("rootlessReturnPom", "RootlessReturnPom");
+    expect(manifest?.tools).toMatchObject([
+      { methodName: "open", returnPoms: ["Toolbar"] },
+      { methodName: "reopen", returnPoms: ["Toolbar"] },
+    ]);
+    expect(manifest?.members).toMatchObject([{ memberName: "toolbar" }]);
+  });
+
+  it("leaves undecidable roots to runtime and accepts roots inherited across modules", () => {
+    const manifest = manifestForClass(
+      "sharedRootOptionsPom",
+      "SharedRootOptionsPom"
+    );
+    expect(
+      manifest?.components.map((component) => component.className)
+    ).toEqual(["Computed", "Spread", "Ambient", "Inherited"]);
+  });
+
   describe("a collection item's root", () => {
     it("refuses a collection whose item class declares no root in its chain", () => {
       expect(() => manifestFor("rootlessCollectionPom")).toThrow(
-        'Page Object Child "items" is a collection of RootlessItem, which declares no root; a collection item\'s ref needs one.'
+        'Page Object class "RootlessItem" declares no root and is reached from multiple places: RootlessCollectionPom.items[] (below a collection).'
       );
     });
 
