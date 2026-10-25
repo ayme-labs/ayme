@@ -116,7 +116,7 @@ in-browser agents and the app's own code call on the running page.
 
 - Responsibility: the hosted demo app with the Inspector in demo mode, plus the rendered
   documentation beside it. The "Try with your own coding agent" wizard and the Agent
-  Connection are built only into local and dev builds, not the hosted ones
+  Connection are left out of the hosted builds
 - Technology: Vue single-page app built from [apps/example-vue](apps/example-vue), with the docs rendered by
   Jekyll from [docs/guide](docs/guide)
 - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
@@ -197,7 +197,13 @@ in-browser agents and the app's own code call on the running page.
 
 ## Environments
 
-### local development
+The host app environments are a developer using Ayme in their own app and that app
+serving its users. The Ayme environments are Ayme's own: developing it, checking it and
+hosting its playground.
+
+### Host app
+
+#### development
 
 - Purpose: a developer's app running on their machine with a coding agent attached
 - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md)
@@ -217,24 +223,21 @@ in-browser agents and the app's own code call on the running page.
     server's or backend's entry point
     - Deployment node: the host app's dev server process
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md), [packages/mcp/README.md](packages/mcp/README.md)
-  - **Decision Endpoint**: mounted in the dev server with the developer's own key; the
-    playground's Vite plugin is the reference setup
+  - **Decision Endpoint**: mounted in the dev server with the developer's own key, so the
+    Goal Loop needs no backend while the app is developed
     - Deployment node: the host app's dev server process
-    - Evidence: verified for the playground: [apps/example-vue/vite/decisionEndpoint.dev.ts](apps/example-vue/vite/decisionEndpoint.dev.ts);
-      inferred for other apps: the docs show the handler, not a dev-server mount
-  - **Playground**: the same app as the hosted site, run as a local Vite dev server on
-    port 4190
-    - Deployment node: a local Vite process
-    - Evidence: verified: [apps/example-vue/package.json](apps/example-vue/package.json)
+    - Evidence: verified: [docs/guide/guides/goals-with-jev.md](docs/guide/guides/goals-with-jev.md)
+  - **Playground**: does not run here; it is Ayme's own app
+    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
 - External systems:
   - **Host application**: the developer's own app, served by its dev server
     - Evidence: verified: [docs/guide/start/install.md](docs/guide/start/install.md)
   - **Decision model provider**: the live TypeSafe or OpenRouter API, with the developer's key
-    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+    - Evidence: verified: [docs/guide/reference/decision-endpoint.md](docs/guide/reference/decision-endpoint.md)
   - **WebMCP driver**: Chrome's flag or a polyfill the app loads before its entry module
-    - Evidence: verified: [docs/guide/guides/publish-tools.md](docs/guide/guides/publish-tools.md), [apps/example-vue/src/main.ts](apps/example-vue/src/main.ts)
+    - Evidence: verified: [docs/guide/guides/publish-tools.md](docs/guide/guides/publish-tools.md)
 
-### host app production
+#### production
 
 - Purpose: the host app serving its users, with Ayme's agent surface limited to what the
   app's setup publishes
@@ -268,7 +271,88 @@ in-browser agents and the app's own code call on the running page.
   - **WebMCP driver**: whatever the user's browser or the app's polyfill supplies
     - Evidence: verified: [docs/guide/guides/publish-tools.md](docs/guide/guides/publish-tools.md)
 
-### playground
+### Ayme
+
+#### development
+
+- Purpose: a contributor's machine working in this monorepo: the playground and the framework
+  examples run from the workspace packages, with a coding agent attached
+- Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [.agents/skills/inspector-dogfood/SKILL.md](.agents/skills/inspector-dogfood/SKILL.md)
+- Containers:
+  - **Browser runtime**: the playground's and the examples' development builds; the
+    playground has WebMCP publication, the Inspector in demo mode and the Agent Connection
+    on, and a `goal` only when its dev server has a model key
+    - Deployment node: the example's page in the contributor's browser
+    - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [apps/example-vue/vite.config.ts](apps/example-vue/vite.config.ts)
+  - **Build plugin**: the workspace's `@ayme-dev/unplugin-ayme`, consumed from its built
+    `dist`, inside each example's dev server
+    - Deployment node: each example's dev server process
+    - Evidence: verified: [packages/unplugin-ayme/package.json](packages/unplugin-ayme/package.json), [apps/example-vue/vite.config.ts](apps/example-vue/vite.config.ts)
+  - **Ayme MCP server**: the workspace build, `node packages/mcp/dist/cli.mjs mcp`, registered
+    with the contributor's coding agent
+    - Deployment node: the coding agent's process on the contributor's machine
+    - Evidence: verified: [.agents/skills/inspector-dogfood/SKILL.md](.agents/skills/inspector-dogfood/SKILL.md), [packages/mcp/src/cli.ts](packages/mcp/src/cli.ts)
+  - **App Process runtime**: started by the Next.js example's `instrumentation.ts` and the
+    Nuxt example's Nitro plugin
+    - Deployment node: the Next.js or Nuxt example's dev server process
+    - Evidence: verified: [apps/example-next/instrumentation.ts](apps/example-next/instrumentation.ts), [apps/example-nuxt/server/plugins/ayme.ts](apps/example-nuxt/server/plugins/ayme.ts)
+  - **Decision Endpoint**: the playground's Vite plugin, mounted only when `.env.local` holds
+    a TypeSafe or OpenRouter key
+    - Deployment node: the playground's Vite dev server
+    - Evidence: verified: [apps/example-vue/vite/decisionEndpoint.dev.ts](apps/example-vue/vite/decisionEndpoint.dev.ts), [apps/example-vue/scripts/appEnvironment.ts](apps/example-vue/scripts/appEnvironment.ts),
+      [apps/example-vue/.env.example](apps/example-vue/.env.example)
+  - **Playground**: a Vite dev server on port 4190, with the "Try with your own coding agent"
+    wizard unless `VITE_AGENT_CONNECTION=false`
+    - Deployment node: the playground's Vite dev server
+    - Evidence: verified: [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
+- External systems:
+  - **Host application**: the playground's list app on 4190, and the React, Next.js, Nuxt,
+    SvelteKit and Angular examples on 4191, 4192, 4193, 4194 and 4196
+    - Evidence: verified: the `dev` scripts in [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-react/package.json](apps/example-react/package.json),
+      [apps/example-next/package.json](apps/example-next/package.json), [apps/example-nuxt/package.json](apps/example-nuxt/package.json),
+      [apps/example-sveltekit/package.json](apps/example-sveltekit/package.json), [apps/example-angular/package.json](apps/example-angular/package.json)
+  - **Decision model provider**: the live TypeSafe or OpenRouter API, with the contributor's
+    key; not reached without one
+    - Evidence: verified: [apps/example-vue/scripts/appEnvironment.ts](apps/example-vue/scripts/appEnvironment.ts)
+  - **WebMCP driver**: the `@mcp-b/webmcp-polyfill` the playground initializes before the
+    Vue app
+    - Evidence: verified: [apps/example-vue/src/main.ts](apps/example-vue/src/main.ts)
+
+#### ci
+
+- Purpose: the checks on every pull request and on `main`, including the live goal lane
+- Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+- Containers:
+  - **Browser runtime**: the fixtures and example apps under test in Chromium
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml), [docs/testing.md](docs/testing.md)
+  - **Build plugin**: runs in each example's build and dev server under test
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+  - **Ayme MCP server**: started over stdio by the test's MCP client
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [packages/mcp/src/testing/](packages/mcp/src/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
+  - **App Process runtime**: the example dev servers paired in the certification tests
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+  - **Decision Endpoint**: the playground's dev-server mount, only in the live goal lane
+    with a repository secret
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+  - **Playground**: built on pull requests that change it, not deployed; its build also
+    builds it without Ayme and checks that output carries none of Ayme
+    - Deployment node: a GitHub Actions runner
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/package.json](apps/example-vue/package.json),
+      [apps/example-vue/scripts/verify-browser-output.mjs](apps/example-vue/scripts/verify-browser-output.mjs)
+- External systems:
+  - **Host application**: the fixture and example apps in [apps/](apps/)
+    - Evidence: verified: [docs/testing.md](docs/testing.md)
+  - **Decision model provider**: the live API in the live goal lane, skipped without a key
+    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+  - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`
+    - Evidence: verified: [packages/webmcp/src/testing.ts](packages/webmcp/src/testing.ts)
+
+#### playground
 
 - Purpose: the public demo and docs at ayme-labs.github.io/ayme, and the same demo at
   ayme.dev/playground/
@@ -303,37 +387,3 @@ in-browser agents and the app's own code call on the running page.
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
   - **WebMCP driver**: the `@mcp-b/webmcp-polyfill` initialized before the Vue app
     - Evidence: verified: [apps/example-vue/src/main.ts](apps/example-vue/src/main.ts)
-
-### ci
-
-- Purpose: the checks on every pull request and on `main`, including the live goal lane
-- Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-- Containers:
-  - **Browser runtime**: the fixtures and example apps under test in Chromium
-    - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml), [docs/testing.md](docs/testing.md)
-  - **Build plugin**: runs in each example's build and dev server under test
-    - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  - **Ayme MCP server**: started over stdio by the test's MCP client
-    - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [packages/mcp/src/testing/](packages/mcp/src/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
-  - **App Process runtime**: the example dev servers paired in the certification tests
-    - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
-  - **Decision Endpoint**: the playground's dev-server mount, only in the live goal lane
-    with a repository secret
-    - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  - **Playground**: built on pull requests that change it, not deployed; its build also
-    builds it without Ayme and checks that output carries none of Ayme
-    - Deployment node: a GitHub Actions runner
-    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/package.json](apps/example-vue/package.json),
-      [apps/example-vue/scripts/verify-browser-output.mjs](apps/example-vue/scripts/verify-browser-output.mjs)
-- External systems:
-  - **Host application**: the fixture and example apps in [apps/](apps/)
-    - Evidence: verified: [docs/testing.md](docs/testing.md)
-  - **Decision model provider**: the live API in the live goal lane, skipped without a key
-    - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`
-    - Evidence: verified: [packages/webmcp/src/testing.ts](packages/webmcp/src/testing.ts)
