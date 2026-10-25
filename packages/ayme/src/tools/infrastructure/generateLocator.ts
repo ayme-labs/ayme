@@ -2,11 +2,15 @@
 // Recommendations for Page Object Model code. It reads and never acts, so it
 // records no Structural Action and leaves the Goal Loop's operations alone.
 import {
+  parseStructuralRef,
   refFromSelector,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
-import { generateLocator } from "@ayme-dev/playwright-lite/internal";
+import {
+  generateLocator,
+  resolveLocatorElements,
+} from "@ayme-dev/playwright-lite/internal";
 import type { JsonSchema } from "../../shared";
 import { asSentence } from "../../shared";
 import {
@@ -15,6 +19,7 @@ import {
   TARGET_SCHEMA,
   type PublishedElementTool,
 } from "../application/elementTools";
+import { refFailure, selectorFailure } from "../../page-state";
 import type { ToolResult } from "../domain/toolTypes";
 
 type Result = ToolResult<"generate_locator">;
@@ -39,7 +44,7 @@ const inputSchema: JsonSchema = {
           within: {
             ...TARGET_SCHEMA,
             description:
-              "The container the locators are relative to, such as a component's root. Omitted: relative to the page.",
+              "The container the locators are relative to, such as a component's root; selector targets are matched inside it. Omitted: relative to the page.",
           },
         },
         required: ["targets"],
@@ -54,30 +59,11 @@ const inputSchema: JsonSchema = {
 const TARGET_LABEL = "generate a locator for";
 const WITHIN_LABEL = "scope locators to";
 
-/** Resolve a target or container, or throw the error its entry reports. */
-async function resolve(
-  page: Page,
-  label: string,
-  requested: string,
-  currentDocument: Document
-): Promise<Element> {
-  const { element } = await resolveElementTarget(
-    page,
-    { label, targetField: "target" },
-    requested,
-    currentDocument
-  );
-  return element;
-}
-
-/** Whether `element` lies inside `container`, across shadow roots. */
-function isInside(element: Element, container: Element): boolean {
-  for (let node = element.parentNode; node;) {
-    if (node === container) return true;
-    node = node instanceof ShadowRoot ? node.host : node.parentNode;
-  }
-  return false;
-}
+/** The definition a target or container resolves under, named by `label`. */
+const definition = (label: string) => ({
+  label,
+  targetField: "target" as const,
+});
 
 /**
  * The Locator Recommendation for `element`, relative to `container` when one
@@ -104,7 +90,19 @@ function recommendLocator(
 const reason = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-type Container = { within: string; element: Element };
+type Container = { within: string; element: Element; selector: string };
+
+/** Whether `container.locator(selector)` finds `element`, as Page Object code would. */
+function holds(
+  page: Page,
+  container: Container,
+  selector: string,
+  element: Element
+) {
+  return resolveLocatorElements(
+    page.locator(container.selector).locator(selector)
+  ).includes(element);
+}
 
 async function entryFor(
   page: Page,
@@ -112,17 +110,26 @@ async function entryFor(
   container: Container | undefined,
   currentDocument: Document
 ): Promise<Entry> {
+  // A selector is matched inside the container; a Structural Ref names its
+  // element wherever it is, so it is checked to be inside.
+  const isRef = parseStructuralRef(target) !== undefined;
   const fail = (why: string) => ({
     target,
-    error: asSentence(`Cannot ${TARGET_LABEL} "${target}": ${why}`),
+    error: (isRef ? refFailure : selectorFailure)(TARGET_LABEL, target, why),
   });
-  let element: Element;
+  let element: Element, selector: string;
   try {
-    element = await resolve(page, TARGET_LABEL, target, currentDocument);
+    ({ element, selector } = await resolveElementTarget(
+      page,
+      definition(TARGET_LABEL),
+      target,
+      currentDocument,
+      isRef ? undefined : container?.selector
+    ));
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
   }
-  if (container && !isInside(element, container.element))
+  if (container && isRef && !holds(page, container, selector, element))
     return fail(`it is not inside the container "${container.within}"`);
   try {
     return {
@@ -142,15 +149,13 @@ async function groupFor(
   let container: Container | undefined;
   if (group.within !== undefined)
     try {
-      container = {
-        within: group.within,
-        element: await resolve(
-          page,
-          WITHIN_LABEL,
-          group.within,
-          currentDocument
-        ),
-      };
+      const { element, selector } = await resolveElementTarget(
+        page,
+        definition(WITHIN_LABEL),
+        group.within,
+        currentDocument
+      );
+      container = { within: group.within, element, selector };
     } catch (error) {
       return { within: group.within, error: asSentence(reason(error)) };
     }
@@ -171,7 +176,7 @@ export const generateLocatorTool: PublishedElementTool = {
   description: [
     "Generate Playwright locators for elements, to write into Page Object Model code; does not act on the page.",
     "Structural Refs are capture-scoped: use them in tool calls, never in code. The locators are what belongs in a page object.",
-    "Group targets by the container they belong to: a group's locators are relative to its `within` container, ready for a component's `root`, or to the page without one.",
+    "Group targets by the container they belong to: a group's locators are relative to its `within` container, ready for a component's `root`, or to the page without one. Selector targets are matched inside the container.",
     "Each locator is checked to match exactly its element. A target that cannot be resolved fails on its own entry, and a container on its own group.",
   ].join(" "),
   // Stryker restore StringLiteral

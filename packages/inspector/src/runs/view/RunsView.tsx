@@ -25,6 +25,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
+import { focusRing, pressable, rowFocusRing } from "../../shared";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { RunImageView } from "./RunImageView";
 
@@ -52,10 +53,14 @@ export type RunsViewProps = {
   flashing: string | undefined;
   toggleRun: (id: string) => void;
   toggleResult: (id: string) => void;
-  /** Copies a run's result. */
-  copyResult: (text: string) => void;
+  /** Copies a run's result, given the run's id. */
+  copyResult: (id: string, text: string) => void;
+  /** The run whose result was just copied, whose Copy says so. */
+  copiedResult: string | undefined;
   /** Opens a run's image, given its data URL, full size. */
   openImage: (src: string) => void;
+  /** When the timeline last opened: a run that starts after it fades in. */
+  shownAt: number;
 };
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
@@ -67,32 +72,31 @@ export function RunsView({
   open,
   onOpenChange,
   onClear,
-  onHover,
   timeline,
-  closedRuns,
-  openResults,
-  flashing,
-  toggleRun,
-  toggleResult,
-  copyResult,
-  openImage,
+  ...row
 }: RunsViewProps) {
   return (
     <>
       <div
         className={cn(
-          "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
       >
         <button
           type="button"
           aria-expanded={open}
-          className="inline-flex cursor-pointer items-center gap-1.5 uppercase"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "inline-flex cursor-pointer items-center gap-1.5 rounded-sm uppercase",
+            focusRing
+          )}
           onClick={() => onOpenChange(!open)}
         >
           <ChevronRightIcon
-            className={cn("size-3 transition-transform", open && "rotate-90")}
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+            className={cn("size-3", open && "rotate-90")}
             aria-hidden
           />
           <HistoryIcon className="size-3.5" aria-hidden />
@@ -114,7 +118,12 @@ export function RunsView({
                   key={label}
                   type="button"
                   aria-pressed={allRuns === all}
-                  className="h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                  className={cn(
+                    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                    "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
+                    focusRing,
+                    pressable
+                  )}
                   onClick={() => onAllRunsChange(all)}
                 >
                   {label}
@@ -134,34 +143,69 @@ export function RunsView({
         )}
       </div>
       {open && (
-        <div className="min-h-0 flex-1 overflow-auto px-3.5 pt-2.5 pb-3">
-          {runs.length ? (
-            <ol ref={timeline} aria-label="Runs timeline" className="m-0 p-0">
-              {runs.map((run) => (
-                <RunRow
-                  key={run.id}
-                  run={run}
-                  closedRuns={closedRuns}
-                  openResults={openResults}
-                  flashing={flashing}
-                  toggleRun={toggleRun}
-                  toggleResult={toggleResult}
-                  copyResult={copyResult}
-                  openImage={openImage}
-                  onHover={onHover}
-                />
-              ))}
-            </ol>
-          ) : (
-            <p className="m-0 p-3.5 text-center text-xs text-muted-foreground">
-              {allRuns || scopeLabel === "This page"
-                ? "No runs yet."
-                : "No runs for this selection yet. Switch to All to see every run."}
-            </p>
-          )}
-        </div>
+        <Timeline
+          runs={runs}
+          empty={
+            allRuns || scopeLabel === "This page"
+              ? "No runs yet. Runs from this panel and from agents show here."
+              : "No runs for this selection yet. Switch to All to see every run."
+          }
+          timeline={timeline}
+          {...row}
+        />
       )}
     </>
+  );
+}
+
+type RowProps = Pick<
+  RunsViewProps,
+  | "closedRuns"
+  | "openResults"
+  | "flashing"
+  | "toggleRun"
+  | "toggleResult"
+  | "copyResult"
+  | "copiedResult"
+  | "openImage"
+  | "onHover"
+>;
+
+/**
+ * The timeline, while it shows. A run that starts while it shows slides in
+ * at the top; the runs it shows as it opens don't, since it opens again on
+ * every expand.
+ */
+function Timeline({
+  runs,
+  empty,
+  timeline,
+  shownAt,
+  ...row
+}: Pick<RunsViewProps, "runs" | "timeline" | "shownAt"> &
+  RowProps & {
+    /** What it says when there are no runs. */
+    empty: string;
+  }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto px-3.5 pt-2.5 pb-3">
+      {runs.length ? (
+        <ol ref={timeline} aria-label="Runs timeline" className="m-0 p-0">
+          {runs.map((run) => (
+            <RunRow
+              key={run.id}
+              run={run}
+              entering={run.startedAt > shownAt}
+              {...row}
+            />
+          ))}
+        </ol>
+      ) : (
+        <p className="m-0 p-3.5 text-center text-xs text-muted-foreground">
+          {empty}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -182,29 +226,23 @@ const statusIcon = {
 function RunRow({
   run,
   nested = false,
+  entering = false,
   closedRuns,
   openResults,
   flashing,
   toggleRun,
   toggleResult,
   copyResult,
+  copiedResult,
   openImage,
   onHover,
-}: Pick<
-  RunsViewProps,
-  | "closedRuns"
-  | "openResults"
-  | "flashing"
-  | "toggleRun"
-  | "toggleResult"
-  | "copyResult"
-  | "openImage"
-  | "onHover"
-> & {
+}: RowProps & {
   /** A top-level Run names its Caller; a child Run doesn't. */
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
   /** Whether it's a child run, nested under the run that started it. */
   nested?: boolean;
+  /** Whether it slides in as it appears. */
+  entering?: boolean;
 }) {
   const status = statusIcon[run.status];
   const open = !closedRuns.has(run.id);
@@ -212,14 +250,20 @@ function RunRow({
     <li
       aria-label={run.toolName}
       data-run-id={run.id}
-      className="flex list-none gap-2.5"
+      className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+        "flex list-none gap-2.5",
+        entering &&
+          "transition-[opacity,translate] duration-(--duration-normal) ease-(--ease-out) starting:opacity-0 motion-safe:starting:-translate-y-1"
+      )}
     >
       <div className="flex w-6.5 flex-none flex-col items-center">
         <span
           role="img"
           aria-label={status.label}
           className={cn(
-            "grid size-6.5 flex-none place-items-center rounded-full border bg-card",
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "mt-1 grid size-6.5 flex-none place-items-center rounded-full border bg-card",
             status.className
           )}
         >
@@ -237,7 +281,8 @@ function RunRow({
           flashing={flashing === run.id}
           onToggle={() => toggleRun(run.id)}
           onToggleResult={() => toggleResult(run.id)}
-          onCopyResult={copyResult}
+          onCopyResult={(text) => copyResult(run.id, text)}
+          resultCopied={run.id === copiedResult}
           onOpenImage={openImage}
           onHover={onHover}
         />
@@ -254,6 +299,7 @@ function RunRow({
                 toggleRun={toggleRun}
                 toggleResult={toggleResult}
                 copyResult={copyResult}
+                copiedResult={copiedResult}
                 openImage={openImage}
                 onHover={onHover}
               />
@@ -274,6 +320,7 @@ function RunEntryCard({
   onToggle,
   onToggleResult,
   onCopyResult,
+  resultCopied,
   onOpenImage,
   onHover,
 }: {
@@ -285,6 +332,8 @@ function RunEntryCard({
   onToggle: () => void;
   onToggleResult: () => void;
   onCopyResult: (text: string) => void;
+  /** Whether its result was just copied. */
+  resultCopied: boolean;
   onOpenImage: (src: string) => void;
   onHover: OnHover;
 }) {
@@ -293,14 +342,19 @@ function RunEntryCard({
       data-run-card=""
       data-flashing={flashing}
       className={cn(
-        "overflow-hidden rounded-lg border bg-card transition-shadow duration-200",
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+        "overflow-hidden rounded-lg border bg-card transition-shadow duration-(--duration-normal) ease-(--ease-out)",
         flashing && "ring-2 ring-ring"
       )}
     >
       <button
         type="button"
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left"
+        className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          "flex min-h-8 w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted/60",
+          rowFocusRing
+        )}
         onClick={onToggle}
       >
         {run.by !== undefined && <CallerMark by={run.by} />}
@@ -348,6 +402,7 @@ function RunEntryCard({
               open={resultOpen}
               onToggle={onToggleResult}
               onCopy={onCopyResult}
+              copied={resultCopied}
             />
           )}
           {run.error && (
@@ -422,11 +477,14 @@ function RunResult({
   open,
   onToggle,
   onCopy,
+  copied,
 }: {
   text: string;
   open: boolean;
   onToggle: () => void;
   onCopy: (text: string) => void;
+  /** Whether it was just copied, which its Copy says. */
+  copied: boolean;
 }) {
   return (
     <div className="mx-2.5 mb-2 flex flex-col gap-1">
@@ -434,24 +492,42 @@ function RunResult({
         <button
           type="button"
           aria-expanded={open}
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted",
+            focusRing,
+            pressable
+          )}
           onClick={onToggle}
         >
           <ChevronRightIcon
-            className={cn("size-3 transition-transform", open && "rotate-90")}
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+            className={cn("size-3", open && "rotate-90")}
             aria-hidden
           />
           Result
         </button>
         <span className="flex-1" />
+        <span role="status" className="sr-only">
+          {copied ? "Copied" : ""}
+        </span>
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs text-muted-foreground"
           onClick={() => onCopy(text)}
         >
-          <CopyIcon className="size-3.5" aria-hidden />
-          Copy
+          {copied ? (
+            <>
+              <CheckIcon className="size-3.5" aria-hidden />
+              Copied
+            </>
+          ) : (
+            <>
+              <CopyIcon className="size-3.5" aria-hidden />
+              Copy
+            </>
+          )}
         </Button>
       </div>
       {open && (

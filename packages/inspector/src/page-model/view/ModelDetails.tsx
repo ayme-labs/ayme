@@ -22,6 +22,7 @@ import type {
 import type { OnHover, RenderRun } from "../../navigation";
 import { hoverHandlers } from "./hover";
 import { LiveMark } from "./LiveMark";
+import { chip, rowFocusRing } from "../../shared";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
@@ -127,7 +128,7 @@ export function ObjectDetail({
         }
       />
       {node.kind === "collection" && node.actions.length > 0 && (
-        <p className="-mt-2 text-xs text-muted-foreground">
+        <p className="-mt-2 text-xs leading-normal text-muted-foreground">
           Collection actions run on one item.
         </p>
       )}
@@ -214,7 +215,7 @@ export function ModelDetail({
         {...(onPage ? {} : { status: { label: "Not on page", live: false } })}
       />
       {(model.description || !onPage) && (
-        <p className="-mt-2 text-xs text-muted-foreground">
+        <p className="-mt-2 text-xs leading-normal text-muted-foreground">
           {[
             model.description,
             !onPage &&
@@ -329,7 +330,8 @@ export function MemberDetail({
           <button
             type="button"
             aria-label={`Open its owner ${ownerLabel}`}
-            className="inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 font-mono hover:border-ring"
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            className={cn(chip, "font-mono")}
             onClick={() =>
               owner.kind === "object"
                 ? onOpenObject(owner.path)
@@ -360,7 +362,8 @@ export function MemberDetail({
             <button
               type="button"
               aria-label={`Open ${member.objectPath}`}
-              className="inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 font-mono hover:border-ring"
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              className={cn(chip, "font-mono")}
               onClick={() => onOpenObject(member.objectPath!)}
             >
               <BoxIcon className="size-3" aria-hidden />
@@ -411,7 +414,8 @@ function DetailHead({
               <button
                 type="button"
                 aria-label={`Open the ${model} page object model`}
-                className="inline-flex h-6 items-center gap-1 rounded-full border bg-card px-2 text-foreground hover:border-ring"
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                className={cn(chip, "text-foreground")}
                 onClick={() => onOpenModel?.(model)}
               >
                 <BracesIcon className="size-3" aria-hidden />
@@ -450,7 +454,7 @@ function DetailSection({
 }) {
   return (
     <section aria-label={title} className="grid gap-1">
-      <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
         <Icon className="size-3.5" aria-hidden />
         {title} · {count}
       </h4>
@@ -511,15 +515,19 @@ function OffPageAction({ action }: { action: ObjectAction }) {
         </Badge>
       </div>
       {action.description && (
-        <p className="text-xs text-muted-foreground">{action.description}</p>
+        <p className="text-xs leading-normal text-muted-foreground">
+          {action.description}
+        </p>
       )}
     </div>
   );
 }
 
-const rowClass =
+const rowClass = cn(
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-  "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50";
+  "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-muted",
+  rowFocusRing
+);
 
 /** A row that goes somewhere: a child Page Object, an instance or a model. */
 function LinkRow({

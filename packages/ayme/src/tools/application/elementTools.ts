@@ -240,13 +240,16 @@ const LOCATOR_EXPRESSION =
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
  * a Structural Ref, else a selector `page` resolves, which must match
- * exactly one element.
+ * exactly one element. With `scope`, a selector is matched as
+ * `page.locator(scope).locator(…)` matches it, and the selector returned is
+ * that chain; a Structural Ref names its element wherever it is.
  */
 export async function resolveElementTarget(
   page: Page,
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
-  currentDocument: Document
+  currentDocument: Document,
+  scope?: string
 ): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
     const node = await resolveRef(requested, definition.label, currentDocument);
@@ -265,9 +268,11 @@ export async function resolveElementTarget(
     throw new ToolInputError(
       failure("it is a Playwright locator expression, which tools do not take")
     );
+  // Chained as Playwright's Locator.locator chains a selector.
+  const selector = scope === undefined ? requested : `${scope} >> ${requested}`;
   let elements: Element[];
   try {
-    elements = resolveLocatorElements(page.locator(requested));
+    elements = resolveLocatorElements(page.locator(selector));
   } catch (error) {
     // The parser's diagnosis stays; the advice Playwright ends it with goes.
     const diagnosis = (
@@ -290,7 +295,7 @@ export async function resolveElementTarget(
         `the selector matches ${elements.length} elements; it must match exactly one`
       )
     );
-  return { element: elements[0]!, selector: requested };
+  return { element: elements[0]!, selector };
 }
 
 export function requireCurrentDocument(): Document {
