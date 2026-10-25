@@ -77,6 +77,11 @@ const refusals: [path: string, code: string, message: string][] = [
     "Only a slice's infrastructure may use the browser's globals.",
   ],
   [
+    "src/tools/application/elementTools.ts",
+    "export const title = () => document.title;",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
     "src/tools/application/misplaced.ts",
     'export { createRunQueue } from "../../runs/application/run";',
     "Import another slice through its index.ts.",
@@ -213,6 +218,11 @@ it(
         "export const title = () => document.title;",
       ],
       ["src/page-state/domain/misplaced.ts", "export type Target = Element;"],
+      // Until page-state resolves a selector target (#943).
+      [
+        "src/tools/application/elementTools.ts",
+        'export { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";',
+      ],
       [
         "src/runs/application/misplaced.ts",
         "export const last = (history: string[]) => history.at(-1);",

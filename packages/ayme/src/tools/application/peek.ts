@@ -57,31 +57,8 @@ export function emptyPeekStore(): PeekStore {
   return { peeks: new Map(), tools: new WeakSet(), listeners: new Set() };
 }
 
-/** Package-internal: the Peek operations on one store. */
-export type PeekRegistry = {
-  /**
-   * Adds the instance (`name`, `id`) of a Peek on `side`. With an id, a
-   * later call updates that instance's read, so every call's remover removes
-   * it. Without one, a later call replaces the instance, so the earlier
-   * call's remover does nothing, such as a reloaded module's old one.
-   * `ayme.peek` checks `name` and the dev gate first.
-   */
-  addPeek(
-    side: PeekSide,
-    read: PeekRead,
-    name: string,
-    id?: string
-  ): () => void;
-  /** The tools of the Peeks with a live instance. */
-  listPeekTools(): PeekTool[];
-  /** Calls `listener` after a Peek Tool appears or goes. */
-  subscribeToPeekTools(listener: () => void): () => void;
-  /** Whether `tool` is a Peek Tool, which only reads. */
-  isPeekTool(tool: object): boolean;
-};
-
 /** Package-internal: the Peek operations on `store`. */
-export function createPeekRegistry(store: PeekStore): PeekRegistry {
+export function createPeekRegistry(store: PeekStore) {
   function peekNamed(side: PeekSide, name: string): Peek {
     const existing = store.peeks.get(name);
     if (existing) return existing;
@@ -120,7 +97,19 @@ export function createPeekRegistry(store: PeekStore): PeekRegistry {
   }
 
   return {
-    addPeek(side, read, name, id) {
+    /**
+     * Adds the instance (`name`, `id`) of a Peek on `side`. With an id, a
+     * later call updates that instance's read, so every call's remover
+     * removes it. Without one, a later call replaces the instance, so the
+     * earlier call's remover does nothing, such as a reloaded module's old
+     * one. `ayme.peek` checks `name` and the dev gate first.
+     */
+    addPeek(
+      side: PeekSide,
+      read: PeekRead,
+      name: string,
+      id?: string
+    ): () => void {
       const peek = peekNamed(side, name);
       let instance = id === undefined ? undefined : peek.instances.get(id);
       if (instance) instance.read = read;
@@ -136,14 +125,18 @@ export function createPeekRegistry(store: PeekStore): PeekRegistry {
         if (peek.instances.size === 0) withdrawWhenStillEmpty(name, peek);
       };
     },
-    listPeekTools: () => [...store.peeks.values()].map(({ tool }) => tool),
-    subscribeToPeekTools(listener) {
+    /** The tools of the Peeks with a live instance. */
+    listPeekTools: (): PeekTool[] =>
+      [...store.peeks.values()].map(({ tool }) => tool),
+    /** Calls `listener` after a Peek Tool appears or goes. */
+    subscribeToPeekTools(listener: () => void): () => void {
       store.listeners.add(listener);
       return () => {
         store.listeners.delete(listener);
       };
     },
-    isPeekTool: (tool) => store.tools.has(tool),
+    /** Whether `tool` is a Peek Tool, which only reads. */
+    isPeekTool: (tool: object): boolean => store.tools.has(tool),
   };
 }
 

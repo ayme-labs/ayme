@@ -255,9 +255,6 @@ function registeredToolNames(): Set<string> {
 
 const onServer = () => typeof window === "undefined";
 
-/** Where this session's Peeks are added: Node is an App Process's side. */
-const peekSide = (): PeekSide => (onServer() ? "node" : "browser");
-
 const noSuchTool = (name: string) =>
   new RuntimeStateError(`There is no tool "${name}".`);
 
@@ -754,7 +751,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       if (typeof name !== "string" || name === "")
         throw new RuntimeStateError("A Peek needs a name.");
       if (!peeks) return () => {};
-      const side = peekSide();
+      // Node is an App Process's side.
+      const side: PeekSide = onServer() ? "node" : "browser";
       const toolName = peekToolName(side, name);
       if (registeredToolNames().has(toolName))
         throw new RuntimeStateError(

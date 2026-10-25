@@ -57,9 +57,6 @@ export type GoalLoopRunResult = {
 
 export type GoalLoopRunResultStore = { last?: GoalLoopRunResult };
 
-/** Keeps a finished run's result, as the last run's. */
-export type RecordGoalLoopRunResult = (result: GoalLoopRunResult) => void;
-
 // --- Action execution (delegates to the shared action sequence) ---
 
 /** What one executed step came to: its history fields and its Change Record. */
@@ -165,7 +162,7 @@ async function executeToolAction(
  */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
-  recordResult: RecordGoalLoopRunResult
+  recordResult: (result: GoalLoopRunResult) => void
 ): GoalTool {
   /** Runs the loop for the Run's Caller, which the Handover hands control back to. */
   const execute = async (
@@ -225,7 +222,7 @@ export function createPursueGoalTool(
 export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
-  recordResult: RecordGoalLoopRunResult,
+  recordResult: (result: GoalLoopRunResult) => void,
   { cursor, run: runChild, page, document: currentDocument }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];

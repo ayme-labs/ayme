@@ -24,12 +24,6 @@ import {
   isSelectElement,
   isUncheckableElement,
 } from "../domain/elementFilters";
-import {
-  navigateBackTool,
-  navigateForwardTool,
-  reloadTool,
-} from "./historyTools";
-import { navigateTool, type RouterNavigate } from "./navigateTool";
 
 // --- Input schemas ---
 
@@ -354,22 +348,3 @@ export const pressKeyTool: PublishedElementTool = {
     );
   },
 };
-
-// --- Browser Tools that move the page ---
-
-/**
- * Package-internal: the Browser Tools that move the page to another URL or
- * history entry, in publication order. They take no element; each is
- * published and the Goal Loop may choose it. `navigate` hands its URL to
- * the router function `routerNavigate` reads when a call runs, if any.
- */
-export function navigationTools(
-  routerNavigate: () => RouterNavigate | undefined
-): readonly PublishedElementTool[] {
-  return [
-    navigateTool(routerNavigate),
-    navigateBackTool,
-    navigateForwardTool,
-    reloadTool,
-  ];
-}
