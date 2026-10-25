@@ -30,6 +30,32 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /*
+   * On touch: a tap answers at once and doesn't flash grey over the press
+   * feedback, and a long press on a control doesn't select its label. Text
+   * the panel shows stays selectable. A base style, so a control's own
+   * `touch-none` still wins.
+   */
+  [data-ayme-inspector-root] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :is(button, [role="button"], a, label, select) {
+    touch-action: manipulation;
+  }
+
+  :is(button, [role="button"]) {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* iOS zooms into a focused field under 16px and stays zoomed. */
+@media (pointer: coarse) {
+  [data-ayme-inspector-root] :is(input, textarea, select) {
+    font-size: 16px;
+  }
 }
 
 /*
@@ -65,6 +91,26 @@
 [data-ayme-inspector-root][data-ayme-pass-through] *,
 :host([data-ayme-hit-test-through]) * {
   pointer-events: none !important;
+}
+
+/*
+ * Switching between light and dark eases the panel's surfaces instead of
+ * flashing them. InspectorRoot marks the root for the one switch; until the
+ * mark goes, every element in it transitions its fill, its background and its
+ * shadow, and nothing else. Text and borders switch at once: every element
+ * has a border colour and inherits a text colour, so easing those starts five
+ * transitions on each, which stalls a large tree for a second or more.
+ * The panel's and the logo's frames keep their own transitions, which they
+ * enter and leave on and which this would cut short; the panel's surface
+ * also sits on an element inside its frame, so it still eases across.
+ */
+[data-ayme-inspector-root][data-theme-switching],
+[data-ayme-inspector-root][data-theme-switching] *:not([data-presence]),
+[data-ayme-inspector-root][data-theme-switching] *::before,
+[data-ayme-inspector-root][data-theme-switching] *::after {
+  transition-property: background-color, fill, box-shadow;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: ease;
 }
 
 /*
@@ -108,4 +154,43 @@
     var(--color-neutral-700),
     var(--color-neutral-600) 60%
   );
+}
+
+/*
+ * The panel's own steps of the design system's colours. A selected row is a
+ * step above a hovered one (the design system gives --accent and --muted one
+ * colour), and in light, secondary and status text reach 4.5:1 (WCAG AA) on
+ * the panel and on their own tints, as they already do in dark.
+ */
+[data-ayme-inspector-root]:not(.dark) {
+  --accent: var(--color-neutral-300);
+  --muted-foreground: color-mix(
+    in oklab,
+    var(--color-neutral-600),
+    var(--color-neutral-700) 50%
+  );
+  --success: color-mix(
+    in oklab,
+    var(--color-green-600),
+    var(--color-green-700) 35%
+  );
+  --warning: var(--color-orange-600);
+  --destructive: var(--color-red-600);
+}
+
+[data-ayme-inspector-root].dark {
+  --accent: var(--color-neutral-700);
+}
+
+/* Asked for more contrast: stronger secondary text, and borders as inputs'. */
+@media (prefers-contrast: more) {
+  [data-ayme-inspector-root]:not(.dark) {
+    --muted-foreground: var(--color-neutral-700);
+    --border: var(--input);
+  }
+
+  [data-ayme-inspector-root].dark {
+    --muted-foreground: var(--color-neutral-300);
+    --border: var(--input);
+  }
 }

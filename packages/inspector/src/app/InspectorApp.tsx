@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
-import { Empty, InspectorRoot, useTabState } from "../shared";
+import { Empty, InspectorRoot, useCopy, useTabState } from "../shared";
 import {
   Connections,
   DetailPane,
@@ -43,6 +43,7 @@ export function InspectorApp() {
   const [unfoldedChains, setUnfoldedChains] = useState<ReadonlySet<string>>(
     () => new Set()
   );
+  const { copied, copy } = useCopy();
   const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
@@ -150,6 +151,7 @@ export function InspectorApp() {
             webMCP={runtime.tools.publication}
             tools={live}
             onCopy={copy}
+            copied={copied}
           />
         }
       >
@@ -172,14 +174,6 @@ export function InspectorApp() {
       </InspectorShell>
     </InspectorRoot>
   );
-}
-
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // The page can deny the clipboard; the snippet can still be selected.
-  }
 }
 
 /** The selection's solid highlight: its lens's, or the default one. */

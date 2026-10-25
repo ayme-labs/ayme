@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import {
-  ArrowRightIcon,
   BoxIcon,
   BracesIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -24,8 +22,11 @@ import {
   type TreeRow,
 } from "../domain/treeRows";
 import {
+  chip,
   Empty,
+  focusRing,
   INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  rowPress,
   WhatTheModelSees,
 } from "../../shared";
 import type {
@@ -216,7 +217,7 @@ function StructureTreeView({
                 className={rowClass}
                 style={{ paddingLeft: rowIndent(row.depth) }}
               >
-                <span className={nameClass}>
+                <span dir="auto" className={nameClass} title={row.node.name}>
                   {JSON.stringify(row.node.name)}
                 </span>
               </div>
@@ -239,7 +240,7 @@ function StructureTreeView({
 // Rows never scroll sideways: past the panel's width the name is cut
 // first, the member tag only past its share.
 const rowClass =
-  "relative flex items-baseline gap-1.5 overflow-hidden rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
+  "relative flex items-baseline gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
 const nameClass =
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
@@ -291,7 +292,6 @@ function NodeRow({
   const outer = folded && hasRef(folded.outer) ? folded.outer : undefined;
   const hidden = folded?.hidden ?? 0;
   const toggle = outer ?? (unfolded ? node : undefined);
-  const Chevron = outer ? ChevronRightIcon : ChevronDownIcon;
   return (
     <div
       role="treeitem"
@@ -305,6 +305,7 @@ function NodeRow({
       className={cn(
         rowClass,
         "cursor-default hover:bg-muted",
+        rowPress,
         node.ref === selectedRef && "bg-accent hover:bg-accent"
       )}
       style={{ paddingLeft: rowIndent(depth) }}
@@ -319,7 +320,11 @@ function NodeRow({
           // The wrappers' state, not the row's: the row's children show either way.
           aria-expanded={!outer}
           data-chain={toggle.ref}
-          className="absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground",
+            focusRing
+          )}
           style={{ left: rowIndent(depth) - 15 }}
           onClick={(event) => {
             event.stopPropagation();
@@ -335,7 +340,11 @@ function NodeRow({
               );
           }}
         >
-          <Chevron className="size-3" aria-hidden />
+          <ChevronRightIcon
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,BooleanLiteral: Tailwind classes are styling, which no test reads.
+            className={cn("size-3", !outer && "rotate-90")}
+            aria-hidden
+          />
         </button>
       )}
       {outer && (
@@ -344,7 +353,11 @@ function NodeRow({
             type="button"
             aria-label={`${outer.ref} generic`}
             aria-pressed={outer.ref === selectedRef}
-            className="shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline"
+            className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline",
+              focusRing
+            )}
             onClick={(event) => {
               event.stopPropagation();
               onPick(outer.ref);
@@ -360,7 +373,7 @@ function NodeRow({
               type="button"
               tabIndex={-1}
               aria-hidden
-              className="shrink-0 self-center rounded-full border bg-muted px-1.5 font-sans text-[10px] leading-4 text-muted-foreground hover:text-foreground"
+              className="shrink-0 self-center rounded-full border bg-muted px-1.5 font-sans text-[11px] leading-4 text-muted-foreground hover:text-foreground"
               onClick={(event) => {
                 event.stopPropagation();
                 onToggle(outer);
@@ -376,15 +389,21 @@ function NodeRow({
       )}
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-baseline gap-1.5 text-left"
+        className={cn(
+          "flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm text-left",
+          focusRing
+        )}
       >
         <span className="shrink-0 text-primary">{node.ref}</span>
         <span className="shrink-0">{node.role}</span>
         {node.name && (
-          <span className={nameClass}>{JSON.stringify(node.name)}</span>
+          <span dir="auto" className={nameClass} title={node.name}>
+            {JSON.stringify(node.name)}
+          </span>
         )}
         {node.member && (
           <span
+            data-member-tag
             className="ml-auto max-w-[45%] min-w-0 truncate pl-1.5 text-xs text-muted-foreground"
             title={node.member}
           >
@@ -410,10 +429,10 @@ function NodeDetail({
   const members = node.memberLinks ?? [];
   const tools = elementTools.filter((tool) => tool.refs.includes(node.ref));
   return (
-    <article aria-label="Structure node" className="grid gap-3">
+    <article aria-label="Structure node" className="grid grid-cols-1 gap-3">
       <div className="flex items-start gap-2.5">
         <div className="grid min-w-0 flex-1 gap-0.5">
-          <h2 className="font-mono text-sm font-semibold break-all">
+          <h2 className="font-mono text-sm font-semibold [overflow-wrap:anywhere]">
             {nodeLabel(node)}
           </h2>
           <p className="text-xs text-muted-foreground">Structure node</p>
@@ -434,13 +453,14 @@ function NodeDetail({
               <button
                 key={member}
                 type="button"
-                title={`Open ${opens}`}
-                className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border bg-card px-2.5 text-xs hover:border-ring"
+                title={member}
+                aria-description={`Opens ${opens}`}
+                className={chip}
                 onClick={() => onOpenOwner(owner)}
               >
-                <Icon className="size-3.5 flex-none" aria-hidden />
+                <Icon className="size-3 flex-none" aria-hidden />
                 <span className="truncate font-mono">{member}</span>
-                <ArrowRightIcon className="size-3.5 flex-none" aria-hidden />
+                <ChevronRightIcon className="size-3 flex-none" aria-hidden />
               </button>
             );
           })}
@@ -452,7 +472,7 @@ function NodeDetail({
         </p>
       )}
       {tools.length > 0 && (
-        <section aria-label="Tools" className="grid gap-2">
+        <section aria-label="Tools" className="grid grid-cols-1 gap-2">
           <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <WrenchIcon className="size-3.5" aria-hidden />
             Tools · {tools.length}

@@ -42,6 +42,13 @@ export function InspectorBody({
   if (regions[runsKey] !== undefined)
     sizes[layout === "bottom" ? "--spacing-runs-docked" : "--spacing-runs"] =
       `${ranges.runs.value}px`;
+  // Runs never takes the room the navigator and the detail pane keep, at the
+  // layout's own size either. Its range reads the body, never Runs itself,
+  // and has no end until the body is measured.
+  sizes["--runs-max"] = `${ranges.runs.max}px`;
+  // Docked to the bottom, the navigator keeps the detail pane's room from
+  // Runs' too, down to its own minimum.
+  sizes["--navigator-max"] = `${ranges.navigator.max}px`;
 
   return (
     <InspectorBodyView

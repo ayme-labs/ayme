@@ -7,6 +7,7 @@ export type {
   RunInteraction,
   ToolArguments,
 } from "./domain/run";
+export { formatDuration } from "./domain/duration";
 export { isPanelRun } from "./domain/logRuns";
 export { runScope } from "./domain/runScope";
 export { useRuns } from "./infrastructure/useRuns";

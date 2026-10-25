@@ -2,7 +2,14 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared";
+import {
+  focusRing,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  pressable,
+  QualifiedName,
+  rowFocusRing,
+  rowPress,
+} from "../../shared";
 
 import type { HighlightTarget, OnHover } from "../domain/highlight";
 import type { LegendCounts, Lens, LensId } from "../domain/lens";
@@ -71,7 +78,12 @@ export function NavigatorView({
               key={lens.id}
               type="button"
               aria-pressed={lens.id === activeLens}
-              className="h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+              className={cn(
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                "h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
+                focusRing,
+                pressable
+              )}
               onClick={() => onLensChange(lens.id)}
             >
               {lens.label}
@@ -92,21 +104,24 @@ export function NavigatorView({
                 <li key={result.entry.key}>
                   <button
                     type="button"
-                    className="flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted"
+                    className={cn(
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                      "flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted",
+                      rowFocusRing,
+                      rowPress
+                    )}
                     onClick={() => pick(result)}
                     onMouseEnter={() => onHover?.(highlightOf(result))}
                     onMouseLeave={() => onHover?.(undefined)}
                   >
                     <span className="flex max-w-full items-center gap-1.5">
-                      <span className="w-13 flex-none text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      <span className="w-13 flex-none text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                         {result.entry.kind}
                       </span>
-                      <span
-                        className="truncate font-mono text-xs"
-                        title={result.entry.label}
-                      >
-                        {result.entry.label}
-                      </span>
+                      <QualifiedName
+                        name={result.entry.label}
+                        className="font-mono text-xs"
+                      />
                     </span>
                     {result.entry.description && (
                       <span className="max-w-full truncate pl-14.5 text-xs text-muted-foreground">
@@ -133,28 +148,39 @@ export function NavigatorView({
 function Legend({ counts }: { counts: LegendCounts }) {
   const items = [
     counts.live !== undefined && (
-      <span key="live" className="inline-flex items-center gap-1.5">
+      <span
+        key="live"
+        className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      >
         <span className="size-2 rounded-full bg-success" aria-hidden />
-        {counts.live} live
+        <span className="tabular-nums">{counts.live}</span> live
       </span>
     ),
     counts.notOnPage !== undefined && (
-      <span key="off" className="inline-flex items-center gap-1.5">
+      <span
+        key="off"
+        className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      >
         <span
           className="size-2 rounded-full shadow-[inset_0_0_0_1.5px_var(--color-muted-foreground)]"
           aria-hidden
         />
-        {counts.notOnPage} not on page
+        <span className="tabular-nums">{counts.notOnPage}</span> not on page
       </span>
     ),
-    counts.refs !== undefined && <span key="refs">{counts.refs} refs</span>,
+    counts.refs !== undefined && (
+      <span key="refs" className="whitespace-nowrap">
+        <span className="tabular-nums">{counts.refs}</span> refs
+      </span>
+    ),
   ].filter(Boolean);
   return (
     <div
       role="group"
       aria-label="Legend"
       className={cn(
-        "flex gap-3 px-0.5 text-xs text-muted-foreground",
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+        "flex flex-wrap gap-x-3 gap-y-0.5 px-0.5 text-xs text-muted-foreground",
         !items.length && "hidden"
       )}
     >

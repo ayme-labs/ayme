@@ -14,7 +14,7 @@ import { withDemoFeedback } from "../demo";
 // the selection's.
 const highlightStyleText = `
 [data-ayme-highlight] {
-  animation: ayme-highlight-pulse 1.6s ease-in-out infinite;
+  animation: ayme-highlight-pulse 1.6s ease-in-out 2;
   outline: 3px solid #d9a441;
   outline-offset: 3px;
   position: relative;

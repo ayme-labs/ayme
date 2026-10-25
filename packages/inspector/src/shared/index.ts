@@ -15,8 +15,18 @@ export {
 export { type Look, usePageLook } from "./infrastructure/usePageLook";
 export { useTabState } from "./infrastructure/tabStorage";
 export { usePointerDrag } from "./presentation/pointerDrag";
+export { useCopy } from "./presentation/useCopy";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
+export {
+  chip,
+  focusRing,
+  pressable,
+  pressableIcon,
+  rowFocusRing,
+  rowPress,
+} from "./view/controls";
 export { Divider, resizeGrip } from "./presentation/Divider";
-export { InspectorRoot } from "./view/InspectorRoot";
+export { InspectorRoot } from "./presentation/InspectorRoot";
+export { QualifiedName } from "./view/QualifiedName";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

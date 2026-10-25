@@ -2,8 +2,10 @@ import { useCallback, useId, type ComponentType } from "react";
 import { XIcon } from "lucide-react";
 
 import type { JsonValue } from "@ayme-dev/ayme";
+import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { ToolArguments } from "../../runs";
+import { focusRing, pressable, pressableIcon } from "../../shared";
 import { initialValues, type Field } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { ValueType } from "../domain/valueRows";
@@ -94,11 +96,11 @@ function FieldLabel({ field, htmlFor }: { field: Field; htmlFor?: string }) {
   return (
     <Tag
       htmlFor={htmlFor}
-      className="flex items-baseline gap-1.5 text-xs font-semibold"
+      className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs font-semibold"
     >
-      {field.name}
+      <span className="min-w-0 [overflow-wrap:anywhere]">{field.name}</span>
       {field.typeLabel && (
-        <span className="font-mono text-xs font-medium text-muted-foreground">
+        <span className="min-w-0 font-mono text-xs font-medium text-muted-foreground [overflow-wrap:anywhere]">
           {field.typeLabel}
         </span>
       )}
@@ -139,7 +141,7 @@ function FieldRow({
 
   if (field.kind === "boolean")
     return (
-      <label className="flex items-center gap-2 text-xs font-semibold">
+      <label className="flex min-w-0 items-baseline gap-2 text-xs font-semibold">
         <input
           type="checkbox"
           aria-label={name}
@@ -152,9 +154,12 @@ function FieldRow({
             )
           }
         />
-        {field.name}
-        <span className="font-mono text-xs font-medium text-muted-foreground">
-          boolean
+        {/* The name and its type wrap beside the box. */}
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="min-w-0 [overflow-wrap:anywhere]">{field.name}</span>
+          <span className="font-mono text-xs font-medium text-muted-foreground">
+            boolean
+          </span>
         </span>
       </label>
     );
@@ -185,19 +190,23 @@ function FieldRow({
     return (
       <fieldset className="m-0 flex flex-col gap-2 rounded-lg border px-2.5 pt-2 pb-2.5">
         {field.optional ? (
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold">
+          <label className="flex min-w-0 cursor-pointer items-baseline gap-2 text-xs font-semibold">
             <input
               type="checkbox"
               aria-label={name}
               checked={on}
               onChange={() => set(on ? undefined : initialValues(field.fields))}
             />
-            {field.name}
-            <span className="font-mono text-xs font-medium text-muted-foreground">
-              object
-            </span>
-            <span className="text-xs font-medium text-muted-foreground">
-              optional
+            <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {field.name}
+              </span>
+              <span className="font-mono text-xs font-medium text-muted-foreground">
+                object
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">
+                optional
+              </span>
             </span>
           </label>
         ) : (
@@ -247,7 +256,12 @@ function FieldRow({
             <button
               type="button"
               aria-label={`Remove ${name} ${index + 1}`}
-              className="grid size-7.5 flex-none place-items-center rounded-md text-muted-foreground hover:bg-muted"
+              className={cn(
+                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                "grid size-7.5 flex-none place-items-center rounded-md text-muted-foreground hover:bg-muted",
+                focusRing,
+                pressableIcon
+              )}
               onClick={() => setRows(rows.filter((_, at) => at !== index))}
             >
               <XIcon className="size-3.5" aria-hidden />
@@ -257,7 +271,12 @@ function FieldRow({
         <button
           type="button"
           aria-label={`Add to ${name}`}
-          className="h-6 self-start rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "h-6 self-start rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground",
+            focusRing,
+            pressable
+          )}
           onClick={() =>
             setRows([
               ...rows,

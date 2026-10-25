@@ -99,6 +99,13 @@ function renderRuns(props: Partial<RunsProps> = {}) {
   };
 }
 
+/** Whether a row of the timeline fades in as it appears. */
+function fadesIn(row: typeof runsView.runs) {
+  return row.evaluate((item) =>
+    getComputedStyle(item).transitionProperty.includes("opacity")
+  );
+}
+
 describe("Runs", () => {
   it("lists the runs, newest first", async () => {
     renderRuns();
@@ -148,6 +155,82 @@ describe("Runs", () => {
     await expect.poll(() => run.status()).toBe("Succeeded");
     expect(await run.root.textContent()).toContain("42 ms");
     expect(await run.resultText()).toBe("true");
+  });
+
+  it("shows a run of a second or more in seconds", async () => {
+    renderRuns({ runs: [aRun({ durationMs: 15204 })] });
+    const run = runsView.run(0);
+
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.card.textContent()).toContain("15.2 s · ");
+    expect(await run.card.textContent()).not.toContain("15204");
+  });
+
+  it("shows only the time a run started when a reload cut it short", async () => {
+    const reloaded = aRun({
+      status: "failed",
+      error: "The page reloaded before the run returned.",
+      // Local time, as Runs shows it.
+      startedAt: new Date(2026, 9, 23, 9, 5, 3).getTime(),
+    });
+    delete reloaded.durationMs;
+    renderRuns({ runs: [reloaded] });
+    const run = runsView.run(0);
+
+    await expect.poll(() => run.status()).toBe("Failed");
+    // Hours in two digits, with or without the locale's AM or PM.
+    expect(await run.toggle.textContent()).toMatch(
+      /^ListPage\.addItem09:05:03(\s[AP]M)?$/
+    );
+  });
+
+  it("names a run's tool and its item in full on hover", async () => {
+    renderRuns();
+    const archive = runsView.latest("ListPage.items.archive");
+
+    await expect
+      .poll(() =>
+        archive.card
+          .getByTitle("ListPage.items.archive", { exact: true })
+          .count()
+      )
+      .toBe(1);
+    expect(
+      await archive.card.getByTitle("items[0]", { exact: true }).count()
+    ).toBe(1);
+  });
+
+  it("names an Interaction's member in full on hover, with its locator", async () => {
+    renderRuns();
+    const target = runsView.latest("ListPage.addItem").interactionTarget(1);
+
+    await expect
+      .poll(() => target.getAttribute("title"))
+      .toBe(
+        "ListPage.addItemButton: getByRole('button', { name: 'Add item' }). Hover to highlight it on the page."
+      );
+    expect(await target.textContent()).toBe("ListPage.addItemButton");
+  });
+
+  it("names an Interaction's target by its member's whole name", async () => {
+    renderRuns();
+    const run = runsView.latest("ListPage.addItem");
+
+    await expect
+      .poll(() =>
+        run.interactions
+          .getByRole("button", { name: "ListPage.addItemButton", exact: true })
+          .count()
+      )
+      .toBe(1);
+    expect(
+      await run.interactions
+        .getByRole("button", {
+          name: "getByRole('textbox', { name: 'New item' })",
+          exact: true,
+        })
+        .count()
+    ).toBe(1);
   });
 
   it("marks the runs from before the page last loaded as earlier page rows", async () => {
@@ -310,6 +393,55 @@ describe("Runs", () => {
       .toBe("No runs for this selection yet. Switch to All to see every run.");
   });
 
+  it("says no run has happened yet, with nothing selected to narrow to", async () => {
+    renderRuns({ runs: [], scopeLabel: "This page" });
+
+    await expect
+      .poll(() => runsView.empty.textContent())
+      .toBe("No runs yet. Runs from this panel and from agents show here.");
+  });
+
+  it("fades in a run that starts while it shows, not the runs it opened with", async () => {
+    const opened = aRun({
+      id: "1",
+      toolName: "goal",
+      children: [aChildRun()],
+    });
+    const { showRuns } = renderRuns({ runs: [opened] });
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+
+    showRuns([aRun({ id: "2", startedAt: Date.now() + 60_000 }), opened]);
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await fadesIn(runsView.run(0).root)).toBe(true);
+    expect(await fadesIn(runsView.run(1).root)).toBe(false);
+    expect(await fadesIn(runsView.run(1).childRuns.first())).toBe(false);
+  });
+
+  it("doesn't fade in a run that started the moment it opened", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000);
+    const { showRuns } = renderRuns({ runs: [] });
+    vi.useRealTimers();
+
+    showRuns([aRun({ startedAt: 1_000_000 })]);
+
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+    expect(await fadesIn(runsView.run(0).root)).toBe(false);
+  });
+
+  it("doesn't fade in a run that started while it was closed", async () => {
+    const { showRuns } = renderRuns({ runs: [addMilk] });
+    await runsView.header.click();
+    await expect.poll(() => runsView.timeline.count()).toBe(0);
+    showRuns([aRun({ id: "2", startedAt: Date.now() }), addMilk]);
+
+    await runsView.header.click();
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await fadesIn(runsView.run(0).root)).toBe(false);
+  });
+
   it("expands a run it's asked to show", async () => {
     const { focusRun } = renderRuns();
     const run = runsView.latest("ListPage.addItem");
@@ -391,6 +523,75 @@ describe("a run's result", () => {
     await expect
       .poll(() => navigator.clipboard.writeText)
       .toHaveBeenCalledExactlyOnceWith('"Milk"');
+  });
+
+  it("says it copied, for a moment", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+    const copied = run.card.getByRole("button", {
+      name: "Copied",
+      exact: true,
+    });
+
+    await run.copyResultButton.click();
+
+    await expect.poll(() => copied.count()).toBe(1);
+    await expect.poll(() => copied.count(), { timeout: 3000 }).toBe(0);
+    expect(await run.copyResultButton.count()).toBe(1);
+  });
+
+  it("tells assistive technology it copied", async () => {
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+    const run = runsView.run(0);
+    expect(await run.card.getByRole("status").textContent()).toBe("");
+
+    await run.copyResultButton.click();
+
+    await expect
+      .poll(() => run.card.getByRole("status").textContent())
+      .toBe("Copied");
+  });
+
+  it("says it copied only on the run it copied, when another has the same result", async () => {
+    renderRuns({
+      runs: [
+        aRun({ id: "2", result: '"Milk"' }),
+        aRun({ id: "1", result: '"Milk"' }),
+      ],
+    });
+
+    await runsView.run(0).copyResultButton.click();
+
+    await expect
+      .poll(() => runsView.run(0).card.getByRole("status").textContent())
+      .toBe("Copied");
+    expect(await runsView.run(1).card.getByRole("status").textContent()).toBe(
+      ""
+    );
+    expect(await runsView.run(1).copyResultButton.count()).toBe(1);
+  });
+
+  it("stays put on a page that offers no clipboard", async () => {
+    // A page served over plain http from another machine has none.
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    const errors: unknown[] = [];
+    const recordError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener("error", recordError);
+    try {
+      renderRuns({ runs: [aRun({ result: '"Milk"' })] });
+      const run = runsView.run(0);
+
+      await run.copyResultButton.click();
+
+      expect(errors).toEqual([]);
+      expect(await run.copyResultButton.count()).toBe(1);
+    } finally {
+      window.removeEventListener("error", recordError);
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   it("isn't there when the tool returned undefined", async () => {

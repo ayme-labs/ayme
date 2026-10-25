@@ -24,9 +24,66 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Decide whether to analyze
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      analyze: ${{ steps.merge.outputs.analyze }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      # A push that only merges the base branch into the pull request leaves
+      # the pull request's own changes as they were, so the report made for
+      # the commit before the merge still holds. It counts as only a merge
+      # when its tree is the clean merge of its parents, without a conflict
+      # resolved or a file edited on the way. A run has a report when it has
+      # a "Report written" step that succeeded. Without one, for example when
+      # this push cancelled that run or its analysis broke, the merge is
+      # analyzed.
+      - id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNCHRONIZE: ${{ github.event.action == 'synchronize' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          report=
+          if [ "$SYNCHRONIZE" = true ]; then
+            read -r _ before merged rest <<< "$(git rev-list --parents -n 1 "$HEAD_SHA")"
+            if [ -n "${merged:-}" ] && [ -z "${rest:-}" ] &&
+              git merge-base --is-ancestor "$merged" "origin/$BASE_REF" &&
+              [ "$(git merge-tree --write-tree "$before" "$merged" 2>/dev/null)" = "$(git rev-parse "$HEAD_SHA^{tree}")" ]; then
+              for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/change-analysis.yml/runs?head_sha=$before&status=success" \
+                --jq ".workflow_runs[] | select(any(.pull_requests[]; .number == $PR)) | .id"); do
+                if [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs" --jq '[.jobs[].steps[] | select(.name == "Report written" and .conclusion == "success")] | length')" -gt 0 ]; then
+                  report=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .html_url)
+                  break
+                fi
+              done
+            fi
+          fi
+          if [ -n "$report" ]; then
+            echo "analyze=false" >> "$GITHUB_OUTPUT"
+            echo "This push only merges \`$BASE_REF\` into the pull request. The report for its changes is in [the run for ${before:0:7}]($report)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "analyze=true" >> "$GITHUB_OUTPUT"
+          fi
+      # A merge after this one finds the report through this run.
+      - name: Report written
+        if: steps.merge.outputs.analyze == 'false'
+        run: "true"
+
   analyze:
     name: Analyze changed source
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: scope
+    if: needs.scope.outputs.analyze == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
@@ -40,9 +97,14 @@ jobs:
       - uses: ./.github/actions/setup
       # A pull request's checkout is its merge commit, whose first parent is
       # the base it merges into. A dispatch compares with where it left main.
-      - run: pnpm analyze:changed ${BASE:+--base "$BASE"}
+      - id: analysis
+        run: pnpm analyze:changed ${BASE:+--base "$BASE"}
         continue-on-error: true
         env:
           BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
       - if: always()
         run: cat reports/analyze-changed.md >> "$GITHUB_STEP_SUMMARY" || echo "No report was written; see the analysis step's log." >> "$GITHUB_STEP_SUMMARY"
+      # The scope job of a later merge looks for this step.
+      - name: Report written
+        if: steps.analysis.outcome == 'success'
+        run: "true"

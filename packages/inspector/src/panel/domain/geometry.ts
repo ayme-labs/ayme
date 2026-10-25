@@ -35,7 +35,12 @@ export function defaultFloat(viewport: Viewport): Rect {
   return { x: viewport.width - width - 24, y: 24, width, height };
 }
 
-/** Fits a floating panel to the viewport, keeping its header reachable. */
+/**
+ * Fits a floating panel to the viewport, keeping its header reachable. A
+ * panel moved partly off the page keeps its header and 120px of its width on
+ * it, but one whose size had to change to fit the viewport moves in until it
+ * fits whole.
+ */
 export function fitFloat(rect: Rect, viewport: Viewport): Rect {
   const width = clamp(
     rect.width,
@@ -47,9 +52,13 @@ export function fitFloat(rect: Rect, viewport: Viewport): Rect {
     Math.min(MIN_FLOAT.height, viewport.height),
     viewport.height
   );
+  const shown =
+    width === rect.width && height === rect.height
+      ? { width: VISIBLE_WIDTH, height: HEADER_HEIGHT }
+      : { width, height };
   return {
-    x: clamp(rect.x, VISIBLE_WIDTH - width, viewport.width - VISIBLE_WIDTH),
-    y: clamp(rect.y, 0, viewport.height - HEADER_HEIGHT),
+    x: clamp(rect.x, shown.width - width, viewport.width - shown.width),
+    y: clamp(rect.y, 0, viewport.height - shown.height),
     width,
     height,
   };

@@ -15,6 +15,14 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
 import {
+  focusRing,
+  pressable,
+  QualifiedName,
+  rowFocusRing,
+  rowPress,
+} from "../../shared";
+import {
+  formatDuration,
   RunImageView,
   type ChildRun,
   type CollectionItem,
@@ -106,9 +114,10 @@ export function RunCardView({
   const name = (
     <>
       <ZapIcon className="size-3.5 flex-none text-primary" aria-hidden />
-      <span className="truncate font-mono text-xs font-semibold">
-        {tool.action}
-      </span>
+      <QualifiedName
+        name={tool.action}
+        className="font-mono text-xs font-semibold"
+      />
     </>
   );
   const reasonLine = <ReasonLine reason={reason} />;
@@ -129,12 +138,18 @@ export function RunCardView({
                 type="button"
                 aria-expanded={open}
                 aria-label={`${open ? "Hide" : "Show"} the arguments for ${tool.action}`}
-                className="-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted"
+                className={cn(
+                  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                  "-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted",
+                  rowFocusRing,
+                  rowPress
+                )}
                 onClick={toggleOpen}
               >
                 <ChevronRightIcon
                   className={cn(
-                    "size-3.5 flex-none text-muted-foreground transition-transform",
+                    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                    "size-3 flex-none text-muted-foreground",
                     open && "rotate-90"
                   )}
                   aria-hidden
@@ -156,7 +171,7 @@ export function RunCardView({
           )}
           {reasonLine}
           {tool.description && (
-            <p className="m-0 text-xs text-muted-foreground">
+            <p className="m-0 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">
               {tool.description}
             </p>
           )}
@@ -181,7 +196,12 @@ export function RunCardView({
                     key={mode}
                     type="button"
                     aria-pressed={(json !== undefined) === (mode === "JSON")}
-                    className="h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                    className={cn(
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                      "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
+                      focusRing,
+                      pressable
+                    )}
                     onClick={() => showJson(mode === "JSON")}
                   >
                     {mode}
@@ -214,7 +234,10 @@ export function RunCardView({
                         role="radio"
                         aria-checked={on}
                         className={cn(
-                          "inline-flex h-6.5 items-center gap-1.25 rounded-full border border-input bg-background px-2.25 text-xs hover:border-ring",
+                          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+                          "inline-flex h-6.5 max-w-full items-center gap-1.25 rounded-full border border-input bg-background px-2.25 text-xs hover:border-ring",
+                          focusRing,
+                          pressable,
                           on &&
                             "border-primary bg-primary/10 font-semibold text-primary"
                         )}
@@ -222,8 +245,15 @@ export function RunCardView({
                         onMouseEnter={() => onHover?.({ path: candidate.path })}
                         onMouseLeave={() => onHover?.(undefined)}
                       >
-                        <span className="font-mono">{candidate.name}</span>{" "}
-                        {candidate.label}
+                        <span className="flex-none font-mono">
+                          {candidate.name}
+                        </span>
+                        <span
+                          className="min-w-0 truncate"
+                          title={candidate.label}
+                        >
+                          {candidate.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -298,7 +328,12 @@ export function JsonEditor({
           type="button"
           disabled={error !== undefined}
           title={error ? "Fix the JSON to format it" : "Pretty-print the JSON"}
-          className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground"
+          className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+            "cursor-pointer rounded-sm text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground",
+            focusRing,
+            pressable
+          )}
           onClick={() => {
             onFormat();
             // Formatted lines start at the left edge; show them from there.
@@ -401,7 +436,7 @@ function LastResult({
   const interactions = `${count} ${count === 1 ? "interaction" : "interactions"}`;
   // A run interrupted by a reload has no known duration.
   const duration =
-    run.durationMs === undefined ? "" : ` · ${run.durationMs} ms`;
+    run.durationMs === undefined ? "" : ` · ${formatDuration(run.durationMs)}`;
   const label =
     run.status === "running"
       ? "Running…"
@@ -428,12 +463,17 @@ function LastResult({
           <CheckIcon className="size-3.5" aria-hidden />
         )}
         {run.status === "failed" && <XIcon className="size-3.5" aria-hidden />}
-        <span>{label}</span>
+        <span className="tabular-nums">{label}</span>
         <span className="flex-1" />
         {lastSuccess && (
           <button
             type="button"
-            className="cursor-pointer text-xs font-semibold underline underline-offset-2"
+            className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "cursor-pointer rounded-sm text-xs font-semibold whitespace-nowrap underline underline-offset-2",
+              focusRing,
+              pressable
+            )}
             onClick={() => onShowRun(lastSuccess.id)}
           >
             {lastSuccess === run ? "Show in runs" : "Last success ›"}
@@ -441,7 +481,9 @@ function LastResult({
         )}
       </div>
       {run.status === "failed" && (
-        <p className="m-0 font-mono text-xs break-words">{run.error}</p>
+        <p className="m-0 font-mono text-xs [overflow-wrap:anywhere]">
+          {run.error}
+        </p>
       )}
       {run.status === "succeeded" && run.image && (
         <RunImageView image={run.image} onOpen={onOpenImage} />
