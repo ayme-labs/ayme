@@ -38,7 +38,10 @@ export class StructureLens extends PanelPart {
   /** The node tagged with a Page Object member, e.g. "ListPage.addItemButton". */
   nodeOf(member: string): Locator {
     return this.rows.filter({
-      has: this.root.page().getByTitle(member, { exact: true }),
+      has: this.root
+        .page()
+        .locator("[data-member-tag]")
+        .and(this.root.page().getByTitle(member, { exact: true })),
     });
   }
 
@@ -47,7 +50,7 @@ export class StructureLens extends PanelPart {
     description: "Reads the Page Object member a node is tagged with, in full.",
   })
   async memberOf(ref: string): Promise<string | null> {
-    const tag = this.node(ref).getByTitle(/./);
+    const tag = this.node(ref).locator("[data-member-tag]");
     return (await tag.count()) ? tag.getAttribute("title") : null;
   }
 

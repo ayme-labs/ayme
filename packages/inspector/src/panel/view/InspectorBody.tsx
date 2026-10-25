@@ -44,7 +44,9 @@ export function InspectorBodyView({
       className="flex min-h-0 flex-1 flex-col data-[layout=bottom]:flex-row"
       style={sizes}
     >
-      <div className="flex min-h-0 min-w-0 flex-1">
+      {/* Docked to the bottom, the navigator, its first child, grows no wider
+          than `--navigator-max`. */}
+      <div className="flex min-h-0 min-w-0 flex-1 in-data-[layout=bottom]:[&>:first-child]:max-w-(--navigator-max)">
         {navigator}
         <Divider
           orientation="vertical"
@@ -81,7 +83,10 @@ export function DetailPane({ children }: { children: ReactNode }) {
   );
 }
 
-/** The Runs region. Collapsed, it keeps only the timeline's header. */
+/**
+ * The Runs region. Collapsed, it keeps only the timeline's header. It grows
+ * no larger than `--runs-max`: no taller, or no wider as a column.
+ */
 export function RunsRegion({
   collapsed = false,
   children,
@@ -93,7 +98,7 @@ export function RunsRegion({
     <section
       aria-label="Runs"
       data-collapsed={collapsed || undefined}
-      className="flex h-runs min-h-0 flex-none flex-col border-t bg-background data-collapsed:h-region-header in-data-[layout=bottom]:h-auto in-data-[layout=bottom]:w-runs-docked in-data-[layout=bottom]:border-t-0 in-data-[layout=bottom]:border-l in-data-[layout=bottom]:data-collapsed:w-runs-collapsed"
+      className="flex h-runs max-h-(--runs-max) min-h-0 flex-none flex-col border-t bg-background data-collapsed:h-region-header in-data-[layout=bottom]:h-auto in-data-[layout=bottom]:max-h-none in-data-[layout=bottom]:w-runs-docked in-data-[layout=bottom]:max-w-(--runs-max) in-data-[layout=bottom]:border-t-0 in-data-[layout=bottom]:border-l in-data-[layout=bottom]:data-collapsed:w-runs-collapsed"
     >
       {children}
     </section>

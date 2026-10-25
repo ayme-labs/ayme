@@ -157,6 +157,82 @@ describe("Runs", () => {
     expect(await run.resultText()).toBe("true");
   });
 
+  it("shows a run of a second or more in seconds", async () => {
+    renderRuns({ runs: [aRun({ durationMs: 15204 })] });
+    const run = runsView.run(0);
+
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.card.textContent()).toContain("15.2 s · ");
+    expect(await run.card.textContent()).not.toContain("15204");
+  });
+
+  it("shows only the time a run started when a reload cut it short", async () => {
+    const reloaded = aRun({
+      status: "failed",
+      error: "The page reloaded before the run returned.",
+      // Local time, as Runs shows it.
+      startedAt: new Date(2026, 9, 23, 9, 5, 3).getTime(),
+    });
+    delete reloaded.durationMs;
+    renderRuns({ runs: [reloaded] });
+    const run = runsView.run(0);
+
+    await expect.poll(() => run.status()).toBe("Failed");
+    // Hours in two digits, with or without the locale's AM or PM.
+    expect(await run.toggle.textContent()).toMatch(
+      /^ListPage\.addItem09:05:03(\s[AP]M)?$/
+    );
+  });
+
+  it("names a run's tool and its item in full on hover", async () => {
+    renderRuns();
+    const archive = runsView.latest("ListPage.items.archive");
+
+    await expect
+      .poll(() =>
+        archive.card
+          .getByTitle("ListPage.items.archive", { exact: true })
+          .count()
+      )
+      .toBe(1);
+    expect(
+      await archive.card.getByTitle("items[0]", { exact: true }).count()
+    ).toBe(1);
+  });
+
+  it("names an Interaction's member in full on hover, with its locator", async () => {
+    renderRuns();
+    const target = runsView.latest("ListPage.addItem").interactionTarget(1);
+
+    await expect
+      .poll(() => target.getAttribute("title"))
+      .toBe(
+        "ListPage.addItemButton: getByRole('button', { name: 'Add item' }). Hover to highlight it on the page."
+      );
+    expect(await target.textContent()).toBe("ListPage.addItemButton");
+  });
+
+  it("names an Interaction's target by its member's whole name", async () => {
+    renderRuns();
+    const run = runsView.latest("ListPage.addItem");
+
+    await expect
+      .poll(() =>
+        run.interactions
+          .getByRole("button", { name: "ListPage.addItemButton", exact: true })
+          .count()
+      )
+      .toBe(1);
+    expect(
+      await run.interactions
+        .getByRole("button", {
+          name: "getByRole('textbox', { name: 'New item' })",
+          exact: true,
+        })
+        .count()
+    ).toBe(1);
+  });
+
   it("marks the runs from before the page last loaded as earlier page rows", async () => {
     renderRuns({
       runs: [

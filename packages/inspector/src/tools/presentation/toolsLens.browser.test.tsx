@@ -214,6 +214,35 @@ it("opens a tool's page with its description, then the run slot", async () => {
   expect(await toolPage.root.getByRole("heading").count()).toBe(1);
 });
 
+it("shows a tool without a description with no empty paragraph", async () => {
+  renderTools({ tools: [{ ...click, description: "" }] });
+
+  await navigator.tools.tool("click").click();
+
+  await expect.poll(() => detail.toolPage.title.textContent()).toBe("click");
+  expect(await detail.toolPage.description.count()).toBe(0);
+  expect(
+    await detail.toolPage.root.getByRole("form", { name: "Run click" }).count()
+  ).toBe(1);
+});
+
+it("keeps the last segment of a long tool name in view, and names it in full on hover", async () => {
+  const prefix =
+    "EnterpriseSubscriptionBillingReconciliationDashboardPage.lineItems";
+  const name = `${prefix}.archive`;
+  renderTools({ tools: [{ ...addItem, name }] });
+  const entry = navigator.tools.tool(name);
+
+  await expect.poll(() => entry.getAttribute("aria-label")).toBe(name);
+  expect(await entry.getByTitle(name, { exact: true }).count()).toBe(1);
+  const cut = (text: string) =>
+    entry
+      .getByText(text, { exact: true })
+      .evaluate((part) => part.scrollWidth > part.clientWidth);
+  expect(await cut(prefix)).toBe(true);
+  expect(await cut(".archive")).toBe(false);
+});
+
 it("links a Page object tool to its Page Object Model", async () => {
   const onSelect = vi.fn();
   renderTools({ onSelect });

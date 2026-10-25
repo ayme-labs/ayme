@@ -4,7 +4,7 @@ import { Badge } from "@ayme-dev/design-system/components/badge";
 import { Separator } from "@ayme-dev/design-system/components/separator";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { chip, WhatTheModelSees } from "../../shared";
+import { chip, QualifiedName, WhatTheModelSees } from "../../shared";
 import {
   type Lens,
   NavItem,
@@ -76,6 +76,8 @@ export function toolsLens({
                       />
                     )}
                     <NavItem
+                      // Named by the name whole: its two parts would read apart.
+                      aria-label={tool.name}
                       selected={tool.name === selectedTool}
                       onClick={() =>
                         onSelect({ kind: "tool", name: tool.name })
@@ -86,7 +88,7 @@ export function toolsLens({
                         className="size-3.5 flex-none text-muted-foreground"
                         aria-hidden
                       />
-                      <span className="truncate font-mono">{tool.name}</span>
+                      <QualifiedName name={tool.name} className="font-mono" />
                     </NavItem>
                     {side && (
                       // Beside the row's button, so the tool's name stays the
@@ -173,7 +175,9 @@ function ToolPage({
   const { pomClassName } = tool;
   return (
     <article aria-label={tool.name} data-tool-page>
-      <h2 className="font-mono text-sm font-semibold">{tool.name}</h2>
+      <h2 className="font-mono text-sm font-semibold [overflow-wrap:anywhere]">
+        {tool.name}
+      </h2>
       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         {pomClassName && (
           <button
@@ -185,7 +189,9 @@ function ToolPage({
             className={cn(chip, "text-foreground")}
           >
             <BracesIcon className="size-3" aria-hidden />
-            <span className="font-mono">{pomClassName}</span>
+            <span className="min-w-0 truncate font-mono" title={pomClassName}>
+              {pomClassName}
+            </span>
             <ChevronRightIcon className="size-3" aria-hidden />
           </button>
         )}
@@ -195,9 +201,14 @@ function ToolPage({
             : toolKindLabels[tool.group]}
         </span>
       </div>
-      <p className="mt-2 mb-3 text-xs leading-normal text-muted-foreground">
-        {tool.description}
-      </p>
+      {tool.description ? (
+        <p className="mt-2 mb-3 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">
+          {tool.description}
+        </p>
+      ) : (
+        // The run slot keeps its place below the head.
+        <div className="mb-3" />
+      )}
       {renderRun({ toolName: tool.name, head: false })}
       <WhatTheModelSees
         definitions={definitions}
