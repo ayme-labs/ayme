@@ -30,7 +30,7 @@ vi.mock("./agentConnection", () => ({
   loadAgentConnection: vi.fn(),
   loadProcessConnection: vi.fn(),
 }));
-vi.mock("../page-objects/browserPage", () => ({
+vi.mock("../page-objects/infrastructure/browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
 const page = { url: () => "factory page" } as unknown as AymePage;
