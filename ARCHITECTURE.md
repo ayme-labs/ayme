@@ -306,8 +306,8 @@ hosting its playground.
     - Deployment node: the playground's Vite dev server
     - Evidence: verified: [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
 - External systems:
-  - **Host application**: the playground's list app on 4190 and the React, Next.js, Nuxt,
-    SvelteKit and Angular examples on 4191 to 4196
+  - **Host application**: the playground's list app on 4190, and the React, Next.js, Nuxt,
+    SvelteKit and Angular examples on 4191, 4192, 4193, 4194 and 4196
     - Evidence: verified: the `dev` scripts in [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-react/package.json](apps/example-react/package.json),
       [apps/example-next/package.json](apps/example-next/package.json), [apps/example-nuxt/package.json](apps/example-nuxt/package.json),
       [apps/example-sveltekit/package.json](apps/example-sveltekit/package.json), [apps/example-angular/package.json](apps/example-angular/package.json)
