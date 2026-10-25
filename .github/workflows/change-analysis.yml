@@ -34,11 +34,17 @@ jobs:
     outputs:
       analyze: ${{ steps.merge.outputs.analyze }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       # A push that only merges the base branch into the pull request leaves
       # the pull request's own changes as they were, so the report made for
-      # the commit before the merge still holds. A run has a report when it
-      # has a "Report written" step that succeeded. Without one, for example
-      # when this push cancelled that run or its analysis broke, the merge is
+      # the commit before the merge still holds. It counts as only a merge
+      # when its tree is the clean merge of its parents, without a conflict
+      # resolved or a file edited on the way. A run has a report when it has
+      # a "Report written" step that succeeded. Without one, for example when
+      # this push cancelled that run or its analysis broke, the merge is
       # analyzed.
       - id: merge
         env:
@@ -50,9 +56,10 @@ jobs:
         run: |
           report=
           if [ "$SYNCHRONIZE" = true ]; then
-            read -r before merged rest <<< "$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA" --jq '[.parents[].sha] | join(" ")')"
+            read -r _ before merged rest <<< "$(git rev-list --parents -n 1 "$HEAD_SHA")"
             if [ -n "${merged:-}" ] && [ -z "${rest:-}" ] &&
-              [[ "$(gh api "repos/$GITHUB_REPOSITORY/compare/$merged...$BASE_REF" --jq .status)" =~ ^(ahead|identical)$ ]]; then
+              git merge-base --is-ancestor "$merged" "origin/$BASE_REF" &&
+              [ "$(git merge-tree --write-tree "$before" "$merged" 2>/dev/null)" = "$(git rev-parse "$HEAD_SHA^{tree}")" ]; then
               for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/change-analysis.yml/runs?head_sha=$before&status=success" \
                 --jq ".workflow_runs[] | select(any(.pull_requests[]; .number == $PR)) | .id"); do
                 if [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs" --jq '[.jobs[].steps[] | select(.name == "Report written" and .conclusion == "success")] | length')" -gt 0 ]; then
