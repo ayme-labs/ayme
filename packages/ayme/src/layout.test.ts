@@ -34,12 +34,47 @@ const refusals: [path: string, code: string, message: string][] = [
   [
     "src/tools/application/misplaced.ts",
     'export { generateLocator } from "@ayme-dev/playwright-lite/internal";',
-    "Only tools' infrastructure may use Playwright Lite.",
+    "Only a slice's infrastructure may use Playwright Lite.",
   ],
   [
     "src/tools/domain/misplaced.ts",
     'export type Lite = import("@ayme-dev/playwright-lite").Page;',
-    "Only tools' infrastructure may use Playwright Lite.",
+    "Only a slice's infrastructure may use Playwright Lite.",
+  ],
+  [
+    "src/page-objects/application/misplaced.ts",
+    'export { createPage } from "@ayme-dev/playwright-lite";',
+    "Only a slice's infrastructure may use Playwright Lite.",
+  ],
+  [
+    "src/goal-loop/application/misplaced.ts",
+    "export const title = () => document.title;",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
+    "src/page-state/domain/misplaced.ts",
+    "export const width = () => window.innerWidth;",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
+    "src/runs/application/misplaced.ts",
+    "export const store = globalThis as object;",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
+    "src/page-objects/domain/misplaced.ts",
+    "export const href = () => location.href;",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
+    "src/tools/application/misplaced.ts",
+    "export const back = () => history.back();",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
+    "src/tools/domain/misplaced.ts",
+    "export const agent = () => navigator.userAgent;",
+    "Only a slice's infrastructure may use the browser's globals.",
   ],
   [
     "src/tools/application/misplaced.ts",
@@ -161,5 +196,29 @@ it(
         'export { createAyme } from "../../runtime";\n'
       )
     ).toEqual([]);
+  }
+);
+
+it(
+  "lint lets a slice's infrastructure and tests use the browser, and domain and application name its types",
+  { timeout: 60_000 },
+  async () => {
+    const allowed: [path: string, code: string][] = [
+      [
+        "src/tools/infrastructure/misplaced.ts",
+        'export { createPage } from "@ayme-dev/playwright-lite";\nexport const title = () => document.title;',
+      ],
+      [
+        "src/goal-loop/application/misplaced.test.ts",
+        "export const title = () => document.title;",
+      ],
+      ["src/page-state/domain/misplaced.ts", "export type Target = Element;"],
+      [
+        "src/runs/application/misplaced.ts",
+        "export const last = (history: string[]) => history.at(-1);",
+      ],
+    ];
+    for (const [path, code] of allowed)
+      expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([]);
   }
 );
