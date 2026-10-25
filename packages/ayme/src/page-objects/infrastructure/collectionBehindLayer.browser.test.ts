@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+import { rooted } from "../../test-utils/pomRoot.testSupport";
 import {
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
-import type { PomManifest } from "../shared";
-import { runContext } from "../test-utils/agentCalls.testSupport";
-import { errorText } from "../shared";
-import { getPageStateForDocument } from "../page-state";
-import { startSession } from "../test-utils/session.testSupport";
+import type { PomManifest } from "../../shared";
+import { runContext } from "../../test-utils/agentCalls.testSupport";
+import { errorText } from "../../shared";
+import { getPageStateForDocument } from "../../page-state";
+import { startSession } from "../../test-utils/session.testSupport";
 
 // A modal menu as Radix opens one: the rest of the page is hidden from
 // assistive technology and takes no pointer events, while the menu, a
