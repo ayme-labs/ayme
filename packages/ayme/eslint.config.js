@@ -44,6 +44,9 @@ const browserGlobals = [
   "location",
   "history",
   "navigator",
+  "self",
+  "localStorage",
+  "sessionStorage",
 ];
 const sourceFiles = "src/**/*.ts";
 // Test code may use any slice, so a test stays beside the module it is

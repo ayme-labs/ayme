@@ -77,6 +77,16 @@ const refusals: [path: string, code: string, message: string][] = [
     "Only a slice's infrastructure may use the browser's globals.",
   ],
   [
+    "src/goal-loop/domain/misplaced.ts",
+    "export const title = () => self.document.title;",
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
+    "src/runs/domain/misplaced.ts",
+    'export const saved = () => localStorage.getItem("run");',
+    "Only a slice's infrastructure may use the browser's globals.",
+  ],
+  [
     "src/tools/application/elementTools.ts",
     "export const title = () => document.title;",
     "Only a slice's infrastructure may use the browser's globals.",
