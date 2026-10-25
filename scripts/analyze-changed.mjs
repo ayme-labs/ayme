@@ -344,7 +344,7 @@ function render({
       `- ${row.file}:${row.line} ${row.status} ${row.mutator}: \`${row.replacement}\``
     );
   }
-  if (reuse) {
+  if (reuse && reuse.length > 0) {
     const counts = reuse.map(({ name, result }) =>
       result
         ? `${name} ${result.reused} of ${result.total}`
