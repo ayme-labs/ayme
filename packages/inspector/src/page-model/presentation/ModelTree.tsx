@@ -188,7 +188,7 @@ export function ModelTree({
                     name={model.className}
                     className={cn(
                       // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-                      "font-mono",
+                      "font-mono text-xs",
                       !live && "text-muted-foreground"
                     )}
                   />
@@ -316,7 +316,7 @@ function TreeRow({
       <span
         className={cn(
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-          "min-w-0 truncate font-mono",
+          "min-w-0 truncate font-mono text-xs",
           live === false && "text-muted-foreground"
         )}
         title={name}
