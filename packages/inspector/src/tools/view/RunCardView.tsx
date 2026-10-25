@@ -19,6 +19,7 @@ import {
   pressable,
   QualifiedName,
   rowFocusRing,
+  rowPress,
 } from "../../shared";
 import {
   formatDuration,
@@ -140,7 +141,8 @@ export function RunCardView({
                 className={cn(
                   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                   "-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted",
-                  rowFocusRing
+                  rowFocusRing,
+                  rowPress
                 )}
                 onClick={toggleOpen}
               >

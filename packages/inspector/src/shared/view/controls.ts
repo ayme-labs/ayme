@@ -37,4 +37,13 @@ export const pressableIcon =
  */
 export const chip = `inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border bg-card px-2 text-xs hover:border-ring [&>svg]:flex-none ${focusRing} ${pressable}`;
 
+/**
+ * Press feedback for a full-width row in a tree or list: its background
+ * takes a step past its hover colour the instant it's pressed, with no
+ * transition, so the row answers on pointer-down without moving the rows
+ * around it.
+ */
+export const rowPress =
+  "active:bg-[color-mix(in_oklab,var(--muted),var(--foreground)_8%)]";
+
 // Stryker restore StringLiteral

@@ -30,6 +30,7 @@ import {
   pressable,
   QualifiedName,
   rowFocusRing,
+  rowPress,
 } from "../../shared";
 import { formatDuration } from "../domain/duration";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
@@ -361,7 +362,8 @@ function RunEntryCard({
         className={cn(
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex min-h-8 w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left hover:bg-muted/60",
-          rowFocusRing
+          rowFocusRing,
+          rowPress
         )}
         onClick={onToggle}
       >

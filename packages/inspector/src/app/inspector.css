@@ -94,6 +94,26 @@
 }
 
 /*
+ * Switching between light and dark eases the panel's surfaces instead of
+ * flashing them. InspectorRoot marks the root for the one switch; until the
+ * mark goes, every element in it transitions its fill, its background and its
+ * shadow, and nothing else. Text and borders switch at once: every element
+ * has a border colour and inherits a text colour, so easing those starts five
+ * transitions on each, which stalls a large tree for a second or more.
+ * The panel's and the logo's frames keep their own transitions, which they
+ * enter and leave on and which this would cut short; the panel's surface
+ * also sits on an element inside its frame, so it still eases across.
+ */
+[data-ayme-inspector-root][data-theme-switching],
+[data-ayme-inspector-root][data-theme-switching] *:not([data-presence]),
+[data-ayme-inspector-root][data-theme-switching] *::before,
+[data-ayme-inspector-root][data-theme-switching] *::after {
+  transition-property: background-color, fill, box-shadow;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: ease;
+}
+
+/*
  * The syntax highlighter's colours (sugar-high reads --sh-*), from the
  * design system's tokens. They sit on the themed root, so they follow its
  * light or dark theme and stay inside the shadow root.

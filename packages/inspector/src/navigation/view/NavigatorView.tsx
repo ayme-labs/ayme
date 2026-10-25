@@ -8,6 +8,7 @@ import {
   pressable,
   QualifiedName,
   rowFocusRing,
+  rowPress,
 } from "../../shared";
 
 import type { HighlightTarget, OnHover } from "../domain/highlight";
@@ -106,7 +107,8 @@ export function NavigatorView({
                     className={cn(
                       // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                       "flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted",
-                      rowFocusRing
+                      rowFocusRing,
+                      rowPress
                     )}
                     onClick={() => pick(result)}
                     onMouseEnter={() => onHover?.(highlightOf(result))}
