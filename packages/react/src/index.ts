@@ -38,7 +38,7 @@ export function AymeProvider({
     const runtime = createAyme(snapshot);
     // Without a window, React renders on the server, where the session must
     // never claim the process.
-    if ("undefined" === typeof window) markRenderSession(runtime);
+    if (typeof window === "undefined") markRenderSession(runtime);
     return { options: snapshot, runtime };
   });
   if (ancestor)
@@ -90,7 +90,7 @@ export function usePageObject<T extends object>(
 ): T {
   const runtime = useRuntime();
   const [retained] = useState(() => ({ model, runtime }));
-  if (model !== retained.model || runtime !== retained.runtime)
+  if (retained.model !== model || retained.runtime !== runtime)
     throw new Error(
       "The Page Object model or provider changed while the component was mounted."
     );
