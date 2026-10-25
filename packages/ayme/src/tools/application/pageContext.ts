@@ -15,22 +15,6 @@ export type PageContext = {
   resolve(...refs: AriaRef[]): ReturnType<PageState["resolve"]>;
 };
 
-export const getPageStateTool = {
-  name: "get_page_state",
-  description:
-    "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; a POM root without one uses a synthetic ref; tools take either. Capture is limited to the top-level document.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  } as const,
-  execute: async () => (await getPageStateForDocument(document)).text,
-} satisfies ToolDescriptor & {
-  inputSchema: object;
-  execute(): Promise<string>;
-};
-
 export const getPageContextTool = {
   name: "snapshot",
   description:
@@ -48,17 +32,19 @@ export const getPageContextTool = {
     required: [],
     additionalProperties: false,
   } as const,
-  /** Reads the page for the Run's Caller, whose cursor moves to it. */
-  execute: (input: unknown, context: RunContext) =>
-    snapshotFor(input, context.cursor),
+  /** Reads the Run's Document for its Caller, whose cursor moves to it. */
+  execute: (input: unknown, context: RunContext) => snapshotFor(input, context),
 } satisfies ToolDescriptor & {
   inputSchema: object;
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
-async function snapshotFor(input: unknown, cursor: Cursor): Promise<JsonValue> {
+async function snapshotFor(
+  input: unknown,
+  { document: currentDocument, cursor }: RunContext
+): Promise<JsonValue> {
   const context = await pageContextFor(
-    document,
+    currentDocument,
     cursor,
     (input as { names?: string[] }).names ?? []
   );

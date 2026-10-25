@@ -23,6 +23,11 @@ export type PageDriver = {
    * reads, until the watch is stopped.
    */
   watch(onChange: () => void): PageWatch;
+  /**
+   * Calls `onRecorded` after each page state recorded for the page, until
+   * the returned function is called.
+   */
+  onPageStateRecorded(onRecorded: () => void): () => void;
 };
 
 export type PageWatch = {

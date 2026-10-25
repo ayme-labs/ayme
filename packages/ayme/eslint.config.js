@@ -28,6 +28,26 @@ const allowedSlices = {
   ],
 };
 const slices = Object.keys(allowedSlices);
+// shared and runtime stay unlayered, as packages/ayme/AGENTS.md says.
+const layeredSlices = [
+  "page-state",
+  "runs",
+  "page-objects",
+  "goal-loop",
+  "tools",
+];
+// The globals that reach the browser, or another copy of the bundle.
+const browserGlobals = [
+  "document",
+  "window",
+  "globalThis",
+  "location",
+  "history",
+  "navigator",
+  "self",
+  "localStorage",
+  "sessionStorage",
+];
 const sourceFiles = "src/**/*.ts";
 // Test code may use any slice, so a test stays beside the module it is
 // about even when it starts a whole runtime.
@@ -100,14 +120,7 @@ export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // shared and runtime stay unlayered, as packages/ayme/AGENTS.md says.
-    enforcedSlices: [
-      "page-state",
-      "runs",
-      "page-objects",
-      "goal-loop",
-      "tools",
-    ],
+    enforcedSlices: layeredSlices,
   }),
   {
     files: [sourceFiles],
@@ -169,25 +182,38 @@ export default [
       { tests: true }
     ),
   ]),
-  // Only tools' infrastructure uses Playwright Lite: the rest of the slice
-  // acts on the page its Run hands it. A later block replaces the rule
-  // config above for its files, so it repeats the slice's front doors.
+  // A layered slice reaches the browser through its infrastructure: its
+  // domain and application act on the page and Document their Run hands
+  // them. A later block replaces the rule config above for its files, so it
+  // repeats the slice's front doors.
+  ...layeredSlices.map((slice) => {
+    const block = frontDoors(
+      slice,
+      [`src/${slice}/domain/**/*.ts`, `src/${slice}/application/**/*.ts`],
+      {
+        tests: false,
+        restricted: [
+          {
+            regex: "^@ayme-dev/playwright-lite(/.*)?$",
+            message: "Only a slice's infrastructure may use Playwright Lite.",
+          },
+        ],
+      }
+    );
+    block.rules["no-restricted-globals"] = [
+      "error",
+      ...browserGlobals.map((name) => ({
+        name,
+        message: "Only a slice's infrastructure may use the browser's globals.",
+      })),
+    ];
+    return block;
+  }),
   // elementTools.ts resolves a selector target with Playwright Lite until
   // page-state does (#943).
-  frontDoors(
-    "tools",
-    ["src/tools/domain/**/*.ts", "src/tools/application/**/*.ts"],
-    {
-      tests: false,
-      ignores: ["src/tools/application/elementTools.ts"],
-      restricted: [
-        {
-          regex: "^@ayme-dev/playwright-lite(/.*)?$",
-          message: "Only tools' infrastructure may use Playwright Lite.",
-        },
-      ],
-    }
-  ),
+  frontDoors("tools", ["src/tools/application/elementTools.ts"], {
+    tests: false,
+  }),
   // The entries, the package's own tests and the shared test harnesses,
   // which use the slices' front doors.
   frontDoors(undefined, ["src/*.ts"], { tests: false }),

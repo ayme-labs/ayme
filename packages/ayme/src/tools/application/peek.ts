@@ -25,6 +25,12 @@ export type PeekTool = {
   execute(input: unknown): Promise<JsonValue>;
 };
 
+/**
+ * Where a Peek is added: the browser, or a Node process of the app (an App
+ * Process). The runtime tells which.
+ */
+export type PeekSide = "browser" | "node";
+
 /** One live instance of a Peek. */
 type Instance = { read: PeekRead };
 
@@ -34,7 +40,11 @@ type Peek = {
   instances: Map<string | undefined, Instance>;
 };
 
-type PeekRegistry = {
+/**
+ * Package-internal: the state of a set of Peeks. Its shape is shared by
+ * every bundle that loads Ayme in one process, so it changes only with care.
+ */
+export type PeekStore = {
   /** By Peek name. A Peek stays here while it has an instance. */
   peeks: Map<string, Peek>;
   /** Every Peek Tool made, live or not. */
@@ -42,111 +52,117 @@ type PeekRegistry = {
   listeners: Set<() => void>;
 };
 
-// On globalThis, so every bundle that loads Ayme in one process shares one
-// set of Peeks.
-const registry: PeekRegistry = ((
-  globalThis as typeof globalThis & { __aymePeekRegistry?: PeekRegistry }
-).__aymePeekRegistry ??= {
-  peeks: new Map(),
-  tools: new WeakSet(),
-  listeners: new Set(),
-});
-
-/**
- * Package-internal: adds the instance (`name`, `id`) of a Peek. With an id,
- * a later call updates that instance's read, so every call's remover removes
- * it. Without one, a later call replaces the instance, so the earlier call's
- * remover does nothing, such as a reloaded module's old one. `ayme.peek`
- * checks `name` and the dev gate first.
- */
-export function addPeek(read: PeekRead, name: string, id?: string): () => void {
-  const peek = peekNamed(name);
-  let instance = id === undefined ? undefined : peek.instances.get(id);
-  if (instance) instance.read = read;
-  else {
-    const appears = peek.instances.size === 0;
-    instance = { read };
-    peek.instances.set(id, instance);
-    if (appears) notify();
-  }
-  return () => {
-    if (peek.instances.get(id) !== instance) return;
-    peek.instances.delete(id);
-    if (peek.instances.size === 0) withdrawWhenStillEmpty(name, peek);
-  };
+/** Package-internal: a store with no Peeks. */
+export function emptyPeekStore(): PeekStore {
+  return { peeks: new Map(), tools: new WeakSet(), listeners: new Set() };
 }
 
-/** Package-internal: the tools of the Peeks with a live instance. */
-export function listPeekTools(): PeekTool[] {
-  return [...registry.peeks.values()].map(({ tool }) => tool);
-}
-
-/** Package-internal: calls `listener` after a Peek Tool appears or goes. */
-export function subscribeToPeekTools(listener: () => void): () => void {
-  registry.listeners.add(listener);
-  return () => {
-    registry.listeners.delete(listener);
-  };
-}
-
-/** Package-internal: whether `tool` is a Peek Tool, which only reads. */
-export function isPeekTool(tool: object): boolean {
-  return registry.tools.has(tool);
-}
-
-/**
- * Package-internal: the Peek Tool name for a Peek name: `peek.<name>` in the
- * browser, and `peek.node.<name>` in a Node process of the app (an App
- * Process), so the agent tells the two sides apart and a Peek both
- * register under one name gives two tools.
- */
-export function peekToolName(name: string) {
-  const side = typeof window === "undefined" ? "peek.node." : "peek.";
-  return side + name.replace(/[^A-Za-z0-9_.-]/g, "_");
-}
-
-function peekNamed(name: string): Peek {
-  const existing = registry.peeks.get(name);
-  if (existing) return existing;
-  const toolName = peekToolName(name);
-  // `peek.node.` is the App Processes' side; a browser Peek may not read as one.
-  if (typeof window !== "undefined" && toolName.startsWith("peek.node."))
-    throw new RuntimeStateError(
-      `The Peek "${name}" would be read through ${toolName}, which names an App Process's Peek.`
-    );
-  for (const [otherName, other] of registry.peeks)
-    if (other.tool.name === toolName)
+/** Package-internal: the Peek operations on `store`. */
+export function createPeekRegistry(store: PeekStore) {
+  function peekNamed(side: PeekSide, name: string): Peek {
+    const existing = store.peeks.get(name);
+    if (existing) return existing;
+    const toolName = peekToolName(side, name);
+    // `peek.node.` is the App Processes' side; a browser Peek may not read as one.
+    if (side === "browser" && toolName.startsWith("peek.node."))
       throw new RuntimeStateError(
-        `The Peek "${name}" would be read through ${toolName}, which the Peek "${otherName}" already uses.`
+        `The Peek "${name}" would be read through ${toolName}, which names an App Process's Peek.`
       );
-  const peek: Peek = { tool: createPeekTool(name), instances: new Map() };
-  registry.tools.add(peek.tool);
-  registry.peeks.set(name, peek);
-  return peek;
+    for (const [otherName, other] of store.peeks)
+      if (other.tool.name === toolName)
+        throw new RuntimeStateError(
+          `The Peek "${name}" would be read through ${toolName}, which the Peek "${otherName}" already uses.`
+        );
+    const peek: Peek = {
+      tool: createPeekTool(store, toolName, name),
+      instances: new Map(),
+    };
+    store.tools.add(peek.tool);
+    store.peeks.set(name, peek);
+    return peek;
+  }
+
+  // A component that remounts in one go, as React StrictMode's effects do,
+  // removes its instance and adds it again before this runs; the tool stays.
+  function withdrawWhenStillEmpty(name: string, peek: Peek) {
+    queueMicrotask(() => {
+      if (peek.instances.size > 0 || store.peeks.get(name) !== peek) return;
+      store.peeks.delete(name);
+      notify();
+    });
+  }
+
+  function notify() {
+    for (const listener of store.listeners) listener();
+  }
+
+  return {
+    /**
+     * Adds the instance (`name`, `id`) of a Peek on `side`. With an id, a
+     * later call updates that instance's read, so every call's remover
+     * removes it. Without one, a later call replaces the instance, so the
+     * earlier call's remover does nothing, such as a reloaded module's old
+     * one. `ayme.peek` checks `name` and the dev gate first.
+     */
+    addPeek(
+      side: PeekSide,
+      read: PeekRead,
+      name: string,
+      id?: string
+    ): () => void {
+      const peek = peekNamed(side, name);
+      let instance = id === undefined ? undefined : peek.instances.get(id);
+      if (instance) instance.read = read;
+      else {
+        const appears = peek.instances.size === 0;
+        instance = { read };
+        peek.instances.set(id, instance);
+        if (appears) notify();
+      }
+      return () => {
+        if (peek.instances.get(id) !== instance) return;
+        peek.instances.delete(id);
+        if (peek.instances.size === 0) withdrawWhenStillEmpty(name, peek);
+      };
+    },
+    /** The tools of the Peeks with a live instance. */
+    listPeekTools: (): PeekTool[] =>
+      [...store.peeks.values()].map(({ tool }) => tool),
+    /** Calls `listener` after a Peek Tool appears or goes. */
+    subscribeToPeekTools(listener: () => void): () => void {
+      store.listeners.add(listener);
+      return () => {
+        store.listeners.delete(listener);
+      };
+    },
+    /** Whether `tool` is a Peek Tool, which only reads. */
+    isPeekTool: (tool: object): boolean => store.tools.has(tool),
+  };
 }
 
-// A component that remounts in one go, as React StrictMode's effects do,
-// removes its instance and adds it again before this runs; the tool stays.
-function withdrawWhenStillEmpty(name: string, peek: Peek) {
-  queueMicrotask(() => {
-    if (peek.instances.size > 0 || registry.peeks.get(name) !== peek) return;
-    registry.peeks.delete(name);
-    notify();
-  });
+/**
+ * Package-internal: the Peek Tool name for a Peek name on `side`:
+ * `peek.<name>` in the browser, and `peek.node.<name>` in a Node process of
+ * the app (an App Process), so the agent tells the two sides apart and a
+ * Peek both register under one name gives two tools.
+ */
+export function peekToolName(side: PeekSide, name: string) {
+  const prefix = side === "node" ? "peek.node." : "peek.";
+  return prefix + name.replace(/[^A-Za-z0-9_.-]/g, "_");
 }
 
-function notify() {
-  for (const listener of registry.listeners) listener();
-}
-
-function createPeekTool(name: string): PeekTool {
+function createPeekTool(
+  store: PeekStore,
+  toolName: string,
+  name: string
+): PeekTool {
   const inputSchema: PeekTool["inputSchema"] = {
     type: "object",
     properties: {},
     additionalProperties: false,
   };
   const run = async (): Promise<JsonValue> => {
-    const peek = registry.peeks.get(name);
+    const peek = store.peeks.get(name);
     const instances = await Promise.all(
       [...(peek?.instances ?? [])].map(([id, { read }]) =>
         readInstance(id, read)
@@ -156,7 +172,7 @@ function createPeekTool(name: string): PeekTool {
     return result as JsonValue;
   };
   return {
-    name: peekToolName(name),
+    name: toolName,
     description: `Read the current values of the Peek "${name}" from each live instance.`,
     inputSchema,
     execute: run,

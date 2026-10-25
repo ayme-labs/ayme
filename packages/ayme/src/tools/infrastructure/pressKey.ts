@@ -4,10 +4,7 @@
 import { isPressableKey } from "@ayme-dev/playwright-lite/internal";
 import { runAction } from "../../page-state";
 import { ToolInputError, type JsonSchema } from "../../shared";
-import {
-  requireCurrentDocument,
-  type PublishedElementTool,
-} from "../application/elementTools";
+import type { PublishedElementTool } from "../application/elementTools";
 
 const pressKeySchema: JsonSchema = {
   type: "object",
@@ -36,7 +33,7 @@ export const pressKeyTool: PublishedElementTool = {
         `Cannot press "${key}": it is not a key name or a character.`
       );
     return runAction(
-      requireCurrentDocument(),
+      context.document,
       cursor,
       { tool: "press_key", args: input },
       () => page.keyboard.press(key)

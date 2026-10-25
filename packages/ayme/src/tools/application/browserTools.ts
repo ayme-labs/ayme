@@ -10,9 +10,7 @@ import {
   type ElementInput,
 } from "../../page-state";
 import {
-  listCustomTools,
   registerElementTool,
-  requireCurrentDocument,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
@@ -26,12 +24,6 @@ import {
   isSelectElement,
   isUncheckableElement,
 } from "../domain/elementFilters";
-import {
-  navigateBackTool,
-  navigateForwardTool,
-  reloadTool,
-} from "./historyTools";
-import { navigateTool } from "./navigateTool";
 
 // --- Input schemas ---
 
@@ -213,15 +205,6 @@ export const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
   registerElementTool(selectOptionDefinition, isSelectElement),
 ];
 
-/**
- * Package-internal: the single-element Browser Tools and the session's Custom
- * Tools, in publication order. Each is published and the Goal Loop may choose
- * it (ADR-0023).
- */
-export function listElementTools(): readonly RegisteredElementTool[] {
-  return [...SINGLE_ELEMENT_TOOLS, ...listCustomTools()];
-}
-
 // --- Browser Tools that are published only ---
 
 const FILL_FORM_FIELD_TYPES = [
@@ -308,9 +291,8 @@ export const fillFormTool: PublishedElementTool = {
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const { cursor, page } = context;
+    const { cursor, page, document: currentDocument } = context;
     const { fields } = input as { fields: FormField[] };
-    const currentDocument = requireCurrentDocument();
     return runAction(
       currentDocument,
       cursor,
@@ -336,17 +318,3 @@ export const fillFormTool: PublishedElementTool = {
     );
   },
 };
-
-// --- Browser Tools that move the page ---
-
-/**
- * Package-internal: the Browser Tools that move the page to another URL or
- * history entry, in publication order. They take no element; each is
- * published and the Goal Loop may choose it.
- */
-export const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
-  navigateTool,
-  navigateBackTool,
-  navigateForwardTool,
-  reloadTool,
-];

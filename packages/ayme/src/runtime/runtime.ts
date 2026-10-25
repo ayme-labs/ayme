@@ -20,6 +20,7 @@ import {
   subscribeToPeekTools,
   type CustomTool,
   type PeekRead,
+  type PeekSide,
 } from "../tools";
 import {
   createAgentConnectionStatus,
@@ -679,7 +680,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         )
       );
     try {
-      return await execute({ cursor, run, page: getPage() });
+      return await execute({ cursor, run, page: getPage(), document });
     } finally {
       // A turn taken now starts once every child started so far has ended.
       await takeChildTurn(async () => {});
@@ -750,12 +751,14 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       if (typeof name !== "string" || name === "")
         throw new RuntimeStateError("A Peek needs a name.");
       if (!peeks) return () => {};
-      const toolName = peekToolName(name);
+      // Node is an App Process's side.
+      const side: PeekSide = onServer() ? "node" : "browser";
+      const toolName = peekToolName(side, name);
       if (registeredToolNames().has(toolName))
         throw new RuntimeStateError(
           `Cannot add the Peek "${name}": another tool already uses the name ${toolName}.`
         );
-      return addPeek(read, name, id);
+      return addPeek(side, read, name, id);
     },
     start() {
       if (renderSessions.has(ayme)) return () => {};

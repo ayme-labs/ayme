@@ -17,6 +17,7 @@ import {
 import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
+  getPageStateForDocument,
   getPageStateSession,
   latestPageStateElement,
   lookAtPageStateForDocument,
@@ -24,17 +25,20 @@ import {
   resolvePageStateRefs,
 } from "./pageState";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
-import { getPageStateTool } from "../../tools";
 import { ayme } from "../../test-utils/agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
+
+/** The page state of the current Document, as an agent reads it. */
+const pageStateText = async () =>
+  (await getPageStateForDocument(document)).text;
 
 providePageObjectStructure(async () => ({
   roots: await pageObjectRoots(),
   absentElements: [],
 }));
 
-describe("get_page_state", () => {
+describe("the page state", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "document",
@@ -51,13 +55,6 @@ describe("get_page_state", () => {
   afterEach(() => {
     configurePageStateIgnore(undefined);
     vi.unstubAllGlobals();
-  });
-
-  it("names the tool and describes structural refs and root POM decoration", () => {
-    expect(getPageStateTool.name).toBe("get_page_state");
-    expect(getPageStateTool.description).toBe(
-      "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; a POM root without one uses a synthetic ref; tools take either. Capture is limited to the top-level document."
-    );
   });
 
   it("decorates a retained real POM root and omits unrepresented leaf and foreign roots", async () => {
@@ -91,7 +88,7 @@ describe("get_page_state", () => {
       { label: "ListPage.foreign", element: foreign },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - e2 ListPage.captured "Captured omitted""
     `);
@@ -127,7 +124,7 @@ describe("get_page_state", () => {
       { label: "ListPage.item", element: pomRoot },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - e2 ListPage.item:
           - e3 button "Nested child""
@@ -173,7 +170,7 @@ describe("get_page_state", () => {
       { label: "ListPage.item", element: pomRoot },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - e2 button "Preceding"
         - e3 ListPage.item:
@@ -212,7 +209,7 @@ describe("get_page_state", () => {
       { label: "ListPage.synthetic", element: pomRoot },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - s_1 ListPage.synthetic:
           - e3 button "Nested child""
@@ -249,7 +246,7 @@ describe("get_page_state", () => {
       { label: "PageB.root", element: pomRoot },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - s_1:
           - /pom: ["PageA.root","PageB.root"]
@@ -301,7 +298,7 @@ describe("get_page_state", () => {
         labels.map((label) => ({ label, element: roots.get(label)! }))
       );
 
-      const output = await getPageStateTool.execute();
+      const output = await pageStateText();
 
       if (_registrationOrder === "first-first") {
         expect(output).toMatchInlineSnapshot(`
@@ -351,7 +348,7 @@ describe("get_page_state", () => {
       { label: "Page.root", element: pomRoot },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - s_1 Page.root:
           - e2 button "Child""
@@ -411,7 +408,7 @@ describe("get_page_state", () => {
 
     // Unrelated (POM depth 0, reg idx 1) is processed before outer
     // (POM depth 0, reg idx 2), while outer still precedes inner (POM depth 1).
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - s_2 Outer.root:
           - s_3 Inner.root:
@@ -451,7 +448,7 @@ describe("get_page_state", () => {
         ]),
       });
     pageObjectRoots.mockResolvedValue([{ label: "Root.root", element: root }]);
-    expect(await getPageStateTool.execute()).toContain("s_1 Root.root");
+    expect(await pageStateText()).toContain("s_1 Root.root");
 
     // The page changed since, so the action's before capture is recorded
     // and the element map is the new capture's.
@@ -502,7 +499,7 @@ describe("get_page_state", () => {
       };
     });
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - e2 ListPage.preCapture "Pre-capture"
         - e3 button "Post-capture""
@@ -524,7 +521,7 @@ describe("get_page_state", () => {
     });
     pageObjectRoots.mockResolvedValue([]);
 
-    const firstText = await getPageStateTool.execute();
+    const firstText = await pageStateText();
     expect(firstText).toContain('e2 button "Captured omitted"');
 
     original.outerHTML = '<button id="captured">Captured omitted</button>';
@@ -590,7 +587,7 @@ describe("get_page_state", () => {
       { label: "Panel.root", element: panel },
     ]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - e3 button "Main action""
     `);
@@ -628,7 +625,7 @@ describe("get_page_state", () => {
     });
     pageObjectRoots.mockResolvedValue([]);
 
-    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+    await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
         - e2 heading "Consumer application""
     `);
