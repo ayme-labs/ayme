@@ -106,6 +106,15 @@ jobs:
           path: packages/*/reports/stryker-incremental.json
           key: stryker-incremental-pr${{ github.event.pull_request.number }}-${{ hashFiles('pnpm-lock.yaml', 'patches/**', 'packages/test-config/*.js', 'packages/*/stryker.config.mjs', 'packages/*/vitest*.ts') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: stryker-incremental-pr${{ github.event.pull_request.number }}-${{ hashFiles('pnpm-lock.yaml', 'patches/**', 'packages/test-config/*.js', 'packages/*/stryker.config.mjs', 'packages/*/vitest*.ts') }}-
+      # Stryker cannot read a results file that was cut short, and it would
+      # then fail on every later push. Such a file is dropped, so that
+      # package tests every mutant again.
+      - if: steps.stryker-restore.outputs.cache-matched-key != ''
+        run: |
+          for file in packages/*/reports/stryker-incremental.json; do
+            node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$file" 2>/dev/null ||
+              { echo "Dropping $file: it is not whole JSON."; rm -f "$file"; }
+          done
       # A pull request's checkout is its merge commit, whose first parent is
       # the base it merges into. A dispatch compares with where it left main.
       - id: analysis
@@ -121,8 +130,9 @@ jobs:
         if: steps.analysis.outcome == 'success'
         run: "true"
       # A cache entry cannot be overwritten, so each run saves under its own
-      # key, also when a newer push cancels it.
-      - if: always() && github.event_name == 'pull_request'
+      # key. A run that a newer push cancelled saves nothing, because Stryker
+      # may have been stopped while writing its results.
+      - if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         uses: actions/cache/save@v6
         with:
           path: packages/*/reports/stryker-incremental.json

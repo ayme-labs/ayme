@@ -13,6 +13,7 @@ import {
   diffAgainst,
   functionsIn,
   mutateTargets,
+  reusedResults,
   statementCoverage,
 } from "./analyze-changed.mjs";
 
@@ -167,4 +168,19 @@ test("diffAgainst ignores the user's diff config", () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("reusedResults reads Stryker's incremental summary from its log", () => {
+  const log = [
+    "10:00:01 (42) INFO ProjectReader Found incremental report",
+    "10:00:09 (42) INFO IncrementalDiffer Incremental report:",
+    "\tResult:\t\t\x1b[93m436\x1b[39m of 504 mutant result(s) are reused.",
+  ].join("\n");
+  assert.deepEqual(reusedResults(log), { reused: 436, total: 504 });
+  assert.equal(
+    reusedResults(
+      "INFO ProjectReader No incremental result file found at reports/stryker-incremental.json, a full mutation testing run will be performed."
+    ),
+    undefined
+  );
 });
