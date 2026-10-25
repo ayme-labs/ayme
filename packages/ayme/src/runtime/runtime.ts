@@ -20,6 +20,7 @@ import {
   subscribeToPeekTools,
   type CustomTool,
   type PeekRead,
+  type PeekSide,
 } from "../tools";
 import {
   createAgentConnectionStatus,
@@ -253,6 +254,9 @@ function registeredToolNames(): Set<string> {
 }
 
 const onServer = () => typeof window === "undefined";
+
+/** Where this session's Peeks are added: Node is an App Process's side. */
+const peekSide = (): PeekSide => (onServer() ? "node" : "browser");
 
 const noSuchTool = (name: string) =>
   new RuntimeStateError(`There is no tool "${name}".`);
@@ -750,12 +754,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       if (typeof name !== "string" || name === "")
         throw new RuntimeStateError("A Peek needs a name.");
       if (!peeks) return () => {};
-      const toolName = peekToolName(name);
+      const side = peekSide();
+      const toolName = peekToolName(side, name);
       if (registeredToolNames().has(toolName))
         throw new RuntimeStateError(
           `Cannot add the Peek "${name}": another tool already uses the name ${toolName}.`
         );
-      return addPeek(read, name, id);
+      return addPeek(side, read, name, id);
     },
     start() {
       if (renderSessions.has(ayme)) return () => {};

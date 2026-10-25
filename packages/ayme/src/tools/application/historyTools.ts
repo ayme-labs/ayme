@@ -4,10 +4,7 @@
 // `browser_navigate_forward` and `browser_reload`.
 import type { JsonSchema } from "../../shared";
 import { runAction, startNavigation } from "../../page-state";
-import {
-  requireCurrentDocument,
-  type PublishedElementTool,
-} from "./elementTools";
+import type { PublishedElementTool } from "./elementTools";
 
 const noInputSchema: JsonSchema = {
   type: "object",
@@ -33,8 +30,7 @@ function traversalTool(
     description,
     inputSchema: noInputSchema,
     execute: async (input, context) => {
-      const { cursor, page } = context;
-      const currentDocument = requireCurrentDocument();
+      const { cursor, page, document: currentDocument } = context;
       const traverse = () =>
         direction === "back" ? page.goBack() : page.goForward();
       const navigation = currentDocument.defaultView?.navigation;
@@ -107,8 +103,7 @@ export const reloadTool: PublishedElementTool = {
   description: "Reload the current page.",
   inputSchema: noInputSchema,
   execute: async (input, context) => {
-    const { cursor, page } = context;
-    const currentDocument = requireCurrentDocument();
+    const { cursor, page, document: currentDocument } = context;
     return runAction(
       currentDocument,
       cursor,
