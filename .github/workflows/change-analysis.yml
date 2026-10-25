@@ -24,9 +24,48 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Decide whether to analyze
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      analyze: ${{ steps.merge.outputs.analyze }}
+    steps:
+      # A push that only merges the base branch into the pull request leaves
+      # the pull request's own changes as they were, so the report made for
+      # the commit before the merge still holds. Without one, for example
+      # when this push cancelled its run, the merge is analyzed.
+      - id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNCHRONIZE: ${{ github.event.action == 'synchronize' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          report=
+          if [ "$SYNCHRONIZE" = true ]; then
+            read -r before merged rest <<< "$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA" --jq '[.parents[].sha] | join(" ")')"
+            if [ -n "${merged:-}" ] && [ -z "${rest:-}" ] &&
+              [[ "$(gh api "repos/$GITHUB_REPOSITORY/compare/$merged...$BASE_REF" --jq .status)" =~ ^(ahead|identical)$ ]]; then
+              report=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/change-analysis.yml/runs?head_sha=$before&status=success" \
+                --jq "[.workflow_runs[] | select(any(.pull_requests[]; .number == $PR))][0].html_url // empty")
+            fi
+          fi
+          if [ -n "$report" ]; then
+            echo "analyze=false" >> "$GITHUB_OUTPUT"
+            echo "This push only merges \`$BASE_REF\` into the pull request. The report for its changes is in [the run for ${before:0:7}]($report)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "analyze=true" >> "$GITHUB_OUTPUT"
+          fi
+
   analyze:
     name: Analyze changed source
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: scope
+    if: needs.scope.outputs.analyze == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
