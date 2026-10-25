@@ -11,7 +11,9 @@ const { captureAriaSnapshot, pageObjectRoots, listRegisteredPoms } = vi.hoisted(
 );
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
-vi.mock("../page-objects/registry", () => ({ listRegisteredPoms }));
+vi.mock("../page-objects/infrastructure/registry", () => ({
+  listRegisteredPoms,
+}));
 
 import { ayme } from "../test-utils/agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";

@@ -4,12 +4,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
-import { rooted } from "../test-utils/pomRoot.testSupport";
+import { rooted } from "../../test-utils/pomRoot.testSupport";
 import { listRegisteredPomRoots, registerCompiledPom } from "./registry";
 import {
   startSession,
   type TestSession,
-} from "../test-utils/session.testSupport";
+} from "../../test-utils/session.testSupport";
 
 describe("registered Page Object roots", () => {
   let page: ReturnType<typeof createPage>;

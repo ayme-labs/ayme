@@ -1,9 +1,9 @@
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
-import { ayme } from "../test-utils/agentCalls.testSupport";
-import { ayme as model } from "./decorators";
-import { rootOf, rooted } from "../test-utils/pomRoot.testSupport";
+import { ayme } from "../../test-utils/agentCalls.testSupport";
+import { ayme as model } from "../domain/decorators";
+import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
 import {
   listRegisteredPomRoots,
   listAvailablePomTools,
@@ -15,11 +15,11 @@ import type {
   PomComponentMemberManifest,
   PomManifest,
   ToolManifest,
-} from "../shared";
+} from "../../shared";
 import {
   startSession,
   type TestSession,
-} from "../test-utils/session.testSupport";
+} from "../../test-utils/session.testSupport";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName,

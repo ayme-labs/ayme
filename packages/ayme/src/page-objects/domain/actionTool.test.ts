@@ -8,7 +8,7 @@ import {
   methodArguments,
   returnPomPaths,
 } from "./actionTool";
-import type { ToolManifest, ToolParameter } from "../shared";
+import type { ToolManifest, ToolParameter } from "../../shared";
 
 const refs: ToolParameter = {
   name: "refs",

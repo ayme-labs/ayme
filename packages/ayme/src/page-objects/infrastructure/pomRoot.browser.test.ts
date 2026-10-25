@@ -4,9 +4,9 @@ import type { Locator, Page } from "@playwright/test";
 import {
   ayme as agent,
   runContext,
-} from "../test-utils/agentCalls.testSupport";
-import type { PomManifest, ToolManifest } from "../shared";
-import { ayme } from "./decorators";
+} from "../../test-utils/agentCalls.testSupport";
+import type { PomManifest, ToolManifest } from "../../shared";
+import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
 import {
   listAvailablePomTools,
@@ -15,7 +15,7 @@ import {
   registerCompiledPom,
   subscribeToRegisteredPoms,
 } from "./registry";
-import { createAyme, type Ayme } from "../runtime";
+import { createAyme, type Ayme } from "../../runtime";
 
 // Observation and publication seam (ADR-0042): a Page Object Model that
 // names its root on the decorator, observed on a real page, and what the

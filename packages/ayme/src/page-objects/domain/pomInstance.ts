@@ -1,16 +1,38 @@
 import type { Locator } from "@playwright/test";
-import type { ToolManifest } from "../shared";
-import { availabilityPredicateOf, modelOption } from "./decorators";
-import { errorText } from "../shared";
 import {
   obstructionReason,
   type LatestRefLookup,
   type ToolAvailability,
-} from "../page-state";
-import type { ObservedPomRoot } from "./pomRootObservation";
+} from "../../page-state";
 
 /** What an action's availability predicate answered. */
 export type PredicateAnswer = { available: boolean; reason?: string };
+
+/**
+ * Package-internal: what one observation of a Page Object Root found
+ * (ADR-0035): whether it is on the page, whether a click would reach it,
+ * and, for a present root a click would not reach, what is in the way. The
+ * runtime reports the measurement, never a kind of widget.
+ */
+export type ObservedPomRoot = {
+  /** Its element, while the locator resolved to that one element throughout. */
+  element: Element | undefined;
+  present: boolean;
+  available: boolean;
+  /**
+   * What an Availability Reason may name as in the way of a present root a
+   * click would not reach (see `inTheWayOf`); empty for every other root.
+   */
+  inTheWay: readonly Element[];
+};
+
+/** Package-internal: a Page Object Root that is not on the page. */
+export const absentPomRoot: ObservedPomRoot = {
+  element: undefined,
+  present: false,
+  available: false,
+  inTheWay: [],
+};
 
 /**
  * Package-internal: one live Page Object instance as the last observation
@@ -102,71 +124,6 @@ export function combinedAvailability(
   if (available || first === undefined)
     return { present: first !== undefined, available };
   return { present: true, available: false, reason: first.reason };
-}
-
-/**
- * Package-internal: asks each action's availability predicate about
- * `instance`, read-only. A predicate that throws makes its action
- * unavailable, with the error as the reason, so the author sees it.
- */
-export async function askPredicates(
-  instance: object,
-  tools: readonly ToolManifest[]
-): Promise<ReadonlyMap<string, PredicateAnswer>> {
-  const answers = new Map<string, PredicateAnswer>();
-  for (const tool of tools) {
-    const predicate = predicateFor(instance, tool.methodName);
-    if (!predicate) continue;
-    let verdict: boolean | string;
-    try {
-      verdict = await predicate(instance as never);
-    } catch (error) {
-      verdict = errorText(error);
-    }
-    answers.set(
-      tool.methodName,
-      typeof verdict === "string" && verdict !== ""
-        ? { available: false, reason: verdict }
-        : { available: Boolean(verdict) }
-    );
-  }
-  return answers;
-}
-
-/** What a Page Object's presence predicate answered, or threw. */
-export type PresenceAnswer = { present?: boolean; error?: string };
-
-/**
- * Package-internal: asks the presence predicate `instance`'s class declares
- * or inherits, read-only. Without one, `present` is undefined. A predicate
- * that throws makes the instance absent, with the error's text, so the
- * author sees it.
- */
-export async function askPresence(instance: object): Promise<PresenceAnswer> {
-  const predicate = modelOption(instance.constructor, "present");
-  if (!predicate) return { present: undefined };
-  try {
-    return { present: Boolean(await predicate(instance as never)) };
-  } catch (error) {
-    return { present: false, error: errorText(error) };
-  }
-}
-
-/**
- * The predicate `@ayme.action` kept for the class method `methodName`, read
- * along the prototype chain so inherited actions keep theirs and an
- * instance's own copy of the method, such as one bound in the constructor,
- * does not hide it.
- */
-function predicateFor(instance: object, methodName: string) {
-  const prototype = Object.getPrototypeOf(instance) as Record<
-    string,
-    unknown
-  > | null;
-  return (
-    availabilityPredicateOf(prototype?.[methodName]) ??
-    availabilityPredicateOf((instance as Record<string, unknown>)[methodName])
-  );
 }
 
 /**
