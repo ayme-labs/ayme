@@ -2,7 +2,7 @@ import type { Locator } from "@playwright/test";
 
 import { ayme } from "@ayme-dev/ayme";
 
-@ayme
+@ayme({ root: (self: BaseMenu) => self.item })
 class BaseMenu {
   readonly item!: Locator;
 }
