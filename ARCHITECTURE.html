@@ -134,7 +134,21 @@
   .envs {
     display: flex;
     flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+  .envgroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 4px;
+  }
+  .envgroup > span {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-right: 4px;
   }
   .envs button,
   .zoom button {
@@ -648,7 +662,7 @@
     <p class="premise" id="premise"></p>
   </div>
   <div class="bar">
-    <div class="envs" id="envs" role="group" aria-label="Environment"></div>
+    <div class="envs" id="envs"></div>
     <label class="opt" for="allLabels"
       ><input type="checkbox" id="allLabels" /> Label every connection with its
       flows</label
@@ -860,7 +874,7 @@
       },
       {
         "name": "Playground",
-        "responsibility": "the hosted demo app with the Inspector in demo mode, plus the rendered documentation beside it. The \"Try with your own coding agent\" wizard and the Agent Connection are built only into local and dev builds, not the hosted ones",
+        "responsibility": "the hosted demo app with the Inspector in demo mode, plus the rendered documentation beside it. The \"Try with your own coding agent\" wizard and the Agent Connection are left out of the hosted builds",
         "technology": "Vue single-page app built from `apps/example-vue`, with the docs rendered by Jekyll from `docs/guide`",
         "evidence": {
           "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
@@ -1116,8 +1130,10 @@
     ],
     "environments": [
       {
-        "key": "local",
-        "sub": "development",
+        "key": "host-development",
+        "group": "Host app",
+        "label": "development",
+        "sub": "developer's machine",
         "purpose": "a developer's app running on their machine with a coding agent attached",
         "evidence": {
           "text": "verified: `docs/guide/guides/connect-an-agent.md`",
@@ -1178,27 +1194,27 @@
             }
           },
           "Decision Endpoint": {
-            "how": "mounted in the dev server with the developer's own key; the playground's Vite plugin is the reference setup",
+            "how": "mounted in the dev server with the developer's own key, so the Goal Loop needs no backend while the app is developed",
             "node": "the host app's dev server process",
             "nodeKey": "the host app's dev server process",
             "runs": true,
             "nodeKnown": true,
             "optional": true,
             "evidence": {
-              "text": "verified for the playground: `apps/example-vue/vite/decisionEndpoint.dev.ts`; inferred for other apps: the docs show the handler, not a dev-server mount",
+              "text": "verified: `docs/guide/guides/goals-with-jev.md`",
               "inferred": false,
-              "mixed": true
+              "mixed": false
             }
           },
           "Playground": {
-            "how": "the same app as the hosted site, run as a local Vite dev server on port 4190",
-            "node": "a local Vite process",
-            "nodeKey": "a local Vite process",
-            "runs": true,
-            "nodeKnown": true,
+            "how": "does not run here; it is Ayme's own app",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
             "optional": false,
             "evidence": {
-              "text": "verified: `apps/example-vue/package.json`",
+              "text": "verified: `apps/example-vue/README.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1216,7 +1232,7 @@
           "Decision model provider": {
             "how": "the live TypeSafe or OpenRouter API, with the developer's key",
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: `docs/guide/reference/decision-endpoint.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1224,7 +1240,7 @@
           "WebMCP driver": {
             "how": "Chrome's flag or a polyfill the app loads before its entry module",
             "evidence": {
-              "text": "verified: `docs/guide/guides/publish-tools.md`, `apps/example-vue/src/main.ts`",
+              "text": "verified: `docs/guide/guides/publish-tools.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1232,8 +1248,10 @@
         }
       },
       {
-        "key": "production",
-        "sub": "host app",
+        "key": "host-production",
+        "group": "Host app",
+        "label": "production",
+        "sub": "app's users",
         "purpose": "the host app serving its users, with Ayme's agent surface limited to what the app's setup publishes",
         "evidence": {
           "text": "verified: `docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md`",
@@ -1348,89 +1366,91 @@
         }
       },
       {
-        "key": "playground",
-        "sub": "GitHub Pages",
-        "purpose": "the public demo and docs at ayme-labs.github.io/ayme, and the same demo at ayme.dev/playground/",
+        "key": "ayme-development",
+        "group": "Ayme",
+        "label": "development",
+        "sub": "contributor's machine",
+        "purpose": "a contributor's machine working in this monorepo: the playground and the framework examples run from the workspace packages, with a coding agent attached",
         "evidence": {
-          "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+          "text": "verified: `apps/example-vue/README.md`, `.agents/skills/inspector-dogfood/SKILL.md`",
           "inferred": false,
           "mixed": false
         },
         "containers": {
           "Browser runtime": {
-            "how": "the playground's production build with `webMCP` and `inspector` in demo mode, `agentConnection` off (`VITE_AGENT_CONNECTION=false`), and no `goal` since no Decision Endpoint exists",
-            "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
-            "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "how": "the playground's and the examples' development builds; the playground has WebMCP publication, the Inspector in demo mode and the Agent Connection on, and a `goal` only when its dev server has a model key",
+            "node": "the example's page in the contributor's browser",
+            "nodeKey": "the example's page in the contributor's browser",
             "runs": true,
             "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
+              "text": "verified: `apps/example-vue/src/App.vue`, `apps/example-vue/vite.config.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "Build plugin": {
-            "how": "ran in the Pages build; nothing of it runs on the site",
-            "node": "",
-            "nodeKey": "",
-            "runs": false,
-            "nodeKnown": false,
+            "how": "the workspace's `@ayme-dev/unplugin-ayme`, consumed from its built `dist`, inside each example's dev server",
+            "node": "each example's dev server process",
+            "nodeKey": "each example's dev server process",
+            "runs": true,
+            "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "text": "verified: `packages/unplugin-ayme/package.json`, `apps/example-vue/vite.config.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "Ayme MCP server": {
-            "how": "does not run here; the hosted builds leave out the Agent Connection and the coding-agent wizard, and the workflow fails if the wizard is in the output",
-            "node": "",
-            "nodeKey": "",
-            "runs": false,
-            "nodeKnown": false,
+            "how": "the workspace build, `node packages/mcp/dist/cli.mjs mcp`, registered with the contributor's coding agent",
+            "node": "the coding agent's process on the contributor's machine",
+            "nodeKey": "the coding agent's process on the contributor's machine",
+            "runs": true,
+            "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `apps/example-vue/src/App.vue`",
+              "text": "verified: `.agents/skills/inspector-dogfood/SKILL.md`, `packages/mcp/src/cli.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "App Process runtime": {
-            "how": "does not run here; the site is static",
-            "node": "",
-            "nodeKey": "",
-            "runs": false,
-            "nodeKnown": false,
+            "how": "started by the Next.js example's `instrumentation.ts` and the Nuxt example's Nitro plugin",
+            "node": "the Next.js or Nuxt example's dev server process",
+            "nodeKey": "the Next.js or Nuxt example's dev server process",
+            "runs": true,
+            "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "text": "verified: `apps/example-next/instrumentation.ts`, `apps/example-nuxt/server/plugins/ayme.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "Decision Endpoint": {
-            "how": "does not run here; the deployed build publishes no `goal`",
-            "node": "",
-            "nodeKey": "",
-            "runs": false,
-            "nodeKnown": false,
-            "optional": false,
+            "how": "the playground's Vite plugin, mounted only when `.env.local` holds a TypeSafe or OpenRouter key",
+            "node": "the playground's Vite dev server",
+            "nodeKey": "the playground's Vite dev server",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": true,
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: `apps/example-vue/vite/decisionEndpoint.dev.ts`, `apps/example-vue/scripts/appEnvironment.ts`, `apps/example-vue/.env.example`",
               "inferred": false,
               "mixed": false
             }
           },
           "Playground": {
-            "how": "the static Vite build plus the Jekyll-rendered docs under `/docs`; the build is made twice, once for each base path, and only the `/playground/` copy loads the landing's Google Tag Manager container",
-            "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
-            "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "how": "a Vite dev server on port 4190, with the \"Try with your own coding agent\" wizard unless `VITE_AGENT_CONNECTION=false`",
+            "node": "the playground's Vite dev server",
+            "nodeKey": "the playground's Vite dev server",
             "runs": true,
             "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `docs/guide/_config.yml`",
+              "text": "verified: `apps/example-vue/package.json`, `apps/example-vue/src/App.vue`",
               "inferred": false,
               "mixed": false
             }
@@ -1438,23 +1458,23 @@
         },
         "externals": {
           "Host application": {
-            "how": "the playground's own list app",
+            "how": "the playground's list app on 4190 and the React, Next.js, Nuxt, SvelteKit and Angular examples on 4191 to 4196",
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: the `dev` scripts in `apps/example-vue/package.json`, `apps/example-react/package.json`, `apps/example-next/package.json`, `apps/example-nuxt/package.json`, `apps/example-sveltekit/package.json`, `apps/example-angular/package.json`",
               "inferred": false,
               "mixed": false
             }
           },
           "Decision model provider": {
-            "how": "not reached",
+            "how": "the live TypeSafe or OpenRouter API, with the contributor's key; not reached without one",
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: `apps/example-vue/scripts/appEnvironment.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "WebMCP driver": {
-            "how": "the `@mcp-b/webmcp-polyfill` initialized before the Vue app",
+            "how": "the `@mcp-b/webmcp-polyfill` the playground initializes before the Vue app",
             "evidence": {
               "text": "verified: `apps/example-vue/src/main.ts`",
               "inferred": false,
@@ -1465,6 +1485,8 @@
       },
       {
         "key": "ci",
+        "group": "Ayme",
+        "label": "ci",
         "sub": "GitHub Actions",
         "purpose": "the checks on every pull request and on `main`, including the live goal lane",
         "evidence": {
@@ -1578,6 +1600,124 @@
             }
           }
         }
+      },
+      {
+        "key": "playground",
+        "group": "Ayme",
+        "label": "playground",
+        "sub": "GitHub Pages",
+        "purpose": "the public demo and docs at ayme-labs.github.io/ayme, and the same demo at ayme.dev/playground/",
+        "evidence": {
+          "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+          "inferred": false,
+          "mixed": false
+        },
+        "containers": {
+          "Browser runtime": {
+            "how": "the playground's production build with `webMCP` and `inspector` in demo mode, `agentConnection` off (`VITE_AGENT_CONNECTION=false`), and no `goal` since no Decision Endpoint exists",
+            "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Build plugin": {
+            "how": "ran in the Pages build; nothing of it runs on the site",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Ayme MCP server": {
+            "how": "does not run here; the hosted builds leave out the Agent Connection and the coding-agent wizard, and the workflow fails if the wizard is in the output",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `apps/example-vue/src/App.vue`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "App Process runtime": {
+            "how": "does not run here; the site is static",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision Endpoint": {
+            "how": "does not run here; the deployed build publishes no `goal`",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Playground": {
+            "how": "the static Vite build plus the Jekyll-rendered docs under `/docs`; the build is made twice, once for each base path, and only the `/playground/` copy loads the landing's Google Tag Manager container",
+            "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`, `docs/guide/_config.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        },
+        "externals": {
+          "Host application": {
+            "how": "the playground's own list app",
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Decision model provider": {
+            "how": "not reached",
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "WebMCP driver": {
+            "how": "the `@mcp-b/webmcp-polyfill` initialized before the Vue app",
+            "evidence": {
+              "text": "verified: `apps/example-vue/src/main.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          }
+        }
       }
     ]
   }
@@ -1616,7 +1756,7 @@
     const envByKey = {};
     D.environments.forEach((e) => (envByKey[e.key] = e));
 
-    let envKey = "local";
+    let envKey = D.environments[0].key;
     try {
       const h = location.hash.replace("#", "");
       if (envByKey[h]) envKey = h;
@@ -1632,12 +1772,22 @@
 
     /* ---------- controls ---------- */
     const envsEl = $("#envs");
+    const envGroupEl = {};
     D.environments.forEach((e) => {
+      if (!envGroupEl[e.group]) {
+        const g = document.createElement("div");
+        g.className = "envgroup";
+        g.setAttribute("role", "group");
+        g.setAttribute("aria-label", e.group + " environments");
+        g.innerHTML = "<span>" + esc(e.group) + "</span>";
+        envsEl.appendChild(g);
+        envGroupEl[e.group] = g;
+      }
       const b = document.createElement("button");
       b.type = "button";
       b.dataset.k = e.key;
       b.innerHTML =
-        esc(e.key) + (e.sub ? "<small>" + esc(e.sub) + "</small>" : "");
+        esc(e.label) + (e.sub ? "<small>" + esc(e.sub) + "</small>" : "");
       b.addEventListener("click", () => {
         envKey = e.key;
         try {
@@ -1645,7 +1795,7 @@
         } catch (x) {}
         render();
       });
-      envsEl.appendChild(b);
+      envGroupEl[e.group].appendChild(b);
     });
 
     /* ---------- helpers ---------- */
@@ -2117,8 +2267,10 @@
         R = "";
       if (!sel) {
         L =
-          '<div class="kind">Environment</div><h2>' +
-          esc(env.key) +
+          '<div class="kind">' +
+          esc(env.group) +
+          " environment</div><h2>" +
+          esc(env.label) +
           (env.sub
             ? ' <span style="font-weight:400;color:var(--muted)">(' +
               esc(env.sub) +
@@ -2159,7 +2311,11 @@
         L += "<h3>Evidence</h3>" + evLine(ci.base.evidence);
         if (ci.entry) {
           L +=
-            "<h3>In " + esc(env.key) + "</h3><p>" + md(ci.entry.how) + "</p>";
+            "<h3>In " +
+            esc(env.group + " " + env.label) +
+            "</h3><p>" +
+            md(ci.entry.how) +
+            "</p>";
           if (ci.k === "c")
             L +=
               "<p><b>Deployment node:</b> " +
