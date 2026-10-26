@@ -76,12 +76,12 @@ export async function observePageObject(
   };
   const place: Place = {
     path: "",
+    className: manifest.className,
     present: true,
   };
   const page = await observeInstance(walk, instance, manifest.tools, {
     ...place,
     kind: "page",
-    className: manifest.className,
   });
   if (page.walk)
     await walkMembers(
@@ -113,7 +113,7 @@ type Walk = PageObjectObservation & {
 };
 
 /** Where in the walk an instance's members are. */
-type Place = Pick<PomInstanceObservation, "path"> & {
+type Place = Pick<PomInstanceObservation, "path" | "className"> & {
   /**
    * Whether the instance is present: what a root-less single child with no
    * predicate follows.
@@ -135,7 +135,6 @@ type Place = Pick<PomInstanceObservation, "path"> & {
  */
 type InstancePlace = Omit<Place, "rootElement" | "rootLocator"> & {
   kind: "page" | "child" | "item";
-  className: string;
 };
 
 /** What observing one instance found, and whether to walk its members. */
@@ -190,19 +189,20 @@ async function observeInstance(
         ),
         locator: root.locator,
       });
+    if (!root.locator) {
+      const path = place.path ? `${walk.label}.${place.path}` : walk.label;
+      walk.memberObservations.push(
+        rootObservation(
+          place.path,
+          root.error === undefined
+            ? `${place.className} at ${path}: its root is not a browser locator.`
+            : `${place.className} at ${path}: its root predicate threw ${root.error}.`
+        )
+      );
+      walk.instances.push(observed);
+      return { observed, walk: kind === "page" };
+    }
     if (kind !== "page") {
-      if (root.error !== undefined || !root.locator) {
-        walk.memberObservations.push(
-          rootObservation(
-            place.path,
-            root.error === undefined
-              ? `POM component ${place.path}'s root is not a browser locator.`
-              : `POM component ${place.path}'s root could not be read: ${root.error}.`
-          )
-        );
-        walk.instances.push(observed);
-        return { observed, walk: false };
-      }
       walk.memberObservations.push({
         memberName: `${place.path}.root`,
         kind: "component-root",
@@ -226,10 +226,10 @@ async function observeInstance(
   };
 }
 
-/** A child's root observation that says why the child is absent. */
+/** An instance's root observation that says why it is absent. */
 function rootObservation(path: string, error: string): PomMemberObservation {
   return {
-    memberName: `${path}.root`,
+    memberName: path ? `${path}.root` : "root",
     kind: "component-root",
     count: 0,
     error,
@@ -252,7 +252,7 @@ async function walkMembers(
       if (member.kind === "locator") {
         if (!walk.driver.isLocator(value))
           throw new RuntimeStateError(
-            `POM member ${memberPath} is not a browser locator.`
+            `its ${member.memberName} is not a browser locator.`
           );
         // Kept even while it is the root: it may not be on a later read.
         walk.targetSources.push({
@@ -274,7 +274,11 @@ async function walkMembers(
         await walkComponentMember(walk, value, member, place, nextAncestors);
     } catch (error) {
       walk.memberObservations.push(
-        failedObservation(member, memberPath, error)
+        failedObservation(
+          member,
+          memberPath,
+          `${place.className} at ${place.path ? `${walk.label}.${place.path}` : walk.label}: ${errorMessage(error)}`
+        )
       );
     }
   }
@@ -337,7 +341,10 @@ async function walkComponentMember(
     const path = member.collection ? `${memberPath}[${index}]` : memberPath;
     if (!isRecord(component)) {
       walk.memberObservations.push(
-        rootObservation(path, `POM component ${path} is not an object.`)
+        rootObservation(
+          path,
+          `${manifest.className} at ${joinPath(walk.label, path)}: it is not an object.`
+        )
       );
       continue;
     }
@@ -355,6 +362,7 @@ async function walkComponentMember(
       manifest.members,
       {
         path,
+        className: observed.className,
         present: observed.present,
         rootElement: child.rootElement,
         rootLocator: observed.rootLocator,
@@ -367,7 +375,7 @@ async function walkComponentMember(
 function failedObservation(
   member: PomMemberManifest,
   memberPath: string,
-  error: unknown
+  error: string
 ): PomMemberObservation {
   return {
     memberName:
@@ -382,7 +390,7 @@ function failedObservation(
           : "component-root",
     access: member.access,
     count: 0,
-    error: errorMessage(error),
+    error,
   };
 }
 

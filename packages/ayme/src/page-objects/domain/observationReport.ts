@@ -2,14 +2,6 @@ import type { PomMemberObservation } from "../../shared";
 import { sameInstance, type PomInstanceObservation } from "./pomInstance";
 import type { PageObjectObservation } from "./pomTree";
 
-/**
- * Package-internal: the name of the instance at `path` of the registered
- * Page Object `pomId`, e.g. "ListPage.items[1]"; `pomId` for the page's own.
- */
-export function pomLabel(pomId: string, path: string) {
-  return path ? `${pomId}.${path}` : pomId;
-}
-
 /** What the last observation of a registered Page Object found. */
 export type LastObservation = {
   /** Every instance it found; undefined before the first observation. */
@@ -58,44 +50,42 @@ function sameMemberObservations(
 /**
  * Package-internal: what `observation` of the registered Page Object `pomId`
  * found wrong that `last` did not, one message each: a presence or root
- * predicate that threw or a root matching several elements. A problem is reported again only when
+ * predicate that threw, an invalid member or root, or a root matching several
+ * elements. A problem is reported again only when
  * it changed, or was gone and is back. A root matching none is ordinary
  * absence, never reported.
  */
 export function newObservationErrors(
   pomId: string,
   last: LastObservation,
-  { instances }: PageObjectObservation
+  { instances, memberObservations }: PageObjectObservation
 ): string[] {
   const errors: string[] = [];
-  const previous = new Map<string, PomInstanceObservation>();
-  for (const instance of last.instances ?? [])
-    if (!previous.has(instance.path)) previous.set(instance.path, instance);
+  const previous = new Map(
+    last.instances?.map((instance) => [instance.path, instance])
+  );
   for (const instance of instances) {
     const before = previous.get(instance.path);
-    const label = pomLabel(pomId, instance.path);
+    const path = instance.path ? `${pomId}.${instance.path}` : pomId;
+    const label = `${instance.className} at ${path}`;
     if (
       instance.presenceError !== undefined &&
       instance.presenceError !== before?.presenceError
     )
       errors.push(
-        `The Page Object "${label}" is absent: its present predicate threw ${instance.presenceError}.`
-      );
-    if (
-      instance.rootError !== undefined &&
-      instance.rootError !== before?.rootError
-    )
-      errors.push(
-        `The Page Object "${label}" is absent: its root predicate threw ${instance.rootError}.`
+        `${label}: its present predicate threw ${instance.presenceError}.`
       );
     if (
       instance.rootCount !== undefined &&
       instance.rootCount >= 2 &&
       instance.rootCount !== before?.rootCount
     )
-      errors.push(
-        `The Page Object "${label}" is absent: its root matches ${instance.rootCount} elements.`
-      );
+      errors.push(`${label}: its root matches ${instance.rootCount} elements.`);
   }
+  const previousErrors = new Set(
+    last.memberObservations.map(({ error }) => error)
+  );
+  for (const { error } of memberObservations)
+    if (error !== undefined && !previousErrors.has(error)) errors.push(error);
   return errors;
 }

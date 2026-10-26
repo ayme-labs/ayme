@@ -190,14 +190,14 @@ describe("renderChangeRecord", () => {
 
       expect(
         renderChangeRecord(reconciled, {
-          before: labels({ e10: ["ListPage.items[0]"] }),
+          before: labels({ e10: ["ListItem"] }),
           after: labels(),
         })
       ).toBe(
         [
           "- e3 main:",
           "  - e9 list:",
-          "    - e10 ListPage.items[0] <removed>: Milk",
+          "    - e10 ListItem <removed>: Milk",
         ].join("\n")
       );
     });
@@ -211,14 +211,12 @@ describe("renderChangeRecord", () => {
       expect(
         renderChangeRecord(reconciled, {
           before: labels({ e3: ["ListPage"] }),
-          after: labels({ e12: ["ListPage.items[1]"] }),
+          after: labels({ e12: ["ListItem"] }),
         })
       ).toBe(
-        [
-          "- e3 main:",
-          "  - e9 list:",
-          "    - e12 ListPage.items[1] <added>: Eggs",
-        ].join("\n")
+        ["- e3 main:", "  - e9 list:", "    - e12 ListItem <added>: Eggs"].join(
+          "\n"
+        )
       );
     });
 
@@ -230,14 +228,10 @@ describe("renderChangeRecord", () => {
 
       expect(
         renderChangeRecord(reconciled, {
-          before: labels({ s_1: ["ListPage.items[0]"] }),
-          after: labels({ s_2: ["ListPage.items[0]"] }),
+          before: labels({ s_1: ["ListItem"] }),
+          after: labels({ s_2: ["ListItem"] }),
         })
-      ).toBe(
-        ["- s_1 ListPage.items[0]:", "  - e2 <changed> listitem: Eggs"].join(
-          "\n"
-        )
-      );
+      ).toBe(["- s_1 ListItem:", "  - e2 <changed> listitem: Eggs"].join("\n"));
     });
 
     it("shows several labels on one root as the pom property", () => {

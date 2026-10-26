@@ -200,7 +200,7 @@ describe("the one input check every Run passes, in Chromium", () => {
   it("hands a tool only the input properties it checked", async () => {
     document.querySelector("#overlay")!.remove();
     const { structure } = (await run("snapshot", {})) as { structure: string };
-    const ref = structure.match(/(e\d+) InputPage\.items\[0\]/)?.[1];
+    const ref = structure.match(/(e\d+) Item\b/)?.[1];
     pin.mockClear();
 
     // An inherited property is not part of the input the check reads.
@@ -215,7 +215,7 @@ describe("the one input check every Run passes, in Chromium", () => {
   it("checks a child Run's input", async () => {
     document.querySelector("#overlay")!.remove();
     const { structure } = (await run("snapshot", {})) as { structure: string };
-    const ref = structure.match(/(e\d+) InputPage\.items\[0\]/)?.[1];
+    const ref = structure.match(/(e\d+) Item\b/)?.[1];
 
     expect(await call("add_untitled", { ref })).toBe(
       "ToolInputError: Input property title is required."

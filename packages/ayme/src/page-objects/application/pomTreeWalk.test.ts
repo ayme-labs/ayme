@@ -121,7 +121,7 @@ describe("one observation of a Page Object", () => {
       kind: "component-root",
       count: 0,
       error:
-        "POM component items[0].children[0]'s root is not a browser locator.",
+        "TreeItem at FileTree.items[0].children[0]: its root is not a browser locator.",
     });
   });
 

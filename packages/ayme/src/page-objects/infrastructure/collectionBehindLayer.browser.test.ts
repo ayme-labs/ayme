@@ -66,11 +66,13 @@ const manifest: PomManifest = {
   ],
 };
 
-function refOf(text: string, label: string): string {
+function refOf(text: string, label: string, index = 0): string {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const ref = text.match(
-    new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "m")
-  )?.[1];
+  const ref = [
+    ...text.matchAll(
+      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
+    ),
+  ][index]?.[1];
   if (!ref) throw new Error(`No ref found for "${label}" in page state.`);
   return ref;
 }
@@ -102,7 +104,7 @@ describe("a collection whose items are all behind a modal layer", () => {
     session.register(ListPage);
     await probeRegisteredPomMembers();
     const { text } = await getPageStateForDocument(document);
-    const refs = [0, 1, 2].map((i) => refOf(text, `ListPage.rows[${i}]`));
+    const refs = [0, 1, 2].map((i) => refOf(text, "Row", i));
     return { session, opened, refs };
   }
 

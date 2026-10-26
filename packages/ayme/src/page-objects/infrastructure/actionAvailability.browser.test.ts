@@ -348,7 +348,7 @@ describe("Action Availability", () => {
     expect(judged).not.toContain(outbox.items[2]);
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      state.text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+      [...state.text.matchAll(/(e\d+) Item\b/g)][index]?.[1];
     const draft = refOf(0);
     const sent = refOf(1);
     if (!draft || !sent) throw new Error("Expected refs for both items.");
@@ -421,7 +421,7 @@ describe("Action Availability", () => {
     const { text } = await agent.getPageState();
     const refOf = (pattern: string) =>
       text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
-    const covered = refOf("Inbox\\.rows\\[1\\]");
+    const covered = [...text.matchAll(/(e\d+) Row\b/g)][1]?.[1];
     const busy = refOf('dialog "Busy"');
     if (!covered || !busy)
       throw new Error("Expected refs for the row and the dialog.");
@@ -582,9 +582,7 @@ describe("Action Availability", () => {
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      state.text.match(
-        new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]\\.editor`)
-      )?.[1];
+      [...state.text.matchAll(/(e\d+) Editor\b/g)][index]?.[1];
     const clean = refOf(0);
     const dirty = refOf(1);
     if (!clean || !dirty) throw new Error("Expected refs for both items.");
@@ -984,7 +982,7 @@ describe("Action Availability", () => {
     const state = await agent.getPageState();
     // A shared element's node lists its members under a /pom line.
     const draft = state.text.match(
-      /(e\d+) listitem:\n\s+- \/pom: \["Outbox\.items\[0\]","Outbox\.preview"\]/
+      /(e\d+) listitem:\n\s+- \/pom: \["Message","Preview"\]/
     )?.[1];
     if (!draft) throw new Error("Expected a ref for the draft.");
 

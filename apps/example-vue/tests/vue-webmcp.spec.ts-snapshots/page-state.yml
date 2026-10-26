@@ -16,12 +16,12 @@
         - e15 heading "Active items" [level=3]
         - e16: 2
       - e17 list "Active items":
-        - e18 ListPage.items[0]:
+        - e18 ListItem:
           - e19:
             - e20 button "Prepare launch notes"
             - e21 code: item-1
           - e22 button "Archive item-1": Archive
-        - e23 ListPage.items[1]:
+        - e23 ListItem:
           - e24:
             - e25 button "Review onboarding flow"
             - e26 code: item-2

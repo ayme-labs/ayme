@@ -16,8 +16,8 @@ tools are missing, read [Browser setup](browser-setup.md).
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
-- Call a nested item, such as `e9 ListPage.items[0].subItems[0]`, through
-  its class's tool: `ListItem.archive({ ref: "e9" })`.
+- The page state labels each Page Object Root with its class. Call a nested
+  item labelled `e9 ListItem` through its class's tool: `ListItem.archive({ ref: "e9" })`.
   [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
   has the example.
 - When `goal` hands over with `needs_value` because none of a parameter's

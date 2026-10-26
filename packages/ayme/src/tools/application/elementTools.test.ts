@@ -175,12 +175,12 @@ describe("Structural Ref interactions", () => {
     root.append(button);
     document.body.append(root);
     pageObjectStructure.mockResolvedValue({
-      roots: [{ label: "Page.root", element: root }],
+      roots: [{ label: "Page", element: root }],
       absentElements: [],
     });
     mockCapture(button, "e2");
     const { text } = await getPageStateForDocument(document);
-    const rootRef = text.match(/(s_\w+) Page\.root\b/)?.[1];
+    const rootRef = text.match(/(s_\w+) Page\b/)?.[1];
     if (!rootRef) throw new Error("Expected a synthetic ref for the root.");
     // At click time the selector names the root's current ref, the one the
     // engine resolves in the latest capture.

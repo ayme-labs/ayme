@@ -368,8 +368,8 @@ describe("the session's tools in Chromium", () => {
     const { structure } = (await agentCall("snapshot", {})) as {
       structure: string;
     };
-    const ref = structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
-    if (!ref) throw new Error("Expected a ref for ListPage.items[0].");
+    const ref = structure.match(/(e\d+) ListItem/)?.[1];
+    if (!ref) throw new Error("Expected a ref for ListItem.");
     const heard: (readonly ToolInfo[])[] = [];
     cleanups.push(ayme.tools.subscribe((tools) => heard.push(tools)));
 
@@ -421,8 +421,8 @@ describe("the session's tools in Chromium", () => {
     const ref = (await agentTools().call("snapshot", {})) as {
       structure: string;
     };
-    const item = ref.structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
-    if (!item) throw new Error("Expected a ref for ListPage.items[0].");
+    const item = ref.structure.match(/(e\d+) ListItem/)?.[1];
+    if (!item) throw new Error("Expected a ref for ListItem.");
 
     document.querySelector<HTMLDialogElement>("#confirm")!.showModal();
     await expect.poll(archive).toMatchObject({ available: false });

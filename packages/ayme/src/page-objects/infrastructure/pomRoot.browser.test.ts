@@ -110,7 +110,7 @@ describe("Page Object Root by option", () => {
       });
     const state = await agent.getPageState();
     const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
-    const childRef = state.text.match(/(\w+) Shell\.child\b/)![1]!;
+    const childRef = state.text.match(/(\w+) Child\b/)![1]!;
     const { buildToolOptions } = await import("../../goal-loop");
     const options = buildToolOptions(page);
     for (const name of ["Shell.open", "Child.open"])
@@ -118,7 +118,12 @@ describe("Page Object Root by option", () => {
         options.find(({ key }) => key === name)?.tool.args[0]?.closedSet
       ).toMatchObject({
         kind: "instance",
-        roots: [expect.objectContaining({ available: true })],
+        roots: [
+          expect.objectContaining({
+            label: name.split(".")[0],
+            available: true,
+          }),
+        ],
       });
     await session.tools.run("Shell.open", { ref: shellRef }, { by: "webmcp" });
     await session.tools.run("Child.open", { ref: childRef }, { by: "webmcp" });
@@ -249,7 +254,7 @@ describe("Page Object Root by option", () => {
       roots: [{ label: "Row" }, { label: "Row" }],
     });
     const state = await agent.getPageState();
-    const ref = state.text.match(/(e\d+) RowsPage\.rows\[2\]/)![1]!;
+    const ref = [...state.text.matchAll(/(e\d+) Row\b/g)][1]![1]!;
     await session.tools.run("Row.open", { ref }, { by: "webmcp" });
     expect(opened).toEqual(["second"]);
     document.getElementById("first")!.remove();
@@ -384,7 +389,7 @@ describe("Page Object Root by option", () => {
     ]);
     const { text } = await agent.getPageState();
     const refOf = (index: number) =>
-      text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+      [...text.matchAll(/(e\d+) Item\b/g)][index]?.[1];
     const sent = refOf(1);
     if (!refOf(0) || !sent) throw new Error("Expected refs for both items.");
     await session.tools.run("Item.send", { ref: sent });
@@ -446,9 +451,9 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["Menu.open", "Panel.open"]);
     const { text } = await agent.getPageState();
-    expect(text).toMatch(/e\d+ Shell\.menu\b/);
-    expect(text).toMatch(/e\d+ Shell\.panel\b/);
-    expect(text).not.toContain("Shell.drawer");
+    expect(text).toMatch(/e\d+ Menu\b/);
+    expect(text).toMatch(/e\d+ Panel\b/);
+    expect(text).not.toMatch(/(?:e\d+|s_\w+) Drawer\b/);
 
     shell.drawer.expanded = true;
     await probeRegisteredPomMembers();
@@ -617,7 +622,9 @@ describe("Page Object Root by option", () => {
       expect.objectContaining({ available: true })
     );
     expect(listed("Panel.close")).not.toHaveProperty("reason");
-    expect((await agent.getPageState()).text).not.toContain("Shell.panel");
+    expect((await agent.getPageState()).text).not.toMatch(
+      /(?:e\d+|s_\w+) Panel\b/
+    );
     expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
       { memberName: "panel.root", kind: "locator", access: "field", count: 1 },
     ]);
@@ -683,6 +690,111 @@ describe("Page Object Root by option", () => {
     expect(logged).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    [
+      "present",
+      "Panel at Shell.panel: its present predicate threw TypeError: broken.",
+    ],
+    [
+      "root",
+      "Panel at Shell.panel: its root predicate threw TypeError: broken.",
+    ],
+    [
+      "invalid root",
+      "Panel at Shell.panel: its root is not a browser locator.",
+    ],
+    [
+      "invalid locator",
+      "Panel at Shell.panel: its link is not a browser locator.",
+    ],
+    ["non-object", "Panel at Shell.panel: it is not an object."],
+  ] as const)(
+    "names the class and path for %s diagnostics",
+    async (fault, message) => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      class Panel {
+        link = {};
+        close() {}
+      }
+      if (fault === "present" || fault === "root")
+        ayme({
+          [fault]: () => {
+            throw new TypeError("broken");
+          },
+        })(Panel);
+      if (fault === "invalid root")
+        ayme({ root: () => undefined as unknown as Locator })(Panel);
+      const Shell = shellWithPanel(Panel, [locator("link")]);
+      const shell = session.pom.register(Shell);
+      if (fault === "non-object") shell.panel = null as unknown as Panel;
+      await probeRegisteredPomMembers();
+      expect(logged).toHaveBeenCalledExactlyOnceWith(message);
+      await probeRegisteredPomMembers();
+      expect(logged).toHaveBeenCalledOnce();
+    }
+  );
+
+  it("reports a changed diagnostic and one that returns after recovery", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    let problem: string | undefined = "first";
+    class Panel {
+      close() {}
+    }
+    ayme({
+      root: () => {
+        if (problem) throw new Error(problem);
+        return page.locator("#panel");
+      },
+    })(Panel);
+    document.body.innerHTML =
+      '<section id="shell"><div id="panel">Panel</div></section>';
+    session.pom.register(shellWithPanel(Panel));
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenLastCalledWith(
+      "Panel at Shell.panel: its root predicate threw first."
+    );
+    problem = "second";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenLastCalledWith(
+      "Panel at Shell.panel: its root predicate threw second."
+    );
+    problem = undefined;
+    await probeRegisteredPomMembers();
+    problem = "second";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(3);
+  });
+
+  it("reports an invalid page root at its class path, and still observes its children when the root throws", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML = '<div id="panel">Panel</div>';
+    class Panel {
+      close() {}
+    }
+    ayme({ root: () => page.locator("#panel") })(Panel);
+    const Shell = shellWithPanel(Panel);
+    let throws = false;
+    ayme({
+      root: () => {
+        if (throws) throw new Error("broken");
+        return undefined as unknown as Locator;
+      },
+    })(Shell);
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Shell at Shell: its root is not a browser locator."
+    );
+    expect(names()).toEqual(["Panel.close"]);
+    expect(observedMembers()).toEqual(["root", "container", "panel.root"]);
+    throws = true;
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenLastCalledWith(
+      "Shell at Shell: its root predicate threw broken."
+    );
+    expect(names()).toEqual(["Panel.close"]);
+  });
+
   it("records what a child's root predicate threw, logs it once, and withdraws the child's tools", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     document.body.innerHTML =
@@ -727,11 +839,11 @@ describe("Page Object Root by option", () => {
         kind: "component-root",
         count: 0,
         error:
-          "POM component panel's root could not be read: TypeError: frame is undefined.",
+          "Panel at Shell.panel: its root predicate threw TypeError: frame is undefined.",
       },
     ]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Shell.panel" is absent: its root predicate threw TypeError: frame is undefined.'
+      "Panel at Shell.panel: its root predicate threw TypeError: frame is undefined."
     );
 
     document.body.innerHTML = "<p>Changed</p>";
@@ -751,7 +863,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Shell.panel" is absent: its root matches 2 elements.'
+      "Panel at Shell.panel: its root matches 2 elements."
     );
 
     await probeRegisteredPomMembers();
@@ -762,7 +874,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledTimes(2);
     expect(logged).toHaveBeenLastCalledWith(
-      'The Page Object "Shell.panel" is absent: its root matches 3 elements.'
+      "Panel at Shell.panel: its root matches 3 elements."
     );
 
     shell.replaceChildren();
@@ -783,7 +895,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Drawer" is absent: its root matches 2 elements.'
+      "Drawer at Drawer: its root matches 2 elements."
     );
 
     await probeRegisteredPomMembers();
@@ -842,7 +954,7 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual(["Row.open"]);
   });
 
-  it("lets a collection tool act on a nested instance of its class, labelled at its full depth, without adding tools", async () => {
+  it("lets a collection tool act on a nested instance of its class, labelled by class at every depth, without adding tools", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="src">src
@@ -903,9 +1015,7 @@ describe("Page Object Root by option", () => {
 
     expect(names()).toEqual(["TreeItem.expand"]);
     const { text } = await agent.getPageState();
-    const util = text.match(
-      /(e\d+) FileTree\.items\[0\]\.children\[0\]\.children\[0\]/
-    )?.[1];
+    const util = [...text.matchAll(/(e\d+) TreeItem\b/g)][2]?.[1];
     if (!util) throw new Error("Expected a ref for the deepest item.");
     const tool = listAvailablePomTools().find(
       ({ name }) => name === "TreeItem.expand"

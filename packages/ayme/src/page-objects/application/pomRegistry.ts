@@ -41,7 +41,6 @@ import {
 } from "../domain/pomClasses";
 import {
   newObservationErrors,
-  pomLabel,
   sameObservation,
 } from "../domain/observationReport";
 import {
@@ -362,8 +361,8 @@ export function createPomRegistry(driver: PageDriver) {
   async function getRegisteredPomStructure() {
     await probeRegisteredPomMembers();
     const observations = [...registeredPoms].flatMap((registration) =>
-      (registration.instances ?? []).flatMap(({ path, root, present }) =>
-        root ? [{ root, present, label: pomLabel(registration.id, path) }] : []
+      (registration.instances ?? []).flatMap(({ className, root, present }) =>
+        root ? [{ root, present, label: className }] : []
       )
     );
     const roots = observations.flatMap(({ root, present, label }) =>

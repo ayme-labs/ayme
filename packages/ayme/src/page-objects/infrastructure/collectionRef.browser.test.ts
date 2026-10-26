@@ -19,11 +19,13 @@ const action = (methodName: string, description: string) => ({
   returnPoms: [],
 });
 
-function refInPageState(text: string, label: string): string {
+function refInPageState(text: string, label: string, index = 0): string {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = text.match(
-    new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "m")
-  );
+  const match = [
+    ...text.matchAll(
+      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
+    ),
+  ][index];
   if (!match?.[1])
     throw new Error(`No ref found for "${label}" in page state.`);
   return match[1];
@@ -76,7 +78,7 @@ describe("collection instances targeted by ref", () => {
       const { getPageStateForDocument } = await import("../../page-state");
       const ref = refInPageState(
         (await getPageStateForDocument(document)).text,
-        "ItemsPage.items[0]"
+        "Item"
       );
       archive = currentArchive;
       document.querySelector("button")!.textContent = "Archive current";
@@ -141,7 +143,7 @@ describe("collection instances targeted by ref", () => {
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       await archiveTool.execute({ ref, args: {} }, runContext());
 
@@ -207,7 +209,7 @@ describe("collection instances targeted by ref", () => {
       // Capture state and get ref for item-1.
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       // Remove item-0 (the first instance) between look and act.
       document.querySelector("#item-0")?.remove();
@@ -276,7 +278,7 @@ describe("collection instances targeted by ref", () => {
       // Capture state and get ref for item-1.
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       // Remove item-1 entirely from the DOM.
       document.querySelector("#item-1")?.remove();
@@ -406,7 +408,7 @@ describe("collection instances targeted by ref", () => {
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[0]");
+      const ref = refInPageState(state.text, "Item");
       expect(ref).toMatch(/^s_/);
 
       await archiveTool.execute({ ref, args: {} }, runContext());
@@ -494,7 +496,7 @@ describe("collection instances targeted by ref", () => {
       // Capture state and get ref for the second item in the first group.
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "GroupsPage.groups[0].items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       await doActionTool.execute({ ref, args: {} }, runContext());
 
@@ -572,7 +574,7 @@ describe("collection instances targeted by ref", () => {
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1].child");
+      const ref = refInPageState(state.text, "Child", 1);
 
       await openTool.execute({ ref, args: {} }, runContext());
 

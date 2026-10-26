@@ -94,7 +94,7 @@ describe("generate_locator in Chromium", () => {
   /** The synthetic ref `snapshot` gives AccountPage's root. */
   async function accountRootRef() {
     const { structure } = await ayme.tools.run("snapshot", {});
-    const found = structure.match(/(s_\w+) AccountPage\.account\b/)?.[1];
+    const found = structure.match(/(s_\w+) Account\b/)?.[1];
     if (!found) throw new Error("Expected a synthetic ref for AccountPage.");
     return found;
   }
