@@ -28,17 +28,10 @@ import {
  * `AgentConnection` for which of two same-named tools the agent sees). A
  * tool that shares a server tool's name is left out. While nothing is paired, any other name
  * answers that no page is connected, since it may be a page tool the agent
- * listed before. The agent hears `notifications/tools/list_changed` whenever
- * that list changes, such as when a Page Object appears or goes, and not
- * when a tool merely becomes available or unavailable: the list has no
- * field for that, and a cached list would churn (ADR-0035). One server
- * serves one agent, so every tool result also carries, as a text item after
- * the tool's own, a note of the tools that appeared, disappeared, changed
- * their parameters or description, became available or unavailable or were
- * hidden since the previous tool call or,
- * when later, the agent's last read of the tool list; an agent that has
- * done neither has seen no tools. The list says nothing of availability,
- * so a tool it first served counts as available. A server tool's input
+ * listed before. One server serves one agent, so its `AgentToolView` says
+ * when the agent hears `notifications/tools/list_changed`, and every tool
+ * result carries that view's tool change note, if any, as a text item
+ * after the tool's own. A server tool's input
  * is checked against its input schema before the tool runs, with arguments
  * left out taken as `{}`; a page tool's input is the page's to check.
  */
