@@ -7,6 +7,7 @@ import type {
   PomMemberObservation,
   ToolManifest,
 } from "../../shared";
+import { instanceLabel } from "../domain/observationReport";
 import { modelOption } from "../domain/decorators";
 import { errorText, RuntimeStateError } from "../../shared";
 import {
@@ -81,7 +82,7 @@ export async function observePageObject(
   };
   const page = await observeInstance(walk, instance, manifest.tools, {
     ...place,
-    kind: "page",
+    page: true,
   });
   if (page.walk)
     await walkMembers(
@@ -91,7 +92,7 @@ export async function observePageObject(
       {
         ...place,
         present: page.observed.present,
-        rootElement: page.rootElement,
+        rootElement: page.observed.root?.element,
         rootLocator: page.observed.rootLocator,
       },
       new Set()
@@ -134,14 +135,13 @@ type Place = Pick<PomInstanceObservation, "path" | "className"> & {
  * one with no predicate takes.
  */
 type InstancePlace = Omit<Place, "rootElement" | "rootLocator"> & {
-  kind: "page" | "child" | "item";
+  page: boolean;
 };
 
 /** What observing one instance found, and whether to walk its members. */
 type ObservedInstance = {
   observed: PomInstanceObservation;
   walk: boolean;
-  rootElement?: Element;
 };
 
 /**
@@ -160,7 +160,7 @@ async function observeInstance(
   walk: Walk,
   instance: object,
   tools: readonly ToolManifest[],
-  { kind, ...place }: InstancePlace
+  { page, ...place }: InstancePlace
 ): Promise<ObservedInstance> {
   const observed: PomInstanceObservation = {
     path: place.path,
@@ -180,7 +180,6 @@ async function observeInstance(
   if (root) {
     observed.root = root.root;
     observed.rootLocator = root.locator;
-    observed.rootError = root.error;
     observed.rootCount = root.count;
     if (root.locator)
       walk.targetSources.push({
@@ -190,19 +189,19 @@ async function observeInstance(
         locator: root.locator,
       });
     if (!root.locator) {
-      const path = place.path ? `${walk.label}.${place.path}` : walk.label;
+      const label = instanceLabel(place.className, walk.label, place.path);
       walk.memberObservations.push(
         rootObservation(
           place.path,
           root.error === undefined
-            ? `${place.className} at ${path}: its root is not a browser locator.`
-            : `${place.className} at ${path}: its root predicate threw ${root.error}.`
+            ? `${label}: its root is not a browser locator.`
+            : `${label}: its root predicate threw ${root.error}.`
         )
       );
       walk.instances.push(observed);
-      return { observed, walk: kind === "page" };
+      return { observed, walk: page };
     }
-    if (kind !== "page") {
+    if (!page) {
       walk.memberObservations.push({
         memberName: `${place.path}.root`,
         kind: "component-root",
@@ -222,7 +221,6 @@ async function observeInstance(
   return {
     observed,
     walk: true,
-    rootElement: observed.root?.element,
   };
 }
 
@@ -233,6 +231,7 @@ function rootObservation(path: string, error: string): PomMemberObservation {
     kind: "component-root",
     count: 0,
     error,
+    diagnostic: true,
   };
 }
 
@@ -247,13 +246,16 @@ async function walkMembers(
   const nextAncestors = new Set(ancestors).add(instance);
   for (const member of members) {
     const memberPath = joinPath(place.path, member.memberName);
+    let diagnostic = false;
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
-        if (!walk.driver.isLocator(value))
+        if (!walk.driver.isLocator(value)) {
+          diagnostic = true;
           throw new RuntimeStateError(
             `its ${member.memberName} is not a browser locator.`
           );
+        }
         // Kept even while it is the root: it may not be on a later read.
         walk.targetSources.push({
           path: joinPath(walk.label, memberPath),
@@ -277,7 +279,8 @@ async function walkMembers(
         failedObservation(
           member,
           memberPath,
-          `${place.className} at ${place.path ? `${walk.label}.${place.path}` : walk.label}: ${errorMessage(error)}`
+          `${instanceLabel(place.className, walk.label, place.path)}: ${errorMessage(error)}`,
+          diagnostic
         )
       );
     }
@@ -343,13 +346,13 @@ async function walkComponentMember(
       walk.memberObservations.push(
         rootObservation(
           path,
-          `${manifest.className} at ${joinPath(walk.label, path)}: it is not an object.`
+          `${instanceLabel(manifest.className, walk.label, path)}: it is not an object.`
         )
       );
       continue;
     }
     const child = await observeInstance(walk, component, manifest.tools, {
-      kind: member.collection ? "item" : "child",
+      page: false,
       path,
       className: manifest.className,
       present: place.present,
@@ -364,7 +367,7 @@ async function walkComponentMember(
         path,
         className: observed.className,
         present: observed.present,
-        rootElement: child.rootElement,
+        rootElement: observed.root?.element,
         rootLocator: observed.rootLocator,
       },
       ancestors
@@ -375,9 +378,11 @@ async function walkComponentMember(
 function failedObservation(
   member: PomMemberManifest,
   memberPath: string,
-  error: string
+  error: string,
+  diagnostic: boolean
 ): PomMemberObservation {
   return {
+    diagnostic,
     memberName:
       member.kind === "component" && !member.collection
         ? `${memberPath}.root`

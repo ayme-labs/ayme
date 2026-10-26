@@ -120,7 +120,6 @@ describe("Page Object Root by option", () => {
         kind: "instance",
         roots: [
           expect.objectContaining({
-            label: name.split(".")[0],
             available: true,
           }),
         ],
@@ -251,7 +250,7 @@ describe("Page Object Root by option", () => {
         .args[0]!.closedSet;
     expect(offered()).toMatchObject({
       kind: "instance",
-      roots: [{ label: "Row" }, { label: "Row" }],
+      roots: [{}, {}],
     });
     const state = await agent.getPageState();
     const ref = [...state.text.matchAll(/(e\d+) Row\b/g)][1]![1]!;
@@ -261,7 +260,7 @@ describe("Page Object Root by option", () => {
     // No probe follows the removal: the Goal Loop must leave out a stale root.
     expect(offered()).toMatchObject({
       kind: "instance",
-      roots: [{ label: "Row" }],
+      roots: [{}],
     });
   });
 
@@ -681,7 +680,7 @@ describe("Page Object Root by option", () => {
     expect(logged).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         message:
-          'The Page Object class "Item" declares no root and is reached from more than one place: Outbox.items[].',
+          'The Page Object class "Item" declares no root and has many instances below a collection: Outbox.items[] (below a collection).',
       })
     );
     await probeRegisteredPomMembers();
@@ -734,6 +733,65 @@ describe("Page Object Root by option", () => {
     }
   );
 
+  it("keeps member read failures in the Inspector without logging them", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    class BrokenPage {
+      get link() {
+        throw new Error("getter failed");
+      }
+      child = {};
+      open() {}
+    }
+    registerCompiledPom(BrokenPage, {
+      ...pageManifest("BrokenPage", [
+        locator("link"),
+        {
+          memberName: "child",
+          kind: "component",
+          access: "field",
+          componentClassName: "Missing",
+          collection: false,
+        },
+      ]),
+    });
+    session.pom.register(BrokenPage);
+    await probeRegisteredPomMembers();
+    expect(logged).not.toHaveBeenCalled();
+    expect(listRegisteredPoms()[0]!.memberObservations).toMatchObject([
+      { memberName: "link", error: "BrokenPage: getter failed" },
+      {
+        memberName: "child.root",
+        error: "BrokenPage: No metadata found for component Missing.",
+      },
+    ]);
+  });
+
+  it("logs an invalid locator after an Inspector-only read failure with the same text", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    let failsOnRead = true;
+    class BrokenPage {
+      get link() {
+        if (failsOnRead) throw new Error("its link is not a browser locator.");
+        return {};
+      }
+      open() {}
+    }
+    registerCompiledPom(
+      BrokenPage,
+      pageManifest("BrokenPage", [locator("link")])
+    );
+    session.pom.register(BrokenPage);
+    await probeRegisteredPomMembers();
+    expect(logged).not.toHaveBeenCalled();
+    failsOnRead = false;
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "BrokenPage: its link is not a browser locator."
+    );
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+  });
+
   it("reports a changed diagnostic and one that returns after recovery", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     let problem: string | undefined = "first";
@@ -783,14 +841,14 @@ describe("Page Object Root by option", () => {
     session.pom.register(Shell);
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      "Shell at Shell: its root is not a browser locator."
+      "Shell: its root is not a browser locator."
     );
     expect(names()).toEqual(["Panel.close"]);
     expect(observedMembers()).toEqual(["root", "container", "panel.root"]);
     throws = true;
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenLastCalledWith(
-      "Shell at Shell: its root predicate threw broken."
+      "Shell: its root predicate threw broken."
     );
     expect(names()).toEqual(["Panel.close"]);
   });
@@ -838,6 +896,7 @@ describe("Page Object Root by option", () => {
         memberName: "panel.root",
         kind: "component-root",
         count: 0,
+        diagnostic: true,
         error:
           "Panel at Shell.panel: its root predicate threw TypeError: frame is undefined.",
       },
@@ -895,7 +954,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      "Drawer at Drawer: its root matches 2 elements."
+      "Drawer: its root matches 2 elements."
     );
 
     await probeRegisteredPomMembers();
@@ -947,7 +1006,7 @@ describe("Page Object Root by option", () => {
     expect(logged).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         message:
-          'The Page Object class "Toolbar" declares no root and is reached from more than one place: Table.rows[].toolbar.',
+          'The Page Object class "Toolbar" declares no root and has many instances below a collection: Table.rows[].toolbar (below a collection).',
       })
     );
     await probeRegisteredPomMembers();

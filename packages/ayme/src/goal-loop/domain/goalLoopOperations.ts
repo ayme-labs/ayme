@@ -66,6 +66,7 @@ export type ArgumentSpec = {
 };
 
 export type GoalLoopOperation = {
+  className?: string;
   name: string;
   description: string;
   /**

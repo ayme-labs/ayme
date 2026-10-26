@@ -3,9 +3,9 @@ import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
 
-// Its list renders the page and stays out of page state. The editor around
-// that list is the visible root an agent can address.
-const editorRoot = (self: FillForm) => self.root.locator("..");
+// Its list renders the page and stays out of page state. The named run card
+// is the visible root an agent can address.
+const editorRoot = (self: FillForm) => self.card;
 
 /**
  * `fill_form`'s form in a run card: every field on the page as a row, by
@@ -19,7 +19,7 @@ export class FillForm extends PanelPart {
   readonly changedCount: Locator;
   readonly undoAllButton: Locator;
 
-  constructor(card: Locator) {
+  constructor(readonly card: Locator) {
     super(card.getByRole("list", { name: "Form fields" }));
     this.rows = this.root.getByRole("listitem");
     this.changedCount = card.getByRole("status", { name: "Changed fields" });

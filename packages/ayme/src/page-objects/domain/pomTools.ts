@@ -1,18 +1,12 @@
 import type { JsonSchema, RegisteredPomTool, ToolManifest } from "../../shared";
 import { actionFacts, inputParameters, inputSchemaFor } from "./actionTool";
 
-/** Package-internal: a Page Object Tool's facts, as the registry lists them. */
-export type ScopedPomTool = RegisteredPomTool & {
-  /** Whether its class declares a Page Object Root. */
-  rooted?: boolean;
-};
-
 /** One input rule for pages, single children and collection instances. */
 export function pomToolFacts(
   className: string,
   rooted: boolean,
   action: ToolManifest
-): ScopedPomTool {
+): RegisteredPomTool {
   const parameters = rooted
     ? [
         {

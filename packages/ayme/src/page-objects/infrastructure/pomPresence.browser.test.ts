@@ -206,7 +206,7 @@ describe("Page Object Presence by predicate", () => {
       await probeRegisteredPomMembers();
       expect(names()).toEqual([]);
       expect(logged).toHaveBeenCalledExactlyOnceWith(
-        `ProjectPage at ProjectPage: its ${option} predicate threw TypeError: store is undefined.`
+        `ProjectPage: its ${option} predicate threw TypeError: store is undefined.`
       );
 
       document.body.innerHTML = "<p>Changed</p>";

@@ -58,6 +58,8 @@ export type PublishedToolInfo = Readonly<{
   returnPoms?: readonly string[];
   inputSchema: JsonSchema;
   group: PublishedToolGroup;
+  /** The declaring class of a Page Object Tool. */
+  className?: string;
 }>;
 
 /**
@@ -228,6 +230,7 @@ function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
     tools.map(({ tool, group, available, reason }) =>
       Object.freeze({
         name: tool.name,
+        ...("className" in tool ? { className: tool.className } : {}),
         ...(tool.description === undefined
           ? {}
           : { description: tool.description }),

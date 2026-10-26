@@ -11,7 +11,7 @@ export type LiveTool = {
   inputSchema: unknown;
   group: ToolGroup;
   /** For a Page object tool: the Page Object Model whose action it is. */
-  pomClassName?: string;
+  className?: string;
   /**
    * For a Peek tool: where its Peek lives. `node` is an App Process's, a
    * Node process of the app paired beside the page, which the panel runs
@@ -81,18 +81,4 @@ export function listTools(tools: readonly LiveTool[]): ToolGroupListing[] {
       };
     })
     .filter(({ tools }) => tools.length > 0);
-}
-
-/** Links each Page Object Tool directly to its class namespace. */
-export function attachToolModels(
-  tools: readonly Omit<LiveTool, "pomClassName">[]
-): LiveTool[] {
-  return tools.map((tool) =>
-    tool.group === "pageObject"
-      ? {
-          ...tool,
-          pomClassName: tool.name.slice(0, tool.name.lastIndexOf(".")),
-        }
-      : { ...tool }
-  );
 }

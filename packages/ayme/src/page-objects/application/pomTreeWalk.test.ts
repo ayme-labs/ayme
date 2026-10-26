@@ -118,6 +118,7 @@ describe("one observation of a Page Object", () => {
     expect(found?.present).toBe(false);
     expect(memberObservations).toContainEqual({
       memberName: "items[0].children[0].root",
+      diagnostic: true,
       kind: "component-root",
       count: 0,
       error:

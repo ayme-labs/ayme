@@ -48,6 +48,7 @@ const manifest: PomManifest = {
 };
 
 const save: RegisteredPomTool = {
+  rooted: false,
   className: "Toolbar",
   name: "Toolbar.save",
   methodName: "save",
@@ -313,4 +314,20 @@ it("keeps unobserved model members visible before a child's first observation", 
   expect(await inspector.detail.model.memberDescription("root")).toContain(
     "pending"
   );
+});
+
+it("shows the agent's live description on a model action's run card", async () => {
+  renderApp({
+    toolbarOnPage: true,
+    live: [
+      {
+        ...saveTool(true)[0]!,
+        description: "Save and then inspect the confirmation.",
+      },
+    ],
+  });
+  await inspector.navigator.model.object("Editor.toolbar").click();
+  await expect
+    .poll(() => inspector.detail.runCard("save").root.textContent())
+    .toContain("Save and then inspect the confirmation.");
 });

@@ -114,6 +114,7 @@ function tool(
 ): RegisteredPomTool {
   return {
     className: component?.className ?? "TodoPage",
+    rooted: false,
     name,
     methodName,
     description: "",

@@ -70,6 +70,7 @@ export function indexMembers(
   const byPath = new Map<string, IndexedMember>();
   const parents = new Map<PageObjectNode, PageObjectNode>();
   const instances = new Map<string, PageObjectNode[]>();
+  const toolClasses = new Map<string, string>();
   const add = (
     index: Map<string, IndexedMember>,
     key: string,
@@ -89,6 +90,8 @@ export function indexMembers(
         const ofClass = instances.get(node.className) ?? [];
         ofClass.push(node);
         instances.set(node.className, ofClass);
+        for (const action of node.actions)
+          toolClasses.set(action.toolName, node.className);
         for (const locator of node.members)
           if (locator.kind === "locator") {
             const member = { path: locator.path, owner: node, locator };
@@ -157,9 +160,7 @@ export function indexMembers(
         )
       ),
     toolInstances: (toolName) =>
-      (
-        instances.get(toolName.slice(0, toolName.lastIndexOf("."))) ?? []
-      ).filter((node) =>
+      (instances.get(toolClasses.get(toolName) ?? "") ?? []).filter((node) =>
         node.actions.some((action) => action.toolName === toolName)
       ),
   };

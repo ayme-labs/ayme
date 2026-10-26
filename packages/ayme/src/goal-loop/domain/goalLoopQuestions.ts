@@ -259,15 +259,17 @@ function describeNode(node: StructuralNode): string {
 }
 
 /**
- * One option per present root of a collection path, keyed by the ref the same
+ * One option per present rooted instance, keyed by the ref the same
  * capture gave that root's element. A root the tool is unavailable on would be
  * refused, and a root the capture holds no ref for cannot be targeted; both are
  * left out, each with why.
  */
 function instanceOptions(
   roots: readonly RootedToolInstance[],
-  capture: PageStateCapture
+  capture: PageStateCapture,
+  tool: Pick<GoalLoopOperation, "className" | "name">
 ): { options: ArgumentOption[]; leftOut: LeftOutItem[] } {
+  const className = tool.className ?? tool.name;
   const refsByElement = new Map<Element, AriaRef>();
   for (const [ref, element] of capture.elementsByRef)
     refsByElement.set(element, ref);
@@ -277,7 +279,7 @@ function instanceOptions(
   for (const root of roots) {
     const ref = refsByElement.get(root.element);
     const label =
-      ref === undefined ? root.label : `${root.label} on ref "${ref}"`;
+      ref === undefined ? className : `${className} on ref "${ref}"`;
     if (!root.available) {
       leftOut.push({
         label,
@@ -290,7 +292,7 @@ function instanceOptions(
     }
     const node = ref === undefined ? null : capture.tree.getNode(ref);
     if (ref === undefined || node === null) {
-      leftOut.push({ label: root.label, why: "no ref in the page state" });
+      leftOut.push({ label: className, why: "no ref in the page state" });
       continue;
     }
     options.push({
@@ -590,7 +592,7 @@ export function planArguments(
       closedSet.kind === "ref"
         ? { options: refOptions(closedSet.filter, capture) }
         : closedSet.kind === "instance"
-          ? instanceOptions(closedSet.roots, capture)
+          ? instanceOptions(closedSet.roots, capture, tool)
           : { options: valueOptions(closedSet.values) };
     const options = withUniqueKeys([
       ...offered.options,

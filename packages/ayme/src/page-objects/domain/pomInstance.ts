@@ -65,8 +65,6 @@ export type PomInstanceObservation = {
    * without a root, or when the predicate threw or answered no locator.
    */
   rootLocator?: Locator;
-  /** What its root predicate threw, when it threw. */
-  rootError?: string;
   /** How many elements its root locator matched; 0 when it answered none. */
   rootCount?: number;
   /**
@@ -128,7 +126,6 @@ export function sameInstance(
     left.path === right.path &&
     left.present === right.present &&
     left.presenceError === right.presenceError &&
-    left.rootError === right.rootError &&
     sameRoot(left.root, right.root) &&
     left.predicates.size === right.predicates.size &&
     [...left.predicates].every(([methodName, answer]) => {

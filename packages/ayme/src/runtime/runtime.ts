@@ -1,3 +1,4 @@
+import type { CallerAwarePomTool } from "../page-objects";
 import {
   agentDescription,
   constructPageObject,
@@ -647,7 +648,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     const entry = resolveTools({ peeks }).get(name);
     if (!entry) throw noSuchTool(name);
     const checkedInput = checkedToolInput(entry.tool.inputSchema, input);
-    if (!("rooted" in entry.tool && entry.tool.rooted))
+    if (!(
+      entry.group === "pageObject" && (entry.tool as CallerAwarePomTool).rooted
+    ))
       assertAvailable(name, entry);
     return { tool: entry.tool, checkedInput };
   }

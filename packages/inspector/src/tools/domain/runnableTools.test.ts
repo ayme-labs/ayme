@@ -10,6 +10,7 @@ import { listRunnableTools } from "./runnableTools";
 
 const addItem: RegisteredPom["tools"][number] = {
   className: "ListPage",
+  rooted: false,
   methodName: "addItem",
   name: "ListPage.addItem",
   description: "Add an item to the list.",

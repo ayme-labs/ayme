@@ -39,3 +39,5 @@ export type {
   RegisteredPom,
 } from "./infrastructure/registry";
 export { createAymeRuntime } from "./infrastructure/aymeRuntime";
+
+export { rootlessClassRefusals } from "./domain/pomClasses";

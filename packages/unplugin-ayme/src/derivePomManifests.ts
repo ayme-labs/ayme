@@ -12,6 +12,7 @@ import type {
   ToolManifest,
   ToolParameter,
 } from "@ayme-dev/ayme/internal";
+import { rootlessClassRefusals } from "@ayme-dev/ayme/internal";
 import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
 
 export type { PomCompilerOptions } from "./pomProgram";
@@ -88,7 +89,17 @@ export function derivePomManifestsFromProgram(
       return { manifest, components: reachableComponents(checker, references) };
     });
     rejectSameNamedClasses(declaration, components.keys());
-    rejectSharedRootlessClasses(checker, declaration);
+    const compiled = { ...manifest, components: [...components.values()] };
+    const declarations = new Map(
+      [declaration, ...components.keys()].map((node) => [node.name!.text, node])
+    );
+    const refusals = rootlessClassRefusals(
+      [compiled],
+      (className) =>
+        rootState(checker, declarations.get(className)!) !== "undeclared"
+    );
+    const refusal = refusals.values().next().value;
+    if (refusal) throw refusal;
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
     manifests.push({ ...rest, components: [...components.values()], tools });
@@ -433,46 +444,6 @@ function rejectSameNamedClasses(
         }. Ayme tells the classes of a Page Object apart by name.`
       );
   }
-}
-
-/**
- * Member paths identify instances; action return types do not. Guard edges on
- * each path so a recursive rooted class still exposes its repeated children.
- */
-function rejectSharedRootlessClasses(
-  checker: ts.TypeChecker,
-  page: ts.ClassDeclaration
-) {
-  const places = new Map<ts.ClassDeclaration, string>();
-  const visit = (
-    declaration: ts.ClassDeclaration,
-    path: string,
-    belowCollection: boolean,
-    edges: Set<ts.ClassElement>
-  ) => {
-    if (rootState(checker, declaration) === "undeclared") {
-      const previous = places.get(declaration);
-      if (previous || belowCollection)
-        throw new Error(
-          `Page Object class "${declaration.name!.text}" declares no root and is reached from multiple places: ${previous ? `${previous}, ${path}` : `${path} (below a collection)`}.`
-        );
-      places.set(declaration, path);
-    }
-    for (const member of classMembers(checker, declaration)) {
-      if (edges.has(member)) continue;
-      const role = memberRole(checker, member);
-      if (role?.role !== "child") continue;
-      const { member: child, declaration: target } = role.child;
-      if (!target || child.kind !== "component") continue;
-      visit(
-        target,
-        `${path}.${child.memberName}${child.collection ? "[]" : ""}`,
-        belowCollection || child.collection,
-        new Set(edges).add(member)
-      );
-    }
-  };
-  visit(page, page.name!.text, false, new Set());
 }
 
 function classMembers(

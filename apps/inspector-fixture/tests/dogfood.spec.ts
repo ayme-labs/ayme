@@ -83,13 +83,7 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   const form = inspector.detail.toolPage.card.fillForm;
   await expect(form.control("Urgent")).not.toBeChecked();
   // The editor's root surrounds the list that stays out of page state.
-  const { structure } = (await agent.call("snapshot", {})) as {
-    structure: string;
-  };
-  const editorRef = structure.match(
-    /(e\d+):\n\s+- e\d+:\n\s+- e\d+: Fields/
-  )?.[1];
-  if (!editorRef) throw new Error("Expected the form editor's root ref.");
+  const editorRef = await agent.ref('form "fill_form"');
   await executePublishedTool(page, `FillForm.set`, {
     ref: editorRef,
     args: { name: "Urgent", value: true },

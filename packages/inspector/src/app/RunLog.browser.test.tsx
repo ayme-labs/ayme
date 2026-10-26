@@ -74,6 +74,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
 });
 
 const save: RegisteredPomTool = {
+  rooted: false,
   className: "Editor",
   methodName: "save",
   name: "Editor.save",

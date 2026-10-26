@@ -292,7 +292,7 @@ describe("a Step Decision", () => {
       ).toMatchObject({
         kind: "stop",
         reason: "needs_value",
-        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: items[archived] (unavailable: already archived). Try a different approach.',
+        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: List (unavailable: already archived). Try a different approach.',
         needs: { tool: "List.archive", parameters: ["ref"] },
       });
     });
@@ -302,13 +302,11 @@ describe("a Step Decision", () => {
       const tool = archiveTool([
         // An available item the capture holds no ref for.
         {
-          label: "items[0]",
           element: document.createElement("li"),
           present: true,
           available: true,
         },
         {
-          label: "items[1]",
           element: [...capture.elementsByRef.values()][0]!,
           present: true,
           available: false,
@@ -322,7 +320,7 @@ describe("a Step Decision", () => {
       ).toMatchObject({
         kind: "stop",
         reason: "needs_value",
-        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: items[0] (no ref in the page state), items[1] on ref "e1" (unavailable: already archived). Try a different approach.',
+        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: List (no ref in the page state), List on ref "e1" (unavailable: already archived). Try a different approach.',
         needs: { tool: "List.archive", parameters: ["ref"] },
       });
       expect(requests).toHaveLength(1);
@@ -330,8 +328,7 @@ describe("a Step Decision", () => {
 
     it("with needs_value naming every item it left out, however many", async () => {
       const capture = captureOfButtons(0);
-      const items = Array.from({ length: 12 }, (_, index) => ({
-        label: `items[${index}]`,
+      const items = Array.from({ length: 12 }, () => ({
         element: document.createElement("li"),
         present: true,
         available: false,
@@ -347,7 +344,7 @@ describe("a Step Decision", () => {
 
       expect(verdict).toMatchObject({ kind: "stop", reason: "needs_value" });
       expect(verdict.kind === "stop" && verdict.next).toBe(
-        `The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: ${items.map((item) => `${item.label} (unavailable: it is archived)`).join(", ")}. Try a different approach.`
+        `The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: ${items.map(() => `List (unavailable: it is archived)`).join(", ")}. Try a different approach.`
       );
     });
 
@@ -411,7 +408,7 @@ describe("a Step Decision", () => {
       ).toMatchObject({
         kind: "stop",
         reason: "no_fitting_option",
-        next: 'No element on the current page fits the operation "List.archive". Left out: items[archived] (unavailable: already archived). Navigate to a different page or try a different approach.',
+        next: 'No element on the current page fits the operation "List.archive". Left out: List (unavailable: already archived). Navigate to a different page or try a different approach.',
       });
     });
 
@@ -420,23 +417,20 @@ describe("a Step Decision", () => {
       const [first, second] = [...capture.elementsByRef.values()];
       const tool = archiveTool([
         {
-          label: "items[0]",
           element: first!,
           present: true,
           available: false,
           reason: "already archived",
         },
-        { label: "items[1]", element: second!, present: true, available: true },
+        { element: second!, present: true, available: true },
         // An available item the capture holds no ref for.
         {
-          label: "items[2]",
           element: document.createElement("li"),
           present: true,
           available: true,
         },
         // Unavailable without an Availability Reason.
         {
-          label: "items[3]",
           element: document.createElement("li"),
           present: true,
           available: false,
@@ -453,7 +447,7 @@ describe("a Step Decision", () => {
 
       // The one item it can offer, then none of these.
       expect(questionsOf(requests[1]).ref!.criteria).toEqual({
-        e2: 'items[1] on ref "e2" (button "Item 2")',
+        e2: 'List on ref "e2" (button "Item 2")',
         [NONE_OF_THESE_KEY]: "None of these; the item is not offered.",
       });
       expect(criteriaKeys(requests[1], "ref")).toEqual([
@@ -466,7 +460,7 @@ describe("a Step Decision", () => {
       expect(verdict).toMatchObject({
         kind: "stop",
         reason: "no_fitting_option",
-        next: 'No element on the current page fits the operation "List.archive". Left out: items[0] on ref "e1" (unavailable: already archived), items[2] (no ref in the page state), items[3] (unavailable). Navigate to a different page or try a different approach.',
+        next: 'No element on the current page fits the operation "List.archive". Left out: List on ref "e1" (unavailable: already archived), List (no ref in the page state), List (unavailable). Navigate to a different page or try a different approach.',
       });
     });
   });

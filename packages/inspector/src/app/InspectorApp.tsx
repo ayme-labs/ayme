@@ -21,7 +21,7 @@ import {
 } from "../navigation";
 import { isStaleSelection, structureLens, unfoldedOnPage } from "../structure";
 import { modelLens } from "../page-model";
-import { attachToolModels, toolsLens } from "../tools";
+import { toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
 import { decodeViewState, viewStateKey, withSelection } from "./viewState";
 
@@ -53,10 +53,7 @@ export function InspectorApp() {
     onViewChange: (runs) => setViewState((current) => ({ ...current, runs })),
   });
   const { live, appProcess } = runtime.tools;
-  const tools = useMemo(
-    () => attachToolModels([...live, ...appProcess]),
-    [live, appProcess]
-  );
+  const tools = useMemo(() => [...live, ...appProcess], [live, appProcess]);
 
   const lenses: Lens[] = [
     modelLens({

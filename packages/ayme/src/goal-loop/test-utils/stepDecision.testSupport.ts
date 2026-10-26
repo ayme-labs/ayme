@@ -134,7 +134,6 @@ export const lookalikeClickTool: GoalLoopOperation = {
 
 /** A collection item the tool is unavailable on, so never offered. */
 export const archivedItem: RootedToolInstance = {
-  label: "items[archived]",
   element: document.createElement("li"),
   present: true,
   available: false,
@@ -150,8 +149,7 @@ export const collectionTool = (
   unavailable: RootedToolInstance[] = []
 ): GoalLoopOperation =>
   archiveTool([
-    ...[...capture.elementsByRef.values()].map((element, index) => ({
-      label: `items[${index}]`,
+    ...[...capture.elementsByRef.values()].map((element) => ({
       element,
       present: true,
       available: true,
@@ -167,6 +165,7 @@ export const archiveTool = (
   roots: readonly RootedToolInstance[]
 ): GoalLoopOperation => ({
   name: "List.archive",
+  className: "List",
   description: "Archive an item.",
   execute: async () => null,
   requiredParams: ["ref"],

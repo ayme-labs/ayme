@@ -2,6 +2,11 @@ import type { PomMemberObservation } from "../../shared";
 import { sameInstance, type PomInstanceObservation } from "./pomInstance";
 import type { PageObjectObservation } from "./pomTree";
 
+/** Names a page once, or a child by its class and full member path. */
+export function instanceLabel(className: string, pomId: string, path: string) {
+  return path ? `${className} at ${pomId}.${path}` : className;
+}
+
 /** What the last observation of a registered Page Object found. */
 export type LastObservation = {
   /** Every instance it found; undefined before the first observation. */
@@ -41,7 +46,8 @@ function sameMemberObservations(
         observation.kind === candidate.kind &&
         observation.count === candidate.count &&
         observation.access === candidate.access &&
-        observation.error === candidate.error
+        observation.error === candidate.error &&
+        observation.diagnostic === candidate.diagnostic
       );
     })
   );
@@ -66,8 +72,7 @@ export function newObservationErrors(
   );
   for (const instance of instances) {
     const before = previous.get(instance.path);
-    const path = instance.path ? `${pomId}.${instance.path}` : pomId;
-    const label = `${instance.className} at ${path}`;
+    const label = instanceLabel(instance.className, pomId, instance.path);
     if (
       instance.presenceError !== undefined &&
       instance.presenceError !== before?.presenceError
@@ -83,9 +88,12 @@ export function newObservationErrors(
       errors.push(`${label}: its root matches ${instance.rootCount} elements.`);
   }
   const previousErrors = new Set(
-    last.memberObservations.map(({ error }) => error)
+    last.memberObservations
+      .filter(({ diagnostic }) => diagnostic)
+      .map(({ error }) => error)
   );
-  for (const { error } of memberObservations)
-    if (error !== undefined && !previousErrors.has(error)) errors.push(error);
+  for (const { error, diagnostic } of memberObservations)
+    if (diagnostic && error !== undefined && !previousErrors.has(error))
+      errors.push(error);
   return errors;
 }

@@ -37,7 +37,7 @@ const addItem: LiveTool = {
     required: ["text"],
   },
   group: "pageObject",
-  pomClassName: "ListPage",
+  className: "ListPage",
 };
 const click: LiveTool = {
   name: "click",

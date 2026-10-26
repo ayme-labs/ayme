@@ -32,6 +32,7 @@ export {
   renderPomDefinitions,
   renderSchema,
   rootTargetPath,
+  rootlessClassRefusals,
   subscribeToRegisteredPoms,
 } from "./page-objects";
 // The compiled Page Object manifest the build plugin writes and the runtime

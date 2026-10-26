@@ -131,8 +131,8 @@ export function toolsLens({
         <ToolPage
           tool={tool}
           definitions={
-            tool.pomClassName
-              ? readDefinition(definitionText, tool.pomClassName)
+            tool.className
+              ? readDefinition(definitionText, tool.className)
               : undefined
           }
           onSelect={onSelect}
@@ -172,25 +172,25 @@ function ToolPage({
   onSelect: (selection: Selection) => void;
   renderRun: RenderRun;
 }) {
-  const { pomClassName } = tool;
+  const { className } = tool;
   return (
     <article aria-label={tool.name} data-tool-page>
       <h2 className="font-mono text-sm font-semibold [overflow-wrap:anywhere]">
         {tool.name}
       </h2>
       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        {pomClassName && (
+        {className && (
           <button
             type="button"
-            aria-label={`Open the ${pomClassName} page object model`}
-            title={`Open the ${pomClassName} page object model`}
-            onClick={() => onSelect({ kind: "model", className: pomClassName })}
+            aria-label={`Open the ${className} page object model`}
+            title={`Open the ${className} page object model`}
+            onClick={() => onSelect({ kind: "model", className })}
             // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             className={cn(chip, "text-foreground")}
           >
             <BracesIcon className="size-3" aria-hidden />
-            <span className="min-w-0 truncate font-mono" title={pomClassName}>
-              {pomClassName}
+            <span className="min-w-0 truncate font-mono" title={className}>
+              {className}
             </span>
             <ChevronRightIcon className="size-3" aria-hidden />
           </button>

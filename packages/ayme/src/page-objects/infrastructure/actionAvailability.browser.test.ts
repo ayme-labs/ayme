@@ -438,10 +438,10 @@ describe("Action Availability", () => {
     expect(
       listRootedToolInstances()
         .get("Row.archive")
-        ?.map(({ label, available, reason }) => ({ label, available, reason }))
+        ?.map(({ available, reason }) => ({ available, reason }))
     ).toEqual([
-      { label: "Row", available: true, reason: undefined },
-      { label: "Row", available: false, reason },
+      { available: true, reason: undefined },
+      { available: false, reason },
     ]);
   });
 
@@ -503,11 +503,10 @@ describe("Action Availability", () => {
     expect(
       listRootedToolInstances()
         .get("Row.archive")
-        ?.map(({ label, available, reason }) => ({ label, available, reason }))
+        ?.map(({ available, reason }) => ({ available, reason }))
     ).toEqual([
-      { label: "Row", available: false, reason: "open is read-only" },
+      { available: false, reason: "open is read-only" },
       {
-        label: "Row",
         available: false,
         reason: `a click would not reach it; ${busy} is in the way`,
       },

@@ -74,24 +74,23 @@ export function listRunnableTools(
   const live = new Map(otherTools.map((tool) => [tool.name, tool]));
   const tools = new Map<string, RunnableTool>();
   for (const registration of registeredPoms)
-    for (const tool of registration.tools)
-      if (!tools.has(tool.name)) {
-        const listed = live.get(tool.name);
-        tools.set(
-          tool.name,
-          pageObjectTool(
-            // The session's listing describes it as agents read it.
-            { ...tool, description: listed?.description ?? tool.description },
-            listed
-              ? {
-                  present: true,
-                  available: listed.available,
-                  reason: listed.reason,
-                }
-              : { present: false, available: false }
-          )
-        );
-      }
+    for (const tool of registration.tools) {
+      const listed = live.get(tool.name);
+      tools.set(
+        tool.name,
+        pageObjectTool(
+          // The session's listing describes it as agents read it.
+          { ...tool, description: listed?.description ?? tool.description },
+          listed
+            ? {
+                present: true,
+                available: listed.available,
+                reason: listed.reason,
+              }
+            : { present: false, available: false }
+        )
+      );
+    }
   for (const tool of otherTools)
     if (!tools.has(tool.name)) {
       const refField = (["target", "ref"] as const).find(
@@ -122,7 +121,7 @@ export function listRunnableTools(
 }
 
 function pageObjectTool(
-  tool: RegisteredPomTool & { rooted?: boolean },
+  tool: RegisteredPomTool,
   availability: Pick<RunnableTool, "present" | "available" | "reason">
 ): RunnableTool {
   const base = {

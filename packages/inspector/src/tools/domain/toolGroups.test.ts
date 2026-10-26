@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { attachToolModels, listTools, type LiveTool } from "./toolGroups";
+import { listTools, type LiveTool } from "./toolGroups";
 
 // Unit: what the Tools lens lists, from the runtime's live tools. The expected groups come from the runtime's grouping:
 // Page Object Tools, Custom Tools, Browser Tools, Peek Tools, and snapshot and goal.
@@ -56,25 +56,5 @@ describe("listTools", () => {
     const [peeks] = listTools([jobs, tool("peek.cart", "peek")]);
 
     expect(names(peeks!.tools)).toEqual(["peek.cart", "peek.node.jobs"]);
-  });
-});
-
-describe("attachToolModels", () => {
-  it("gives each Page object tool the model whose action it is", () => {
-    expect(
-      attachToolModels(live).map(({ name, pomClassName }) => [
-        name,
-        pomClassName,
-      ])
-    ).toEqual([
-      ["snapshot", undefined],
-      ["click", undefined],
-      ["fill", undefined],
-      ["highlight", undefined],
-      ["ListPage.addItem", "ListPage"],
-      ["ListItem.rename", "ListItem"],
-      ["peek.cart", undefined],
-      ["goal", undefined],
-    ]);
   });
 });

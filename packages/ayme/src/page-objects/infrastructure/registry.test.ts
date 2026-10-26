@@ -558,7 +558,7 @@ describe("live Page Object registry", () => {
     expect(logged).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         message:
-          'The Page Object class "Child" declares no root and is reached from more than one place: Page.items[].child.',
+          'The Page Object class "Child" declares no root and has many instances below a collection: Page.items[].child (below a collection).',
       })
     );
     await vi.runOnlyPendingTimersAsync();

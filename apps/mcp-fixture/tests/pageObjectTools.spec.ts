@@ -134,7 +134,7 @@ test("a class tool appears with its first instance and disappears with its last"
   const removeFirst = async () => {
     const snapshot = await agent.call("snapshot");
     const ref = JSON.parse(snapshot.text).structure.match(
-      /((?:e|s_)\w+) Basket\.rows\[0\]/
+      /((?:e|s_)\w+) BasketItem\b/
     )?.[1];
     expect(ref, snapshot.text).toBeDefined();
     return agent.call("BasketItem.remove", { ref });

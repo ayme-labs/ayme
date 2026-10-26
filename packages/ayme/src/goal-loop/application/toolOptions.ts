@@ -59,6 +59,7 @@ export function buildToolOptions(page: Page): ToolOption[] {
       : specsOfParameters(t.parameters);
     return {
       name: t.name,
+      className: t.className,
       description: agentDescription(t, { required: true }),
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown, run: StartChildRun) =>

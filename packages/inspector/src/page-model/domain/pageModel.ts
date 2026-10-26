@@ -350,24 +350,15 @@ function actionsAt(
   context: Context,
   tools: readonly ToolManifest[]
 ): ObjectAction[] {
-  const registered = context.registration.tools;
-  return tools.flatMap((action) => {
-    const tool = registered.find(
-      (candidate) => candidate.name === action.toolName
-    );
-    if (!tool) return [];
-    return [
-      {
-        name: action.methodName,
-        ...(action.description === undefined
-          ? {}
-          : { description: action.description }),
-        signature: context.signature(action.parameters),
-        toolName: tool.name,
-        live: context.liveToolNames.has(tool.name),
-      },
-    ];
-  });
+  return tools.map((action) => ({
+    name: action.methodName,
+    ...(action.description === undefined
+      ? {}
+      : { description: action.description }),
+    signature: context.signature(action.parameters),
+    toolName: action.toolName,
+    live: context.liveToolNames.has(action.toolName),
+  }));
 }
 
 function modelMember(

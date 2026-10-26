@@ -90,51 +90,57 @@ function declaredIn(first: PomComponentManifest, second: PomComponentManifest) {
 
 /** Classes that cannot select one instance because they declare no root. */
 export function rootlessClassRefusals(
-  registered: readonly RegisteredPomClass[],
-  rootDeclared: (node: PomComponentManifest) => boolean | undefined
+  manifests: readonly PomManifest[],
+  rootDeclared: (className: string) => boolean | undefined
 ): Map<string, RuntimeStateError> {
-  const reached = new Map<string, { places: string[]; repeated: boolean }>();
-  for (const { manifest } of registered) {
+  const reached = new Map<
+    string,
+    { places: string[]; belowCollection: boolean }
+  >();
+  for (const manifest of manifests) {
     const components = new Map(
-      [manifest, ...manifest.components].map((node) => [node.className, node])
+      [...manifest.components, manifest].map((node) => [node.className, node])
     );
     const visit = (
       node: PomComponentManifest,
       path: string,
       collection: boolean,
-      ancestors: ReadonlySet<string>
+      edges: ReadonlySet<object>
     ) => {
-      const previous = reached.get(node.className) ?? {
-        places: [],
-        repeated: false,
-      };
-      previous.places.push(path);
-      previous.repeated ||= collection;
-      if (rootDeclared(node) === false) reached.set(node.className, previous);
-      if (ancestors.has(node.className)) return;
-      const below = new Set(ancestors).add(node.className);
+      if (rootDeclared(node.className) === false) {
+        const previous = reached.get(node.className) ?? {
+          places: [],
+          belowCollection: false,
+        };
+        previous.places.push(
+          `${path}${collection ? " (below a collection)" : ""}`
+        );
+        previous.belowCollection ||= collection;
+        reached.set(node.className, previous);
+      }
+      // Guard edges so revisiting a recursive class still visits its children.
       for (const member of node.members) {
-        if (member.kind !== "component") continue;
+        if (member.kind !== "component" || edges.has(member)) continue;
         const child = components.get(member.componentClassName);
         if (child)
           visit(
             child,
             `${path}.${member.memberName}${member.collection ? "[]" : ""}`,
             collection || member.collection,
-            below
+            new Set(edges).add(member)
           );
       }
     };
     visit(manifest, manifest.className, false, new Set());
   }
   return new Map(
-    [...reached].flatMap(([className, { places, repeated }]) =>
-      places.length > 1 || repeated
+    [...reached].flatMap(([className, { places, belowCollection }]) =>
+      places.length > 1 || belowCollection
         ? [
             [
               className,
               new RuntimeStateError(
-                `The Page Object class "${className}" declares no root and is reached from more than one place: ${places.join(", ")}.`
+                `The Page Object class "${className}" declares no root and ${places.length > 1 ? "is reached from more than one place" : "has many instances below a collection"}: ${places.join(", ")}.`
               ),
             ] as const,
           ]
