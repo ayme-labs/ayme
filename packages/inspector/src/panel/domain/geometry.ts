@@ -199,10 +199,10 @@ export function growOrigin(
     width = 0,
     height = 0,
   } = placement(layout, sizes);
-  const corner = {
-    x: left ?? viewport.width - right - width,
-    y: top ?? viewport.height - bottom - height,
-  };
+  // Where its right and bottom edges are.
+  // Stryker disable next-line ArithmeticOperator: a panel placed from its right or bottom edge holds to it at 0.
+  const far = { x: viewport.width - right, y: viewport.height - bottom };
+  const corner = { x: left ?? far.x - width, y: top ?? far.y - height };
   return {
     x: logo.x + LOGO_SIZE / 2 - corner.x,
     y: logo.y + LOGO_SIZE / 2 - corner.y,

@@ -167,17 +167,14 @@ export function InspectorShell({
     panel.finish();
     const shown = panel.ref.current!.getBoundingClientRect();
     const press = { x: event.clientX, y: event.clientY };
-    let lifted = false;
     let dock: Dock | undefined;
     // Stryker disable next-line ArrayDeclaration: a sample without a time is never among the last 100ms, so the release speed leaves it out.
     const path: Sample[] = [];
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
-        // Stryker disable next-line ConditionalExpression,BooleanLiteral: the first move stops the glide, so stopping it on every move finds none left.
-        if (!lifted) {
-          lifted = true;
-          glide.stop();
-        }
+        // The first move stops the glide; the drag's path is empty until then.
+        // Stryker disable next-line ConditionalExpression: stopping the glide on every move finds none left after the first.
+        if (path.length === 0) glide.stop();
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);
         setSnap(dock);
