@@ -2854,9 +2854,11 @@ describe("Goal Loop goal in Chromium", () => {
     expect(descriptions).toHaveLength(3);
     descriptions.forEach((description, index) => {
       // Label, role and name: what tells one instance from another.
-      expect(description).toMatch(/^Item on ref "(?:e|s_)\w+"/);
-      expect(description).toContain("listitem");
-      expect(description).toContain(`Item ${index}`);
+      expect(description).toMatch(
+        new RegExp(
+          `^Item on ref "(?:e|s_)\\w+" \\(listitem "Item ${index}"\\)$`
+        )
+      );
     });
     // The option keys are the refs the page state gave the model.
     expect(refsInPage(requests[1]!.state)).toEqual(
@@ -3082,9 +3084,9 @@ describe("Goal Loop goal in Chromium", () => {
     // One question, over the innermost roots only.
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
     expect(Object.values(offeredElements(stageTwo.ref!))).toEqual([
-      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\)$/),
-      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\)$/),
-      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\)$/),
+      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): A$/),
+      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): B$/),
+      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): C$/),
     ]);
     expect(acted).toEqual(["0-1"]);
   });

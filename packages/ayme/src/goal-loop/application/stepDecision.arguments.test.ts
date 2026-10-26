@@ -20,6 +20,7 @@ import {
 } from "../domain/goalLoopOperations";
 import {
   actionWith,
+  archiveTool,
   captureOfButtons,
   choice,
   clickTool,
@@ -87,6 +88,49 @@ const choices =
         choice(keys[index]!),
       ])
     );
+
+describe("rooted instance choices", () => {
+  it("describes unnamed roots with their visible item text", async () => {
+    const tree = StructuralTree.fromAriaSnapshotYaml(
+      `- list "Active items":
+  - listitem [ref=e1]:
+    - button "Draft release notes" [ref=e2]
+    - button "Archive" [ref=e3]
+  - listitem [ref=e4]:
+    - button "Review onboarding flow" [ref=e5]
+    - button "Archive" [ref=e6]`,
+      new SyntheticAriaRefFactory()
+    );
+    const elementsByRef = new Map<AriaRef, Element>(
+      ["e1", "e4"].map((ref) => [
+        AriaRefSchema.parse(ref),
+        document.createElement("li"),
+      ])
+    );
+    const tool = archiveTool(
+      [...elementsByRef.values()].map((element) => ({
+        element,
+        present: true,
+        available: true,
+      }))
+    );
+    const { decide, requests } = scripted(stageOne(tool.name), {
+      answers: { ref: choice("e4") },
+    });
+
+    const verdict = await step(decide, {
+      goal: "Archive the second item in the list",
+      capture: { tree, elementsByRef },
+      toolOptions: [optionOf(tool)],
+    });
+
+    expect(questionsOf(requests[1]).ref!.criteria).toMatchObject({
+      e1: 'List on ref "e1" (listitem): Draft release notes · Archive',
+      e4: 'List on ref "e4" (listitem): Review onboarding flow · Archive',
+    });
+    expect(verdict).toMatchObject({ kind: "act", args: { ref: "e4" } });
+  });
+});
 
 describe("Goal Values", () => {
   /** A tool with a list parameter and one named like its first list question. */

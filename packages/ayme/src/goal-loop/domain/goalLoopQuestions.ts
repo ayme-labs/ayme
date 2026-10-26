@@ -295,9 +295,11 @@ function instanceOptions(
       leftOut.push({ label: className, why: "no ref in the page state" });
       continue;
     }
+    // Unnamed roots, such as list items, are distinguished by their content.
+    const text = node.name ? "" : itemText(node, undefined, node.name);
     options.push({
       key: ref,
-      description: `${label} (${describeNode(node)})`,
+      description: `${label} (${describeNode(node)})${text ? `: ${clip(text)}` : ""}`,
       value: ref,
     });
   }
@@ -1141,11 +1143,11 @@ function withItemTexts(
 
 /**
  * The names and texts inside `item`, in document order, leaving out the
- * candidate and its name.
+ * candidate when given, and its name.
  */
 function itemText(
   item: StructuralNode,
-  candidate: AriaRef,
+  candidate: AriaRef | undefined,
   candidateName: string
 ): string {
   const parts: string[] = [];
