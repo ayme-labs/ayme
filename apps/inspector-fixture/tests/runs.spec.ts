@@ -161,8 +161,7 @@ test("goal runs from the panel and shows in Runs with the Runs its steps execute
     .poll(() => run.child("ListPage.clear").interactionList())
     .toEqual([{ operation: "click", target: "ListPage.clearButton" }]);
   await expect(listPage.items).toHaveCount(0);
-  const handover = JSON.parse((await run.resultText()) ?? "");
-  expect(handover).toMatchObject({ reason: "done" });
+  expect(await run.resultText()).toContain('"reason": "done"');
 });
 
 test.describe("with WebMCP publication off", () => {
@@ -213,9 +212,7 @@ test.describe("with WebMCP publication off", () => {
     await getPageContext.runButton.click();
     const run = inspector.runs.latest("snapshot");
     await expect.poll(() => run.status()).toBe("Succeeded");
-    const { structure } = JSON.parse((await run.resultText()) ?? "{}") as {
-      structure: string;
-    };
+    const structure = (await run.resultText()) ?? "";
     const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
     if (!ref) throw new Error(`No Add item button in:\n${structure}`);
 

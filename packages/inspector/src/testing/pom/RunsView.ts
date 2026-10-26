@@ -118,9 +118,10 @@ export class RunEntry extends PanelPart {
       .getAttribute("aria-label");
   }
 
-  /** Its result as JSON, shown first if it isn't. */
+  /** Its result as Runs shows it, opened first if it isn't. */
   @ayme.action({
-    description: "Reads the run's result as JSON, shown first if it is not.",
+    description:
+      "Reads the run's result as Runs shows it, opening it first: JSON, with multi-line strings as their lines.",
   })
   async resultText() {
     if ((await this.resultToggle.getAttribute("aria-expanded")) === "false")
