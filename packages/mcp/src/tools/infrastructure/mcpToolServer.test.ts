@@ -261,3 +261,45 @@ it("takes a server tool's left-out arguments as {}", async () => {
     isError: true,
   });
 });
+
+it("leaves a page tool that shares a server tool's name out of the tool list", async () => {
+  const agent = await connectAgent();
+  await agent.publish([tool("ayme_call"), tool("Panel.remove")]);
+
+  expect(
+    (await agent.client.listTools()).tools.map(({ name }) => name)
+  ).toEqual([
+    "ayme_connect",
+    "ayme_list_tools",
+    "ayme_call",
+    "ayme_noop",
+    "Panel.remove",
+  ]);
+});
+
+it("tells a tool that went from one never offered, called directly or through ayme_call", async () => {
+  const agent = await connectAgent();
+  await agent.publish([tool("Panel.remove")]);
+  await agent.publish([]);
+  const gone = {
+    texts: [
+      'The tool "Panel.remove" is gone: the page or App Process that offered it no longer does.',
+    ],
+    isError: true,
+  };
+
+  expect(await agent.answer("Panel.remove", {})).toMatchObject(gone);
+  expect(
+    await agent.answer("ayme_call", { tool: "Panel.remove" })
+  ).toMatchObject(gone);
+  expect(await agent.answer("Panel.paste", {})).toMatchObject({
+    texts: ['Unknown tool "Panel.paste".'],
+    isError: true,
+  });
+  expect(
+    await agent.answer("ayme_call", { tool: "Panel.paste" })
+  ).toMatchObject({
+    texts: ['No connected page or App Process offers a tool "Panel.paste".'],
+    isError: true,
+  });
+});

@@ -130,6 +130,22 @@ describe("the tool change note", () => {
     ).toBe(changed("Became available: Panel.remove."));
   });
 
+  it("keeps each listed tool's own availability", () => {
+    const agent = view();
+    agent.resultReturned({
+      tools: [tool("Panel.remove", { available: false }), tool("Panel.copy")],
+      hidden: [],
+    });
+    agent.listRead([tool("Panel.remove"), tool("Panel.copy")]);
+
+    expect(
+      agent.resultReturned({
+        tools: [tool("Panel.remove", { available: false }), tool("Panel.copy")],
+        hidden: [],
+      })
+    ).toBeUndefined();
+  });
+
   it("names a tool whose parameters or description changed since the agent read the list", () => {
     const agent = view();
     agent.listRead([tool("Search.run"), tool("Panel.remove")]);
