@@ -33,6 +33,7 @@ import {
   rowPress,
 } from "../../shared";
 import { formatDuration } from "../domain/duration";
+import { readableResult } from "../domain/readableResult";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { RunImageView } from "./RunImageView";
 
@@ -551,7 +552,7 @@ function RunResult({
             tabIndex={0}
             className="m-0 max-h-55 overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-xs leading-normal outline-none focus-visible:outline-2 focus-visible:outline-ring"
           >
-            {text}
+            {readableResult(text)}
           </pre>
         </figure>
       )}
