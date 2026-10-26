@@ -117,7 +117,7 @@ export class ListItem extends AppComponent {
 - The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's class, and every rooted instance's `ref` is that element's.
 - `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. `root` and `present` are inherited separately: a drawer that extends `AppComponent` and adds `present` is present while its root is on the page and it is open.
 - The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. Only the option anchors a model: a model whose class chain declares none is root-less, also when it has a member named `root`.
-- A root-less class must be reached from exactly one place across registered Page Objects. Reaching it through two members, through a collection, or through separately registered Page Objects makes it ambiguous. At registration, Ayme logs an error naming the class and the places that reach it, and withholds only that class's tools. A collection's item class and every Page Object Child below it need a decorator `root` option, including an inherited one; a member named `root` alone does not count. Re-registering after adding a root restores the tools. What a model without a root is present for is in the [reference](../reference/ayme.md#page-object-root).
+- The [root reference](../reference/ayme.md#page-object-root) defines which root-less classes can be registered.
 
 Presence lists tools; availability says whether they would run. A present Page Object whose root a click would not reach, such as one under an open dialog, keeps its tools listed, flagged unavailable with a reason that names what is in the way, and a call is refused with that reason. [`ayme.tools`](../reference/ayme.md#aymetools) has the form of the reason.
 
@@ -146,10 +146,7 @@ export class ListItem extends AppComponent {
 }
 ```
 
-- Each action is published once per class across every member and registration: `ListItem.archive` takes `{ ref, args }`, where `ref` is the Structural Ref of the item's Page Object Root in the page state and `args` holds the action's own input. `args` may be left out when the action needs no input.
-- Every class with a `root` option follows the same rule, including pages and single children. A marked `confirm` on rooted `ArchiveDialog` would be `ArchiveDialog.confirm({ ref: "e12" })`, using the dialog's own root ref.
-- A root-less class takes the action's arguments directly, without `ref` or an `args` wrapper.
-- Two instances of one class on the same root element count as one instance. A class tool stays listed while any instance is present.
+For example, `ArchiveDialog.confirm({ ref: "e12" })` calls `confirm` on the dialog whose root has ref `e12` in `snapshot`. The [calling rules](../reference/ayme.md#page-object-root) apply to pages, single children and collection items.
 
 A collection's items can hold items of their own model:
 

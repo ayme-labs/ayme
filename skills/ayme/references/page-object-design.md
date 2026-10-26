@@ -77,12 +77,9 @@ async open() {
 
 Expose individual buttons, links, and inputs as named locators. Introduce helper
 objects when they supply meaningful reusable behavior. Include collections when
-the flow or structural observation needs them. Give a collection's item class a
-`root`: each item's ref is its root's. A root-less class must be reached from
-exactly one place across registered Page Objects. Give a root to any class
-reached through several members or below a collection. The runtime logs a
-refusal and withholds only that class's tools otherwise. See
-[Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#the-page-object-root).
+the flow or structural observation needs them. See the
+[root rules](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
+for classes reached through several members or collections.
 
 ```ts
 readonly createButton = this.root.getByTestId("create-button");
