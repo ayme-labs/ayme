@@ -2,7 +2,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type PointerEvent,
   type ReactNode,
 } from "react";
@@ -11,30 +10,30 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import { Fab } from "./Fab";
 import {
-  defaultFloat,
   defaultLogo,
   dockAt,
-  fitBottomHeight,
-  fitFloat,
+  dockSize,
+  dragFloat,
   fitLogo,
-  fitSideWidth,
-  LOGO_SIZE,
-  resizeFloat,
+  fitSizes,
+  growOrigin,
+  inset,
+  placement,
+  resize,
+  type Corner,
   type Dock,
+  type Handle,
   type HostReservation,
-  type Side,
+  type Placement,
 } from "../domain/geometry";
 import { Header, layoutNames } from "../view/Header";
 import { releaseVelocity, type Sample } from "../domain/motion";
-import type { Layout, Point, Preferences } from "../domain/preferences";
+import type { Layout, Preferences } from "../domain/preferences";
 import { resizeGrip, usePointerDrag } from "../../shared";
 import { useGlide } from "./useGlide";
 import { usePointerClick } from "./usePointerClick";
 import { usePresence } from "./usePresence";
 import { currentViewport, useViewport } from "./useViewport";
-
-type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
-type Handle = Side | Corner;
 
 // Each handle straddles the panel's border and shows a resize grip: a pill
 // centred on its edge, or an arc along its corner; a pressed pill stretches.
@@ -113,13 +112,11 @@ export function InspectorShell({
   const drag = usePointerDrag();
   const [snap, setSnap] = useState<Dock>();
   const { layout, collapsed } = preferences;
-  const float = fitFloat(preferences.float ?? defaultFloat(viewport), viewport);
-  const sideWidth = fitSideWidth(preferences.sideWidth, viewport);
-  const bottomHeight = fitBottomHeight(preferences.bottomHeight, viewport);
+  const sizes = fitSizes(preferences, viewport);
   const docked = collapsed || layout === "float" ? undefined : layout;
-  const dockedSize = layout === "bottom" ? bottomHeight : sideWidth;
+  const dockedSize = docked && dockSize(docked, sizes);
   useEffect(
-    () => reserveHost(docked && { dock: docked, size: dockedSize }),
+    () => reserveHost(docked && { dock: docked, size: dockedSize! }),
     [reserveHost, docked, dockedSize]
   );
   // The room goes back when the shell unmounts.
@@ -169,25 +166,22 @@ export function InspectorShell({
     if (event.button !== 0 || !currentTarget.contains(target as Node)) return;
     panel.finish();
     const shown = panel.ref.current!.getBoundingClientRect();
-    let origin: Point | undefined;
+    const press = { x: event.clientX, y: event.clientY };
     let dock: Dock | undefined;
     // Stryker disable next-line ArrayDeclaration: a sample without a time is never among the last 100ms, so the release speed leaves it out.
     const path: Sample[] = [];
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
-        // Stryker disable next-line ConditionalExpression: every move of a drag works the start out from the same press, so working it out again finds the same place.
-        if (!origin) {
-          glide.stop();
-          // From where it shows, held at the same share of its width: a
-          // floating panel shows at its own width, so it starts where it is.
-          const along = (pointer.x - deltaX - shown.x) / shown.width;
-          origin = { x: pointer.x - deltaX - along * float.width, y: shown.y };
-        }
+        // The first move stops the glide; the drag's path is empty until then.
+        if (path.length === 0) glide.stop();
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);
         setSnap(dock);
-        const moved = fitFloat(
-          { ...float, x: origin.x + deltaX, y: origin.y + deltaY },
+        const moved = dragFloat(
+          shown,
+          press,
+          { x: deltaX, y: deltaY },
+          sizes.float,
           viewportNow
         );
         path.push({ x: moved.x, y: moved.y, time: performance.now() });
@@ -212,52 +206,22 @@ export function InspectorShell({
     // browser's own drag of it, which cancels the resize.
     event.preventDefault();
     drag(event, {
-      onMove: (deltaX, deltaY) => {
-        const viewportNow = currentViewport();
-        if (layout === "float")
-          onPreferencesChange({
-            float: resizeFloat(
-              float,
-              handle.split("-") as Side[],
-              { x: deltaX, y: deltaY },
-              viewportNow
-            ),
-          });
-        else if (layout === "bottom")
-          onPreferencesChange({
-            bottomHeight: fitBottomHeight(bottomHeight - deltaY, viewportNow),
-          });
-        else
-          onPreferencesChange({
-            sideWidth: fitSideWidth(
-              sideWidth + (layout === "left" ? deltaX : -deltaX),
-              viewportNow
-            ),
-          });
-      },
+      onMove: (deltaX, deltaY) =>
+        onPreferencesChange(
+          resize(
+            layout,
+            handle,
+            sizes,
+            { x: deltaX, y: deltaY },
+            currentViewport()
+          )
+        ),
     });
   };
 
-  const placement: Record<Layout, CSSProperties> = {
-    float: {
-      left: float.x,
-      top: float.y,
-      width: float.width,
-      height: float.height,
-    },
-    left: { left: 0, top: 0, bottom: 0, width: sideWidth },
-    right: { right: 0, top: 0, bottom: 0, width: sideWidth },
-    bottom: { left: 0, right: 0, bottom: 0, height: bottomHeight },
-  };
   // The panel scales about the logo's centre, so it grows out of the logo
   // and shrinks back into it.
-  const corner: Record<Layout, Point> = {
-    float,
-    left: { x: 0, y: 0 },
-    right: { x: viewport.width - sideWidth, y: 0 },
-    bottom: { x: 0, y: viewport.height - bottomHeight },
-  };
-  const transformOrigin = `${logoPosition.x + LOGO_SIZE / 2 - corner[layout].x}px ${logoPosition.y + LOGO_SIZE / 2 - corner[layout].y}px`;
+  const origin = growOrigin(layout, sizes, logoPosition, viewport);
 
   return (
     <>
@@ -292,7 +256,10 @@ export function InspectorShell({
             // Stryker restore StringLiteral,ObjectLiteral
             panel.className
           )}
-          style={{ ...placement[layout], transformOrigin }}
+          style={{
+            ...placement(layout, sizes),
+            transformOrigin: `${origin.x}px ${origin.y}px`,
+          }}
         >
           {resizeHandles[layout].map((handle) => (
             <div
@@ -348,8 +315,7 @@ export function InspectorShell({
           // A new edge's preview enters again.
           key={snap}
           dock={snap}
-          sideWidth={sideWidth}
-          bottomHeight={bottomHeight}
+          placement={placement(snap, sizes)}
         />
       )}
     </>
@@ -357,7 +323,7 @@ export function InspectorShell({
 }
 
 // Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
-const origin: Record<Dock, string> = {
+const growsFrom: Record<Dock, string> = {
   left: "origin-left",
   right: "origin-right",
   bottom: "origin-bottom",
@@ -367,43 +333,22 @@ const origin: Record<Dock, string> = {
 /** Where the panel docks if it's dropped now. */
 function SnapPreview({
   dock,
-  sideWidth,
-  bottomHeight,
+  placement,
 }: {
   dock: Dock;
-  sideWidth: number;
-  bottomHeight: number;
+  /** Where the panel sits docked there. */
+  placement: Placement;
 }) {
-  const inset = 8;
-  const style: Record<Dock, CSSProperties> = {
-    left: {
-      left: inset,
-      top: inset,
-      bottom: inset,
-      width: sideWidth - 2 * inset,
-    },
-    right: {
-      right: inset,
-      top: inset,
-      bottom: inset,
-      width: sideWidth - 2 * inset,
-    },
-    bottom: {
-      left: inset,
-      right: inset,
-      bottom: inset,
-      height: bottomHeight - 2 * inset,
-    },
-  };
   return (
     <div
       // It grows from the edge it docks to.
       className={cn(
         // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55 transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]",
-        origin[dock]
+        growsFrom[dock]
       )}
-      style={style[dock]}
+      // Drawn in from the dock, so the page shows around it.
+      style={inset(placement, 8)}
     >
       <span className="inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-sm font-semibold text-primary-foreground">
         {layoutNames[dock]}

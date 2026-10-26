@@ -70,30 +70,15 @@ describe("floating", () => {
       .toEqual({ ...floating, x: 300, y: 120 });
   });
 
-  // Each handle drags its own sides; the opposite sides stay put.
-  it.each([
-    ["left", -100, 0, { x: 300, width: 800 }],
-    ["right", 100, 0, { width: 800 }],
-    ["top", 0, -30, { y: 10, height: 630 }],
-    ["bottom", 0, 80, { height: 680 }],
-    ["top-left", -100, -30, { x: 300, y: 10, width: 800, height: 630 }],
-    ["top-right", 100, -30, { y: 10, width: 800, height: 630 }],
-    ["bottom-left", -100, 80, { x: 300, width: 800, height: 680 }],
-    ["bottom-right", 100, 80, { width: 800, height: 680 }],
-  ] as const)("resizes from its %s", async (handle, deltaX, deltaY, change) => {
+  // What each handle does is the geometry's (geometry.test.ts).
+  it("resizes from a handle", async () => {
     renderShell({ layout: "float", float: floating });
 
-    await shell.resizeBy(handle, deltaX, deltaY);
+    await shell.resizeBy("top-left", -100, -30);
 
-    await expect.poll(() => shell.box()).toEqual({ ...floating, ...change });
-  });
-
-  it("keeps a resized edge inside the viewport", async () => {
-    renderShell({ layout: "float", float: floating });
-
-    await shell.resizeBy("right", 400, 0);
-
-    await expect.poll(() => shell.box()).toEqual({ ...floating, width: 880 });
+    await expect
+      .poll(() => shell.box())
+      .toEqual({ x: 300, y: 10, width: 800, height: 630 });
   });
 
   it.each([
@@ -116,38 +101,17 @@ describe("floating", () => {
 });
 
 describe("docking", () => {
-  it.each([
-    ["left", 4, 300, "Dock left", { x: 0, y: 0, width: 600, height: 800 }],
-    [
-      "right",
-      1276,
-      300,
-      "Dock right",
-      { x: 680, y: 0, width: 600, height: 800 },
-    ],
-    [
-      "bottom",
-      640,
-      796,
-      "Dock to bottom",
-      { x: 0, y: 500, width: 1280, height: 300 },
-    ],
-  ] as const)(
-    "docks %s when dropped on that edge",
-    async (_edge, x, y, layout, box) => {
-      renderShell({
-        layout: "float",
-        float: floating,
-        sideWidth: 600,
-        bottomHeight: 300,
-      });
+  // Which edge docks where, and each dock's box, are the geometry's.
+  it("docks when dropped on an edge", async () => {
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
 
-      await header.dropAt(x, y);
+    await header.dropAt(1276, 300);
 
-      await expect.poll(() => header.layoutMenu.current()).toBe(layout);
-      await expect.poll(() => shell.box()).toEqual(box);
-    }
-  );
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock right");
+    await expect
+      .poll(() => shell.box())
+      .toEqual({ x: 680, y: 0, width: 600, height: 800 });
+  });
 
   it("docks from the layout menu", async () => {
     renderShell({ layout: "float", float: floating, sideWidth: 600 });
@@ -171,38 +135,29 @@ describe("docking", () => {
 
   // The drag takes hold of the title's centre: the floating panel keeps it
   // as far along its width as it was along the docked one, and as far down.
-  it.each([
-    ["left", { x: 0, y: 0, width: 600 }, 300, 200],
-    ["right", { x: 680, y: 0, width: 600 }, -300, 200],
-    ["bottom", { x: 0, y: 500, width: 1280 }, 0, -200],
-  ] as const)(
-    "floats a panel docked %s with the pointer where it took hold of the header",
-    async (layout, docked, deltaX, deltaY) => {
-      renderShell({
-        layout,
-        float: floating,
-        sideWidth: 600,
-        bottomHeight: 300,
-      });
-      const title = await header.title.boundingBox();
-      const grab = {
-        x: title!.x + title!.width / 2,
-        y: title!.y + title!.height / 2,
-      };
+  // Each dock's case is the geometry's.
+  it("floats a docked panel with the pointer where it took hold of the header", async () => {
+    renderShell({ layout: "right", float: floating, sideWidth: 600 });
+    const docked = { x: 680, y: 0, width: 600 };
+    const title = await header.title.boundingBox();
+    const grab = {
+      x: title!.x + title!.width / 2,
+      y: title!.y + title!.height / 2,
+    };
 
-      await header.dragBy(deltaX, deltaY);
+    await header.dragBy(-300, 200);
 
-      await expect.poll(() => header.layoutMenu.current()).toBe("Floating");
-      const { x, y } = await shell.box();
-      // Layout places the panel on a 1/64px grid.
-      expect(x).toBeCloseTo(
-        grab.x + deltaX - ((grab.x - docked.x) / docked.width) * 700,
-        1
-      );
-      expect(y).toBeCloseTo(grab.y + deltaY - (grab.y - docked.y), 1);
-    }
-  );
+    await expect.poll(() => header.layoutMenu.current()).toBe("Floating");
+    const { x, y } = await shell.box();
+    // Layout places the panel on a 1/64px grid.
+    expect(x).toBeCloseTo(
+      grab.x - 300 - ((grab.x - docked.x) / docked.width) * 700,
+      1
+    );
+    expect(y).toBeCloseTo(grab.y + 200 - (grab.y - docked.y), 1);
+  });
 
+  // Each dock resizes from its own edge facing the page.
   it.each([
     ["left", "right", 120, 0, { x: 0, y: 0, width: 720, height: 800 }],
     ["right", "left", -120, 0, { x: 560, y: 0, width: 720, height: 800 }],
@@ -662,6 +617,8 @@ describe("motion", () => {
       "pointermove",
       pointer(at.x - 100, at.y + 50, 1)
     );
+    // Its first move stops the glide.
+    expect(await glides()).toEqual([]);
     await header.title.dispatchEvent(
       "pointerup",
       pointer(at.x - 100, at.y + 50, 0)
@@ -1001,29 +958,20 @@ describe("motion", () => {
     ).toEqual(["background-color"]);
   });
 
-  it.each([
-    ["floating", "float", "624px 584px"],
-    ["docked left", "left", "1024px 624px"],
-    ["docked right", "right", "344px 624px"],
-    ["docked to the bottom", "bottom", "1024px 124px"],
-  ] as const)(
-    "grows out of the logo and shrinks back into it when %s",
-    async (_how, layout, transformOrigin) => {
-      renderShell({
-        layout,
-        float: floating,
-        sideWidth: 600,
-        bottomHeight: 300,
-        logo: { x: 1000, y: 600 },
-      });
+  // The origin in each layout is the geometry's.
+  it("grows out of the logo and shrinks back into it", async () => {
+    renderShell({
+      layout: "right",
+      sideWidth: 600,
+      logo: { x: 1000, y: 600 },
+    });
 
-      expect(
-        await inspector.panel.evaluate(
-          (panel) => (panel as HTMLElement).style.transformOrigin
-        )
-      ).toBe(transformOrigin);
-    }
-  );
+    expect(
+      await inspector.panel.evaluate(
+        (panel) => (panel as HTMLElement).style.transformOrigin
+      )
+    ).toBe("344px 624px");
+  });
 
   /** The transitions the panel runs now, by the property each moves. */
   function transitions() {
