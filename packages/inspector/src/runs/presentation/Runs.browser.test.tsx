@@ -39,7 +39,7 @@ const addMilk = aRun({
   interactions: [fillText, clickAdd],
 });
 const archiveGone = aRun({
-  toolName: "ListPage.items.archive",
+  toolName: "ListItem.archive",
   className: "ListItem",
   item: anItem("ListPage.items[0]", { ref: "e3", label: "Milk" }),
   arguments: { ref: "e3", args: {} },
@@ -131,7 +131,7 @@ describe("Runs", () => {
     await expect.poll(() => runsView.runs.count()).toBe(2);
     expect(await runsView.header.textContent()).toBe("Runs · 2");
     expect(await runsView.run(0).root.getAttribute("aria-label")).toBe(
-      "ListPage.items.archive"
+      "ListItem.archive"
     );
   });
 
@@ -204,13 +204,11 @@ describe("Runs", () => {
 
   it("names a run's tool and its item in full on hover", async () => {
     renderRuns();
-    const archive = runsView.latest("ListPage.items.archive");
+    const archive = runsView.latest("ListItem.archive");
 
     await expect
       .poll(() =>
-        archive.card
-          .getByTitle("ListPage.items.archive", { exact: true })
-          .count()
+        archive.card.getByTitle("ListItem.archive", { exact: true }).count()
       )
       .toBe(1);
     expect(
@@ -292,7 +290,7 @@ describe("Runs", () => {
           children: [
             aChildRun({ interactions: [fillText, clickAdd] }),
             aChildRun({
-              toolName: "ListPage.items.archive",
+              toolName: "ListItem.archive",
               status: "failed",
               error: "No such item.",
             }),
@@ -308,7 +306,7 @@ describe("Runs", () => {
     expect(await goal.interactions.count()).toBe(0);
     expect(await goal.childTools()).toEqual([
       "ListPage.addItem",
-      "ListPage.items.archive",
+      "ListItem.archive",
     ]);
     const addItem = goal.child("ListPage.addItem");
     expect(await addItem.status()).toBe("Succeeded");
@@ -322,7 +320,7 @@ describe("Runs", () => {
       },
       { operation: "click", target: "ListPage.addItemButton" },
     ]);
-    const archive = goal.child("ListPage.items.archive");
+    const archive = goal.child("ListItem.archive");
     expect(await archive.status()).toBe("Failed");
     expect(await archive.error.textContent()).toBe("No such item.");
     expect(await archive.interactions.count()).toBe(0);
@@ -342,7 +340,7 @@ describe("Runs", () => {
 
   it("shows a failed run's error", async () => {
     renderRuns();
-    const run = runsView.latest("ListPage.items.archive");
+    const run = runsView.latest("ListItem.archive");
 
     await expect.poll(() => run.status()).toBe("Failed");
     expect(await run.error.textContent()).toBe(

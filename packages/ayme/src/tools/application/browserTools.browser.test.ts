@@ -311,12 +311,11 @@ describe("Browser Tools in Chromium", () => {
     );
   });
 
-  /** The synthetic ref `text` prints for the RootsPage member's root. */
-  function rootRef(text: string, member: string) {
-    const ref = text.match(
-      new RegExp(`(s_\\w+) RootsPage\\.${member}\\b`)
-    )?.[1];
-    if (!ref) throw new Error(`Expected a synthetic ref for ${member}.`);
+  /** A Root instance's synthetic ref, in page-state order. */
+  function rootRef(text: string, index = 0) {
+    const ref = [...text.matchAll(/(s_\w+) Root\b/g)][index]?.[1];
+    if (!ref)
+      throw new Error(`Expected a synthetic ref for Root instance ${index}.`);
     return ref;
   }
 
@@ -327,7 +326,7 @@ describe("Browser Tools in Chromium", () => {
       structure: string;
     };
 
-    await call("click", { target: rootRef(structure, "account") });
+    await call("click", { target: rootRef(structure) });
 
     expect(log).toContain("click account");
   });
@@ -340,7 +339,7 @@ describe("Browser Tools in Chromium", () => {
     // The Inspector runs a tool on a ref its unrecorded look printed.
     const look = await lookAtPageStateForDocument(document);
 
-    await call("click", { target: rootRef(look.text, "card") });
+    await call("click", { target: rootRef(look.text) });
 
     expect(log).toContain("click card");
   });
@@ -590,7 +589,7 @@ describe("Browser Tools in Chromium", () => {
     const look = await lookAtPageStateForDocument(document);
     const targets = await listElementToolTargets(look);
 
-    expect(targets.get("click")).toContain(rootRef(look.text, "card"));
-    expect(targets.get("click")).not.toContain(rootRef(look.text, "account"));
+    expect(targets.get("click")).toContain(rootRef(look.text, 1));
+    expect(targets.get("click")).not.toContain(rootRef(look.text));
   });
 });

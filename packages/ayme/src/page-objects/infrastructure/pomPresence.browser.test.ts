@@ -18,7 +18,7 @@ import { createAyme, type Ayme } from "../../runtime";
 // session's tool list and the page state say about it.
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -206,7 +206,7 @@ describe("Page Object Presence by predicate", () => {
       await probeRegisteredPomMembers();
       expect(names()).toEqual([]);
       expect(logged).toHaveBeenCalledExactlyOnceWith(
-        `The Page Object "ProjectPage" is absent: its ${option} predicate threw TypeError: store is undefined.`
+        `ProjectPage: its ${option} predicate threw TypeError: store is undefined.`
       );
 
       document.body.innerHTML = "<p>Changed</p>";
@@ -305,12 +305,12 @@ describe("Page Object Presence by predicate", () => {
               collection: false,
             },
           ],
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
         {
           className: "Pin",
           members: [root],
-          tools: [action("press", "Shell.panel.pin.press")],
+          tools: [action("Pin.press", "Pin.press")],
         },
       ],
     });
@@ -325,7 +325,7 @@ describe("Page Object Presence by predicate", () => {
 
     shell.panel.expanded = true;
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.panel.close", "Shell.panel.pin.press"]);
+    expect(names()).toEqual(["Panel.close", "Pin.press"]);
     expect(frameOf).toHaveBeenCalledOnce();
     expect(reads).toBe(1);
   });

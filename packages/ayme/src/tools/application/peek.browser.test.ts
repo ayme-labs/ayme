@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -488,7 +489,7 @@ describe("calling a Peek Tool", () => {
 
   /** A Page Object whose action adds `main`. */
   class Toolbar {
-    root = page.locator("body");
+    root = page.locator("#toolbar");
     reveal() {
       addMain();
     }
@@ -502,6 +503,7 @@ describe("calling a Peek Tool", () => {
   });
 
   it("answers without waiting for the page to settle, like snapshot", async () => {
+    document.body.innerHTML = '<header id="toolbar">Toolbar</header>';
     const ayme = started();
     ayme.pom.register(Editor);
     ayme.pom.register(Toolbar);
@@ -513,7 +515,10 @@ describe("calling a Peek Tool", () => {
     expect(toolNames(ayme)).not.toContain("Editor.save");
 
     // An action's call resolves once the tools reflect the page it changed.
-    await ayme.tools.run("Toolbar.reveal", {});
+    await ayme.tools.run("Toolbar.reveal", {
+      ref: await rootRef("Toolbar"),
+      args: {},
+    });
     expect(toolNames(ayme)).toContain("Editor.save");
 
     document.querySelector("main")!.remove();

@@ -1,20 +1,23 @@
 # Page tools
 
 Once the page is connected, its tools are the Browser Tools and the Page
-Object Tools it publishes. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
+Object Tools it publishes. Each Page Object Tool is named after its class and action,
+such as `ListItem.archive`, across all instances of the class. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
 lists every built-in tool with its input. To connect to the page, or when its
 tools are missing, read [Browser setup](browser-setup.md).
 
 - When a ref fails to resolve, call `snapshot` and use the ref it prints for
-  that node; if that ref fails the same way, use a selector such as
+  that node; if that ref fails the same way, use a Browser Tool with a selector such as
   `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
-  collection tool the ref of the item's Page Object Root.
+  rooted Page Object Tool the ref of that instance's own Page Object Root,
+  including a page or single child. Pass its action arguments under `args`.
+  A root-less Page Object Tool takes its arguments directly.
   [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
-- Call a nested item, such as `e9 ListPage.items[0].subItems[0]`, through
-  its collection's tool: `ListPage.items.archive({ ref: "e9" })`.
+- The page state labels each Page Object Root with its class. Call a nested
+  item labelled `e9 ListItem` through its class's tool: `ListItem.archive({ ref: "e9" })`.
   [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
   has the example.
 - When `goal` hands over with `needs_value` because none of a parameter's

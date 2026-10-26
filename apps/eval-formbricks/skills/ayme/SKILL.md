@@ -9,7 +9,7 @@ The `ayme` MCP server is already connected to the open tab. Its tools act on tha
 
 ## Prefer the Page Object Tools
 
-Each screen publishes actions named after its page objects, such as `SomePage_doAction`. Use them first: one call does what several clicks and keystrokes would. Use Browser Tools for what no page object covers.
+Each screen publishes actions named after its page objects, such as `SomePage_doAction`. Read each tool schema. Use them first: one call does what several clicks and keystrokes would. Use Browser Tools for what no page object covers.
 
 ## The tools follow the screen
 

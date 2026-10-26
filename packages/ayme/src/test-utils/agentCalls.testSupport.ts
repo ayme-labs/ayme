@@ -9,10 +9,11 @@ import { getPageContextForDocument, listElementTools } from "../tools";
 import {
   cursors,
   getPageStateForDocument,
+  lookAtPageStateForDocument,
   type AriaRef,
   type Cursor,
 } from "../page-state";
-import { getPomDefinitions } from "../page-objects";
+import { listRegisteredPomTargets, getPomDefinitions } from "../page-objects";
 import { resolveTools } from "../runtime";
 import { callers } from "../shared";
 import type { RunContext } from "../runs";
@@ -70,3 +71,16 @@ export const ayme = {
       runContext(page)
     ) as Promise<ActionResult>,
 };
+
+/** A rooted test caller reads its instance's ref without moving its cursor. */
+export async function rootRef(label: string): Promise<string> {
+  const look = await lookAtPageStateForDocument(document);
+  const root = (await listRegisteredPomTargets()).find(
+    (target) => target.path === `${label}.@root`
+  );
+  const ref = [...look.elementsByRef].find(
+    ([, element]) => element === root?.element
+  )?.[0];
+  if (!ref) throw new Error(`No root ref for ${label}.`);
+  return ref;
+}

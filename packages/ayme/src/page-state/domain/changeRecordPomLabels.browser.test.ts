@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
@@ -59,8 +60,14 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     const currentPage = page;
     class ListPage {
       root = currentPage.locator("main");
+      banner = new Banner();
       addItem() {
         addItem("Eggs");
+      }
+      restoreBanner() {
+        document
+          .querySelector("main")!
+          .insertAdjacentHTML("beforeend", "<aside>Welcome</aside>");
       }
       dismissBanner() {
         document.querySelector("aside")?.remove();
@@ -74,14 +81,24 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
       root = currentPage.locator("aside");
     }
     model({ root: rootOf })(Banner);
-    registerCompiledPom(
-      ListPage,
-      manifest("ListPage", [
+    registerCompiledPom(ListPage, {
+      ...manifest("ListPage", [
         action("addItem", "ListPage.addItem"),
         action("dismissBanner", "ListPage.dismissBanner"),
+        action("restoreBanner", "ListPage.restoreBanner"),
         action("clearList", "ListPage.clearList"),
-      ])
-    );
+      ]),
+      members: [
+        {
+          memberName: "banner",
+          kind: "component",
+          access: "field",
+          componentClassName: "Banner",
+          collection: false,
+        },
+      ],
+      components: [manifest("Banner", [])],
+    });
     registerCompiledPom(Banner, manifest("Banner", []));
     const sharing = extra.map((name) => {
       const Shared = class {
@@ -93,7 +110,6 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     });
     session = startSession(page);
     session.register(ListPage);
-    session.register(Banner);
     for (const Shared of sharing) session.register(Shared);
     return session;
   }
@@ -106,7 +122,10 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
   }
 
   const run = async (tool: string) =>
-    (await agentTools().call(tool, {})) as ActionResultShape;
+    (await agentTools().call(tool, {
+      ref: await rootRef(tool.slice(0, tool.lastIndexOf("."))),
+      args: {},
+    })) as ActionResultShape;
 
   /** The first line of a rendered forest: the root's own line. */
   const firstLine = (text: string | undefined) => text?.split("\n")[0];
@@ -130,6 +149,17 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     const result = await run("ListPage.dismissBanner");
 
     expect(result.changes).toMatch(/- e\d+ Banner <removed>: Welcome/);
+  });
+
+  it("labels a nested root appearing after an action and disappearing before the next action by class", async () => {
+    startShoppingList();
+    await readStructure();
+    await run("ListPage.dismissBanner");
+    const appeared = await run("ListPage.restoreBanner");
+    expect(appeared.changes).toMatch(/- e\d+ Banner <added>: Welcome/);
+    document.querySelector("aside")!.remove();
+    const next = await run("ListPage.addItem");
+    expect(next.changes_before).toMatch(/- e\d+ Banner <removed>: Welcome/);
   });
 
   it("shows the pom property the snapshot shows when Page Objects share a root", async () => {
@@ -197,7 +227,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
 });
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],

@@ -50,7 +50,7 @@ const optionValueQuestion = (ordinal: number) =>
 // --- Fixtures ---
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -60,7 +60,7 @@ const actionWithParam = (
   methodName: string,
   toolName = methodName
 ): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [{ name: "value", optional: false, schema: { type: "string" } }],
@@ -71,7 +71,7 @@ const actionWithParameters = (
   toolName: string,
   parameters: ToolManifest["parameters"]
 ): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters,
@@ -422,7 +422,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("save", "App.save")])
@@ -440,7 +440,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [actionWithParam("fill", "App.fill")])
@@ -461,7 +461,7 @@ describe("Goal Loop goal in Chromium", () => {
         throw thrown;
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("fail", "App.fail")])
@@ -800,7 +800,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([name, description]);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -868,7 +868,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([name, stars]);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -925,7 +925,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push([quantity, price]);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1150,7 +1150,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push(labels);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1207,7 +1207,7 @@ describe("Goal Loop goal in Chromium", () => {
           calls.push(labels);
         }
       }
-      ayme({ root: rootOf })(App);
+      ayme()(App);
       registerCompiledPom(
         App,
         manifest(
@@ -1379,7 +1379,7 @@ describe("Goal Loop goal in Chromium", () => {
         document.querySelector("main")!.appendChild(row);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("add", "App.add")])
@@ -1655,7 +1655,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -1719,7 +1719,7 @@ describe("Goal Loop goal in Chromium", () => {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("save", "App.save")])
@@ -1765,7 +1765,7 @@ describe("Goal Loop goal in Chromium", () => {
       }
       wait() {}
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -1819,7 +1819,7 @@ describe("Goal Loop goal in Chromium", () => {
         }
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest("App", [root()], [action("fill", "App.fill")])
@@ -2584,7 +2584,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([mode, confirm]);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -2649,7 +2649,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([order]);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(
@@ -2828,9 +2828,9 @@ describe("Goal Loop goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "ItemsPage.items.archive",
+          operation: "Item.archive",
           goal_met: 0.1,
-          arguments: { ref: "ItemsPage.items[1]" },
+          arguments: { ref: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -2838,7 +2838,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await registerItemsPom(
       decide,
       3,
-      [action("archive", "archive")],
+      [action("archive", "Item.archive")],
       (index) => ({ archive: () => archived.push(index) })
     );
 
@@ -2854,9 +2854,11 @@ describe("Goal Loop goal in Chromium", () => {
     expect(descriptions).toHaveLength(3);
     descriptions.forEach((description, index) => {
       // Label, role and name: what tells one instance from another.
-      expect(description).toContain(`ItemsPage.items[${index}]`);
-      expect(description).toContain("listitem");
-      expect(description).toContain(`Item ${index}`);
+      expect(description).toMatch(
+        new RegExp(
+          `^Item on ref "(?:e|s_)\\w+" \\(listitem "Item ${index}"\\)$`
+        )
+      );
     });
     // The option keys are the refs the page state gave the model.
     expect(refsInPage(requests[1]!.state)).toEqual(
@@ -2868,7 +2870,7 @@ describe("Goal Loop goal in Chromium", () => {
     // offered.
     const [chosenKey, chosenDescription] = Object.entries(stageTwo.ref!)[1]!;
     const record = {
-      operation: "ItemsPage.items.archive",
+      operation: "Item.archive",
       chosen: {
         ref: { key: chosenKey, description: chosenDescription },
       },
@@ -2908,9 +2910,9 @@ describe("Goal Loop goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "ItemsPage.items.archive",
+          operation: "Item.archive",
           goal_met: 0.1,
-          arguments: { ref: "ItemsPage.items[1]" },
+          arguments: { ref: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -2933,7 +2935,7 @@ describe("Goal Loop goal in Chromium", () => {
           {
             className: "Item",
             members: [root()],
-            tools: [action("archive", "archive")],
+            tools: [action("archive", "Item.archive")],
           },
         ]
       )
@@ -2969,7 +2971,7 @@ describe("Goal Loop goal in Chromium", () => {
     // that changed nothing reports no change, and no phantom wrapper.
     expect(result.history).toEqual([
       expect.objectContaining({
-        operation: "ItemsPage.items.archive",
+        operation: "Item.archive",
         chosen: {
           ref: {
             key: instanceRefs[1],
@@ -2993,14 +2995,12 @@ describe("Goal Loop goal in Chromium", () => {
 
   it("hands over, naming the collection instance, when the instances exceed the option limit", async () => {
     const { requests, decide } = recording(
-      scriptedDecisionFn([
-        { operation: "ItemsPage.items.archive", goal_met: 0.1 },
-      ])
+      scriptedDecisionFn([{ operation: "Item.archive", goal_met: 0.1 }])
     );
     const tool = await registerItemsPom(
       decide,
       256,
-      [action("archive", "archive")],
+      [action("archive", "Item.archive")],
       () => ({ archive: () => undefined })
     );
 
@@ -3016,7 +3016,7 @@ describe("Goal Loop goal in Chromium", () => {
       next: expect.stringContaining(
         "acts on a collection instance, and the current page holds more of them than one decision can offer."
       ),
-      needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
+      needs: { tool: "Item.archive", parameters: ["ref"] },
     });
     expect(result.next).not.toContain("one element");
     expect(requests).toHaveLength(1);
@@ -3060,7 +3060,7 @@ describe("Goal Loop goal in Chromium", () => {
           {
             className: "Item",
             members: [root()],
-            tools: [action("open", "open")],
+            tools: [action("open", "Item.open")],
           },
         ]
       )
@@ -3068,9 +3068,9 @@ describe("Goal Loop goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "GroupsPage.groups.items.open",
+          operation: "Item.open",
           goal_met: 0.1,
-          arguments: { ref: "GroupsPage.groups[0].items[1]" },
+          arguments: { ref: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -3084,9 +3084,9 @@ describe("Goal Loop goal in Chromium", () => {
     // One question, over the innermost roots only.
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
     expect(Object.values(offeredElements(stageTwo.ref!))).toEqual([
-      expect.stringContaining("GroupsPage.groups[0].items[0]"),
-      expect.stringContaining("GroupsPage.groups[0].items[1]"),
-      expect.stringContaining("GroupsPage.groups[1].items[0]"),
+      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): A$/),
+      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): B$/),
+      expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): C$/),
     ]);
     expect(acted).toEqual(["0-1"]);
   });
@@ -3129,16 +3129,20 @@ describe("Goal Loop goal in Chromium", () => {
             ],
             tools: [],
           },
-          { className: "Child", members: [root()], tools: [action("open")] },
+          {
+            className: "Child",
+            members: [root()],
+            tools: [action("Child.open")],
+          },
         ]
       )
     );
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "ItemsPage.items.child.open",
+          operation: "Child.open",
           goal_met: 0.1,
-          arguments: { ref: "ItemsPage.items[1]" },
+          arguments: { ref: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -3148,17 +3152,14 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "open the second item", maxSteps: 5 });
 
-    // The instance is addressed through the last collection, not through the
-    // singular child the action lives on.
+    // The instance is addressed through the singular child's own root.
     const descriptions = Object.values(
       offeredElements(criteriaOf(requests[1]!).ref!)
     );
     expect(descriptions).toEqual([
-      expect.stringContaining("ItemsPage.items[0]"),
-      expect.stringContaining("ItemsPage.items[1]"),
+      expect.stringContaining("Child on ref"),
+      expect.stringContaining("Child on ref"),
     ]);
-    for (const description of descriptions)
-      expect(description).not.toContain("child");
     expect(opened).toEqual([1]);
   });
 
@@ -3169,7 +3170,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await registerItemsPom(
       decide,
       0,
-      [action("archive", "archive")],
+      [action("archive", "Item.archive")],
       () => ({ archive: () => undefined })
     );
 
@@ -3179,7 +3180,7 @@ describe("Goal Loop goal in Chromium", () => {
     })) as Record<string, unknown>;
 
     expect(Object.keys(criteriaOf(requests[0]!).operation!)).not.toContain(
-      "ItemsPage.items.archive"
+      "Item.archive"
     );
     // No question without options is ever sent.
     expect(requests).toHaveLength(1);
@@ -3225,7 +3226,7 @@ describe("Goal Loop goal in Chromium", () => {
           {
             className: "Item",
             members: [root()],
-            tools: [action("archive", "archive")],
+            tools: [action("archive", "Item.archive")],
           },
         ]
       )
@@ -3243,7 +3244,7 @@ describe("Goal Loop goal in Chromium", () => {
           answers: {
             operation: choiceAnswer(
               criteria.operation,
-              step === 1 ? "ItemsPage.items.archive" : "none"
+              step === 1 ? "Item.archive" : "none"
             ),
             goal_met: { type: "noul", noul: step === 1 ? 0.1 : 0.9 },
           },
@@ -3253,7 +3254,7 @@ describe("Goal Loop goal in Chromium", () => {
       stageTwoOptions.push(options);
       const keys = Object.keys(options);
       const wanted =
-        keys.find((key) => options[key]!.includes("items[0]")) ??
+        keys.find((key) => options[key]!.includes('"Item 0"')) ??
         keys.find((key) => key === NONE_OF_THESE_KEY) ??
         keys[0]!;
       return {
@@ -3273,9 +3274,7 @@ describe("Goal Loop goal in Chromium", () => {
     // out.
     expect(stageTwoOptions).toHaveLength(1);
     expect(Object.keys(stageTwoOptions[0]!)).toHaveLength(2);
-    expect(Object.values(stageTwoOptions[0]!)[0]).toContain(
-      `ItemsPage.items[${last}]`
-    );
+    expect(Object.values(stageTwoOptions[0]!)[0]).toContain(`Item ${last}`);
     expect(Object.keys(stageTwoOptions[0]!)[1]).toBe(NONE_OF_THESE_KEY);
     // The model answers "none of these": nothing runs, and the Handover says
     // why the item it wanted was not offered.
@@ -3286,13 +3285,15 @@ describe("Goal Loop goal in Chromium", () => {
       history: [],
     });
     expect(result.next).toMatch(
-      /^No element on the current page fits the operation "ItemsPage\.items\.archive"\. Left out: /
+      /^No element on the current page fits the operation "Item\.archive"\. Left out: /
     );
     expect(result.next).toMatch(
-      /ItemsPage\.items\[11\] \(unavailable: it is already archived\)\. Navigate to a different page or try a different approach\.$/
+      /Item on ref "(?:e|s_)\w+" \(unavailable: it is already archived\)\. Navigate to a different page or try a different approach\.$/
     );
-    expect(result.next).toContain(
-      "Left out: ItemsPage.items[0] (unavailable: it is already archived), ItemsPage.items[1] (unavailable: it is already archived),"
+    expect(result.next).toEqual(
+      expect.stringMatching(
+        /Left out: Item on ref "(?:e|s_)\w+" \(unavailable: it is already archived\), Item on ref/
+      )
     );
   });
 
@@ -3319,15 +3320,13 @@ describe("Goal Loop goal in Chromium", () => {
           {
             className: "Item",
             members: [root()],
-            tools: [action("archive", "archive")],
+            tools: [action("archive", "Item.archive")],
           },
         ]
       )
     );
     const { requests, decide } = recording(
-      scriptedDecisionFn([
-        { operation: "ItemsPage.items.archive", goal_met: 0.1 },
-      ])
+      scriptedDecisionFn([{ operation: "Item.archive", goal_met: 0.1 }])
     );
     const tool = await getPublishedPursueGoal(decide);
     session.pom.register(ItemsPage);
@@ -3340,10 +3339,10 @@ describe("Goal Loop goal in Chromium", () => {
     expect(requests).toHaveLength(1);
     expect(result).toMatchObject({
       reason: "needs_value",
-      needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
+      needs: { tool: "Item.archive", parameters: ["ref"] },
     });
     expect(result.next).toBe(
-      'The operation "ItemsPage.items.archive" acts on a collection instance, and the loop could offer none of its items. Left out: ItemsPage.items[0] (no ref in the page state). Try a different approach.'
+      'The operation "Item.archive" acts on a collection instance, and the loop could offer none of its items. Left out: Item (no ref in the page state). Try a different approach.'
     );
   });
 
@@ -3352,10 +3351,10 @@ describe("Goal Loop goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "ItemsPage.items.configure",
+          operation: "Item.configure",
           goal_met: 0.1,
           arguments: {
-            ref: "ItemsPage.items[1]",
+            ref: { nth: 1 },
             "args.mode": "full",
             "args.confirm": "true",
           },
@@ -3367,7 +3366,7 @@ describe("Goal Loop goal in Chromium", () => {
       decide,
       2,
       [
-        actionWithParameters("configure", "configure", [
+        actionWithParameters("configure", "Item.configure", [
           {
             name: "mode",
             optional: false,
@@ -3396,14 +3395,12 @@ describe("Goal Loop goal in Chromium", () => {
 
   it("hands over when a collection tool needs a free value", async () => {
     const { requests, decide } = recording(
-      scriptedDecisionFn([
-        { operation: "ItemsPage.items.rename", goal_met: 0.1 },
-      ])
+      scriptedDecisionFn([{ operation: "Item.rename", goal_met: 0.1 }])
     );
     const tool = await registerItemsPom(
       decide,
       2,
-      [actionWithParam("rename", "rename")],
+      [actionWithParam("rename", "Item.rename")],
       () => ({ rename: () => undefined })
     );
 
@@ -3414,10 +3411,10 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
-      next: expect.stringContaining("ItemsPage.items.rename"),
+      next: expect.stringContaining("Item.rename"),
       history: [],
       needs: {
-        tool: "ItemsPage.items.rename",
+        tool: "Item.rename",
         parameters: ["ref", "args.value"],
       },
     });
@@ -3428,7 +3425,7 @@ describe("Goal Loop goal in Chromium", () => {
     const archived: number[] = [];
     const decide = scriptedDecisionFn([
       {
-        operation: "ItemsPage.items.archive",
+        operation: "Item.archive",
         goal_met: 0.1,
         arguments: { ref: { raw: "e999" } },
       },
@@ -3436,7 +3433,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await registerItemsPom(
       decide,
       3,
-      [action("archive", "archive")],
+      [action("archive", "Item.archive")],
       (index) => ({ archive: () => archived.push(index) })
     );
 
@@ -3496,7 +3493,7 @@ describe("Goal Loop goal in Chromium", () => {
         calls.push([value]);
       }
     }
-    ayme({ root: rootOf })(App);
+    ayme()(App);
     registerCompiledPom(
       App,
       manifest(

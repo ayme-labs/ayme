@@ -6,7 +6,7 @@ import { collection, page } from "../page-model/test-utils/pageModel";
 import type { StructureNode } from "../structure";
 import { itemsOf } from "./collectionItems";
 
-// Unit tests: a collection action's items as the run card offers them. The
+// Unit tests: a rooted action's items as the run card offers them. The
 // page model, the structure and the registry's verdicts are hand-written: a
 // list page with two items, the second one covered.
 
@@ -15,7 +15,7 @@ const members = indexMembers(
     objects: [
       page("ListPage", {
         children: [
-          collection("items", "ListItem", [{}, {}], ["ListPage.items.archive"]),
+          collection("items", "ListItem", [{}, {}], ["ListItem.archive"]),
         ],
       }),
     ],
@@ -65,13 +65,7 @@ it("carries each item's verdict and reason from the registry", () => {
   ];
 
   expect(
-    itemsOf(
-      "ListPage.items.archive",
-      members,
-      structure,
-      verdicts,
-      elementsByRef
-    )
+    itemsOf("ListItem.archive", members, structure, verdicts, elementsByRef)
   ).toEqual([
     {
       path: "ListPage.items[0]",
@@ -114,7 +108,7 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
 
   expect(
     itemsOf(
-      "ListPage.items.archive",
+      "ListItem.archive",
       members,
       structure,
       verdicts,
@@ -128,7 +122,7 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
 
 it("leaves the verdict out for an item the registry has not observed", () => {
   expect(
-    itemsOf("ListPage.items.archive", members, structure).map(
+    itemsOf("ListItem.archive", members, structure).map(
       (candidate) => "available" in candidate
     )
   ).toEqual([false, false]);

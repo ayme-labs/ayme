@@ -12,18 +12,20 @@ import { runContext } from "../../test-utils/agentCalls.testSupport";
 import { startSession } from "../../test-utils/session.testSupport";
 
 const action = (methodName: string, description: string) => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName: methodName,
   description,
   parameters: [],
   returnPoms: [],
 });
 
-function refInPageState(text: string, label: string): string {
+function refInPageState(text: string, label: string, index = 0): string {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = text.match(
-    new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "m")
-  );
+  const match = [
+    ...text.matchAll(
+      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
+    ),
+  ][index];
   if (!match?.[1])
     throw new Error(`No ref found for "${label}" in page state.`);
   return match[1];
@@ -32,6 +34,60 @@ function refInPageState(text: string, label: string): string {
 describe("collection instances targeted by ref", () => {
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  it("runs the current instance when a re-render replaces the model on the same root", async () => {
+    document.body.innerHTML =
+      '<ul><li id="item"><button>Archive</button></li></ul>';
+    const page = createPage();
+    const session = startSession(page);
+    const oldArchive = vi.fn();
+    const currentArchive = vi.fn();
+    let archive = oldArchive;
+    class ItemsPage {
+      get items() {
+        return [rooted(page.locator("#item"), { archive })];
+      }
+    }
+    registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "getter",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("Item.archive", "Archive")],
+        },
+      ],
+    });
+    try {
+      session.register(ItemsPage);
+      await probeRegisteredPomMembers();
+      const tool = listAvailablePomTools().find(
+        (tool) => tool.name === "Item.archive"
+      )!;
+      const { getPageStateForDocument } = await import("../../page-state");
+      const ref = refInPageState(
+        (await getPageStateForDocument(document)).text,
+        "Item"
+      );
+      archive = currentArchive;
+      document.querySelector("button")!.textContent = "Archive current";
+      await tool.execute({ ref }, runContext());
+      expect(currentArchive).toHaveBeenCalledOnce();
+      expect(oldArchive).not.toHaveBeenCalled();
+    } finally {
+      session.stop();
+    }
   });
 
   it("targets the second of three instances by ref", async () => {
@@ -72,7 +128,7 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Item",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("archive", "Archive this item.")],
+            tools: [action("Item.archive", "Archive this item.")],
           },
         ],
       };
@@ -82,14 +138,12 @@ describe("collection instances targeted by ref", () => {
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
-      const archiveTool = tools.find(
-        (t) => t.name === "ItemsPage.items.archive"
-      );
+      const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       await archiveTool.execute({ ref, args: {} }, runContext());
 
@@ -141,7 +195,7 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Item",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("archive", "Archive this item.")],
+            tools: [action("Item.archive", "Archive this item.")],
           },
         ],
       });
@@ -149,15 +203,13 @@ describe("collection instances targeted by ref", () => {
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
-      const archiveTool = tools.find(
-        (t) => t.name === "ItemsPage.items.archive"
-      );
+      const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       // Capture state and get ref for item-1.
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       // Remove item-0 (the first instance) between look and act.
       document.querySelector("#item-0")?.remove();
@@ -212,7 +264,7 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Item",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("archive", "Archive this item.")],
+            tools: [action("Item.archive", "Archive this item.")],
           },
         ],
       });
@@ -220,15 +272,13 @@ describe("collection instances targeted by ref", () => {
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
-      const archiveTool = tools.find(
-        (t) => t.name === "ItemsPage.items.archive"
-      );
+      const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       // Capture state and get ref for item-1.
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       // Remove item-1 entirely from the DOM.
       document.querySelector("#item-1")?.remove();
@@ -236,7 +286,7 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call ItemsPage.items.archive on ref "${ref}": it is no longer on the page.`
+        `Cannot call Item.archive on ref "${ref}": it is no longer on the page.`
       );
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
@@ -279,26 +329,26 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Item",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("archive", "Archive this item.")],
+            tools: [action("Item.archive", "Archive this item.")],
           },
         ],
       });
       session.register(ItemsPage);
       await probeRegisteredPomMembers();
       const archiveTool = listAvailablePomTools().find(
-        (t) => t.name === "ItemsPage.items.archive"
+        (t) => t.name === "Item.archive"
       );
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       await expect(
         archiveTool.execute({ ref: "button.save", args: {} }, runContext())
       ).rejects.toThrow(
-        'Cannot call ItemsPage.items.archive on ref "button.save": not a Structural Ref.'
+        'Cannot call Item.archive on ref "button.save": not a Structural Ref.'
       );
       await expect(
         archiveTool.execute({ ref: "[ref=e7]", args: {} }, runContext())
       ).rejects.toThrow(
-        'Cannot call ItemsPage.items.archive on ref "[ref=e7]": not a Structural Ref. It writes the Structural Ref e7 another way.'
+        'Cannot call Item.archive on ref "[ref=e7]": not a Structural Ref. It writes the Structural Ref e7 another way.'
       );
 
       const { getPageStateForDocument } = await import("../../page-state");
@@ -307,7 +357,7 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref: headingRef, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call ItemsPage.items.archive on ref "${headingRef}": it is not an instance of Item at ItemsPage.items.`
+        `Cannot call Item.archive on ref "${headingRef}": it is not a root of Item.`
       );
 
       expect(archive).not.toHaveBeenCalled();
@@ -345,20 +395,20 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Item",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("archive", "Archive this item.")],
+            tools: [action("Item.archive", "Archive this item.")],
           },
         ],
       });
       session.register(ItemsPage);
       await probeRegisteredPomMembers();
       const archiveTool = listAvailablePomTools().find(
-        (t) => t.name === "ItemsPage.items.archive"
+        (t) => t.name === "Item.archive"
       );
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[0]");
+      const ref = refInPageState(state.text, "Item");
       expect(ref).toMatch(/^s_/);
 
       await archiveTool.execute({ ref, args: {} }, runContext());
@@ -432,7 +482,7 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Item",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("doAction", "Perform action.")],
+            tools: [action("Item.doAction", "Perform action.")],
           },
         ],
       });
@@ -440,15 +490,13 @@ describe("collection instances targeted by ref", () => {
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
-      const doActionTool = tools.find(
-        (t) => t.name === "GroupsPage.groups.items.doAction"
-      );
+      const doActionTool = tools.find((t) => t.name === "Item.doAction");
       if (!doActionTool) throw new Error("Expected doAction tool.");
 
       // Capture state and get ref for the second item in the first group.
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "GroupsPage.groups[0].items[1]");
+      const ref = refInPageState(state.text, "Item", 1);
 
       await doActionTool.execute({ ref, args: {} }, runContext());
 
@@ -513,7 +561,7 @@ describe("collection instances targeted by ref", () => {
           {
             className: "Child",
             members: [{ memberName: "root", kind: "locator", access: "field" }],
-            tools: [action("open", "Open this child.")],
+            tools: [action("Child.open", "Open this child.")],
           },
         ],
       });
@@ -521,14 +569,12 @@ describe("collection instances targeted by ref", () => {
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
-      const openTool = tools.find(
-        (t) => t.name === "ItemsPage.items.child.open"
-      );
+      const openTool = tools.find((t) => t.name === "Child.open");
       if (!openTool) throw new Error("Expected open tool.");
 
       const { getPageStateForDocument } = await import("../../page-state");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "ItemsPage.items[1]");
+      const ref = refInPageState(state.text, "Child", 1);
 
       await openTool.execute({ ref, args: {} }, runContext());
 

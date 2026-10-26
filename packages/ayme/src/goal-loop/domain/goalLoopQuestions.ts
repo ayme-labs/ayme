@@ -28,7 +28,7 @@ import type {
   ToolOption,
   TupleSpec,
 } from "./goalLoopOperations";
-import type { CollectionToolItem } from "../../page-objects";
+import type { RootedToolInstance } from "../../page-objects";
 
 /**
  * What the Goal Loop asks the model, and how an answer maps back to what it
@@ -259,15 +259,17 @@ function describeNode(node: StructuralNode): string {
 }
 
 /**
- * One option per present root of a collection path, keyed by the ref the same
+ * One option per present rooted instance, keyed by the ref the same
  * capture gave that root's element. A root the tool is unavailable on would be
  * refused, and a root the capture holds no ref for cannot be targeted; both are
  * left out, each with why.
  */
 function instanceOptions(
-  roots: readonly CollectionToolItem[],
-  capture: PageStateCapture
+  roots: readonly RootedToolInstance[],
+  capture: PageStateCapture,
+  tool: Pick<GoalLoopOperation, "className" | "name">
 ): { options: ArgumentOption[]; leftOut: LeftOutItem[] } {
+  const className = tool.className ?? tool.name;
   const refsByElement = new Map<Element, AriaRef>();
   for (const [ref, element] of capture.elementsByRef)
     refsByElement.set(element, ref);
@@ -275,9 +277,12 @@ function instanceOptions(
   const options: ArgumentOption[] = [];
   const leftOut: LeftOutItem[] = [];
   for (const root of roots) {
+    const ref = refsByElement.get(root.element);
+    const label =
+      ref === undefined ? className : `${className} on ref "${ref}"`;
     if (!root.available) {
       leftOut.push({
-        label: root.label,
+        label,
         why:
           root.reason === undefined
             ? "unavailable"
@@ -285,15 +290,16 @@ function instanceOptions(
       });
       continue;
     }
-    const ref = refsByElement.get(root.element);
     const node = ref === undefined ? null : capture.tree.getNode(ref);
     if (ref === undefined || node === null) {
-      leftOut.push({ label: root.label, why: "no ref in the page state" });
+      leftOut.push({ label: className, why: "no ref in the page state" });
       continue;
     }
+    // Unnamed roots, such as list items, are distinguished by their content.
+    const text = node.name ? "" : itemText(node, undefined, node.name);
     options.push({
       key: ref,
-      description: `${root.label} (${describeNode(node)})`,
+      description: `${label} (${describeNode(node)})${text ? `: ${clip(text)}` : ""}`,
       value: ref,
     });
   }
@@ -588,7 +594,7 @@ export function planArguments(
       closedSet.kind === "ref"
         ? { options: refOptions(closedSet.filter, capture) }
         : closedSet.kind === "instance"
-          ? instanceOptions(closedSet.roots, capture)
+          ? instanceOptions(closedSet.roots, capture, tool)
           : { options: valueOptions(closedSet.values) };
     const options = withUniqueKeys([
       ...offered.options,
@@ -1137,11 +1143,11 @@ function withItemTexts(
 
 /**
  * The names and texts inside `item`, in document order, leaving out the
- * candidate and its name.
+ * candidate when given, and its name.
  */
 function itemText(
   item: StructuralNode,
-  candidate: AriaRef,
+  candidate: AriaRef | undefined,
   candidateName: string
 ): string {
   const parts: string[] = [];

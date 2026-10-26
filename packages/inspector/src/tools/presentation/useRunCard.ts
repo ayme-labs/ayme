@@ -91,7 +91,7 @@ export function useRunCard({
     []
   );
 
-  const collection = tool.collection !== undefined;
+  const collection = tool.rooted === true;
   const picking = collection && !item;
   const target =
     item ??

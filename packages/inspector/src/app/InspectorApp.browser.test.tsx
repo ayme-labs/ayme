@@ -69,7 +69,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getAgentConnectionStatus: agentConnectionOf,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
-    listCollectionToolItems: vi.fn(() => new Map()),
+    listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -77,7 +77,8 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
 
 function saveTool(pomId: string): RegisteredPomTool {
   return {
-    pomId,
+    className: pomId,
+    rooted: false,
     methodName: "save",
     name: "Editor.save",
     description: "Save the editor.",

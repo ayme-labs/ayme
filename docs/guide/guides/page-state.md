@@ -4,7 +4,7 @@ What an agent sees of your page: the Structural Page State, the Structural Refs 
 
 ## Structural Page State
 
-Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and labels each Page Object Root with its Page Object's name, such as `ListPage.items[0]`. It covers the top-level document only.
+Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and labels each Page Object Root with its class, such as `ListItem`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same labels, including for removed roots. It covers the top-level document only.
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
@@ -12,7 +12,7 @@ Page state works without WebMCP publication. An agent reads it with the `snapsho
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks an item of a Page Object collection. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
+Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks a rooted Page Object instance, including a page or single child. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |

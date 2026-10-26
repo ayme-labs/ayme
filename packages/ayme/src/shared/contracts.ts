@@ -60,6 +60,8 @@ export type PomMemberObservation = {
   count: number;
   access?: PomMemberAccess;
   error?: string;
+  /** Whether this observation is a documented console diagnostic. */
+  diagnostic?: boolean;
 };
 
 /**
@@ -144,8 +146,9 @@ export type RegisteredPomTool = {
    * afterwards, by class name.
    */
   returnPoms?: readonly string[];
-  pomId: string;
-  componentClassName?: string;
+  className: string;
+  /** Whether its class declares a Page Object Root. */
+  rooted: boolean;
   methodName: string;
   inputSchema: JsonSchema;
   /** Its parameters as agents read them. */

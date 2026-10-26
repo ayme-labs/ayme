@@ -11,7 +11,10 @@ import {
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { configureGoalLoop } from "../infrastructure/goalLoopStore";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import {
+  agentTools,
+  firstChoices,
+} from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
 import { getLastGoalLoopRunResult } from "../../testing";
 
@@ -191,7 +194,9 @@ describe("Handover changes in Chromium", () => {
  */
 function operations(steps: string[]): GoalLoopDecisionFunction {
   let step = 0;
-  return async (): Promise<DecisionResponse> => {
+  return async (request): Promise<DecisionResponse> => {
+    if (!("operation" in request.questions))
+      return firstChoices(request.questions);
     const operation = steps[Math.min(step++, steps.length - 1)]!;
     const done = operation === "done";
     return {
@@ -209,7 +214,7 @@ function operations(steps: string[]): GoalLoopDecisionFunction {
 }
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],

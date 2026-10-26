@@ -19,7 +19,7 @@ export type CollectionItem = {
   name: string;
   /** Its path below its page, e.g. "items[1]". */
   pathBelowPage: string;
-  /** The Structural Ref of its root, which a collection action takes. */
+  /** The Structural Ref of its root, which a rooted action takes. */
   ref: string;
   /** What it shows, e.g. "Milk". */
   label: string;

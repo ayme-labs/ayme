@@ -54,7 +54,7 @@ export function useRunning(
   const renderRun: RenderRun = ({ toolName, item, ref, head }) => {
     const tool = runnableTools.get(toolName);
     if (!tool) return null;
-    const items = tool.collection ? runtime.itemsOf(toolName) : [];
+    const items = tool.rooted ? runtime.itemsOf(toolName) : [];
     return (
       <RunCard
         key={`${toolName}|${item ?? ""}|${ref ?? ""}`}

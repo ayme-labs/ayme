@@ -48,15 +48,38 @@ export async function saveButtonRef() {
  */
 export function operations(steps: string[]): GoalLoopDecisionFunction {
   let step = 0;
-  return async (): Promise<DecisionResponse> => ({
-    model: "typesafe/jev-1.13",
-    answers: {
-      operation: {
-        type: "choice",
-        choice: steps[Math.min(step++, steps.length - 1)]!,
-        confidence: 1,
+  return async (request): Promise<DecisionResponse> => {
+    if (!("operation" in request.questions))
+      return firstChoices(request.questions);
+    return {
+      model: "typesafe/jev-1.13",
+      answers: {
+        operation: {
+          type: "choice",
+          choice: steps[Math.min(step++, steps.length - 1)]!,
+          confidence: 1,
+        },
+        goal_met: { type: "noul", noul: 0.1 },
       },
-      goal_met: { type: "noul", noul: 0.1 },
-    },
-  });
+    };
+  };
+}
+
+/** Answers every selection question with its first offered choice. */
+export function firstChoices(
+  questions: Record<string, unknown>
+): DecisionResponse {
+  return {
+    model: "typesafe/jev-1.13",
+    answers: Object.fromEntries(
+      Object.entries(questions).map(([id, question]) => [
+        id,
+        {
+          type: "choice",
+          choice: Object.keys((question as { criteria: object }).criteria)[0]!,
+          confidence: 1,
+        },
+      ])
+    ),
+  };
 }

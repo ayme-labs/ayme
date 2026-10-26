@@ -66,11 +66,13 @@ const manifest: PomManifest = {
   ],
 };
 
-function refOf(text: string, label: string): string {
+function refOf(text: string, label: string, index = 0): string {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const ref = text.match(
-    new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "m")
-  )?.[1];
+  const ref = [
+    ...text.matchAll(
+      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
+    ),
+  ][index]?.[1];
   if (!ref) throw new Error(`No ref found for "${label}" in page state.`);
   return ref;
 }
@@ -102,16 +104,16 @@ describe("a collection whose items are all behind a modal layer", () => {
     session.register(ListPage);
     await probeRegisteredPomMembers();
     const { text } = await getPageStateForDocument(document);
-    const refs = [0, 1, 2].map((i) => refOf(text, `ListPage.rows[${i}]`));
+    const refs = [0, 1, 2].map((i) => refOf(text, "Row", i));
     return { session, opened, refs };
   }
 
   /** The collection's tool as the last observation listed it. */
   function listedOpen() {
     const listed = listRegisteredPomTools().find(
-      ({ tool }) => tool.name === "ListPage.rows.open"
+      ({ tool }) => tool.name === "Row.open"
     );
-    if (!listed) throw new Error("Expected ListPage.rows.open.");
+    if (!listed) throw new Error("Expected Row.open.");
     return listed;
   }
 
@@ -151,7 +153,7 @@ describe("a collection whose items are all behind a modal layer", () => {
 
       // In the way is the page's content the layer hid, as for an inert one.
       expect(error).toMatch(
-        /^RuntimeStateError: ListPage\.rows\.open is unavailable: a click would not reach it; e\d+ is in the way\.$/
+        /^RuntimeStateError: Row on ref "(?:e\d+|s_\w+)" is unavailable: a click would not reach it; e\d+ is in the way\.$/
       );
       expect(scrolled()).toEqual({ page: 0, list: 0 });
       expect(opened[2]).not.toHaveBeenCalled();
@@ -170,7 +172,7 @@ describe("a collection whose items are all behind a modal layer", () => {
         .then(() => "no error", errorText);
 
       expect(error).toMatch(
-        /^RuntimeStateError: ListPage\.rows\.open is unavailable: a click would not reach it(; e\d+ is in the way)?\.$/
+        /^RuntimeStateError: Row on ref "(?:e\d+|s_\w+)" is unavailable: a click would not reach it(; e\d+ is in the way)?\.$/
       );
       expect(opened[0]).not.toHaveBeenCalled();
     } finally {
@@ -195,7 +197,7 @@ describe("a collection whose items are all behind a modal layer", () => {
         .then(() => "no error", errorText);
 
       expect(error).toBe(
-        "RuntimeStateError: ListPage.rows.open is unavailable: a click would not reach it."
+        `RuntimeStateError: Row on ref "${refs[2]}" is unavailable: a click would not reach it.`
       );
       expect(scrolled().list).toBeGreaterThan(0);
       expect(opened[2]).not.toHaveBeenCalled();

@@ -4,6 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
 import {
   getPageStateForElements,
+  lookAtPageStateForDocument,
   listRegisteredPomTargets,
   listAvailablePomTools,
   listRegisteredPoms,
@@ -66,14 +67,15 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToAgentImageRuns: vi.fn(() => () => {}),
-    listCollectionToolItems: vi.fn(() => new Map()),
+    listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
 });
 
 const save: RegisteredPomTool = {
-  pomId: "Editor",
+  rooted: false,
+  className: "Editor",
   methodName: "save",
   name: "Editor.save",
   description: "Save the editor.",
@@ -422,4 +424,89 @@ it("scopes every Caller's Runs to the selection", async () => {
   });
   await inspector.runs.showAll();
   await expect.poll(() => inspector.runs.runs.count()).toBe(2);
+});
+
+it("scopes root-less class runs to their own Page Object", async () => {
+  registerEditor();
+  const other = { ...save, name: "Other.save", className: "Other" };
+  vi.mocked(listAvailablePomTools).mockReturnValue([save, other] as ReturnType<
+    typeof listAvailablePomTools
+  >);
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    editor,
+    {
+      ...editor,
+      id: "Other",
+      manifest: {
+        ...editor.manifest,
+        className: "Other",
+        tools: [{ methodName: "save", toolName: "Other.save", parameters: [] }],
+      },
+      tools: [other],
+    },
+  ]);
+  startedAyme.runs.start("Editor.save", {}, "webmcp").succeed();
+  startedAyme.runs.start("Other.save", {}, "webmcp").succeed();
+  renderApp();
+  await inspector.navigator.showLens("Model");
+  await inspector.navigator.model.object("Editor").click();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
+    "Editor.save"
+  );
+});
+
+it("keeps a root-less run's class when remounting after its tool disappeared", async () => {
+  registerEditor();
+  startedAyme.runs.start("Editor.save", {}, "webmcp").succeed();
+  renderApp();
+  await inspector.navigator.showLens("Model");
+  await inspector.navigator.model.object("Editor").click();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  unmountApp();
+  vi.mocked(listAvailablePomTools).mockReturnValue([]);
+  renderApp();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
+    "Editor.save"
+  );
+});
+
+it("finds a root-less class run from a structure node belonging to that class", async () => {
+  registerEditor();
+  const app = document.createElement("main");
+  app.innerHTML = "<button>Save</button>";
+  document.body.append(app);
+  unmounts.push(() => app.remove());
+  const button = app.querySelector("button")!;
+  vi.mocked(lookAtPageStateForDocument).mockImplementation(async () => {
+    const { forest, node } = await import("../structure/test-utils/projected");
+    return {
+      projected: forest(
+        node(
+          { ref: "e1", role: "main" },
+          node({ ref: "e2", role: "button", name: "Save" })
+        )
+      ),
+      elementsByRef: new Map([
+        ["e1", app],
+        ["e2", button],
+      ]),
+    } as unknown as Awaited<ReturnType<typeof lookAtPageStateForDocument>>;
+  });
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.saveButton",
+      element: button,
+      locator: "getByRole('button', {name:'Save'})",
+    },
+  ]);
+  startedAyme.runs.start("Editor.save", {}, "webmcp").succeed();
+  renderApp();
+  await inspector.navigator.showLens("Structure");
+  await inspector.structure.pick("e2");
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
+    "Editor.save"
+  );
 });

@@ -108,7 +108,7 @@ test("a collection action runs on the item and choice picked with the mouse", as
 }) => {
   await listPage.addItem("Milk");
   await listPage.addItem("Eggs");
-  const mark = await inspector.tool("ListPage.entries.mark");
+  const mark = await inspector.tool("ListItem.mark");
 
   await mark.pickItem("Eggs");
   await mark.jsonSwitch.click();
@@ -188,6 +188,7 @@ test.describe("with WebMCP publication off", () => {
     await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
     const run = inspector.runs.latest("ListPage.addItem");
+    await expect.poll(() => run.earlierPage.count()).toBe(0);
     await expect.poll(() => run.status()).toBe("Failed");
     expect(firstLine(await run.error.textContent())).toBe(
       firstLine(agentError)

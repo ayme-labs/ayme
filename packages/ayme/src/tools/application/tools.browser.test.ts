@@ -130,8 +130,7 @@ class ListPage {
           // goes unavailable while its own call is still running.
           while (
             listTools({ peeks: false }).some(
-              ({ name, available }) =>
-                name === "ListPage.items.archive" && available
+              ({ name, available }) => name === "ListItem.archive" && available
             )
           )
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -161,7 +160,7 @@ registerCompiledPom(ListPage, {
       tools: [
         {
           methodName: "archive",
-          toolName: "archive",
+          toolName: "ListItem.archive",
           description: "archive on ListItem.",
           parameters: [],
         },
@@ -205,7 +204,7 @@ registerCompiledPom(ResponsesPage, {
       tools: [
         {
           methodName: "showOnly",
-          toolName: "showOnly",
+          toolName: "FilterPopover.showOnly",
           parameters: [],
         },
       ],
@@ -365,65 +364,65 @@ describe("the session's tools in Chromium", () => {
     document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
     await startSession();
     cleanups.push(registered(ListPage));
-    await expect
-      .poll(() => agentTools().names())
-      .toContain("ListPage.items.archive");
+    await expect.poll(() => agentTools().names()).toContain("ListItem.archive");
     const { structure } = (await agentCall("snapshot", {})) as {
       structure: string;
     };
-    const ref = structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
-    if (!ref) throw new Error("Expected a ref for ListPage.items[0].");
+    const ref = structure.match(/(e\d+) ListItem/)?.[1];
+    if (!ref) throw new Error("Expected a ref for ListItem.");
     const heard: (readonly ToolInfo[])[] = [];
     cleanups.push(ayme.tools.subscribe((tools) => heard.push(tools)));
 
     expect(
-      await agentCall("ListPage.items.archive", { ref, args: {} })
+      await agentCall("ListItem.archive", { ref, args: {} })
     ).toMatchObject({ result: "archived" });
 
     // Subscribers heard of the change before the call returned.
     expect(heard.at(-1)?.map(({ name }) => name)).not.toContain(
-      "ListPage.items.archive"
+      "ListItem.archive"
     );
     expect(heard.at(-1)).toBe(ayme.tools.list());
-    expect(agentTools().names()).not.toContain("ListPage.items.archive");
+    expect(agentTools().names()).not.toContain("ListItem.archive");
   });
 
   it("leaves out a Page Object Tool whose Page Object is not on the page, refuses to run it, and lists it once the Page Object is", async () => {
     document.body.innerHTML = `<ul><li id="item" hidden>Draft</li></ul>`;
     await startSession();
     cleanups.push(registered(ListPage));
+    await probeRegisteredPomMembers();
     const archive = () =>
-      ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
+      ayme.tools.list().find(({ name }) => name === "ListItem.archive");
     await expect
       .poll(() => ayme.tools.list().map(({ name }) => name))
       .toContain("snapshot");
 
     expect(archive()).toBeUndefined();
     await expect(
-      ayme.tools.run("ListPage.items.archive", { ref: "e1", args: {} })
+      ayme.tools.run("ListItem.archive", { ref: "e1", args: {} })
     ).rejects.toThrow(
-      "ListPage.items.archive is unavailable: its Page Object is not on the page."
+      'Cannot call ListItem.archive on ref "e1": it is not a root of ListItem.'
     );
 
     document.querySelector("#item")!.removeAttribute("hidden");
     await expect
       .poll(archive)
       .toMatchObject({ group: "pageObject", available: true });
-    expect(agentTools().names()).toContain("ListPage.items.archive");
+    expect(agentTools().names()).toContain("ListItem.archive");
   });
 
   it("lists a Page Object Tool a click would not reach as unavailable with the element in the way, and refuses to run it", async () => {
     document.body.innerHTML = `<ul><li id="item">Draft</li></ul><dialog id="confirm" aria-label="Archive item"><button>Confirm</button></dialog>`;
     await startSession();
     cleanups.push(registered(ListPage));
+    await probeRegisteredPomMembers();
     const archive = () =>
-      ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
+      ayme.tools.list().find(({ name }) => name === "ListItem.archive");
     await expect.poll(archive).toMatchObject({ available: true });
     const ref = (await agentTools().call("snapshot", {})) as {
       structure: string;
     };
-    const item = ref.structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
-    if (!item) throw new Error("Expected a ref for ListPage.items[0].");
+    const item = ref.structure.match(/(e\d+) ListItem/)?.[1];
+    if (!item) throw new Error("Expected a ref for ListItem.");
 
     document.querySelector<HTMLDialogElement>("#confirm")!.showModal();
     await expect.poll(archive).toMatchObject({ available: false });
@@ -437,11 +436,11 @@ describe("the session's tools in Chromium", () => {
       available: false,
       reason: `a click would not reach it; ${dialog} is in the way`,
     });
-    expect(agentTools().names()).not.toContain("ListPage.items.archive");
+    expect(agentTools().names()).not.toContain("ListItem.archive");
     await expect(
-      ayme.tools.run("ListPage.items.archive", { ref: item, args: {} })
+      ayme.tools.run("ListItem.archive", { ref: item, args: {} })
     ).rejects.toThrow(
-      `ListPage.items.archive is unavailable: a click would not reach it; ${dialog} is in the way.`
+      `ListItem on ref "${item}" is unavailable: a click would not reach it; ${dialog} is in the way.`
     );
     expect(document.querySelector("#item")!.hasAttribute("hidden")).toBe(false);
 
@@ -551,7 +550,7 @@ describe("the session's tools in Chromium", () => {
     expect(label("BarePage.close")).toBe("Run close.");
   });
 
-  it("names a returned class by the prefixes its tools are published under", async () => {
+  it("names returned classes in the tool options", async () => {
     await startSession();
     cleanups.push(registered(ResponsesPage), registered(ListPage));
     await probeRegisteredPomMembers();
@@ -562,15 +561,13 @@ describe("the session's tools in Chromium", () => {
       ({ key }) => key === "ResponsesPage.openFilter"
     )?.label;
 
-    expect(listed).toMatchObject({
-      returnPomPaths: {
-        FilterPopover: ["ResponsesPage.filter"],
-        ListItem: ["ListPage.items"],
-      },
-    });
-    expect(listed?.returnPomPaths).not.toHaveProperty("UnreachedPopover");
+    expect(listed?.returnPoms).toEqual([
+      "FilterPopover",
+      "ListItem",
+      "UnreachedPopover",
+    ]);
     expect(label).toBe(
-      "Then shows ResponsesPage.filter (FilterPopover) or ListPage.items (ListItem) or UnreachedPopover."
+      "Then shows FilterPopover or ListItem or UnreachedPopover."
     );
   });
 

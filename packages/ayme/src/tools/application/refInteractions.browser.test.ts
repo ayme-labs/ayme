@@ -198,7 +198,7 @@ describe("Structural Ref interactions in Chromium", () => {
       tools: [
         {
           methodName: "getCount",
-          toolName: "getCount",
+          toolName: "CounterPage.getCount",
           description: "Get the current count.",
           parameters: [],
           returnPoms: [],
@@ -212,7 +212,9 @@ describe("Structural Ref interactions in Chromium", () => {
       registerPageObject(CounterPage, instance);
       await probeRegisteredPomMembers();
 
-      const tool = listAvailablePomTools().find((t) => t.name === "getCount");
+      const tool = listAvailablePomTools().find(
+        (t) => t.name === "CounterPage.getCount"
+      );
       if (!tool) throw new Error("Expected the getCount tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
@@ -244,7 +246,7 @@ describe("Structural Ref interactions in Chromium", () => {
       tools: [
         {
           methodName: "getElement",
-          toolName: "getElement",
+          toolName: "PageObjectPage.getElement",
           description: "Get an element.",
           parameters: [],
           returnPoms: [],
@@ -258,7 +260,9 @@ describe("Structural Ref interactions in Chromium", () => {
       registerPageObject(PageObjectPage, instance);
       await probeRegisteredPomMembers();
 
-      const tool = listAvailablePomTools().find((t) => t.name === "getElement");
+      const tool = listAvailablePomTools().find(
+        (t) => t.name === "PageObjectPage.getElement"
+      );
       if (!tool) throw new Error("Expected the getElement tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
@@ -293,7 +297,7 @@ describe("Structural Ref interactions in Chromium", () => {
       tools: [
         {
           methodName: "getChild",
-          toolName: "getChild",
+          toolName: "ReturningPage.getChild",
           description: "Get a child component.",
           parameters: [],
           returnPoms: ["ChildComponent"],
@@ -307,7 +311,9 @@ describe("Structural Ref interactions in Chromium", () => {
       registerPageObject(ReturningPage, instance);
       await probeRegisteredPomMembers();
 
-      const tool = listAvailablePomTools().find((t) => t.name === "getChild");
+      const tool = listAvailablePomTools().find(
+        (t) => t.name === "ReturningPage.getChild"
+      );
       if (!tool) throw new Error("Expected the getChild tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();

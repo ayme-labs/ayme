@@ -10,9 +10,9 @@ export type PomLabels = ReadonlyMap<AriaRef, readonly string[]>;
 
 /**
  * How a node's Page Object labels show in the compact notation, the one rule
- * `snapshot` and the Change Record share: a single label that is a valid path
- * (`ListPage`, `ListPage.items[0]`) is an inline prefix after the ref with the
- * role suppressed; several labels, or one that is not a valid path, are the
+ * `snapshot` and the Change Record share: a single label that is a class name
+ * (`ListPage`, `ListItem`) is an inline prefix after the ref with the
+ * role suppressed; several labels, or one that is not a class name, are the
  * `pom` property. A synthetic root, which has no role of its own, shows none.
  */
 export function pomLabelProjection(labels: PomLabels) {
@@ -21,10 +21,7 @@ export function pomLabelProjection(labels: PomLabels) {
   for (const [ref, refLabels] of labels) {
     const sorted = [...refLabels].sort();
     const value = sorted.length === 1 ? sorted[0]! : sorted;
-    if (
-      typeof value === "string" &&
-      /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[\d+\])*$/.test(value)
-    )
+    if (typeof value === "string" && /^[A-Za-z_$][\w$]*$/.test(value))
       inlineLabels.set(ref, value);
     else properties.set(ref, [{ key: "pom", label: "pom", value }]);
   }

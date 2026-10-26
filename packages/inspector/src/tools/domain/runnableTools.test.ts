@@ -9,7 +9,8 @@ import { listRunnableTools } from "./runnableTools";
 // hand-written.
 
 const addItem: RegisteredPom["tools"][number] = {
-  pomId: "ListPage",
+  className: "ListPage",
+  rooted: false,
   methodName: "addItem",
   name: "ListPage.addItem",
   description: "Add an item to the list.",
@@ -17,12 +18,10 @@ const addItem: RegisteredPom["tools"][number] = {
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
 const rename: RegisteredPom["tools"][number] = {
-  pomId: "ListPage",
-  componentClassName: "ListItem",
-  componentPath: "items[]",
-  collectionPath: "items[]",
+  className: "ListItem",
+  rooted: true,
   methodName: "rename",
-  name: "ListPage.items.rename",
+  name: "ListItem.rename",
   description: "Rename this item.",
   inputSchema: { type: "object" },
   parameters: [
@@ -77,15 +76,15 @@ it("runs a Page Object action with its parameters", () => {
   });
 });
 
-it("runs a collection action on an item, with the action's own arguments", () => {
+it("runs a rooted action on an item, with the action's own arguments", () => {
   const tools = listRunnableTools(
     [listPage],
     [{ ...rename, inputSchema: rename.inputSchema, available: true }]
   );
 
-  expect(tools.get("ListPage.items.rename")).toMatchObject({
+  expect(tools.get("ListItem.rename")).toMatchObject({
     action: "rename",
-    collection: "ListPage.items[]",
+    rooted: true,
     argumentsSchema: { properties: { text: { type: "string" } } },
     present: true,
     available: true,

@@ -1,9 +1,4 @@
-import {
-  modelActions,
-  walk,
-  type PageModel,
-  type PageObjectNode,
-} from "../domain/pageModel";
+import { walk, type PageModel, type PageObjectNode } from "../domain/pageModel";
 import { Empty } from "../../shared";
 import type {
   Lens,
@@ -134,7 +129,7 @@ export function modelLens({
         return (
           <ModelDetail
             model={model}
-            actions={modelActions(model)}
+            actions={model.actions}
             instances={model.instancePaths.flatMap(
               (path) => byPath.get(path) ?? []
             )}
@@ -256,10 +251,7 @@ function searchEntries(
         key: `action:${model.className}.${action.name}`,
         kind: "Action",
         label: `${model.className}.${action.name}`,
-        description: [
-          action.description,
-          !action.liveToolNames.length && "Not on page.",
-        ]
+        description: [action.description, !action.live && "Not on page."]
           .filter(Boolean)
           .join(" "),
         selection,

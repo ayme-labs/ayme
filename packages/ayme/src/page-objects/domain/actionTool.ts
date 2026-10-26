@@ -62,49 +62,16 @@ export function actionFacts(
   };
 }
 
-/**
- * The prefixes the tools of each of `returnPoms` are published under, by
- * class name, from `prefixes`; none when no returned class has any.
- */
-export function returnPomPaths(
-  returnPoms: readonly string[] | undefined,
-  prefixes: ReadonlyMap<string, readonly string[]>
-): { returnPomPaths?: Readonly<Record<string, readonly string[]>> } {
-  const paths = (returnPoms ?? []).flatMap((name) => {
-    const published = prefixes.get(name);
-    return published?.length ? [[name, published] as const] : [];
-  });
-  return paths.length ? { returnPomPaths: Object.fromEntries(paths) } : {};
-}
-
 /** A tool as `agentDescription` reads it. */
 type DescribedTool = {
   name: string;
   description?: string;
   returnPoms?: readonly string[];
-  returnPomPaths?: Readonly<Record<string, readonly string[]>>;
 };
 
 /**
- * A returned Page Object as agents read it: the prefixes its tools are
- * published under, then its class, e.g.
- * `SurveyResponsesPage.filter (ResponseFilterPopover)`; only the class when
- * that is its one prefix, as for a page, or it has none.
- */
-function shownPom(className: string, tool: DescribedTool): string {
-  const paths =
-    tool.returnPomPaths && Object.hasOwn(tool.returnPomPaths, className)
-      ? tool.returnPomPaths[className]!
-      : [];
-  if (!paths.length || (paths.length === 1 && paths[0] === className))
-    return className;
-  return `${paths.join(", ")} (${className})`;
-}
-
-/**
  * A tool's description as agents read it: its own, then the Page Objects
- * the page shows afterwards, each by the prefix its tools are published
- * under. None when the tool says nothing beyond its name
+ * the page shows afterwards, by class. None when the tool says nothing beyond its name
  * and schema, unless `required`: WebMCP refuses a tool without one, and the
  * Goal Loop's model chooses an operation by it, so they get `Run addItem.`.
  */
@@ -122,9 +89,7 @@ export function agentDescription(
 ): string | undefined {
   const parts = tool.description === undefined ? [] : [tool.description];
   if (tool.returnPoms?.length)
-    parts.push(
-      `Then shows ${tool.returnPoms.map((name) => shownPom(name, tool)).join(" or ")}.`
-    );
+    parts.push(`Then shows ${tool.returnPoms.join(" or ")}.`);
   if (parts.length) return parts.join(" ");
   if (options?.required)
     return `Run ${tool.name.slice(tool.name.lastIndexOf(".") + 1)}.`;

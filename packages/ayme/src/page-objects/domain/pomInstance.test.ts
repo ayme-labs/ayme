@@ -37,8 +37,7 @@ const instance = (
   return {
     path: "items[0]",
     instance: {},
-    componentPath: "items[]",
-    item: undefined,
+    className: "Item",
     present: observedRoot?.present ?? true,
     root: observedRoot,
     predicates: new Map(),

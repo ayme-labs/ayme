@@ -10,8 +10,8 @@ import type {
 
 /**
  * What a Page Object holds: its locators by name, its children, and its
- * actions, which run its tools by the path without item indices, e.g.
- * TodoPage.items.archive. It is on the page unless it says not, and so are
+ * actions, which run its class tools, e.g.
+ * TodoItem.archive. It is on the page unless it says not, and so are
  * its locators.
  */
 export type Contents = {
@@ -58,6 +58,14 @@ export function collection(
     const children = items.map((contents, index) =>
       objectNode(`${path}[${index}]`, `[${index}]`, "item", className, contents)
     );
+    for (const child of children)
+      if (toolNames.length)
+        child.actions = toolNames.map((toolName) => ({
+          name: toolName,
+          signature: "()",
+          toolName,
+          live: child.live,
+        }));
     return {
       path,
       key: path,
@@ -102,7 +110,6 @@ function objectNode(
   { locators = [], children = [], actions = [], live = true }: Contents
 ): PageObjectNode {
   const built = children.map((child) => child(path));
-  const toolPath = path.replace(/\[\d+\]/g, "");
   return {
     path,
     key: path,
@@ -123,7 +130,7 @@ function objectNode(
     actions: actions.map((action) => ({
       signature: "()",
       ...action,
-      toolName: `${toolPath}.${action.name}`,
+      toolName: `${className}.${action.name}`,
       live,
     })),
     children: built,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { attachToolModels, listTools, type LiveTool } from "./toolGroups";
+import { listTools, type LiveTool } from "./toolGroups";
 
 // Unit: what the Tools lens lists, from the runtime's live tools. The expected groups come from the runtime's grouping:
 // Page Object Tools, Custom Tools, Browser Tools, Peek Tools, and snapshot and goal.
@@ -16,7 +16,7 @@ const live = [
   tool("fill", "browser"),
   tool("highlight", "custom"),
   tool("ListPage.addItem", "pageObject"),
-  tool("ListPage.items.rename", "pageObject"),
+  tool("ListItem.rename", "pageObject"),
   tool("peek.cart", "peek"),
   tool("goal", "agent"),
 ];
@@ -28,7 +28,7 @@ describe("listTools", () => {
     expect(
       listTools(live).map(({ label, tools }) => [label, names(tools)])
     ).toEqual([
-      ["Page object tools", ["ListPage.addItem", "ListPage.items.rename"]],
+      ["Page object tools", ["ListPage.addItem", "ListItem.rename"]],
       ["Custom tools", ["highlight"]],
       ["Browser tools", ["click", "fill"]],
       ["Peek tools", ["peek.cart"]],
@@ -56,30 +56,5 @@ describe("listTools", () => {
     const [peeks] = listTools([jobs, tool("peek.cart", "peek")]);
 
     expect(names(peeks!.tools)).toEqual(["peek.cart", "peek.node.jobs"]);
-  });
-});
-
-describe("attachToolModels", () => {
-  it("gives each Page object tool the model whose action it is", () => {
-    const models = [
-      { className: "ListPage", tools: [{ name: "ListPage.addItem" }] },
-      { className: "ListItem", tools: [{ name: "ListPage.items.rename" }] },
-    ];
-
-    expect(
-      attachToolModels(live, models).map(({ name, pomClassName }) => [
-        name,
-        pomClassName,
-      ])
-    ).toEqual([
-      ["snapshot", undefined],
-      ["click", undefined],
-      ["fill", undefined],
-      ["highlight", undefined],
-      ["ListPage.addItem", "ListPage"],
-      ["ListPage.items.rename", "ListItem"],
-      ["peek.cart", undefined],
-      ["goal", undefined],
-    ]);
   });
 });

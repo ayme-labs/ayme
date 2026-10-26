@@ -44,18 +44,8 @@ export type PomInstanceObservation = {
   path: string;
   /** The live Page Object the observation read: what a call on it acts on. */
   instance: object;
-  /**
-   * Its tools' component path, which has no item indices, e.g.
-   * "items[].details"; undefined for the page's own. A repeated class can
-   * take its first occurrence's path; see `walkComponentMember` in pomTree.ts.
-   */
-  componentPath: string | undefined;
-  /**
-   * The innermost collection item it is or lies in, e.g. the instance at
-   * "items[1]" for "items[1].details", or itself when it joined its first
-   * occurrence (see `walkComponentMember`); undefined outside collections.
-   */
-  item: PomInstanceObservation | undefined;
+  /** The class whose tools act on this instance. */
+  className: string;
   /**
    * Whether it is on the page (Page Object Presence): its presence
    * predicate, when its class declares one, holds, and its root, when it has
@@ -75,8 +65,6 @@ export type PomInstanceObservation = {
    * without a root, or when the predicate threw or answered no locator.
    */
   rootLocator?: Locator;
-  /** What its root predicate threw, when it threw. */
-  rootError?: string;
   /** How many elements its root locator matched; 0 when it answered none. */
   rootCount?: number;
   /**
@@ -138,7 +126,6 @@ export function sameInstance(
     left.path === right.path &&
     left.present === right.present &&
     left.presenceError === right.presenceError &&
-    left.rootError === right.rootError &&
     sameRoot(left.root, right.root) &&
     left.predicates.size === right.predicates.size &&
     [...left.predicates].every(([methodName, answer]) => {

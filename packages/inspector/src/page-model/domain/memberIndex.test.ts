@@ -21,28 +21,14 @@ const index = indexMembers(
             [
               {
                 locators: ["nameButton"],
-                children: [
-                  collection(
-                    "tags",
-                    "Tag",
-                    [{}, {}],
-                    ["ListPage.items.tags.remove"]
-                  ),
-                ],
+                children: [collection("tags", "Tag", [{}, {}], ["Tag.remove"])],
               },
               {
                 locators: ["nameButton"],
-                children: [
-                  collection(
-                    "tags",
-                    "Tag",
-                    [{}],
-                    ["ListPage.items.tags.remove"]
-                  ),
-                ],
+                children: [collection("tags", "Tag", [{}], ["Tag.remove"])],
               },
             ],
-            ["ListPage.items.archive"]
+            ["ListItem.archive"]
           ),
         ],
       }),
@@ -198,26 +184,24 @@ it("gives a path shared by two registrations of one page class to the first", ()
   );
 });
 
-it("finds a collection action's items in every collection it runs on, in page order", () => {
-  expect(
-    index.collectionItems("ListPage.items.tags.remove").map(({ path }) => path)
-  ).toEqual([
+it("finds a rooted action's items in every collection it runs on, in page order", () => {
+  expect(index.toolInstances("Tag.remove").map(({ path }) => path)).toEqual([
     "ListPage.items[0].tags[0]",
     "ListPage.items[0].tags[1]",
     "ListPage.items[1].tags[0]",
   ]);
   expect(
-    index.collectionItems("ListPage.items.archive").map(({ path }) => path)
+    index.toolInstances("ListItem.archive").map(({ path }) => path)
   ).toEqual(["ListPage.items[0]", "ListPage.items[1]"]);
-  expect(index.collectionItems("ListPage.addItem")).toEqual([]);
+  expect(index.toolInstances("ListPage.addItem")).toEqual([]);
 });
 
 it("names an item by its path below its page", () => {
-  const [first, second] = index.collectionItems("ListPage.items.tags.remove");
+  const [first, second] = index.toolInstances("Tag.remove");
 
   expect(pathBelowPage(first!, index)).toBe("items[0].tags[0]");
   expect(pathBelowPage(second!, index)).toBe("items[0].tags[1]");
   expect(
-    pathBelowPage(index.collectionItems("ListPage.items.archive")[1]!, index)
+    pathBelowPage(index.toolInstances("ListItem.archive")[1]!, index)
   ).toBe("items[1]");
 });

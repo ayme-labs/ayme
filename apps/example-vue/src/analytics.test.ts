@@ -21,7 +21,7 @@ function fakeRuns() {
 
 const run = (fields: Partial<Run> & Pick<Run, "id" | "status">) =>
   ({
-    tool: "ListPage.items.rename",
+    tool: "ListItem.rename",
     startedAt: 0,
     interactions: [],
     by: "inspector",
@@ -47,7 +47,7 @@ describe("Tool run analytics", () => {
     expect(window.dataLayer).toEqual([
       {
         event: "playground_tool_run",
-        tool: "ListPage.items.rename",
+        tool: "ListItem.rename",
         caller: "inspector",
         status: "succeeded",
       },

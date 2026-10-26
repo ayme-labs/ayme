@@ -35,8 +35,9 @@ resolve, a `goal` Handover or an unavailable tool's reason, read
 - When a Page Object's tools never appear, read the browser console, or ask
   the user to: a refused registration, `Cannot register the Page Object …`,
   is logged there and does not reach you. It names two classes that share a
-  name; rename one. A `present` or root predicate that throws is logged there
-  too, and its Page Object is absent.
+  name; rename one. For a refusal beginning `The Page Object class`, see the
+  [root rules](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root). A `present` or root
+  predicate that throws is logged there too, and its Page Object is absent.
 - When the dev server refuses to build a Page Object, the reason is in the
   dev server's output. A page that loads after the refusal does not pair, and
   the tools answer that no page is connected; a page already paired can keep

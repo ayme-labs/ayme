@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -14,7 +15,7 @@ import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
 import { createAyme, listTools, type Ayme } from "../../runtime";
 import {
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
@@ -26,7 +27,7 @@ import {
 // tool list, a call and the Goal Loop's offer say about its actions.
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -100,7 +101,7 @@ describe("Action Availability", () => {
       registerCompiledPom(Panel, {
         className: "Panel",
         members: [root],
-        tools: [action("remove", "Panel.remove")],
+        tools: [action("Panel.remove", "Panel.remove")],
         components: [],
       });
       session.pom.register(Panel);
@@ -121,10 +122,13 @@ describe("Action Availability", () => {
         if (!("reason" in expected))
           expect(published("Panel.remove")).not.toHaveProperty("reason");
         // The refusal carries the reason, or ends without one.
-        await expect(session.tools.run("Panel.remove", {})).rejects.toThrow(
+        const ref = await rootRef("Panel");
+        await expect(
+          session.tools.run("Panel.remove", { ref, args: {} })
+        ).rejects.toThrow(
           "reason" in expected
-            ? `Panel.remove is unavailable: ${expected.reason}.`
-            : "Panel.remove is unavailable."
+            ? `Panel on ref "${ref}" is unavailable: ${expected.reason}.`
+            : `Panel on ref "${ref}" is unavailable.`
         );
       }
     }
@@ -152,15 +156,15 @@ describe("Action Availability", () => {
     registerCompiledPom(Toolbar, {
       className: "Toolbar",
       members: [root],
-      tools: [action("reset", "Toolbar.reset")],
+      tools: [action("Toolbar.reset", "Toolbar.reset")],
       components: [],
     });
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
       tools: [
-        action("remove", "Panel.remove"),
-        action("duplicate", "Panel.duplicate"),
+        action("Panel.remove", "Panel.remove"),
+        action("Panel.duplicate", "Panel.duplicate"),
       ],
       components: [],
     });
@@ -174,11 +178,17 @@ describe("Action Availability", () => {
       reason: "No item is selected",
     });
     expect(published("Panel.duplicate")).toMatchObject({ available: true });
-    await expect(session.tools.run("Panel.remove", {})).rejects.toThrow(
-      "Panel.remove is unavailable: No item is selected."
+    const ref = await rootRef("Panel");
+    await expect(
+      session.tools.run("Panel.remove", { ref, args: {} })
+    ).rejects.toThrow(
+      `Panel on ref "${ref}" is unavailable: No item is selected.`
     );
     expect(panel.removed).toBe(0);
-    await session.tools.run("Panel.duplicate", {});
+    await session.tools.run("Panel.duplicate", {
+      ref: await rootRef("Panel"),
+      args: {},
+    });
   });
 
   it("judges a page-level action by the page's own root, not by its components' roots", async () => {
@@ -203,19 +213,19 @@ describe("Action Availability", () => {
           collection: false,
         },
       ],
-      tools: [action("archive", "Shell.archive")],
+      tools: [action("Shell.archive", "Shell.archive")],
       components: [
         {
           className: "Panel",
           members: [root],
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
       ],
     });
     session.pom.register(Shell);
     await probeRegisteredPomMembers();
 
-    expect(published("Shell.panel.close")).toMatchObject({ available: true });
+    expect(published("Panel.close")).toMatchObject({ available: true });
     expect(published("Shell.archive")).toMatchObject({
       available: false,
       reason: "Nothing is selected",
@@ -249,8 +259,8 @@ describe("Action Availability", () => {
         { memberName: "removeButton", kind: "locator", access: "field" },
       ],
       tools: [
-        action("remove", "Panel.remove"),
-        action("duplicate", "Panel.duplicate"),
+        action("Panel.remove", "Panel.remove"),
+        action("Panel.duplicate", "Panel.duplicate"),
       ],
       components: [],
     });
@@ -283,7 +293,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Toolbar, {
       className: "Toolbar",
       members: [root],
-      tools: [action("reset", "Toolbar.reset")],
+      tools: [action("Toolbar.reset", "Toolbar.reset")],
       components: [],
     });
     session.pom.register(Toolbar);
@@ -327,7 +337,7 @@ describe("Action Availability", () => {
         {
           className: "Item",
           members: [root],
-          tools: [action("recall", "Outbox.items.recall")],
+          tools: [action("Item.recall", "Message.recall")],
         },
       ],
     } satisfies PomManifest);
@@ -338,18 +348,18 @@ describe("Action Availability", () => {
     expect(judged).not.toContain(outbox.items[2]);
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      state.text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+      [...state.text.matchAll(/(e\d+) Item\b/g)][index]?.[1];
     const draft = refOf(0);
     const sent = refOf(1);
     if (!draft || !sent) throw new Error("Expected refs for both items.");
 
-    expect(published("Outbox.items.recall")).toMatchObject({ available: true });
-    expect(published("Outbox.items.recall")).not.toHaveProperty("reason");
-    const { tool } = listed("Outbox.items.recall")!;
+    expect(published("Message.recall")).toMatchObject({ available: true });
+    expect(published("Message.recall")).not.toHaveProperty("reason");
+    const { tool } = listed("Message.recall")!;
     await expect(
       tool.execute({ ref: draft, args: {} }, runContext())
     ).rejects.toThrow(
-      "Outbox.items.recall is unavailable: Only a sent item can be recalled."
+      `Item on ref "${draft}" is unavailable: Only a sent item can be recalled.`
     );
     expect(document.querySelector("#sent")!.getAttribute("data-state")).toBe(
       "sent"
@@ -360,7 +370,7 @@ describe("Action Availability", () => {
     );
 
     await probeRegisteredPomMembers();
-    expect(published("Outbox.items.recall")).toMatchObject({
+    expect(published("Message.recall")).toMatchObject({
       available: false,
       reason: "Only a sent item can be recalled",
     });
@@ -401,7 +411,7 @@ describe("Action Availability", () => {
         {
           className: "Row",
           members: [root],
-          tools: [action("archive", "Inbox.rows.archive")],
+          tools: [action("Row.archive", "Row.archive")],
         },
       ],
     } satisfies PomManifest);
@@ -411,27 +421,27 @@ describe("Action Availability", () => {
     const { text } = await agent.getPageState();
     const refOf = (pattern: string) =>
       text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
-    const covered = refOf("Inbox\\.rows\\[1\\]");
+    const covered = [...text.matchAll(/(e\d+) Row\b/g)][1]?.[1];
     const busy = refOf('dialog "Busy"');
     if (!covered || !busy)
       throw new Error("Expected refs for the row and the dialog.");
     const reason = `a click would not reach it; ${busy} is in the way`;
 
-    expect(published("Inbox.rows.archive")).toMatchObject({ available: true });
+    expect(published("Row.archive")).toMatchObject({ available: true });
     await expect(
-      listed("Inbox.rows.archive")!.tool.execute(
+      listed("Row.archive")!.tool.execute(
         { ref: covered, args: {} },
         runContext()
       )
-    ).rejects.toThrow(`Inbox.rows.archive is unavailable: ${reason}.`);
+    ).rejects.toThrow(`Row on ref "${covered}" is unavailable: ${reason}.`);
     expect(archived).not.toHaveBeenCalled();
     expect(
-      listCollectionToolItems()
-        .get("Inbox.rows.archive")
-        ?.map(({ label, available, reason }) => ({ label, available, reason }))
+      listRootedToolInstances()
+        .get("Row.archive")
+        ?.map(({ available, reason }) => ({ available, reason }))
     ).toEqual([
-      { label: "Inbox.rows[0]", available: true, reason: undefined },
-      { label: "Inbox.rows[1]", available: false, reason },
+      { available: true, reason: undefined },
+      { available: false, reason },
     ]);
   });
 
@@ -478,7 +488,7 @@ describe("Action Availability", () => {
         {
           className: "Row",
           members: [root],
-          tools: [action("archive", "Inbox.rows.archive")],
+          tools: [action("Row.archive", "Row.archive")],
         },
       ],
     } satisfies PomManifest);
@@ -491,13 +501,12 @@ describe("Action Availability", () => {
     expect(asked).toContain("open");
     expect(asked).not.toContain("covered");
     expect(
-      listCollectionToolItems()
-        .get("Inbox.rows.archive")
-        ?.map(({ label, available, reason }) => ({ label, available, reason }))
+      listRootedToolInstances()
+        .get("Row.archive")
+        ?.map(({ available, reason }) => ({ available, reason }))
     ).toEqual([
-      { label: "Inbox.rows[0]", available: false, reason: "open is read-only" },
+      { available: false, reason: "open is read-only" },
       {
-        label: "Inbox.rows[1]",
         available: false,
         reason: `a click would not reach it; ${busy} is in the way`,
       },
@@ -564,7 +573,7 @@ describe("Action Availability", () => {
         {
           className: "Editor",
           members: [root],
-          tools: [action("save", "Outbox.items.editor.save")],
+          tools: [action("Editor.save", "Editor.save")],
         },
       ],
     } satisfies PomManifest);
@@ -572,20 +581,20 @@ describe("Action Availability", () => {
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      state.text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+      [...state.text.matchAll(/(e\d+) Editor\b/g)][index]?.[1];
     const clean = refOf(0);
     const dirty = refOf(1);
     if (!clean || !dirty) throw new Error("Expected refs for both items.");
 
-    // The ref names the item; the verdict is the item's editor's.
-    expect(published("Outbox.items.editor.save")).toMatchObject({
+    // The ref names the editor, whose own availability decides the call.
+    expect(published("Editor.save")).toMatchObject({
       available: true,
     });
-    const { tool } = listed("Outbox.items.editor.save")!;
+    const { tool } = listed("Editor.save")!;
     await expect(
       tool.execute({ ref: clean, args: {} }, runContext())
     ).rejects.toThrow(
-      "Outbox.items.editor.save is unavailable: Nothing to save."
+      `Editor on ref "${clean}" is unavailable: Nothing to save.`
     );
     await tool.execute({ ref: dirty, args: {} }, runContext());
     expect(
@@ -632,7 +641,7 @@ describe("Action Availability", () => {
         {
           className: "Panel",
           members: [root],
-          tools: [action("close", "close")],
+          tools: [action("close", "Panel.close")],
         },
       ],
     });
@@ -653,32 +662,37 @@ describe("Action Availability", () => {
     expect(overlay).toBeDefined();
     expect(frozen).toBeDefined();
 
-    expect(published("Shell.covered.close")).toMatchObject({
+    const instance = (id: string) =>
+      listRootedToolInstances()
+        .get("Panel.close")
+        ?.find(({ element }) => element.id === id);
+    expect(published("Panel.close")).toMatchObject({ available: true });
+    expect(instance("covered")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${overlay} is in the way`,
     });
-    expect(published("Shell.frozen.close")).toMatchObject({
+    expect(instance("frozen")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${frozen} is in the way`,
     });
-    expect(published("Shell.held.close")).toMatchObject({
+    expect(instance("held")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
-    expect(published("Shell.blocked.close")).toMatchObject({ available: true });
+    expect(instance("blocked")).toMatchObject({ available: true });
 
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
     // Until the agent's page state shows the modal, nothing names it: the
     // reason never falls back to an element around it.
     await probeRegisteredPomMembers();
-    expect(published("Shell.blocked.close")).toMatchObject({
+    expect(instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
     const after = await agent.getPageState();
     const modal = after.text.match(/(e\d+) dialog "Archive item"/)?.[1];
     expect(modal).toBeDefined();
-    expect(published("Shell.blocked.close")).toMatchObject({
+    expect(instance("blocked")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${modal} is in the way`,
     });
@@ -691,7 +705,7 @@ describe("Action Availability", () => {
     const { text: quiet } = await agent.getPageState();
     expect(quiet).toMatch(/e\d+ region "Dialogs"/);
     expect(quiet).not.toContain('dialog "Confirm"');
-    expect(published("Shell.blocked.close")).toMatchObject({
+    expect(instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
@@ -699,7 +713,7 @@ describe("Action Availability", () => {
 
   it("gives the reason without a ref when nothing in the way has one", async () => {
     document.body.innerHTML =
-      '<section id="panel" style="height:40px"><button>Act</button></section>';
+      '<section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     document.body.style.pointerEvents = "none";
     class Panel {
       root = page.locator("#panel");
@@ -709,7 +723,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -734,7 +748,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -760,7 +774,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     session.pom.register(Panel);
@@ -795,7 +809,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     const panel = session.pom.register(Panel);
@@ -805,14 +819,14 @@ describe("Action Availability", () => {
     // the registry's subscribers hear nothing.
     const changes = vi.fn();
     const unsubscribe = subscribeToRegisteredPoms(changes);
-    await agent.getPageState();
+    const panelRef = await rootRef("Panel");
     expect(changes).not.toHaveBeenCalled();
     unsubscribe();
 
     // The page did not change, so no observation ran between the predicate
     // changing its mind and the call: the call goes by the last observation.
     verdict = "Nothing is selected";
-    await listed("Panel.remove")!.tool.execute({}, runContext());
+    await listed("Panel.remove")!.tool.execute({ ref: panelRef }, runContext());
     expect(panel.removed).toBe(1);
 
     await probeRegisteredPomMembers();
@@ -835,7 +849,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     session.pom.register(Panel);
@@ -857,8 +871,8 @@ describe("Action Availability", () => {
       className: "Rootless",
       members: [],
       tools: [
-        action("open", "Rootless.open"),
-        action("close", "Rootless.close"),
+        action("Rootless.open", "Rootless.open"),
+        action("Rootless.close", "Rootless.close"),
       ],
       components: [],
     });
@@ -893,7 +907,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [],
-      tools: [action("remove", "Panel.remove")],
+      tools: [action("Panel.remove", "Panel.remove")],
       components: [],
     });
     session.pom.register(Panel);
@@ -958,7 +972,7 @@ describe("Action Availability", () => {
         {
           className: "Message",
           members: [root],
-          tools: [action("recall", "Outbox.items.recall")],
+          tools: [action("Message.recall", "Message.recall")],
         },
       ],
     } satisfies PomManifest);
@@ -967,14 +981,16 @@ describe("Action Availability", () => {
     const state = await agent.getPageState();
     // A shared element's node lists its members under a /pom line.
     const draft = state.text.match(
-      /(e\d+) listitem:\n\s+- \/pom: \["Outbox\.items\[0\]","Outbox\.preview"\]/
+      /(e\d+) listitem:\n\s+- \/pom: \["Message","Preview"\]/
     )?.[1];
     if (!draft) throw new Error("Expected a ref for the draft.");
 
-    const { tool } = listed("Outbox.items.recall")!;
+    const { tool } = listed("Message.recall")!;
     await expect(
       tool.execute({ ref: draft, args: {} }, runContext())
-    ).rejects.toThrow("Outbox.items.recall is unavailable: Not sent yet.");
+    ).rejects.toThrow(
+      `Message on ref "${draft}" is unavailable: Not sent yet.`
+    );
     expect(outbox.items[0]!.recalled).toBe(false);
   });
 
@@ -982,7 +998,7 @@ describe("Action Availability", () => {
   // the call scrolls to it as its action would and tests it there (ADR-0041).
   it("scrolls to a below-fold root the observation could not hit-test, and runs the action", async () => {
     document.body.innerHTML =
-      '<div style="height:3000px"></div><section id="panel" style="height:40px"><button>Act</button></section>';
+      '<div style="height:3000px"></div><section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     const acted = vi.fn();
     class Panel {
       root = page.locator("#panel");
@@ -994,7 +1010,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -1002,7 +1018,10 @@ describe("Action Availability", () => {
 
     expect(published("Panel.act")).toMatchObject({ available: true });
     expect(window.scrollY).toBe(0);
-    await session.tools.run("Panel.act", {});
+    await session.tools.run("Panel.act", {
+      ref: await rootRef("Panel"),
+      args: {},
+    });
     expect(acted).toHaveBeenCalledOnce();
     expect(window.scrollY).toBeGreaterThan(0);
   });
@@ -1026,7 +1045,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -1053,7 +1072,7 @@ describe("Action Availability", () => {
   it("refuses a call on a below-fold root covered where the scroll lands, naming the cover", async () => {
     document.body.innerHTML = `
       <div style="height:3000px"></div>
-      <section id="panel" style="height:40px"><button>Act</button></section>
+      <section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>
       <div style="height:3000px"></div>
       <div role="dialog" aria-label="Saving" style="position:fixed;left:0;right:0;top:30%;height:40%"></div>`;
     const acted = vi.fn();
@@ -1067,7 +1086,7 @@ describe("Action Availability", () => {
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
-      tools: [action("act", "Panel.act")],
+      tools: [action("Panel.act", "Panel.act")],
       components: [],
     });
     session.pom.register(Panel);
@@ -1076,8 +1095,11 @@ describe("Action Availability", () => {
     expect(cover).toBeDefined();
 
     expect(published("Panel.act")).toMatchObject({ available: true });
-    await expect(session.tools.run("Panel.act", {})).rejects.toThrow(
-      `Panel.act is unavailable: a click would not reach it; ${cover} is in the way.`
+    const ref = await rootRef("Panel");
+    await expect(
+      session.tools.run("Panel.act", { ref, args: {} })
+    ).rejects.toThrow(
+      `Panel on ref "${ref}" is unavailable: a click would not reach it; ${cover} is in the way.`
     );
     expect(acted).not.toHaveBeenCalled();
     expect(window.scrollY).toBeGreaterThan(0);

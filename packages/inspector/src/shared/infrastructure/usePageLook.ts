@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PomDefinition } from "@ayme-dev/ayme";
 import type {
-  CollectionToolItem,
+  RootedToolInstance,
   PageStateLook,
   ProjectedStructuralNodeForest,
   RegisteredPom,
@@ -11,7 +11,7 @@ import type {
 
 import {
   getPomDefinitions,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listElementToolTargets,
   listRegisteredPomTargets,
   listRegisteredPoms,
@@ -32,7 +32,7 @@ export type RegistrySnapshot = {
    * The items each collection tool acts on, by tool name, each with
    * whether the tool would run on it now and why not.
    */
-  collectionItems: ReadonlyMap<string, readonly CollectionToolItem[]>;
+  toolInstances: ReadonlyMap<string, readonly RootedToolInstance[]>;
 };
 
 export type PageStateView = {
@@ -61,7 +61,7 @@ function readRegistry(): RegistrySnapshot {
   return {
     registeredPoms: listRegisteredPoms(),
     pomDefinitions: readPomDefinitions(),
-    collectionItems: listCollectionToolItems(),
+    toolInstances: listRootedToolInstances(),
   };
 }
 

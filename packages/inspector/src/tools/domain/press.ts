@@ -12,17 +12,17 @@ export type Press =
   /** Opens the form, for the input the tool needs. */
   | { kind: "opens-form" }
   /**
-   * Nothing: the input can't be sent as it is, or a collection action has no
+   * Nothing: the input can't be sent as it is, or a rooted action has no
    * item to run on.
    */
   | { kind: "blocked"; why: "invalid-input" | "no-item" }
-  /** Runs the tool with its input, on the item for a collection action. */
+  /** Runs the tool with its input, on the item for a rooted action. */
   | { kind: "run"; input: ToolArguments; item?: CollectionItem };
 
 /**
  * What pressing Run does, given the run card's state: nothing while the tool
  * is absent or running, then open the form when the tool needs input and the
- * form is closed, refuse while the input is invalid or a collection action
+ * form is closed, refuse while the input is invalid or a rooted action
  * has no item, and otherwise run.
  */
 export function press(card: {
@@ -35,9 +35,9 @@ export function press(card: {
   /** Whether the input can't be sent as it is. */
   invalid: boolean;
   args: ToolArguments;
-  /** Whether it's a collection action, which runs on an item. */
+  /** Whether it's a rooted action, which runs on an item. */
   collection: boolean;
-  /** For a collection action: the item it runs on, if any. */
+  /** For a rooted action: the item it runs on, if any. */
   target: CollectionItem | undefined;
 }): Press {
   if (!card.present) return { kind: "absent" };

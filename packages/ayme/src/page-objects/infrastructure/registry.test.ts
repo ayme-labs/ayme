@@ -106,7 +106,7 @@ const emptyManifest = (className: string): PomManifest => ({
 });
 
 const action = (methodName: string) => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName: methodName,
   description: methodName,
   parameters: [],
@@ -380,6 +380,261 @@ describe("live Page Object registry", () => {
     expect(count).toHaveBeenCalledOnce();
   });
 
+  it("withholds a root-less class reached twice while keeping the other tools", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    class Shared {
+      readonly root = brandedLocator();
+      open() {}
+    }
+    class Page {
+      first = new Shared();
+      second = new Shared();
+      save() {}
+    }
+    const shared = {
+      ...emptyManifest("Shared"),
+      tools: [action("Shared.open")],
+    };
+    registry.registerCompiledPom(Shared, shared);
+    // A loaded class of the same name in another module has its own root
+    // declaration. It is not reached by this registration.
+    const OtherShared = class Shared {
+      root = brandedLocator();
+    };
+    ayme({ root: rootOf })(OtherShared);
+    registry.registerCompiledPom(OtherShared, {
+      ...emptyManifest("Shared"),
+      file: "other/Shared.ts",
+    });
+    registry.registerCompiledPom(Page, {
+      ...emptyManifest("Page"),
+      tools: [{ ...action("save"), toolName: "Page.save" }],
+      members: ["first", "second"].map((memberName) => ({
+        memberName,
+        kind: "component" as const,
+        access: "field" as const,
+        componentClassName: "Shared",
+        collection: false,
+      })),
+      components: [shared],
+    });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Page);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Shared" declares no root and is reached from more than one place: Page.first, Page.second.',
+      })
+    );
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "Page.save",
+    ]);
+    class Unrelated {}
+    registry.registerCompiledPom(Unrelated, emptyManifest("Unrelated"));
+    session.register(Unrelated);
+    expect(logged).toHaveBeenCalledOnce();
+    session.stop();
+    const { startSession } =
+      await import("../../test-utils/session.testSupport");
+    const restarted = startSession({} as AymePage);
+    started = restarted;
+    restarted.register(Page);
+    expect(logged).toHaveBeenCalledTimes(2);
+    logged.mockRestore();
+  });
+
+  it("withdraws a shared root-less class on the second registration and restores it after disposal", async () => {
+    const { registry, session } = await setup();
+    class Shared {
+      open() {}
+    }
+    class First {
+      child = new Shared();
+      save() {}
+    }
+    class Second {
+      child = new Shared();
+      save() {}
+    }
+    const shared = {
+      ...emptyManifest("Shared"),
+      tools: [action("Shared.open")],
+    };
+    registry.registerCompiledPom(Shared, shared);
+    for (const Model of [First, Second])
+      registry.registerCompiledPom(Model, {
+        ...emptyManifest(Model.name),
+        tools: [{ ...action("save"), toolName: `${Model.name}.save` }],
+        members: [
+          {
+            memberName: "child",
+            kind: "component",
+            access: "field",
+            componentClassName: "Shared",
+            collection: false,
+          },
+        ],
+        components: [shared],
+      });
+    session.register(First);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "First.save",
+      "Shared.open",
+    ]);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Second);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Shared" declares no root and is reached from more than one place: First.child, Second.child.',
+      })
+    );
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "First.save",
+      "Second.save",
+    ]);
+    session.unregister(Second);
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "First.save",
+      "Shared.open",
+    ]);
+    logged.mockRestore();
+  });
+
+  it("refuses a root-less descendant of an empty collection and restores its tools after a rooted HMR replacement", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    let Child = class Child {
+      root = brandedLocator({ count: async () => 1 });
+      open() {}
+    };
+    class Item {
+      root = brandedLocator({ count: async () => 1 });
+      child = new Child();
+      open() {}
+    }
+    ayme({ root: rootOf })(Item);
+    class Page {
+      items: Item[] = [];
+    }
+    const child = {
+      ...emptyManifest("Child"),
+      file: "Child.ts",
+      tools: [action("Child.open")],
+    };
+    const item = {
+      ...emptyManifest("Item"),
+      members: [
+        {
+          memberName: "child",
+          kind: "component" as const,
+          access: "field" as const,
+          componentClassName: "Child",
+          collection: false,
+        },
+      ],
+      tools: [action("Item.open")],
+    };
+    const manifest = {
+      ...emptyManifest("Page"),
+      members: [
+        {
+          memberName: "items",
+          kind: "component" as const,
+          access: "field" as const,
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [item, child],
+    };
+    registry.registerCompiledPom(Child, child);
+    registry.registerCompiledPom(Item, { ...item, components: [child] });
+    registry.registerCompiledPom(Page, manifest);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Page);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Child" declares no root and has many instances below a collection: Page.items[].child (below a collection).',
+      })
+    );
+    await vi.runOnlyPendingTimersAsync();
+    expect(
+      registry.listRegisteredPomTools().map(({ tool }) => tool.name)
+    ).toEqual(["Item.open"]);
+    session.unregister(Page);
+    Child = class Child {
+      root = brandedLocator({ count: async () => 1 });
+      open() {}
+    };
+    ayme({ root: rootOf })(Child);
+    registry.registerCompiledPom(Child, { ...child });
+    const UpdatedPage = class Page {
+      items = [new Item()];
+    };
+    registry.registerCompiledPom(UpdatedPage, { ...manifest });
+    session.register(UpdatedPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "Item.open",
+      "Child.open",
+    ]);
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
+  });
+
+  it("allows repeated rooted classes with an inherited root and ignores action-return metadata", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    class Base {
+      root = brandedLocator({ count: async () => 1 });
+    }
+    ayme({ root: rootOf })(Base);
+    class Panel extends Base {
+      open() {}
+    }
+    class Returned {
+      open() {}
+    }
+    class Page {
+      first = new Panel();
+      second = new Panel();
+      open() {}
+    }
+    const panel = { ...emptyManifest("Panel"), tools: [action("Panel.open")] };
+    const returned = {
+      ...emptyManifest("Returned"),
+      tools: [action("Returned.open")],
+    };
+    registry.registerCompiledPom(Panel, panel);
+    registry.registerCompiledPom(Returned, returned);
+    registry.registerCompiledPom(Page, {
+      ...emptyManifest("Page"),
+      tools: [
+        { ...action("open"), toolName: "Page.open", returnPoms: ["Returned"] },
+      ],
+      members: ["first", "second"].map((memberName) => ({
+        memberName,
+        kind: "component" as const,
+        access: "field" as const,
+        componentClassName: "Panel",
+        collection: false,
+      })),
+      components: [panel, returned],
+    });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Page);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "Page.open",
+      "Panel.open",
+    ]);
+    expect(logged).not.toHaveBeenCalled();
+    logged.mockRestore();
+  });
+
   it("rejects a distinct class whose name is already registered", async () => {
     const { registry, session } = await setup();
 
@@ -499,7 +754,9 @@ describe("live Page Object registry", () => {
     class Row {}
     registry.registerCompiledPom(Row, {
       ...emptyManifest("Row"),
-      components: [{ className: "Row", members: [], tools: [action("open")] }],
+      components: [
+        { className: "Row", members: [], tools: [action("Row.open")] },
+      ],
     });
 
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -901,88 +1158,6 @@ describe("live Page Object registry", () => {
     ).toEqual([["save", false]]);
   });
 
-  it("lists one tool per name, the available one when registrations share it", async () => {
-    const { registry, session, ayme, rootOf } = await setup();
-
-    class MissingRootPage {
-      declare readonly root: Locator;
-      readonly save = vi.fn();
-    }
-    ayme({ root: rootOf })(MissingRootPage);
-    class RootlessPage {
-      readonly save = vi.fn();
-    }
-    registry.registerCompiledPom(MissingRootPage, {
-      ...emptyManifest("MissingRootPage"),
-      tools: [action("save")],
-    });
-    registry.registerCompiledPom(RootlessPage, {
-      ...emptyManifest("RootlessPage"),
-      tools: [action("save")],
-    });
-    const missing = session.register(MissingRootPage);
-    const rootless = session.register(RootlessPage);
-    await vi.runOnlyPendingTimersAsync();
-
-    const listed = registry.listRegisteredPomTools();
-    expect(listed).toHaveLength(1);
-    expect(listed[0]).toMatchObject({ available: true });
-    await listed[0]!.tool.execute({}, runContext());
-    expect(rootless.save).toHaveBeenCalledOnce();
-    expect(missing.save).not.toHaveBeenCalled();
-  });
-
-  it("lists a shared tool name by the present registration, and by the available one among those", async () => {
-    const { registry, session, ayme, rootOf } = await setup();
-
-    class MissingRootPage {
-      declare readonly root: Locator;
-      save() {}
-    }
-    ayme({ root: rootOf })(MissingRootPage);
-    class UnavailablePage {
-      save() {}
-    }
-    class RootlessPage {
-      save() {}
-    }
-    ayme.action({ available: () => "Nothing to save" })(
-      UnavailablePage.prototype,
-      "save",
-      Object.getOwnPropertyDescriptor(UnavailablePage.prototype, "save")!
-    );
-    registry.registerCompiledPom(MissingRootPage, {
-      ...emptyManifest("MissingRootPage"),
-      tools: [action("save")],
-    });
-    for (const Class of [UnavailablePage, RootlessPage])
-      registry.registerCompiledPom(Class, {
-        ...emptyManifest(Class.name),
-        tools: [action("save")],
-      });
-    const availability = () =>
-      registry
-        .listRegisteredPomTools()
-        .map(({ present, available, reason }) => ({
-          present,
-          available,
-          reason,
-        }));
-
-    session.register(MissingRootPage);
-    session.register(UnavailablePage);
-    await vi.runOnlyPendingTimersAsync();
-    expect(availability()).toEqual([
-      { present: true, available: false, reason: "Nothing to save" },
-    ]);
-
-    session.register(RootlessPage);
-    await vi.runOnlyPendingTimersAsync();
-    expect(availability()).toEqual([
-      { present: true, available: true, reason: undefined },
-    ]);
-  });
-
   it("lists a root's tools absent once its element left the page, before the next probe", async () => {
     const { registry, session, ayme, rootOf } = await setup();
     const element = { isConnected: true } as { isConnected: boolean };
@@ -1113,7 +1288,7 @@ describe("live Page Object registry", () => {
               collection: false,
             },
           ],
-          tools: [action("open")],
+          tools: [action("Node.open")],
         },
       ],
     });
@@ -1122,7 +1297,7 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
 
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "RecursivePage.node.open",
+      "Node.open",
     ]);
   });
 
@@ -1131,16 +1306,27 @@ describe("live Page Object registry", () => {
 
     let dialogRootCount = 1;
     let panelRootCount = 0;
+    const dialogElement = { isConnected: true } as Element;
+    const panelElement = { isConnected: true } as Element;
+    pageStateResolutions.set("e21", {
+      node: { ref: "e21", element: dialogElement },
+    });
+    pageStateResolutions.set("e22", {
+      node: { ref: "e22", element: panelElement },
+    });
     const confirm = vi.fn();
     const save = vi.fn();
     class NestedPage {
       readonly dialog = rooted(
-        brandedLocator({ count: async () => dialogRootCount }),
+        brandedLocator({ count: async () => dialogRootCount }, dialogElement),
         {
           confirm,
-          panel: rooted(brandedLocator({ count: async () => panelRootCount }), {
-            save,
-          }),
+          panel: rooted(
+            brandedLocator({ count: async () => panelRootCount }, panelElement),
+            {
+              save,
+            }
+          ),
         }
       );
     }
@@ -1169,12 +1355,12 @@ describe("live Page Object registry", () => {
               collection: false,
             },
           ],
-          tools: [action("confirm")],
+          tools: [action("Dialog.confirm")],
         },
         {
           className: "Panel",
           members: [{ memberName: "root", kind: "locator", access: "field" }],
-          tools: [action("save")],
+          tools: [action("Panel.save")],
         },
       ],
     });
@@ -1182,23 +1368,23 @@ describe("live Page Object registry", () => {
 
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "NestedPage.dialog.confirm",
+      "Dialog.confirm",
     ]);
 
     const confirmTool = registry.listAvailablePomTools()[0];
-    await confirmTool?.execute({}, runContext());
+    await confirmTool?.execute({ ref: "e21" }, runContext());
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "NestedPage.dialog.confirm",
-      "NestedPage.dialog.panel.save",
+      "Dialog.confirm",
+      "Panel.save",
     ]);
 
     const nestedTool = registry.listAvailablePomTools()[1];
-    await nestedTool?.execute({}, runContext());
+    await nestedTool?.execute({ ref: "e22" }, runContext());
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
@@ -1223,7 +1409,7 @@ describe("live Page Object registry", () => {
     }
     registry.registerCompiledPom(ItemsPage, {
       className: "ItemsPage",
-      tools: [action("addItem")],
+      tools: [action("ItemsPage.addItem")],
       members: [
         {
           memberName: "items",
@@ -1246,7 +1432,7 @@ describe("live Page Object registry", () => {
               collection: false,
             },
           ],
-          tools: [action("archive")],
+          tools: [action("Item.archive")],
         },
         {
           className: "Child",
@@ -1262,7 +1448,7 @@ describe("live Page Object registry", () => {
 
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "addItem",
+      "ItemsPage.addItem",
     ]);
     const flags = () =>
       registry
@@ -1270,27 +1456,27 @@ describe("live Page Object registry", () => {
         .map(({ tool, available }) => [tool.name, available]);
     // Every registered tool stays listed, flagged.
     expect(flags()).toEqual([
-      ["addItem", true],
-      ["ItemsPage.items.archive", false],
+      ["ItemsPage.addItem", true],
+      ["Item.archive", false],
     ]);
 
     rootCount = 1;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "addItem",
-      "ItemsPage.items.archive",
+      "ItemsPage.addItem",
+      "Item.archive",
     ]);
     expect(flags()).toEqual([
-      ["addItem", true],
-      ["ItemsPage.items.archive", true],
+      ["ItemsPage.addItem", true],
+      ["Item.archive", true],
     ]);
 
     rootCount = 0;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "addItem",
+      "ItemsPage.addItem",
     ]);
   });
 
@@ -1343,7 +1529,7 @@ describe("live Page Object registry", () => {
         {
           className: "Item",
           members: [{ memberName: "root", kind: "locator", access: "field" }],
-          tools: [action("archive")],
+          tools: [action("Item.archive")],
         },
       ],
     });
@@ -1410,7 +1596,7 @@ describe("live Page Object registry", () => {
         {
           className: "Item",
           members: [{ memberName: "root", kind: "locator", access: "field" }],
-          tools: [action("archive")],
+          tools: [action("Item.archive")],
         },
       ],
     });
@@ -1428,7 +1614,7 @@ describe("live Page Object registry", () => {
     await expect(
       tool.execute({ ref: "e2", args: {} }, runContext())
     ).rejects.toThrow(
-      'Cannot call ItemsPage.items.archive on ref "e2": it is not an instance of Item at ItemsPage.items.'
+      'Cannot call Item.archive on ref "e2": it is not a root of Item.'
     );
     expect(addedArchive).not.toHaveBeenCalled();
 
@@ -1468,15 +1654,15 @@ describe("live Page Object registry", () => {
           className: "Item",
           members: [{ memberName: "root", kind: "locator", access: "field" }],
           tools: [
-            action("archive"),
+            action("Item.archive"),
             {
-              ...action("pin"),
+              ...action("Item.pin"),
               parameters: [
                 { name: "top", optional: true, schema: { type: "boolean" } },
               ],
             },
             {
-              ...action("rename"),
+              ...action("Item.rename"),
               parameters: [
                 { name: "name", optional: false, schema: { type: "string" } },
               ],
@@ -1495,8 +1681,8 @@ describe("live Page Object registry", () => {
       if (!found) throw new Error(`Expected ${name}.`);
       return found;
     };
-    const archiveTool = tool("ItemsPage.items.archive");
-    const renameTool = tool("ItemsPage.items.rename");
+    const archiveTool = tool("Item.archive");
+    const renameTool = tool("Item.rename");
 
     expect(archiveTool.inputSchema.required).toEqual(["ref"]);
     await expect(
@@ -1504,7 +1690,7 @@ describe("live Page Object registry", () => {
     ).resolves.toMatchObject({ result: "archived" });
     expect(archive).toHaveBeenCalledOnce();
 
-    expect(tool("ItemsPage.items.pin").inputSchema.required).toEqual(["ref"]);
+    expect(tool("Item.pin").inputSchema.required).toEqual(["ref"]);
 
     expect(renameTool.inputSchema.required).toEqual(["ref", "args"]);
     // The runtime checks a Run's input against this schema before execute.

@@ -1,8 +1,4 @@
-export {
-  agentDescription,
-  inputSchemaFor,
-  returnPomPaths,
-} from "./domain/actionTool";
+export { agentDescription, inputSchemaFor } from "./domain/actionTool";
 export { createPage } from "./infrastructure/browserPage";
 export type { CreatePageOptions } from "./infrastructure/browserPage";
 export {
@@ -29,18 +25,19 @@ export type { RegisteredPomTarget } from "./domain/pomTree";
 export { getPomDefinitions } from "./infrastructure/registeredPomDefinitions";
 export {
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPoms,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
-  publishedToolPrefixes,
   registerPageObject,
   subscribeToRegisteredPoms,
 } from "./infrastructure/registry";
 export type {
   CallerAwarePomTool,
-  CollectionToolItem,
+  RootedToolInstance,
   RegisteredPom,
 } from "./infrastructure/registry";
 export { createAymeRuntime } from "./infrastructure/aymeRuntime";
+
+export { rootlessClassRefusals } from "./domain/pomClasses";

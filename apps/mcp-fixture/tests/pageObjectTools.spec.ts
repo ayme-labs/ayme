@@ -111,3 +111,36 @@ test("a Page Object Tool that went is no longer callable", async ({
   expect(fallback.text).toContain(`The tool "${BASKET_TOOL}" is gone`);
   expect(fallback.text).not.toContain("ayme_list_tools");
 });
+
+test("a class tool appears with its first instance and disappears with its last", async ({
+  agent,
+  connect,
+  page,
+}) => {
+  await connect("/?class-tools");
+  await showBasket(page);
+  await expect.poll(() => agent.pageToolNames()).toContain(BASKET_TOOL);
+  await agent.call("ayme_list_tools");
+  const fill = () => page.getByRole("button", { name: "Fill basket" }).click();
+  const before = agent.toolListChanges();
+  await fill();
+  await expect.poll(() => agent.toolListChanges()).toBeGreaterThan(before);
+  expect((await agent.call("ayme_list_tools")).note).toContain(
+    "Appeared: BasketItem.remove"
+  );
+  await fill();
+  await expect(page.getByRole("listitem")).toHaveCount(2);
+  expect((await agent.call("snapshot")).note).toBeUndefined();
+  const removeFirst = async () => {
+    const snapshot = await agent.call("snapshot");
+    const ref = JSON.parse(snapshot.text).structure.match(
+      /((?:e|s_)\w+) BasketItem\b/
+    )?.[1];
+    expect(ref, snapshot.text).toBeDefined();
+    return agent.call("BasketItem.remove", { ref });
+  };
+  expect((await removeFirst()).note).toBeUndefined();
+  expect((await removeFirst()).note).toContain(
+    "Disappeared: BasketItem.remove"
+  );
+});

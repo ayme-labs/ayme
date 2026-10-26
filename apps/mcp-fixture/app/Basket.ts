@@ -16,9 +16,14 @@ export class Basket {
   readonly heading: Locator;
   readonly items: Locator;
 
-  constructor(page: Page) {
+  constructor(private readonly page: Page) {
     this.heading = page.getByRole("heading", { name: "Groceries" });
     this.items = page.getByRole("listitem");
+  }
+
+  async rows(): Promise<BasketItem[]> {
+    if (!new URL(this.page.url()).searchParams.has("class-tools")) return [];
+    return (await this.items.all()).map((root) => new BasketItem(root));
   }
 
   @ayme.action
@@ -34,5 +39,16 @@ export class Basket {
     await this.items.evaluateAll((items) =>
       items.forEach((item) => item.remove())
     );
+  }
+}
+
+/** One basket row, addressed by its own root ref. */
+@ayme({ root: (self: BasketItem) => self.root })
+export class BasketItem {
+  constructor(readonly root: Locator) {}
+
+  @ayme.action
+  async remove() {
+    await this.root.evaluate((element) => element.remove());
   }
 }

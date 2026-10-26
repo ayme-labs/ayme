@@ -23,7 +23,7 @@ export {
   getPomDefinitions,
   inputSchemaFor,
   listAvailablePomTools,
-  listCollectionToolItems,
+  listRootedToolInstances,
   listRegisteredPoms,
   listRegisteredPomTargets,
   probeRegisteredPomMembers,
@@ -32,6 +32,7 @@ export {
   renderPomDefinitions,
   renderSchema,
   rootTargetPath,
+  rootlessClassRefusals,
   subscribeToRegisteredPoms,
 } from "./page-objects";
 // The compiled Page Object manifest the build plugin writes and the runtime
@@ -68,7 +69,7 @@ export type {
   PublishedToolInfo,
 } from "./runtime";
 export type {
-  CollectionToolItem,
+  RootedToolInstance,
   PageObjectConstructor,
   RegisteredPom,
   RegisteredPomTarget,

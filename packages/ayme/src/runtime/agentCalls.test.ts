@@ -152,12 +152,12 @@ describe("the Ayme page state helper", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "AccountPage.root", element: account },
+      { label: "AccountPage", element: account },
     ]);
 
     const state = await ayme.getPageState();
 
-    expect(state.text).toContain("s_1 AccountPage.root");
+    expect(state.text).toContain("s_1 AccountPage");
     await expect(state.resolve(AriaRefSchema.parse("s_1"))).resolves.toEqual([
       {
         status: "resolved",
@@ -214,22 +214,22 @@ describe("the Ayme page state helper", () => {
       });
     pageObjectRoots
       .mockResolvedValueOnce([
-        { label: "Account.root", element: account },
-        { label: "Billing.root", element: billing },
+        { label: "Account", element: account },
+        { label: "Billing", element: billing },
       ])
       .mockResolvedValueOnce([
-        { label: "Account.root", element: account },
-        { label: "Billing.root", element: billing },
+        { label: "Account", element: account },
+        { label: "Billing", element: billing },
       ])
-      .mockResolvedValueOnce([{ label: "Billing.root", element: billing }]);
+      .mockResolvedValueOnce([{ label: "Billing", element: billing }]);
 
     const state = await ayme.getPageState();
-    expect(state.text).toContain("s_1 Account.root");
-    expect(state.text).toContain("s_2 Billing.root");
+    expect(state.text).toContain("s_1 Account");
+    expect(state.text).toContain("s_2 Billing");
     document.body.prepend(billing);
     const reorderedState = await ayme.getPageState();
-    expect(reorderedState.text).toContain("s_1 Account.root");
-    expect(reorderedState.text).toContain("s_2 Billing.root");
+    expect(reorderedState.text).toContain("s_1 Account");
+    expect(reorderedState.text).toContain("s_2 Billing");
     account.remove();
 
     await expect(state.resolve(ref("s_1"), ref("s_2"))).resolves.toEqual([
@@ -267,11 +267,11 @@ describe("the Ayme page state helper", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "AccountPage.root", element: account },
+      { label: "AccountPage", element: account },
     ]);
 
     const state = await ayme.getPageState();
-    expect(state.text).toContain("s_1 AccountPage.root");
+    expect(state.text).toContain("s_1 AccountPage");
 
     account.innerHTML = '<button id="save">Save changes</button>';
     const replacementButton = document.querySelector("#save");
@@ -296,11 +296,11 @@ describe("the Ayme page state helper", () => {
       .mockReturnValueOnce(rerenderedCapture)
       .mockReturnValueOnce(rerenderedCapture);
     pageObjectRoots.mockResolvedValue([
-      { label: "AccountPage.root", element: account },
+      { label: "AccountPage", element: account },
     ]);
 
     const rerendered = await ayme.getPageState();
-    expect(rerendered.text).toContain("s_1 AccountPage.root");
+    expect(rerendered.text).toContain("s_1 AccountPage");
 
     await expect(state.resolve(ref("s_1"))).resolves.toEqual([
       {

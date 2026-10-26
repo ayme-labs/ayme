@@ -13,7 +13,6 @@ import {
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
-  subscribeToRegisteredPoms,
 } from "./registry";
 import { createAyme, type Ayme } from "../../runtime";
 
@@ -22,7 +21,7 @@ import { createAyme, type Ayme } from "../../runtime";
 // session's tool list and the page state say about it.
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],
@@ -66,6 +65,229 @@ describe("Page Object Root by option", () => {
     stopSession();
     document.body.innerHTML = "";
     vi.restoreAllMocks();
+  });
+
+  it("requires each rooted page and single child's own ref, and offers both as Goal Loop items", async () => {
+    document.body.innerHTML =
+      '<main id="shell"><button id="child">Open</button></main>';
+    const opened: string[] = [];
+    class Child {
+      root = page.locator("#child");
+      open() {
+        opened.push("child");
+      }
+    }
+    ayme({ root: (self: Child) => self.root })(Child);
+    const childManifest = pageManifest("Child", [locator("root")]);
+    registerCompiledPom(Child, childManifest);
+    class Shell {
+      root = page.locator("#shell");
+      child = new Child();
+      open() {
+        opened.push("shell");
+      }
+    }
+    ayme({ root: (self: Shell) => self.root })(Shell);
+    registerCompiledPom(Shell, {
+      ...pageManifest("Shell", [
+        locator("root"),
+        {
+          memberName: "child",
+          kind: "component",
+          access: "field",
+          componentClassName: "Child",
+          collection: false,
+        },
+      ]),
+      components: [childManifest],
+    });
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+    for (const name of ["Shell.open", "Child.open"])
+      expect(listed(name)?.inputSchema).toMatchObject({
+        required: expect.arrayContaining(["ref"]),
+        properties: { ref: { type: "string" } },
+      });
+    const state = await agent.getPageState();
+    const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
+    const childRef = state.text.match(/(\w+) Child\b/)![1]!;
+    const { buildToolOptions } = await import("../../goal-loop");
+    const options = buildToolOptions(page);
+    for (const name of ["Shell.open", "Child.open"])
+      expect(
+        options.find(({ key }) => key === name)?.tool.args[0]?.closedSet
+      ).toMatchObject({
+        kind: "instance",
+        roots: [
+          expect.objectContaining({
+            available: true,
+          }),
+        ],
+      });
+    await session.tools.run("Shell.open", { ref: shellRef }, { by: "webmcp" });
+    await session.tools.run("Child.open", { ref: childRef }, { by: "webmcp" });
+    await expect(
+      session.tools.run("Child.open", { ref: shellRef }, { by: "webmcp" })
+    ).rejects.toThrow(`ref "${shellRef}": it is not a root of Child`);
+    expect(opened).toEqual(["shell", "child"]);
+  });
+
+  it("takes direct arguments and offers no instances for a root-less class", async () => {
+    document.body.innerHTML = "<output></output>";
+    class Announcer {
+      announce(text: string) {
+        document.querySelector("output")!.textContent = text;
+      }
+    }
+    ayme(Announcer);
+    registerCompiledPom(Announcer, {
+      className: "Announcer",
+      members: [],
+      components: [],
+      tools: [
+        {
+          ...action("announce", "Announcer.announce"),
+          parameters: [
+            { name: "text", optional: false, schema: { type: "string" } },
+          ],
+        },
+      ],
+    });
+    session.pom.register(Announcer);
+    await probeRegisteredPomMembers();
+    expect(listed("Announcer.announce")?.inputSchema).toMatchObject({
+      properties: { text: { type: "string" } },
+      required: ["text"],
+    });
+    expect(
+      listed("Announcer.announce")?.inputSchema.properties
+    ).not.toHaveProperty("ref");
+    const { buildToolOptions } = await import("../../goal-loop");
+    const offered = buildToolOptions(page).find(
+      ({ key }) => key === "Announcer.announce"
+    )!;
+    expect(offered.tool.args).toMatchObject([
+      { name: "text", closedSet: null },
+    ]);
+    await session.tools.run(
+      "Announcer.announce",
+      { text: "Hello" },
+      { by: "webmcp" }
+    );
+    expect(document.querySelector("output")?.textContent).toBe("Hello");
+  });
+
+  it("runs a rooted instance inside an open shadow root by its own ref", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML =
+      '<section aria-label="Panel"><button>Open</button></section>';
+    class ShadowPanel {
+      root = page.getByRole("region", { name: "Panel" });
+      open() {
+        shadow.querySelector("button")!.textContent = "Opened";
+      }
+    }
+    ayme({ root: (self: ShadowPanel) => self.root })(ShadowPanel);
+    registerCompiledPom(
+      ShadowPanel,
+      pageManifest("ShadowPanel", [locator("root")])
+    );
+    session.pom.register(ShadowPanel);
+    await probeRegisteredPomMembers();
+    const ref = (await agent.getPageState()).text.match(
+      /(e\d+) region "Panel"/
+    )?.[1];
+    expect(ref).toBeDefined();
+    await session.tools.run("ShadowPanel.open", { ref }, { by: "webmcp" });
+    expect(shadow.querySelector("button")?.textContent).toBe("Opened");
+  });
+
+  it("offers only present connected roots and calls an instance after a withdrawn one", async () => {
+    document.body.innerHTML =
+      '<ul><li id="withdrawn">Withdrawn</li><li id="first">First</li><li id="second">Second</li><li id="hidden" hidden>Hidden</li></ul>';
+    const opened: string[] = [];
+    class Row {
+      constructor(readonly id: string) {}
+      get root() {
+        return page.locator(`#${this.id}`);
+      }
+      open() {
+        opened.push(this.id);
+      }
+    }
+    ayme({
+      root: (self: Row) => self.root,
+      present: (self: Row) => self.id !== "withdrawn",
+    })(Row);
+    const rowManifest = pageManifest("Row", [locator("root")]);
+    registerCompiledPom(Row, rowManifest);
+    class RowsPage {
+      rows = ["withdrawn", "first", "second", "hidden"].map(
+        (id) => new Row(id)
+      );
+    }
+    registerCompiledPom(RowsPage, {
+      className: "RowsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "field",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ],
+      components: [rowManifest],
+    });
+    session.pom.register(RowsPage);
+    await probeRegisteredPomMembers();
+    const { buildToolOptions } = await import("../../goal-loop");
+    const offered = () =>
+      buildToolOptions(page).find(({ key }) => key === "Row.open")!.tool
+        .args[0]!.closedSet;
+    expect(offered()).toMatchObject({
+      kind: "instance",
+      roots: [{}, {}],
+    });
+    const state = await agent.getPageState();
+    const ref = [...state.text.matchAll(/(e\d+) Row\b/g)][1]![1]!;
+    await session.tools.run("Row.open", { ref }, { by: "webmcp" });
+    expect(opened).toEqual(["second"]);
+    document.getElementById("first")!.remove();
+    // No probe follows the removal: the Goal Loop must leave out a stale root.
+    expect(offered()).toMatchObject({
+      kind: "instance",
+      roots: [{}],
+    });
+  });
+
+  it("refuses a ref when its instance's locator now holds another connected root", async () => {
+    document.body.innerHTML =
+      '<section id="panel" aria-label="Old">Old</section><section id="other" aria-label="New">New</section>';
+    const open = vi.fn();
+    class MovingPanel {
+      root = page.locator("#panel");
+      open = open;
+    }
+    ayme({ root: (self: MovingPanel) => self.root })(MovingPanel);
+    registerCompiledPom(
+      MovingPanel,
+      pageManifest("MovingPanel", [locator("root")])
+    );
+    session.pom.register(MovingPanel);
+    await probeRegisteredPomMembers();
+    const ref = (await agent.getPageState()).text.match(
+      /(e\d+) MovingPanel\b/
+    )![1]!;
+    document.getElementById("panel")!.id = "old";
+    document.getElementById("other")!.id = "panel";
+    await expect(
+      session.tools.run("MovingPanel.open", { ref }, { by: "webmcp" })
+    ).rejects.toThrow(`MovingPanel on ref "${ref}" is unavailable`);
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("anchors a model at the element its root option names: present while it is on the page, labelled by it, and measured at it", async () => {
@@ -150,13 +372,13 @@ describe("Page Object Root by option", () => {
             { memberName: "element", kind: "locator", access: "getter" },
             { memberName: "sendButton", kind: "locator", access: "getter" },
           ],
-          tools: [action("send", "Outbox.items.send")],
+          tools: [action("Item.send", "Item.send")],
         },
       ],
     });
     const outbox = session.pom.register(Outbox);
     await probeRegisteredPomMembers();
-    expect(listed("Outbox.items.send")).toMatchObject({ available: true });
+    expect(listed("Item.send")).toMatchObject({ available: true });
     expect(observedMembers()).toEqual([
       "items",
       "items[0].root",
@@ -166,10 +388,10 @@ describe("Page Object Root by option", () => {
     ]);
     const { text } = await agent.getPageState();
     const refOf = (index: number) =>
-      text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+      [...text.matchAll(/(e\d+) Item\b/g)][index]?.[1];
     const sent = refOf(1);
     if (!refOf(0) || !sent) throw new Error("Expected refs for both items.");
-    await session.tools.run("Outbox.items.send", { ref: sent });
+    await session.tools.run("Item.send", { ref: sent });
     expect(outbox.items.map((item) => item.sent)).toEqual([false, true]);
   });
 
@@ -212,7 +434,7 @@ describe("Page Object Root by option", () => {
     const component = (className: string) => ({
       className,
       members: [locator("container")],
-      tools: [action("open", `Shell.${className.toLowerCase()}.open`)],
+      tools: [action("open", `${className}.open`)],
     });
     registerCompiledPom(Shell, {
       className: "Shell",
@@ -226,19 +448,15 @@ describe("Page Object Root by option", () => {
     });
     const shell = session.pom.register(Shell);
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.menu.open", "Shell.panel.open"]);
+    expect(names()).toEqual(["Menu.open", "Panel.open"]);
     const { text } = await agent.getPageState();
-    expect(text).toMatch(/e\d+ Shell\.menu\b/);
-    expect(text).toMatch(/e\d+ Shell\.panel\b/);
-    expect(text).not.toContain("Shell.drawer");
+    expect(text).toMatch(/e\d+ Menu\b/);
+    expect(text).toMatch(/e\d+ Panel\b/);
+    expect(text).not.toMatch(/(?:e\d+|s_\w+) Drawer\b/);
 
     shell.drawer.expanded = true;
     await probeRegisteredPomMembers();
-    expect(names()).toEqual([
-      "Shell.menu.open",
-      "Shell.drawer.open",
-      "Shell.panel.open",
-    ]);
+    expect(names()).toEqual(["Menu.open", "Drawer.open", "Panel.open"]);
   });
 
   it("measures a call's reach at the root the observation found, and runs no root predicate with the call", async () => {
@@ -263,7 +481,10 @@ describe("Page Object Root by option", () => {
       ({ name }) => name === "SideDrawer.open"
     );
     if (!tool) throw new Error("Expected SideDrawer.open to be available.");
-    await tool.execute({}, runContext());
+    const ref = (await agent.getPageState()).text.match(
+      /(\w+) SideDrawer\b/
+    )![1]!;
+    await tool.execute({ ref }, runContext());
     expect(drawer.opened).toBe(1);
 
     document.body.insertAdjacentHTML(
@@ -275,15 +496,15 @@ describe("Page Object Root by option", () => {
     // would run unmeasured: the call measures at the root the observation
     // found, under the overlay.
     anchor = page.locator("#nowhere");
-    await expect(tool.execute({}, runContext())).rejects.toThrow(
-      "SideDrawer.open is unavailable: a click would not reach it."
+    await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
+      `SideDrawer on ref "${ref}" is unavailable: a click would not reach it.`
     );
     expect(drawer.opened).toBe(1);
 
     // The root the observation found left the page: no call runs on it.
     document.getElementById("drawer")!.remove();
-    await expect(tool.execute({}, runContext())).rejects.toThrow(
-      "SideDrawer.open is unavailable: its Page Object is not on the page."
+    await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
+      `Cannot call SideDrawer.open on ref "${ref}": it is no longer on the page.`
     );
     expect(drawer.opened).toBe(1);
   });
@@ -372,7 +593,7 @@ describe("Page Object Root by option", () => {
         {
           className: "Panel",
           members: panelMembers,
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
       ],
     });
@@ -396,15 +617,17 @@ describe("Page Object Root by option", () => {
     // The shell's root is under the overlay; the child has no root to
     // measure at, so its tool is available, and its member named root is an
     // ordinary member.
-    expect(listed("Shell.panel.close")).toEqual(
+    expect(listed("Panel.close")).toEqual(
       expect.objectContaining({ available: true })
     );
-    expect(listed("Shell.panel.close")).not.toHaveProperty("reason");
-    expect((await agent.getPageState()).text).not.toContain("Shell.panel");
+    expect(listed("Panel.close")).not.toHaveProperty("reason");
+    expect((await agent.getPageState()).text).not.toMatch(
+      /(?:e\d+|s_\w+) Panel\b/
+    );
     expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
       { memberName: "panel.root", kind: "locator", access: "field", count: 1 },
     ]);
-    await session.tools.run("Shell.panel.close", {});
+    await session.tools.run("Panel.close", {});
     expect(shell.panel.closed).toBe(true);
 
     document.getElementById("shell")!.remove();
@@ -421,25 +644,27 @@ describe("Page Object Root by option", () => {
     ayme({ present: (self: Panel) => self.expanded })(Panel);
     const shell = session.pom.register(shellWithPanel(Panel));
     await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shell.panel.close"]);
+    expect(names()).toEqual(["Panel.close"]);
 
     shell.panel.expanded = false;
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
   });
 
-  it("records that a collection item without a root declares none, logs it once for the collection, and withdraws its tools", async () => {
+  it("refuses a root-less collection item at registration, also with a member named root", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    document.body.innerHTML = '<ul><li id="first">First</li></ul>';
     class Item {
-      root = page.locator("#first");
-      send() {}
+      root = page.locator("li");
+      open() {}
     }
     class Outbox {
-      items = [new Item(), new Item()];
+      items: Item[] = [];
     }
+    const item = pageManifest("Item", [locator("root")]);
+    registerCompiledPom(Item, item);
     registerCompiledPom(Outbox, {
-      className: "Outbox",
+      ...pageManifest("Outbox"),
+      tools: [],
       members: [
         {
           memberName: "items",
@@ -449,44 +674,183 @@ describe("Page Object Root by option", () => {
           collection: true,
         },
       ],
-      tools: [],
-      components: [
-        {
-          className: "Item",
-          members: [locator("root")],
-          tools: [action("send", "Outbox.items.send")],
-        },
-      ],
+      components: [item],
     });
     session.pom.register(Outbox);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Item" declares no root and has many instances below a collection: Outbox.items[] (below a collection).',
+      })
+    );
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
-    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
-      {
-        memberName: "items",
-        kind: "component-collection",
-        access: "field",
-        count: 2,
-      },
-      {
-        memberName: "items[0].root",
-        kind: "component-root",
-        count: 0,
-        error: "POM component items[0] declares no root.",
-      },
-      {
-        memberName: "items[1].root",
-        kind: "component-root",
-        count: 0,
-        error: "POM component items[1] declares no root.",
-      },
-    ]);
-    expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Outbox.items" is absent: its item class Item declares no root.'
-    );
-
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [
+      "present",
+      "Panel at Shell.panel: its present predicate threw TypeError: broken.",
+    ],
+    [
+      "root",
+      "Panel at Shell.panel: its root predicate threw TypeError: broken.",
+    ],
+    [
+      "invalid root",
+      "Panel at Shell.panel: its root is not a browser locator.",
+    ],
+    [
+      "invalid locator",
+      "Panel at Shell.panel: its link is not a browser locator.",
+    ],
+    ["non-object", "Panel at Shell.panel: it is not an object."],
+  ] as const)(
+    "names the class and path for %s diagnostics",
+    async (fault, message) => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      class Panel {
+        link = {};
+        close() {}
+      }
+      if (fault === "present" || fault === "root")
+        ayme({
+          [fault]: () => {
+            throw new TypeError("broken");
+          },
+        })(Panel);
+      if (fault === "invalid root")
+        ayme({ root: () => undefined as unknown as Locator })(Panel);
+      const Shell = shellWithPanel(Panel, [locator("link")]);
+      const shell = session.pom.register(Shell);
+      if (fault === "non-object") shell.panel = null as unknown as Panel;
+      await probeRegisteredPomMembers();
+      expect(logged).toHaveBeenCalledExactlyOnceWith(message);
+      await probeRegisteredPomMembers();
+      expect(logged).toHaveBeenCalledOnce();
+    }
+  );
+
+  it("keeps member read failures in the Inspector without logging them", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    class BrokenPage {
+      get link() {
+        throw new Error("getter failed");
+      }
+      child = {};
+      open() {}
+    }
+    registerCompiledPom(BrokenPage, {
+      ...pageManifest("BrokenPage", [
+        locator("link"),
+        {
+          memberName: "child",
+          kind: "component",
+          access: "field",
+          componentClassName: "Missing",
+          collection: false,
+        },
+      ]),
+    });
+    session.pom.register(BrokenPage);
+    await probeRegisteredPomMembers();
+    expect(logged).not.toHaveBeenCalled();
+    expect(listRegisteredPoms()[0]!.memberObservations).toMatchObject([
+      { memberName: "link", error: "BrokenPage: getter failed" },
+      {
+        memberName: "child.root",
+        error: "BrokenPage: No metadata found for component Missing.",
+      },
+    ]);
+  });
+
+  it("logs an invalid locator after an Inspector-only read failure with the same text", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    let failsOnRead = true;
+    class BrokenPage {
+      get link() {
+        if (failsOnRead) throw new Error("its link is not a browser locator.");
+        return {};
+      }
+      open() {}
+    }
+    registerCompiledPom(
+      BrokenPage,
+      pageManifest("BrokenPage", [locator("link")])
+    );
+    session.pom.register(BrokenPage);
+    await probeRegisteredPomMembers();
+    expect(logged).not.toHaveBeenCalled();
+    failsOnRead = false;
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "BrokenPage: its link is not a browser locator."
+    );
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+  });
+
+  it("reports a changed diagnostic and one that returns after recovery", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    let problem: string | undefined = "first";
+    class Panel {
+      close() {}
+    }
+    ayme({
+      root: () => {
+        if (problem) throw new Error(problem);
+        return page.locator("#panel");
+      },
+    })(Panel);
+    document.body.innerHTML =
+      '<section id="shell"><div id="panel">Panel</div></section>';
+    session.pom.register(shellWithPanel(Panel));
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenLastCalledWith(
+      "Panel at Shell.panel: its root predicate threw first."
+    );
+    problem = "second";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenLastCalledWith(
+      "Panel at Shell.panel: its root predicate threw second."
+    );
+    problem = undefined;
+    await probeRegisteredPomMembers();
+    problem = "second";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(3);
+  });
+
+  it("reports an invalid page root at its class path, and still observes its children when the root throws", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML = '<div id="panel">Panel</div>';
+    class Panel {
+      close() {}
+    }
+    ayme({ root: () => page.locator("#panel") })(Panel);
+    const Shell = shellWithPanel(Panel);
+    let throws = false;
+    ayme({
+      root: () => {
+        if (throws) throw new Error("broken");
+        return undefined as unknown as Locator;
+      },
+    })(Shell);
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Shell: its root is not a browser locator."
+    );
+    expect(names()).toEqual(["Panel.close"]);
+    expect(observedMembers()).toEqual(["root", "container", "panel.root"]);
+    throws = true;
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenLastCalledWith(
+      "Shell: its root predicate threw broken."
+    );
+    expect(names()).toEqual(["Panel.close"]);
   });
 
   it("records what a child's root predicate threw, logs it once, and withdraws the child's tools", async () => {
@@ -520,7 +884,7 @@ describe("Page Object Root by option", () => {
         {
           className: "Panel",
           members: [],
-          tools: [action("close", "Shell.panel.close")],
+          tools: [action("Panel.close", "Panel.close")],
         },
       ],
     });
@@ -532,12 +896,13 @@ describe("Page Object Root by option", () => {
         memberName: "panel.root",
         kind: "component-root",
         count: 0,
+        diagnostic: true,
         error:
-          "POM component panel's root could not be read: TypeError: frame is undefined.",
+          "Panel at Shell.panel: its root predicate threw TypeError: frame is undefined.",
       },
     ]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Shell.panel" is absent: its root predicate threw TypeError: frame is undefined.'
+      "Panel at Shell.panel: its root predicate threw TypeError: frame is undefined."
     );
 
     document.body.innerHTML = "<p>Changed</p>";
@@ -557,7 +922,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Shell.panel" is absent: its root matches 2 elements.'
+      "Panel at Shell.panel: its root matches 2 elements."
     );
 
     await probeRegisteredPomMembers();
@@ -568,7 +933,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledTimes(2);
     expect(logged).toHaveBeenLastCalledWith(
-      'The Page Object "Shell.panel" is absent: its root matches 3 elements.'
+      "Panel at Shell.panel: its root matches 3 elements."
     );
 
     shell.replaceChildren();
@@ -589,38 +954,43 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     expect(names()).toEqual([]);
     expect(logged).toHaveBeenCalledExactlyOnceWith(
-      'The Page Object "Drawer" is absent: its root matches 2 elements.'
+      "Drawer: its root matches 2 elements."
     );
 
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledOnce();
   });
 
-  it("refuses a call on a root-less child of a collection item whose locator has since moved to another item", async () => {
-    document.body.innerHTML =
-      '<ul id="rows"><li id="first">First</li><li id="second">Second</li></ul>';
-    const deleted: string[] = [];
+  it("refuses a root-less child of a collection item while keeping its rooted parent's tools", async () => {
+    document.body.innerHTML = "<ul><li>First</li></ul>";
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    class Toolbar {
+      open() {}
+    }
     class Row {
-      readonly container: Locator;
-      readonly toolbar: Toolbar;
-      constructor(index: number) {
-        this.container = page.locator("#rows > li").nth(index);
-        this.toolbar = new Toolbar(this);
-      }
+      container = page.locator("li");
+      toolbar = new Toolbar();
+      open() {}
     }
     ayme({ root: (self: Row) => self.container })(Row);
-    // No root of its own: it acts through the row it belongs to.
-    class Toolbar {
-      constructor(private readonly row: Row) {}
-      async delete() {
-        deleted.push((await this.row.container.textContent()) ?? "");
-      }
-    }
     class Table {
-      rows = [new Row(0), new Row(1)];
+      rows = [new Row()];
     }
+    const toolbar = pageManifest("Toolbar");
+    const row = pageManifest("Row", [
+      {
+        memberName: "toolbar",
+        kind: "component",
+        access: "field",
+        componentClassName: "Toolbar",
+        collection: false,
+      },
+    ]);
+    registerCompiledPom(Toolbar, toolbar);
+    registerCompiledPom(Row, { ...row, components: [toolbar] });
     registerCompiledPom(Table, {
-      className: "Table",
+      ...pageManifest("Table"),
+      tools: [],
       members: [
         {
           memberName: "rows",
@@ -630,67 +1000,20 @@ describe("Page Object Root by option", () => {
           collection: true,
         },
       ],
-      tools: [],
-      components: [
-        {
-          className: "Row",
-          members: [
-            locator("container"),
-            {
-              memberName: "toolbar",
-              kind: "component",
-              access: "field",
-              componentClassName: "Toolbar",
-              collection: false,
-            },
-          ],
-          tools: [],
-        },
-        {
-          className: "Toolbar",
-          members: [],
-          tools: [action("delete", "Table.rows.toolbar.delete")],
-        },
-      ],
+      components: [row, toolbar],
     });
     session.pom.register(Table);
-    await probeRegisteredPomMembers();
-    const { text } = await agent.getPageState();
-    const first = text.match(/(e\d+) Table\.rows\[0\]/)?.[1];
-    if (!first) throw new Error("Expected a ref for the first row.");
-    const tool = listAvailablePomTools().find(
-      ({ name }) => name === "Table.rows.toolbar.delete"
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        message:
+          'The Page Object class "Toolbar" declares no root and has many instances below a collection: Table.rows[].toolbar (below a collection).',
+      })
     );
-    if (!tool)
-      throw new Error("Expected Table.rows.toolbar.delete to be available.");
-    const call = () => tool.execute({ ref: first, args: {} }, runContext());
-    await call();
-    expect(deleted).toEqual(["First"]);
-
-    // A page that reorders its rows on every change the registry announces.
-    // The call's capture observes the page and awaits one follow-up
-    // observation, which the reorder after the first makes it run and the
-    // reorder after the second leaves behind the page: the first row's ref
-    // still names its element, but the item locator that last observation
-    // saved now addresses the second row. A call that trusted the child
-    // alone would act on it.
-    const rows = document.getElementById("rows")!;
-    const reorder = () => rows.append(rows.firstElementChild!);
-    const unsubscribe = subscribeToRegisteredPoms(reorder);
-    reorder();
-    await expect(call()).rejects.toThrow(
-      "Table.rows.toolbar.delete is unavailable: its Page Object is not on the page."
-    );
-    expect(deleted).toEqual(["First"]);
-    unsubscribe();
-
-    // Observed again, the ref names the row the locator finds at its new place.
     await probeRegisteredPomMembers();
-    await call();
-    expect(deleted).toEqual(["First", "First"]);
+    expect(names()).toEqual(["Row.open"]);
   });
 
-  it("lets a collection tool act on a nested instance of its class, labelled at its full depth, without adding tools", async () => {
+  it("lets a collection tool act on a nested instance of its class, labelled by class at every depth, without adding tools", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="src">src
@@ -742,24 +1065,21 @@ describe("Page Object Root by option", () => {
               collection: true,
             },
           ],
-          tools: [action("expand", "FileTree.items.expand")],
+          tools: [action("TreeItem.expand", "TreeItem.expand")],
         },
       ],
     });
     session.pom.register(FileTree);
     await probeRegisteredPomMembers();
 
-    expect(names()).toEqual(["FileTree.items.expand"]);
+    expect(names()).toEqual(["TreeItem.expand"]);
     const { text } = await agent.getPageState();
-    const util = text.match(
-      /(e\d+) FileTree\.items\[0\]\.children\[0\]\.children\[0\]/
-    )?.[1];
+    const util = [...text.matchAll(/(e\d+) TreeItem\b/g)][2]?.[1];
     if (!util) throw new Error("Expected a ref for the deepest item.");
     const tool = listAvailablePomTools().find(
-      ({ name }) => name === "FileTree.items.expand"
+      ({ name }) => name === "TreeItem.expand"
     );
-    if (!tool)
-      throw new Error("Expected FileTree.items.expand to be available.");
+    if (!tool) throw new Error("Expected TreeItem.expand to be available.");
 
     await tool.execute({ ref: util, args: {} }, runContext());
 

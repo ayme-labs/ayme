@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 import { expect as expectOnPage } from "@ayme-dev/playwright-lite";
@@ -108,7 +109,10 @@ describe("a Run's Interactions, in Chromium", () => {
     await start();
     const before = ayme.runs.list();
 
-    await ayme.tools.run("ListPage.add", { value: "Milk" });
+    await ayme.tools.run("ListPage.add", {
+      ref: await rootRef("ListPage"),
+      args: { value: "Milk" },
+    });
 
     expect(runsSince(before)).toEqual([
       expect.objectContaining({
@@ -125,7 +129,10 @@ describe("a Run's Interactions, in Chromium", () => {
     await start();
     const before = ayme.runs.list();
 
-    await ayme.tools.run("ListPage.check", {});
+    await ayme.tools.run("ListPage.check", {
+      ref: await rootRef("ListPage"),
+      args: {},
+    });
 
     expect(runsSince(before)).toEqual([
       expect.objectContaining({
@@ -140,8 +147,16 @@ describe("a Run's Interactions, in Chromium", () => {
     const before = ayme.runs.list();
 
     await Promise.all([
-      ayme.tools.run("ListPage.add", { value: "Eggs" }, { by: "assistant" }),
-      ayme.tools.run("ListPage.save", {}, { by: callers.inspector }),
+      ayme.tools.run(
+        "ListPage.add",
+        { ref: await rootRef("ListPage"), args: { value: "Eggs" } },
+        { by: "assistant" }
+      ),
+      ayme.tools.run(
+        "ListPage.save",
+        { ref: await rootRef("ListPage"), args: {} },
+        { by: callers.inspector }
+      ),
     ]);
 
     expect(runsSince(before)).toEqual([
@@ -166,7 +181,10 @@ describe("a Run's Interactions, in Chromium", () => {
       async execute(_target, { run }) {
         const list = ayme.pom.get(ListPage);
         await list.item.fill("Tea");
-        await run("ListPage.save", {});
+        await run("ListPage.save", {
+          ref: await rootRef("ListPage"),
+          args: {},
+        });
         await list.addButton.hover();
         return null;
       },
@@ -201,8 +219,11 @@ describe("a Run's Interactions, in Chromium", () => {
       description: "Add Milk and save, both at once.",
       async execute(_target, { run }) {
         await Promise.all([
-          run("ListPage.add", { value: "Milk" }),
-          run("ListPage.save", {}),
+          run("ListPage.add", {
+            ref: await rootRef("ListPage"),
+            args: { value: "Milk" },
+          }),
+          run("ListPage.save", { ref: await rootRef("ListPage"), args: {} }),
         ]);
         return null;
       },
@@ -242,7 +263,10 @@ describe("a Run's Interactions, in Chromium", () => {
       heard.push([run!.status, run!.interactions.length]);
     });
 
-    await ayme.tools.run("ListPage.add", { value: "Milk" });
+    await ayme.tools.run("ListPage.add", {
+      ref: await rootRef("ListPage"),
+      args: { value: "Milk" },
+    });
     unsubscribe();
 
     expect(heard).toEqual([

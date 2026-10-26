@@ -1,6 +1,6 @@
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "../../shared";
 import type { TargetField } from "../../tools";
-import type { CollectionToolItem } from "../../page-objects";
+import type { RootedToolInstance } from "../../page-objects";
 import type { StartChildRun } from "../../runs";
 
 /**
@@ -20,7 +20,7 @@ export type ClosedSet =
    * The present items of one collection path, each with the tool's verdict on
    * it; no filter is involved.
    */
-  | { kind: "instance"; roots: readonly CollectionToolItem[] }
+  | { kind: "instance"; roots: readonly RootedToolInstance[] }
   | { kind: "values"; values: readonly JsonPrimitive[] };
 
 /** The Goal Values a parameter or list item outside the closed sets can take. */
@@ -66,6 +66,7 @@ export type ArgumentSpec = {
 };
 
 export type GoalLoopOperation = {
+  className?: string;
   name: string;
   description: string;
   /**
@@ -250,13 +251,13 @@ export function specsOfElementToolSchema(
 }
 
 /**
- * A tool that goes through a collection takes `{ ref, args }`: the ref
+ * A rooted Page Object Tool takes `{ ref, args }`: the ref
  * addresses one present instance of its path, the action's own parameters sit
  * inside `args` and are classified like any other parameter.
  */
-export function specsOfCollectionTool(
+export function specsOfRootedTool(
   parameters: readonly ToolParameter[],
-  roots: readonly CollectionToolItem[]
+  roots: readonly RootedToolInstance[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) =>
     parameter.name === "ref"
@@ -273,15 +274,14 @@ export function specsOfCollectionTool(
 }
 
 /**
- * The parameters a caller must pass, by name: for a tool that goes through a
- * collection, its `ref` and the required ones inside `args`, dotted.
+ * The parameters a caller must pass, by name: for a rooted tool, its `ref` and the required ones inside `args`, dotted.
  */
 export function requiredParamsOf(
   parameters: readonly ToolParameter[],
-  throughCollection: boolean
+  rooted: boolean
 ): string[] {
   return parameters.flatMap((parameter) =>
-    throughCollection && parameter.name !== "ref"
+    rooted && parameter.name !== "ref"
       ? parametersOfObjectSchema(parameter.schema)
           .filter((inner) => !inner.optional)
           .map((inner) => `${parameter.name}.${inner.name}`)

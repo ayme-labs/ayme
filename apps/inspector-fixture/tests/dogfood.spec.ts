@@ -21,13 +21,14 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     expect.arrayContaining([
       "ListPage.addItem",
       "Inspector.open",
-      "Inspector.navigator.showLens",
-      "Inspector.runs.clear",
+      "Navigator.showLens",
+      "RunsView.clear",
     ])
   );
 
-  await executePublishedTool(page, "Inspector.navigator.showLens", {
-    name: "Tools",
+  await executePublishedTool(page, "Navigator.showLens", {
+    ref: await new AgentView(page).ref('navigation "Navigator"'),
+    args: { name: "Tools" },
   });
 
   await expect(inspector.navigator.lens("Tools")).toHaveAttribute(
@@ -38,12 +39,13 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     .poll(async () =>
       Object.values(await inspector.navigator.tools.listed()).flat()
     )
-    .toContain("Inspector.navigator.showLens");
+    .toContain("Navigator.showLens");
 
   // A search in progress does not stop the agent from opening a run card,
   // and the card's own actions come alive with it.
-  await executePublishedTool(page, "Inspector.navigator.search", {
-    query: "addItem",
+  await executePublishedTool(page, "Navigator.search", {
+    ref: await new AgentView(page).ref('navigation "Navigator"'),
+    args: { query: "addItem" },
   });
   await executePublishedTool(page, "Inspector.tool", {
     name: "ListPage.addItem",
@@ -53,7 +55,7 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     .poll(async () =>
       (await new AgentView(page).tools()).map(({ name }) => name)
     )
-    .toContain("Inspector.detail.toolPage.card.fillJson");
+    .toContain("RunCard.fillJson");
 });
 
 test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
@@ -62,12 +64,14 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
 }) => {
   const agent = new AgentView(page);
   const toolNames = async () => (await agent.tools()).map(({ name }) => name);
-  const card = "Inspector.detail.toolPage.card";
+  const card = "RunCard";
   /** Opens a tool's card and its form, whose tools then list. */
   const openForm = async (tool: string, ...actions: string[]) => {
     await executePublishedTool(page, "Inspector.tool", { name: tool });
     await expect.poll(toolNames).toContain(`${card}.openArguments`);
-    await executePublishedTool(page, `${card}.openArguments`, {});
+    await executePublishedTool(page, `${card}.openArguments`, {
+      ref: await agent.ref(`form "${tool.split(".").at(-1)}"`),
+    });
     await expect
       .poll(toolNames)
       .toEqual(expect.arrayContaining([`${card}.fill`, ...actions]));
@@ -75,17 +79,34 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
 
   // The panel settles before the agent's 1 s action timeout applies.
   await inspector.navigator.showLens("Tools");
-  await openForm("fill_form", `${card}.fillForm.set`);
+  await openForm("fill_form", `FillForm.set`);
   const form = inspector.detail.toolPage.card.fillForm;
   await expect(form.control("Urgent")).not.toBeChecked();
-  await executePublishedTool(page, `${card}.fillForm.set`, {
-    name: "Urgent",
-    value: true,
+  // The editor's root surrounds the list that stays out of page state.
+  const editorRef = await agent.ref('form "fill_form"');
+  await executePublishedTool(page, `FillForm.set`, {
+    ref: editorRef,
+    args: { name: "Urgent", value: true },
   });
   await expect(form.control("Urgent")).toBeChecked();
 
-  await openForm("generate_locator", `${card}.locatorGroups.toggleFromTree`);
-  await openForm("goal", `${card}.values.fill`);
+  await openForm("generate_locator", `LocatorGroups.toggleFromTree`);
+  await openForm("goal", `ValueRows.fill`);
+});
+
+test("a rooted single instance is preselected and runs from the panel", async ({
+  page,
+  inspector,
+}) => {
+  await executePublishedTool(page, "Inspector.tool", {
+    name: "Navigator.search",
+  });
+  const card = inspector.detail.toolPage.card;
+  await card.openArguments();
+  await expect(card.items).toHaveCount(1);
+  await expect(card.items).toHaveAttribute("aria-checked", "true");
+  await card.run({ query: "ListPage.addItem" });
+  await expect(inspector.navigator.searchBox).toHaveValue("ListPage.addItem");
 });
 
 test("the page state an agent reads includes the panel", async ({

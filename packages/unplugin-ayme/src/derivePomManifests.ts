@@ -12,6 +12,7 @@ import type {
   ToolManifest,
   ToolParameter,
 } from "@ayme-dev/ayme/internal";
+import { rootlessClassRefusals } from "@ayme-dev/ayme/internal";
 import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
 
 export type { PomCompilerOptions } from "./pomProgram";
@@ -88,6 +89,17 @@ export function derivePomManifestsFromProgram(
       return { manifest, components: reachableComponents(checker, references) };
     });
     rejectSameNamedClasses(declaration, components.keys());
+    const compiled = { ...manifest, components: [...components.values()] };
+    const declarations = new Map(
+      [declaration, ...components.keys()].map((node) => [node.name!.text, node])
+    );
+    const refusals = rootlessClassRefusals(
+      [compiled],
+      (className) =>
+        rootState(checker, declarations.get(className)!) !== "undeclared"
+    );
+    const refusal = refusals.values().next().value;
+    if (refusal) throw refusal;
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
     manifests.push({ ...rest, components: [...components.values()], tools });
@@ -166,11 +178,6 @@ function pomChild(
       ? componentCollectionDeclaration(checker, type, memberName)
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
-  if (access === "method" && rootState(checker, declaration) === "undeclared") {
-    throw new Error(
-      `Page Object Child "${memberName}" is a collection of ${declaration.name.text}, which declares no root; a collection item's ref needs one.`
-    );
-  }
   return {
     member: {
       memberName,

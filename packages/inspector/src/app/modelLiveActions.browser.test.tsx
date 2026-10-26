@@ -37,7 +37,7 @@ const manifest: PomManifest = {
       tools: [
         {
           methodName: "save",
-          toolName: "save",
+          toolName: "Toolbar.save",
           description: "Save the document.",
           parameters: [],
         },
@@ -47,12 +47,11 @@ const manifest: PomManifest = {
   tools: [],
 };
 
-const save: RegisteredPomTool & { componentPath: string } = {
-  pomId: "Editor",
-  name: "Editor.toolbar.save",
+const save: RegisteredPomTool = {
+  rooted: false,
+  className: "Toolbar",
+  name: "Toolbar.save",
   methodName: "save",
-  componentClassName: "Toolbar",
-  componentPath: "toolbar",
   description: "Save the document.",
   inputSchema: noArguments,
   parameters: [],
@@ -137,7 +136,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
-    listCollectionToolItems: vi.fn(() => new Map()),
+    listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
     getStartedAyme: asStartedAyme,
     getAgentConnectionStatus: agentConnectionOf,
@@ -157,11 +156,13 @@ const unmounts: (() => void)[] = [];
 function renderApp({
   toolbarOnPage,
   live,
+  registrations,
 }: {
   toolbarOnPage: boolean;
   live: ToolInfo[];
+  registrations?: RegisteredPom[];
 }) {
-  runtime.registrations = [editor(toolbarOnPage)];
+  runtime.registrations = registrations ?? [editor(toolbarOnPage)];
   runtime.liveTools = live;
   const host = document.createElement("div");
   document.body.append(host);
@@ -198,4 +199,135 @@ it("dims an action as not on page when its Page Object isn't on the page", async
   await expect.poll(() => action.textContent()).toContain("Not on page");
   expect(await action.getAttribute("aria-disabled")).toBe("true");
   expect(await inspector.detail.runCard("save").root.count()).toBe(0);
+});
+
+it.each([true, false])(
+  "offers a recursive class action at its concrete path when the middle root is present: %s",
+  async (parentPresent) => {
+    const child = (memberName: string) => ({
+      memberName,
+      kind: "component" as const,
+      access: "field" as const,
+      componentClassName: "Node",
+      collection: false,
+    });
+    const tool = {
+      ...save,
+      className: "Node",
+      name: "Node.open",
+      methodName: "open",
+    };
+    const registration: RegisteredPom = {
+      id: "Tree",
+      instance: {},
+      manifest: {
+        className: "Tree",
+        tools: [],
+        members: [child("node")],
+        components: [
+          {
+            className: "Node",
+            members: [child("child")],
+            tools: [
+              { methodName: "open", toolName: "Node.open", parameters: [] },
+            ],
+          },
+        ],
+      },
+      memberObservations: [
+        { memberName: "node.root", kind: "component-root", count: 1 },
+        {
+          memberName: "node.child.root",
+          kind: "component-root",
+          count: parentPresent ? 1 : 0,
+        },
+        {
+          memberName: "node.child.child.root",
+          kind: "component-root",
+          count: 1,
+        },
+      ],
+      presentPaths: new Set([
+        "",
+        "node",
+        "node.child.child",
+        ...(parentPresent ? ["node.child"] : []),
+      ]),
+      rootMemberPaths: new Set(),
+      tools: [tool],
+    };
+    renderApp({
+      toolbarOnPage: false,
+      live: [
+        {
+          name: "Node.open",
+          inputSchema: noArguments,
+          group: "pageObject",
+          available: true,
+        },
+      ],
+      registrations: [registration],
+    });
+    await inspector.navigator.model.pressOnObject("Tree.node", "ArrowRight");
+    await inspector.navigator.model.pressOnObject(
+      "Tree.node.child",
+      "ArrowRight"
+    );
+    await inspector.navigator.model.object("Tree.node.child.child").click();
+    await expect
+      .poll(() => inspector.detail.runCard("open").root.count())
+      .toBe(1);
+    await inspector.navigator.model.pressOnObject(
+      "Tree.node.child.child",
+      "ArrowRight"
+    );
+    await inspector.navigator.model
+      .object("Tree.node.child.child.child")
+      .click();
+    await expect
+      .poll(() => inspector.detail.runCard("open").root.count())
+      .toBe(1);
+    expect(await inspector.detail.model.section("Members").count()).toBe(0);
+    expect(
+      await inspector.navigator.model
+        .object("Tree.node.child.child.child.child")
+        .count()
+    ).toBe(0);
+  }
+);
+
+it("keeps unobserved model members visible before a child's first observation", async () => {
+  renderApp({
+    toolbarOnPage: false,
+    live: [],
+    registrations: [
+      {
+        ...editor(false),
+        memberObservations: [],
+      },
+    ],
+  });
+  await inspector.navigator.model.object("Editor.toolbar").click();
+  await expect
+    .poll(() => inspector.detail.model.member("root").count())
+    .toBe(1);
+  expect(await inspector.detail.model.memberDescription("root")).toContain(
+    "pending"
+  );
+});
+
+it("shows the agent's live description on a model action's run card", async () => {
+  renderApp({
+    toolbarOnPage: true,
+    live: [
+      {
+        ...saveTool(true)[0]!,
+        description: "Save and then inspect the confirmation.",
+      },
+    ],
+  });
+  await inspector.navigator.model.object("Editor.toolbar").click();
+  await expect
+    .poll(() => inspector.detail.runCard("save").root.textContent())
+    .toContain("Save and then inspect the confirmation.");
 });

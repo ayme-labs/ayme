@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { PomManifest } from "../../shared";
@@ -49,7 +50,10 @@ describe("Change Record of the first action in Chromium", () => {
     // Its tool is published once a probe finds the Page Object available.
     await probeRegisteredPomMembers();
 
-    const result = (await agentTools().call("App.announce", {})) as {
+    const result = (await agentTools().call("App.announce", {
+      ref: await rootRef("App"),
+      args: {},
+    })) as {
       page_changed: boolean;
       changes?: string;
     };

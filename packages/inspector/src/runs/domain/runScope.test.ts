@@ -12,7 +12,7 @@ import { runScope as scopeOf } from "./runScope";
 const addItem = aRun({ id: "1" });
 const archiveMilk = aRun({
   id: "2",
-  toolName: "ListPage.items.archive",
+  toolName: "ListItem.archive",
   className: "ListItem",
   item: anItem("ListPage.items[1]", { ref: "e12", label: "Milk" }),
   arguments: { ref: "e12", args: {} },

@@ -227,8 +227,7 @@ function decodeTime(stored: unknown): number {
 
 /**
  * The Page Object Model and Page Object a Page Object tool runs on, from
- * the registry as it is now. Tool names can collide across registrations;
- * this is the one that is available now, the one the runtime runs.
+ * the registry as it is now. The ref identifies its instance separately.
  */
 function targetOf(toolName: string): { target?: RunTarget } {
   const pomTool = listAvailablePomTools().find(
@@ -237,11 +236,7 @@ function targetOf(toolName: string): { target?: RunTarget } {
   if (!pomTool) return {};
   return {
     target: {
-      className: pomTool.componentClassName ?? pomTool.pomId,
-      objectPath:
-        pomTool.componentPath === undefined
-          ? pomTool.pomId
-          : `${pomTool.pomId}.${pomTool.componentPath}`,
+      className: pomTool.className,
     },
   };
 }

@@ -56,12 +56,12 @@ it.each([
   ],
   ["runs at once with nothing to fill in", {}, { kind: "run", input: args }],
   [
-    "runs a collection action on its item",
+    "runs a rooted action on its item",
     { collection: true, target: milk },
     { kind: "run", input: { ref: "e5", args }, item: milk },
   ],
   [
-    "refuses a collection action with no item",
+    "refuses a rooted action with no item",
     { collection: true },
     { kind: "blocked", why: "no-item" },
   ],
@@ -110,7 +110,7 @@ it.each([
     "Run add_item",
   ],
   [
-    "a collection action with no item",
+    "a rooted action with no item",
     { collection: true },
     true,
     "No item on the page to run on",
@@ -129,7 +129,7 @@ it.each([
   ],
   ["running", {}, false, "Run add_item"],
   [
-    "running a collection action on its item",
+    "running a rooted action on its item",
     { collection: true, target: milk },
     false,
     "Run add_item",
@@ -144,7 +144,7 @@ it.each([
   ["a tool with fields", { hasForm: true }, true, false],
   ["a tool with fields, opened", { hasForm: true, open: true }, true, true],
   [
-    "a collection action picking its item, opened",
+    "a rooted action picking its item, opened",
     { hasForm: true, collection: true, open: true },
     true,
     true,

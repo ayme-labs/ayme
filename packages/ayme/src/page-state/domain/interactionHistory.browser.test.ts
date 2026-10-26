@@ -1,3 +1,4 @@
+import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   AriaRefSchema,
@@ -24,7 +25,10 @@ import {
   resolvePageStateRefs,
 } from "../infrastructure/pageState";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import {
+  agentTools,
+  firstChoices,
+} from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 type ActionResultShape = {
@@ -190,7 +194,10 @@ describe("Interaction history in Chromium", () => {
     await readStructure();
     const actionsBefore = history().actions().size;
 
-    const result = await act("App.add", {});
+    const result = await act("App.add", {
+      ref: await rootRef("App"),
+      args: {},
+    });
 
     expect(result.changes).toContain("Added by the action");
     expect(history().actions().size).toBe(actionsBefore + 1);
@@ -301,22 +308,25 @@ describe("Interaction history in Chromium", () => {
   it("records one action per executed Goal Loop step and keeps the agent's cursor until the Handover", async () => {
     let step = 0;
     let agentCursorDuringRun: unknown;
-    const decide: GoalLoopDecisionFunction =
-      async (): Promise<DecisionResponse> => {
-        const first = step++ === 0;
-        if (!first) agentCursorDuringRun = agentCursor().current();
-        return {
-          model: "typesafe/jev-1.13",
-          answers: {
-            operation: {
-              type: "choice",
-              choice: first ? "App.add" : "none",
-              confidence: 1,
-            },
-            goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
+    const decide: GoalLoopDecisionFunction = async (
+      request
+    ): Promise<DecisionResponse> => {
+      if (!("operation" in request.questions))
+        return firstChoices(request.questions);
+      const first = step++ === 0;
+      if (!first) agentCursorDuringRun = agentCursor().current();
+      return {
+        model: "typesafe/jev-1.13",
+        answers: {
+          operation: {
+            type: "choice",
+            choice: first ? "App.add" : "none",
+            confidence: 1,
           },
-        };
+          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
+        },
       };
+    };
     await startWithAddingPom(decide);
     await readStructure();
     const agentPage = agentCursor().current();
@@ -349,24 +359,28 @@ describe("Interaction history in Chromium", () => {
   it("renders the agent's first action after a Handover against the Handover's page", async () => {
     let step = 0;
     let agentCall: Promise<ActionResultShape> | undefined;
-    const decide: GoalLoopDecisionFunction =
-      async (): Promise<DecisionResponse> => {
-        const first = step++ === 0;
-        // An agent tool call while the run is pending stays the agent's. It
-        // waits for the Handover: one top-level Run at a time.
-        if (!first) agentCall = act("App.noop", {});
-        return {
-          model: "typesafe/jev-1.13",
-          answers: {
-            operation: {
-              type: "choice",
-              choice: first ? "App.add" : "none",
-              confidence: 1,
-            },
-            goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
+    const decide: GoalLoopDecisionFunction = async (
+      request
+    ): Promise<DecisionResponse> => {
+      if (!("operation" in request.questions))
+        return firstChoices(request.questions);
+      const first = step++ === 0;
+      // An agent tool call while the run is pending stays the agent's. It
+      // waits for the Handover: one top-level Run at a time.
+      if (!first)
+        agentCall = act("App.noop", { ref: await rootRef("App"), args: {} });
+      return {
+        model: "typesafe/jev-1.13",
+        answers: {
+          operation: {
+            type: "choice",
+            choice: first ? "App.add" : "none",
+            confidence: 1,
           },
-        };
+          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
+        },
       };
+    };
     document.body.innerHTML =
       '<main><h1>List</h1><button id="mark">Mark</button></main>';
     document.querySelector("#mark")!.addEventListener("click", () => {
@@ -412,7 +426,7 @@ describe("Interaction history in Chromium", () => {
 });
 
 const action = (methodName: string, toolName: string): ToolManifest => ({
-  methodName,
+  methodName: methodName.split(".").at(-1)!,
   toolName,
   description: methodName,
   parameters: [],

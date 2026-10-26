@@ -91,8 +91,8 @@ const pageModel: PageModel = {
         {
           name: "addItem",
           signature: "(text: string)",
-          toolNames: ["TodoPage.addItem"],
-          liveToolNames: ["TodoPage.addItem"],
+          toolName: "TodoPage.addItem",
+          live: true,
         },
       ],
       instancePaths: ["TodoPage"],
@@ -110,8 +110,8 @@ const pageModel: PageModel = {
         {
           name: "archive",
           signature: "()",
-          toolNames: ["TodoPage.items.archive"],
-          liveToolNames: ["TodoPage.items.archive"],
+          toolName: "TodoItem.archive",
+          live: true,
         },
       ],
       instancePaths: ["TodoPage.items[0]", "TodoPage.items[1]"],
@@ -130,8 +130,8 @@ const pageModel: PageModel = {
           name: "confirm",
           description: "Confirm the archive.",
           signature: "()",
-          toolNames: ["TodoPage.archiveDialog.confirm"],
-          liveToolNames: [],
+          toolName: "ArchiveDialog.confirm",
+          live: false,
         },
       ],
       instancePaths: [],
@@ -588,9 +588,9 @@ it("runs a collection item's actions on that item", async () => {
 
   await expect
     .poll(() => detail.section("Actions").textContent())
-    .toContain("Run TodoPage.items.archive");
+    .toContain("Run TodoItem.archive");
   expect(renderRun).toHaveBeenCalledWith({
-    toolName: "TodoPage.items.archive",
+    toolName: "TodoItem.archive",
     item: "TodoPage.items[1]",
   });
 });
@@ -604,7 +604,7 @@ it("lists a model's instances on this page, its actions and its members", async 
     )
     .toEqual(["TodoPage.items[0]", "TodoPage.items[1]"]);
   expect(await detail.section("Actions").textContent()).toContain(
-    "Run TodoPage.items.archive"
+    "Run TodoItem.archive"
   );
   expect(await detail.memberDescription("archiveButton")).toBe("locator");
 });
@@ -820,8 +820,8 @@ it("wraps a model's description and its actions' descriptions within the pane wh
               name: "reconcile",
               description: `Clicks ${longClassName}.reconcileAgainstExternalAccountingSystemButton.`,
               signature: "()",
-              toolNames: [`BillingPage.lineItem.reconcile`],
-              liveToolNames: [],
+              toolName: `LineItem.reconcile`,
+              live: false,
             },
           ],
           instancePaths: [],

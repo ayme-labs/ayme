@@ -270,7 +270,7 @@ beforeAll(() => {
 
 afterAll(() => {
   if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
-});
+}, 60_000);
 
 /** Consumer dependencies and overrides that resolve to the packed tarballs. */
 function tarballDependencies(names: string[]) {

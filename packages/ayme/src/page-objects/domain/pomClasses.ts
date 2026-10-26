@@ -87,3 +87,64 @@ function declaredIn(first: PomComponentManifest, second: PomComponentManifest) {
     ? ""
     : `, declared in ${first.file} and ${second.file}`;
 }
+
+/** Classes that cannot select one instance because they declare no root. */
+export function rootlessClassRefusals(
+  manifests: readonly PomManifest[],
+  rootDeclared: (className: string) => boolean | undefined
+): Map<string, RuntimeStateError> {
+  const reached = new Map<
+    string,
+    { places: string[]; belowCollection: boolean }
+  >();
+  for (const manifest of manifests) {
+    const components = new Map(
+      [...manifest.components, manifest].map((node) => [node.className, node])
+    );
+    const visit = (
+      node: PomComponentManifest,
+      path: string,
+      collection: boolean,
+      edges: ReadonlySet<object>
+    ) => {
+      if (rootDeclared(node.className) === false) {
+        const previous = reached.get(node.className) ?? {
+          places: [],
+          belowCollection: false,
+        };
+        previous.places.push(
+          `${path}${collection ? " (below a collection)" : ""}`
+        );
+        previous.belowCollection ||= collection;
+        reached.set(node.className, previous);
+      }
+      // Guard edges so revisiting a recursive class still visits its children.
+      for (const member of node.members) {
+        if (member.kind !== "component" || edges.has(member)) continue;
+        const child = components.get(member.componentClassName);
+        if (child)
+          visit(
+            child,
+            `${path}.${member.memberName}${member.collection ? "[]" : ""}`,
+            collection || member.collection,
+            new Set(edges).add(member)
+          );
+      }
+    };
+    visit(manifest, manifest.className, false, new Set());
+  }
+  return new Map(
+    [...reached].flatMap(([className, { places, belowCollection }]) =>
+      places.length > 1 || belowCollection
+        ? [
+            [
+              className,
+              new RuntimeStateError(
+                `The Page Object class "${className}" declares no root and ${places.length > 1 ? "is reached from more than one place" : "has many instances below a collection"}: ${places.join(", ")}.`
+              ),
+            ] as const,
+          ]
+        : []
+    )
+  );
+}
