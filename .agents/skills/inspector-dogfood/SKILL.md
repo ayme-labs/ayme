@@ -71,8 +71,6 @@ Run every command inside the repository's Devbox shell.
    - `StructureLens.pick` and `StructureLens.memberOf` read the
      Structure lens.
 
-   Rooted class tools take `{ ref, args }`, with the ref of that part's own root
-   from `snapshot`; root-less `Inspector` tools take their arguments directly.
    `ayme_list_tools` lists what is live right now; tools appear and
    disappear as views open and close, which is itself a check.
 
