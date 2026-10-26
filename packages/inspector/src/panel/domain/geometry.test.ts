@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultFloat,
+  dockAt,
   dockSize,
   dragFloat,
   fitFloat,
@@ -155,6 +156,20 @@ describe("fitSizes", () => {
       fitSizes({ ...sizes, bottomHeight: 2000 }, { width: 1280, height: 600 })
         .bottomHeight
     ).toBe(550);
+  });
+});
+
+describe("dockAt", () => {
+  it.each([
+    ["left", { x: 4, y: 300 }],
+    ["right", { x: 1276, y: 300 }],
+    ["bottom", { x: 640, y: 796 }],
+  ] as const)("docks %s when dropped on that edge", (dock, pointer) => {
+    expect(dockAt(pointer, viewport)).toBe(dock);
+  });
+
+  it("floats on when dropped clear of the edges", () => {
+    expect(dockAt({ x: 640, y: 300 }, viewport)).toBeUndefined();
   });
 });
 

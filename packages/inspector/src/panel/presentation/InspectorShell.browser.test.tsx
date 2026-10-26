@@ -617,6 +617,8 @@ describe("motion", () => {
       "pointermove",
       pointer(at.x - 100, at.y + 50, 1)
     );
+    // Its first move stops the glide.
+    expect(await glides()).toEqual([]);
     await header.title.dispatchEvent(
       "pointerup",
       pointer(at.x - 100, at.y + 50, 0)

@@ -173,7 +173,6 @@ export function InspectorShell({
     drag(event, {
       onMove: (deltaX, deltaY, pointer) => {
         // The first move stops the glide; the drag's path is empty until then.
-        // Stryker disable next-line ConditionalExpression: stopping the glide on every move finds none left after the first.
         if (path.length === 0) glide.stop();
         const viewportNow = currentViewport();
         dock = dockAt(pointer, viewportNow);
