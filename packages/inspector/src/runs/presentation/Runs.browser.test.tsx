@@ -51,7 +51,7 @@ const archiveGone = aRun({
  * Renders Runs in its region, keeping open and scope in state the way the
  * panel does. Returns its callbacks and a way to focus a run.
  */
-function renderRuns(props: Partial<RunsProps> = {}) {
+function renderRuns(props: Partial<RunsProps> = {}, width?: number) {
   const callbacks = {
     onAllRunsChange: vi.fn(),
     onOpenChange: vi.fn(),
@@ -68,7 +68,7 @@ function renderRuns(props: Partial<RunsProps> = {}) {
     const [focus, setFocus] = useState<RunFocus>();
     focusRun = (runId) => setFocus({ runId, at: Date.now() });
     return (
-      <div className="flex h-[600px] flex-col">
+      <div className="flex h-[600px] flex-col" style={{ width }}>
         <RunsRegion collapsed={!open}>
           <Runs
             scopeLabel="This object"
@@ -107,6 +107,24 @@ function fadesIn(row: typeof runsView.runs) {
 }
 
 describe("Runs", () => {
+  it("keeps a run's tool name and time whole at Runs' narrowest width", async () => {
+    renderRuns({ runs: [aRun({ toolName: "snapshot", durationMs: 25 })] }, 240);
+
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+    const cut = await runsView.run(0).toggle.evaluate((toggle) => {
+      const edge = toggle.getBoundingClientRect().right;
+      return [...toggle.querySelectorAll("span")]
+        .filter((span) => span.textContent)
+        .filter(
+          (span) =>
+            span.scrollWidth > span.clientWidth ||
+            span.getBoundingClientRect().right > edge
+        )
+        .map((span) => span.textContent);
+    });
+    expect(cut).toEqual([]);
+  });
+
   it("lists the runs, newest first", async () => {
     renderRuns();
 

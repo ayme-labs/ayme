@@ -29,7 +29,7 @@ const NO_PAGE = {} as Page;
  * session: it acts on `page`, its Change Record reads from and moves
  * `cursor`, the calling agent's by default, and the child Runs it starts
  * execute the available tool they name at once, unrecorded, on the same
- * page.
+ * page. Its Document is the test's own, none in Node.
  */
 export function runContext(
   page: Page = NO_PAGE,
@@ -38,6 +38,7 @@ export function runContext(
   return {
     cursor,
     page,
+    document: globalThis.document,
     run: async (name, input, childCursor = cursor) => {
       const entry = resolveTools({ peeks: true }).get(name);
       if (!entry?.available) throw new Error(`No available tool "${name}".`);

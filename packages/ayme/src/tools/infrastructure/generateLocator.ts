@@ -14,7 +14,6 @@ import {
 import type { JsonSchema } from "../../shared";
 import { asSentence } from "../../shared";
 import {
-  requireCurrentDocument,
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
@@ -181,11 +180,10 @@ export const generateLocatorTool: PublishedElementTool = {
   ].join(" "),
   // Stryker restore StringLiteral
   inputSchema,
-  execute: async (input, { page }) => {
+  execute: async (input, { page, document: currentDocument }) => {
     const { groups } = input as {
       groups: { targets: string[]; within?: string }[];
     };
-    const currentDocument = requireCurrentDocument();
     const result: Result = { groups: [] };
     for (const group of groups)
       result.groups.push(await groupFor(page, group, currentDocument));

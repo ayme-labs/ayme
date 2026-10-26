@@ -28,10 +28,10 @@ minimumReleaseAgeExclude:
 # @angular/build pins.
 overrides:
   rolldown@1.2.12: 1.2.8
-# Stryker's Vitest runner reports a mutant that breaks module load as
-# Survived; the patch reports the test file as failed, so it is Killed.
 patchedDependencies:
-  "@stryker-mutator/vitest-runner@10.0.0": patches/@stryker-mutator__vitest-runner@10.0.0.patch
+  # The runner reports module-load mutants as runtime errors. Keep them in the
+  # mutation score by reporting a failed test file, so they count as killed.
+  "@stryker-mutator/vitest-runner@10.1.1": patches/@stryker-mutator__vitest-runner@10.1.1.patch
   # madge skips `import { type T }` and `export { type T } from` as type-only,
   # but they keep an empty runtime import; the patch keeps them as edges so
   # scripts/check-cycles.mjs sees them.

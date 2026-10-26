@@ -14,11 +14,11 @@ import { createAyme, type Ayme } from "../../runtime";
 import { getLastGoalLoopRunResult } from "../../testing";
 import {
   CHANGES_CUT_MARKER,
-  configureGoalLoop,
   MAX_STEP_CHANGES,
   MAX_STEP_RETURNED,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
+import { configureGoalLoop } from "../infrastructure/goalLoopStore";
 import type { CustomTool } from "../../tools";
 import {
   NONE_OF_THESE_KEY,

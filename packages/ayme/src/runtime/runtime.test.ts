@@ -536,6 +536,7 @@ it("runs goal as the application while publication is unavailable", async () => 
       cursor: cursors.of(callers.app),
       run: expect.any(Function),
       page: expect.any(Object),
+      document,
     });
   } finally {
     goalTool.mockRestore();

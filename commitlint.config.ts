@@ -51,11 +51,12 @@ function loadWorkspaceScopes(): string[] {
 
 // The allowed commit types and when to use each. AGENTS.md points here.
 const commitTypes = {
-  build: "Build system and package dependencies.",
+  build:
+    "Build system configuration, build tooling and runtime package dependencies.",
   chore: "Maintenance that fits no other type.",
   ci: "CI workflows and their actions.",
   devex:
-    "Internal material and tooling: AGENTS.md files, READMEs under apps/, ADRs, docs/agents/, docs/testing.md, docs/releasing.md and other internal docs, repo-local skills in .agents/skills/, Devbox, Lefthook hooks, this file and scripts/.",
+    "Internal material and tooling, including test and analysis tools and their dependencies: AGENTS.md files, READMEs under apps/, ADRs, docs/agents/, docs/testing.md, docs/releasing.md and other internal docs, repo-local skills in .agents/skills/, Devbox, Lefthook hooks, this file and scripts/.",
   docs: "User-facing docs only: the consumer guide in docs/guide/ (the published site), the root README, the package READMEs that serve as npm entry points, and wording-only changes to the consumer skills in skills/. A change to a skill's behaviour is feat(skills) or fix(skills).",
   feat: "A new user-facing capability.",
   fix: "A user-facing bug fix.",

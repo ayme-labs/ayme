@@ -1,14 +1,14 @@
 diff --git a/dist/src/vitest-test-runner.js b/dist/src/vitest-test-runner.js
-index 84f1ca026503b8e92b7adc952ec6c6a401943656..3c4992d0533ba4495bb727207e5db1080adeba45 100644
+index ea9f88cbc22d06e514c049ccbfdb0b46439df1aa..26ecd14d48307266e24627a2f94d400d4cfe4428 100644
 --- a/dist/src/vitest-test-runner.js
 +++ b/dist/src/vitest-test-runner.js
-@@ -177,6 +177,22 @@ export class VitestTestRunner {
+@@ -238,6 +238,22 @@ export class VitestTestRunner {
              failure ||= testResult.status === TestStatus.Failed;
              return testResult;
          });
 +        // A test file that failed to load (e.g. a mutant throws at module load)
-+        // has no tests, so report it as a failed test instead of letting the
-+        // mutant survive.
++        // has no tests. Report it as a failed test so the mutant is killed,
++        // rather than excluded from the mutation score as a runtime error.
 +        for (const file of this.ctx.state.getFiles()) {
 +            if (file.result?.state === 'fail' && collectTestsFromSuite(file).length === 0) {
 +                failure = true;
@@ -22,6 +22,6 @@ index 84f1ca026503b8e92b7adc952ec6c6a401943656..3c4992d0533ba4495bb727207e5db108
 +                });
 +            }
 +        }
-         if (!failure && this.ctx.state.errorsSet.size > 0) {
-             const errorText = [...this.ctx.state.errorsSet]
-                 .map(errorToString)
+         // Collection errors are stored on the file, not in errorsSet, and may
+         // leave no individual tests to report the failure.
+         const fileErrors = this.ctx.state.getFiles()

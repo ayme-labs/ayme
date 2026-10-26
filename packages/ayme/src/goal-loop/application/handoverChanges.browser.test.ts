@@ -8,7 +8,8 @@ import {
   createPage,
   registerCompiledPom,
 } from "../../page-objects";
-import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
+import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { configureGoalLoop } from "../infrastructure/goalLoopStore";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import {
   agentTools,

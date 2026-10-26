@@ -20,11 +20,7 @@ import type { RunContext } from "../../runs";
 import type { ToolInput, ToolResult } from "../domain/toolTypes";
 import type { AriaRef, PageStateCapture } from "../../page-state";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import {
-  RefResolutionError,
-  RuntimeStateError,
-  ToolInputError,
-} from "../../shared";
+import { RefResolutionError, ToolInputError } from "../../shared";
 
 /**
  * A Custom Tool: an operation an app registers that applies to one element.
@@ -158,12 +154,11 @@ function elementToolExecution(
 ): PublishedElementTool["execute"] {
   return async (input, context) => {
     const fields = input as Record<string, unknown>;
-    const currentDocument = requireCurrentDocument();
     const target = await resolveElementTarget(
       context.page,
       definition,
       fields[definition.targetField] as string,
-      currentDocument
+      context.document
     );
     if (definition.needsReach)
       await assertReachable(
@@ -173,7 +168,7 @@ function elementToolExecution(
         definition.needsReach
       );
     return runAction(
-      currentDocument,
+      context.document,
       context.cursor,
       {
         tool: definition.name,
@@ -298,51 +293,34 @@ export async function resolveElementTarget(
   return { element: elements[0]!, selector };
 }
 
-export function requireCurrentDocument(): Document {
-  if (typeof document === "undefined")
-    throw new RuntimeStateError(
-      "Structural Ref interactions require a browser Document."
-    );
-  return document;
-}
-
 // --- Registration ---
 
-type CustomToolStore = { registered?: readonly RegisteredElementTool[] };
-
-const customToolStore: CustomToolStore = ((
-  globalThis as typeof globalThis & { __aymeCustomToolStore?: CustomToolStore }
-).__aymeCustomToolStore ??= {});
-
-/** Package-internal: set while a runtime session is active. */
-export function configureCustomTools(
-  customTools: readonly CustomTool[] | undefined
-): void {
-  customToolStore.registered = customTools?.map((customTool) =>
-    registerElementTool(
-      {
-        name: customTool.name,
-        description: customTool.description,
-        label: `run "${customTool.name}" on`,
-        inputSchema: REF_INPUT_SCHEMA,
-        targetField: "ref",
-        perform: ({ ref, element }, _input, { run }) =>
-          customTool.execute(
-            { ref: ref!, element },
-            {
-              run: ((name, input) =>
-                run(name, input)) as CustomToolContext["run"],
-            }
-          ),
-      },
-      customTool.filter ?? (() => true)
-    )
+/**
+ * Package-internal: register a Custom Tool. It takes a Structural Ref as
+ * `ref`, and the Goal Loop may offer it the elements its filter keeps, or
+ * every node with a ref when it has no filter.
+ */
+export function registerCustomTool(
+  customTool: CustomTool
+): RegisteredElementTool {
+  return registerElementTool(
+    {
+      name: customTool.name,
+      description: customTool.description,
+      label: `run "${customTool.name}" on`,
+      inputSchema: REF_INPUT_SCHEMA,
+      targetField: "ref",
+      perform: ({ ref, element }, _input, { run }) =>
+        customTool.execute(
+          { ref: ref!, element },
+          {
+            run: ((name, input) =>
+              run(name, input)) as CustomToolContext["run"],
+          }
+        ),
+    },
+    customTool.filter ?? (() => true)
   );
-}
-
-/** Package-internal: the Custom Tools of the active session, in registration order. */
-export function listCustomTools(): readonly RegisteredElementTool[] {
-  return customToolStore.registered ?? [];
 }
 
 /**

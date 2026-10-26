@@ -11,7 +11,6 @@ import {
   assertAvailable,
   assertRootReachable,
   latestPageStateRef,
-  onPageStateRecorded,
   providePageObjectStructure,
   refFailure,
   resolveRef,
@@ -49,7 +48,6 @@ import {
   type PageObjectConstructor,
 } from "./compiledPoms";
 import type { PageDriver, PageWatch } from "./pageDriver";
-import type { Cursor } from "../../page-state";
 import type { RunContext } from "../../runs";
 
 /**
@@ -226,8 +224,7 @@ export function createPomRegistry(driver: PageDriver) {
     pageWatch = driver.watch(schedulePomMemberProbe);
     // An Availability Reason names the ref a recorded page state may have
     // just given the element in the way, so the tools are read again.
-    stopWatchingPageStates = onPageStateRecorded(
-      document,
+    stopWatchingPageStates = driver.onPageStateRecorded(
       announceObstructedRoots
     );
     providePageObjectStructure(getRegisteredPomStructure);
@@ -607,7 +604,7 @@ function createTool(
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
     ...facts,
-    execute: async (input, { cursor }) => {
+    execute: async (input, context) => {
       let args = input;
       let targetName = tool.name;
       const instances = instancesOf(tool);
@@ -619,7 +616,7 @@ function createTool(
         };
         args = actionArgs;
         const label = `call ${tool.name} on`;
-        const { element } = await resolveRef(ref, label, document);
+        const { element } = await resolveRef(ref, label, context.document);
         const previous = instances.find(
           (instance) => instance.root?.element === element
         );
@@ -638,7 +635,7 @@ function createTool(
         assertAvailable(targetName, availabilityNow(observed, tool.methodName));
       }
       const target = callTarget(driver, targetName, observed);
-      return performPageObjectAction(target, action, args, cursor, targetName);
+      return performPageObjectAction(target, action, args, context, targetName);
     },
   };
   return tool;
@@ -677,8 +674,8 @@ function rootHolds(
 }
 
 /**
- * Performs a Page Object Action for the Run whose Change Record reads from
- * `cursor`. With a root, checks whether a click would reach the root where
+ * Performs a Page Object Action for a Run, on its Document, whose Change
+ * Record reads from its cursor. With a root, checks whether a click would reach the root where
  * the action would find it (ADR-0041): the observation that listed the tool
  * could not tell for a root it had to scroll to.
  */
@@ -686,7 +683,7 @@ async function performPageObjectAction(
   { instance, rootLocator }: PomInstanceObservation,
   tool: ToolManifest,
   args: unknown,
-  cursor: Cursor,
+  { cursor, document: currentDocument }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -695,7 +692,6 @@ async function performPageObjectAction(
       `POM method ${tool.methodName} is not callable.`
     );
 
-  const currentDocument = requireCurrentDocument();
   const parameters = methodArguments(
     tool.parameters,
     argumentValues(tool, args)
@@ -706,14 +702,6 @@ async function performPageObjectAction(
   return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
     method.apply(instance, parameters)
   );
-}
-
-function requireCurrentDocument(): Document {
-  if (typeof document === "undefined")
-    throw new RuntimeStateError(
-      "POM tool execution requires a browser Document."
-    );
-  return document;
 }
 
 /** The values of `tool`'s parameters in `args`, input the runtime checked. */

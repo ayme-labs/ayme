@@ -4,7 +4,8 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "../../page-objects";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
-import { listCustomTools, type CustomTool } from "./elementTools";
+import type { CustomTool } from "./elementTools";
+import { listCustomTools } from "../infrastructure/customToolStore";
 import { errorText } from "../../shared";
 
 type ActionResultShape = {

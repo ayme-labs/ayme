@@ -4,7 +4,6 @@
 // Structural Action. Published only: the Goal Loop never offers it.
 import type { JsonSchema } from "../../shared";
 import {
-  requireCurrentDocument,
   resolveElementTarget,
   type PublishedElementTool,
 } from "./elementTools";
@@ -78,7 +77,7 @@ export const screenshotTool: PublishedElementTool = {
   description:
     "Take a screenshot of the viewport, the full page or one element. To act on the page, use the snapshot's Structural Refs, not the image.",
   inputSchema,
-  execute: async (input, { page }) => {
+  execute: async (input, { page, document: currentDocument }) => {
     const request = screenshotRequest(input as ScreenshotInput, new Date());
     const options = {
       type: request.type,
@@ -94,7 +93,7 @@ export const screenshotTool: PublishedElementTool = {
         page,
         { label: "take a screenshot of", targetField: "target" },
         request.target,
-        requireCurrentDocument()
+        currentDocument
       );
       bytes = await page.locator(target.selector).screenshot(options);
       subject = `element ${request.target}`;

@@ -19,6 +19,8 @@ export type RunContext = {
   readonly run: StartChildRun;
   /** The browser Page the Run acts on: its runtime session's, child Runs included. */
   readonly page: Page;
+  /** The browser Document the Run acts on: the one its page shows. */
+  readonly document: Document;
 };
 
 /**
