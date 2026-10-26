@@ -10,7 +10,10 @@ import {
 } from "../../page-objects";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import {
+  agentTools,
+  firstChoices,
+} from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
 import { getLastGoalLoopRunResult } from "../../testing";
 
@@ -192,21 +195,7 @@ function operations(steps: string[]): GoalLoopDecisionFunction {
   let step = 0;
   return async (request): Promise<DecisionResponse> => {
     if (!("operation" in request.questions))
-      return {
-        model: "typesafe/jev-1.13",
-        answers: Object.fromEntries(
-          Object.entries(request.questions).map(([id, question]) => [
-            id,
-            {
-              type: "choice",
-              choice: Object.keys(
-                (question as { criteria: object }).criteria
-              )[0]!,
-              confidence: 1,
-            },
-          ])
-        ),
-      };
+      return firstChoices(request.questions);
     const operation = steps[Math.min(step++, steps.length - 1)]!;
     const done = operation === "done";
     return {

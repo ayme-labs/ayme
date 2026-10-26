@@ -25,7 +25,10 @@ import {
   resolvePageStateRefs,
 } from "../infrastructure/pageState";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import {
+  agentTools,
+  firstChoices,
+} from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 type ActionResultShape = {
@@ -309,18 +312,7 @@ describe("Interaction history in Chromium", () => {
       request
     ): Promise<DecisionResponse> => {
       if (!("operation" in request.questions))
-        return {
-          model: "typesafe/jev-1.13",
-          answers: {
-            ref: {
-              type: "choice",
-              choice: Object.keys(
-                (request.questions.ref as { criteria: object }).criteria
-              )[0]!,
-              confidence: 1,
-            },
-          },
-        };
+        return firstChoices(request.questions);
       const first = step++ === 0;
       if (!first) agentCursorDuringRun = agentCursor().current();
       return {
@@ -371,18 +363,7 @@ describe("Interaction history in Chromium", () => {
       request
     ): Promise<DecisionResponse> => {
       if (!("operation" in request.questions))
-        return {
-          model: "typesafe/jev-1.13",
-          answers: {
-            ref: {
-              type: "choice",
-              choice: Object.keys(
-                (request.questions.ref as { criteria: object }).criteria
-              )[0]!,
-              confidence: 1,
-            },
-          },
-        };
+        return firstChoices(request.questions);
       const first = step++ === 0;
       // An agent tool call while the run is pending stays the agent's. It
       // waits for the Handover: one top-level Run at a time.
