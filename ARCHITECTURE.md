@@ -187,7 +187,7 @@ in-browser agents and the app's own code call on the running page.
 - **App Process runtime → Ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results
-    - ← Peek Tool calls, the server's token
+    - ← Peek Tool calls, the names of its tools the agent does not see, the server's token
   - Evidence: verified: [packages/mcp/src/process/](packages/mcp/src/process/), [packages/mcp/README.md](packages/mcp/README.md)
 - **Decision Endpoint → Decision model provider**
   - Flows:
