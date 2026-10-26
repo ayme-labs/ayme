@@ -531,6 +531,23 @@ describe("a run's result", () => {
       .toHaveBeenCalledExactlyOnceWith(result);
   });
 
+  it("shows a multi-line string as its lines, but copies the JSON", async () => {
+    const result = JSON.stringify({ structure: "- e5:\n  - main" }, null, 2);
+    renderRuns({ runs: [aRun({ result })] });
+    const run = runsView.run(0);
+    await run.resultToggle.click();
+
+    await expect
+      .poll(() => run.result.textContent())
+      .toBe('{\n  "structure":\n    - e5:\n      - main\n}');
+
+    await run.copyResultButton.click();
+
+    await expect
+      .poll(() => navigator.clipboard.writeText)
+      .toHaveBeenCalledExactlyOnceWith(result);
+  });
+
   it("is copied while collapsed", async () => {
     renderRuns({ runs: [aRun({ result: '"Milk"' })] });
 
