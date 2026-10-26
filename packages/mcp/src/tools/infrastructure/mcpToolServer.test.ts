@@ -34,27 +34,25 @@ afterEach(async () => {
 async function connectAgent() {
   const connection = new AgentConnection();
   const page = connection.attach({ tab: "a", url: "http://x/" }, () => {})!;
-  const context = {
-    connection,
-    pairing: { address: "ws://x", token: "t" },
-    saveImage: async () => "/x",
-  };
   const server = createMcpToolServer({
     name: "ayme",
     version: "0.0.0",
     serverTools: [
-      connectTool(context),
-      listToolsTool(context),
-      callTool(context),
-      {
+      connectTool,
+      listToolsTool,
+      callTool,
+      () => ({
         name: "ayme_noop",
         description: "Does nothing.",
         inputSchema: { type: "object" },
         call: async () => textResult("ok"),
-      },
+      }),
     ],
-    connection,
-    saveImage: async () => "/x",
+    context: {
+      connection,
+      pairing: { address: "ws://x", token: "t" },
+      saveImage: async () => "/x",
+    },
   });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
