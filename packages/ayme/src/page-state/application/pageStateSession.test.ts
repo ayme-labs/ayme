@@ -43,11 +43,22 @@ function capture(
   };
 }
 
+/** A page on which every action starts a full load of `url` at once. */
+const loadingPage = (url: string): ActionPage => ({
+  settle: async () => ({ stable: true }),
+  watchFullLoad: () => ({ started: Promise.resolve(url), stop: () => {} }),
+});
+
 /**
  * A session whose captures are `captures`, in order, the last one repeated;
  * an error is a capture that throws it. `count()` is how many it took.
  */
 function sessionOver(...captures: (PageCapture | Error)[]) {
+  return sessionOn(settledPage, ...captures);
+}
+
+/** `sessionOver` on `page`. */
+function sessionOn(page: ActionPage, ...captures: (PageCapture | Error)[]) {
   let taken = 0;
   const session = new PageStateSession(
     new InteractionHistory({
@@ -60,7 +71,7 @@ function sessionOver(...captures: (PageCapture | Error)[]) {
       if (next instanceof Error) throw next;
       return next;
     },
-    settledPage
+    page
   );
   return { session, count: () => taken };
 }
@@ -309,6 +320,62 @@ describe("runAction", () => {
 
     await expectOneFailedCompletedAction(session);
     expect(count()).toBe(3);
+  });
+
+  it("leaves the cursor where it was when perform throws something that is not an Error", async () => {
+    const { session } = sessionOver(
+      savePage,
+      savePage,
+      capture(
+        '- generic [ref=e1]:\n  - button "Save" [ref=e2]\n  - status [ref=e3]: Failed'
+      )
+    );
+    const reader = cursor();
+    const thrown = { reason: "Save failed." };
+
+    await expect(
+      session.runAction(reader, call, () => {
+        throw thrown;
+      })
+    ).rejects.toBe(thrown);
+
+    expect(thrown).toEqual({ reason: "Save failed." });
+    expect(reader.current()).toBeUndefined();
+  });
+
+  it("answers at once when the action starts a full load, and moves the cursor to the page as it was then", async () => {
+    const { session } = sessionOn(
+      loadingPage("https://app.test/next"),
+      savePage
+    );
+    const reader = cursor();
+
+    await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
+      page_changed: false,
+      settled: false,
+      loading: "https://app.test/next",
+      next: "The page is loading https://app.test/next. Call snapshot next to read the new page.",
+    });
+    expect(reader.current()).toBe(session.history.latestObservation);
+  });
+
+  it("still answers a full load when capturing the page as it goes away throws", async () => {
+    const { session } = sessionOn(
+      loadingPage("https://app.test/next"),
+      savePage,
+      savePage,
+      new Error("The document is gone.")
+    );
+    const reader = cursor();
+
+    await expect(
+      session.runAction(reader, call, () => {})
+    ).resolves.toMatchObject({
+      page_changed: false,
+      settled: false,
+      loading: "https://app.test/next",
+    });
+    expect(reader.current()).toBeUndefined();
   });
 });
 
