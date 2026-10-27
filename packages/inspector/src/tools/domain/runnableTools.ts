@@ -65,7 +65,8 @@ export type ToolSummary = {
  * such as Browser and Custom Tools and the agent's own tools, as the run card runs them,
  * whether or not WebMCP publishes them. A Page Object tool is present when
  * the session lists it, since the session lists every present one; its
- * availability is the session's word.
+ * availability is the session's word. Each tool's description is the one it
+ * is given, on the page or off it.
  */
 export function listRunnableTools(
   registeredPoms: readonly RegisteredPom[],
@@ -79,8 +80,7 @@ export function listRunnableTools(
       tools.set(
         tool.name,
         pageObjectTool(
-          // The session's listing describes it as agents read it.
-          { ...tool, description: listed?.description ?? tool.description },
+          tool,
           listed
             ? {
                 present: true,

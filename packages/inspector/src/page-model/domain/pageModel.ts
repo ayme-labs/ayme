@@ -116,7 +116,9 @@ export type Signature = (
 /**
  * Builds the page model from the registered Page Objects, the live tools
  * (the ones the panel can run now), the Page Object Model definitions
- * snapshot returns, and how to write an action's signature.
+ * snapshot returns, and how to write an action's signature. An action's
+ * description is its registered tool's, which the registrations carry as
+ * agents read it, on the page or off it.
  */
 export function buildPageModel(
   registrations: readonly RegisteredPom[],
@@ -124,9 +126,19 @@ export function buildPageModel(
   definitions: readonly PomDefinition[],
   signature: Signature
 ): PageModel {
+  const descriptions = new Map(
+    registrations.flatMap(({ tools }) =>
+      tools.map((tool) => [tool.name, tool.description] as const)
+    )
+  );
+  // An action the registry has no tool for yet keeps what its author wrote.
+  const describe = (toolName: string, own: string | undefined) =>
+    descriptionOf(
+      descriptions.has(toolName) ? descriptions.get(toolName) : own
+    );
   const objects = registrations.map((registration) =>
     withKeys(
-      pageObject(registration, liveToolNames, signature),
+      pageObject(registration, { liveToolNames, signature, describe }),
       registration.id
     )
   );
@@ -146,9 +158,7 @@ export function buildPageModel(
       const toolName = `${definition.name}.${action.name}`;
       return {
         name: action.name,
-        ...(action.description === undefined
-          ? {}
-          : { description: action.description }),
+        ...describe(toolName, action.description),
         signature: signature(action.inputSchema),
         toolName,
         live: liveToolNames.has(toolName),
@@ -183,16 +193,25 @@ export function* walk(
   }
 }
 
+/** An action's description as an object to spread: none when it has none. */
+function descriptionOf(description: string | undefined) {
+  return description === undefined ? {} : { description };
+}
+
 function pageObject(
   registration: RegisteredPom,
-  liveToolNames: ReadonlySet<string>,
-  signature: Signature
+  {
+    liveToolNames,
+    signature,
+    describe,
+  }: Pick<Context, "liveToolNames" | "signature" | "describe">
 ): UnkeyedNode {
   const { manifest } = registration;
   const context: Context = {
     registration,
     liveToolNames,
     signature,
+    describe,
     components: new Map(
       manifest.components.map((component) => [component.className, component])
     ),
@@ -217,6 +236,11 @@ type Context = {
   registration: RegisteredPom;
   liveToolNames: ReadonlySet<string>;
   signature: Signature;
+  /** An action's description, by its tool's name and its author's text. */
+  describe: (
+    toolName: string,
+    own: string | undefined
+  ) => { description?: string };
   components: ReadonlyMap<string, PomManifest["components"][number]>;
   observations: ReadonlyMap<string, PomMemberObservation>;
 };
@@ -352,9 +376,7 @@ function actionsAt(
 ): ObjectAction[] {
   return tools.map((action) => ({
     name: action.methodName,
-    ...(action.description === undefined
-      ? {}
-      : { description: action.description }),
+    ...context.describe(action.toolName, action.description),
     signature: context.signature(action.parameters),
     toolName: action.toolName,
     live: context.liveToolNames.has(action.toolName),

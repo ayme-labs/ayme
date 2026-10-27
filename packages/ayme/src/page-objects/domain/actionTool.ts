@@ -62,36 +62,56 @@ export function actionFacts(
   };
 }
 
-/** A tool as `agentDescription` reads it. */
+/** A tool as `describeTool` reads it. */
 type DescribedTool = {
   name: string;
   description?: string;
   returnPoms?: readonly string[];
 };
 
+/** Who reads a tool's description. */
+export type DescriptionReader =
+  "ayme-mcp" | "webmcp" | "goal-loop" | "inspector";
+
 /**
- * A tool's description as agents read it: its own, then the Page Objects
- * the page shows afterwards, by class. None when the tool says nothing beyond its name
- * and schema, unless `required`: WebMCP refuses a tool without one, and the
- * Goal Loop's model chooses an operation by it, so they get `Run addItem.`.
+ * Whether a reader needs a description of every tool. WebMCP refuses a tool
+ * without one, and the Goal Loop's model chooses an operation by it. Ayme
+ * MCP allows none, and the Inspector shows what Ayme MCP gives agents.
  */
-export function agentDescription(
+const descriptionRequired = {
+  "ayme-mcp": false,
+  webmcp: true,
+  "goal-loop": true,
+  inspector: false,
+} as const satisfies Record<DescriptionReader, boolean>;
+
+/**
+ * A tool's description as `reader` reads it: its own, then the Page Objects
+ * the page shows afterwards, by class. When the tool says nothing beyond its
+ * name and schema, a reader that requires a description gets `Run addItem.`
+ * and the others get none. A Browser or Custom Tool's description is its own.
+ */
+export function describeTool(
   tool: DescribedTool,
-  options: { required: true }
+  reader: "webmcp" | "goal-loop"
 ): string;
-export function agentDescription(
+export function describeTool(
   tool: DescribedTool,
-  options?: { required: boolean }
+  reader: "ayme-mcp" | "inspector"
 ): string | undefined;
-export function agentDescription(
+export function describeTool(
   tool: DescribedTool,
-  options?: { required: boolean }
+  reader: DescriptionReader
+): string | undefined;
+export function describeTool(
+  tool: DescribedTool,
+  reader: DescriptionReader
 ): string | undefined {
   const parts = tool.description === undefined ? [] : [tool.description];
   if (tool.returnPoms?.length)
     parts.push(`Then shows ${tool.returnPoms.join(" or ")}.`);
   if (parts.length) return parts.join(" ");
-  if (options?.required)
+  if (descriptionRequired[reader])
     return `Run ${tool.name.slice(tool.name.lastIndexOf(".") + 1)}.`;
   return undefined;
 }

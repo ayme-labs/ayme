@@ -21,10 +21,15 @@ import {
 
 import type { ControlState } from "../domain/controlState";
 import { mapTargetsToRefs } from "../domain/targetsByRef";
+import { describeRegisteredPoms } from "./describedTools";
 import { readControls } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
 
 export type RegistrySnapshot = {
+  /**
+   * The registered Page Objects, each tool described as agents read it,
+   * on the page or off it.
+   */
   registeredPoms: readonly RegisteredPom[];
   /** The Page Object Model definitions snapshot returns. */
   pomDefinitions: readonly PomDefinition[];
@@ -59,7 +64,7 @@ const STRUCTURE_POLL_MS = 2000;
 
 function readRegistry(): RegistrySnapshot {
   return {
-    registeredPoms: listRegisteredPoms(),
+    registeredPoms: describeRegisteredPoms(listRegisteredPoms()),
     pomDefinitions: readPomDefinitions(),
     toolInstances: listRootedToolInstances(),
   };

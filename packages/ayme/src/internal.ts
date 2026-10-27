@@ -18,8 +18,8 @@ export {
   subscribeToAgentImageRuns,
 } from "./tools";
 export {
-  agentDescription,
   createAymeRuntime,
+  describeTool,
   getPomDefinitions,
   inputSchemaFor,
   listAvailablePomTools,

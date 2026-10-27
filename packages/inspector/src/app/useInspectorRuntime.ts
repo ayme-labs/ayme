@@ -18,7 +18,7 @@ import {
 } from "../page-model";
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
-import { usePageLook } from "../shared";
+import { describeLiveTools, usePageLook } from "../shared";
 import { useRuns } from "../runs";
 import { itemsOf } from "./collectionItems";
 
@@ -74,7 +74,12 @@ export function useInspectorRuntime({
     onSettled: onRunSettled,
     itemOf,
   });
-  const tools = useLiveTools();
+  const liveTools = useLiveTools();
+  // Each live tool described as agents read it, as the registered ones are.
+  const tools = useMemo(
+    () => ({ ...liveTools, live: describeLiveTools(liveTools.live) }),
+    [liveTools]
+  );
 
   const { projected, targetsByRef, controls, ...pageState } =
     inspector.pageState;
@@ -145,7 +150,8 @@ export function useInspectorRuntime({
     members,
     /**
      * The tools the panel can run now: `tools.live`, every tool the session
-     * lists in publication order, published or not, available or not;
+     * lists in publication order, published or not, available or not, each
+     * described as agents read it;
      * `tools.appProcess`, the tools of
      * the App Processes paired beside the page, run through the agent's
      * Ayme MCP server;

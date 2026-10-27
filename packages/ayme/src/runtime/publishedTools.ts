@@ -45,7 +45,7 @@ export type PublishedToolGroup =
 /**
  * A published tool, for reading only. A Page Object Tool's description is
  * only what its author wrote, and none when there is nothing to say;
- * `agentDescription` makes the text an agent reads from it.
+ * `describeTool` makes the text each reader reads from it.
  */
 export type PublishedToolInfo = Readonly<{
   name: string;

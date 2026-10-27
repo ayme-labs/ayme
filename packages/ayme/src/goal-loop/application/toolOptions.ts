@@ -1,5 +1,5 @@
 import {
-  agentDescription,
+  describeTool,
   listAvailablePomTools,
   listRootedToolInstances,
 } from "../../page-objects";
@@ -59,7 +59,7 @@ export function buildToolOptions(on: ReachOn): ToolOption[] {
     return {
       name: t.name,
       className: t.className,
-      description: agentDescription(t, { required: true }),
+      description: describeTool(t, "goal-loop"),
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown, run: StartChildRun) =>
         run(
