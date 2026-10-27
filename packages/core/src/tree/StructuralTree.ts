@@ -635,11 +635,46 @@ export class StructuralTree {
       }
     };
 
-    const markNodeMatches = (
+    // A pass compares against the before siblings unmatched when it starts.
+    const unmatchedBeforeNodeIndices = () =>
+      beforeChildren.flatMap((child, beforeIndex) =>
+        beforeMatches.has(beforeIndex) || typeof child === "string"
+          ? []
+          : [beforeIndex]
+      );
+
+    const scanUnmatched = (
       comparator: (
         beforeNode: StructuralNode,
         afterNode: StructuralNode
-      ) => boolean,
+      ) => boolean
+    ) => {
+      const beforeIndices = unmatchedBeforeNodeIndices();
+      return (afterNode: StructuralNode) =>
+        beforeIndices.filter((beforeIndex) => {
+          const beforeNode = beforeChildren[beforeIndex] as StructuralNode;
+          return (
+            StructuralTree._refsMayPair(beforeNode, afterNode, context) &&
+            comparator(beforeNode, afterNode)
+          );
+        });
+    };
+
+    // A ref pairs only with the siblings carrying it, so they are looked up.
+    const lookUpSameRef = () => {
+      const beforeIndicesByRef = new Map<AriaRef, number[]>();
+      for (const beforeIndex of unmatchedBeforeNodeIndices()) {
+        const { ref } = beforeChildren[beforeIndex] as StructuralNode;
+        const beforeIndices = beforeIndicesByRef.get(ref) ?? [];
+        beforeIndices.push(beforeIndex);
+        beforeIndicesByRef.set(ref, beforeIndices);
+      }
+      return (afterNode: StructuralNode) =>
+        beforeIndicesByRef.get(afterNode.ref) ?? [];
+    };
+
+    const markNodeMatches = (
+      candidatesFor: (afterNode: StructuralNode) => number[],
       options?: { onMatch: (beforeNode: StructuralNode) => void }
     ) => {
       const candidatesByAfterIndex = new Map<number, number[]>();
@@ -653,14 +688,7 @@ export class StructuralTree {
         const afterChild = afterChildren[afterIndex];
         if (afterChild === undefined || typeof afterChild === "string")
           continue;
-        const candidates = StructuralTree._findNodeCandidates(
-          beforeChildren,
-          beforeMatches,
-          afterChild,
-          (beforeNode, afterNode) =>
-            StructuralTree._refsMayPair(beforeNode, afterNode, context) &&
-            comparator(beforeNode, afterNode)
-        );
+        const candidates = candidatesFor(afterChild);
         candidatesByAfterIndex.set(afterIndex, candidates);
         for (const beforeIndex of candidates) {
           afterCandidateCountsByBeforeIndex.set(
@@ -702,25 +730,28 @@ export class StructuralTree {
 
     markStringMatches();
     // A stable aria ref is authoritative even when the element's role or other attributes change.
+    markNodeMatches(lookUpSameRef(), {
+      onMatch: (beforeNode) => context.consumedBeforeRefs.add(beforeNode.ref),
+    });
     markNodeMatches(
-      (beforeNode, afterNode) => beforeNode.ref === afterNode.ref,
-      {
-        onMatch: (beforeNode) => context.consumedBeforeRefs.add(beforeNode.ref),
-      }
-    );
-    markNodeMatches((beforeNode, afterNode) =>
-      beforeNode.isDeepEqual(afterNode)
+      scanUnmatched((beforeNode, afterNode) =>
+        beforeNode.isDeepEqual(afterNode)
+      )
     );
     // A name appearing or disappearing can be accessibility enrichment rather than a replacement.
     // Keep this exception deliberately narrow: it needs real, deeply equal child content and a unique
     // sibling candidate. A non-empty rename remains add/remove, as do leaf and ambiguous candidates.
     markNodeMatches(
-      (beforeNode, afterNode) =>
-        StructuralTree._isNamePresenceTransition(beforeNode, afterNode) &&
-        beforeNode.isDeepEqualExceptName(afterNode)
+      scanUnmatched(
+        (beforeNode, afterNode) =>
+          StructuralTree._isNamePresenceTransition(beforeNode, afterNode) &&
+          beforeNode.isDeepEqualExceptName(afterNode)
+      )
     );
-    markNodeMatches((beforeNode, afterNode) =>
-      beforeNode.isShallowEqual(afterNode)
+    markNodeMatches(
+      scanUnmatched((beforeNode, afterNode) =>
+        beforeNode.isShallowEqual(afterNode)
+      )
     );
 
     const afterResults: NodeMatch[] = afterChildren.map(
@@ -897,30 +928,6 @@ export class StructuralTree {
       if (beforeMatches.has(beforeIndex)) continue;
       if (beforeChildren[beforeIndex] === afterChild)
         candidates.push(beforeIndex);
-    }
-    return candidates;
-  }
-
-  private static _findNodeCandidates(
-    beforeChildren: StructuralChild[],
-    beforeMatches: Set<number>,
-    afterNode: StructuralNode,
-    comparator: (
-      beforeNode: StructuralNode,
-      afterNode: StructuralNode
-    ) => boolean
-  ): number[] {
-    const candidates: number[] = [];
-    for (
-      let beforeIndex = 0;
-      beforeIndex < beforeChildren.length;
-      beforeIndex += 1
-    ) {
-      if (beforeMatches.has(beforeIndex)) continue;
-      const beforeChild = beforeChildren[beforeIndex];
-      if (beforeChild === undefined || typeof beforeChild === "string")
-        continue;
-      if (comparator(beforeChild, afterNode)) candidates.push(beforeIndex);
     }
     return candidates;
   }
