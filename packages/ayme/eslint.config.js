@@ -85,6 +85,21 @@ function selectorRegex(regex) {
   return `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
 }
 
+// Ayme's package name and its own build output reach the entries past every
+// rule here, so no file under src/, tests included, imports either.
+const ownPackage = [
+  {
+    regex: "^@ayme-dev/ayme(/.*)?$",
+    message:
+      "Ayme's source never imports Ayme by its package name: import the module by its path.",
+  },
+  {
+    regex: String.raw`^\.\.?/(.*/)?dist(/.*)?$`,
+    message:
+      "Ayme's source never imports its own build output: import the module by its path in src/.",
+  },
+];
+
 function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
   const patterns = [
     {
@@ -97,12 +112,6 @@ function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
       message:
         "A layered slice has no index.ts: import the front door of the layer you use, such as ../page-state/domain.",
     },
-    // The package name reaches the entries past every rule here.
-    {
-      regex: "^@ayme-dev/ayme(/.*)?$",
-      message:
-        "Ayme's source never imports Ayme by its package name: import the module by its path.",
-    },
     ...(tests
       ? []
       : [
@@ -113,7 +122,19 @@ function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
         ]),
     ...restricted,
   ];
-  const ignored = [...(tests ? [] : testCode), ...ignores];
+  return restrictedImports(files, patterns, [
+    ...(tests ? [] : testCode),
+    ...ignores,
+  ]);
+}
+
+/**
+ * Refuses imports matching `patterns` in `files`, for every kind of import.
+ * A later block's patterns replace an earlier one's for its files, so each
+ * block refuses ownPackage too.
+ */
+function restrictedImports(files, ownPatterns, ignored = []) {
+  const patterns = [...ownPatterns, ...ownPackage];
   return {
     files,
     ...(ignored.length ? { ignores: ignored } : {}),
@@ -300,6 +321,8 @@ export default [
       ],
     },
   },
+  // Every file under src/, in a slice or not; the blocks below add their own.
+  restrictedImports([sourceFiles], []),
   ...slices.flatMap((slice) => [
     frontDoors(slice, [`src/${slice}/**/*.ts`], { tests: false }),
     frontDoors(

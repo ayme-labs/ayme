@@ -265,6 +265,58 @@ const refusals: [path: string, code: string, message: string][] = [
     'export { createAyme } from "@ayme-dev/ayme";',
     "Ayme's source never imports Ayme by its package name",
   ],
+  // ...from any file under src/, inside a known slice or not.
+  [
+    "src/other/misplaced.ts",
+    'export { listRegisteredPoms } from "@ayme-dev/ayme/internal";',
+    "Ayme's source never imports Ayme by its package name",
+  ],
+  [
+    "src/other/misplaced.ts",
+    'export const load = () => import("@ayme-dev/ayme");',
+    "Ayme's source never imports Ayme by its package name",
+  ],
+  [
+    "src/other/misplaced.ts",
+    'import type { Ayme } from "@ayme-dev/ayme";\nexport type Session = Ayme;',
+    "Ayme's source never imports Ayme by its package name",
+  ],
+  [
+    "src/other/misplaced.test.ts",
+    'export type Session = import("@ayme-dev/ayme/testing").GoalLoopRunResult;',
+    "Ayme's source never imports Ayme by its package name",
+  ],
+  // Ayme's own build output, which would pass every rule above too.
+  [
+    "src/goal-loop/domain/misplaced.ts",
+    'export { listRegisteredPoms } from "../../../dist/internal.mjs";',
+    "Ayme's source never imports its own build output",
+  ],
+  [
+    "src/tools/application/misplaced.ts",
+    'export const load = () => import("../../../dist/index.mjs");',
+    "Ayme's source never imports its own build output",
+  ],
+  [
+    "src/runtime/misplaced.ts",
+    'import type { Ayme } from "../../dist/index.mjs";\nexport type Session = Ayme;',
+    "Ayme's source never imports its own build output",
+  ],
+  [
+    "src/page-state/domain/misplaced.test.ts",
+    'export type Session = import("../../../dist/index.mjs").Ayme;',
+    "Ayme's source never imports its own build output",
+  ],
+  [
+    "src/misplaced.ts",
+    'export { createDecisionEndpoint } from "../dist/server.mjs";',
+    "Ayme's source never imports its own build output",
+  ],
+  [
+    "src/other/misplaced.ts",
+    'export { listRegisteredPoms } from "../../dist/internal.mjs";',
+    "Ayme's source never imports its own build output",
+  ],
 ];
 
 // ESLint loads the package config and its import resolver on first use.
