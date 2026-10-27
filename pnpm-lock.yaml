@@ -456,8 +456,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/mcp
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#9f39340948ad0565df835d003c62522e18fa3593
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/9f39340948ad0565df835d003c62522e18fa3593(@playwright/test@1.64.0)
+        specifier: github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb(@playwright/test@1.64.0)
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -742,8 +742,8 @@ importers:
         specifier: workspace:*
         version: link:../mcp
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#9f39340948ad0565df835d003c62522e18fa3593
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/9f39340948ad0565df835d003c62522e18fa3593(@playwright/test@1.64.0)
+        specifier: github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb(@playwright/test@1.64.0)
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
@@ -944,8 +944,8 @@ importers:
         specifier: workspace:*
         version: link:../eslint-config
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#9f39340948ad0565df835d003c62522e18fa3593
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/9f39340948ad0565df835d003c62522e18fa3593(@playwright/test@1.64.0)
+        specifier: github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb(@playwright/test@1.64.0)
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
@@ -1617,14 +1617,14 @@ packages:
       }
     engines: { node: ^22.13.0 || >=24.0.0 }
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/9f39340948ad0565df835d003c62522e18fa3593":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb":
     resolution:
       {
         gitHosted: true,
-        integrity: sha512-ZhVmDDHlvO7lJmod5jJq7FXendHC8beBTGOxy+41+T22K3JWbW9xO6KHVz0DYHtc+a9z/mdkBS/UabX2PIfFiw==,
-        tarball: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/9f39340948ad0565df835d003c62522e18fa3593,
+        integrity: sha512-63I2P8+8akGbyoEsbLUbdJs/Meq602aujsTcKdLXL+x6tK0Ohum20FPd6APURPI6QhUN+gnut62w/lNQUKN8tA==,
+        tarball: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb,
       }
-    version: 0.9.3
+    version: 0.9.4
     peerDependencies:
       "@playwright/test": ">=1.29 <1.63"
 
@@ -14811,7 +14811,7 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/9f39340948ad0565df835d003c62522e18fa3593(@playwright/test@1.64.0)":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb(@playwright/test@1.64.0)":
     dependencies:
       "@playwright/test": 1.64.0
 
