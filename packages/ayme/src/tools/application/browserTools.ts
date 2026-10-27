@@ -4,8 +4,11 @@
 // descriptions are Ayme's own.
 import type { Locator } from "@playwright/test";
 import type { JsonSchema } from "../../shared";
-import { assertReachable, type ElementInput } from "../../page-state";
-import type { RunContext } from "../../runs";
+import {
+  assertReachable,
+  type ElementInput,
+} from "../../page-state/infrastructure";
+import type { RunContext } from "../../runs/application";
 import {
   registerElementTool,
   resolveElementTarget,

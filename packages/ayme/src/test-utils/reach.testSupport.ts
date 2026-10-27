@@ -2,7 +2,7 @@
  * Test support: the Reach adapter of unit tests, which have no layout to
  * measure. Chromium's geometry is covered by the browser tests.
  */
-import type { Reach, ReachMeasurement } from "../page-state";
+import type { Reach, ReachMeasurement } from "../page-state/application";
 
 const reached: ReachMeasurement = { present: true, available: true };
 

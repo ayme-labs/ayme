@@ -3,7 +3,8 @@
  * Goal Loop decision function that runs given operations.
  */
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
-import type { DecisionResponse, GoalLoopDecisionFunction } from "../goal-loop";
+import type { DecisionResponse } from "../goal-loop/domain";
+import type { GoalLoopDecisionFunction } from "../goal-loop/application";
 import { callers, RuntimeStateError } from "../shared";
 import { getStartedAyme } from "../runtime";
 

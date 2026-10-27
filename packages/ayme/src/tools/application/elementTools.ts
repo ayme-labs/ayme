@@ -8,16 +8,17 @@ import {
 import {
   assertReachable,
   reaches,
-  refHint,
-  selectorFailure,
   type ElementInput,
+} from "../../page-state/infrastructure";
+import { refHint, selectorFailure } from "../../page-state/domain";
+import {
   type PageStateSession,
   type Reach,
-} from "../../page-state";
+} from "../../page-state/application";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "../../shared";
-import type { RunContext } from "../../runs";
+import type { RunContext } from "../../runs/application";
 import type { ToolInput, ToolResult } from "../domain/toolTypes";
-import type { AriaRef, PageStateCapture } from "../../page-state";
+import type { AriaRef, PageStateCapture } from "../../page-state/domain";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { RefResolutionError, ToolInputError } from "../../shared";
 

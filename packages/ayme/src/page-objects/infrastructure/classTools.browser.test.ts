@@ -7,7 +7,7 @@ import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { startSession } from "../../test-utils/session.testSupport";
 import { callers, type PomManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
-import { geometryReach } from "../../page-state";
+import { geometryReach } from "../../page-state/infrastructure";
 
 it.each([false, true])(
   "withholds a root-less child repeated through a recursive rooted class (collection: %s)",
@@ -212,7 +212,7 @@ it("offers and calls every recursive instance, coalescing members on the same ro
   try {
     session.register(TreePage);
     await probeRegisteredPomMembers();
-    const { buildToolOptions } = await import("../../goal-loop");
+    const { buildToolOptions } = await import("../../goal-loop/application");
     const offered = buildToolOptions({ page, reach: geometryReach }).find(
       ({ key }) => key === "Node.open"
     )!.tool.args[0]!.closedSet;

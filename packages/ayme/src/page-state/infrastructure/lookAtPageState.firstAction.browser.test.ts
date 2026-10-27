@@ -2,10 +2,8 @@ import { afterEach, expect, it } from "vitest";
 
 import type { PomManifest } from "../../shared";
 import { lookAtPageStateForDocument } from "./pageState";
-import {
-  probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "../../page-objects";
+import { probeRegisteredPomMembers } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import { startAgentSession } from "../test-utils/lookAtPageState.testSupport";
 
 // Its own file: the agent's first action must be the document's first

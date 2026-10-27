@@ -2,7 +2,7 @@
 // Browser Tools in application, because it includes generate_locator and
 // press_key, which use Playwright Lite, and the navigation tools, built on the
 // router store.
-import { ACTION_RESULT_NOTE } from "../../page-state";
+import { ACTION_RESULT_NOTE } from "../../page-state/domain";
 import {
   fillFormTool,
   SINGLE_ELEMENT_TOOLS,

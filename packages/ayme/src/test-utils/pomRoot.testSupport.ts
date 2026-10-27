@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 
-import { ayme } from "../page-objects";
+import { ayme } from "../page-objects/domain";
 
 /**
  * The root predicate of a test model whose `root` member is its Page Object

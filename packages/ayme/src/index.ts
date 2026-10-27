@@ -23,16 +23,17 @@ export type {
   RuntimeStateErrorCode,
   ToolDescriptor,
 } from "./shared";
-export { ayme, createPage } from "./page-objects";
+export { ayme } from "./page-objects/domain";
+export { createPage } from "./page-objects/infrastructure";
 export type {
   ActionAvailability,
   AvailabilityPredicate,
   AymeActionOptions,
   AymeModelOptions,
-  CreatePageOptions,
   PresencePredicate,
   RootPredicate,
-} from "./page-objects";
+} from "./page-objects/domain";
+export type { CreatePageOptions } from "./page-objects/infrastructure";
 export { createAyme } from "./runtime";
 export type {
   AgentConnectionOptions,
@@ -46,26 +47,30 @@ export type {
   AymeWebMcpPublicationStatus,
   ToolInfo,
 } from "./runtime";
-export { decisionEndpoint, DecisionEndpointError } from "./goal-loop";
+export { decisionEndpoint } from "./goal-loop/infrastructure";
+export { DecisionEndpointError } from "./goal-loop/domain";
 export type {
   DecisionEndpointErrorCode,
-  DecisionEndpointOptions,
   DecisionRequest,
   DecisionResponse,
-  GoalLoopDecisionFunction,
-} from "./goal-loop";
-export type { AymeRuns, Interaction, Run, ToolRunOptions } from "./runs";
+} from "./goal-loop/domain";
+export type { DecisionEndpointOptions } from "./goal-loop/infrastructure";
+export type { GoalLoopDecisionFunction } from "./goal-loop/application";
+export type { AymeRuns, Run, ToolRunOptions } from "./runs/application";
+export type { Interaction } from "./runs/domain";
 export type {
   BuiltInTools,
+  PageContextPayload,
+  ToolInput,
+  ToolResult,
+} from "./tools/domain";
+export type {
   CustomTool,
   CustomToolContext,
   PageContext,
-  PageContextPayload,
   PeekRead,
   PeekResult,
-  ToolInput,
-  ToolResult,
-} from "./tools";
+} from "./tools/application";
 export type {
   ActionFailure,
   ActionResult,
@@ -73,4 +78,4 @@ export type {
   AymeNode,
   PageState,
   RefResolution,
-} from "./page-state";
+} from "./page-state/domain";

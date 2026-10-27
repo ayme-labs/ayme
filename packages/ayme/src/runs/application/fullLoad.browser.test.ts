@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createPage, registerCompiledPom } from "../../page-objects";
+import { createPage } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import {
   agentTools,
   operations,

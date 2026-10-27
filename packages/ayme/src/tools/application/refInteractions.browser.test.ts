@@ -7,9 +7,9 @@ import {
   createPage,
   listAvailablePomTools,
   probeRegisteredPomMembers,
-  registerCompiledPom,
   registerPageObject,
-} from "../../page-objects";
+} from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 
 describe("Structural Ref interactions in Chromium", () => {
   afterEach(() => {

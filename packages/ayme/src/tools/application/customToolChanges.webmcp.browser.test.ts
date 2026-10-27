@@ -3,7 +3,8 @@ import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
-import { ayme as model, registerCompiledPom } from "../../page-objects";
+import { ayme as model } from "../../page-objects/domain";
+import { registerCompiledPom } from "../../page-objects/application";
 import {
   createAyme,
   createPage,

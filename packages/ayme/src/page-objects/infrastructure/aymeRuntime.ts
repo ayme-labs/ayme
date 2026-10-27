@@ -1,4 +1,4 @@
-import { registerRefSelectorEngine } from "../../page-state";
+import { registerRefSelectorEngine } from "../../page-state/infrastructure";
 import { RuntimeStateError } from "../../shared";
 import { createPage } from "./browserPage";
 import { resetRegisteredPoms } from "./registry";

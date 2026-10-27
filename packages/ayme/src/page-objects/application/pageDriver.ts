@@ -1,5 +1,5 @@
 import type { Locator } from "@playwright/test";
-import type { LatestRefLookup } from "../../page-state";
+import type { LatestRefLookup } from "../../page-state/domain";
 import type { ObservedPomRoot } from "../domain/pomInstance";
 
 /**

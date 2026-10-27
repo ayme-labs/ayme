@@ -180,6 +180,45 @@ test("a package's slice policy holds alongside the layer rule", async () => {
   );
 });
 
+test("an exception lets one file use one module against the layer order", async () => {
+  const excepted = new ESLint({
+    cwd: packageRoot,
+    overrideConfigFile: true,
+    overrideConfig: [
+      { files: ["**/*.ts"], languageOptions: { parser: tseslint.parser } },
+      ...horizontalBoundaries({
+        packageRoot,
+        enforcedSlices: ["runs"],
+        exceptions: [
+          {
+            from: "src/runs/domain/file.ts",
+            to: "src/runs/infrastructure/useRuns.ts",
+          },
+        ],
+      }),
+    ],
+  });
+  const refusals = async (from, specifier) => {
+    const [result] = await excepted.lintText(
+      `import "${specifier}";\nexport {};\n`,
+      { filePath: join(packageRoot, from) }
+    );
+    return result.messages.map((message) => message.ruleId);
+  };
+  assert.deepEqual(
+    await refusals("src/runs/domain/file.ts", "../infrastructure/useRuns"),
+    []
+  );
+  assert.deepEqual(
+    await refusals("src/runs/domain/file.ts", "../application/startRun"),
+    ["horizontal-boundaries/dependencies"]
+  );
+  assert.deepEqual(
+    await refusals("src/runs/domain/other.ts", "../infrastructure/useRuns"),
+    ["horizontal-boundaries/dependencies"]
+  );
+});
+
 test("it needs literal slice names", () => {
   assert.throws(() =>
     horizontalBoundaries({ packageRoot, enforcedSlices: [] })

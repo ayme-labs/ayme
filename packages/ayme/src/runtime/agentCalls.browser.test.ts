@@ -4,7 +4,7 @@ import { ayme } from "../test-utils/agentCalls.testSupport";
 import { RefResolutionError } from "../index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage as createPlaywrightLitePage } from "@ayme-dev/playwright-lite";
-import { createAymeRuntime, createPage } from "../page-objects";
+import { createAymeRuntime, createPage } from "../page-objects/infrastructure";
 
 describe("the Ayme page state helper in Chromium", () => {
   it("resolves live elements and retargets historical refs through replacements", async () => {

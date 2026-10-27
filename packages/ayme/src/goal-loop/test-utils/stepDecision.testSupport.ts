@@ -11,8 +11,8 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
 import type { DecisionRequest, DecisionResponse } from "../domain/decisionWire";
-import type { PageStateCapture } from "../../page-state";
-import type { RootedToolInstance } from "../../page-objects";
+import type { PageStateCapture } from "../../page-state/domain";
+import type { RootedToolInstance } from "../../page-objects/application";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,

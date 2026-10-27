@@ -8,8 +8,8 @@ import {
   getInteractionHistory,
   latestPageStateRef,
   onPageStateRecorded,
-  type Reach,
-} from "../../page-state";
+} from "../../page-state/infrastructure";
+import { type Reach } from "../../page-state/application";
 import { onlyHitTestMarks } from "../../shared";
 import type { PageDriver } from "../application/pageDriver";
 import { observePomRoot } from "./pomRootObservation";

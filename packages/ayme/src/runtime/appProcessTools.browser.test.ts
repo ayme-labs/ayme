@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { createPage, registerCompiledPom } from "../page-objects";
+import { createPage } from "../page-objects/infrastructure";
+import { registerCompiledPom } from "../page-objects/application";
 import type { Page } from "@playwright/test";
 
 import { callers } from "../shared";

@@ -1,26 +1,24 @@
 import type { JsonSchema } from "../shared";
-import { getPursueGoalTool, type GoalTool } from "../goal-loop";
+import { getPursueGoalTool } from "../goal-loop/infrastructure";
+import { type GoalTool } from "../goal-loop/application";
 import {
   acceptedRefNodes,
   getPageContextTool,
+  type PeekTool,
+  type PublishedElementTool,
+  type ReachOn,
+} from "../tools/application";
+import {
   listCustomTools,
   listElementTools,
   listPeekTools,
   listPublishedBrowserTools,
-  type PeekTool,
-  type PublishedElementTool,
-  type ReachOn,
-} from "../tools";
-import {
-  lookAtPageStateForDocument,
-  type AriaRef,
-  type PageStateCapture,
-} from "../page-state";
-import {
-  listRegisteredPomTools,
-  type CallerAwarePomTool,
-} from "../page-objects";
-import type { ToolAvailability } from "../page-state";
+} from "../tools/infrastructure";
+import { lookAtPageStateForDocument } from "../page-state/infrastructure";
+import { type AriaRef, type PageStateCapture } from "../page-state/domain";
+import { listRegisteredPomTools } from "../page-objects/infrastructure";
+import { type CallerAwarePomTool } from "../page-objects/application";
+import type { ToolAvailability } from "../page-state/domain";
 import { RuntimeStateError } from "../shared";
 
 /**

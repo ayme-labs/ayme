@@ -8,14 +8,14 @@ import type {
   JsonValue,
   ToolDescriptor,
 } from "../../shared";
-import type { ActionFailure, ActionResult } from "../../page-state";
-import { forkCursor, readRenderedChange } from "../../page-state";
-import type { RunContext, StartChildRun } from "../../runs";
+import type { ActionFailure, ActionResult } from "../../page-state/domain";
+import { forkCursor, readRenderedChange } from "../../page-state/domain";
+import type { RunContext, StartChildRun } from "../../runs/application";
 import {
   getPomDefinitions,
   probeRegisteredPomMembers,
-  renderPomDefinitions,
-} from "../../page-objects";
+} from "../../page-objects/infrastructure";
+import { renderPomDefinitions } from "../../page-objects/domain";
 import type { GoalLoopOperation } from "../domain/goalLoopOperations";
 import { buildToolOptions } from "./toolOptions";
 import { MAX_GOAL_VALUES } from "../domain/goalLoopQuestions";

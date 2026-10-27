@@ -4,8 +4,8 @@
  * session's `pom.register` and `pom.unregister`.
  */
 import type { Page } from "@playwright/test";
-import { createPage } from "../page-objects";
-import type { Reach } from "../page-state";
+import { createPage } from "../page-objects/infrastructure";
+import type { Reach } from "../page-state/application";
 import { createAyme, measureReachWith, type AymePage } from "../runtime";
 
 /**

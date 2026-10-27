@@ -4,20 +4,23 @@ import type { Page } from "@playwright/test";
 import {
   createPage,
   probeRegisteredPomMembers,
+} from "../../page-objects/infrastructure";
+import {
   registerCompiledPom,
   type PageObjectConstructor,
-} from "../../page-objects";
+} from "../../page-objects/application";
 import type { PomManifest } from "../../shared";
 import type { CustomTool } from "./elementTools";
 import { AymeError, ToolInputError } from "../../shared";
-import { buildToolOptions, planArguments } from "../../goal-loop";
+import { buildToolOptions } from "../../goal-loop/application";
+import { planArguments } from "../../goal-loop/domain";
 import { getPomDefinitionText } from "./pageContext";
+import { type AriaRef } from "../../page-state/domain";
 import {
-  type AriaRef,
   geometryReach,
   getInteractionHistory,
   lookAtPageStateForDocument,
-} from "../../page-state";
+} from "../../page-state/infrastructure";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 import {
   agentTools,

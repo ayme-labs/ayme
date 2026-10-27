@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
-import { createPage, registerCompiledPom } from "../../page-objects";
+import { createPage } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import type { PomManifest } from "../../shared";
 import { errorText } from "../../shared";
-import { buildToolOptions } from "../../goal-loop";
+import { buildToolOptions } from "../../goal-loop/application";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,
@@ -13,7 +14,10 @@ import {
   withoutElement,
 } from "../test-utils/playwrightMcp.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
-import { geometryReach, lookAtPageStateForDocument } from "../../page-state";
+import {
+  geometryReach,
+  lookAtPageStateForDocument,
+} from "../../page-state/infrastructure";
 import { createAyme, listElementToolTargets, type Ayme } from "../../runtime";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 

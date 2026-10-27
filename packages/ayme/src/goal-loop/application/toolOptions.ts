@@ -1,9 +1,10 @@
+import { describeTool } from "../../page-objects/domain";
 import {
-  describeTool,
   listAvailablePomTools,
   listRootedToolInstances,
-} from "../../page-objects";
-import { listElementTools, NAVIGATION_TOOLS, type ReachOn } from "../../tools";
+} from "../../page-objects/infrastructure";
+import { listElementTools, NAVIGATION_TOOLS } from "../../tools/infrastructure";
+import { type ReachOn } from "../../tools/application";
 import {
   requiredParamsOf,
   specsOfRootedTool,
@@ -13,7 +14,7 @@ import {
   type GoalLoopOperation,
   type ToolOption,
 } from "../domain/goalLoopOperations";
-import type { StartChildRun } from "../../runs";
+import type { StartChildRun } from "../../runs/application";
 
 // The Goal Loop's operations list, read from the runtime at each step.
 

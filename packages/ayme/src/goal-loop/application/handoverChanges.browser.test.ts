@@ -3,11 +3,9 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import type { Handover, PomManifest, ToolManifest } from "../../shared";
 import type { DecisionResponse } from "../domain/decisionWire";
-import {
-  ayme as model,
-  createPage,
-  registerCompiledPom,
-} from "../../page-objects";
+import { ayme as model } from "../../page-objects/domain";
+import { createPage } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { configureGoalLoop } from "../infrastructure/goalLoopStore";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";

@@ -57,11 +57,25 @@ const testCode = [
   "src/**/test-utils/**",
 ];
 
-/** Relative imports beneath another slice, past its front door (its index.ts). */
+// A layered slice has a front door, an index.ts, in each layer folder that
+// other code uses, so the layer rule judges an import through it by its
+// layer. An unlayered slice's front door is its own index.ts.
+const layers = ["domain", "application", "infrastructure"];
+const index = String.raw`index(\.[jt]s)?`;
+
+/** Relative imports beneath another slice, past its front doors. */
 function deepImport(slice) {
-  const others = slices.filter((other) => other !== slice);
-  return `^\\.\\.?/(.*/)?(${others.join("|")})/(?!index(\\.[jt]s)?$)`;
+  const others = (list) => list.filter((other) => other !== slice).join("|");
+  const unlayered = others(slices.filter((s) => !layeredSlices.includes(s)));
+  const layered = others(layeredSlices);
+  return [
+    String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$)`,
+    String.raw`^\.\.?/(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
+  ].join("|");
 }
+
+/** Relative imports of a layered slice's own index.ts, which it does not have. */
+const layeredSliceIndex = String.raw`^\.\.?/(.*/)?(${layeredSlices.join("|")})(/${index})?$`;
 
 /** Relative imports of test code: a test-utils folder, a test or a harness. */
 const testCodeImport = String.raw`^\.\.?/(.*/)?(test-utils(/.*)?|[^/]+\.(test|testSupport)(\.[jt]s)?)$`;
@@ -71,11 +85,32 @@ function selectorRegex(regex) {
   return `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
 }
 
+// Ayme's package name and its own build output reach the entries past every
+// rule here, so no file under src/, tests included, imports either.
+const ownPackage = [
+  {
+    regex: "^@ayme-dev/ayme(/.*)?$",
+    message:
+      "Ayme's source never imports Ayme by its package name: import the module by its path.",
+  },
+  {
+    regex: String.raw`^\.\.?/(.*/)?dist(/.*)?$`,
+    message:
+      "Ayme's source never imports its own build output: import the module by its path in src/.",
+  },
+];
+
 function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
   const patterns = [
     {
       regex: deepImport(slice),
-      message: "Import another slice through its index.ts.",
+      message:
+        "Import another slice through its front door: the index.ts of the layer you use in a layered slice, such as ../page-state/domain, or else the slice's index.ts.",
+    },
+    {
+      regex: layeredSliceIndex,
+      message:
+        "A layered slice has no index.ts: import the front door of the layer you use, such as ../page-state/domain.",
     },
     ...(tests
       ? []
@@ -87,7 +122,19 @@ function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
         ]),
     ...restricted,
   ];
-  const ignored = [...(tests ? [] : testCode), ...ignores];
+  return restrictedImports(files, patterns, [
+    ...(tests ? [] : testCode),
+    ...ignores,
+  ]);
+}
+
+/**
+ * Refuses imports matching `patterns` in `files`, for every kind of import.
+ * A later block's patterns replace an earlier one's for its files, so each
+ * block refuses ownPackage too.
+ */
+function restrictedImports(files, ownPatterns, ignored = []) {
+  const patterns = [...ownPatterns, ...ownPackage];
   return {
     files,
     ...(ignored.length ? { ignores: ignored } : {}),
@@ -116,11 +163,107 @@ function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
   };
 }
 
+// The layer order holds across slices as inside one, so a layer reaches
+// another slice only through the front doors of the layers it may use. These
+// files still break it: each may use one layer's front door, until the issues
+// named with it are done. src/layout.test.ts fails when one no longer needs
+// to, so it leaves the list then. New code that needs an exception before its
+// issue is done adds one naming that issue. A "follow-up" has no issue yet.
+const layerOrderExceptions = [
+  {
+    file: "src/page-objects/application/pomRegistry.ts",
+    door: "page-state/infrastructure",
+    issues: [
+      "follow-up: reach checks read the per-document Page State store",
+      "follow-up: providePageObjectStructure",
+    ],
+  },
+  {
+    file: "src/tools/application/browserTools.ts",
+    door: "page-state/infrastructure",
+    issues: ["follow-up: reach checks read the per-document Page State store"],
+  },
+  {
+    file: "src/tools/application/elementTools.ts",
+    door: "page-state/infrastructure",
+    issues: ["follow-up: reach checks read the per-document Page State store"],
+  },
+  {
+    file: "src/tools/application/historyTools.ts",
+    door: "page-state/infrastructure",
+    issues: ["follow-up: startNavigation"],
+  },
+  {
+    file: "src/tools/application/navigateTool.ts",
+    door: "page-state/infrastructure",
+    issues: ["follow-up: startNavigation"],
+  },
+  {
+    file: "src/tools/application/pageContext.ts",
+    door: "page-state/infrastructure",
+    issues: ["follow-up: page context reads a document's Page State Session"],
+  },
+  {
+    file: "src/tools/application/pageContext.ts",
+    door: "page-objects/infrastructure",
+    issues: ["follow-up: Page Object registry reads"],
+  },
+  {
+    file: "src/goal-loop/application/goalLoop.ts",
+    door: "page-objects/infrastructure",
+    issues: ["follow-up: Page Object registry reads"],
+  },
+  {
+    file: "src/goal-loop/application/toolOptions.ts",
+    door: "page-objects/infrastructure",
+    issues: ["follow-up: Page Object registry reads"],
+  },
+  {
+    file: "src/goal-loop/application/toolOptions.ts",
+    door: "tools/infrastructure",
+    issues: ["follow-up: Custom Tool and router store reads"],
+  },
+  {
+    file: "src/goal-loop/domain/goalLoopOperations.ts",
+    door: "page-state/application",
+    issues: ["follow-up: goal-loop domain uses other slices' application"],
+  },
+  {
+    file: "src/goal-loop/domain/goalLoopOperations.ts",
+    door: "runs/application",
+    issues: ["follow-up: goal-loop domain uses other slices' application"],
+  },
+  {
+    file: "src/goal-loop/domain/goalLoopOperations.ts",
+    door: "page-objects/application",
+    issues: ["follow-up: goal-loop domain uses other slices' application"],
+  },
+  {
+    file: "src/goal-loop/domain/goalLoopOperations.ts",
+    door: "tools/application",
+    issues: ["follow-up: goal-loop domain uses other slices' application"],
+  },
+  {
+    file: "src/goal-loop/domain/goalLoopQuestions.ts",
+    door: "page-objects/application",
+    issues: ["follow-up: goal-loop domain uses other slices' application"],
+  },
+  {
+    file: "src/goal-loop/domain/goalLoopQuestions.ts",
+    door: "tools/application",
+    issues: ["follow-up: goal-loop domain uses other slices' application"],
+  },
+];
+
 export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
     enforcedSlices: layeredSlices,
+    exceptions: layerOrderExceptions.map(({ file, door }) => ({
+      from: file,
+      to: `src/${door}/index.ts`,
+    })),
   }),
   {
     files: [sourceFiles],
@@ -161,15 +304,25 @@ export default [
             },
             {
               from: { element: { captured: { slice } } },
-              disallow: { to: { file: { path: `src/${slice}/index.ts` } } },
+              disallow: {
+                to: {
+                  file: {
+                    path: layeredSlices.includes(slice)
+                      ? layers.map((layer) => `src/${slice}/${layer}/index.ts`)
+                      : `src/${slice}/index.ts`,
+                  },
+                },
+              },
               message:
-                "Inside a slice, import the module itself, not the slice's index.ts.",
+                "Inside a slice, import the module itself, not the slice's front doors.",
             },
           ]),
         },
       ],
     },
   },
+  // Every file under src/, in a slice or not; the blocks below add their own.
+  restrictedImports([sourceFiles], []),
   ...slices.flatMap((slice) => [
     frontDoors(slice, [`src/${slice}/**/*.ts`], { tests: false }),
     frontDoors(

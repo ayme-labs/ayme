@@ -10,7 +10,7 @@ vi.mock("@ayme-dev/playwright-lite/internal", () => ({
 }));
 
 import type { Locator } from "@playwright/test";
-import type { ReachMeasurement } from "../../page-state";
+import type { ReachMeasurement } from "../../page-state/application";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import { observePomRoot } from "./pomRootObservation";
 

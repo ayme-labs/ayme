@@ -10,13 +10,15 @@ import { modelOption } from "../domain/decorators";
 import { methodArguments } from "../domain/actionTool";
 import {
   assertAvailable,
-  assertReachable,
-  providePageObjectStructure,
   refFailure,
   unavailableError,
   type ActionResult,
   type ToolAvailability,
-} from "../../page-state";
+} from "../../page-state/domain";
+import {
+  assertReachable,
+  providePageObjectStructure,
+} from "../../page-state/infrastructure";
 import { RefResolutionError, RuntimeStateError } from "../../shared";
 import {
   availabilityOf,
@@ -46,7 +48,7 @@ import {
   type PageObjectConstructor,
 } from "./compiledPoms";
 import type { PageDriver, PageWatch } from "./pageDriver";
-import type { RunContext } from "../../runs";
+import type { RunContext } from "../../runs/application";
 
 /**
  * Package-internal: a Page Object tool as the registry holds it. Its

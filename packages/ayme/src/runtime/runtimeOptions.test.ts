@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { CustomTool } from "../tools";
+import type { CustomTool } from "../tools/application";
 import type { AymeOptions } from "./runtime";
 import { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtimeOptions";
 

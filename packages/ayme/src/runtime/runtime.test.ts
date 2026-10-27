@@ -1,19 +1,16 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { recordAgentImageRun } from "../tools";
-import {
-  ayme,
-  createPage,
-  listRegisteredPoms,
-  registerCompiledPom,
-} from "../page-objects";
+import { recordAgentImageRun } from "../tools/application";
+import { ayme } from "../page-objects/domain";
+import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
+import { registerCompiledPom } from "../page-objects/application";
 import { loadAgentConnection } from "./agentConnection";
 import { getAgentConnectionStatus } from "./agentConnectionStatus";
-import { cursors, getPageStateSession } from "../page-state";
+import { cursors, getPageStateSession } from "../page-state/infrastructure";
 import { callers, RuntimeStateError } from "../shared";
-import * as goalLoopModule from "../goal-loop";
+import * as goalLoopModule from "../goal-loop/infrastructure";
 import { loadInspector } from "./inspector";
-import * as navigateToolModule from "../tools";
-import * as pageState from "../page-state";
+import * as navigateToolModule from "../tools/infrastructure";
+import * as pageState from "../page-state/infrastructure";
 import {
   createAyme,
   type Ayme,
@@ -24,7 +21,7 @@ import {
   type AymePage,
 } from "./runtime";
 import { alwaysReaches } from "../test-utils/reach.testSupport";
-import * as registryModule from "../page-objects";
+import * as registryModule from "../page-objects/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import { listElementToolTargets } from "./publishedTools";
 

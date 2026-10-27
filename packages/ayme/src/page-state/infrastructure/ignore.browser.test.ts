@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { ayme as model } from "../../page-objects/domain";
 import {
-  ayme as model,
   createPage,
   listAvailablePomTools,
   probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "../../page-objects";
+} from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import { ayme } from "../../test-utils/agentCalls.testSupport";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import { createAyme } from "../../runtime";

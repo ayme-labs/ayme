@@ -2,7 +2,7 @@
  * Test support for the look tests: a runtime session, and the agent's calls
  * through the tools WebMCP publishes.
  */
-import { createPage } from "../../page-objects";
+import { createPage } from "../../page-objects/infrastructure";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
 

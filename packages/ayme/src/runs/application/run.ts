@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import type { Cursor, PageStateSession, Reach } from "../../page-state";
+import type { Cursor } from "../../page-state/domain";
+import type { PageStateSession, Reach } from "../../page-state/application";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
 /** How `ayme.tools.run` starts a Run. */

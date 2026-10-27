@@ -9,7 +9,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, GoalValues, JsonSchema } from "../../shared";
 import type { DecisionRequest } from "../domain/decisionWire";
-import type { PageStateCapture } from "../../page-state";
+import type { PageStateCapture } from "../../page-state/domain";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,

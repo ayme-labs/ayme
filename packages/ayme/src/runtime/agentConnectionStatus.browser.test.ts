@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { createPage } from "../page-objects";
+import { createPage } from "../page-objects/infrastructure";
 import { getAgentConnectionStatus } from "./agentConnectionStatus";
 import { createAyme, type AymeOptions } from "./runtime";
 

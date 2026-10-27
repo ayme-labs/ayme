@@ -1,8 +1,8 @@
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "../../shared";
-import type { TargetField } from "../../tools";
-import type { RootedToolInstance } from "../../page-objects";
-import type { StartChildRun } from "../../runs";
-import type { Reach } from "../../page-state";
+import type { TargetField } from "../../tools/application";
+import type { RootedToolInstance } from "../../page-objects/application";
+import type { StartChildRun } from "../../runs/application";
+import type { Reach } from "../../page-state/application";
 
 /**
  * The operations the Goal Loop offers the model each step, and how each

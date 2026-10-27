@@ -10,7 +10,7 @@ import {
   type ObservedPomRoot,
   type PomInstanceObservation,
 } from "./pomInstance";
-import { assertAvailable } from "../../page-state";
+import { assertAvailable } from "../../page-state/domain";
 
 // Unit tests: one Page Object instance's Action Availability (ADR-0035),
 // from hand-written observations, without a page or a runtime. Elements are

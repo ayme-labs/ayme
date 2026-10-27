@@ -1,44 +1,48 @@
-import type { CallerAwarePomTool } from "../page-objects";
+import type { CallerAwarePomTool } from "../page-objects/application";
 import {
   constructPageObject,
+  type PageObjectConstructor,
+} from "../page-objects/application";
+import {
   createAymeRuntime,
   createPage,
-  describeTool,
   installPageDriverReach,
   probeRegisteredPomMembers,
   registerPageObject,
   subscribeToRegisteredPoms,
-  type PageObjectConstructor,
-} from "../page-objects";
+} from "../page-objects/infrastructure";
+import { describeTool } from "../page-objects/domain";
 import {
   addPeek,
   configureCustomTools,
   configureRouterNavigate,
-  getPageContextTool,
   isPeekTool,
   listPeekTools,
+  subscribeToPeekTools,
+} from "../tools/infrastructure";
+import {
+  getPageContextTool,
   peekToolName,
   recordAgentImageRun,
-  subscribeToPeekTools,
   type CustomTool,
   type PeekRead,
   type PeekSide,
-} from "../tools";
+} from "../tools/application";
 import {
   createAgentConnectionStatus,
   setAgentConnectionStatus,
 } from "./agentConnectionStatus";
-import { configureGoalLoop, type GoalLoopDecisionFunction } from "../goal-loop";
+import { configureGoalLoop } from "../goal-loop/infrastructure";
+import { type GoalLoopDecisionFunction } from "../goal-loop/application";
+import { assertAvailable, type Cursor } from "../page-state/domain";
 import {
-  assertAvailable,
   configurePageStateIgnore,
   cursors,
   geometryReach,
   getInteractionHistory,
   getPageStateSession,
-  type Cursor,
-  type Reach,
-} from "../page-state";
+} from "../page-state/infrastructure";
+import { type Reach } from "../page-state/application";
 import {
   listPeekToolInfo,
   listTools,
@@ -52,13 +56,13 @@ import {
   callerOf,
   createRunQueue,
   executeTopLevelRun,
-  instrumentedPage,
   runLog,
   type AymeRuns,
   type RunContext,
   type StartChildRun,
   type ToolRunOptions,
-} from "../runs";
+} from "../runs/application";
+import { instrumentedPage } from "../runs/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import {
   callers,
@@ -66,7 +70,7 @@ import {
   RuntimeStateError,
   type Caller,
 } from "../shared";
-import type { ToolInput, ToolResult } from "../tools";
+import type { ToolInput, ToolResult } from "../tools/domain";
 import { inspectorMode } from "./runtimeOptions";
 
 export type AymeWebMcpPublicationStatus = Readonly<{

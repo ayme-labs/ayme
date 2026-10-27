@@ -1,12 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type {
-  DecisionRequest,
-  DecisionResponse,
-  GoalLoopDecisionFunction,
-} from "../../goal-loop";
-import { createPage } from "../../page-objects";
-import { NO_VALUE_NEEDED_KEY } from "../../goal-loop";
+import type { DecisionRequest, DecisionResponse } from "../../goal-loop/domain";
+import type { GoalLoopDecisionFunction } from "../../goal-loop/application";
+import { createPage } from "../../page-objects/infrastructure";
+import { NO_VALUE_NEEDED_KEY } from "../../goal-loop/domain";
 import {
   agentTools,
   operations,

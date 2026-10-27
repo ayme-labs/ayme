@@ -4,22 +4,24 @@
  * tool it executes itself.
  */
 import type { Page } from "@playwright/test";
-import type { ActionResult } from "../page-state";
-import { getPageContextForDocument, listElementTools } from "../tools";
+import type { ActionResult } from "../page-state/domain";
+import { getPageContextForDocument } from "../tools/application";
+import { listElementTools } from "../tools/infrastructure";
 import {
   cursors,
   getPageStateForDocument,
   getPageStateSession,
   lookAtPageStateForDocument,
-  type AriaRef,
-  type Cursor,
-  type PageStateSession,
-  type Reach,
-} from "../page-state";
-import { listRegisteredPomTargets, getPomDefinitions } from "../page-objects";
+} from "../page-state/infrastructure";
+import { type AriaRef, type Cursor } from "../page-state/domain";
+import { type PageStateSession, type Reach } from "../page-state/application";
+import {
+  listRegisteredPomTargets,
+  getPomDefinitions,
+} from "../page-objects/infrastructure";
 import { resolveTools, sessionReach } from "../runtime";
 import { callers } from "../shared";
-import type { RunContext } from "../runs";
+import type { RunContext } from "../runs/application";
 
 /** The calling agent's cursor: a WebMCP agent's, as `webmcp` Runs read it. */
 export const agentCursor = (): Cursor => cursors.of(callers.webmcp);

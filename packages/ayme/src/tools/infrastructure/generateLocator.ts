@@ -18,11 +18,8 @@ import {
   TARGET_SCHEMA,
   type PublishedElementTool,
 } from "../application/elementTools";
-import {
-  refFailure,
-  selectorFailure,
-  type PageStateSession,
-} from "../../page-state";
+import { refFailure, selectorFailure } from "../../page-state/domain";
+import { type PageStateSession } from "../../page-state/application";
 import type { ToolResult } from "../domain/toolTypes";
 
 type Result = ToolResult<"generate_locator">;
