@@ -13,7 +13,7 @@ import {
   withoutElement,
 } from "../test-utils/playwrightMcp.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
-import { lookAtPageStateForDocument } from "../../page-state";
+import { geometryReach, lookAtPageStateForDocument } from "../../page-state";
 import { createAyme, listElementToolTargets, type Ayme } from "../../runtime";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 
@@ -571,7 +571,7 @@ describe("Browser Tools in Chromium", () => {
     for (const tool of ["click", "hover"])
       expect(offered(tool)).toEqual(["Name", "Email", "Agree", "Size", "Save"]);
 
-    const options = buildToolOptions(page);
+    const options = buildToolOptions({ page, reach: geometryReach });
     const loopTools = options.map((option) => option.key);
     expect(loopTools).not.toContain("fill_form");
     expect(loopTools).not.toContain("press_key");

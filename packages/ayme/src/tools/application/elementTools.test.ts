@@ -34,12 +34,18 @@ import {
 } from "../../page-state";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
 import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
+import type { AriaRef } from "../../page-state";
 
 const ref = AriaRefSchema.parse;
 
 providePageObjectStructure(pageObjectStructure);
-const clickRef = ayme.click;
-const fillRef = ayme.fill;
+// jsdom lays nothing out: every element these calls address is reached.
+const reach = alwaysReaches();
+const clickRef = (page: Page, target: AriaRef) =>
+  ayme.click(page, target, reach);
+const fillRef = (page: Page, target: AriaRef, text: string) =>
+  ayme.fill(page, target, text, reach);
 
 describe("Structural Ref interactions", () => {
   beforeEach(() => {
@@ -243,12 +249,15 @@ describe("Structural Ref interactions", () => {
       listPublishedBrowserTools().find((tool) => tool.name === name)!;
 
     await expect(
-      published("click").execute({ target: "e2" }, runContext(page))
+      published("click").execute(
+        { target: "e2" },
+        runContext(page, undefined, undefined, reach)
+      )
     ).resolves.toEqual({ page_changed: false, settled: true });
     await expect(
       published("fill").execute(
         { target: "e2", text: "updated" },
-        runContext(page)
+        runContext(page, undefined, undefined, reach)
       )
     ).resolves.toEqual({ page_changed: false, settled: true });
     expect(click).toHaveBeenCalledWith("ayme-ref=e2");

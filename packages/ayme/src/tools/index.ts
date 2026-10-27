@@ -13,6 +13,7 @@ export type {
   CustomTool,
   CustomToolContext,
   PublishedElementTool,
+  ReachOn,
   TargetField,
 } from "./application/elementTools";
 export { listPublishedBrowserTools } from "./infrastructure/publishedBrowserTools";

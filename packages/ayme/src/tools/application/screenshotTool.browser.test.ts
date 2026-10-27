@@ -11,6 +11,7 @@ import {
 } from "../test-utils/playwrightMcp.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 import type { ToolInput } from "../domain/toolTypes";
+import { geometryReach } from "../../page-state";
 
 const FIXTURE = `
   <style>
@@ -72,9 +73,11 @@ describe("screenshot in Chromium", () => {
   });
 
   it("is never offered to the Goal Loop", () => {
-    expect(buildToolOptions(page).map((option) => option.key)).not.toContain(
-      "screenshot"
-    );
+    expect(
+      buildToolOptions({ page, reach: geometryReach }).map(
+        (option) => option.key
+      )
+    ).not.toContain("screenshot");
   });
 
   it("captures the viewport as a png image", async () => {

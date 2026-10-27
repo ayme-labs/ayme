@@ -1,3 +1,4 @@
+import type { Locator } from "@playwright/test";
 import type {
   PomComponentManifest,
   PomManifest,
@@ -650,6 +651,16 @@ function createTool(
 }
 
 /**
+ * What a call of a Page Object Tool acts on: the live instance and, for a
+ * rooted one, its root as the page driver resolves the root's locator now,
+ * one element.
+ */
+type CallTarget = {
+  instance: object;
+  root: { locator: Locator; element: Element } | undefined;
+};
+
+/**
  * The target of a call of the tool `toolName` on `observed`, as the last
  * observation read it: the call runs no root predicate of its own. Refused
  * when the observation found no instance, or its own root has since left
@@ -659,39 +670,45 @@ function callTarget(
   driver: PageDriver,
   toolName: string,
   observed: PomInstanceObservation | undefined
-): PomInstanceObservation {
-  if (!observed || !rootHolds(driver, observed))
+): CallTarget {
+  const root = observed && heldRoot(driver, observed);
+  if (!observed || root === false)
     throw unavailableError(toolName, { present: false });
-  return observed;
+  return { instance: observed.instance, root };
 }
 
 /**
- * Whether the root the observation found `observed` at is still its root:
- * a root-less instance has none to lose; a rooted one keeps it while its
- * locator still resolves to that one element.
+ * The root the observation found `observed` at, while it is still its
+ * root: a root-less instance has none to lose (undefined); a rooted one
+ * keeps it while the page driver resolves its locator to that one element.
+ * false once it is lost.
  */
-function rootHolds(
+function heldRoot(
   driver: PageDriver,
   observed: PomInstanceObservation
-): boolean {
-  if (observed.rootLocator === undefined) return observed.root === undefined;
+): CallTarget["root"] | false {
+  if (observed.rootLocator === undefined)
+    return observed.root === undefined ? undefined : false;
   const element = observed.root?.element;
   if (!element?.isConnected) return false;
   const elements = driver.elementsOf(observed.rootLocator);
-  return elements.length === 1 && elements[0] === element;
+  return elements.length === 1 && elements[0] === element
+    ? { locator: observed.rootLocator, element }
+    : false;
 }
 
 /**
  * Performs a Page Object Action for a Run, on its Document, whose Change
- * Record reads from its cursor. With a root, checks whether a click would reach the root where
- * the action would find it (ADR-0041): the observation that listed the tool
- * could not tell for a root it had to scroll to.
+ * Record reads from its cursor. With a root, checks whether a click would
+ * reach the root where the action would find it, as the Run's Reach
+ * measures it (ADR-0041): the observation that listed the tool could not
+ * tell for a root it had to scroll to.
  */
 async function performPageObjectAction(
-  { instance, rootLocator }: PomInstanceObservation,
+  { instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
-  { cursor, pageStateSession }: RunContext,
+  { cursor, pageStateSession, reach }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -704,7 +721,8 @@ async function performPageObjectAction(
     tool.parameters,
     argumentValues(tool, args)
   );
-  if (rootLocator) await assertRootReachable(targetName, rootLocator);
+  if (root)
+    await assertRootReachable(reach, targetName, root.locator, root.element);
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>

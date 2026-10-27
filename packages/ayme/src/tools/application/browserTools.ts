@@ -2,13 +2,10 @@
 // Playwright MCP's tools at the revision the README pins. Field names and
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import type { JsonSchema } from "../../shared";
-import {
-  assertReachable,
-  type ElementInput,
-  type PageStateSession,
-} from "../../page-state";
+import { assertReachable, type ElementInput } from "../../page-state";
+import type { RunContext } from "../../runs";
 import {
   registerElementTool,
   resolveElementTarget,
@@ -251,9 +248,8 @@ type FormField = {
 };
 
 async function fillField(
-  page: Page,
   field: FormField,
-  pageStateSession: PageStateSession
+  { page, pageStateSession, reach }: RunContext
 ) {
   const target = await resolveElementTarget(
     page,
@@ -263,6 +259,7 @@ async function fillField(
   );
   const locator = page.locator(target.selector);
   await assertReachable(
+    reach,
     "fill_form",
     locator,
     target.element,
@@ -291,7 +288,7 @@ export const fillFormTool: PublishedElementTool = {
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const { cursor, page, pageStateSession } = context;
+    const { cursor, pageStateSession } = context;
     const { fields } = input as { fields: FormField[] };
     return pageStateSession.runAction(
       cursor,
@@ -300,7 +297,7 @@ export const fillFormTool: PublishedElementTool = {
         const filled: string[] = [];
         for (const field of fields) {
           try {
-            await fillField(page, field, pageStateSession);
+            await fillField(field, context);
           } catch (error) {
             return {
               filled,

@@ -18,6 +18,8 @@ export {
   getAppProcessTools,
   getStartedAyme,
   markRenderSession,
+  measureReachWith,
+  sessionReach,
   subscribeToStartedAyme,
 } from "./runtime";
 export type {

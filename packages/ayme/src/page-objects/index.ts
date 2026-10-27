@@ -39,5 +39,6 @@ export type {
   RegisteredPom,
 } from "./infrastructure/registry";
 export { createAymeRuntime } from "./infrastructure/aymeRuntime";
+export { installPageDriverReach } from "./infrastructure/litePageDriver";
 
 export { rootlessClassRefusals } from "./domain/pomClasses";

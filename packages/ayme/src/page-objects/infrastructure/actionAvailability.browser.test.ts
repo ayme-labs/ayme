@@ -10,7 +10,7 @@ import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
 import { buildToolOptions } from "../../goal-loop";
-import { configurePageStateIgnore } from "../../page-state";
+import { configurePageStateIgnore, geometryReach } from "../../page-state";
 import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
 import { createAyme, listTools, type Ayme } from "../../runtime";
 import {
@@ -113,7 +113,9 @@ describe("Action Availability", () => {
       });
       expect(published("Panel.remove")).toMatchObject(expected);
       // The Goal Loop offers available tools only.
-      const offered = buildToolOptions(page).map((option) => option.key);
+      const offered = buildToolOptions({ page, reach: geometryReach }).map(
+        (option) => option.key
+      );
       if (expected.available) {
         expect(offered).toContain("Panel.remove");
       } else {

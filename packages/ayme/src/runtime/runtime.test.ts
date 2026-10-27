@@ -18,11 +18,15 @@ import {
   createAyme,
   type Ayme,
   markRenderSession,
+  measureReachWith,
   sameRuntimeOptions,
+  sessionReach,
   type AymePage,
 } from "./runtime";
+import { alwaysReaches } from "../test-utils/reach.testSupport";
 import * as registryModule from "../page-objects";
 import { loadWebMcpPublication } from "./webMcp";
+import { listElementToolTargets } from "./publishedTools";
 
 vi.mock("./webMcp", () => ({ loadWebMcpPublication: vi.fn() }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
@@ -538,7 +542,51 @@ it("runs goal as the application while publication is unavailable", async () => 
       page: expect.any(Object),
       document,
       pageStateSession: getPageStateSession(document),
+      // A session handed no Reach measures Chromium's geometry.
+      reach: pageState.geometryReach,
     });
+  } finally {
+    goalTool.mockRestore();
+  }
+});
+
+it("lists the element tools' targets only while a session is started", async () => {
+  const notConfigured = "The Ayme browser runtime is not configured.";
+  await expect(listElementToolTargets()).rejects.toThrow(notConfigured);
+  start(session(false))();
+  await expect(listElementToolTargets()).rejects.toThrow(notConfigured);
+});
+
+it("hands its Runs the Reach a test handed the session", async () => {
+  const execute = vi.fn(async () => ({
+    reason: "done" as const,
+    next: "Continue.",
+    history: [],
+  }));
+  const goalTool = vi
+    .spyOn(goalLoopModule, "getPursueGoalTool")
+    .mockReturnValue({
+      name: "goal",
+      description: "Drive the page toward a goal.",
+      inputSchema: {
+        type: "object",
+        properties: { goal: { type: "string" }, maxSteps: { type: "integer" } },
+      },
+      execute,
+    });
+  try {
+    const runtime = session(false);
+    const reach = alwaysReaches();
+    measureReachWith(runtime, reach);
+    expect(sessionReach(runtime)).toBe(reach);
+    start(runtime);
+    const input = { goal: "save", maxSteps: 3 };
+    await runtime.tools.run("goal", input);
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      input,
+      expect.objectContaining({ reach })
+    );
+    expect(sessionReach(session(false))).toBe(pageState.geometryReach);
   } finally {
     goalTool.mockRestore();
   }

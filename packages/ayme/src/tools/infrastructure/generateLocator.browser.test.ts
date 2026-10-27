@@ -6,7 +6,7 @@ import { createPage, registerCompiledPom } from "../../page-objects";
 import type { PomManifest } from "../../shared";
 import { RuntimeStateError, ToolInputError } from "../../shared";
 import { buildToolOptions } from "../../goal-loop";
-import { getInteractionHistory } from "../../page-state";
+import { geometryReach, getInteractionHistory } from "../../page-state";
 import { shapeOf } from "../test-utils/playwrightMcp.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
@@ -424,9 +424,11 @@ describe("generate_locator in Chromium", () => {
     await run({ groups: [{ targets: [heading, "#icon"] }] });
 
     expect(getInteractionHistory(document).actions().size).toBe(actionsBefore);
-    expect(buildToolOptions(page).map((option) => option.key)).not.toContain(
-      "generate_locator"
-    );
+    expect(
+      buildToolOptions({ page, reach: geometryReach }).map(
+        (option) => option.key
+      )
+    ).not.toContain("generate_locator");
   });
 
   it("rejects input that does not fit its schema", async () => {

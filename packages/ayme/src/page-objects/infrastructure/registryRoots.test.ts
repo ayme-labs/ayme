@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
 
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 import { listRegisteredPomRoots, registerCompiledPom } from "./registry";
+import { litePageDriver } from "./litePageDriver";
 import {
   startSession,
   type TestSession,
@@ -16,7 +18,7 @@ describe("registered Page Object roots", () => {
   let session: TestSession;
   beforeEach(() => {
     page = createPage();
-    session = startSession(page);
+    session = startSession(page, { reach: alwaysReaches() });
   });
   afterEach(() => {
     session.stop();
@@ -79,5 +81,25 @@ describe("registered Page Object roots", () => {
         element: document.querySelector(".one"),
       },
     ]);
+  });
+
+  it("observes a root with the Reach of the started session, and with none of it once the session stops", async () => {
+    document.body.innerHTML = '<div class="one"></div>';
+    const measurePomRoot = vi.fn(async () => ({
+      present: true,
+      available: false,
+    }));
+    session.stop();
+    session = startSession(page, { reach: alwaysReaches({ measurePomRoot }) });
+    const root = page.locator(".one");
+
+    await expect(litePageDriver.observeRoot(root)).resolves.toMatchObject({
+      root: { present: true, available: false },
+    });
+    expect(measurePomRoot).toHaveBeenCalledOnce();
+
+    session.stop();
+    await litePageDriver.observeRoot(root);
+    expect(measurePomRoot).toHaveBeenCalledOnce();
   });
 });

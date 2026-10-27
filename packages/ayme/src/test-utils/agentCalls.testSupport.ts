@@ -14,9 +14,10 @@ import {
   type AriaRef,
   type Cursor,
   type PageStateSession,
+  type Reach,
 } from "../page-state";
 import { listRegisteredPomTargets, getPomDefinitions } from "../page-objects";
-import { resolveTools } from "../runtime";
+import { resolveTools, sessionReach } from "../runtime";
 import { callers } from "../shared";
 import type { RunContext } from "../runs";
 
@@ -33,11 +34,14 @@ const NO_PAGE = {} as Page;
  * execute the available tool they name at once, unrecorded, on the same
  * page. Its Document is the test's own, none in Node; its Page State Session
  * is `pageStateSession`, else that Document's, read when a tool reaches it.
+ * It measures reach with `reach`, else as a session the test handed none
+ * would: a unit test, which has no layout, hands `alwaysReaches()`.
  */
 export function runContext(
   page: Page = NO_PAGE,
   cursor: Cursor = agentCursor(),
-  pageStateSession?: PageStateSession
+  pageStateSession?: PageStateSession,
+  reach: Reach = sessionReach()
 ): RunContext {
   return {
     cursor,
@@ -46,12 +50,13 @@ export function runContext(
     get pageStateSession() {
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },
+    reach,
     run: async (name, input, childCursor = cursor) => {
       const entry = resolveTools({ peeks: true }).get(name);
       if (!entry?.available) throw new Error(`No available tool "${name}".`);
       return entry.tool.execute(
         input,
-        runContext(page, childCursor, pageStateSession)
+        runContext(page, childCursor, pageStateSession, reach)
       );
     },
   };
@@ -70,15 +75,15 @@ export const ayme = {
     getPageContextForDocument(document, agentCursor(), ...names),
   getPageState: () => getPageStateForDocument(document, agentCursor()),
   getPomDefinitions,
-  click: (page: Page, ref: AriaRef) =>
+  click: (page: Page, ref: AriaRef, reach?: Reach) =>
     browserTool("click").tool.execute(
       { target: ref },
-      runContext(page)
+      runContext(page, undefined, undefined, reach)
     ) as Promise<ActionResult>,
-  fill: (page: Page, ref: AriaRef, text: string) =>
+  fill: (page: Page, ref: AriaRef, text: string, reach?: Reach) =>
     browserTool("fill").tool.execute(
       { target: ref, text },
-      runContext(page)
+      runContext(page, undefined, undefined, reach)
     ) as Promise<ActionResult>,
 };
 

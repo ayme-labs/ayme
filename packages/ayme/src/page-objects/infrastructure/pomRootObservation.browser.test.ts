@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { geometryReach } from "../../page-state";
 import { createPage } from "./browserPage";
 import { observePomRoot as observe } from "./pomRootObservation";
 
@@ -8,7 +9,9 @@ const byId = (id: string) => document.getElementById(id)!;
 
 // What one observation found of the root, apart from its element.
 const observePomRoot = async (locator: Locator) => {
-  const { present, available, inTheWay } = (await observe(locator)).root;
+  const { present, available, inTheWay } = (
+    await observe(locator, geometryReach)
+  ).root;
   return { present, available, inTheWay };
 };
 

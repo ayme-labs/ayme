@@ -10,6 +10,7 @@ import {
 import type { GoalLoopStepRecord, GoalValues, JsonSchema } from "../../shared";
 import type { DecisionRequest } from "../domain/decisionWire";
 import type { PageStateCapture } from "../../page-state";
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -1240,6 +1241,7 @@ describe("the state a request that only picks an element is sent", () => {
     closedSet: {
       kind: "ref",
       filter: (element: Element) => element instanceof HTMLInputElement,
+      reach: alwaysReaches(),
     },
   } as const;
 

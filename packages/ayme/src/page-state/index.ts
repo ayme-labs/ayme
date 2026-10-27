@@ -25,10 +25,8 @@ export {
   providePageObjectStructure,
   resolvePageStateRef,
 } from "./infrastructure/pageState";
-export {
-  inReachBatch,
-  measurePomRoot,
-} from "./infrastructure/reachMeasurement";
+export { geometryReach } from "./infrastructure/reachMeasurement";
+export type { Reach, ReachMeasurement } from "./application/reach";
 export { refFailure, refHint, selectorFailure } from "./domain/refFailures";
 export { registerRefSelectorEngine } from "./infrastructure/refSelectorEngine";
 export type { PageStateSession } from "./application/pageStateSession";

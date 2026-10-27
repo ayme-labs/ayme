@@ -3,7 +3,7 @@ import {
   listAvailablePomTools,
   listRootedToolInstances,
 } from "../../page-objects";
-import { listElementTools, NAVIGATION_TOOLS } from "../../tools";
+import { listElementTools, NAVIGATION_TOOLS, type ReachOn } from "../../tools";
 import {
   requiredParamsOf,
   specsOfRootedTool,
@@ -13,7 +13,6 @@ import {
   type GoalLoopOperation,
   type ToolOption,
 } from "../domain/goalLoopOperations";
-import type { Page } from "@playwright/test";
 import type { StartChildRun } from "../../runs";
 
 // The Goal Loop's operations list, read from the runtime at each step.
@@ -23,12 +22,12 @@ import type { StartChildRun } from "../../runs";
  * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), every
  * Browser Tool that moves the page, and every registered POM tool. Read from
  * the runtime at the step, so the Step Decision takes it as a value. Reach
- * is measured on `page`, the goal Run's.
+ * is measured on the goal Run's page, with its Reach.
  */
-export function buildToolOptions(page: Page): ToolOption[] {
+export function buildToolOptions(on: ReachOn): ToolOption[] {
   const elementTools: GoalLoopOperation[] = listElementTools().map(
     ({ tool, targetField, loopInputSchema, filter, matches }) => {
-      const offered = (element: Element) => filter(element, page);
+      const offered = (element: Element) => filter(element, on);
       return {
         name: tool.name,
         description: tool.description,
@@ -38,8 +37,8 @@ export function buildToolOptions(page: Page): ToolOption[] {
           loopInputSchema,
           targetField,
           matches
-            ? { kind: "ref", filter: offered, matches }
-            : { kind: "ref", filter: offered }
+            ? { kind: "ref", filter: offered, matches, reach: on.reach }
+            : { kind: "ref", filter: offered, reach: on.reach }
         ),
       };
     }
