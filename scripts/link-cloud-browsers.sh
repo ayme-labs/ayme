@@ -57,9 +57,10 @@ if [ -n "$shipped" ]; then
     shell="$browsers/chromium_headless_shell-$rev"
     if [ "$shell" != "$browsers/${shipped%/*}" ] && [ ! -e "$shell/INSTALLATION_COMPLETE" ]; then
       if [ "${shipped##*/}" = chrome-linux ]; then
-        mkdir -p "$shell/chrome-headless-shell-linux64"
-        ln -sf "$browsers/$shipped/"* "$shell/chrome-headless-shell-linux64/"
-        ln -sf headless_shell "$shell/chrome-headless-shell-linux64/chrome-headless-shell"
+        mkdir -p "$shell/headless-shell"
+        ln -sf "$browsers/$shipped/"* "$shell/headless-shell/"
+        ln -sf headless_shell "$shell/headless-shell/chrome-headless-shell"
+        ln -sfn headless-shell "$shell/chrome-headless-shell-linux64"
       else
         mkdir -p "$shell"
         ln -sfn "$browsers/$shipped" "$shell/chrome-headless-shell-linux64"
