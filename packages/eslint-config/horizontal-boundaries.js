@@ -44,8 +44,8 @@ function layerElements(sourceRoot) {
   ];
 }
 
-function layerPolicies() {
-  return horizontalLayerElementTypes.map((sourceType) => ({
+function layerPolicies(exceptions) {
+  const layerOrder = horizontalLayerElementTypes.map((sourceType) => ({
     from: { element: { types: sourceType } },
     disallow: {
       to: {
@@ -61,6 +61,12 @@ function layerPolicies() {
     },
     message: `${sourceType} may only depend on the allowed horizontal layers.`,
   }));
+  // The last policy that matches decides, so an exception follows them.
+  const allowed = exceptions.map(({ from, to }) => ({
+    from: { file: { path: from } },
+    allow: { to: { file: { path: to } } },
+  }));
+  return [...layerOrder, ...allowed];
 }
 
 /**
@@ -68,17 +74,22 @@ function layerPolicies() {
  * source file is classified, tests included; the rule applies to the
  * enrolled slices' production files. Test files may use any layer.
  *
+ * `exceptions` lets one file use one module against the layer order, each
+ * path relative to `packageRoot`. A package lists the ones it still has, and
+ * why, beside its call.
+ *
  * A package that adds its own boundaries rules must not set
  * `boundaries/elements` again: a later setting replaces this one and turns
  * the layer rule off. Select slices by `captured: { slice }` instead.
  *
- * @param {{ packageRoot: string; sourceRoot?: string; enforcedSlices: readonly string[] }} options
+ * @param {{ packageRoot: string; sourceRoot?: string; enforcedSlices: readonly string[]; exceptions?: readonly { from: string; to: string }[] }} options
  * @returns {import('eslint').Linter.Config[]}
  */
 export function horizontalBoundaries({
   packageRoot,
   sourceRoot = "src",
   enforcedSlices,
+  exceptions = [],
 }) {
   if (!enforcedSlices?.length)
     throw new Error(
@@ -127,7 +138,7 @@ export function horizontalBoundaries({
             default: "allow",
             checkAllOrigins: false,
             checkUnknownLocals: false,
-            policies: layerPolicies(),
+            policies: layerPolicies(exceptions),
           },
         ],
       },
