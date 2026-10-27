@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import type { RegisteredPom } from "@ayme-dev/ayme/internal";
 
 import { listRunnableTools } from "./runnableTools";
+import { describeRegisteredPoms } from "../../shared";
 
 // Unit tests: the tools the run card runs, from the registry and the tools
 // the runtime lists as live. The registration and the live list are
@@ -99,6 +100,37 @@ it("can't run an action whose Page Object isn't on the page", () => {
     available: false,
   });
   expect(tools.get("ListPage.addItem")?.reason).toBeUndefined();
+});
+
+it("describes a Page Object action the same on the page and off it", () => {
+  const openSettings: RegisteredPom["tools"][number] = {
+    ...addItem,
+    name: "ListPage.openSettings",
+    methodName: "openSettings",
+    returnPoms: ["SettingsPage"],
+    parameters: [],
+  };
+  delete openSettings.description;
+  const registered = describeRegisteredPoms([
+    { ...listPage, tools: [openSettings] },
+  ]);
+  const listed = {
+    ...openSettings,
+    description: "Then shows SettingsPage.",
+    available: true,
+  };
+
+  const onPage = listRunnableTools(registered, [listed]);
+  const offPage = listRunnableTools(registered, []);
+
+  expect(onPage.get("ListPage.openSettings")).toMatchObject({
+    present: true,
+    description: "Then shows SettingsPage.",
+  });
+  expect(offPage.get("ListPage.openSettings")).toMatchObject({
+    present: false,
+    description: "Then shows SettingsPage.",
+  });
 });
 
 it("keeps a present action that is unavailable, with the reason the session gives", () => {
