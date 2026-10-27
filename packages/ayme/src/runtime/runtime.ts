@@ -1,9 +1,9 @@
 import type { CallerAwarePomTool } from "../page-objects";
 import {
-  agentDescription,
   constructPageObject,
   createAymeRuntime,
   createPage,
+  describeTool,
   probeRegisteredPomMembers,
   registerPageObject,
   subscribeToRegisteredPoms,
@@ -400,7 +400,7 @@ const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
  * when the tool says nothing beyond its name and schema, which MCP allows.
  */
 function forAymeMcp(tool: ToolInfo): ToolInfo {
-  const description = agentDescription(tool);
+  const description = describeTool(tool, "ayme-mcp");
   return description === undefined ? tool : { ...tool, description };
 }
 
@@ -481,7 +481,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     list: () =>
       ayme.tools.list().map((tool) => ({
         ...tool,
-        description: agentDescription(tool, { required: true }),
+        description: describeTool(tool, "webmcp"),
       })),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
     run: (name: string, input: unknown) =>

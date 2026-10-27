@@ -107,28 +107,32 @@ const manifest: PomManifest = {
   ],
 };
 
+/** A registered tool, with the description the Inspector shows for it. */
 function tool(
   name: string,
   methodName: string,
-  component?: { className: string; path: string }
+  component?: { className: string; path: string },
+  description?: string
 ): RegisteredPomTool {
   return {
     className: component?.className ?? "TodoPage",
     rooted: false,
     name,
     methodName,
-    description: "",
+    ...(description === undefined ? {} : { description }),
     inputSchema: noArguments,
     parameters: [],
   };
 }
 
 const tools = [
-  tool("TodoPage.addItem", "addItem"),
-  tool("TodoItem.archive", "archive", {
-    className: "TodoItem",
-    path: "items[]",
-  }),
+  tool("TodoPage.addItem", "addItem", undefined, "Add an item."),
+  tool(
+    "TodoItem.archive",
+    "archive",
+    { className: "TodoItem", path: "items[]" },
+    "Archive this item."
+  ),
   tool("ArchiveDialog.confirm", "confirm", {
     className: "ArchiveDialog",
     path: "archiveDialog",
@@ -540,6 +544,59 @@ describe("the page model", () => {
       },
       { className: "ArchiveDialog", instancePaths: [] },
     ]);
+  });
+
+  it.each([true, false])(
+    "describes an action as agents read it, in the object and its model, live: %s",
+    (onPage) => {
+      // The registration's tool carries the Inspector's text; the manifest
+      // and the definition carry only what the author wrote.
+      const opener = tool(
+        "ArchiveDialog.confirm",
+        "confirm",
+        { className: "ArchiveDialog", path: "archiveDialog" },
+        "Then shows SettingsPage."
+      );
+      const registered: RegisteredPom = {
+        ...registration(
+          probed,
+          onPage ? [...present, "archiveDialog"] : present
+        ),
+        tools: [tools[0]!, tools[1]!, opener],
+      };
+
+      const { objects, models } = buildPageModel(
+        [registered],
+        onPage ? new Set([...live, "ArchiveDialog.confirm"]) : live,
+        definitions,
+        actionSignature
+      );
+
+      const expected = {
+        name: "confirm",
+        description: "Then shows SettingsPage.",
+        toolName: "ArchiveDialog.confirm",
+        live: onPage,
+      };
+      expect(objectAt(objects, "TodoPage.archiveDialog").actions).toEqual([
+        expect.objectContaining(expected),
+      ]);
+      expect(models[2]?.actions).toEqual([expect.objectContaining(expected)]);
+    }
+  );
+
+  it("describes an action with no registered tool by what its author wrote", () => {
+    const { objects, models } = buildPageModel(
+      [{ ...registration(), tools: [] }],
+      live,
+      definitions,
+      actionSignature
+    );
+
+    expect(objectAt(objects, "TodoPage").actions[0]?.description).toBe(
+      "Add an item."
+    );
+    expect(models[0]?.actions[0]?.description).toBe("Add an item.");
   });
 
   it("gives a model its members and its actions, live or not", () => {

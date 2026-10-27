@@ -105,7 +105,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   startedAyme.webMCP.publicationStatus = runtime.publication;
   const {
     pageStateNodeEntry,
-    agentDescription,
+    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -121,7 +121,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     pageStateNodeEntry,
     rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
-    agentDescription,
+    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -316,18 +316,22 @@ it("keeps unobserved model members visible before a child's first observation", 
   );
 });
 
-it("shows the agent's live description on a model action's run card", async () => {
-  renderApp({
-    toolbarOnPage: true,
-    live: [
-      {
-        ...saveTool(true)[0]!,
-        description: "Save and then inspect the confirmation.",
-      },
-    ],
-  });
-  await inspector.navigator.model.object("Editor.toolbar").click();
-  await expect
-    .poll(() => inspector.detail.runCard("save").root.textContent())
-    .toContain("Save and then inspect the confirmation.");
-});
+it.each([true, false])(
+  "describes a model action as agents read it, on the page or off it: %s",
+  async (toolbarOnPage) => {
+    const opener = { ...save, returnPoms: ["ConfirmDialog"] };
+    renderApp({
+      toolbarOnPage,
+      live: [{ ...saveTool(toolbarOnPage)[0]!, returnPoms: ["ConfirmDialog"] }],
+      registrations: [{ ...editor(toolbarOnPage), tools: [opener] }],
+    });
+    await inspector.navigator.model.object("Editor.toolbar").click();
+    const action = toolbarOnPage
+      ? inspector.detail.runCard("save").root
+      : inspector.detail.model.offPageAction("save");
+
+    await expect
+      .poll(() => action.textContent())
+      .toContain("Save the document. Then shows ConfirmDialog.");
+  }
+);

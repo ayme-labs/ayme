@@ -1,4 +1,4 @@
-export { agentDescription, inputSchemaFor } from "./domain/actionTool";
+export { describeTool, inputSchemaFor } from "./domain/actionTool";
 export { createPage } from "./infrastructure/browserPage";
 export type { CreatePageOptions } from "./infrastructure/browserPage";
 export {
