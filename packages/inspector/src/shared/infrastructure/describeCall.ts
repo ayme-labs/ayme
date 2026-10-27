@@ -13,8 +13,8 @@ export type CallDescription = {
 
 /**
  * What a call on the runtime's Page does, as ayme's Playwright call table
- * says: undefined for one that only reads, waits, builds a locator or
- * configures, which runs as it is. One that acts is paced in demo mode; one
+ * says: undefined for one that only reads, waits, builds a locator,
+ * configures or scrolls, which runs as it is. One that acts is paced in demo mode; one
  * through the pointer is hit-tested, and a click is cued.
  */
 export function describeCall(
