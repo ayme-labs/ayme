@@ -27,11 +27,7 @@ import {
   chunkQuestionId,
   runOffQuestionId,
 } from "../domain/goalLoopQuestions";
-import {
-  getPageStateCaptureForDocument,
-  renderChangeRecord,
-  resolvePageStateRefs,
-} from "../../page-state";
+import { getPageStateSession, renderChangeRecord } from "../../page-state";
 import {
   AriaRefSchema,
   StructuralTree,
@@ -2327,9 +2323,8 @@ describe("Goal Loop goal in Chromium", () => {
     expect(regions).toEqual([["T", "a", "s", "k"]]);
 
     // Every option, wrappers included, resolves in the full capture.
-    const resolutions = await resolvePageStateRefs(
-      document,
-      ...Object.keys(offered).map((ref) => AriaRefSchema.parse(ref))
+    const resolutions = await getPageStateSession(document).resolveRefs(
+      Object.keys(offered).map((ref) => AriaRefSchema.parse(ref))
     );
     expect(resolutions.map((resolution) => resolution.status)).toEqual(
       Object.keys(offered).map(() => "resolved")
@@ -2958,9 +2953,8 @@ describe("Goal Loop goal in Chromium", () => {
       offeredElements(criteriaOf(requests[1]!).ref!)
     );
     expect(instanceRefs).toHaveLength(count);
-    const resolutions = await resolvePageStateRefs(
-      document,
-      ...instanceRefs.map((ref) => AriaRefSchema.parse(ref))
+    const resolutions = await getPageStateSession(document).resolveRefs(
+      instanceRefs.map((ref) => AriaRefSchema.parse(ref))
     );
     expect(resolutions.map((resolution) => resolution.status)).toEqual(
       instanceRefs.map(() => "resolved")
@@ -2984,7 +2978,8 @@ describe("Goal Loop goal in Chromium", () => {
     ]);
     // The agent's next Change Record: from the page the Handover gave it.
     const handedOver = agentCursor().current()!;
-    const { tree: now } = await getPageStateCaptureForDocument(document);
+    const { tree: now } =
+      await getPageStateSession(document).getPageStateCapture();
     const record = StructuralTree.reconcile(
       await handedOver.tree.resolve(),
       now

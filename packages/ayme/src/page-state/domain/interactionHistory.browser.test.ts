@@ -22,7 +22,7 @@ import {
 import {
   getInteractionHistory,
   getPageStateForElements,
-  resolvePageStateRefs,
+  getPageStateSession,
 } from "../infrastructure/pageState";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import {
@@ -279,7 +279,9 @@ describe("Interaction history in Chromium", () => {
       .poll(() => history().observations.getVisits().length)
       .toBe(visitsBefore + 1);
 
-    const [resolution] = await resolvePageStateRefs(document, saveRef);
+    const [resolution] = await getPageStateSession(document).resolveRefs([
+      saveRef,
+    ]);
     if (resolution?.status !== "resolved")
       throw new Error(`Expected ${saveRef} to resolve after the route change.`);
     expect(resolution.node.element).toBe(document.querySelector("#save"));

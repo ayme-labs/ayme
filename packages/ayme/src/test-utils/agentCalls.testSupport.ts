@@ -9,9 +9,11 @@ import { getPageContextForDocument, listElementTools } from "../tools";
 import {
   cursors,
   getPageStateForDocument,
+  getPageStateSession,
   lookAtPageStateForDocument,
   type AriaRef,
   type Cursor,
+  type PageStateSession,
 } from "../page-state";
 import { listRegisteredPomTargets, getPomDefinitions } from "../page-objects";
 import { resolveTools } from "../runtime";
@@ -29,20 +31,28 @@ const NO_PAGE = {} as Page;
  * session: it acts on `page`, its Change Record reads from and moves
  * `cursor`, the calling agent's by default, and the child Runs it starts
  * execute the available tool they name at once, unrecorded, on the same
- * page. Its Document is the test's own, none in Node.
+ * page. Its Document is the test's own, none in Node; its Page State Session
+ * is `pageStateSession`, else that Document's, read when a tool reaches it.
  */
 export function runContext(
   page: Page = NO_PAGE,
-  cursor: Cursor = agentCursor()
+  cursor: Cursor = agentCursor(),
+  pageStateSession?: PageStateSession
 ): RunContext {
   return {
     cursor,
     page,
     document: globalThis.document,
+    get pageStateSession() {
+      return pageStateSession ?? getPageStateSession(globalThis.document);
+    },
     run: async (name, input, childCursor = cursor) => {
       const entry = resolveTools({ peeks: true }).get(name);
       if (!entry?.available) throw new Error(`No available tool "${name}".`);
-      return entry.tool.execute(input, runContext(page, childCursor));
+      return entry.tool.execute(
+        input,
+        runContext(page, childCursor, pageStateSession)
+      );
     },
   };
 }

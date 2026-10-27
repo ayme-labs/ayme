@@ -1,13 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AriaRefSchema,
   MonotonicTimeMsSchema,
   PageIdSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
+  type StructuralActionId,
 } from "@ayme-dev/core/structural-observation";
+import { createCursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
-import { PageStateSession } from "./pageStateSession";
+import { PageStateSession, type ActionPage } from "./pageStateSession";
 import type { PomLabels } from "../domain/pomLabels";
 import type { PageCapture } from "../domain/structuralPageState";
 
@@ -15,6 +17,13 @@ const ref = AriaRefSchema.parse;
 
 let now = 0;
 const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };
+const cursor = () => createCursors().of("app");
+
+/** A page that settles at once and never starts a full load. */
+const settledPage: ActionPage = {
+  settle: async () => ({ stable: true }),
+  watchFullLoad: () => ({ started: new Promise(() => {}), stop: () => {} }),
+};
 
 /** An element as the session sees one: something its captures map refs to. */
 const element = (name: string) => ({ name }) as unknown as Element;
@@ -34,11 +43,22 @@ function capture(
   };
 }
 
+/** A page on which every action starts a full load of `url` at once. */
+const loadingPage = (url: string): ActionPage => ({
+  settle: async () => ({ stable: true }),
+  watchFullLoad: () => ({ started: Promise.resolve(url), stop: () => {} }),
+});
+
 /**
  * A session whose captures are `captures`, in order, the last one repeated;
  * an error is a capture that throws it. `count()` is how many it took.
  */
 function sessionOver(...captures: (PageCapture | Error)[]) {
+  return sessionOn(settledPage, ...captures);
+}
+
+/** `sessionOver` on `page`. */
+function sessionOn(page: ActionPage, ...captures: (PageCapture | Error)[]) {
   let taken = 0;
   const session = new PageStateSession(
     new InteractionHistory({
@@ -50,7 +70,8 @@ function sessionOver(...captures: (PageCapture | Error)[]) {
       const next = captures[Math.min(taken++, captures.length - 1)]!;
       if (next instanceof Error) throw next;
       return next;
-    }
+    },
+    page
   );
   return { session, count: () => taken };
 }
@@ -196,11 +217,21 @@ describe("the ref the latest page state gave an element", () => {
 describe("an action's before capture", () => {
   const page = '- generic [ref=e1]:\n  - button "Save" [ref=e2]';
 
+  /** The latest observation as the action's `perform` runs, right after its before capture. */
+  async function latestAsPerformed(session: PageStateSession) {
+    let latest = session.history.latestObservation;
+    await session.runAction(cursor(), { tool: "click", args: {} }, () => {
+      latest = session.history.latestObservation;
+    });
+    return latest!;
+  }
+
   it("records nothing when the page and its labels are as last recorded", async () => {
     const { session } = sessionOver(capture(page));
-    const actionId = await session.startAction({ tool: "click", args: {} });
 
-    await expect(session.captureBefore(actionId)).resolves.toBeUndefined();
+    expect(await latestAsPerformed(session)).toBe(
+      session.history.firstObservation
+    );
   });
 
   it("records a before when only a Page Object label changed", async () => {
@@ -208,31 +239,153 @@ describe("an action's before capture", () => {
       capture(page),
       capture(page, [], new Map([[ref("e2"), ["SaveButton"]]]))
     );
-    const actionId = await session.startAction({ tool: "click", args: {} });
 
-    const before = await session.captureBefore(actionId);
+    const before = await latestAsPerformed(session);
 
-    expect(before).toBe(session.history.latestObservation);
-    expect(session.history.pomLabels(before!)).toEqual(
+    expect(before).not.toBe(session.history.firstObservation);
+    expect(session.history.pomLabels(before)).toEqual(
       new Map([[ref("e2"), ["SaveButton"]]])
     );
   });
 });
 
-it("completes a failed action with the page as last recorded when capturing it throws", async () => {
-  const { session, count } = sessionOver(
-    capture('- button "Save" [ref=e1]'),
-    new Error("Capture failed.")
-  );
-  const actionId = await session.startAction({ tool: "click", args: {} });
+describe("runAction", () => {
+  const savePage = capture('- generic [ref=e1]:\n  - button "Save" [ref=e2]');
+  const call = { tool: "App.save", args: {} };
 
-  const after = await session.failAction(actionId);
+  it("answers with what the action changed", async () => {
+    const { session } = sessionOver(
+      savePage,
+      savePage,
+      capture(
+        '- generic [ref=e1]:\n  - button "Save" [ref=e2]\n  - status [ref=e3]: Saved'
+      )
+    );
 
-  expect(count()).toBe(2);
-  expect(await after.tree.resolve()).toEqual(
-    await session.history.firstObservation!.tree.resolve()
-  );
-  expect(session.history.actions().get(actionId)).toMatchObject({
-    failed: true,
+    await expect(
+      session.runAction(cursor(), call, () => "done")
+    ).resolves.toMatchObject({
+      result: "done",
+      page_changed: true,
+      settled: true,
+      changes: expect.stringContaining("Saved"),
+    });
+  });
+
+  it("completes the action as failed when the post-action capture throws", async () => {
+    const captureError = new Error("Capture failed.");
+    const { session, count } = sessionOver(savePage, savePage, captureError);
+
+    await expect(session.runAction(cursor(), call, () => {})).rejects.toBe(
+      captureError
+    );
+
+    await expectOneFailedCompletedAction(session);
+    // Recorded against the last observation: no capture after the failed one.
+    expect(count()).toBe(3);
+  });
+
+  it("completes the action as failed, before it runs, with the page as last recorded when the before capture throws", async () => {
+    const captureError = new Error("Capture failed.");
+    const { session, count } = sessionOver(savePage, captureError);
+    const perform = vi.fn();
+
+    await expect(session.runAction(cursor(), call, perform)).rejects.toBe(
+      captureError
+    );
+
+    expect(perform).not.toHaveBeenCalled();
+    // The failure's own capture is the third; it fails too and the page as
+    // last recorded stands in.
+    await expectOneFailedCompletedAction(session);
+    expect(count()).toBe(3);
+    expect(await session.history.latestObservation!.tree.resolve()).toEqual(
+      await session.history.firstObservation!.tree.resolve()
+    );
+  });
+
+  it("completes the action as failed when perform and the capture after it throw", async () => {
+    const { session, count } = sessionOver(
+      savePage,
+      savePage,
+      new Error("Capture failed.")
+    );
+    const performError = new Error("Save failed.");
+
+    await expect(
+      session.runAction(cursor(), call, () => {
+        throw performError;
+      })
+    ).rejects.toBe(performError);
+
+    await expectOneFailedCompletedAction(session);
+    expect(count()).toBe(3);
+  });
+
+  it("leaves the cursor where it was when perform throws something that is not an Error", async () => {
+    const { session } = sessionOver(
+      savePage,
+      savePage,
+      capture(
+        '- generic [ref=e1]:\n  - button "Save" [ref=e2]\n  - status [ref=e3]: Failed'
+      )
+    );
+    const reader = cursor();
+    const thrown = { reason: "Save failed." };
+
+    await expect(
+      session.runAction(reader, call, () => {
+        throw thrown;
+      })
+    ).rejects.toBe(thrown);
+
+    expect(thrown).toEqual({ reason: "Save failed." });
+    expect(reader.current()).toBeUndefined();
+  });
+
+  it("answers at once when the action starts a full load, and moves the cursor to the page as it was then", async () => {
+    const { session } = sessionOn(
+      loadingPage("https://app.test/next"),
+      savePage
+    );
+    const reader = cursor();
+
+    await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
+      page_changed: false,
+      settled: false,
+      loading: "https://app.test/next",
+      next: "The page is loading https://app.test/next. Call snapshot next to read the new page.",
+    });
+    expect(reader.current()).toBe(session.history.latestObservation);
+  });
+
+  it("still answers a full load when capturing the page as it goes away throws", async () => {
+    const { session } = sessionOn(
+      loadingPage("https://app.test/next"),
+      savePage,
+      savePage,
+      new Error("The document is gone.")
+    );
+    const reader = cursor();
+
+    await expect(
+      session.runAction(reader, call, () => {})
+    ).resolves.toMatchObject({
+      page_changed: false,
+      settled: false,
+      loading: "https://app.test/next",
+    });
+    expect(reader.current()).toBeUndefined();
   });
 });
+
+async function expectOneFailedCompletedAction(session: PageStateSession) {
+  const [[actionId, action]] = [...session.history.actions()] as [
+    [StructuralActionId, unknown],
+  ];
+  expect(action).toMatchObject({ failed: true });
+  // Core has evidence only for a completed action; a started one throws.
+  await expect(
+    session.history.observations.getActionEvidence(actionId)
+  ).resolves.toBeDefined();
+}

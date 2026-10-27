@@ -10,10 +10,9 @@ import {
   inReachBatch,
   reaches,
   refHint,
-  resolveRef,
-  runAction,
   selectorFailure,
   type ElementInput,
+  type PageStateSession,
 } from "../../page-state";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "../../shared";
 import type { RunContext } from "../../runs";
@@ -158,7 +157,7 @@ function elementToolExecution(
       context.page,
       definition,
       fields[definition.targetField] as string,
-      context.document
+      context.pageStateSession
     );
     if (definition.needsReach)
       await assertReachable(
@@ -167,8 +166,7 @@ function elementToolExecution(
         target.element,
         definition.needsReach
       );
-    return runAction(
-      context.document,
+    return context.pageStateSession.runAction(
       context.cursor,
       {
         tool: definition.name,
@@ -243,11 +241,11 @@ export async function resolveElementTarget(
   page: Page,
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
-  currentDocument: Document,
+  pageStateSession: PageStateSession,
   scope?: string
 ): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
-    const node = await resolveRef(requested, definition.label, currentDocument);
+    const node = await pageStateSession.resolveRef(requested, definition.label);
     return {
       ref: node.ref,
       element: node.element,

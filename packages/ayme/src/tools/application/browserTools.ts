@@ -6,8 +6,8 @@ import type { Locator, Page } from "@playwright/test";
 import type { JsonSchema } from "../../shared";
 import {
   assertReachable,
-  runAction,
   type ElementInput,
+  type PageStateSession,
 } from "../../page-state";
 import {
   registerElementTool,
@@ -253,13 +253,13 @@ type FormField = {
 async function fillField(
   page: Page,
   field: FormField,
-  currentDocument: Document
+  pageStateSession: PageStateSession
 ) {
   const target = await resolveElementTarget(
     page,
     { label: `fill the field "${field.name}" at`, targetField: "target" },
     field.target,
-    currentDocument
+    pageStateSession
   );
   const locator = page.locator(target.selector);
   await assertReachable(
@@ -291,17 +291,16 @@ export const fillFormTool: PublishedElementTool = {
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const { cursor, page, document: currentDocument } = context;
+    const { cursor, page, pageStateSession } = context;
     const { fields } = input as { fields: FormField[] };
-    return runAction(
-      currentDocument,
+    return pageStateSession.runAction(
       cursor,
       { tool: "fill_form", args: input },
       async () => {
         const filled: string[] = [];
         for (const field of fields) {
           try {
-            await fillField(page, field, currentDocument);
+            await fillField(page, field, pageStateSession);
           } catch (error) {
             return {
               filled,

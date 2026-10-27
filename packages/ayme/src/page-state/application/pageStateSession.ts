@@ -5,7 +5,13 @@ import {
   type StructuralIdentityLedger,
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
-import { RuntimeStateError } from "../../shared";
+import { isJsonValue, RuntimeStateError } from "../../shared";
+import {
+  attachChangeRecord,
+  readChangeRecord,
+  type ActionResult,
+  type ChangeRecordStarts,
+} from "../domain/actionResult";
 import type { Cursor } from "../domain/cursors";
 import type {
   InteractionHistory,
@@ -16,9 +22,11 @@ import {
   sameLabels,
   type PageCapture,
   type PageState,
+  type AymeNode,
   type PageStateLook,
   type RefResolution,
 } from "../domain/structuralPageState";
+import { resolveRequestedRef } from "./refResolution";
 
 /**
  * The Page State Session's port: a capture of the page as it is now. Every
@@ -27,9 +35,24 @@ import {
  */
 export type CapturePage = () => Promise<PageCapture>;
 
+/** The Page State Session's port for the page signals an action waits on, besides its captures. */
+export type ActionPage = {
+  /**
+   * Wait for a Settled Page, bounded by a deadline; `stable` says whether
+   * the page became stable before it.
+   */
+  settle(): Promise<{ stable: boolean }>;
+  /**
+   * Watch the page's navigations until `stop`: `started` resolves with the
+   * destination URL once one starts a full page load.
+   */
+  watchFullLoad(): { started: Promise<string>; stop(): void };
+};
+
 /**
  * A document's Page State Session: what it records of each capture and what
- * it answers from them. It reads the page only through `capturePage`.
+ * it answers from them, and the actions it runs. It reads the page only
+ * through `capturePage` and `actionPage`.
  */
 export class PageStateSession {
   /**
@@ -53,7 +76,8 @@ export class PageStateSession {
    */
   constructor(
     readonly history: InteractionHistory,
-    private readonly capturePage: CapturePage
+    private readonly capturePage: CapturePage,
+    private readonly actionPage: ActionPage
   ) {}
 
   async getPageState(cursor?: Cursor): Promise<PageState> {
@@ -77,11 +101,156 @@ export class PageStateSession {
   }
 
   /**
+   * Run `perform` as an action: record a Structural Action around it, wait
+   * for a Settled Page, capture it and return the unified action result with
+   * the Change Record in two parts: `changes_before`, what changed between
+   * the Structural Page State `cursor` stands at, the one its Caller last
+   * received, and the page right before the action; and `changes`, what
+   * changed from there to the Settled Page after the action, where `cursor`
+   * then moves.
+   *
+   * A Caller's state is what it received: `snapshot` and the Settled Page of
+   * its previous action; each step's tree for the Goal Loop's fork. Captures
+   * Ayme makes for itself move no cursor: the before capture, taken right
+   * before `perform` and recorded only when the page differs from the latest
+   * observation, is one. A change that happened on its own since the Caller
+   * last read the page, or by another Caller, is therefore in
+   * `changes_before`; one that lands while the page settles after the action
+   * counts as the action's.
+   *
+   * An action whose `perform` or settle wait throws is completed as failed
+   * with the page as it is then, and the error travels on; one whose
+   * `perform` throws still waits for a Settled Page first. The error's
+   * message then ends with the Change Record's parts that have a change, and
+   * `cursor` moves to that page, as the Caller received it: what a failed
+   * action did still reaches its Caller once. Where capturing that page or
+   * the Settled Page throws, the page as last recorded stands in for it.
+   *
+   * An action that starts a full page load answers at once, before the old
+   * document goes away, with the Change Record up to that moment, the URL
+   * that is loading and `next`. `perform` and the settle wait are left to
+   * finish on their own; their outcome is never reported. A navigation that
+   * stays in the document leaves the action to settle as usual.
+   */
+  async runAction(
+    cursor: Cursor,
+    call: ToolCall,
+    perform: () => unknown
+  ): Promise<ActionResult> {
+    const actionId = await this.startAction(call);
+    const history = this.history;
+    // The start of the Change Record: where the cursor stands as the action
+    // starts; child Runs inside the action move the cursor on.
+    const received = history.received(cursor);
+    // The page as last observed: the action's before unless the before
+    // capture finds the page moved on since.
+    let before = history.latestObservation;
+    let rawResult: unknown;
+    let stable = false;
+    const fullLoad = this.actionPage.watchFullLoad();
+    let loadingUrl: string | undefined;
+    try {
+      before = (await this.captureBefore(actionId)) ?? before;
+      const waitForSettledPage = () => this.actionPage.settle();
+      const settled = (async () => {
+        try {
+          rawResult = await perform();
+        } catch (error) {
+          // What a failed action set off settles before its Run's turn ends.
+          await waitForSettledPage().catch(() => {});
+          throw error;
+        }
+        ({ stable } = await waitForSettledPage());
+      })();
+      loadingUrl = await Promise.race([
+        settled.then(() => undefined),
+        fullLoad.started,
+      ]);
+      if (loadingUrl !== undefined) settled.catch(() => {});
+    } catch (error) {
+      await this.failAction(actionId)
+        .then(async (after) => {
+          if (!(error instanceof Error)) return;
+          const record = await readChangeRecord(
+            history,
+            { received, before },
+            after
+          );
+          // An error that cannot take the fields, such as a frozen one,
+          // leaves the cursor where it was: the next action reports these
+          // changes.
+          attachChangeRecord(error, record);
+          cursor.move(after);
+        })
+        .catch(() => {});
+      throw error;
+    } finally {
+      fullLoad.stop();
+    }
+    if (loadingUrl !== undefined)
+      return this.loadingResult(
+        actionId,
+        cursor,
+        { received, before },
+        loadingUrl
+      );
+
+    const after = await this.completeAction(actionId);
+    cursor.move(after);
+    const record = await readChangeRecord(history, { received, before }, after);
+
+    const out: ActionResult = {
+      page_changed: record.page_changed,
+      settled: stable,
+    };
+
+    if (rawResult !== undefined && isJsonValue(rawResult))
+      out.result = rawResult;
+    if (record.changes_before) out.changes_before = record.changes_before;
+    if (record.changes) out.changes = record.changes;
+
+    return out;
+  }
+
+  /** The answer to an action that started a full load of `url`. */
+  private async loadingResult(
+    actionId: StructuralActionId,
+    cursor: Cursor,
+    starts: ChangeRecordStarts,
+    url: string
+  ): Promise<ActionResult> {
+    // The document may already be going away; the answer goes out regardless.
+    const record = await this.completeAction(actionId)
+      .then((after) => {
+        cursor.move(after);
+        return readChangeRecord(this.history, starts, after);
+      })
+      .catch(
+        (): Pick<
+          ActionResult,
+          "page_changed" | "changes_before" | "changes"
+        > => ({
+          page_changed: false,
+        })
+      );
+    return {
+      page_changed: record.page_changed,
+      settled: false,
+      ...(record.changes_before
+        ? { changes_before: record.changes_before }
+        : {}),
+      ...(record.changes ? { changes: record.changes } : {}),
+      loading: url,
+      next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+    };
+  }
+
+  /**
    * Start a Structural Action for a tool call. An action needs a page to
    * compare against, so a session that has observed nothing yet captures
    * once first.
    */
-  async startAction(call: ToolCall): Promise<StructuralActionId> {
+  private async startAction(call: ToolCall): Promise<StructuralActionId> {
     if (!this.history.hasObservation) await this.capture();
     return this.history.startAction(call);
   }
@@ -93,7 +262,7 @@ export class PageStateSession {
    * costs no observation. Moves no cursor. Returns the observation when one
    * was recorded.
    */
-  async captureBefore(
+  private async captureBefore(
     actionId: StructuralActionId
   ): Promise<StructuralObservationEntry | undefined> {
     // Set: starting the action captured when nothing had been observed.
@@ -126,7 +295,7 @@ export class PageStateSession {
    * throws, the action is completed as failed with the page as last
    * recorded, and the error travels on.
    */
-  async completeAction(
+  private async completeAction(
     actionId: StructuralActionId
   ): Promise<StructuralObservationEntry> {
     let capture: PageCapture;
@@ -151,7 +320,7 @@ export class PageStateSession {
    * as last recorded when capturing it throws, and return that observation,
    * the failed action's after. No caller's cursor moves.
    */
-  async failAction(
+  private async failAction(
     actionId: StructuralActionId
   ): Promise<StructuralObservationEntry> {
     let capture: PageCapture;
@@ -285,6 +454,16 @@ export class PageStateSession {
       text: renderPageState(capture).text,
       resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
     });
+  }
+
+  /**
+   * The node a tool's Structural Ref addresses now, against a fresh capture:
+   * the one resolver every tool's `ref` goes through.
+   */
+  async resolveRef(requested: string, label: string): Promise<AymeNode> {
+    return resolveRequestedRef(requested, label, (...refs) =>
+      this.resolveRefs(refs)
+    );
   }
 
   /** Resolve refs through the session's identity ledger and a fresh capture. */

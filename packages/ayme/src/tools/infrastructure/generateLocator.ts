@@ -18,7 +18,11 @@ import {
   TARGET_SCHEMA,
   type PublishedElementTool,
 } from "../application/elementTools";
-import { refFailure, selectorFailure } from "../../page-state";
+import {
+  refFailure,
+  selectorFailure,
+  type PageStateSession,
+} from "../../page-state";
 import type { ToolResult } from "../domain/toolTypes";
 
 type Result = ToolResult<"generate_locator">;
@@ -107,7 +111,7 @@ async function entryFor(
   page: Page,
   target: string,
   container: Container | undefined,
-  currentDocument: Document
+  pageStateSession: PageStateSession
 ): Promise<Entry> {
   // A selector is matched inside the container; a Structural Ref names its
   // element wherever it is, so it is checked to be inside.
@@ -122,7 +126,7 @@ async function entryFor(
       page,
       definition(TARGET_LABEL),
       target,
-      currentDocument,
+      pageStateSession,
       isRef ? undefined : container?.selector
     ));
   } catch (error) {
@@ -143,7 +147,7 @@ async function entryFor(
 async function groupFor(
   page: Page,
   group: { targets: string[]; within?: string },
-  currentDocument: Document
+  pageStateSession: PageStateSession
 ): Promise<Group> {
   let container: Container | undefined;
   if (group.within !== undefined)
@@ -152,7 +156,7 @@ async function groupFor(
         page,
         definition(WITHIN_LABEL),
         group.within,
-        currentDocument
+        pageStateSession
       );
       container = { within: group.within, element, selector };
     } catch (error) {
@@ -160,7 +164,7 @@ async function groupFor(
     }
   const locators: Entry[] = [];
   for (const target of group.targets)
-    locators.push(await entryFor(page, target, container, currentDocument));
+    locators.push(await entryFor(page, target, container, pageStateSession));
   return {
     ...(group.within !== undefined ? { within: group.within } : {}),
     locators,
@@ -180,13 +184,13 @@ export const generateLocatorTool: PublishedElementTool = {
   ].join(" "),
   // Stryker restore StringLiteral
   inputSchema,
-  execute: async (input, { page, document: currentDocument }) => {
+  execute: async (input, { page, pageStateSession }) => {
     const { groups } = input as {
       groups: { targets: string[]; within?: string }[];
     };
     const result: Result = { groups: [] };
     for (const group of groups)
-      result.groups.push(await groupFor(page, group, currentDocument));
+      result.groups.push(await groupFor(page, group, pageStateSession));
     return result;
   },
 };

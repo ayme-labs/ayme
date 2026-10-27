@@ -1,8 +1,7 @@
 export { ACTION_RESULT_NOTE, readRenderedChange } from "./domain/actionResult";
 export type { ActionFailure, ActionResult } from "./domain/actionResult";
-export { runAction } from "./infrastructure/actions";
 export { renderChangeRecord } from "./domain/changeRecord";
-export type { Cursor } from "./domain/cursors";
+export { forkCursor, type Cursor } from "./domain/cursors";
 export {
   assertReachable,
   assertRootReachable,
@@ -16,16 +15,15 @@ export {
   configurePageStateIgnore,
   cursors,
   getInteractionHistory,
-  getPageStateCaptureForDocument,
   getPageStateForDocument,
   getPageStateForElements,
+  getPageStateSession,
   latestPageStateElement,
   latestPageStateRef,
   lookAtPageStateForDocument,
   onPageStateRecorded,
   providePageObjectStructure,
   resolvePageStateRef,
-  resolvePageStateRefs,
 } from "./infrastructure/pageState";
 export {
   inReachBatch,
@@ -33,7 +31,7 @@ export {
 } from "./infrastructure/reachMeasurement";
 export { refFailure, refHint, selectorFailure } from "./domain/refFailures";
 export { registerRefSelectorEngine } from "./infrastructure/refSelectorEngine";
-export { resolveRef } from "./infrastructure/refTarget";
+export type { PageStateSession } from "./application/pageStateSession";
 export { pageStateNodeEntry } from "./domain/structuralPageState";
 export type {
   AriaRef,

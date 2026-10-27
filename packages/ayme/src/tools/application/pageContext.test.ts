@@ -2,16 +2,20 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getPageStateForDocument, getPomDefinitions } = vi.hoisted(() => ({
-  getPageStateForDocument: vi.fn(),
-  getPomDefinitions: vi.fn(),
-}));
+const { getPageState, getDocumentPageState, getPomDefinitions } = vi.hoisted(
+  () => ({
+    getPageState: vi.fn(),
+    getDocumentPageState: vi.fn(),
+    getPomDefinitions: vi.fn(),
+  })
+);
 
+// Only reading a Document's page context outside a Run looks its session up.
 vi.mock(
   "../../page-state/infrastructure/pageState",
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
-    getPageStateForDocument,
+    getPageStateSession: () => ({ getPageState: getDocumentPageState }),
   })
 );
 vi.mock("../../page-objects/infrastructure/registeredPomDefinitions", () => ({
@@ -23,6 +27,13 @@ import {
   agentCursor,
   runContext,
 } from "../../test-utils/agentCalls.testSupport";
+import type { PageStateSession } from "../../page-state";
+
+/** The Run context of a snapshot: its Page State Session reads `getPageState`. */
+const snapshotRun = () =>
+  runContext(undefined, undefined, {
+    getPageState,
+  } as unknown as PageStateSession);
 
 describe("snapshot", () => {
   beforeEach(() => {
@@ -31,7 +42,7 @@ describe("snapshot", () => {
       "document",
       document.implementation.createHTMLDocument("Page context test")
     );
-    getPageStateForDocument.mockResolvedValue({
+    getPageState.mockResolvedValue({
       text: '- e1 button "Save changes"',
       resolve: vi.fn(),
     });
@@ -53,7 +64,7 @@ describe("snapshot", () => {
 
   it("combines current structure and POM definitions while retaining ref resolution", async () => {
     const resolve = vi.fn();
-    getPageStateForDocument.mockResolvedValue({
+    getDocumentPageState.mockResolvedValue({
       text: '- e1 button "Save changes"',
       resolve,
     });
@@ -82,7 +93,7 @@ describe("snapshot", () => {
 
   it("returns a JSON-safe context payload and forwards a named definition filter", async () => {
     await expect(
-      getPageContextTool.execute({ names: ["ProfileMenu"] }, runContext())
+      getPageContextTool.execute({ names: ["ProfileMenu"] }, snapshotRun())
     ).resolves.toEqual({
       structure: '- e1 button "Save changes"',
       pomDefinitions: "ProfileMenu // The user profile menu.",
@@ -183,10 +194,11 @@ describe("snapshot", () => {
       ],
     });
 
-    await expect(getPageContextTool.execute({}, runContext())).resolves.toEqual(
-      {
-        structure: '- e1 button "Save changes"',
-        pomDefinitions: `AppTopBar // Application top bar.
+    await expect(
+      getPageContextTool.execute({}, snapshotRun())
+    ).resolves.toEqual({
+      structure: '- e1 button "Save changes"',
+      pomDefinitions: `AppTopBar // Application top bar.
   helpButton
   helpMenu: AppTopBarHelpMenu
   notifications: NotificationItem[]
@@ -202,7 +214,6 @@ describe("snapshot", () => {
 AppTopBarHelpMenu
   // Close the help menu.
   close(): this`,
-      }
-    );
+    });
   });
 });

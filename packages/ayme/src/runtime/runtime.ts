@@ -33,6 +33,7 @@ import {
   configurePageStateIgnore,
   cursors,
   getInteractionHistory,
+  getPageStateSession,
   type Cursor,
 } from "../page-state";
 import {
@@ -684,7 +685,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         )
       );
     try {
-      return await execute({ cursor, run, page: getPage(), document });
+      return await execute({
+        cursor,
+        run,
+        page: getPage(),
+        document,
+        pageStateSession: getPageStateSession(document),
+      });
     } finally {
       // A turn taken now starts once every child started so far has ended.
       await takeChildTurn(async () => {});
