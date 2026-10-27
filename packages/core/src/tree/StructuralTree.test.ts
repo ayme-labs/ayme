@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { defineStructuralEnrichment } from "./StructuralEnrichment";
 import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
@@ -1070,5 +1070,104 @@ describe("enrichment does not affect equality", () => {
     ).attachEnrichment(testEnrichment, enrichmentB);
 
     expect(a.isDeepEqual(b)).toBe(true);
+  });
+});
+
+describe("StructuralTree.reconcile sibling pairing", () => {
+  it("pairs look-alike siblings with new refs by their content", () => {
+    const [before, after] = parsePair(
+      `
+- generic [ref=e1]:
+  - button "A" [ref=e2]: x
+  - button "A" [ref=e3]: y
+`.trim(),
+      `
+- generic [ref=e1]:
+  - button "A" [ref=e4]: y
+  - button "A" [ref=e5]: x
+`.trim()
+    );
+
+    const reconciled = StructuralTree.reconcile(before, after);
+
+    expect(reconciled.getBeforeNodeForAfterRef(ref("e4"))?.ref).toBe("e3");
+    expect(reconciled.getBeforeNodeForAfterRef(ref("e5"))?.ref).toBe("e2");
+  });
+
+  it("does not pair a sibling with a before sibling another sibling already paired with", () => {
+    const [before, after] = parsePair(
+      `
+- generic [ref=e1]:
+  - button "A" [ref=e2]: x
+`.trim(),
+      `
+- generic [ref=e1]:
+  - button "A" [ref=e5]: x
+  - button "A" [ref=e7]: y
+`.trim()
+    );
+
+    const reconciled = StructuralTree.reconcile(before, after);
+
+    expect(reconciled.getBeforeNodeForAfterRef(ref("e5"))?.ref).toBe("e2");
+    expect(reconciled.getNode(ref("e7"))?.status).toEqual({ kind: "added" });
+  });
+
+  it("does not pair a new sibling with text that changed beside it", () => {
+    const [before, after] = parsePair(
+      `
+- generic [ref=e1]:
+  - text: hello
+  - button "A" [ref=e2]
+`.trim(),
+      `
+- generic [ref=e1]:
+  - text: bye
+  - button "B" [ref=e3]
+`.trim()
+    );
+
+    const reconciled = StructuralTree.reconcile(before, after);
+
+    expect(reconciled.getNode(ref("e3"))?.status).toEqual({ kind: "added" });
+    expect(reconciled.getNode(ref("e2"))?.status).toEqual({
+      kind: "removed",
+    });
+  });
+});
+
+describe("StructuralTree.reconcile cost", () => {
+  function rowList(rowCount: number, checkedRow?: number): string {
+    const lines = ["- list [ref=e1]:"];
+    for (let row = 1; row <= rowCount; row += 1) {
+      lines.push(`  - listitem [ref=e${2 * row}]:`);
+      lines.push(
+        `    - checkbox "Row ${row}"${row === checkedRow ? " [checked]" : ""} [ref=e${2 * row + 1}]`
+      );
+    }
+    return lines.join("\n");
+  }
+
+  // Every sibling comparison goes through the pair check, so its calls count them.
+  function siblingComparisonsCheckingOneRow(rowCount: number): number {
+    const [before, after] = parsePair(
+      rowList(rowCount),
+      rowList(rowCount, rowCount / 2)
+    );
+    const pairCheck = vi.spyOn(
+      StructuralTree as unknown as { _refsMayPair: () => boolean },
+      "_refsMayPair"
+    );
+    try {
+      StructuralTree.reconcile(before, after);
+      return pairCheck.mock.calls.length;
+    } finally {
+      pairCheck.mockRestore();
+    }
+  }
+
+  it("compares the siblings of a list with one changed row a number of times linear in its length", () => {
+    expect(siblingComparisonsCheckingOneRow(1000)).toBeLessThanOrEqual(1000);
+    expect(siblingComparisonsCheckingOneRow(2000)).toBeLessThanOrEqual(2000);
   });
 });
