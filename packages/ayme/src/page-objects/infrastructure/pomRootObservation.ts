@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { inTheWayOf, type Reach } from "../../page-state";
+import { inTheWayOf } from "../../page-state/infrastructure";
+import { type Reach } from "../../page-state/application";
 import { absentPomRoot, type ObservedPomRoot } from "../domain/pomInstance";
 
 /**

@@ -31,11 +31,11 @@ import {
   getPageStateForDocument,
   latestPageStateElement,
   providePageObjectStructure,
-} from "../../page-state";
+} from "../../page-state/infrastructure";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
 import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
-import type { AriaRef } from "../../page-state";
+import type { AriaRef } from "../../page-state/domain";
 
 const ref = AriaRefSchema.parse;
 

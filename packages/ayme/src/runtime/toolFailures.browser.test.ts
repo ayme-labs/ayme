@@ -4,8 +4,8 @@ import type { Page } from "@playwright/test";
 import {
   createPage,
   probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "../page-objects";
+} from "../page-objects/infrastructure";
+import { registerCompiledPom } from "../page-objects/application";
 import type { PomManifest } from "../shared";
 import { errorText } from "../shared";
 import {

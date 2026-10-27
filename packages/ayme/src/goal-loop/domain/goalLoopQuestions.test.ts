@@ -7,7 +7,7 @@ import {
   SyntheticAriaRefFactory,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import type { PageStateCapture } from "../../page-state";
+import type { PageStateCapture } from "../../page-state/domain";
 import {
   chunkQuestionId,
   fitListsToTarget,

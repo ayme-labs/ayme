@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createPage } from "../../page-objects";
+import { createPage } from "../../page-objects/infrastructure";
 import {
   agentTools,
   operations,

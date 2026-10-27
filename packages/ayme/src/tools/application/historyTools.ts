@@ -3,7 +3,7 @@
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
 import type { JsonSchema } from "../../shared";
-import { startNavigation } from "../../page-state";
+import { startNavigation } from "../../page-state/infrastructure";
 import type { PublishedElementTool } from "./elementTools";
 
 const noInputSchema: JsonSchema = {

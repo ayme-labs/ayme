@@ -6,7 +6,9 @@ import {
 } from "../domain/decisionWire";
 import { agentCursor } from "../../test-utils/agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "../../shared";
-import { ayme, createPage, registerCompiledPom } from "../../page-objects";
+import { ayme } from "../../page-objects/domain";
+import { createPage } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import { errorText } from "../../shared";
 import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
@@ -19,7 +21,7 @@ import {
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import { configureGoalLoop } from "../infrastructure/goalLoopStore";
-import type { CustomTool } from "../../tools";
+import type { CustomTool } from "../../tools/application";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -27,7 +29,8 @@ import {
   chunkQuestionId,
   runOffQuestionId,
 } from "../domain/goalLoopQuestions";
-import { getPageStateSession, renderChangeRecord } from "../../page-state";
+import { getPageStateSession } from "../../page-state/infrastructure";
+import { renderChangeRecord } from "../../page-state/domain";
 import {
   AriaRefSchema,
   StructuralTree,

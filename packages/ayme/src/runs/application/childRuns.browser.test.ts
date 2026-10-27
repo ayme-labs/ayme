@@ -7,7 +7,7 @@ import {
   type CustomTool,
   type Run,
 } from "../../index";
-import type { GoalLoopDecisionFunction } from "../../goal-loop";
+import type { GoalLoopDecisionFunction } from "../../goal-loop/application";
 
 // Runtime object seam: a tool starts child Runs through the `run` in its
 // context; `ayme.runs` lists them under the Run that started them.

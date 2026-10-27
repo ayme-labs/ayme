@@ -9,8 +9,11 @@ import {
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
-import { buildToolOptions } from "../../goal-loop";
-import { configurePageStateIgnore, geometryReach } from "../../page-state";
+import { buildToolOptions } from "../../goal-loop/application";
+import {
+  configurePageStateIgnore,
+  geometryReach,
+} from "../../page-state/infrastructure";
 import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
 import { createAyme, listTools, type Ayme } from "../../runtime";
 import {

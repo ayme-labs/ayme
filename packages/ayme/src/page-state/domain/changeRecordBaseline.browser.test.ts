@@ -3,17 +3,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import type { PomManifest, ToolManifest } from "../../shared";
-import type { DecisionResponse } from "../../goal-loop";
+import type { DecisionResponse } from "../../goal-loop/domain";
+import { ayme as model } from "../../page-objects/domain";
 import {
-  ayme as model,
   createPage,
   probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "../../page-objects";
-import {
-  configureGoalLoop,
-  type GoalLoopDecisionFunction,
-} from "../../goal-loop";
+} from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
+import { configureGoalLoop } from "../../goal-loop/infrastructure";
+import { type GoalLoopDecisionFunction } from "../../goal-loop/application";
 import { getPageStateForElements } from "../infrastructure/pageState";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import {

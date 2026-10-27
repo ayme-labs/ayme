@@ -7,7 +7,7 @@ import {
   RuntimeStateError,
   ToolInputError,
 } from "./errors";
-import { DecisionEndpointError } from "../goal-loop";
+import { DecisionEndpointError } from "../goal-loop/domain";
 import * as publicEntry from "../index";
 
 describe("Ayme errors", () => {

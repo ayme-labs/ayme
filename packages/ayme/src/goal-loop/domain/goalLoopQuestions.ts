@@ -17,8 +17,8 @@ import type {
   JsonPrimitive,
 } from "../../shared";
 import type { DecisionQuestions, DecisionRequest } from "./decisionWire";
-import type { AriaRef, PageStateCapture } from "../../page-state";
-import { acceptedRefNodes } from "../../tools";
+import type { AriaRef, PageStateCapture } from "../../page-state/domain";
+import { acceptedRefNodes } from "../../tools/application";
 import type {
   ArgumentSpec,
   ClosedSet,
@@ -28,7 +28,7 @@ import type {
   ToolOption,
   TupleSpec,
 } from "./goalLoopOperations";
-import type { RootedToolInstance } from "../../page-objects";
+import type { RootedToolInstance } from "../../page-objects/application";
 
 /**
  * What the Goal Loop asks the model, and how an answer maps back to what it

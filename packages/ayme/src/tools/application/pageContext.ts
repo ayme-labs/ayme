@@ -1,13 +1,11 @@
 import type { JsonValue, PomDefinition, ToolDescriptor } from "../../shared";
-import {
-  getPageStateSession,
-  type AriaRef,
-  type PageState,
-  type PageStateSession,
-} from "../../page-state";
-import { getPomDefinitions, renderPomDefinitions } from "../../page-objects";
-import type { Cursor } from "../../page-state";
-import type { RunContext } from "../../runs";
+import { getPageStateSession } from "../../page-state/infrastructure";
+import { type AriaRef, type PageState } from "../../page-state/domain";
+import { type PageStateSession } from "../../page-state/application";
+import { getPomDefinitions } from "../../page-objects/infrastructure";
+import { renderPomDefinitions } from "../../page-objects/domain";
+import type { Cursor } from "../../page-state/domain";
+import type { RunContext } from "../../runs/application";
 import type { PageContextPayload } from "../domain/toolTypes";
 
 export type PageContext = {

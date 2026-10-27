@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createPage } from "../../page-objects";
+import { createPage } from "../../page-objects/infrastructure";
 import { inReachBatch, measureReach } from "./reachMeasurement";
 
 const ROWS = 200;

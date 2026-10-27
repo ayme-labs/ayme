@@ -1,9 +1,9 @@
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createPage } from "../../page-objects";
+import { createPage } from "../../page-objects/infrastructure";
 import { INSPECTOR_DOGFOOD_ATTRIBUTE, ToolInputError } from "../../shared";
-import { buildToolOptions } from "../../goal-loop";
+import { buildToolOptions } from "../../goal-loop/application";
 import {
   PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA,
   shapeOf,
@@ -11,7 +11,7 @@ import {
 } from "../test-utils/playwrightMcp.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 import type { ToolInput } from "../domain/toolTypes";
-import { geometryReach } from "../../page-state";
+import { geometryReach } from "../../page-state/infrastructure";
 
 const FIXTURE = `
   <style>

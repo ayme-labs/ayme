@@ -10,7 +10,7 @@ import {
 import type { PomManifest } from "../../shared";
 import { runContext } from "../../test-utils/agentCalls.testSupport";
 import { errorText } from "../../shared";
-import { getPageStateForDocument } from "../../page-state";
+import { getPageStateForDocument } from "../../page-state/infrastructure";
 import { startSession } from "../../test-utils/session.testSupport";
 
 // A modal menu as Radix opens one: the rest of the page is hidden from

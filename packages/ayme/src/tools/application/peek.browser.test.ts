@@ -1,16 +1,12 @@
 import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type {
-  DecisionRequest,
-  GoalLoopDecisionFunction,
-} from "../../goal-loop";
+import type { DecisionRequest } from "../../goal-loop/domain";
+import type { GoalLoopDecisionFunction } from "../../goal-loop/application";
 import type { ToolManifest } from "../../shared";
-import {
-  ayme as model,
-  createPage,
-  registerCompiledPom,
-} from "../../page-objects";
+import { ayme as model } from "../../page-objects/domain";
+import { createPage } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import { RuntimeStateError, ToolInputError } from "../../shared";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import { createAyme, type Ayme, type AymeOptions } from "../../runtime";

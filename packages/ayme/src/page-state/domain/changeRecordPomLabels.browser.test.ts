@@ -2,11 +2,9 @@ import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
-import {
-  ayme as model,
-  createPage,
-  registerCompiledPom,
-} from "../../page-objects";
+import { ayme as model } from "../../page-objects/domain";
+import { createPage } from "../../page-objects/infrastructure";
+import { registerCompiledPom } from "../../page-objects/application";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import {

@@ -13,7 +13,7 @@ import type {
   HandoverNeeds,
   HandoverReason,
 } from "../../shared";
-import type { PageStateCapture } from "../../page-state";
+import type { PageStateCapture } from "../../page-state/domain";
 import {
   buildArgumentRequest,
   buildOperationRequest,

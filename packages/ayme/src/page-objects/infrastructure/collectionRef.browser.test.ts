@@ -75,7 +75,8 @@ describe("collection instances targeted by ref", () => {
       const tool = listAvailablePomTools().find(
         (tool) => tool.name === "Item.archive"
       )!;
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const ref = refInPageState(
         (await getPageStateForDocument(document)).text,
         "Item"
@@ -141,7 +142,8 @@ describe("collection instances targeted by ref", () => {
       const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "Item", 1);
 
@@ -207,7 +209,8 @@ describe("collection instances targeted by ref", () => {
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       // Capture state and get ref for item-1.
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "Item", 1);
 
@@ -276,7 +279,8 @@ describe("collection instances targeted by ref", () => {
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       // Capture state and get ref for item-1.
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "Item", 1);
 
@@ -351,7 +355,8 @@ describe("collection instances targeted by ref", () => {
         'Cannot call Item.archive on ref "[ref=e7]": not a Structural Ref. It writes the Structural Ref e7 another way.'
       );
 
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const headingRef = refInPageState(state.text, "heading");
       await expect(
@@ -406,7 +411,8 @@ describe("collection instances targeted by ref", () => {
       );
       if (!archiveTool) throw new Error("Expected archive tool.");
 
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "Item");
       expect(ref).toMatch(/^s_/);
@@ -494,7 +500,8 @@ describe("collection instances targeted by ref", () => {
       if (!doActionTool) throw new Error("Expected doAction tool.");
 
       // Capture state and get ref for the second item in the first group.
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "Item", 1);
 
@@ -572,7 +579,8 @@ describe("collection instances targeted by ref", () => {
       const openTool = tools.find((t) => t.name === "Child.open");
       if (!openTool) throw new Error("Expected open tool.");
 
-      const { getPageStateForDocument } = await import("../../page-state");
+      const { getPageStateForDocument } =
+        await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "Child", 1);
 

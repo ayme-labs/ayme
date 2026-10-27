@@ -8,8 +8,8 @@
  * the two entries' values the framework packages and the plugin's generated
  * code use; a missing one fails the build, naming it.
  */
-import type { PageObjectConstructor } from "./page-objects";
-import type { Run } from "./runs";
+import type { PageObjectConstructor } from "./page-objects/application";
+import type { Run } from "./runs/application";
 import type {
   Ayme,
   AymeOptions,
@@ -27,8 +27,8 @@ export {
   RuntimeStateError,
   ToolInputError,
 } from "./shared";
-export { ayme } from "./page-objects";
-export { DecisionEndpointError } from "./goal-loop";
+export { ayme } from "./page-objects/domain";
+export { DecisionEndpointError } from "./goal-loop/domain";
 export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtime";
 
 const REMOVED = "Ayme was removed from this build.";

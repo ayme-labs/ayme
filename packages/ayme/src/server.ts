@@ -1,2 +1,2 @@
-export { createDecisionEndpoint } from "./goal-loop";
-export type { CreateDecisionEndpointOptions } from "./goal-loop";
+export { createDecisionEndpoint } from "./goal-loop/infrastructure";
+export type { CreateDecisionEndpointOptions } from "./goal-loop/infrastructure";

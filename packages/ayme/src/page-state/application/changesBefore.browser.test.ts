@@ -10,7 +10,7 @@ import {
   type Run,
 } from "../..";
 import { ACTION_RESULT_NOTE } from "../domain/actionResult";
-import { listElementTools } from "../../tools";
+import { listElementTools } from "../../tools/infrastructure";
 import { renderChangeRecord } from "../domain/changeRecord";
 import { getInteractionHistory } from "../infrastructure/pageState";
 import { agentTools } from "../../test-utils/publication.testSupport";

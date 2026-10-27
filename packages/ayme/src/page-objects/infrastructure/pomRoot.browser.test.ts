@@ -15,7 +15,7 @@ import {
   registerCompiledPom,
 } from "./registry";
 import { createAyme, type Ayme } from "../../runtime";
-import { geometryReach } from "../../page-state";
+import { geometryReach } from "../../page-state/infrastructure";
 
 // Observation and publication seam (ADR-0042): a Page Object Model that
 // names its root on the decorator, observed on a real page, and what the
@@ -112,7 +112,7 @@ describe("Page Object Root by option", () => {
     const state = await agent.getPageState();
     const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
     const childRef = state.text.match(/(\w+) Child\b/)![1]!;
-    const { buildToolOptions } = await import("../../goal-loop");
+    const { buildToolOptions } = await import("../../goal-loop/application");
     const options = buildToolOptions({ page, reach: geometryReach });
     for (const name of ["Shell.open", "Child.open"])
       expect(
@@ -163,7 +163,7 @@ describe("Page Object Root by option", () => {
     expect(
       listed("Announcer.announce")?.inputSchema.properties
     ).not.toHaveProperty("ref");
-    const { buildToolOptions } = await import("../../goal-loop");
+    const { buildToolOptions } = await import("../../goal-loop/application");
     const offered = buildToolOptions({ page, reach: geometryReach }).find(
       ({ key }) => key === "Announcer.announce"
     )!;
@@ -245,7 +245,7 @@ describe("Page Object Root by option", () => {
     });
     session.pom.register(RowsPage);
     await probeRegisteredPomMembers();
-    const { buildToolOptions } = await import("../../goal-loop");
+    const { buildToolOptions } = await import("../../goal-loop/application");
     const offered = () =>
       buildToolOptions({ page, reach: geometryReach }).find(
         ({ key }) => key === "Row.open"

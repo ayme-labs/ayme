@@ -17,7 +17,7 @@ vi.mock("../page-objects/infrastructure/registry", () => ({
 
 import { ayme } from "../test-utils/agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
-import { providePageObjectStructure } from "../page-state";
+import { providePageObjectStructure } from "../page-state/infrastructure";
 
 const ref = AriaRefSchema.parse;
 

@@ -1,7 +1,7 @@
 // The `navigate` Browser Tool: opens a URL on the page's own origin through
 // the browser Page's `goto`, mirroring Playwright MCP's `browser_navigate`.
 import type { JsonSchema } from "../../shared";
-import { startNavigation } from "../../page-state";
+import { startNavigation } from "../../page-state/infrastructure";
 import type { PublishedElementTool } from "./elementTools";
 import { navigationDestination } from "../domain/navigationDestination";
 

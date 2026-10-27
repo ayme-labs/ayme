@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { geometryReach } from "../../page-state";
+import { geometryReach } from "../../page-state/infrastructure";
 import { createPage } from "./browserPage";
 import { observePomRoot as observe } from "./pomRootObservation";
 

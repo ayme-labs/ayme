@@ -1,11 +1,12 @@
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createPage } from "../../page-objects";
-import { listElementTools } from "../../tools";
+import { createPage } from "../../page-objects/infrastructure";
+import { listElementTools } from "../../tools/infrastructure";
 import { assertReachable, reaches } from "./elementReach";
 import { errorText } from "../../shared";
-import { buildToolOptions, planArguments } from "../../goal-loop";
+import { buildToolOptions } from "../../goal-loop/application";
+import { planArguments } from "../../goal-loop/domain";
 import { lookAtPageStateForDocument } from "./pageState";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme, listElementToolTargets } from "../../runtime";

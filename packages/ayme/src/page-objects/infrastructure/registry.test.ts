@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "../../test-utils/agentCalls.testSupport";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import { checkedToolInput } from "../../shared";
-import type { PageStateSession, Reach } from "../../page-state";
+import type { PageStateSession, Reach } from "../../page-state/application";
 
 const {
   locatorElements,

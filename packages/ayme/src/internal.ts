@@ -3,10 +3,10 @@ export {
   capturePageState,
   getPageStateForElements,
   lookAtPageStateForDocument,
-  pageStateNodeEntry,
   resolvePageStateRef,
-} from "./page-state";
-export type { PageStateCapture, PageStateLook } from "./page-state";
+} from "./page-state/infrastructure";
+export { pageStateNodeEntry } from "./page-state/domain";
+export type { PageStateCapture, PageStateLook } from "./page-state/domain";
 export type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,
@@ -16,25 +16,27 @@ export {
   getPageContextTool,
   getPomDefinitionText,
   subscribeToAgentImageRuns,
-} from "./tools";
+} from "./tools/application";
 export {
   createAymeRuntime,
-  describeTool,
   getPomDefinitions,
-  inputSchemaFor,
   listAvailablePomTools,
   listRootedToolInstances,
   listRegisteredPoms,
   listRegisteredPomTargets,
   probeRegisteredPomMembers,
-  registerCompiledPom,
+  subscribeToRegisteredPoms,
+} from "./page-objects/infrastructure";
+export {
+  describeTool,
+  inputSchemaFor,
   renderActionParameters,
   renderPomDefinitions,
   renderSchema,
   rootTargetPath,
   rootlessClassRefusals,
-  subscribeToRegisteredPoms,
-} from "./page-objects";
+} from "./page-objects/domain";
+export { registerCompiledPom } from "./page-objects/application";
 // The compiled Page Object manifest the build plugin writes and the runtime
 // reads; both ship together, so it is no public contract.
 export type {
@@ -72,20 +74,21 @@ export type {
   RootedToolInstance,
   PageObjectConstructor,
   RegisteredPom,
-  RegisteredPomTarget,
-} from "./page-objects";
+} from "./page-objects/application";
+export type { RegisteredPomTarget } from "./page-objects/domain";
 // The runtime's own input validation, so the Inspector's run card reports
 // every violation before Run that the call would fail on.
 export { toolInputViolations } from "@ayme-dev/core/tool-input";
 export type { SchemaViolation } from "@ayme-dev/core/tool-input";
-export type { AgentImageRun } from "./tools";
+export type { AgentImageRun } from "./tools/application";
 // The runtime session and its types are public (ADR-0031); this entry keeps
 // the plugin's registration, the framework packages' fixed-options check and
 // render-session marker, and the inspector's instrumentation, its way to the
 // started session and its registry read model.
-export { elementsOf, installRuntimePageInstrumentation, kindOf } from "./runs";
+export { elementsOf, kindOf } from "./runs/domain";
+export { installRuntimePageInstrumentation } from "./runs/infrastructure";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";
 // The Playwright call table: what every method of Locator, Page, Keyboard
 // and Mouse does, so the Inspector's demo feedback reads the classification
 // the runtime's Interaction recording reads.
-export type { CallSubject } from "./runs";
+export type { CallSubject } from "./runs/domain";
