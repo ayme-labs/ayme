@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects";
 import { listElementTools } from "../../tools";
-import { assertRootReachable, reaches } from "./elementReach";
+import { assertReachable, reaches } from "./elementReach";
 import { errorText } from "../../shared";
 import { buildToolOptions, planArguments } from "../../goal-loop";
 import { lookAtPageStateForDocument } from "./pageState";
@@ -677,11 +677,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
 
   it("refuses it under the tool's name without scrolling", async () => {
     openLayerOver('<section id="row">Row</section>');
-    const error = await assertRootReachable(
+    const error = await assertReachable(
       geometryReach,
       "Row.open",
       createPage().locator("#row"),
-      document.querySelector("#row")!
+      document.querySelector("#row")!,
+      "click"
     ).then(() => "no error", errorText);
 
     expect(error).toBe(
@@ -694,11 +695,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver(
       '<section id="row"><button style="pointer-events: auto; width: 100%">Row</button></section>'
     );
-    await assertRootReachable(
+    await assertReachable(
       geometryReach,
       "Row.open",
       createPage().locator("#row"),
-      document.querySelector("#row")!
+      document.querySelector("#row")!,
+      "click"
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });
@@ -707,11 +709,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver('<section id="row"></section>');
     document.querySelector("#row")!.attachShadow({ mode: "open" }).innerHTML =
       '<button style="pointer-events: auto; width: 100%">Row</button>';
-    await assertRootReachable(
+    await assertReachable(
       geometryReach,
       "Row.open",
       createPage().locator("#row"),
-      document.querySelector("#row")!
+      document.querySelector("#row")!,
+      "click"
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });

@@ -4,7 +4,6 @@ export { renderChangeRecord } from "./domain/changeRecord";
 export { forkCursor, type Cursor } from "./domain/cursors";
 export {
   assertReachable,
-  assertRootReachable,
   inTheWayOf,
   reaches,
 } from "./infrastructure/elementReach";

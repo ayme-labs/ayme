@@ -10,7 +10,7 @@ import { modelOption } from "../domain/decorators";
 import { methodArguments } from "../domain/actionTool";
 import {
   assertAvailable,
-  assertRootReachable,
+  assertReachable,
   providePageObjectStructure,
   refFailure,
   unavailableError,
@@ -722,7 +722,13 @@ async function performPageObjectAction(
     argumentValues(tool, args)
   );
   if (root)
-    await assertRootReachable(reach, targetName, root.locator, root.element);
+    await assertReachable(
+      reach,
+      targetName,
+      root.locator,
+      root.element,
+      "click"
+    );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>

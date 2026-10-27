@@ -77,21 +77,6 @@ export async function assertReachable(
     assertAvailable(toolName, { present: true, available: false, reason });
 }
 
-/**
- * Package-internal: refuses the call of the Page Object Tool `toolName` when
- * a click would not reach `element`, its Page Object Root, the one element
- * the page driver resolved `root` to, as `assertReachable` does for an
- * element.
- */
-export async function assertRootReachable(
-  reach: Reach,
-  toolName: string,
-  root: Locator,
-  element: Element
-): Promise<void> {
-  await assertReachable(reach, toolName, root, element, "click");
-}
-
 async function unreachableReason(
   reach: Reach,
   locator: Locator,
