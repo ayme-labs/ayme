@@ -539,6 +539,19 @@ describe("the session's tools in Chromium", () => {
     );
   });
 
+  it("lists a described action with its author's words as both descriptions", async () => {
+    await startSession();
+    cleanups.push(registered(TodoPage));
+    await probeRegisteredPomMembers();
+
+    expect(
+      ayme.tools.list().find((tool) => tool.name === "TodoPage.addTodo")
+    ).toMatchObject({
+      authorDescription: "addTodo on TodoPage.",
+      agentDescription: "addTodo on TodoPage.",
+    });
+  });
+
   it("lists a bare action with the Agent Description of what it shows next, and offers the Goal Loop a description of every one", async () => {
     await startSession();
     cleanups.push(registered(BarePage));

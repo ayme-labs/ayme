@@ -186,6 +186,20 @@ it("gives the App Processes' tools beside the page's, and follows them", () => {
   expect(seen.at(-1)?.appProcess[0]).not.toHaveProperty("description");
 });
 
+it("gives an App Process's tool without a description neither description", () => {
+  publish([getPageContext]);
+  const seen = renderReader();
+  startedAyme.appProcessTools.list.mockReturnValue([
+    { name: jobsPeek.name, inputSchema: jobsPeek.inputSchema },
+  ]);
+  act(() => announce());
+
+  const [tool] = seen.at(-1)?.appProcess ?? [];
+  expect(tool).toMatchObject({ name: jobsPeek.name, side: "node" });
+  expect(tool).not.toHaveProperty("authorDescription");
+  expect(tool).not.toHaveProperty("agentDescription");
+});
+
 it("keeps the live tools when publication fails, with its error", () => {
   publish([getPageContext]);
   const seen = renderReader();
