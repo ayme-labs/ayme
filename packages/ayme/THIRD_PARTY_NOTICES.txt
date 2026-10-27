@@ -216,7 +216,7 @@ available under the Apache 2.0 license (https://github.com/puppeteer/puppeteer/b
 
 
 === Bundled Ayme Playwright Lite fork ===
-Source: https://github.com/ayme-labs/playwright-lite/tree/9f39340948ad0565df835d003c62522e18fa3593
+Source: https://github.com/ayme-labs/playwright-lite/tree/2b8849cfb31714353d94e6a33095ac3aa5b898bb
 
 --- LICENSE ---
 MIT License
@@ -264,7 +264,7 @@ The file-name-to-MIME-type table and lookup of mime@4.1.0, as bundled by the pin
 
 SnapDOM
 Copyright (c) 2025 ZumerLab.
-@zumer/snapdom@3.2.0, which renders the document for screenshots, is bundled as a chunk the first capture loads, under the MIT license. See LICENSES/SNAPDOM-LICENSE.txt.
+@zumer/snapdom@3.4.0, which renders the document for screenshots, is bundled as a chunk the first capture loads, under the MIT license. See LICENSES/SNAPDOM-LICENSE.txt.
 
 This fork modifies the injected runtime source to ayme-labs/playwright at b25d782e3fbdf21abdae60e974e49b78ca07e828 for dual ARIA capture. Stock compatibility sources and their existing notices are retained.
 
