@@ -158,6 +158,22 @@ it("does not pause what only reads the page", async () => {
   expect(await page.locator("button").count()).toBe(1);
 });
 
+// Ayme's reach check scrolls before every click it measures (ADR-0041); the
+// click after it is paced.
+it("does not pause a scroll", async () => {
+  vi.useFakeTimers();
+  const rawPage = createPage();
+  const rawLocator = rawPage.locator("button");
+  vi.spyOn(rawPage, "locator").mockReturnValue(rawLocator);
+  const scroll = vi
+    .spyOn(rawLocator, "scrollIntoViewIfNeeded")
+    .mockResolvedValue();
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
+
+  await page.locator("button").scrollIntoViewIfNeeded();
+  expect(scroll).toHaveBeenCalledOnce();
+});
+
 it("paces the Page keyboard's calls", async () => {
   vi.useFakeTimers();
   const rawPage = createPage();

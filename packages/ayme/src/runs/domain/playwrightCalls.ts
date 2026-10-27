@@ -7,10 +7,12 @@ export type CallSubject = "locator" | "page" | "keyboard" | "mouse";
  * What a Playwright call does to the page, for every reader of a call on
  * the runtime's Page: Interaction recording, and the Inspector's demo
  * feedback.
- * - `none` reads, waits, builds a locator or configures; it runs as it is.
+ * - `none` reads, waits, builds a locator, configures or scrolls; it runs
+ *   as it is. A scroll is Ayme's own before every click it measures
+ *   (ADR-0041), and the click after it is paced.
  * - `navigate` is one of the Page's navigations: it acts on no element
  *   and is not an Interaction.
- * - `act` acts on the page but is no input (a blur, a focus, a scroll):
+ * - `act` acts on the page but is no input (a blur, a focus):
  *   demo mode pauses before it; recording ignores it.
  * - `input` is an Interaction that is not through the pointer: a fill, a
  *   key press, a selection, the keyboard's and the mouse's calls.
@@ -93,7 +95,7 @@ const locatorCalls = {
   press: "input",
   pressSequentially: "input",
   screenshot: "none",
-  scrollIntoViewIfNeeded: "act",
+  scrollIntoViewIfNeeded: "none",
   selectOption: "input",
   selectText: "input",
   setChecked: "click",
