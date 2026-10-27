@@ -25,15 +25,15 @@ import {
 /**
  * The MCP server an agent talks to: the server's own tools, then the tools
  * of the paired page and App Processes under the names they give them (see
- * `AgentConnection` for which of two same-named tools the agent sees). A
- * tool that shares a server tool's name is left out. While nothing is paired, any other name
- * answers that no page is connected, since it may be a page tool the agent
- * listed before. One server serves one agent, so its `AgentToolView` says
+ * `AgentConnection` for which of two same-named tools the agent sees), as
+ * the server's `AgentToolView` lists them. While nothing is paired, any
+ * other name answers that no page is connected, since it may be a page tool
+ * the agent listed before. One server serves one agent, so that view says
  * when the agent hears `notifications/tools/list_changed`, and every tool
- * result carries that view's tool change note, if any, as a text item
- * after the tool's own. A server tool's input
- * is checked against its input schema before the tool runs, with arguments
- * left out taken as `{}`; a page tool's input is the page's to check.
+ * result carries its tool change note, if any, as a text item after the
+ * tool's own. A server tool's input is checked against its input schema
+ * before the tool runs, with arguments left out taken as `{}`; a page
+ * tool's input is the page's to check.
  */
 export function createMcpToolServer({
   name,
