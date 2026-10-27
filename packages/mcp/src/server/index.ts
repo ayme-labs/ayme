@@ -53,11 +53,8 @@ export async function startMcpServer({
   const mcp = createMcpToolServer({
     name: "ayme",
     version,
-    serverTools: serverTools.map((tool) =>
-      tool({ connection, pairing, saveImage: saveToScreenshotFolder })
-    ),
-    connection,
-    saveImage: saveToScreenshotFolder,
+    serverTools,
+    context: { connection, pairing, saveImage: saveToScreenshotFolder },
   });
   agentName = () => mcp.getClientVersion()?.name;
 
