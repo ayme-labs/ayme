@@ -133,6 +133,24 @@ it("describes a Page Object action the same on the page and off it", () => {
   });
 });
 
+it("describes a Page Object action by its registration, not the session's listing", () => {
+  const tools = listRunnableTools(
+    [listPage],
+    [
+      {
+        ...addItem,
+        description: "Listed text.",
+        inputSchema: addItem.inputSchema,
+        available: true,
+      },
+    ]
+  );
+
+  expect(tools.get("ListPage.addItem")?.description).toBe(
+    "Add an item to the list."
+  );
+});
+
 it("keeps a present action that is unavailable, with the reason the session gives", () => {
   const tools = listRunnableTools(
     [listPage],
