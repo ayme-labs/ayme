@@ -21,7 +21,6 @@ import {
 
 import type { ControlState } from "../domain/controlState";
 import { mapTargetsToRefs } from "../domain/targetsByRef";
-import { describeRegisteredPoms } from "./describedTools";
 import { readControls } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
 
@@ -64,7 +63,7 @@ const STRUCTURE_POLL_MS = 2000;
 
 function readRegistry(): RegistrySnapshot {
   return {
-    registeredPoms: describeRegisteredPoms(listRegisteredPoms()),
+    registeredPoms: listRegisteredPoms(),
     pomDefinitions: readPomDefinitions(),
     toolInstances: listRootedToolInstances(),
   };

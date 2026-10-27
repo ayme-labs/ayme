@@ -17,7 +17,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -33,7 +32,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     pageStateNodeEntry,
     rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,

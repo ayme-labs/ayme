@@ -28,7 +28,6 @@ export {
   subscribeToRegisteredPoms,
 } from "./page-objects/infrastructure";
 export {
-  describeTool,
   inputSchemaFor,
   renderActionParameters,
   renderPomDefinitions,

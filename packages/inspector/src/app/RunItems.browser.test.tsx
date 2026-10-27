@@ -22,7 +22,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -37,7 +36,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     kindOf,
     pageStateNodeEntry,
     rootTargetPath,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -64,7 +62,8 @@ const archive: RegisteredPom["tools"][number] = {
   className: "ListItem",
   methodName: "archive",
   name: "ListItem.archive",
-  description: "Archive the item.",
+  authorDescription: "Archive the item.",
+  agentDescription: "Archive the item.",
   inputSchema: { type: "object" },
   parameters: [],
   rooted: true,
@@ -91,7 +90,7 @@ const listPage: RegisteredPom = {
           {
             methodName: archive.methodName,
             toolName: archive.name,
-            description: archive.description,
+            description: archive.authorDescription,
             parameters: archive.parameters,
           },
         ],
@@ -162,7 +161,8 @@ beforeEach(() => {
   startedAyme.tools.list.mockReturnValue([
     {
       name: archive.name,
-      description: archive.description,
+      authorDescription: archive.authorDescription,
+      agentDescription: archive.agentDescription,
       inputSchema: archive.inputSchema,
       group: "pageObject",
       available: true,

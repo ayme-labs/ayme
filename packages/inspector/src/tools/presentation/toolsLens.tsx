@@ -117,7 +117,7 @@ export function toolsLens({
         key: `tool:${tool.name}`,
         kind: "Tool",
         label: tool.name,
-        description: tool.description,
+        description: tool.agentDescription,
         selection: { kind: "tool", name: tool.name } as const,
       }))
     ),
@@ -204,9 +204,9 @@ function ToolPage({
             : toolKindLabels[tool.group]}
         </span>
       </div>
-      {tool.description ? (
+      {tool.agentDescription ? (
         <p className="mt-2 mb-3 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">
-          {tool.description}
+          {tool.agentDescription}
         </p>
       ) : (
         // The run slot keeps its place below the head.

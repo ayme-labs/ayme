@@ -38,11 +38,11 @@ export function OnboardingAssistant() {
 To give the assistant every tool Ayme knows instead of picking a few, read them from `ayme.tools`:
 
 ```ts
-const tools = ayme.tools.list().filter(({ available }) => available); // name, description and inputSchema of each
+const tools = ayme.tools.list().filter(({ available }) => available); // name, agentDescription and inputSchema of each
 const result = await ayme.tools.run(name, input);
 ```
 
-The list holds your Page Object Tools, the Browser Tools, your [Custom Tools](custom-tools.md) and `goal`, each with a JSON Schema for its input, which is what most assistant frameworks expect for a tool. `ayme.tools.list()` holds every tool of a Page Object on the page, available or not: a tool whose action cannot run now has `available: false` and, when there is one, its `reason`. The filter leaves them out; an assistant that shows its tools can show the reason instead. `ayme.tools.subscribe(listener)` tells you when the list changes, such as when a Page Object appears on the page or a tool becomes available. A Custom Tool that highlights an element is a natural fit: the assistant can point at things before it acts on them.
+The list holds your Page Object Tools, the Browser Tools, your [Custom Tools](custom-tools.md) and `goal`, each with a JSON Schema for its input, which is what most assistant frameworks expect for a tool. Give the assistant each tool's `agentDescription` as its description: it is what Ayme gives coding agents, so a Page Object Tool also says which Page Objects the page shows after it runs. A bare action that returns none has no `agentDescription`; if your framework requires a description, fall back to the tool's name. To write your own wording, read `authorDescription` and `returnPoms` instead. `ayme.tools.list()` holds every tool of a Page Object on the page, available or not: a tool whose action cannot run now has `available: false` and, when there is one, its `reason`. The filter leaves them out; an assistant that shows its tools can show the reason instead. `ayme.tools.subscribe(listener)` tells you when the list changes, such as when a Page Object appears on the page or a tool becomes available. A Custom Tool that highlights an element is a natural fit: the assistant can point at things before it acts on them.
 
 ## Let Jev do the steps
 

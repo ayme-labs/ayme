@@ -86,7 +86,8 @@ describe("Peek Tools", () => {
     expect(ayme.tools.list().filter(({ group }) => group === "peek")).toEqual([
       {
         name: "peek.counter",
-        description: expect.stringContaining("counter"),
+        authorDescription: expect.stringContaining("counter"),
+        agentDescription: expect.stringContaining("counter"),
         inputSchema: {
           type: "object",
           properties: {},

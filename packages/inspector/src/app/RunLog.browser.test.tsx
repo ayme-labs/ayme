@@ -26,7 +26,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -42,7 +41,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     kindOf,
     pageStateNodeEntry,
     rootTargetPath,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -78,7 +76,8 @@ const save: RegisteredPomTool = {
   className: "Editor",
   methodName: "save",
   name: "Editor.save",
-  description: "Save the editor.",
+  authorDescription: "Save the editor.",
+  agentDescription: "Save the editor.",
   inputSchema: { type: "object" },
   parameters: [],
 };
@@ -93,7 +92,7 @@ const editor: RegisteredPom = {
       {
         methodName: save.methodName,
         toolName: save.name,
-        description: save.description,
+        description: save.authorDescription,
         parameters: save.parameters,
       },
     ],
@@ -113,7 +112,8 @@ function registerEditor() {
   startedAyme.tools.list.mockReturnValue([
     {
       name: save.name,
-      description: save.description,
+      authorDescription: save.authorDescription,
+      agentDescription: save.agentDescription,
       inputSchema: save.inputSchema,
       group: "pageObject",
       available: true,

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   actionFacts,
-  describeTool,
   inputParameters,
   inputSchemaFor,
   methodArguments,
+  requiredDescription,
 } from "./actionTool";
 import type { ToolManifest, ToolParameter } from "../../shared";
 
@@ -36,7 +36,9 @@ describe("actionFacts", () => {
         "Page"
       )
     ).toStrictEqual({
-      description: "Open a related POM.",
+      authorDescription: "Open a related POM.",
+      agentDescription:
+        "Open a related POM. Then shows FirstReturnPom or SecondReturnPom.",
       returnPoms: ["FirstReturnPom", "SecondReturnPom"],
     });
   });
@@ -48,84 +50,44 @@ describe("actionFacts", () => {
       {}
     );
   });
-});
-
-describe("describeTool", () => {
-  // A Page Object Tool by what its author gave it.
-  const tools = {
-    "no description": { name: "ListPage.clearDone" },
-    "a description only": {
-      name: "ListPage.clearDone",
-      description: "Clear the done items.",
-    },
-    "returned Page Objects only": {
-      name: "ListPage.clearDone",
-      returnPoms: ["SettingsPage", "HelpPage"],
-    },
-    "a description and returned Page Objects": {
-      name: "ListPage.clearDone",
-      description: "Clear the done items.",
-      returnPoms: ["SettingsPage"],
-    },
-  };
 
   it.each([
-    ["no description", "ayme-mcp", undefined],
-    ["no description", "inspector", undefined],
-    ["no description", "webmcp", "Run clearDone."],
-    ["no description", "goal-loop", "Run clearDone."],
-    ["a description only", "ayme-mcp", "Clear the done items."],
-    ["a description only", "inspector", "Clear the done items."],
-    ["a description only", "webmcp", "Clear the done items."],
-    ["a description only", "goal-loop", "Clear the done items."],
+    [{ description: "Clear the done items." }, "Clear the done items."],
+    [{ returnPoms: ["SettingsPage"] }, "Shows SettingsPage."],
     [
-      "returned Page Objects only",
-      "ayme-mcp",
-      "Then shows SettingsPage or HelpPage.",
+      { returnPoms: ["SettingsPage", "HelpPage"] },
+      "Shows SettingsPage or HelpPage.",
     ],
     [
-      "returned Page Objects only",
-      "inspector",
-      "Then shows SettingsPage or HelpPage.",
-    ],
-    [
-      "returned Page Objects only",
-      "webmcp",
-      "Then shows SettingsPage or HelpPage.",
-    ],
-    [
-      "returned Page Objects only",
-      "goal-loop",
-      "Then shows SettingsPage or HelpPage.",
-    ],
-    [
-      "a description and returned Page Objects",
-      "ayme-mcp",
+      { description: "Clear the done items.", returnPoms: ["SettingsPage"] },
       "Clear the done items. Then shows SettingsPage.",
     ],
-    [
-      "a description and returned Page Objects",
-      "inspector",
-      "Clear the done items. Then shows SettingsPage.",
-    ],
-    [
-      "a description and returned Page Objects",
-      "webmcp",
-      "Clear the done items. Then shows SettingsPage.",
-    ],
-    [
-      "a description and returned Page Objects",
-      "goal-loop",
-      "Clear the done items. Then shows SettingsPage.",
-    ],
-  ] as const)("describes a tool with %s to %s as %j", (tool, reader, text) => {
-    expect(describeTool(tools[tool], reader)).toBe(text);
+  ] as const)(
+    "gives an action with %j the Agent Description %j",
+    (given, text) => {
+      expect(
+        actionFacts(tool(given as Partial<ToolManifest>), "Page")
+          .agentDescription
+      ).toBe(text);
+    }
+  );
+});
+
+describe("requiredDescription", () => {
+  it("is the Agent Description when there is one", () => {
+    expect(
+      requiredDescription({
+        name: "ListPage.clearDone",
+        agentDescription: "Shows SettingsPage.",
+      })
+    ).toBe("Shows SettingsPage.");
   });
 
-  it("runs a tool that is no Page Object action by its whole name", () => {
-    expect(describeTool({ name: "snapshot" }, "goal-loop")).toBe(
-      "Run snapshot."
+  it("runs a tool without one by its action's name", () => {
+    expect(requiredDescription({ name: "ListPage.clearDone" })).toBe(
+      "Run clearDone."
     );
+    expect(requiredDescription({ name: "snapshot" })).toBe("Run snapshot.");
   });
 });
 

@@ -54,8 +54,12 @@ function asNodePeekTools(tools: readonly AppProcessTool[]) {
   if (tools !== processTools) {
     processTools = tools;
     nodePeekTools = Object.freeze(
-      tools.map((tool) => ({
+      tools.map(({ description, ...tool }) => ({
         ...tool,
+        // An App Process's tool says what its author wrote, to agents too.
+        ...(description === undefined
+          ? {}
+          : { authorDescription: description, agentDescription: description }),
         inputSchema: tool.inputSchema as ToolInfo["inputSchema"],
         group: "peek" as const,
         side: "node" as const,

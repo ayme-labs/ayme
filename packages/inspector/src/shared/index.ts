@@ -6,10 +6,6 @@ export {
   type CallDescription,
   type CallSubject,
 } from "./infrastructure/describeCall";
-export {
-  describeLiveTools,
-  describeRegisteredPoms,
-} from "./infrastructure/describedTools";
 export { renderInShadowRoot } from "./infrastructure/renderInShadowRoot";
 export {
   exposeInspectorShadowRoot,

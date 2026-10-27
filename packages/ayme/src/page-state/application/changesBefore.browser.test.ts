@@ -323,7 +323,7 @@ describe("The two parts of a Change Record, in Chromium", () => {
     };
     start({ customTools: [highlight] });
     const description = (name: string) =>
-      ayme.tools.list().find((tool) => tool.name === name)!.description;
+      ayme.tools.list().find((tool) => tool.name === name)!.agentDescription;
 
     // A Browser Tool that acts on the page ends with the note; a read does not.
     expect(description("click")).toMatch(

@@ -30,7 +30,7 @@ afterEach(() => {
 
 const addItem: LiveTool = {
   name: "ListPage.addItem",
-  description: "Add an item to the list.",
+  agentDescription: "Add an item to the list.",
   inputSchema: {
     type: "object",
     properties: { text: { type: "string" } },
@@ -41,7 +41,7 @@ const addItem: LiveTool = {
 };
 const click: LiveTool = {
   name: "click",
-  description: "Click one element.",
+  agentDescription: "Click one element.",
   inputSchema: {
     type: "object",
     properties: { target: { type: "string" } },
@@ -51,20 +51,20 @@ const click: LiveTool = {
 };
 const pageContext: LiveTool = {
   name: "snapshot",
-  description: "Return the page state and the POM definitions.",
+  agentDescription: "Return the page state and the POM definitions.",
   inputSchema: { type: "object", properties: {} },
   group: "agent",
 };
 const cartPeek: LiveTool = {
   name: "peek.cart",
-  description:
+  agentDescription:
     'Read the current values of the Peek "cart" from each live instance.',
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   group: "peek",
 };
 const jobsPeek: LiveTool = {
   name: "peek.node.jobs",
-  description:
+  agentDescription:
     'Read the current values of the Peek "jobs" from each live instance.',
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   group: "peek",
@@ -215,7 +215,7 @@ it("opens a tool's page with its description, then the run slot", async () => {
 });
 
 it("shows a tool without a description with no empty paragraph", async () => {
-  renderTools({ tools: [{ ...click, description: "" }] });
+  renderTools({ tools: [{ ...click, agentDescription: "" }] });
 
   await navigator.tools.tool("click").click();
 

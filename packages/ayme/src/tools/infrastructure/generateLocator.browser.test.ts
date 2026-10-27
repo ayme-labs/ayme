@@ -166,7 +166,7 @@ describe("generate_locator in Chromium", () => {
       },
       required: ["groups"],
     });
-    expect(info?.description).toMatch(/capture-scoped/);
+    expect(info?.agentDescription).toMatch(/capture-scoped/);
   });
 
   it("returns a page-level role and name locator that matches exactly the element", async () => {

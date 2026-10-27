@@ -128,7 +128,7 @@ export function buildPageModel(
 ): PageModel {
   const descriptions = new Map(
     registrations.flatMap(({ tools }) =>
-      tools.map((tool) => [tool.name, tool.description] as const)
+      tools.map((tool) => [tool.name, tool.agentDescription] as const)
     )
   );
   // An action the registry has no tool for yet keeps what its author wrote.

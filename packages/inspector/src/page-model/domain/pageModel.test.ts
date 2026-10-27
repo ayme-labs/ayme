@@ -119,7 +119,7 @@ function tool(
     rooted: false,
     name,
     methodName,
-    ...(description === undefined ? {} : { description }),
+    ...(description === undefined ? {} : { agentDescription: description }),
     inputSchema: noArguments,
     parameters: [],
   };
@@ -549,13 +549,13 @@ describe("the page model", () => {
   it.each([true, false])(
     "describes an action as agents read it, in the object and its model, live: %s",
     (onPage) => {
-      // The registration's tool carries the Inspector's text; the manifest
+      // The registration's tool carries its Agent Description; the manifest
       // and the definition carry only what the author wrote.
       const opener = tool(
         "ArchiveDialog.confirm",
         "confirm",
         { className: "ArchiveDialog", path: "archiveDialog" },
-        "Then shows SettingsPage."
+        "Shows SettingsPage."
       );
       const registered: RegisteredPom = {
         ...registration(
@@ -574,7 +574,7 @@ describe("the page model", () => {
 
       const expected = {
         name: "confirm",
-        description: "Then shows SettingsPage.",
+        description: "Shows SettingsPage.",
         toolName: "ArchiveDialog.confirm",
         live: onPage,
       };

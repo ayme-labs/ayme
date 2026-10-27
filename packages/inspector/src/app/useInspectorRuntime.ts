@@ -18,7 +18,7 @@ import {
 } from "../page-model";
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
-import { describeLiveTools, usePageLook } from "../shared";
+import { usePageLook } from "../shared";
 import { useRuns } from "../runs";
 import { itemsOf } from "./collectionItems";
 
@@ -74,12 +74,7 @@ export function useInspectorRuntime({
     onSettled: onRunSettled,
     itemOf,
   });
-  const liveTools = useLiveTools();
-  // Each live tool described as agents read it, as the registered ones are.
-  const tools = useMemo(
-    () => ({ ...liveTools, live: describeLiveTools(liveTools.live) }),
-    [liveTools]
-  );
+  const tools = useLiveTools();
 
   const { projected, targetsByRef, controls, ...pageState } =
     inspector.pageState;
@@ -119,9 +114,9 @@ export function useInspectorRuntime({
     () =>
       tools.live
         .filter((tool) => elementToolTargets.has(tool.name))
-        .map(({ name, description, inputSchema }) => ({
+        .map(({ name, agentDescription, inputSchema }) => ({
           name,
-          description,
+          description: agentDescription,
           inputSchema,
           refs: elementToolTargets.get(name) ?? [],
         })),

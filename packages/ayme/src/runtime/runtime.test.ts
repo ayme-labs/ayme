@@ -254,9 +254,16 @@ it("starts the Agent Connection while a session with agentConnection is started"
     { tools: Ayme["tools"]; recordAgentImage: unknown },
   ];
   expect(recordAgentImage).toBe(recordAgentImageRun);
-  expect(tools.list()).toEqual(runtime.tools.list());
-  // MCP lists a bare action without a description, and says what an action
-  // shows afterwards.
+  const names = (list: readonly { name: string }[]) =>
+    list.map(({ name }) => name);
+  expect(names(tools.list())).toEqual(names(runtime.tools.list()));
+  // MCP describes each tool by its Agent Description: a bare action has
+  // none, an action says what it shows afterwards, any other tool says its
+  // own.
+  expect(tools.list().find((tool) => tool.name === "snapshot")).toMatchObject({
+    description: runtime.tools.list().find((tool) => tool.name === "snapshot")
+      ?.agentDescription,
+  });
   class Opener {
     open() {}
     close() {}
@@ -280,7 +287,7 @@ it("starts the Agent Connection while a session with agentConnection is started"
   const listed = (name: string) =>
     tools.list().find((tool) => tool.name === name);
   expect(listed("Opener.open")).toMatchObject({
-    description: "Then shows Dialog.",
+    description: "Shows Dialog.",
   });
   expect(listed("Opener.close")).not.toHaveProperty("description");
   runtime.pom.unregister(Opener);

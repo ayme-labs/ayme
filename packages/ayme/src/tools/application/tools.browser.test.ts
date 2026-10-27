@@ -539,7 +539,7 @@ describe("the session's tools in Chromium", () => {
     );
   });
 
-  it("lists a bare action with only the Page Objects it shows next, and offers the Goal Loop a description of every one", async () => {
+  it("lists a bare action with the Agent Description of what it shows next, and offers the Goal Loop a description of every one", async () => {
     await startSession();
     cleanups.push(registered(BarePage));
     await probeRegisteredPomMembers();
@@ -552,10 +552,12 @@ describe("the session's tools in Chromium", () => {
 
     expect(listed("BarePage.open")).toMatchObject({
       returnPoms: ["SettingsPage"],
+      agentDescription: "Shows SettingsPage.",
     });
-    expect(listed("BarePage.open")).not.toHaveProperty("description");
+    expect(listed("BarePage.open")).not.toHaveProperty("authorDescription");
     expect(listed("BarePage.close")).not.toHaveProperty("returnPoms");
-    expect(label("BarePage.open")).toBe("Then shows SettingsPage.");
+    expect(listed("BarePage.close")).not.toHaveProperty("agentDescription");
+    expect(label("BarePage.open")).toBe("Shows SettingsPage.");
     expect(label("BarePage.close")).toBe("Run close.");
   });
 
@@ -575,9 +577,7 @@ describe("the session's tools in Chromium", () => {
       "ListItem",
       "UnreachedPopover",
     ]);
-    expect(label).toBe(
-      "Then shows FilterPopover or ListItem or UnreachedPopover."
-    );
+    expect(label).toBe("Shows FilterPopover or ListItem or UnreachedPopover.");
   });
 
   it("passes a rest parameter's list to the action as separate arguments", async () => {
