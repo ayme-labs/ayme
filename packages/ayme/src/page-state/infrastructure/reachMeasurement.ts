@@ -43,13 +43,14 @@ type Rect = { left: number; right: number; top: number; bottom: number };
 /** Where the scroll containers stand: as now, or scrolled to centre the element. */
 type ScrollAlignment = "current" | "center";
 
-let batch: Map<unknown, WeakMap<Element, unknown>> | undefined;
+let batch: Map<unknown, WeakMap<object, unknown>> | undefined;
 
 /**
  * Package-internal: runs `measureAll`, a synchronous pass that measures a
  * batch of elements (every candidate of every tool) without changing the
  * page, sharing the work for their common ancestors. Each element is
- * measured at most once in the pass; outside one, every call measures
+ * measured at most once in the pass, and each document's open modals are
+ * read once for all its elements; outside one, every call measures
  * afresh, so a page change between calls is always seen.
  */
 export function inReachBatch<T>(measureAll: () => T): T {
@@ -62,14 +63,14 @@ export function inReachBatch<T>(measureAll: () => T): T {
   }
 }
 
-/** `compute()` for `element`, once per batch under `key`. */
-function inBatch<R>(key: object, element: Element, compute: () => R): R {
+/** `compute()` for `node`, an element or its document, once per batch under `key`. */
+function inBatch<R>(key: object, node: object, compute: () => R): R {
   if (!batch) return compute();
-  let memo = batch.get(key) as WeakMap<Element, R> | undefined;
+  let memo = batch.get(key) as WeakMap<object, R> | undefined;
   if (!memo) batch.set(key, (memo = new WeakMap()));
-  if (memo.has(element)) return memo.get(element)!;
+  if (memo.has(node)) return memo.get(node)!;
   const result = compute();
-  memo.set(element, result);
+  memo.set(node, result);
   return result;
 }
 
@@ -129,12 +130,7 @@ const layoutAncestors = (element: Element) =>
  * not in one, else its inert ancestor.
  */
 export function blockingAncestor(element: Element): Element | undefined {
-  let modals: Element[];
-  try {
-    modals = [...element.ownerDocument.querySelectorAll(":modal")];
-  } catch {
-    modals = [];
-  }
+  const modals = openModals(element.ownerDocument);
   if (
     modals.length &&
     !modals.some(
@@ -149,6 +145,16 @@ export function blockingAncestor(element: Element): Element | undefined {
   }
   return undefined;
 }
+
+/** The native modals open in `document`, in document order. */
+const openModals = (document: Document) =>
+  inBatch(openModals, document, () => {
+    try {
+      return [...document.querySelectorAll(":modal")];
+    } catch {
+      return [];
+    }
+  });
 
 /**
  * The ancestor a modal layer opened over the rest of the page hid, when
