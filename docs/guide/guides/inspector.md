@@ -32,7 +32,7 @@ To show people what an agent does, pass `inspector: { demo: true }`:
 useAyme({ inspector: { demo: true } });
 ```
 
-Demo mode pauses briefly before each action and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
+Demo mode pauses briefly before each action, though not before a scroll, and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
 
 ## The three lenses
 

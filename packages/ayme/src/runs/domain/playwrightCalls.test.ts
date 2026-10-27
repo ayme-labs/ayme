@@ -82,10 +82,10 @@ it("knows no symbol-keyed or unknown method, which runs as it is", () => {
   expect(kindOf("locator", "click")).toBe("click");
 });
 
-it("acts on no element and is no Interaction for a navigation, a focus or a scroll", () => {
+it("acts on no element and is no Interaction for a navigation or a focus, and does nothing for a scroll", () => {
   expect(kindOf("page", "goto")).toBe("navigate");
   expect(kindOf("locator", "focus")).toBe("act");
-  expect(kindOf("locator", "scrollIntoViewIfNeeded")).toBe("act");
+  expect(kindOf("locator", "scrollIntoViewIfNeeded")).toBe("none");
   expect(elementsOf("page", page, "goto", ["/list"])).toEqual([]);
   expect(valueOf("page", "goto", ["/list"])).toBeUndefined();
   expect(elementsOf("page", page, "reload", [])).toEqual([]);
