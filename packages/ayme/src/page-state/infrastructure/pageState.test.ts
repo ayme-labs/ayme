@@ -16,14 +16,13 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import {
   configurePageStateIgnore,
-  getPageStateCaptureForDocument,
   getPageStateForDocument,
   getPageStateSession,
   latestPageStateElement,
   lookAtPageStateForDocument,
   providePageObjectStructure,
-  resolvePageStateRefs,
 } from "./pageState";
+import { createCursors } from "../domain/cursors";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
 import { ayme } from "../../test-utils/agentCalls.testSupport";
 
@@ -466,14 +465,17 @@ describe("the page state", () => {
     expect(await pageStateText()).toContain("s_1 Root");
 
     // The page changed since, so the action's before capture is recorded
-    // and the element map is the new capture's.
-    const actionId = await getPageStateSession(document).startAction({
-      tool: "click",
-      args: {},
-    });
-    await getPageStateSession(document).captureBefore(actionId);
+    // and the element map the action performs on is the new capture's.
+    let element: Element | undefined;
+    await getPageStateSession(document).runAction(
+      createCursors().of("app"),
+      { tool: "click", args: {} },
+      () => {
+        element = latestPageStateElement(document, ref("s_1"));
+      }
+    );
 
-    expect(latestPageStateElement(document, ref("s_1"))).toBe(root);
+    expect(element).toBe(root);
   });
 
   it("resolves root candidates before capture and correlates only those candidates", async () => {
@@ -660,7 +662,7 @@ describe("the page state", () => {
     });
     pageObjectRoots.mockResolvedValue([]);
 
-    const first = await getPageStateCaptureForDocument(document);
+    const first = await getPageStateSession(document).getPageStateCapture();
     expect(first.tree.getNode(ref("e2"))?.role).toBe("button");
     expect(first.tree.getNode(ref("e2"))?.name).toBe("Captured omitted");
     expect(first.elementsByRef.get(ref("e2"))).toBe(original);
@@ -679,10 +681,12 @@ describe("the page state", () => {
       ]),
     });
 
-    const second = await getPageStateCaptureForDocument(document);
+    const second = await getPageStateSession(document).getPageStateCapture();
     expect(second.tree.getNode(ref("e4"))?.name).toBe("Captured omitted");
     expect(second.elementsByRef.get(ref("e4"))).toBe(replacement);
-    await expect(resolvePageStateRefs(document, ref("e2"))).resolves.toEqual([
+    await expect(
+      getPageStateSession(document).resolveRefs([ref("e2")])
+    ).resolves.toEqual([
       {
         status: "resolved",
         requestedRef: ref("e2"),
@@ -717,8 +721,8 @@ describe("the page state", () => {
     pageObjectRoots.mockResolvedValue([]);
 
     const [first, second] = await Promise.all([
-      getPageStateCaptureForDocument(document),
-      getPageStateCaptureForDocument(document),
+      getPageStateSession(document).getPageStateCapture(),
+      getPageStateSession(document).getPageStateCapture(),
     ]);
 
     expect(first.tree.getNode(ref("e2"))?.name).toBe("First capture");

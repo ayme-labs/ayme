@@ -3,7 +3,7 @@
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
 import type { JsonSchema } from "../../shared";
-import { runAction, startNavigation } from "../../page-state";
+import { startNavigation } from "../../page-state";
 import type { PublishedElementTool } from "./elementTools";
 
 const noInputSchema: JsonSchema = {
@@ -34,8 +34,7 @@ function traversalTool(
       const traverse = () =>
         direction === "back" ? page.goBack() : page.goForward();
       const navigation = currentDocument.defaultView?.navigation;
-      return runAction(
-        currentDocument,
+      return context.pageStateSession.runAction(
         cursor,
         { tool: name, args: input },
         async () => {
@@ -104,8 +103,7 @@ export const reloadTool: PublishedElementTool = {
   inputSchema: noInputSchema,
   execute: async (input, context) => {
     const { cursor, page, document: currentDocument } = context;
-    return runAction(
-      currentDocument,
+    return context.pageStateSession.runAction(
       cursor,
       { tool: "reload", args: input },
       () => startNavigation(currentDocument, () => page.reload())

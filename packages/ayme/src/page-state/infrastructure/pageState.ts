@@ -9,25 +9,30 @@
 
 import {
   PageIdSchema,
+  SETTLED_PAGE_DEADLINE_MS,
+  SETTLED_PAGE_QUIET_MS,
+  waitForSettled,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import { browserMonotonicClock, ToolInputError } from "../../shared";
 import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
-import { watchSameDocumentNavigations } from "./navigation";
+import { watchFullLoad, watchSameDocumentNavigations } from "./navigation";
+import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   capturePage,
   type PageCaptureSources,
   type PageObjectStructure,
 } from "./pageCapture";
-import { PageStateSession } from "../application/pageStateSession";
+import {
+  PageStateSession,
+  type ActionPage,
+} from "../application/pageStateSession";
 import { SyntheticRootRefFactory } from "../domain/pomRootPlacement";
 import {
   renderPageState,
   type PageState,
-  type PageStateCapture,
   type PageStateLook,
-  type RefResolution,
 } from "../domain/structuralPageState";
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
@@ -91,20 +96,6 @@ export async function getPageStateForDocument(
 }
 
 /**
- * Package-internal: capture the current page state and return its typed data.
- * `cursor` is the reader that receives the capture, whose cursor moves to it:
- * the "before" of its next Change Record.
- */
-export async function getPageStateCaptureForDocument(
-  currentDocument: Document,
-  options: { cursor?: Cursor } = {}
-): Promise<PageStateCapture> {
-  return getPageStateSession(currentDocument).getPageStateCapture(
-    options.cursor
-  );
-}
-
-/**
  * Capture `currentDocument`'s page state without recording it in the
  * interaction history, for a reader that is not a caller (the Inspector).
  */
@@ -122,14 +113,6 @@ export function getInteractionHistory(
   currentDocument: Document
 ): InteractionHistory {
   return getPageStateSession(currentDocument).history;
-}
-
-/** Resolve refs through the current document's session and a fresh capture. */
-export async function resolvePageStateRefs(
-  currentDocument: Document,
-  ...refs: AriaRef[]
-): Promise<RefResolution[]> {
-  return getPageStateSession(currentDocument).resolveRefs(refs);
 }
 
 export async function resolvePageStateRef(
@@ -197,7 +180,10 @@ export function latestPageStateElement(
   return pageStateSessions.get(currentDocument)?.latestElementOf(ref);
 }
 
-/** Package-internal: the document's Page State Session, created on first use. */
+/**
+ * Package-internal: the document's Page State Session, created on first use:
+ * what a Run hands the tools it runs.
+ */
 export function getPageStateSession(
   currentDocument: Document
 ): PageStateSession {
@@ -227,9 +213,28 @@ function createPageStateSession(currentDocument: Document): PageStateSession {
       history.recordNavigation(currentDocument.URL)
     );
   const refFactory = new SyntheticRootRefFactory();
-  return new PageStateSession(history, () =>
-    capturePage(currentDocument.body, refFactory, captureSources)
+  return new PageStateSession(
+    history,
+    () => capturePage(currentDocument.body, refFactory, captureSources),
+    documentActionPage(currentDocument)
   );
+}
+
+/**
+ * The action signals of `currentDocument`: a Settled Page is one with no
+ * DOM, transition, animation, scroll or resize activity for a quiet window.
+ */
+function documentActionPage(currentDocument: Document): ActionPage {
+  return {
+    settle: () =>
+      waitForSettled({
+        activity: getBrowserPageActivitySource(currentDocument),
+        clock: browserMonotonicClock,
+        quietMs: SETTLED_PAGE_QUIET_MS,
+        deadlineMs: SETTLED_PAGE_DEADLINE_MS,
+      }),
+    watchFullLoad: () => watchFullLoad(currentDocument),
+  };
 }
 
 export async function capturePageState(

@@ -9,12 +9,7 @@ import type {
   ToolDescriptor,
 } from "../../shared";
 import type { ActionFailure, ActionResult } from "../../page-state";
-import {
-  cursors,
-  getInteractionHistory,
-  getPageStateCaptureForDocument,
-  readRenderedChange,
-} from "../../page-state";
+import { forkCursor, readRenderedChange } from "../../page-state";
 import type { RunContext, StartChildRun } from "../../runs";
 import {
   getPomDefinitions,
@@ -223,16 +218,16 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   recordResult: (result: GoalLoopRunResult) => void,
-  { cursor, run: runChild, page, document: currentDocument }: RunContext
+  { cursor, run: runChild, page, pageStateSession }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
-  const interactions = getInteractionHistory(currentDocument);
+  const interactions = pageStateSession.history;
   let consecutiveFailures = 0;
   // The loop reads on the Caller's behalf with a fork of its cursor: each
   // step's capture and child Run move the fork, the Caller's cursor stays put
   // until the Handover.
-  const loop = cursors.fork(cursor);
+  const loop = forkCursor(cursor);
   const run: StartChildRun = (name, input, stepCursor = loop) =>
     runChild(name, input, stepCursor);
 
@@ -262,9 +257,7 @@ export async function pursueGoal(
     // fork, so the tree it sees is the "before" of the step's Change Record: a
     // change made while it decides counts into page_changed. The Caller's
     // cursor stays put until the Handover.
-    const capture = await getPageStateCaptureForDocument(currentDocument, {
-      cursor: loop,
-    });
+    const capture = await pageStateSession.getPageStateCapture(loop);
     const verdict = await decideStep({
       goal,
       values,

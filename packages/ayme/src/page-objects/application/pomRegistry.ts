@@ -10,11 +10,8 @@ import { methodArguments } from "../domain/actionTool";
 import {
   assertAvailable,
   assertRootReachable,
-  latestPageStateRef,
   providePageObjectStructure,
   refFailure,
-  resolveRef,
-  runAction,
   unavailableError,
   type ActionResult,
   type ToolAvailability,
@@ -468,7 +465,7 @@ export function createPomRegistry(driver: PageDriver) {
         tool,
         ...combinedAvailability(
           instancesOf(tool).map((instance) =>
-            availabilityNow(instance, tool.methodName)
+            availabilityNow(driver, instance, tool.methodName)
           )
         ),
       }));
@@ -493,7 +490,10 @@ export function createPomRegistry(driver: PageDriver) {
     const itemsByTool = new Map<string, RootedToolInstance[]>();
     for (const { tool } of listRegisteredPomTools())
       if (tool.rooted)
-        itemsByTool.set(tool.name, rootedInstancesOf(instancesOf(tool), tool));
+        itemsByTool.set(
+          tool.name,
+          rootedInstancesOf(driver, instancesOf(tool), tool)
+        );
     return itemsByTool;
   }
 
@@ -545,12 +545,13 @@ function isRootPresent<T extends ObservedPomRoot>(
  * until the next probe observes it again, so no call runs on it.
  */
 function availabilityNow(
+  driver: PageDriver,
   instance: PomInstanceObservation,
   methodName: string
 ): ToolAvailability {
   if (instance.root?.element?.isConnected === false)
     return { present: false, available: false };
-  return availabilityOf(instance, methodName, latestPageStateRef);
+  return availabilityOf(instance, methodName, driver.latestPageStateRef);
 }
 
 /**
@@ -559,6 +560,7 @@ function availabilityNow(
  * call on an item is refused by.
  */
 function rootedInstancesOf(
+  driver: PageDriver,
   instances: readonly PomInstanceObservation[],
   tool: RegisteredPomTool
 ): RootedToolInstance[] {
@@ -568,7 +570,7 @@ function rootedInstancesOf(
       ? [
           {
             element: root.element,
-            ...availabilityNow(instance, tool.methodName),
+            ...availabilityNow(driver, instance, tool.methodName),
           },
         ]
       : [];
@@ -616,7 +618,10 @@ function createTool(
         };
         args = actionArgs;
         const label = `call ${tool.name} on`;
-        const { element } = await resolveRef(ref, label, context.document);
+        const { element } = await context.pageStateSession.resolveRef(
+          ref,
+          label
+        );
         const previous = instances.find(
           (instance) => instance.root?.element === element
         );
@@ -632,7 +637,10 @@ function createTool(
             refFailure(label, ref, `it is not a root of ${tool.className}`)
           );
         targetName = `${tool.className} on ref "${ref}"`;
-        assertAvailable(targetName, availabilityNow(observed, tool.methodName));
+        assertAvailable(
+          targetName,
+          availabilityNow(driver, observed, tool.methodName)
+        );
       }
       const target = callTarget(driver, targetName, observed);
       return performPageObjectAction(target, action, args, context, targetName);
@@ -683,7 +691,7 @@ async function performPageObjectAction(
   { instance, rootLocator }: PomInstanceObservation,
   tool: ToolManifest,
   args: unknown,
-  { cursor, document: currentDocument }: RunContext,
+  { cursor, pageStateSession }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -699,7 +707,7 @@ async function performPageObjectAction(
   if (rootLocator) await assertRootReachable(targetName, rootLocator);
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
+  return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>
     method.apply(instance, parameters)
   );
 }

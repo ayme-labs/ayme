@@ -8,7 +8,7 @@ import {
 } from "../page-objects";
 import { loadAgentConnection } from "./agentConnection";
 import { getAgentConnectionStatus } from "./agentConnectionStatus";
-import { cursors } from "../page-state";
+import { cursors, getPageStateSession } from "../page-state";
 import { callers, RuntimeStateError } from "../shared";
 import * as goalLoopModule from "../goal-loop";
 import { loadInspector } from "./inspector";
@@ -537,6 +537,7 @@ it("runs goal as the application while publication is unavailable", async () => 
       run: expect.any(Function),
       page: expect.any(Object),
       document,
+      pageStateSession: getPageStateSession(document),
     });
   } finally {
     goalTool.mockRestore();

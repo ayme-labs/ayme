@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { Cursor } from "../../page-state";
+import type { Cursor, PageStateSession } from "../../page-state";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
 /** How `ayme.tools.run` starts a Run. */
@@ -21,6 +21,8 @@ export type RunContext = {
   readonly page: Page;
   /** The browser Document the Run acts on: the one its page shows. */
   readonly document: Document;
+  /** The Page State Session of the Run's Document: its actions, captures and refs go through it. */
+  readonly pageStateSession: PageStateSession;
 };
 
 /**

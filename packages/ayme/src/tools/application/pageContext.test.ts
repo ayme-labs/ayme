@@ -2,8 +2,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getPageStateForDocument, getPomDefinitions } = vi.hoisted(() => ({
-  getPageStateForDocument: vi.fn(),
+const { getPageState, getPomDefinitions } = vi.hoisted(() => ({
+  getPageState: vi.fn(),
   getPomDefinitions: vi.fn(),
 }));
 
@@ -11,7 +11,7 @@ vi.mock(
   "../../page-state/infrastructure/pageState",
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
-    getPageStateForDocument,
+    getPageStateSession: () => ({ getPageState }),
   })
 );
 vi.mock("../../page-objects/infrastructure/registeredPomDefinitions", () => ({
@@ -31,7 +31,7 @@ describe("snapshot", () => {
       "document",
       document.implementation.createHTMLDocument("Page context test")
     );
-    getPageStateForDocument.mockResolvedValue({
+    getPageState.mockResolvedValue({
       text: '- e1 button "Save changes"',
       resolve: vi.fn(),
     });
@@ -53,7 +53,7 @@ describe("snapshot", () => {
 
   it("combines current structure and POM definitions while retaining ref resolution", async () => {
     const resolve = vi.fn();
-    getPageStateForDocument.mockResolvedValue({
+    getPageState.mockResolvedValue({
       text: '- e1 button "Save changes"',
       resolve,
     });

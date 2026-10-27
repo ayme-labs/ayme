@@ -1,8 +1,9 @@
 import type { JsonValue, PomDefinition, ToolDescriptor } from "../../shared";
 import {
-  getPageStateForDocument,
+  getPageStateSession,
   type AriaRef,
   type PageState,
+  type PageStateSession,
 } from "../../page-state";
 import { getPomDefinitions, renderPomDefinitions } from "../../page-objects";
 import type { Cursor } from "../../page-state";
@@ -41,10 +42,10 @@ export const getPageContextTool = {
 
 async function snapshotFor(
   input: unknown,
-  { document: currentDocument, cursor }: RunContext
+  { pageStateSession, cursor }: RunContext
 ): Promise<JsonValue> {
   const context = await pageContextFor(
-    currentDocument,
+    pageStateSession,
     cursor,
     (input as { names?: string[] }).names ?? []
   );
@@ -61,15 +62,15 @@ export async function getPageContextForDocument(
   cursor: Cursor,
   ...names: readonly string[]
 ): Promise<PageContext> {
-  return pageContextFor(currentDocument, cursor, names);
+  return pageContextFor(getPageStateSession(currentDocument), cursor, names);
 }
 
 async function pageContextFor(
-  currentDocument: Document,
+  pageStateSession: PageStateSession,
   cursor: Cursor,
   names: readonly string[]
 ): Promise<PageContext> {
-  const pageState = await getPageStateForDocument(currentDocument, cursor);
+  const pageState = await pageStateSession.getPageState(cursor);
   return Object.freeze({
     structure: pageState.text,
     pomDefinitions: getPomDefinitions(...names).definitions,

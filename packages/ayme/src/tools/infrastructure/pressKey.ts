@@ -2,7 +2,6 @@
 // lives here, not beside the other Browser Tools in application, because it
 // checks the key against Playwright Lite's key layout before it acts.
 import { isPressableKey } from "@ayme-dev/playwright-lite/internal";
-import { runAction } from "../../page-state";
 import { ToolInputError, type JsonSchema } from "../../shared";
 import type { PublishedElementTool } from "../application/elementTools";
 
@@ -32,8 +31,7 @@ export const pressKeyTool: PublishedElementTool = {
       throw new ToolInputError(
         `Cannot press "${key}": it is not a key name or a character.`
       );
-    return runAction(
-      context.document,
+    return context.pageStateSession.runAction(
       cursor,
       { tool: "press_key", args: input },
       () => page.keyboard.press(key)

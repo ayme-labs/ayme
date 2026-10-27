@@ -1,4 +1,5 @@
 import type { Locator } from "@playwright/test";
+import type { LatestRefLookup } from "../../page-state";
 import type { ObservedPomRoot } from "../domain/pomInstance";
 
 /**
@@ -28,6 +29,11 @@ export type PageDriver = {
    * the returned function is called.
    */
   onPageStateRecorded(onRecorded: () => void): () => void;
+  /**
+   * The Structural Ref the agent's latest recorded page state gave an
+   * element, when it gave it exactly one: what names an element in the way.
+   */
+  latestPageStateRef: LatestRefLookup;
 };
 
 export type PageWatch = {

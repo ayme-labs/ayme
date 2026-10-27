@@ -16,26 +16,14 @@ export type Cursor = {
 
 /**
  * One cursor per Caller name, created on first use, so two Callers under one
- * name share one; and forks, temporary cursors that start where another is,
- * for a reader that reads on a Caller's behalf for a while, as the Goal Loop
- * does for the length of a goal Run.
+ * name share one.
  */
 export type Cursors = {
   of(by: Caller): Cursor;
-  fork(from: Cursor): Cursor;
 };
 
 export function createCursors(): Cursors {
   const byCaller = new Map<Caller, Cursor>();
-  const cursorAt = (start: StructuralObservationEntry | undefined): Cursor => {
-    let current = start;
-    return {
-      current: () => current,
-      move: (to) => {
-        current = to;
-      },
-    };
-  };
   return {
     of(by) {
       let cursor = byCaller.get(by);
@@ -45,6 +33,24 @@ export function createCursors(): Cursors {
       }
       return cursor;
     },
-    fork: (from) => cursorAt(from.current()),
+  };
+}
+
+/**
+ * A fork of `from`: a temporary cursor that starts where `from` is, for a
+ * reader that reads on a Caller's behalf for a while, as the Goal Loop does
+ * for the length of a goal Run.
+ */
+export function forkCursor(from: Cursor): Cursor {
+  return cursorAt(from.current());
+}
+
+function cursorAt(start: StructuralObservationEntry | undefined): Cursor {
+  let current = start;
+  return {
+    current: () => current,
+    move: (to) => {
+      current = to;
+    },
   };
 }

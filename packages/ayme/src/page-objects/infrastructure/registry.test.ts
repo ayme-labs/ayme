@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "../../test-utils/agentCalls.testSupport";
 import { checkedToolInput } from "../../shared";
+import type { PageStateSession } from "../../page-state";
 
 const {
   locatorElements,
@@ -30,16 +31,6 @@ vi.mock(
   "../../page-state/infrastructure/pageState",
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
-    resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
-      refs.map((ref) => {
-        const entry = pageStateResolutions.get(ref);
-        if (entry) return { status: "resolved", requestedRef: ref, ...entry };
-        return {
-          status: "unresolved",
-          requestedRef: ref,
-          reason: "unknown-ref",
-        };
-      }),
     onPageStateRecorded: (_doc: unknown, listener: () => void) => {
       pageStateRecordedListeners.add(listener);
       return () => pageStateRecordedListeners.delete(listener);
@@ -49,29 +40,39 @@ vi.mock(
     },
   })
 );
-vi.mock("../../page-state/infrastructure/actions", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  runAction: vi.fn(
-    async (
-      _doc: unknown,
-      _caller: unknown,
-      _call: unknown,
-      perform: () => unknown
-    ) => {
-      const rawResult: unknown = await perform();
-      const out: Record<string, unknown> = {
-        page_changed: false,
-        settled: true,
-      };
-      if (rawResult !== undefined) out.result = rawResult;
-      return out;
-    }
-  ),
-}));
 import type { Locator, Page } from "@playwright/test";
 import type { PomManifest } from "../../shared";
 import type { AymePage } from "../../runtime";
 import type { TestSession } from "../../test-utils/session.testSupport";
+
+/**
+ * The Page State Session a Run hands these tools: a ref resolves to its
+ * node in `pageStateResolutions`, and an action performs at once on a page
+ * that never changes.
+ */
+const pageStateSession = {
+  resolveRef: async (requested: string) => {
+    const entry = pageStateResolutions.get(requested);
+    if (!entry) throw new Error(`No page state resolution for "${requested}".`);
+    return entry.node;
+  },
+  runAction: async (
+    _cursor: unknown,
+    _call: unknown,
+    perform: () => unknown
+  ) => {
+    const rawResult: unknown = await perform();
+    const out: Record<string, unknown> = {
+      page_changed: false,
+      settled: true,
+    };
+    if (rawResult !== undefined) out.result = rawResult;
+    return out;
+  },
+} as unknown as PageStateSession;
+
+/** The Run context these tools execute in. */
+const pomRunContext = () => runContext(undefined, undefined, pageStateSession);
 
 function brandedLocator(
   overrides: Record<string, unknown> = {},
@@ -1372,7 +1373,7 @@ describe("live Page Object registry", () => {
     ]);
 
     const confirmTool = registry.listAvailablePomTools()[0];
-    await confirmTool?.execute({ ref: "e21" }, runContext());
+    await confirmTool?.execute({ ref: "e21" }, pomRunContext());
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
@@ -1384,7 +1385,7 @@ describe("live Page Object registry", () => {
     ]);
 
     const nestedTool = registry.listAvailablePomTools()[1];
-    await nestedTool?.execute({ ref: "e22" }, runContext());
+    await nestedTool?.execute({ ref: "e22" }, pomRunContext());
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
@@ -1540,7 +1541,7 @@ describe("live Page Object registry", () => {
     if (!tool) throw new Error("Expected a collection tool.");
 
     await expect(
-      tool.execute({ ref: "e2", args: {} }, runContext())
+      tool.execute({ ref: "e2", args: {} }, pomRunContext())
     ).resolves.toEqual({
       page_changed: false,
       settled: true,
@@ -1552,7 +1553,7 @@ describe("live Page Object registry", () => {
     currentItems = [replacement];
     await registry.probeRegisteredPomMembers();
     await expect(
-      tool.execute({ ref: "e3", args: {} }, runContext())
+      tool.execute({ ref: "e3", args: {} }, pomRunContext())
     ).resolves.toEqual({
       page_changed: false,
       settled: true,
@@ -1612,7 +1613,7 @@ describe("live Page Object registry", () => {
     );
 
     await expect(
-      tool.execute({ ref: "e2", args: {} }, runContext())
+      tool.execute({ ref: "e2", args: {} }, pomRunContext())
     ).rejects.toThrow(
       'Cannot call Item.archive on ref "e2": it is not a root of Item.'
     );
@@ -1686,7 +1687,7 @@ describe("live Page Object registry", () => {
 
     expect(archiveTool.inputSchema.required).toEqual(["ref"]);
     await expect(
-      archiveTool.execute({ ref: "e2" }, runContext())
+      archiveTool.execute({ ref: "e2" }, pomRunContext())
     ).resolves.toMatchObject({ result: "archived" });
     expect(archive).toHaveBeenCalledOnce();
 
