@@ -97,6 +97,12 @@ function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
       message:
         "A layered slice has no index.ts: import the front door of the layer you use, such as ../page-state/domain.",
     },
+    // The package name reaches the entries past every rule here.
+    {
+      regex: "^@ayme-dev/ayme(/.*)?$",
+      message:
+        "Ayme's source never imports Ayme by its package name: import the module by its path.",
+    },
     ...(tests
       ? []
       : [
