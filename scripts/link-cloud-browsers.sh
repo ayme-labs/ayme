@@ -14,22 +14,29 @@ fi
 # Images ship either Playwright's older layout (chrome-linux for both browsers)
 # or its newer one (chrome-linux64, chrome-headless-shell-linux64). Only the
 # shipped build has a real directory there; the revisions this script links
-# hold a symlink instead.
+# hold a symlink instead. A real directory left where a link goes, say by an
+# interrupted install, is not replaced and its revision is not marked complete.
 browsers="${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"
 if [ ! -d "$browsers" ]; then
   exit 0
 fi
 
-# Prints the newest shipped build of $1 as <dir>/<layout>, e.g.
-# chromium-1243/chrome-linux64, or nothing.
+# Prints the newest complete shipped build of $1 as <dir>/<layout>, e.g.
+# chromium-1243/chrome-linux64, or nothing. Playwright writes
+# INSTALLATION_COMPLETE after extracting, so a build without it is partial.
 shipped_build() {
   local dir=$1
   shift
   local layout layouts=()
   for layout in "$@"; do
-    layouts+=(-o -path "$browsers/$dir-[0-9]*/$layout")
+    layouts+=(-o -path "*/$dir-[0-9]*/$layout")
   done
-  find "$browsers" -mindepth 2 -maxdepth 2 -type d \( "${layouts[@]:1}" \) -printf '%P\n' | sort -V | tail -1
+  local build
+  find "$browsers" -mindepth 2 -maxdepth 2 -type d \( "${layouts[@]:1}" \) -printf '%P\n' | sort -V | while read -r build; do
+    if [ -e "$browsers/${build%/*}/INSTALLATION_COMPLETE" ]; then
+      echo "$build"
+    fi
+  done | tail -1
 }
 
 shopt -s nullglob
@@ -45,7 +52,7 @@ if [ -n "$shipped" ]; then
     full="$browsers/chromium-$rev"
     if [ "$full" != "$browsers/${shipped%/*}" ] && [ ! -e "$full/INSTALLATION_COMPLETE" ]; then
       mkdir -p "$full"
-      ln -sfn "$browsers/$shipped" "$full/chrome-linux64"
+      ln -sfnT "$browsers/$shipped" "$full/chrome-linux64" || continue
       touch "$full/INSTALLATION_COMPLETE"
     fi
   done
@@ -60,10 +67,10 @@ if [ -n "$shipped" ]; then
         mkdir -p "$shell/headless-shell"
         ln -sf "$browsers/$shipped/"* "$shell/headless-shell/"
         ln -sf headless_shell "$shell/headless-shell/chrome-headless-shell"
-        ln -sfn headless-shell "$shell/chrome-headless-shell-linux64"
+        ln -sfnT headless-shell "$shell/chrome-headless-shell-linux64" || continue
       else
         mkdir -p "$shell"
-        ln -sfn "$browsers/$shipped" "$shell/chrome-headless-shell-linux64"
+        ln -sfnT "$browsers/$shipped" "$shell/chrome-headless-shell-linux64" || continue
       fi
       touch "$shell/INSTALLATION_COMPLETE"
     fi
