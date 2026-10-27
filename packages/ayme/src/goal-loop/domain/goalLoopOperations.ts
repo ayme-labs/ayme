@@ -2,6 +2,7 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "../../shared";
 import type { TargetField } from "../../tools";
 import type { RootedToolInstance } from "../../page-objects";
 import type { StartChildRun } from "../../runs";
+import type { Reach } from "../../page-state";
 
 /**
  * The operations the Goal Loop offers the model each step, and how each
@@ -15,6 +16,8 @@ export type ClosedSet =
       filter: (element: Element) => boolean;
       /** The filter before reach, for a tool that needs reach. */
       matches?: (element: Element) => boolean;
+      /** The Reach the filter measures with, which batches a pass over the page. */
+      reach: Reach;
     }
   /**
    * The present items of one collection path, each with the tool's verdict on

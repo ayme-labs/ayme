@@ -241,12 +241,12 @@ export type ArgumentPlan =
   /** The values of a closed set do not make a choice the model can answer. */
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
-/** Every node of the capture a single-element tool with this filter can take. */
+/** Every node of the capture a single-element tool with this closed set can take. */
 function refOptions(
-  filter: (element: Element) => boolean,
+  { reach, filter }: Extract<ClosedSet, { kind: "ref" }>,
   capture: PageStateCapture
 ): ArgumentOption[] {
-  return acceptedRefNodes(filter, capture).map((node) => ({
+  return acceptedRefNodes(reach, filter, capture).map((node) => ({
     key: node.ref,
     description: describeNode(node),
     value: node.ref,
@@ -592,7 +592,7 @@ export function planArguments(
 
     const offered: { options: ArgumentOption[]; leftOut?: LeftOutItem[] } =
       closedSet.kind === "ref"
-        ? { options: refOptions(closedSet.filter, capture) }
+        ? { options: refOptions(closedSet, capture) }
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture, tool)
           : { options: valueOptions(closedSet.values) };
@@ -621,7 +621,7 @@ export function planArguments(
       // A ref gets here only with no element left to offer.
       if (closedSet.kind === "ref") {
         const unreachable = closedSet.matches
-          ? acceptedRefNodes(closedSet.matches, capture).length
+          ? acceptedRefNodes(closedSet.reach, closedSet.matches, capture).length
           : 0;
         return unreachable > 0
           ? { kind: "needs_ref_choice", parameter: arg.name, unreachable }

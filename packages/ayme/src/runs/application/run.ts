@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { Cursor, PageStateSession } from "../../page-state";
+import type { Cursor, PageStateSession, Reach } from "../../page-state";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
 /** How `ayme.tools.run` starts a Run. */
@@ -23,6 +23,8 @@ export type RunContext = {
   readonly document: Document;
   /** The Page State Session of the Run's Document: its actions, captures and refs go through it. */
   readonly pageStateSession: PageStateSession;
+  /** How the Run measures whether its input would reach an element: the runtime's Reach. */
+  readonly reach: Reach;
 };
 
 /**

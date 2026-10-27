@@ -4,6 +4,7 @@ import {
   createAymeRuntime,
   createPage,
   describeTool,
+  installPageDriverReach,
   probeRegisteredPomMembers,
   registerPageObject,
   subscribeToRegisteredPoms,
@@ -32,9 +33,11 @@ import {
   assertAvailable,
   configurePageStateIgnore,
   cursors,
+  geometryReach,
   getInteractionHistory,
   getPageStateSession,
   type Cursor,
+  type Reach,
 } from "../page-state";
 import {
   listPeekToolInfo,
@@ -276,6 +279,26 @@ export function markRenderSession(ayme: Ayme): void {
   renderSessions.add(ayme);
 }
 
+const handedReaches = new WeakMap<Ayme, Reach>();
+
+/**
+ * Package-internal, for unit tests, which have no layout to measure: the
+ * session `ayme` measures reach with `reach` from its next start, instead
+ * of Chromium's geometry.
+ */
+export function measureReachWith(ayme: Ayme, reach: Reach): void {
+  handedReaches.set(ayme, reach);
+}
+
+/**
+ * Package-internal: the Reach the session `ayme` measures with, the one
+ * place that picks it: the one a unit test handed it, else Chromium's
+ * geometry, as for every session without one.
+ */
+export function sessionReach(ayme?: Ayme): Reach {
+  return (ayme && handedReaches.get(ayme)) ?? geometryReach;
+}
+
 function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
@@ -441,6 +464,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let unsubscribeFromPoms: (() => void) | undefined;
   let unsubscribeFromPeeks: (() => void) | undefined;
   let owner: ReturnType<typeof createAymeRuntime> | undefined;
+  // The Reach the started session measures with, picked on start.
+  let reach: Reach = geometryReach;
   // The session while it runs the process's App Process, which has no
   // page: it offers its Peek Tools only.
   let inProcess: { stop(): void } | undefined;
@@ -551,6 +576,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     owner.dispose();
     owner = undefined;
     configureStartedPage(undefined);
+    installPageDriverReach(undefined);
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
@@ -691,6 +717,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         page: getPage(),
         document,
         pageStateSession: getPageStateSession(document),
+        reach,
       });
     } finally {
       // A turn taken now starts once every child started so far has ended.
@@ -780,7 +807,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           { code: "active-owner" }
         );
       owner = createAymeRuntime(getPage());
-      configureStartedPage(getPage());
+      reach = sessionReach(ayme);
+      configureStartedPage({ page: getPage(), reach });
+      installPageDriverReach(reach);
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
       configurePageStateIgnore(options.ignore);

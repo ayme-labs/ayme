@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DecisionEndpointError } from "../domain/decisionWire";
 import type { GoalLoopOperation } from "../domain/goalLoopOperations";
 import { NONE_OF_THESE_KEY } from "../domain/goalLoopQuestions";
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   answering,
   archiveTool,
@@ -246,6 +247,7 @@ describe("a Step Decision", () => {
                 kind: "ref",
                 filter: () => false,
                 matches: () => true,
+                reach: alwaysReaches(),
               },
             },
           ],

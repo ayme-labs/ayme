@@ -3,12 +3,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects";
 import { listElementTools } from "../../tools";
-import { assertRootReachable, reaches } from "./elementReach";
+import { assertReachable, reaches } from "./elementReach";
 import { errorText } from "../../shared";
 import { buildToolOptions, planArguments } from "../../goal-loop";
 import { lookAtPageStateForDocument } from "./pageState";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme, listElementToolTargets } from "../../runtime";
+import { geometryReach } from "./reachMeasurement";
 
 // A refusal answers before Playwright's actionability wait would time out.
 const ACTION_TIMEOUT = 500;
@@ -430,7 +431,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     const save = document.querySelector("#save")!;
     expect(document.elementFromPoint(20, 10)).toBe(host);
 
-    expect(reaches(page, save, "click")).toBe(true);
+    expect(reaches(geometryReach, page, save, "click")).toBe(true);
     expect((await listElementToolTargets()).get("click")).toContain(
       await refOf("button", "Save")
     );
@@ -603,7 +604,9 @@ describe("Element reach timing in Chromium", () => {
     async (kind, cover) => {
       longList(cover);
       const capture = await lookAtPageStateForDocument(document);
-      const click = buildToolOptions(page).find(({ key }) => key === "click")!;
+      const click = buildToolOptions({ page, reach: geometryReach }).find(
+        ({ key }) => key === "click"
+      )!;
       const targetOnly = {
         ...click.tool,
         args: click.tool.args.filter((arg) => arg.name === "target"),
@@ -614,7 +617,7 @@ describe("Element reach timing in Chromium", () => {
       const planning = await medianMs(() => planArguments(targetOnly, capture));
       const measuring = await medianMs(() => {
         for (const element of capture.elementsByRef.values())
-          reaches(page, element, "click");
+          reaches(geometryReach, page, element, "click");
       });
       const offered = (await listElementToolTargets(capture)).get("click")!;
 
@@ -674,9 +677,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
 
   it("refuses it under the tool's name without scrolling", async () => {
     openLayerOver('<section id="row">Row</section>');
-    const error = await assertRootReachable(
+    const error = await assertReachable(
+      geometryReach,
       "Row.open",
-      createPage().locator("#row")
+      createPage().locator("#row"),
+      document.querySelector("#row")!,
+      "click"
     ).then(() => "no error", errorText);
 
     expect(error).toBe(
@@ -689,7 +695,13 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver(
       '<section id="row"><button style="pointer-events: auto; width: 100%">Row</button></section>'
     );
-    await assertRootReachable("Row.open", createPage().locator("#row"));
+    await assertReachable(
+      geometryReach,
+      "Row.open",
+      createPage().locator("#row"),
+      document.querySelector("#row")!,
+      "click"
+    );
     expect(window.scrollY).toBeGreaterThan(0);
   });
 
@@ -697,7 +709,13 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver('<section id="row"></section>');
     document.querySelector("#row")!.attachShadow({ mode: "open" }).innerHTML =
       '<button style="pointer-events: auto; width: 100%">Row</button>';
-    await assertRootReachable("Row.open", createPage().locator("#row"));
+    await assertReachable(
+      geometryReach,
+      "Row.open",
+      createPage().locator("#row"),
+      document.querySelector("#row")!,
+      "click"
+    );
     expect(window.scrollY).toBeGreaterThan(0);
   });
 });

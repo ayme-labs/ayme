@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "../../test-utils/agentCalls.testSupport";
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import { checkedToolInput } from "../../shared";
-import type { PageStateSession } from "../../page-state";
+import type { PageStateSession, Reach } from "../../page-state";
 
 const {
   locatorElements,
@@ -71,8 +72,9 @@ const pageStateSession = {
   },
 } as unknown as PageStateSession;
 
-/** The Run context these tools execute in. */
-const pomRunContext = () => runContext(undefined, undefined, pageStateSession);
+/** The Run context these tools execute in, on a layout every click reaches. */
+const pomRunContext = () =>
+  runContext(undefined, undefined, pageStateSession, alwaysReaches());
 
 function brandedLocator(
   overrides: Record<string, unknown> = {},
@@ -116,15 +118,18 @@ const action = (methodName: string) => ({
 
 let started: TestSession | undefined;
 
-/** Imports a fresh registry and starts a session on a page of its own. */
-async function setup() {
+/**
+ * Imports a fresh registry and starts a session on a page of its own, which
+ * measures reach with `reach`: a layout every click reaches by default.
+ */
+async function setup(reach: Reach = alwaysReaches()) {
   const registry = await import("./registry");
   const { startSession } = await import("../../test-utils/session.testSupport");
   // The decorators the registry reads: the module reset makes them fresh too.
   const { ayme } = await import("../domain/decorators");
   const { rootOf, rooted } =
     await import("../../test-utils/pomRoot.testSupport");
-  const session = startSession({} as AymePage);
+  const session = startSession({} as AymePage, { reach });
   started = session;
   return { registry, session, ayme, rootOf, rooted };
 }
@@ -438,7 +443,9 @@ describe("live Page Object registry", () => {
     session.stop();
     const { startSession } =
       await import("../../test-utils/session.testSupport");
-    const restarted = startSession({} as AymePage);
+    const restarted = startSession({} as AymePage, {
+      reach: alwaysReaches(),
+    });
     started = restarted;
     restarted.register(Page);
     expect(logged).toHaveBeenCalledTimes(2);
@@ -1219,13 +1226,15 @@ describe("live Page Object registry", () => {
   });
 
   it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
-    const { registry, session, ayme, rootOf } = await setup();
-    const { measurePomRoot } = await import("../../page-state");
-    vi.mocked(measurePomRoot).mockResolvedValue({
-      present: true,
-      available: false,
-      blocker: {} as Element,
-    });
+    const { registry, session, ayme, rootOf } = await setup(
+      alwaysReaches({
+        measurePomRoot: async () => ({
+          present: true,
+          available: false,
+          blocker: {} as Element,
+        }),
+      })
+    );
 
     class CoveredPage {
       readonly root = brandedLocator({ count: async () => 1 });
@@ -1252,8 +1261,6 @@ describe("live Page Object registry", () => {
     subscriber.mockClear();
     for (const listener of pageStateRecordedListeners) listener();
     expect(subscriber).toHaveBeenCalledOnce();
-
-    vi.mocked(measurePomRoot).mockReset();
   });
 
   it("bounds recursive component manifests to the current component path", async () => {
@@ -1618,6 +1625,43 @@ describe("live Page Object registry", () => {
       'Cannot call Item.archive on ref "e2": it is not a root of Item.'
     );
     expect(addedArchive).not.toHaveBeenCalled();
+
+    pageStateResolutions.clear();
+  });
+
+  it("refuses a call whose root no longer resolves to the one element the observation found, rather than running it", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    const rootElement = { isConnected: true } as Element;
+    const save = vi.fn();
+    class RootedPage {
+      readonly root = brandedLocator({ count: async () => 1 }, rootElement);
+      save() {
+        save();
+      }
+    }
+    ayme({ root: rootOf })(RootedPage);
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const page = session.register(RootedPage);
+    await vi.runOnlyPendingTimersAsync();
+    const tool = registry.listAvailablePomTools()[0];
+    if (!tool) throw new Error("Expected the Page Object Tool.");
+    pageStateResolutions.set("e5", {
+      node: { ref: "e5", element: rootElement },
+    });
+    // A second element now matches the root's locator, after the first.
+    locatorElements.set(page.root, [
+      rootElement,
+      { isConnected: true } as Element,
+    ]);
+
+    await expect(
+      tool.execute({ ref: "e5", args: {} }, pomRunContext())
+    ).rejects.toThrow('RootedPage on ref "e5" is unavailable');
+    expect(save).not.toHaveBeenCalled();
 
     pageStateResolutions.clear();
   });

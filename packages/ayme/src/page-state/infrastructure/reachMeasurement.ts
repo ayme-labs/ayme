@@ -9,32 +9,7 @@ import {
   INSPECTOR_HOST_SELECTOR,
   parentElement,
 } from "../../shared";
-
-/**
- * Package-internal: what the layout shows of one element (ADR-0035,
- * ADR-0041), measured without scrolling or sending input: `present` while
- * some part of it shows, or would once its scroll containers and the
- * viewport scrolled to it; `available` while a click would reach it; and,
- * for a present element a click would not reach, what stopped it:
- * `blocker`, the open native modal the element is not in or the element's
- * inert ancestor, which blocks every click; else `hit`, the element
- * playwright-lite's own hit test found at the point it would click, when
- * that point is in a part of the element shown now. Otherwise the element is
- * not hit-tested: the call scrolls it into view first and tests it there,
- * as it does every element, since that scroll also moves one partly shown;
- * unless a modal layer opened over the rest of the page hid it, whose hidden
- * ancestor is then the `blocker`, and nothing is scrolled.
- * Presence
- * describes the current layout, not content a scroll handler might create.
- * It names no kind of widget: a Page Object Root and an element a Browser
- * Tool addresses are measured alike.
- */
-export type ReachMeasurement = {
-  present: boolean;
-  available: boolean;
-  blocker?: Element;
-  hit?: Element;
-};
+import type { Reach, ReachMeasurement } from "../application/reach";
 
 const absent: ReachMeasurement = { present: false, available: false };
 const reached: ReachMeasurement = { present: true, available: true };
@@ -44,6 +19,19 @@ type Rect = { left: number; right: number; top: number; bottom: number };
 type ScrollAlignment = "current" | "center";
 
 let batch: Map<unknown, WeakMap<object, unknown>> | undefined;
+
+/**
+ * Package-internal: the Reach adapter of the browser runtime, which
+ * measures Chromium's layout and playwright-lite's own hit test (ADR-0041).
+ * The runtime picks it unless a unit test hands its session another.
+ */
+export const geometryReach: Reach = {
+  measurePomRoot,
+  measureReach,
+  measureReachAtCall,
+  blockingAncestor,
+  inReachBatch,
+};
 
 /**
  * Package-internal: runs `measureAll`, a synchronous pass that measures a

@@ -7,12 +7,12 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import {
   assertReachable,
-  inReachBatch,
   reaches,
   refHint,
   selectorFailure,
   type ElementInput,
   type PageStateSession,
+  type Reach,
 } from "../../page-state";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "../../shared";
 import type { RunContext } from "../../runs";
@@ -78,16 +78,23 @@ export type RegisteredElementTool = {
   readonly loopInputSchema: JsonSchema;
   /**
    * true = the Goal Loop may offer this element; not enforced on direct
-   * calls. For a tool that needs reach, it keeps only elements a click on
-   * `page` would reach, which a direct call does enforce.
+   * calls. For a tool that needs reach, it keeps only elements its input
+   * would reach on `page`, as `reach` measures it, which a direct call does
+   * enforce.
    */
-  readonly filter: (element: Element, page: Page) => boolean;
+  readonly filter: (element: Element, on: ReachOn) => boolean;
   /**
    * For a tool that needs reach, its filter before reach: what it may act on
    * whether or not a click would reach it.
    */
   readonly matches?: (element: Element) => boolean;
 };
+
+/**
+ * Package-internal: where an element tool's filter measures reach: on
+ * `page`, with the runtime's `reach`, as a Run carries them.
+ */
+export type ReachOn = Pick<RunContext, "page" | "reach">;
 
 /**
  * The input field that addresses the element. A Custom Tool takes a
@@ -161,6 +168,7 @@ function elementToolExecution(
     );
     if (definition.needsReach)
       await assertReachable(
+        context.reach,
         definition.name,
         context.page.locator(target.selector),
         target.element,
@@ -195,8 +203,9 @@ export function registerElementTool(
     // The cheap filter first: only the elements it keeps are measured.
     ...(definition.needsReach
       ? {
-          filter: (element: Element, page: Page) =>
-            filter(element) && reaches(page, element, definition.needsReach!),
+          filter: (element: Element, { page, reach }: ReachOn) =>
+            filter(element) &&
+            reaches(reach, page, element, definition.needsReach!),
           matches: filter,
         }
       : { filter }),
@@ -323,14 +332,16 @@ export function registerCustomTool(
 
 /**
  * The closed set a single-element tool's ref comes from (ADR-0023): every node of the
- * capture, in tree order, whose element the tool's filter keeps. The Goal Loop
- * offers these as options; the Inspector shows them as the tool's targets.
+ * capture, in tree order, whose element the tool's filter keeps, measured in
+ * one batch of `reach`. The Goal Loop offers these as options; the Inspector
+ * shows them as the tool's targets.
  */
 export function acceptedRefNodes(
+  reach: Reach,
   filter: (element: Element) => boolean,
   capture: PageStateCapture
 ): StructuralNode[] {
-  return inReachBatch(() => {
+  return reach.inReachBatch(() => {
     const nodes: StructuralNode[] = [];
     for (const node of walkNodes(capture.tree)) {
       const element = capture.elementsByRef.get(node.ref);

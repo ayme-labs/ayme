@@ -13,9 +13,10 @@ import { AymeError, ToolInputError } from "../../shared";
 import { buildToolOptions, planArguments } from "../../goal-loop";
 import { getPomDefinitionText } from "./pageContext";
 import {
+  type AriaRef,
+  geometryReach,
   getInteractionHistory,
   lookAtPageStateForDocument,
-  type AriaRef,
 } from "../../page-state";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 import {
@@ -481,7 +482,10 @@ describe("the session's tools in Chromium", () => {
       select_option: [],
       highlight: ["p Draft"],
     });
-    for (const { key, tool } of buildToolOptions(page)) {
+    for (const { key, tool } of buildToolOptions({
+      page,
+      reach: geometryReach,
+    })) {
       if (!targets.has(key)) continue;
       // The element question alone: fill's free `text` would otherwise stop
       // the plan before the element is asked.
@@ -539,7 +543,9 @@ describe("the session's tools in Chromium", () => {
     const listed = (name: string) =>
       ayme.tools.list().find((tool) => tool.name === name);
     const label = (name: string) =>
-      buildToolOptions(page).find(({ key }) => key === name)?.label;
+      buildToolOptions({ page, reach: geometryReach }).find(
+        ({ key }) => key === name
+      )?.label;
 
     expect(listed("BarePage.open")).toMatchObject({
       returnPoms: ["SettingsPage"],
@@ -557,7 +563,7 @@ describe("the session's tools in Chromium", () => {
     const listed = ayme.tools
       .list()
       .find((tool) => tool.name === "ResponsesPage.openFilter");
-    const label = buildToolOptions(page).find(
+    const label = buildToolOptions({ page, reach: geometryReach }).find(
       ({ key }) => key === "ResponsesPage.openFilter"
     )?.label;
 

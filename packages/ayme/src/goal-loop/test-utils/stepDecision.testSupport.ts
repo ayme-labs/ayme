@@ -13,6 +13,7 @@ import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
 import type { DecisionRequest, DecisionResponse } from "../domain/decisionWire";
 import type { PageStateCapture } from "../../page-state";
 import type { RootedToolInstance } from "../../page-objects";
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -54,7 +55,7 @@ export const refArg = {
   name: "ref",
   path: ["ref"],
   optional: false,
-  closedSet: { kind: "ref", filter: () => true },
+  closedSet: { kind: "ref", filter: () => true, reach: alwaysReaches() },
 } as const;
 
 export const clickTool: GoalLoopOperation = {

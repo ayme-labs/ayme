@@ -1,4 +1,3 @@
-import type { Page } from "@playwright/test";
 import type { JsonSchema } from "../shared";
 import { getPursueGoalTool, type GoalTool } from "../goal-loop";
 import {
@@ -10,9 +9,9 @@ import {
   listPublishedBrowserTools,
   type PeekTool,
   type PublishedElementTool,
+  type ReachOn,
 } from "../tools";
 import {
-  inReachBatch,
   lookAtPageStateForDocument,
   type AriaRef,
   type PageStateCapture,
@@ -187,13 +186,17 @@ export function listPeekToolInfo(): readonly ToolInfo[] {
   );
 }
 
-// The started session's page, for what reads it outside any Run: the
-// Inspector's element tool targets. A Run is handed its page instead.
-let startedPage: Page | undefined;
+// The started session's page and the Reach it picked, for what reads them
+// outside any Run: the Inspector's element tool targets. A Run is handed
+// its own instead.
+let startedPage: ReachOn | undefined;
 
-/** Package-internal: store or clear the started session's page. Called by `start()` and `stop()`. */
-export function configureStartedPage(page: Page | undefined): void {
-  startedPage = page;
+/**
+ * Package-internal: store or clear the started session's page and Reach.
+ * Called by `start()` and `stop()`.
+ */
+export function configureStartedPage(started: ReachOn | undefined): void {
+  startedPage = started;
 }
 
 /**
@@ -201,24 +204,26 @@ export function configureStartedPage(page: Page | undefined): void {
  * page when absent), by tool name, in tree order: the same closed set the Goal
  * Loop offers for that tool's ref. Pass the look the Inspector shows,
  * so the refs match its structure. Reach is measured on the started
- * session's page.
+ * session's page, with the Reach it picked.
  */
 export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
-  const page = startedPage;
-  if (!page)
+  const started = startedPage;
+  if (!started)
     throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   const elementTools = listElementTools();
   const current = capture ?? (await lookAtPageStateForDocument(document));
-  return inReachBatch(
+  return started.reach.inReachBatch(
     () =>
       new Map(
         elementTools.map(({ tool, filter }) => [
           tool.name,
-          acceptedRefNodes((element) => filter(element, page), current).map(
-            (node) => node.ref
-          ),
+          acceptedRefNodes(
+            started.reach,
+            (element) => filter(element, started),
+            current
+          ).map((node) => node.ref),
         ])
       )
   );

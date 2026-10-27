@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
 
 import { ayme } from "../domain/decorators";
+import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import { rooted, rootOf } from "../../test-utils/pomRoot.testSupport";
 import { rootTargetPath } from "../domain/pomTree";
 import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
@@ -18,7 +19,7 @@ describe("registered Page Object targets", () => {
   let session: TestSession;
   beforeEach(() => {
     page = createPage();
-    session = startSession(page);
+    session = startSession(page, { reach: alwaysReaches() });
   });
   afterEach(() => {
     session.stop();

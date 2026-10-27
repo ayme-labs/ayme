@@ -4,9 +4,11 @@ import {
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
 import {
+  geometryReach,
   getInteractionHistory,
   latestPageStateRef,
   onPageStateRecorded,
+  type Reach,
 } from "../../page-state";
 import { onlyHitTestMarks } from "../../shared";
 import type { PageDriver } from "../application/pageDriver";
@@ -21,6 +23,20 @@ const layoutEvents = [
   "animationcancel",
 ] as const;
 
+// The Reach the started runtime picked, which observing a root measures
+// with: the one registry is built once, before any runtime starts. Only
+// this adapter reads it; a Run carries its own.
+let installedReach: Reach = geometryReach;
+
+/**
+ * Package-internal: install the Reach the Lite page driver measures Page
+ * Object Roots with, or Chromium's geometry again. Called by the runtime's
+ * `start()` and `stop()`.
+ */
+export function installPageDriverReach(reach: Reach | undefined): void {
+  installedReach = reach ?? geometryReach;
+}
+
 /**
  * Package-internal: the page driver of the browser runtime, on Playwright
  * Lite and the current document.
@@ -30,7 +46,7 @@ export const litePageDriver: PageDriver = {
     return isPlaywrightLiteLocator(value);
   },
   elementsOf: (locator) => resolveLocatorElements(locator),
-  observeRoot: (locator) => observePomRoot(locator),
+  observeRoot: (locator) => observePomRoot(locator, installedReach),
   watch(onChange) {
     const mutations = new MutationObserver((records) => {
       if (!onlyHitTestMarks(records)) onChange();

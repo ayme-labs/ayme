@@ -1,21 +1,23 @@
 import type { Locator } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { inTheWayOf, measurePomRoot } from "../../page-state";
+import { inTheWayOf, type Reach } from "../../page-state";
 import { absentPomRoot, type ObservedPomRoot } from "../domain/pomInstance";
 
 /**
  * Package-internal: observes one Page Object Root without scrolling or
- * sending input, with how many elements its locator matched. The root is
- * present only while the locator resolved to one visible element throughout.
+ * sending input, as `reach` measures it, with how many elements its locator
+ * matched. The root is present only while the locator resolved to one
+ * visible element throughout.
  */
 export async function observePomRoot(
-  locator: Locator
+  locator: Locator,
+  reach: Reach
 ): Promise<{ count: number; root: ObservedPomRoot }> {
   const count = await locator.count();
   const elements = resolveLocatorElements(locator);
   const element =
     count === 1 && elements.length === 1 ? elements[0] : undefined;
-  const root = element && (await observeElement(locator, element));
+  const root = element && (await observeElement(reach, locator, element));
   const current = resolveLocatorElements(locator);
   return {
     count,
@@ -27,10 +29,11 @@ export async function observePomRoot(
 }
 
 async function observeElement(
+  reach: Reach,
   locator: Locator,
   element: Element
 ): Promise<ObservedPomRoot> {
-  const measurement = await measurePomRoot(locator, element);
+  const measurement = await reach.measurePomRoot(locator, element);
   if (!measurement.present) return { ...absentPomRoot, element };
   return {
     element,
