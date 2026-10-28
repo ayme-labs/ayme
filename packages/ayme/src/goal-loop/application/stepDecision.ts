@@ -129,6 +129,46 @@ export type StepStop = {
 
 export type StepVerdict = StepAction | StepStop;
 
+// --- Stopping on no operation ---
+
+/**
+ * The bars that decide what the loop hands back when the model chooses no
+ * operation. A `goal_met` at or above `DONE_BAR` is `done`; from `LOWER_BAR`
+ * up to it, `unverified`, since on a page that does not show whether the goal
+ * holds the score sits near one half; below `LOWER_BAR`, `no_fitting_option`.
+ * After a step that ran ok, a `goal_remaining` at or below `LOWER_BAR` is
+ * `done` too. ADR-0047 says why; the bars come from recorded goal runs.
+ */
+export const DONE_BAR = 0.7;
+export const LOWER_BAR = 0.3;
+
+/** What the loop hands back when the model chose no operation. */
+function reasonToStop(
+  goalMet: number,
+  goalRemaining: number | undefined,
+  history: readonly GoalLoopStepRecord[]
+): "done" | "unverified" | "no_fitting_option" {
+  // Only a step that ran can have left nothing outstanding: a failed one has
+  // not taken effect, and with no step taken only the page can show the goal.
+  // A missing goal_remaining answer never counts as nothing outstanding.
+  const nothingOutstanding =
+    history.at(-1)?.result === "ok" && (goalRemaining ?? Infinity) <= LOWER_BAR;
+  if (nothingOutstanding || goalMet >= DONE_BAR) return "done";
+  return goalMet >= LOWER_BAR ? "unverified" : "no_fitting_option";
+}
+
+/** The `next` of a stop on no operation, per reason. */
+function stopAdvice(reason: ReturnType<typeof reasonToStop>): string {
+  switch (reason) {
+    case "done":
+      return "The goal has been achieved. Continue with your next task.";
+    case "unverified":
+      return "The Goal Loop could not tell whether the goal holds on the current page. Read the page with snapshot to check it, or call goal again with the goal phrased as the action to take.";
+    case "no_fitting_option":
+      return "No available operation fits the goal on the current page. Navigate to a different page or try a different approach.";
+  }
+}
+
 // --- Stuck detection ---
 
 /**
@@ -505,30 +545,13 @@ export async function decideStep({
   asker.scores = scores;
   const chosenKey = operationAnswer.choice;
 
-  // 1. done: the model has nothing left to run, and either the page shows
-  // the goal's end state or no step of the goal is outstanding. A chosen
-  // operation always runs, whatever the goal_met score: the goal may end in
-  // an effect the page never shows.
-  const nothingToRun = chosenKey === "none";
-  const endStateVisible = goalMet.noul >= 0.5;
-  // A step that failed has not taken effect, so it stays outstanding
-  // whatever the model answers; only the page can show the goal met then.
-  const lastStep = history.at(-1);
-  const lastStepFailed = lastStep !== undefined && lastStep.result !== "ok";
-  const nothingOutstanding =
-    !lastStepFailed && goalRemaining !== undefined && goalRemaining.noul < 0.5;
-  if (nothingToRun && (endStateVisible || nothingOutstanding))
-    return stop(
-      "done",
-      "The goal has been achieved. Continue with your next task."
-    );
-
-  // 2. no_fitting_option: model chose "none" with the goal not met
-  if (chosenKey === "none")
-    return stop(
-      "no_fitting_option",
-      "No available operation fits the goal on the current page. Navigate to a different page or try a different approach."
-    );
+  // The model has nothing left to run: done, unverified or no_fitting_option,
+  // by how sure it is of the goal. A chosen operation always runs, whatever
+  // the goal_met score: the goal may end in an effect the page never shows.
+  if (chosenKey === "none") {
+    const reason = reasonToStop(goalMet.noul, goalRemaining?.noul, history);
+    return stop(reason, stopAdvice(reason));
+  }
 
   const chosenTool = toolOptions.find((opt) => opt.key === chosenKey)?.tool;
   if (!chosenTool)

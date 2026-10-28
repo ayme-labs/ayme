@@ -19,6 +19,7 @@ export type GoalInput = {
 
 export type HandoverReason =
   | "done"
+  | "unverified"
   | "no_fitting_option"
   | "needs_value"
   | "action_failed"

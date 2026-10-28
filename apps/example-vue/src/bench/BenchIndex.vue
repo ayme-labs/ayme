@@ -12,6 +12,7 @@ const base = `${import.meta.env.BASE_URL}bench/`;
       <li><a :href="`${base}settings`">Settings</a></li>
       <li><a :href="`${base}projects`">Projects</a></li>
       <li><a :href="`${base}new-project`">New project</a></li>
+      <li><a :href="`${base}documents`">Documents</a></li>
     </ul>
   </main>
 </template>

@@ -12,6 +12,9 @@ import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 export type GoalRunStep = {
   /** The operation option stage one chose; `none` when nothing fits. */
   operation: string | null;
+  /** Stage one's probability per operation option, as the loop scored them;
+   *  absent when the loop's run result could not be read. */
+  operationProbabilities?: Record<string, number>;
   goalMetScore: number | null;
   goalRemainingScore?: number;
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
@@ -35,6 +38,10 @@ export type GoalRunStep = {
    * could not be read.
    */
   chosen?: Record<string, { key: string; description: string }>;
+  /** `"ok"`, or the error the operation failed with, as the loop's step
+   *  record holds it; absent for a step that ran no operation, or when the
+   *  loop's run result could not be read. */
+  result?: string;
   /** The step asked a run-off, as the loop's step record says: several
    *  chunks of a ref question each named an element. Counted even when the
    *  run-off then failed. */
@@ -189,10 +196,13 @@ function stepsOf(
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
+    if (score.operationProbabilities)
+      step.operationProbabilities = score.operationProbabilities;
     if (score.goalRemainingScore !== undefined)
       step.goalRemainingScore = score.goalRemainingScore;
     if (score.runOff) step.runOff = true;
     if ("chosen" in score) step.chosen = score.chosen;
+    if ("result" in score) step.result = score.result;
     if (score.argumentChoices && Object.keys(score.argumentChoices).length > 0)
       step.argumentChoices = { ...score.argumentChoices };
   });

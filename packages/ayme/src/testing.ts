@@ -1,5 +1,6 @@
 // The testing entry (ADR-0026): reads the last Goal Loop run's result, the
-// per-step scores behind its Handover, which only tests may import.
+// per-step scores behind its Handover, and names the bars the Step Decision
+// stops on, which only tests may import.
 import type { Page } from "@playwright/test";
 
 import type {
@@ -12,6 +13,7 @@ export type {
   GoalLoopRunResult,
   GoalLoopStepScore,
 } from "./goal-loop/application";
+export { DONE_BAR, LOWER_BAR } from "./goal-loop/application";
 
 type WithStore = typeof globalThis & {
   [goalLoopRunResultKey]?: GoalLoopRunResultStore;

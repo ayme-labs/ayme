@@ -472,7 +472,7 @@ describe("Goal Loop goal in Chromium", () => {
 
   // --- Handover reason: done ---
 
-  it("returns done when goal_met >= 0.5 on the first step", async () => {
+  it("returns done when goal_met clears the done bar on the first step", async () => {
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.8 }]);
     const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
@@ -483,7 +483,7 @@ describe("Goal Loop goal in Chromium", () => {
     });
   });
 
-  it("returns done after executing an action when goal_met becomes >= 0.5", async () => {
+  it("returns done after executing an action when goal_met clears the done bar", async () => {
     const decide = scriptedDecisionFn([
       { operation: "App.save", goal_met: 0.1 },
       { operation: "none", goal_met: 0.9 },
@@ -1623,11 +1623,25 @@ describe("Goal Loop goal in Chromium", () => {
 
   // --- Order of checks ---
 
-  it("checks done before no_fitting_option (goal_met >= 0.5 wins over none)", async () => {
-    const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.5 }]);
+  it("checks done before no_fitting_option (goal_met at the done bar wins over none)", async () => {
+    const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.7 }]);
     const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "already done", maxSteps: 5 });
     expect((result as Record<string, unknown>).reason).toBe("done");
+  });
+
+  it("returns unverified, not done, when goal_met sits between the bars with no step taken", async () => {
+    const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.55 }]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({
+      goal: "the menu is open",
+      maxSteps: 5,
+    });
+    expect(withoutChanges(result)).toEqual({
+      reason: "unverified",
+      next: expect.stringContaining("snapshot"),
+      history: [],
+    });
   });
 
   it("checks no_fitting_option before needs_value", async () => {

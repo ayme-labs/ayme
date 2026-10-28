@@ -107,20 +107,57 @@ describe("a Step Decision", () => {
       expect(verdict).toMatchObject({
         kind: "stop",
         reason: "done",
+        next: "The goal has been achieved. Continue with your next task.",
         scores: { goalMetScore: 0.8 },
       });
       expect(requests).toHaveLength(1);
     });
 
-    it("with done when the model has nothing left to run and judges no step outstanding, although the page does not show the goal met", async () => {
+    it("with unverified, not done, when no step has run and the model only judges no step outstanding", async () => {
       const { decide } = scripted(stageOne("none", 0.47, 0.37));
 
-      expect(await step(decide)).toMatchObject({
+      expect(await step(decide)).toEqual({
         kind: "stop",
-        reason: "done",
-        scores: { goalMetScore: 0.47, goalRemainingScore: 0.37 },
+        reason: "unverified",
+        next: "The Goal Loop could not tell whether the goal holds on the current page. Read the page with snapshot to check it, or call goal again with the goal phrased as the action to take.",
+        scores: expect.objectContaining({
+          goalMetScore: 0.47,
+          goalRemainingScore: 0.37,
+        }),
       });
     });
+
+    it.each([
+      [0.7, "done"],
+      [0.69, "unverified"],
+      [0.3, "unverified"],
+      [0.29, "no_fitting_option"],
+    ])(
+      "by goal_met against the bars when the model has nothing left to run: %s hands back %s",
+      async (goalMet, reason) => {
+        const { decide } = scripted(stageOne("none", goalMet, 0.9));
+
+        expect(await step(decide)).toMatchObject({ kind: "stop", reason });
+      }
+    );
+
+    it.each([
+      [0.3, "done"],
+      [0.31, "unverified"],
+    ])(
+      "after a step that ran ok, by goal_remaining as well: %s hands back %s",
+      async (goalRemaining, reason) => {
+        const { decide } = scripted(stageOne("none", 0.4, goalRemaining));
+
+        const verdict = await step(decide, {
+          history: [
+            ranOk({ operation: "click", chosen: {}, page_changed: true }),
+          ],
+        });
+
+        expect(verdict).toMatchObject({ kind: "stop", reason });
+      }
+    );
 
     it("with no_fitting_option, not done, when the last step failed and the model only judges no step outstanding", async () => {
       const { decide } = scripted(stageOne("none", 0.1, 0.1));
@@ -165,6 +202,7 @@ describe("a Step Decision", () => {
       expect(await step(decide)).toMatchObject({
         kind: "stop",
         reason: "no_fitting_option",
+        next: "No available operation fits the goal on the current page. Navigate to a different page or try a different approach.",
       });
     });
 

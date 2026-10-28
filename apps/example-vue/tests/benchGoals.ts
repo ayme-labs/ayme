@@ -38,9 +38,10 @@ export type BenchGoal = {
   values?: Record<string, string>;
   maxSteps: number;
   /** The Handover reason a run that reaches the outcome ends with. */
-  reason: "done" | "needs_value";
-  /** A run that goes as intended takes these steps, then one more judges the
-   *  goal met (for `done`). */
+  reason: "done" | "needs_value" | "unverified" | "no_fitting_option";
+  /** A run that goes as intended takes these steps, then, unless it ends
+   *  `needs_value`, one more stops it with its reason. Empty when the run
+   *  should stop before acting, with an empty history. */
   intended: IntendedStep[];
   /** The page shows the goal's outcome. */
   outcome(page: Page): Promise<void>;
@@ -204,6 +205,21 @@ export const benchGoals: BenchGoal[] = [
     },
   },
   {
+    // Email notifications are on when the page opens.
+    title: "settings: turn on email notifications, already on",
+    path: "/bench/settings",
+    heading: "Settings",
+    goal: "Turn on email notifications",
+    maxSteps: 3,
+    reason: "done",
+    intended: [],
+    async outcome(page) {
+      await expect(
+        page.getByRole("checkbox", { name: "Email notifications" })
+      ).toBeChecked();
+    },
+  },
+  {
     title: "settings: set the language",
     path: "/bench/settings",
     heading: "Settings",
@@ -220,6 +236,26 @@ export const benchGoals: BenchGoal[] = [
     ],
     async outcome(page) {
       await expect(page.getByLabel("Language")).toHaveValue("Deutsch");
+    },
+  },
+  {
+    // The page has no SMS notifications setting.
+    title: "settings: turn on a setting the page does not have",
+    path: "/bench/settings",
+    heading: "Settings",
+    goal: "Turn on SMS notifications",
+    maxSteps: 3,
+    reason: "no_fitting_option",
+    intended: [],
+    async outcome(page) {
+      for (const name of [
+        "Email notifications",
+        "Push notifications",
+        "Weekly summary email",
+      ])
+        await expect(page.getByRole("checkbox", { name })).toBeChecked({
+          checked: name === "Email notifications",
+        });
     },
   },
   {
@@ -326,6 +362,22 @@ export const benchGoals: BenchGoal[] = [
       await expect(
         page.getByRole("button", { name: "Confirm" })
       ).toHaveAttribute("data-highlighted", "true");
+    },
+  },
+  {
+    // Issue 1059: the closed Create button says it is collapsed only through
+    // `aria-expanded="false"`, which the page state does not carry (issue
+    // 1061), so the page cannot show whether the goal holds and the run
+    // should hand back that it could not tell.
+    title: "documents: the Create menu is open, while it is closed",
+    path: "/bench/documents",
+    heading: "Documents",
+    goal: "The Create menu is open.",
+    maxSteps: 3,
+    reason: "unverified",
+    intended: [],
+    async outcome(page) {
+      await expect(page.getByRole("menu")).toHaveCount(0);
     },
   },
   {

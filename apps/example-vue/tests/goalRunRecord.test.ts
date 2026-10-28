@@ -350,3 +350,28 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
     meanTokensPerRun: null,
   });
 });
+
+it("keeps stage one's operation probabilities, and the result of a step that ran", () => {
+  const steps = goalRunRecordOf(
+    { goal: "open the menu", reason: "done", wallTimeMs: 1 },
+    [stageOne("TopBar.openCreateMenu", {}), stageOne("none", {})],
+    [
+      {
+        goalMetScore: 0.1,
+        operationProbabilities: { "TopBar.openCreateMenu": 0.6, none: 0.4 },
+        operation: "TopBar.openCreateMenu",
+        chosen: {},
+        result: "ok",
+        page_changed: true,
+        did: "TopBar.openCreateMenu()",
+      },
+      { goalMetScore: 0.9, operationProbabilities: { none: 0.9 } },
+    ]
+  ).steps;
+
+  expect(steps.map((step) => step.operationProbabilities)).toEqual([
+    { "TopBar.openCreateMenu": 0.6, none: 0.4 },
+    { none: 0.9 },
+  ]);
+  expect(steps.map((step) => step.result)).toEqual(["ok", undefined]);
+});
