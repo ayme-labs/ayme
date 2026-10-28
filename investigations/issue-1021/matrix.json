@@ -1,0 +1,761 @@
+[
+  {
+    "rows": 12,
+    "ms": 3.4,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 12,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 12,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 12,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 12
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 24,
+      "isVisible": 12
+    },
+    "qsaCalls": 255,
+    "candidates": 4915,
+    "dom": {
+      "document:*": {
+        "calls": 73,
+        "candidates": 2117
+      },
+      "BODY:li": {
+        "calls": 73,
+        "candidates": 876
+      },
+      "BODY:*": {
+        "calls": 73,
+        "candidates": 1898
+      },
+      "document::modal": {
+        "calls": 12,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 24,
+        "candidates": 24
+      }
+    },
+    "observedRows": 12
+  },
+  {
+    "rows": 24,
+    "ms": 7.6,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 507,
+    "candidates": 18463,
+    "dom": {
+      "document:*": {
+        "calls": 145,
+        "candidates": 7685
+      },
+      "BODY:li": {
+        "calls": 145,
+        "candidates": 3480
+      },
+      "BODY:*": {
+        "calls": 145,
+        "candidates": 7250
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 48,
+    "ms": 22.3,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 96,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 48,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 48
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 96,
+      "isVisible": 48
+    },
+    "qsaCalls": 1011,
+    "candidates": 71479,
+    "dom": {
+      "document:*": {
+        "calls": 289,
+        "candidates": 29189
+      },
+      "BODY:li": {
+        "calls": 289,
+        "candidates": 13872
+      },
+      "BODY:*": {
+        "calls": 289,
+        "candidates": 28322
+      },
+      "document::modal": {
+        "calls": 48,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 96,
+        "candidates": 96
+      }
+    },
+    "observedRows": 48
+  },
+  {
+    "rows": 96,
+    "ms": 75.7,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 96,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 192,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 96,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 96,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 96
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 192,
+      "isVisible": 96
+    },
+    "qsaCalls": 2019,
+    "candidates": 281191,
+    "dom": {
+      "document:*": {
+        "calls": 577,
+        "candidates": 113669
+      },
+      "BODY:li": {
+        "calls": 577,
+        "candidates": 55392
+      },
+      "BODY:*": {
+        "calls": 577,
+        "candidates": 111938
+      },
+      "document::modal": {
+        "calls": 96,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 192,
+        "candidates": 192
+      }
+    },
+    "observedRows": 96
+  },
+  {
+    "rows": 24,
+    "members": false,
+    "ms": 4.3,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 24,
+      "isVisible": 24
+    },
+    "qsaCalls": 315,
+    "candidates": 12319,
+    "dom": {
+      "document:*": {
+        "calls": 97,
+        "candidates": 5141
+      },
+      "BODY:li": {
+        "calls": 97,
+        "candidates": 2328
+      },
+      "BODY:*": {
+        "calls": 97,
+        "candidates": 4850
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "actions": false,
+    "ms": 6.1,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 507,
+    "candidates": 18463,
+    "dom": {
+      "document:*": {
+        "calls": 145,
+        "candidates": 7685
+      },
+      "BODY:li": {
+        "calls": 145,
+        "candidates": 3480
+      },
+      "BODY:*": {
+        "calls": 145,
+        "candidates": 7250
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "kind": "css",
+    "ms": 2.8,
+    "observations": 1,
+    "resolutions": {
+      "all:ul[aria-label=\"Projects\"] > li": 1,
+      "count:ul[aria-label=\"Projects\"] > li >> nth=*": 24,
+      "directResolve:ul[aria-label=\"Projects\"] > li >> nth=*": 48,
+      "isVisible:ul[aria-label=\"Projects\"] > li >> nth=*": 24,
+      "directResolve:ul[aria-label=\"Projects\"] > li >> nth=* >> internal:role=button": 24,
+      "count:ul[aria-label=\"Projects\"] > li >> nth=* >> internal:role=button": 24
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 362,
+    "candidates": 11213,
+    "dom": {
+      "document:li": {
+        "calls": 145,
+        "candidates": 3480
+      },
+      "document:*": {
+        "calls": 145,
+        "candidates": 7685
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "registered": false,
+    "ms": 0,
+    "observations": 0,
+    "resolutions": {},
+    "locatorCalls": {},
+    "qsaCalls": 0,
+    "candidates": 0,
+    "dom": {},
+    "observedRows": 0
+  },
+  {
+    "rows": 24,
+    "uniqueRoots": true,
+    "ms": 2.4,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:#row-0": 1,
+      "directResolve:#row-0": 2,
+      "isVisible:#row-0": 1,
+      "directResolve:#row-0 >> internal:role=button": 1,
+      "count:#row-0 >> internal:role=button": 1,
+      "count:#row-1": 1,
+      "directResolve:#row-1": 2,
+      "isVisible:#row-1": 1,
+      "directResolve:#row-1 >> internal:role=button": 1,
+      "count:#row-1 >> internal:role=button": 1,
+      "count:#row-2": 1,
+      "directResolve:#row-2": 2,
+      "isVisible:#row-2": 1,
+      "directResolve:#row-2 >> internal:role=button": 1,
+      "count:#row-2 >> internal:role=button": 1,
+      "count:#row-3": 1,
+      "directResolve:#row-3": 2,
+      "isVisible:#row-3": 1,
+      "directResolve:#row-3 >> internal:role=button": 1,
+      "count:#row-3 >> internal:role=button": 1,
+      "count:#row-4": 1,
+      "directResolve:#row-4": 2,
+      "isVisible:#row-4": 1,
+      "directResolve:#row-4 >> internal:role=button": 1,
+      "count:#row-4 >> internal:role=button": 1,
+      "count:#row-5": 1,
+      "directResolve:#row-5": 2,
+      "isVisible:#row-5": 1,
+      "directResolve:#row-5 >> internal:role=button": 1,
+      "count:#row-5 >> internal:role=button": 1,
+      "count:#row-6": 1,
+      "directResolve:#row-6": 2,
+      "isVisible:#row-6": 1,
+      "directResolve:#row-6 >> internal:role=button": 1,
+      "count:#row-6 >> internal:role=button": 1,
+      "count:#row-7": 1,
+      "directResolve:#row-7": 2,
+      "isVisible:#row-7": 1,
+      "directResolve:#row-7 >> internal:role=button": 1,
+      "count:#row-7 >> internal:role=button": 1,
+      "count:#row-8": 1,
+      "directResolve:#row-8": 2,
+      "isVisible:#row-8": 1,
+      "directResolve:#row-8 >> internal:role=button": 1,
+      "count:#row-8 >> internal:role=button": 1,
+      "count:#row-9": 1,
+      "directResolve:#row-9": 2,
+      "isVisible:#row-9": 1,
+      "directResolve:#row-9 >> internal:role=button": 1,
+      "count:#row-9 >> internal:role=button": 1,
+      "count:#row-10": 1,
+      "directResolve:#row-10": 2,
+      "isVisible:#row-10": 1,
+      "directResolve:#row-10 >> internal:role=button": 1,
+      "count:#row-10 >> internal:role=button": 1,
+      "count:#row-11": 1,
+      "directResolve:#row-11": 2,
+      "isVisible:#row-11": 1,
+      "directResolve:#row-11 >> internal:role=button": 1,
+      "count:#row-11 >> internal:role=button": 1,
+      "count:#row-12": 1,
+      "directResolve:#row-12": 2,
+      "isVisible:#row-12": 1,
+      "directResolve:#row-12 >> internal:role=button": 1,
+      "count:#row-12 >> internal:role=button": 1,
+      "count:#row-13": 1,
+      "directResolve:#row-13": 2,
+      "isVisible:#row-13": 1,
+      "directResolve:#row-13 >> internal:role=button": 1,
+      "count:#row-13 >> internal:role=button": 1,
+      "count:#row-14": 1,
+      "directResolve:#row-14": 2,
+      "isVisible:#row-14": 1,
+      "directResolve:#row-14 >> internal:role=button": 1,
+      "count:#row-14 >> internal:role=button": 1,
+      "count:#row-15": 1,
+      "directResolve:#row-15": 2,
+      "isVisible:#row-15": 1,
+      "directResolve:#row-15 >> internal:role=button": 1,
+      "count:#row-15 >> internal:role=button": 1,
+      "count:#row-16": 1,
+      "directResolve:#row-16": 2,
+      "isVisible:#row-16": 1,
+      "directResolve:#row-16 >> internal:role=button": 1,
+      "count:#row-16 >> internal:role=button": 1,
+      "count:#row-17": 1,
+      "directResolve:#row-17": 2,
+      "isVisible:#row-17": 1,
+      "directResolve:#row-17 >> internal:role=button": 1,
+      "count:#row-17 >> internal:role=button": 1,
+      "count:#row-18": 1,
+      "directResolve:#row-18": 2,
+      "isVisible:#row-18": 1,
+      "directResolve:#row-18 >> internal:role=button": 1,
+      "count:#row-18 >> internal:role=button": 1,
+      "count:#row-19": 1,
+      "directResolve:#row-19": 2,
+      "isVisible:#row-19": 1,
+      "directResolve:#row-19 >> internal:role=button": 1,
+      "count:#row-19 >> internal:role=button": 1,
+      "count:#row-20": 1,
+      "directResolve:#row-20": 2,
+      "isVisible:#row-20": 1,
+      "directResolve:#row-20 >> internal:role=button": 1,
+      "count:#row-20 >> internal:role=button": 1,
+      "count:#row-21": 1,
+      "directResolve:#row-21": 2,
+      "isVisible:#row-21": 1,
+      "directResolve:#row-21 >> internal:role=button": 1,
+      "count:#row-21 >> internal:role=button": 1,
+      "count:#row-22": 1,
+      "directResolve:#row-22": 2,
+      "isVisible:#row-22": 1,
+      "directResolve:#row-22 >> internal:role=button": 1,
+      "count:#row-22 >> internal:role=button": 1,
+      "count:#row-23": 1,
+      "directResolve:#row-23": 2,
+      "isVisible:#row-23": 1,
+      "directResolve:#row-23 >> internal:role=button": 1,
+      "count:#row-23 >> internal:role=button": 1
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 363,
+    "candidates": 7951,
+    "dom": {
+      "document:*": {
+        "calls": 145,
+        "candidates": 7685
+      },
+      "BODY:li": {
+        "calls": 1,
+        "candidates": 24
+      },
+      "BODY:*": {
+        "calls": 1,
+        "candidates": 50
+      },
+      "document:#row-0": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      },
+      "document:#row-1": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-2": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-3": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-4": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-5": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-6": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-7": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-8": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-9": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-10": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-11": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-12": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-13": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-14": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-15": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-16": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-17": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-18": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-19": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-20": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-21": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-22": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-23": {
+        "calls": 6,
+        "candidates": 6
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "operation": "targets",
+    "ms": 3.3,
+    "observations": 0,
+    "resolutions": {
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24
+    },
+    "locatorCalls": {},
+    "qsaCalls": 168,
+    "candidates": 6120,
+    "dom": {
+      "document:*": {
+        "calls": 48,
+        "candidates": 2544
+      },
+      "BODY:li": {
+        "calls": 48,
+        "candidates": 1152
+      },
+      "BODY:*": {
+        "calls": 48,
+        "candidates": 2400
+      },
+      "LI:*": {
+        "calls": 24,
+        "candidates": 24
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "operation": "snapshot",
+    "ms": 11.6,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 507,
+    "candidates": 18463,
+    "dom": {
+      "document:*": {
+        "calls": 145,
+        "candidates": 7685
+      },
+      "BODY:li": {
+        "calls": 145,
+        "candidates": 3480
+      },
+      "BODY:*": {
+        "calls": 145,
+        "candidates": 7250
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "operation": "hover",
+    "ms": 366.9,
+    "observations": 3,
+    "resolutions": {
+      "directResolve:h1": 3,
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 3,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 72,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 144,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 72,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 72,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 72
+    },
+    "locatorCalls": {
+      "all": 3,
+      "count": 144,
+      "isVisible": 72
+    },
+    "qsaCalls": 1528,
+    "candidates": 55551,
+    "dom": {
+      "document:h1": {
+        "calls": 3,
+        "candidates": 3
+      },
+      "document:*": {
+        "calls": 438,
+        "candidates": 23214
+      },
+      "document::modal": {
+        "calls": 73,
+        "candidates": 0
+      },
+      "BODY:li": {
+        "calls": 435,
+        "candidates": 10440
+      },
+      "BODY:*": {
+        "calls": 435,
+        "candidates": 21750
+      },
+      "LI:*": {
+        "calls": 144,
+        "candidates": 144
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 24,
+    "operation": "hover",
+    "registered": false,
+    "ms": 379.8,
+    "observations": 0,
+    "resolutions": {
+      "directResolve:h1": 3
+    },
+    "locatorCalls": {},
+    "qsaCalls": 7,
+    "candidates": 162,
+    "dom": {
+      "document:h1": {
+        "calls": 3,
+        "candidates": 3
+      },
+      "document:*": {
+        "calls": 3,
+        "candidates": 159
+      },
+      "document::modal": {
+        "calls": 1,
+        "candidates": 0
+      }
+    },
+    "observedRows": 0
+  },
+  {
+    "rows": 24,
+    "operation": "probe",
+    "mutate": true,
+    "ms": 15.3,
+    "observations": 2,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 2,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 46,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 92,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 46,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 46,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 46
+    },
+    "locatorCalls": {
+      "all": 2,
+      "count": 92,
+      "isVisible": 46
+    },
+    "qsaCalls": 972,
+    "candidates": 34008,
+    "dom": {
+      "document:*": {
+        "calls": 278,
+        "candidates": 14178
+      },
+      "BODY:li": {
+        "calls": 278,
+        "candidates": 6394
+      },
+      "BODY:*": {
+        "calls": 278,
+        "candidates": 13344
+      },
+      "document::modal": {
+        "calls": 46,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 92,
+        "candidates": 92
+      }
+    },
+    "observedRows": 23
+  }
+]

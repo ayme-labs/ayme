@@ -1,0 +1,1778 @@
+[
+  {
+    "rows": 12,
+    "lightRoots": true,
+    "ms": 1.7,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0": 2,
+      "isVisible:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1": 2,
+      "isVisible:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2": 2,
+      "isVisible:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3": 2,
+      "isVisible:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4": 2,
+      "isVisible:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5": 2,
+      "isVisible:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6": 2,
+      "isVisible:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7": 2,
+      "isVisible:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8": 2,
+      "isVisible:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9": 2,
+      "isVisible:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10": 2,
+      "isVisible:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11": 2,
+      "isVisible:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-11 >> internal:role=button": 1
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 24,
+      "isVisible": 12
+    },
+    "qsaCalls": 111,
+    "candidates": 163,
+    "dom": {
+      "document:*": {
+        "calls": 1,
+        "candidates": 29
+      },
+      "BODY:li": {
+        "calls": 1,
+        "candidates": 12
+      },
+      "BODY:*": {
+        "calls": 1,
+        "candidates": 26
+      },
+      "document:#row-0": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document::modal": {
+        "calls": 12,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 24,
+        "candidates": 24
+      },
+      "document:#row-1": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-2": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-3": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-4": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-5": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-6": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-7": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-8": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-9": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-10": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-11": {
+        "calls": 6,
+        "candidates": 6
+      }
+    },
+    "observedRows": 12
+  },
+  {
+    "rows": 24,
+    "lightRoots": true,
+    "ms": 2.3,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0": 2,
+      "isVisible:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1": 2,
+      "isVisible:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2": 2,
+      "isVisible:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3": 2,
+      "isVisible:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4": 2,
+      "isVisible:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5": 2,
+      "isVisible:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6": 2,
+      "isVisible:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7": 2,
+      "isVisible:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8": 2,
+      "isVisible:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9": 2,
+      "isVisible:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10": 2,
+      "isVisible:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11": 2,
+      "isVisible:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-12": 1,
+      "directResolve:css:light=#row-12": 2,
+      "isVisible:css:light=#row-12": 1,
+      "directResolve:css:light=#row-12 >> internal:role=button": 1,
+      "count:css:light=#row-12 >> internal:role=button": 1,
+      "count:css:light=#row-13": 1,
+      "directResolve:css:light=#row-13": 2,
+      "isVisible:css:light=#row-13": 1,
+      "directResolve:css:light=#row-13 >> internal:role=button": 1,
+      "count:css:light=#row-13 >> internal:role=button": 1,
+      "count:css:light=#row-14": 1,
+      "directResolve:css:light=#row-14": 2,
+      "isVisible:css:light=#row-14": 1,
+      "directResolve:css:light=#row-14 >> internal:role=button": 1,
+      "count:css:light=#row-14 >> internal:role=button": 1,
+      "count:css:light=#row-15": 1,
+      "directResolve:css:light=#row-15": 2,
+      "isVisible:css:light=#row-15": 1,
+      "directResolve:css:light=#row-15 >> internal:role=button": 1,
+      "count:css:light=#row-15 >> internal:role=button": 1,
+      "count:css:light=#row-16": 1,
+      "directResolve:css:light=#row-16": 2,
+      "isVisible:css:light=#row-16": 1,
+      "directResolve:css:light=#row-16 >> internal:role=button": 1,
+      "count:css:light=#row-16 >> internal:role=button": 1,
+      "count:css:light=#row-17": 1,
+      "directResolve:css:light=#row-17": 2,
+      "isVisible:css:light=#row-17": 1,
+      "directResolve:css:light=#row-17 >> internal:role=button": 1,
+      "count:css:light=#row-17 >> internal:role=button": 1,
+      "count:css:light=#row-18": 1,
+      "directResolve:css:light=#row-18": 2,
+      "isVisible:css:light=#row-18": 1,
+      "directResolve:css:light=#row-18 >> internal:role=button": 1,
+      "count:css:light=#row-18 >> internal:role=button": 1,
+      "count:css:light=#row-19": 1,
+      "directResolve:css:light=#row-19": 2,
+      "isVisible:css:light=#row-19": 1,
+      "directResolve:css:light=#row-19 >> internal:role=button": 1,
+      "count:css:light=#row-19 >> internal:role=button": 1,
+      "count:css:light=#row-20": 1,
+      "directResolve:css:light=#row-20": 2,
+      "isVisible:css:light=#row-20": 1,
+      "directResolve:css:light=#row-20 >> internal:role=button": 1,
+      "count:css:light=#row-20 >> internal:role=button": 1,
+      "count:css:light=#row-21": 1,
+      "directResolve:css:light=#row-21": 2,
+      "isVisible:css:light=#row-21": 1,
+      "directResolve:css:light=#row-21 >> internal:role=button": 1,
+      "count:css:light=#row-21 >> internal:role=button": 1,
+      "count:css:light=#row-22": 1,
+      "directResolve:css:light=#row-22": 2,
+      "isVisible:css:light=#row-22": 1,
+      "directResolve:css:light=#row-22 >> internal:role=button": 1,
+      "count:css:light=#row-22 >> internal:role=button": 1,
+      "count:css:light=#row-23": 1,
+      "directResolve:css:light=#row-23": 2,
+      "isVisible:css:light=#row-23": 1,
+      "directResolve:css:light=#row-23 >> internal:role=button": 1,
+      "count:css:light=#row-23 >> internal:role=button": 1
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 219,
+    "candidates": 319,
+    "dom": {
+      "document:*": {
+        "calls": 1,
+        "candidates": 53
+      },
+      "BODY:li": {
+        "calls": 1,
+        "candidates": 24
+      },
+      "BODY:*": {
+        "calls": 1,
+        "candidates": 50
+      },
+      "document:#row-0": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      },
+      "document:#row-1": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-2": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-3": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-4": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-5": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-6": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-7": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-8": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-9": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-10": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-11": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-12": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-13": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-14": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-15": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-16": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-17": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-18": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-19": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-20": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-21": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-22": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-23": {
+        "calls": 6,
+        "candidates": 6
+      }
+    },
+    "observedRows": 24
+  },
+  {
+    "rows": 48,
+    "lightRoots": true,
+    "ms": 4.1,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0": 2,
+      "isVisible:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1": 2,
+      "isVisible:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2": 2,
+      "isVisible:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3": 2,
+      "isVisible:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4": 2,
+      "isVisible:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5": 2,
+      "isVisible:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6": 2,
+      "isVisible:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7": 2,
+      "isVisible:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8": 2,
+      "isVisible:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9": 2,
+      "isVisible:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10": 2,
+      "isVisible:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11": 2,
+      "isVisible:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-12": 1,
+      "directResolve:css:light=#row-12": 2,
+      "isVisible:css:light=#row-12": 1,
+      "directResolve:css:light=#row-12 >> internal:role=button": 1,
+      "count:css:light=#row-12 >> internal:role=button": 1,
+      "count:css:light=#row-13": 1,
+      "directResolve:css:light=#row-13": 2,
+      "isVisible:css:light=#row-13": 1,
+      "directResolve:css:light=#row-13 >> internal:role=button": 1,
+      "count:css:light=#row-13 >> internal:role=button": 1,
+      "count:css:light=#row-14": 1,
+      "directResolve:css:light=#row-14": 2,
+      "isVisible:css:light=#row-14": 1,
+      "directResolve:css:light=#row-14 >> internal:role=button": 1,
+      "count:css:light=#row-14 >> internal:role=button": 1,
+      "count:css:light=#row-15": 1,
+      "directResolve:css:light=#row-15": 2,
+      "isVisible:css:light=#row-15": 1,
+      "directResolve:css:light=#row-15 >> internal:role=button": 1,
+      "count:css:light=#row-15 >> internal:role=button": 1,
+      "count:css:light=#row-16": 1,
+      "directResolve:css:light=#row-16": 2,
+      "isVisible:css:light=#row-16": 1,
+      "directResolve:css:light=#row-16 >> internal:role=button": 1,
+      "count:css:light=#row-16 >> internal:role=button": 1,
+      "count:css:light=#row-17": 1,
+      "directResolve:css:light=#row-17": 2,
+      "isVisible:css:light=#row-17": 1,
+      "directResolve:css:light=#row-17 >> internal:role=button": 1,
+      "count:css:light=#row-17 >> internal:role=button": 1,
+      "count:css:light=#row-18": 1,
+      "directResolve:css:light=#row-18": 2,
+      "isVisible:css:light=#row-18": 1,
+      "directResolve:css:light=#row-18 >> internal:role=button": 1,
+      "count:css:light=#row-18 >> internal:role=button": 1,
+      "count:css:light=#row-19": 1,
+      "directResolve:css:light=#row-19": 2,
+      "isVisible:css:light=#row-19": 1,
+      "directResolve:css:light=#row-19 >> internal:role=button": 1,
+      "count:css:light=#row-19 >> internal:role=button": 1,
+      "count:css:light=#row-20": 1,
+      "directResolve:css:light=#row-20": 2,
+      "isVisible:css:light=#row-20": 1,
+      "directResolve:css:light=#row-20 >> internal:role=button": 1,
+      "count:css:light=#row-20 >> internal:role=button": 1,
+      "count:css:light=#row-21": 1,
+      "directResolve:css:light=#row-21": 2,
+      "isVisible:css:light=#row-21": 1,
+      "directResolve:css:light=#row-21 >> internal:role=button": 1,
+      "count:css:light=#row-21 >> internal:role=button": 1,
+      "count:css:light=#row-22": 1,
+      "directResolve:css:light=#row-22": 2,
+      "isVisible:css:light=#row-22": 1,
+      "directResolve:css:light=#row-22 >> internal:role=button": 1,
+      "count:css:light=#row-22 >> internal:role=button": 1,
+      "count:css:light=#row-23": 1,
+      "directResolve:css:light=#row-23": 2,
+      "isVisible:css:light=#row-23": 1,
+      "directResolve:css:light=#row-23 >> internal:role=button": 1,
+      "count:css:light=#row-23 >> internal:role=button": 1,
+      "count:css:light=#row-24": 1,
+      "directResolve:css:light=#row-24": 2,
+      "isVisible:css:light=#row-24": 1,
+      "directResolve:css:light=#row-24 >> internal:role=button": 1,
+      "count:css:light=#row-24 >> internal:role=button": 1,
+      "count:css:light=#row-25": 1,
+      "directResolve:css:light=#row-25": 2,
+      "isVisible:css:light=#row-25": 1,
+      "directResolve:css:light=#row-25 >> internal:role=button": 1,
+      "count:css:light=#row-25 >> internal:role=button": 1,
+      "count:css:light=#row-26": 1,
+      "directResolve:css:light=#row-26": 2,
+      "isVisible:css:light=#row-26": 1,
+      "directResolve:css:light=#row-26 >> internal:role=button": 1,
+      "count:css:light=#row-26 >> internal:role=button": 1,
+      "count:css:light=#row-27": 1,
+      "directResolve:css:light=#row-27": 2,
+      "isVisible:css:light=#row-27": 1,
+      "directResolve:css:light=#row-27 >> internal:role=button": 1,
+      "count:css:light=#row-27 >> internal:role=button": 1,
+      "count:css:light=#row-28": 1,
+      "directResolve:css:light=#row-28": 2,
+      "isVisible:css:light=#row-28": 1,
+      "directResolve:css:light=#row-28 >> internal:role=button": 1,
+      "count:css:light=#row-28 >> internal:role=button": 1,
+      "count:css:light=#row-29": 1,
+      "directResolve:css:light=#row-29": 2,
+      "isVisible:css:light=#row-29": 1,
+      "directResolve:css:light=#row-29 >> internal:role=button": 1,
+      "count:css:light=#row-29 >> internal:role=button": 1,
+      "count:css:light=#row-30": 1,
+      "directResolve:css:light=#row-30": 2,
+      "isVisible:css:light=#row-30": 1,
+      "directResolve:css:light=#row-30 >> internal:role=button": 1,
+      "count:css:light=#row-30 >> internal:role=button": 1,
+      "count:css:light=#row-31": 1,
+      "directResolve:css:light=#row-31": 2,
+      "isVisible:css:light=#row-31": 1,
+      "directResolve:css:light=#row-31 >> internal:role=button": 1,
+      "count:css:light=#row-31 >> internal:role=button": 1,
+      "count:css:light=#row-32": 1,
+      "directResolve:css:light=#row-32": 2,
+      "isVisible:css:light=#row-32": 1,
+      "directResolve:css:light=#row-32 >> internal:role=button": 1,
+      "count:css:light=#row-32 >> internal:role=button": 1,
+      "count:css:light=#row-33": 1,
+      "directResolve:css:light=#row-33": 2,
+      "isVisible:css:light=#row-33": 1,
+      "directResolve:css:light=#row-33 >> internal:role=button": 1,
+      "count:css:light=#row-33 >> internal:role=button": 1,
+      "count:css:light=#row-34": 1,
+      "directResolve:css:light=#row-34": 2,
+      "isVisible:css:light=#row-34": 1,
+      "directResolve:css:light=#row-34 >> internal:role=button": 1,
+      "count:css:light=#row-34 >> internal:role=button": 1,
+      "count:css:light=#row-35": 1,
+      "directResolve:css:light=#row-35": 2,
+      "isVisible:css:light=#row-35": 1,
+      "directResolve:css:light=#row-35 >> internal:role=button": 1,
+      "count:css:light=#row-35 >> internal:role=button": 1,
+      "count:css:light=#row-36": 1,
+      "directResolve:css:light=#row-36": 2,
+      "isVisible:css:light=#row-36": 1,
+      "directResolve:css:light=#row-36 >> internal:role=button": 1,
+      "count:css:light=#row-36 >> internal:role=button": 1,
+      "count:css:light=#row-37": 1,
+      "directResolve:css:light=#row-37": 2,
+      "isVisible:css:light=#row-37": 1,
+      "directResolve:css:light=#row-37 >> internal:role=button": 1,
+      "count:css:light=#row-37 >> internal:role=button": 1,
+      "count:css:light=#row-38": 1,
+      "directResolve:css:light=#row-38": 2,
+      "isVisible:css:light=#row-38": 1,
+      "directResolve:css:light=#row-38 >> internal:role=button": 1,
+      "count:css:light=#row-38 >> internal:role=button": 1,
+      "count:css:light=#row-39": 1,
+      "directResolve:css:light=#row-39": 2,
+      "isVisible:css:light=#row-39": 1,
+      "directResolve:css:light=#row-39 >> internal:role=button": 1,
+      "count:css:light=#row-39 >> internal:role=button": 1,
+      "count:css:light=#row-40": 1,
+      "directResolve:css:light=#row-40": 2,
+      "isVisible:css:light=#row-40": 1,
+      "directResolve:css:light=#row-40 >> internal:role=button": 1,
+      "count:css:light=#row-40 >> internal:role=button": 1,
+      "count:css:light=#row-41": 1,
+      "directResolve:css:light=#row-41": 2,
+      "isVisible:css:light=#row-41": 1,
+      "directResolve:css:light=#row-41 >> internal:role=button": 1,
+      "count:css:light=#row-41 >> internal:role=button": 1,
+      "count:css:light=#row-42": 1,
+      "directResolve:css:light=#row-42": 2,
+      "isVisible:css:light=#row-42": 1,
+      "directResolve:css:light=#row-42 >> internal:role=button": 1,
+      "count:css:light=#row-42 >> internal:role=button": 1,
+      "count:css:light=#row-43": 1,
+      "directResolve:css:light=#row-43": 2,
+      "isVisible:css:light=#row-43": 1,
+      "directResolve:css:light=#row-43 >> internal:role=button": 1,
+      "count:css:light=#row-43 >> internal:role=button": 1,
+      "count:css:light=#row-44": 1,
+      "directResolve:css:light=#row-44": 2,
+      "isVisible:css:light=#row-44": 1,
+      "directResolve:css:light=#row-44 >> internal:role=button": 1,
+      "count:css:light=#row-44 >> internal:role=button": 1,
+      "count:css:light=#row-45": 1,
+      "directResolve:css:light=#row-45": 2,
+      "isVisible:css:light=#row-45": 1,
+      "directResolve:css:light=#row-45 >> internal:role=button": 1,
+      "count:css:light=#row-45 >> internal:role=button": 1,
+      "count:css:light=#row-46": 1,
+      "directResolve:css:light=#row-46": 2,
+      "isVisible:css:light=#row-46": 1,
+      "directResolve:css:light=#row-46 >> internal:role=button": 1,
+      "count:css:light=#row-46 >> internal:role=button": 1,
+      "count:css:light=#row-47": 1,
+      "directResolve:css:light=#row-47": 2,
+      "isVisible:css:light=#row-47": 1,
+      "directResolve:css:light=#row-47 >> internal:role=button": 1,
+      "count:css:light=#row-47 >> internal:role=button": 1
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 96,
+      "isVisible": 48
+    },
+    "qsaCalls": 435,
+    "candidates": 631,
+    "dom": {
+      "document:*": {
+        "calls": 1,
+        "candidates": 101
+      },
+      "BODY:li": {
+        "calls": 1,
+        "candidates": 48
+      },
+      "BODY:*": {
+        "calls": 1,
+        "candidates": 98
+      },
+      "document:#row-0": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document::modal": {
+        "calls": 48,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 96,
+        "candidates": 96
+      },
+      "document:#row-1": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-2": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-3": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-4": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-5": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-6": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-7": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-8": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-9": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-10": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-11": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-12": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-13": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-14": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-15": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-16": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-17": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-18": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-19": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-20": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-21": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-22": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-23": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-24": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-25": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-26": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-27": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-28": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-29": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-30": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-31": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-32": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-33": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-34": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-35": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-36": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-37": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-38": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-39": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-40": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-41": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-42": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-43": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-44": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-45": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-46": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-47": {
+        "calls": 6,
+        "candidates": 6
+      }
+    },
+    "observedRows": 48
+  },
+  {
+    "rows": 96,
+    "lightRoots": true,
+    "ms": 7.5,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0": 2,
+      "isVisible:css:light=#row-0": 1,
+      "directResolve:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-0 >> internal:role=button": 1,
+      "count:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1": 2,
+      "isVisible:css:light=#row-1": 1,
+      "directResolve:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-1 >> internal:role=button": 1,
+      "count:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2": 2,
+      "isVisible:css:light=#row-2": 1,
+      "directResolve:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-2 >> internal:role=button": 1,
+      "count:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3": 2,
+      "isVisible:css:light=#row-3": 1,
+      "directResolve:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-3 >> internal:role=button": 1,
+      "count:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4": 2,
+      "isVisible:css:light=#row-4": 1,
+      "directResolve:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-4 >> internal:role=button": 1,
+      "count:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5": 2,
+      "isVisible:css:light=#row-5": 1,
+      "directResolve:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-5 >> internal:role=button": 1,
+      "count:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6": 2,
+      "isVisible:css:light=#row-6": 1,
+      "directResolve:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-6 >> internal:role=button": 1,
+      "count:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7": 2,
+      "isVisible:css:light=#row-7": 1,
+      "directResolve:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-7 >> internal:role=button": 1,
+      "count:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8": 2,
+      "isVisible:css:light=#row-8": 1,
+      "directResolve:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-8 >> internal:role=button": 1,
+      "count:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9": 2,
+      "isVisible:css:light=#row-9": 1,
+      "directResolve:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-9 >> internal:role=button": 1,
+      "count:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10": 2,
+      "isVisible:css:light=#row-10": 1,
+      "directResolve:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-10 >> internal:role=button": 1,
+      "count:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11": 2,
+      "isVisible:css:light=#row-11": 1,
+      "directResolve:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-11 >> internal:role=button": 1,
+      "count:css:light=#row-12": 1,
+      "directResolve:css:light=#row-12": 2,
+      "isVisible:css:light=#row-12": 1,
+      "directResolve:css:light=#row-12 >> internal:role=button": 1,
+      "count:css:light=#row-12 >> internal:role=button": 1,
+      "count:css:light=#row-13": 1,
+      "directResolve:css:light=#row-13": 2,
+      "isVisible:css:light=#row-13": 1,
+      "directResolve:css:light=#row-13 >> internal:role=button": 1,
+      "count:css:light=#row-13 >> internal:role=button": 1,
+      "count:css:light=#row-14": 1,
+      "directResolve:css:light=#row-14": 2,
+      "isVisible:css:light=#row-14": 1,
+      "directResolve:css:light=#row-14 >> internal:role=button": 1,
+      "count:css:light=#row-14 >> internal:role=button": 1,
+      "count:css:light=#row-15": 1,
+      "directResolve:css:light=#row-15": 2,
+      "isVisible:css:light=#row-15": 1,
+      "directResolve:css:light=#row-15 >> internal:role=button": 1,
+      "count:css:light=#row-15 >> internal:role=button": 1,
+      "count:css:light=#row-16": 1,
+      "directResolve:css:light=#row-16": 2,
+      "isVisible:css:light=#row-16": 1,
+      "directResolve:css:light=#row-16 >> internal:role=button": 1,
+      "count:css:light=#row-16 >> internal:role=button": 1,
+      "count:css:light=#row-17": 1,
+      "directResolve:css:light=#row-17": 2,
+      "isVisible:css:light=#row-17": 1,
+      "directResolve:css:light=#row-17 >> internal:role=button": 1,
+      "count:css:light=#row-17 >> internal:role=button": 1,
+      "count:css:light=#row-18": 1,
+      "directResolve:css:light=#row-18": 2,
+      "isVisible:css:light=#row-18": 1,
+      "directResolve:css:light=#row-18 >> internal:role=button": 1,
+      "count:css:light=#row-18 >> internal:role=button": 1,
+      "count:css:light=#row-19": 1,
+      "directResolve:css:light=#row-19": 2,
+      "isVisible:css:light=#row-19": 1,
+      "directResolve:css:light=#row-19 >> internal:role=button": 1,
+      "count:css:light=#row-19 >> internal:role=button": 1,
+      "count:css:light=#row-20": 1,
+      "directResolve:css:light=#row-20": 2,
+      "isVisible:css:light=#row-20": 1,
+      "directResolve:css:light=#row-20 >> internal:role=button": 1,
+      "count:css:light=#row-20 >> internal:role=button": 1,
+      "count:css:light=#row-21": 1,
+      "directResolve:css:light=#row-21": 2,
+      "isVisible:css:light=#row-21": 1,
+      "directResolve:css:light=#row-21 >> internal:role=button": 1,
+      "count:css:light=#row-21 >> internal:role=button": 1,
+      "count:css:light=#row-22": 1,
+      "directResolve:css:light=#row-22": 2,
+      "isVisible:css:light=#row-22": 1,
+      "directResolve:css:light=#row-22 >> internal:role=button": 1,
+      "count:css:light=#row-22 >> internal:role=button": 1,
+      "count:css:light=#row-23": 1,
+      "directResolve:css:light=#row-23": 2,
+      "isVisible:css:light=#row-23": 1,
+      "directResolve:css:light=#row-23 >> internal:role=button": 1,
+      "count:css:light=#row-23 >> internal:role=button": 1,
+      "count:css:light=#row-24": 1,
+      "directResolve:css:light=#row-24": 2,
+      "isVisible:css:light=#row-24": 1,
+      "directResolve:css:light=#row-24 >> internal:role=button": 1,
+      "count:css:light=#row-24 >> internal:role=button": 1,
+      "count:css:light=#row-25": 1,
+      "directResolve:css:light=#row-25": 2,
+      "isVisible:css:light=#row-25": 1,
+      "directResolve:css:light=#row-25 >> internal:role=button": 1,
+      "count:css:light=#row-25 >> internal:role=button": 1,
+      "count:css:light=#row-26": 1,
+      "directResolve:css:light=#row-26": 2,
+      "isVisible:css:light=#row-26": 1,
+      "directResolve:css:light=#row-26 >> internal:role=button": 1,
+      "count:css:light=#row-26 >> internal:role=button": 1,
+      "count:css:light=#row-27": 1,
+      "directResolve:css:light=#row-27": 2,
+      "isVisible:css:light=#row-27": 1,
+      "directResolve:css:light=#row-27 >> internal:role=button": 1,
+      "count:css:light=#row-27 >> internal:role=button": 1,
+      "count:css:light=#row-28": 1,
+      "directResolve:css:light=#row-28": 2,
+      "isVisible:css:light=#row-28": 1,
+      "directResolve:css:light=#row-28 >> internal:role=button": 1,
+      "count:css:light=#row-28 >> internal:role=button": 1,
+      "count:css:light=#row-29": 1,
+      "directResolve:css:light=#row-29": 2,
+      "isVisible:css:light=#row-29": 1,
+      "directResolve:css:light=#row-29 >> internal:role=button": 1,
+      "count:css:light=#row-29 >> internal:role=button": 1,
+      "count:css:light=#row-30": 1,
+      "directResolve:css:light=#row-30": 2,
+      "isVisible:css:light=#row-30": 1,
+      "directResolve:css:light=#row-30 >> internal:role=button": 1,
+      "count:css:light=#row-30 >> internal:role=button": 1,
+      "count:css:light=#row-31": 1,
+      "directResolve:css:light=#row-31": 2,
+      "isVisible:css:light=#row-31": 1,
+      "directResolve:css:light=#row-31 >> internal:role=button": 1,
+      "count:css:light=#row-31 >> internal:role=button": 1,
+      "count:css:light=#row-32": 1,
+      "directResolve:css:light=#row-32": 2,
+      "isVisible:css:light=#row-32": 1,
+      "directResolve:css:light=#row-32 >> internal:role=button": 1,
+      "count:css:light=#row-32 >> internal:role=button": 1,
+      "count:css:light=#row-33": 1,
+      "directResolve:css:light=#row-33": 2,
+      "isVisible:css:light=#row-33": 1,
+      "directResolve:css:light=#row-33 >> internal:role=button": 1,
+      "count:css:light=#row-33 >> internal:role=button": 1,
+      "count:css:light=#row-34": 1,
+      "directResolve:css:light=#row-34": 2,
+      "isVisible:css:light=#row-34": 1,
+      "directResolve:css:light=#row-34 >> internal:role=button": 1,
+      "count:css:light=#row-34 >> internal:role=button": 1,
+      "count:css:light=#row-35": 1,
+      "directResolve:css:light=#row-35": 2,
+      "isVisible:css:light=#row-35": 1,
+      "directResolve:css:light=#row-35 >> internal:role=button": 1,
+      "count:css:light=#row-35 >> internal:role=button": 1,
+      "count:css:light=#row-36": 1,
+      "directResolve:css:light=#row-36": 2,
+      "isVisible:css:light=#row-36": 1,
+      "directResolve:css:light=#row-36 >> internal:role=button": 1,
+      "count:css:light=#row-36 >> internal:role=button": 1,
+      "count:css:light=#row-37": 1,
+      "directResolve:css:light=#row-37": 2,
+      "isVisible:css:light=#row-37": 1,
+      "directResolve:css:light=#row-37 >> internal:role=button": 1,
+      "count:css:light=#row-37 >> internal:role=button": 1,
+      "count:css:light=#row-38": 1,
+      "directResolve:css:light=#row-38": 2,
+      "isVisible:css:light=#row-38": 1,
+      "directResolve:css:light=#row-38 >> internal:role=button": 1,
+      "count:css:light=#row-38 >> internal:role=button": 1,
+      "count:css:light=#row-39": 1,
+      "directResolve:css:light=#row-39": 2,
+      "isVisible:css:light=#row-39": 1,
+      "directResolve:css:light=#row-39 >> internal:role=button": 1,
+      "count:css:light=#row-39 >> internal:role=button": 1,
+      "count:css:light=#row-40": 1,
+      "directResolve:css:light=#row-40": 2,
+      "isVisible:css:light=#row-40": 1,
+      "directResolve:css:light=#row-40 >> internal:role=button": 1,
+      "count:css:light=#row-40 >> internal:role=button": 1,
+      "count:css:light=#row-41": 1,
+      "directResolve:css:light=#row-41": 2,
+      "isVisible:css:light=#row-41": 1,
+      "directResolve:css:light=#row-41 >> internal:role=button": 1,
+      "count:css:light=#row-41 >> internal:role=button": 1,
+      "count:css:light=#row-42": 1,
+      "directResolve:css:light=#row-42": 2,
+      "isVisible:css:light=#row-42": 1,
+      "directResolve:css:light=#row-42 >> internal:role=button": 1,
+      "count:css:light=#row-42 >> internal:role=button": 1,
+      "count:css:light=#row-43": 1,
+      "directResolve:css:light=#row-43": 2,
+      "isVisible:css:light=#row-43": 1,
+      "directResolve:css:light=#row-43 >> internal:role=button": 1,
+      "count:css:light=#row-43 >> internal:role=button": 1,
+      "count:css:light=#row-44": 1,
+      "directResolve:css:light=#row-44": 2,
+      "isVisible:css:light=#row-44": 1,
+      "directResolve:css:light=#row-44 >> internal:role=button": 1,
+      "count:css:light=#row-44 >> internal:role=button": 1,
+      "count:css:light=#row-45": 1,
+      "directResolve:css:light=#row-45": 2,
+      "isVisible:css:light=#row-45": 1,
+      "directResolve:css:light=#row-45 >> internal:role=button": 1,
+      "count:css:light=#row-45 >> internal:role=button": 1,
+      "count:css:light=#row-46": 1,
+      "directResolve:css:light=#row-46": 2,
+      "isVisible:css:light=#row-46": 1,
+      "directResolve:css:light=#row-46 >> internal:role=button": 1,
+      "count:css:light=#row-46 >> internal:role=button": 1,
+      "count:css:light=#row-47": 1,
+      "directResolve:css:light=#row-47": 2,
+      "isVisible:css:light=#row-47": 1,
+      "directResolve:css:light=#row-47 >> internal:role=button": 1,
+      "count:css:light=#row-47 >> internal:role=button": 1,
+      "count:css:light=#row-48": 1,
+      "directResolve:css:light=#row-48": 2,
+      "isVisible:css:light=#row-48": 1,
+      "directResolve:css:light=#row-48 >> internal:role=button": 1,
+      "count:css:light=#row-48 >> internal:role=button": 1,
+      "count:css:light=#row-49": 1,
+      "directResolve:css:light=#row-49": 2,
+      "isVisible:css:light=#row-49": 1,
+      "directResolve:css:light=#row-49 >> internal:role=button": 1,
+      "count:css:light=#row-49 >> internal:role=button": 1,
+      "count:css:light=#row-50": 1,
+      "directResolve:css:light=#row-50": 2,
+      "isVisible:css:light=#row-50": 1,
+      "directResolve:css:light=#row-50 >> internal:role=button": 1,
+      "count:css:light=#row-50 >> internal:role=button": 1,
+      "count:css:light=#row-51": 1,
+      "directResolve:css:light=#row-51": 2,
+      "isVisible:css:light=#row-51": 1,
+      "directResolve:css:light=#row-51 >> internal:role=button": 1,
+      "count:css:light=#row-51 >> internal:role=button": 1,
+      "count:css:light=#row-52": 1,
+      "directResolve:css:light=#row-52": 2,
+      "isVisible:css:light=#row-52": 1,
+      "directResolve:css:light=#row-52 >> internal:role=button": 1,
+      "count:css:light=#row-52 >> internal:role=button": 1,
+      "count:css:light=#row-53": 1,
+      "directResolve:css:light=#row-53": 2,
+      "isVisible:css:light=#row-53": 1,
+      "directResolve:css:light=#row-53 >> internal:role=button": 1,
+      "count:css:light=#row-53 >> internal:role=button": 1,
+      "count:css:light=#row-54": 1,
+      "directResolve:css:light=#row-54": 2,
+      "isVisible:css:light=#row-54": 1,
+      "directResolve:css:light=#row-54 >> internal:role=button": 1,
+      "count:css:light=#row-54 >> internal:role=button": 1,
+      "count:css:light=#row-55": 1,
+      "directResolve:css:light=#row-55": 2,
+      "isVisible:css:light=#row-55": 1,
+      "directResolve:css:light=#row-55 >> internal:role=button": 1,
+      "count:css:light=#row-55 >> internal:role=button": 1,
+      "count:css:light=#row-56": 1,
+      "directResolve:css:light=#row-56": 2,
+      "isVisible:css:light=#row-56": 1,
+      "directResolve:css:light=#row-56 >> internal:role=button": 1,
+      "count:css:light=#row-56 >> internal:role=button": 1,
+      "count:css:light=#row-57": 1,
+      "directResolve:css:light=#row-57": 2,
+      "isVisible:css:light=#row-57": 1,
+      "directResolve:css:light=#row-57 >> internal:role=button": 1,
+      "count:css:light=#row-57 >> internal:role=button": 1,
+      "count:css:light=#row-58": 1,
+      "directResolve:css:light=#row-58": 2,
+      "isVisible:css:light=#row-58": 1,
+      "directResolve:css:light=#row-58 >> internal:role=button": 1,
+      "count:css:light=#row-58 >> internal:role=button": 1,
+      "count:css:light=#row-59": 1,
+      "directResolve:css:light=#row-59": 2,
+      "isVisible:css:light=#row-59": 1,
+      "directResolve:css:light=#row-59 >> internal:role=button": 1,
+      "count:css:light=#row-59 >> internal:role=button": 1,
+      "count:css:light=#row-60": 1,
+      "directResolve:css:light=#row-60": 2,
+      "isVisible:css:light=#row-60": 1,
+      "directResolve:css:light=#row-60 >> internal:role=button": 1,
+      "count:css:light=#row-60 >> internal:role=button": 1,
+      "count:css:light=#row-61": 1,
+      "directResolve:css:light=#row-61": 2,
+      "isVisible:css:light=#row-61": 1,
+      "directResolve:css:light=#row-61 >> internal:role=button": 1,
+      "count:css:light=#row-61 >> internal:role=button": 1,
+      "count:css:light=#row-62": 1,
+      "directResolve:css:light=#row-62": 2,
+      "isVisible:css:light=#row-62": 1,
+      "directResolve:css:light=#row-62 >> internal:role=button": 1,
+      "count:css:light=#row-62 >> internal:role=button": 1,
+      "count:css:light=#row-63": 1,
+      "directResolve:css:light=#row-63": 2,
+      "isVisible:css:light=#row-63": 1,
+      "directResolve:css:light=#row-63 >> internal:role=button": 1,
+      "count:css:light=#row-63 >> internal:role=button": 1,
+      "count:css:light=#row-64": 1,
+      "directResolve:css:light=#row-64": 2,
+      "isVisible:css:light=#row-64": 1,
+      "directResolve:css:light=#row-64 >> internal:role=button": 1,
+      "count:css:light=#row-64 >> internal:role=button": 1,
+      "count:css:light=#row-65": 1,
+      "directResolve:css:light=#row-65": 2,
+      "isVisible:css:light=#row-65": 1,
+      "directResolve:css:light=#row-65 >> internal:role=button": 1,
+      "count:css:light=#row-65 >> internal:role=button": 1,
+      "count:css:light=#row-66": 1,
+      "directResolve:css:light=#row-66": 2,
+      "isVisible:css:light=#row-66": 1,
+      "directResolve:css:light=#row-66 >> internal:role=button": 1,
+      "count:css:light=#row-66 >> internal:role=button": 1,
+      "count:css:light=#row-67": 1,
+      "directResolve:css:light=#row-67": 2,
+      "isVisible:css:light=#row-67": 1,
+      "directResolve:css:light=#row-67 >> internal:role=button": 1,
+      "count:css:light=#row-67 >> internal:role=button": 1,
+      "count:css:light=#row-68": 1,
+      "directResolve:css:light=#row-68": 2,
+      "isVisible:css:light=#row-68": 1,
+      "directResolve:css:light=#row-68 >> internal:role=button": 1,
+      "count:css:light=#row-68 >> internal:role=button": 1,
+      "count:css:light=#row-69": 1,
+      "directResolve:css:light=#row-69": 2,
+      "isVisible:css:light=#row-69": 1,
+      "directResolve:css:light=#row-69 >> internal:role=button": 1,
+      "count:css:light=#row-69 >> internal:role=button": 1,
+      "count:css:light=#row-70": 1,
+      "directResolve:css:light=#row-70": 2,
+      "isVisible:css:light=#row-70": 1,
+      "directResolve:css:light=#row-70 >> internal:role=button": 1,
+      "count:css:light=#row-70 >> internal:role=button": 1,
+      "count:css:light=#row-71": 1,
+      "directResolve:css:light=#row-71": 2,
+      "isVisible:css:light=#row-71": 1,
+      "directResolve:css:light=#row-71 >> internal:role=button": 1,
+      "count:css:light=#row-71 >> internal:role=button": 1,
+      "count:css:light=#row-72": 1,
+      "directResolve:css:light=#row-72": 2,
+      "isVisible:css:light=#row-72": 1,
+      "directResolve:css:light=#row-72 >> internal:role=button": 1,
+      "count:css:light=#row-72 >> internal:role=button": 1,
+      "count:css:light=#row-73": 1,
+      "directResolve:css:light=#row-73": 2,
+      "isVisible:css:light=#row-73": 1,
+      "directResolve:css:light=#row-73 >> internal:role=button": 1,
+      "count:css:light=#row-73 >> internal:role=button": 1,
+      "count:css:light=#row-74": 1,
+      "directResolve:css:light=#row-74": 2,
+      "isVisible:css:light=#row-74": 1,
+      "directResolve:css:light=#row-74 >> internal:role=button": 1,
+      "count:css:light=#row-74 >> internal:role=button": 1,
+      "count:css:light=#row-75": 1,
+      "directResolve:css:light=#row-75": 2,
+      "isVisible:css:light=#row-75": 1,
+      "directResolve:css:light=#row-75 >> internal:role=button": 1,
+      "count:css:light=#row-75 >> internal:role=button": 1,
+      "count:css:light=#row-76": 1,
+      "directResolve:css:light=#row-76": 2,
+      "isVisible:css:light=#row-76": 1,
+      "directResolve:css:light=#row-76 >> internal:role=button": 1,
+      "count:css:light=#row-76 >> internal:role=button": 1,
+      "count:css:light=#row-77": 1,
+      "directResolve:css:light=#row-77": 2,
+      "isVisible:css:light=#row-77": 1,
+      "directResolve:css:light=#row-77 >> internal:role=button": 1,
+      "count:css:light=#row-77 >> internal:role=button": 1,
+      "count:css:light=#row-78": 1,
+      "directResolve:css:light=#row-78": 2,
+      "isVisible:css:light=#row-78": 1,
+      "directResolve:css:light=#row-78 >> internal:role=button": 1,
+      "count:css:light=#row-78 >> internal:role=button": 1,
+      "count:css:light=#row-79": 1,
+      "directResolve:css:light=#row-79": 2,
+      "isVisible:css:light=#row-79": 1,
+      "directResolve:css:light=#row-79 >> internal:role=button": 1,
+      "count:css:light=#row-79 >> internal:role=button": 1,
+      "count:css:light=#row-80": 1,
+      "directResolve:css:light=#row-80": 2,
+      "isVisible:css:light=#row-80": 1,
+      "directResolve:css:light=#row-80 >> internal:role=button": 1,
+      "count:css:light=#row-80 >> internal:role=button": 1,
+      "count:css:light=#row-81": 1,
+      "directResolve:css:light=#row-81": 2,
+      "isVisible:css:light=#row-81": 1,
+      "directResolve:css:light=#row-81 >> internal:role=button": 1,
+      "count:css:light=#row-81 >> internal:role=button": 1,
+      "count:css:light=#row-82": 1,
+      "directResolve:css:light=#row-82": 2,
+      "isVisible:css:light=#row-82": 1,
+      "directResolve:css:light=#row-82 >> internal:role=button": 1,
+      "count:css:light=#row-82 >> internal:role=button": 1,
+      "count:css:light=#row-83": 1,
+      "directResolve:css:light=#row-83": 2,
+      "isVisible:css:light=#row-83": 1,
+      "directResolve:css:light=#row-83 >> internal:role=button": 1,
+      "count:css:light=#row-83 >> internal:role=button": 1,
+      "count:css:light=#row-84": 1,
+      "directResolve:css:light=#row-84": 2,
+      "isVisible:css:light=#row-84": 1,
+      "directResolve:css:light=#row-84 >> internal:role=button": 1,
+      "count:css:light=#row-84 >> internal:role=button": 1,
+      "count:css:light=#row-85": 1,
+      "directResolve:css:light=#row-85": 2,
+      "isVisible:css:light=#row-85": 1,
+      "directResolve:css:light=#row-85 >> internal:role=button": 1,
+      "count:css:light=#row-85 >> internal:role=button": 1,
+      "count:css:light=#row-86": 1,
+      "directResolve:css:light=#row-86": 2,
+      "isVisible:css:light=#row-86": 1,
+      "directResolve:css:light=#row-86 >> internal:role=button": 1,
+      "count:css:light=#row-86 >> internal:role=button": 1,
+      "count:css:light=#row-87": 1,
+      "directResolve:css:light=#row-87": 2,
+      "isVisible:css:light=#row-87": 1,
+      "directResolve:css:light=#row-87 >> internal:role=button": 1,
+      "count:css:light=#row-87 >> internal:role=button": 1,
+      "count:css:light=#row-88": 1,
+      "directResolve:css:light=#row-88": 2,
+      "isVisible:css:light=#row-88": 1,
+      "directResolve:css:light=#row-88 >> internal:role=button": 1,
+      "count:css:light=#row-88 >> internal:role=button": 1,
+      "count:css:light=#row-89": 1,
+      "directResolve:css:light=#row-89": 2,
+      "isVisible:css:light=#row-89": 1,
+      "directResolve:css:light=#row-89 >> internal:role=button": 1,
+      "count:css:light=#row-89 >> internal:role=button": 1,
+      "count:css:light=#row-90": 1,
+      "directResolve:css:light=#row-90": 2,
+      "isVisible:css:light=#row-90": 1,
+      "directResolve:css:light=#row-90 >> internal:role=button": 1,
+      "count:css:light=#row-90 >> internal:role=button": 1,
+      "count:css:light=#row-91": 1,
+      "directResolve:css:light=#row-91": 2,
+      "isVisible:css:light=#row-91": 1,
+      "directResolve:css:light=#row-91 >> internal:role=button": 1,
+      "count:css:light=#row-91 >> internal:role=button": 1,
+      "count:css:light=#row-92": 1,
+      "directResolve:css:light=#row-92": 2,
+      "isVisible:css:light=#row-92": 1,
+      "directResolve:css:light=#row-92 >> internal:role=button": 1,
+      "count:css:light=#row-92 >> internal:role=button": 1,
+      "count:css:light=#row-93": 1,
+      "directResolve:css:light=#row-93": 2,
+      "isVisible:css:light=#row-93": 1,
+      "directResolve:css:light=#row-93 >> internal:role=button": 1,
+      "count:css:light=#row-93 >> internal:role=button": 1,
+      "count:css:light=#row-94": 1,
+      "directResolve:css:light=#row-94": 2,
+      "isVisible:css:light=#row-94": 1,
+      "directResolve:css:light=#row-94 >> internal:role=button": 1,
+      "count:css:light=#row-94 >> internal:role=button": 1,
+      "count:css:light=#row-95": 1,
+      "directResolve:css:light=#row-95": 2,
+      "isVisible:css:light=#row-95": 1,
+      "directResolve:css:light=#row-95 >> internal:role=button": 1,
+      "count:css:light=#row-95 >> internal:role=button": 1
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 192,
+      "isVisible": 96
+    },
+    "qsaCalls": 867,
+    "candidates": 1255,
+    "dom": {
+      "document:*": {
+        "calls": 1,
+        "candidates": 197
+      },
+      "BODY:li": {
+        "calls": 1,
+        "candidates": 96
+      },
+      "BODY:*": {
+        "calls": 1,
+        "candidates": 194
+      },
+      "document:#row-0": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document::modal": {
+        "calls": 96,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 192,
+        "candidates": 192
+      },
+      "document:#row-1": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-2": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-3": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-4": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-5": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-6": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-7": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-8": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-9": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-10": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-11": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-12": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-13": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-14": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-15": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-16": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-17": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-18": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-19": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-20": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-21": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-22": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-23": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-24": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-25": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-26": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-27": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-28": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-29": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-30": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-31": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-32": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-33": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-34": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-35": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-36": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-37": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-38": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-39": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-40": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-41": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-42": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-43": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-44": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-45": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-46": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-47": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-48": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-49": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-50": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-51": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-52": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-53": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-54": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-55": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-56": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-57": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-58": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-59": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-60": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-61": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-62": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-63": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-64": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-65": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-66": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-67": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-68": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-69": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-70": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-71": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-72": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-73": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-74": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-75": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-76": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-77": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-78": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-79": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-80": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-81": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-82": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-83": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-84": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-85": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-86": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-87": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-88": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-89": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-90": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-91": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-92": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-93": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-94": {
+        "calls": 6,
+        "candidates": 6
+      },
+      "document:#row-95": {
+        "calls": 6,
+        "candidates": 6
+      }
+    },
+    "observedRows": 96
+  }
+]

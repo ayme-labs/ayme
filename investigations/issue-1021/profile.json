@@ -1,0 +1,26 @@
+[
+  {
+    "rows": 24,
+    "instrumented": false,
+    "ms": 8.5,
+    "observations": 1,
+    "resolutions": {},
+    "locatorCalls": {},
+    "qsaCalls": 0,
+    "candidates": 0,
+    "dom": {},
+    "observedRows": 24
+  },
+  {
+    "rows": 192,
+    "instrumented": false,
+    "ms": 283.4,
+    "observations": 1,
+    "resolutions": {},
+    "locatorCalls": {},
+    "qsaCalls": 0,
+    "candidates": 0,
+    "dom": {},
+    "observedRows": 192
+  }
+]
