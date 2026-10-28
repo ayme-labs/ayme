@@ -31,6 +31,7 @@ jobs:
       affected: ${{ steps.detect.outputs.affected }}
       uncached_builds: ${{ steps.detect.outputs.uncached_builds }}
       e2e_suites: ${{ steps.detect.outputs.e2e_suites }}
+      live_goals: ${{ steps.detect.outputs.live_goals }}
       docs_checks: ${{ steps.compatibility.outputs.docs_checks }}
       compatibility_packages: ${{ steps.compatibility.outputs.packages }}
     steps:
@@ -60,6 +61,10 @@ jobs:
             affected=
           fi
           echo "affected=$affected" >> "$GITHUB_OUTPUT"
+
+          # Run live goals when the Vue example or a dependency is affected.
+          packages=$(pnpm exec turbo ls $affected --output=json)
+          echo "live_goals=$(jq -r '[.packages.items[].name] | index("@ayme-dev/example-vue") != null' <<< "$packages")" >> "$GITHUB_OUTPUT"
 
           tasks=$(pnpm exec turbo run build lint typecheck test test:e2e $affected --dry=json \
             | jq '[.tasks[] | select(.command != "<NONEXISTENT>")]')
@@ -219,7 +224,7 @@ jobs:
   live-goals:
     name: Live goals
     needs: changes
-    if: needs.changes.outputs.package_checks == 'true'
+    if: needs.changes.outputs.live_goals == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
