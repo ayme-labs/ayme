@@ -107,6 +107,7 @@ describe("a Step Decision", () => {
       expect(verdict).toMatchObject({
         kind: "stop",
         reason: "done",
+        next: "The goal has been achieved. Continue with your next task.",
         scores: { goalMetScore: 0.8 },
       });
       expect(requests).toHaveLength(1);
@@ -201,6 +202,7 @@ describe("a Step Decision", () => {
       expect(await step(decide)).toMatchObject({
         kind: "stop",
         reason: "no_fitting_option",
+        next: "No available operation fits the goal on the current page. Navigate to a different page or try a different approach.",
       });
     });
 

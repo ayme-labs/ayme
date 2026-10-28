@@ -150,21 +150,24 @@ function reasonToStop(
 ): "done" | "unverified" | "no_fitting_option" {
   // Only a step that ran can have left nothing outstanding: a failed one has
   // not taken effect, and with no step taken only the page can show the goal.
+  // A missing goal_remaining answer never counts as nothing outstanding.
   const nothingOutstanding =
-    history.at(-1)?.result === "ok" &&
-    goalRemaining !== undefined &&
-    goalRemaining <= LOWER_BAR;
+    history.at(-1)?.result === "ok" && (goalRemaining ?? Infinity) <= LOWER_BAR;
   if (nothingOutstanding || goalMet >= DONE_BAR) return "done";
   return goalMet >= LOWER_BAR ? "unverified" : "no_fitting_option";
 }
 
-const stopAdvice = {
-  done: "The goal has been achieved. Continue with your next task.",
-  unverified:
-    "The Goal Loop could not tell whether the goal holds on the current page. Read the page with snapshot to check it, or call goal again with the goal phrased as the action to take.",
-  no_fitting_option:
-    "No available operation fits the goal on the current page. Navigate to a different page or try a different approach.",
-};
+/** The `next` of a stop on no operation, per reason. */
+function stopAdvice(reason: ReturnType<typeof reasonToStop>): string {
+  switch (reason) {
+    case "done":
+      return "The goal has been achieved. Continue with your next task.";
+    case "unverified":
+      return "The Goal Loop could not tell whether the goal holds on the current page. Read the page with snapshot to check it, or call goal again with the goal phrased as the action to take.";
+    case "no_fitting_option":
+      return "No available operation fits the goal on the current page. Navigate to a different page or try a different approach.";
+  }
+}
 
 // --- Stuck detection ---
 
@@ -547,7 +550,7 @@ export async function decideStep({
   // the goal_met score: the goal may end in an effect the page never shows.
   if (chosenKey === "none") {
     const reason = reasonToStop(goalMet.noul, goalRemaining?.noul, history);
-    return stop(reason, stopAdvice[reason]);
+    return stop(reason, stopAdvice(reason));
   }
 
   const chosenTool = toolOptions.find((opt) => opt.key === chosenKey)?.tool;
