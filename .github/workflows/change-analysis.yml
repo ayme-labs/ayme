@@ -26,7 +26,6 @@ permissions:
 jobs:
   scope:
     name: Decide whether to analyze
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       actions: read
