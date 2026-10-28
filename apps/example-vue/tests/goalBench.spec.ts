@@ -26,6 +26,7 @@ for (const bench of benchGoals) {
     });
 
     expect(handover.reason).toBe(bench.reason);
+    if (bench.intended.length === 0) expect(handover.history).toEqual([]);
     await bench.outcome(page);
   });
 }

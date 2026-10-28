@@ -5,6 +5,7 @@ import { useAyme } from "@ayme-dev/vue";
 import { decisionEndpointPath } from "../../vite/decisionEndpointPath";
 import { benchPath } from "./benchRouter";
 import BenchIndex from "./BenchIndex.vue";
+import DocumentsPage from "./DocumentsPage.vue";
 import LoginPage from "./LoginPage.vue";
 import NewProjectFlow from "./NewProjectFlow.vue";
 import ProfilePage from "./ProfilePage.vue";
@@ -48,6 +49,7 @@ const pages: Record<string, typeof BenchIndex> = {
   "bench/profile": ProfilePage,
   "bench/settings": SettingsPage,
   "bench/projects": ProjectsPage,
+  "bench/documents": DocumentsPage,
   // One component for both screens of the flow, so its state survives the
   // client-side route change between them.
   "bench/new-project": NewProjectFlow,

@@ -6,6 +6,7 @@
  *   node scripts/goal-runs.ts --runs <N> [--goal-set <harness|live-lane|bench>]
  *   node scripts/goal-runs.ts --runs <N> --live-lane
  *   node scripts/goal-runs.ts compare <runA.json> <runB.json>
+ *   node scripts/goal-runs.ts replay <runs.json> [--done-bar <bar>]
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -25,6 +26,14 @@ import {
   type GoalRun,
   type ReportSuite,
 } from "./goalRunReport.ts";
+import {
+  reasonToday,
+  replayIsExact,
+  replayedReason,
+  stoppingStepOf,
+  sweepDoneBar,
+  sweptDoneBars,
+} from "./goalRunReplay.ts";
 
 const outputDirectory = path.join(appRoot, "goal-runs");
 
@@ -290,6 +299,68 @@ function compare(fileA: string, fileB: string) {
   );
 }
 
+// --- replay ---
+
+function replay(file: string, doneBar: number) {
+  const runs = readRunsFile(file);
+  console.log(
+    `${file}\n  commit ${commitLabel(runs.commit)}, model ${runs.model}, ${runLabel(runs)}, ${runs.timestamp}\n  replayed at done bar ${doneBar}`
+  );
+  const all: GoalRun[] = [];
+  const inexact: string[] = [];
+  const mismatched: string[] = [];
+  for (const [title, { runs: goalRuns }] of Object.entries(runs.goals)) {
+    console.log(`\n${title}`);
+    goalRuns.forEach((run, index) => {
+      all.push(run);
+      const label = `run ${index + 1}`;
+      const stop = stoppingStepOf(run);
+      const last = run.steps.at(-1);
+      const scores = stop
+        ? `goal_met ${format(stop.goalMet)}, goal_remaining ${format(stop.goalRemaining)}, history ${stop.historyLength}`
+        : `history ${run.steps.filter((step) => step.chosen).length}`;
+      console.log(
+        `  ${label}: operation ${last?.operation ?? "-"}, ${scores}, reason ${run.reason}, passed ${run.passed ? "yes" : "no"} -> ${replayedReason(run, doneBar)}`
+      );
+      if (!stop) return;
+      if (!replayIsExact(stop)) inexact.push(`  ${title}, ${label}`);
+      if (reasonToday(stop) !== run.reason)
+        mismatched.push(
+          `  ${title}, ${label}: recorded ${run.reason}, today's rule gives ${reasonToday(stop)}`
+        );
+    });
+  }
+
+  const passedDone = all
+    .filter((run) => run.passed && run.reason === "done")
+    .flatMap((run) => stoppingStepOf(run)?.goalMet ?? [])
+    .sort((a, b) => a - b);
+  console.log(
+    `\ngoal_met of passed runs that ended done (${passedDone.length}): ${passedDone.map(format).join(", ") || "-"}`
+  );
+
+  console.log(
+    "\nDone bar  passed done -> not done (cost)  false done -> not done (caught)"
+  );
+  for (const bar of [...new Set([...sweptDoneBars, doneBar])].sort(
+    (a, b) => a - b
+  )) {
+    const { passedDone, falseDone, lost, caught } = sweepDoneBar(all, bar);
+    const lostCount = Object.values(lost).reduce((a, b) => a + b, 0);
+    console.log(
+      `${format(bar).padEnd(10)}${`${lostCount} of ${passedDone} ${JSON.stringify(lost)}`.padEnd(35)}${caught} of ${falseDone}`
+    );
+  }
+  if (inexact.length > 0)
+    console.log(
+      `\nNot exact, the record lacks the last step's result:\n${inexact.join("\n")}`
+    );
+  if (mismatched.length > 0)
+    console.log(
+      `\nToday's rule does not reproduce the recorded reason:\n${mismatched.join("\n")}`
+    );
+}
+
 // --- entry point ---
 
 const args = process.argv.slice(2);
@@ -297,6 +368,11 @@ if (args[0] === "compare") {
   if (args.length !== 3)
     fail("Usage: goals:runs compare <runA.json> <runB.json>");
   compare(args[1]!, args[2]!);
+} else if (args[0] === "replay") {
+  const doneBar = Number(optionValue(args, "--done-bar") ?? 0.7);
+  if (args[1] === undefined || !(doneBar > 0 && doneBar <= 1))
+    fail("Usage: goals:runs replay <runs.json> [--done-bar <bar in (0, 1]>]");
+  replay(args[1], doneBar);
 } else {
   runGoals(readRunsArguments(args));
 }

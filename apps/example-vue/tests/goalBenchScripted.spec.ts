@@ -16,6 +16,7 @@ import {
   expectedStepsOf,
   expectedTargetsOf,
   openBenchPage,
+  type BenchGoal,
   type IntendedStep,
 } from "./benchGoals";
 import { pursueGoal } from "./goalLane";
@@ -34,6 +35,22 @@ process.env[goalRunsVariable] = "1";
 
 /** What every scripted answer reports as its token usage. */
 const usage = { input_tokens: 100, output_tokens: 4 };
+
+/** Stage one's `goal_met` and `goal_remaining` once the intended steps run
+ *  out, per reason the goal expects the run to stop with. An undecided
+ *  `goal_met`, as issue 1059 saw on a closed menu, for `unverified`. */
+const stopScores = {
+  done: { goalMet: 0.95, goalRemaining: 0.05 },
+  unverified: { goalMet: 0.55, goalRemaining: 0.45 },
+  no_fitting_option: { goalMet: 0.05, goalRemaining: 0.95 },
+};
+type StopReason = keyof typeof stopScores;
+
+/** The step count of a run that goes as intended: stage one stops it one
+ *  step after the intended ones, unless stage two hands over first. */
+function stepsOf(bench: BenchGoal) {
+  return bench.intended.length + (bench.reason === "needs_value" ? 0 : 1);
+}
 
 type Question = {
   type: "choice" | "noul";
@@ -85,10 +102,14 @@ function argumentAnswers(
 /**
  * Answer the page's decision requests with `intended`: stage one picks the
  * next step's operation with the goal not met, and once the steps run out
- * judges the goal met; stage two picks the step's arguments. A request the
- * script cannot answer fails the test.
+ * chooses no operation with the scores of `stop`; stage two picks the step's
+ * arguments. A request the script cannot answer fails the test.
  */
-async function answerDecisions(page: Page, intended: IntendedStep[]) {
+async function answerDecisions(
+  page: Page,
+  intended: IntendedStep[],
+  stop: StopReason = "done"
+) {
   let next = 0;
   const failures: string[] = [];
   await page.route(`**${decisionEndpointPath}`, async (route) => {
@@ -107,10 +128,13 @@ async function answerDecisions(page: Page, intended: IntendedStep[]) {
             { type: "choice", choice: "no_value_needed" },
           ])
         );
+        const { goalMet, goalRemaining } = step
+          ? { goalMet: 0.05, goalRemaining: 0.95 }
+          : stopScores[stop];
         Object.assign(answers, {
           operation: { type: "choice", choice: step?.operation ?? "none" },
-          goal_met: { type: "noul", noul: step ? 0.05 : 0.95 },
-          goal_remaining: { type: "noul", noul: step ? 0.95 : 0.05 },
+          goal_met: { type: "noul", noul: goalMet },
+          goal_remaining: { type: "noul", noul: goalRemaining },
         });
       } else {
         answers = argumentAnswers(intended[next - 1]!, questions);
@@ -144,7 +168,17 @@ test.beforeEach(({ context }) => recordPublishedTools(context));
 
 for (const bench of benchGoals) {
   test(`scripted: ${bench.title}`, async ({ page }) => {
-    const failures = await answerDecisions(page, bench.intended);
+    // Issue 1059: the loop has no `unverified` yet; an undecided goal_met
+    // still ends `done`. Remove this once the done policy lands.
+    test.fail(
+      bench.reason === "unverified",
+      "The Goal Loop hands back no unverified yet (issue 1059)"
+    );
+    const failures = await answerDecisions(
+      page,
+      bench.intended,
+      bench.reason === "needs_value" ? "done" : bench.reason
+    );
     await openBenchPage(page, bench);
     await waitForPublishedTool(page, "goal");
 
@@ -157,11 +191,11 @@ for (const bench of benchGoals) {
 
     expect(failures).toEqual([]);
     expect(handover.reason).toBe(bench.reason);
+    if (bench.intended.length === 0) expect(handover.history).toEqual([]);
     await bench.outcome(page);
 
     const run = reportedRun();
-    const steps = expectedSteps ?? bench.intended.length;
-    expect(run.stepCount).toBe(steps);
+    expect(run.stepCount).toBe(stepsOf(bench));
     if (expectedSteps !== undefined) expect(run.doneAtExpectedStep).toBe(true);
     expect(run.repeatedSteps).toBe(0);
     if (expectedTargetsOf(bench)) expect(run.wrongTargetSteps).toBe(0);

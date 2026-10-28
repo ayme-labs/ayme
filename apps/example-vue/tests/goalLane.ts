@@ -9,7 +9,11 @@ import { readDecisionProvider } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";
 
 /** What the goal specs read from a Handover. */
-export type Handover = { reason: string; changes?: string };
+export type Handover = {
+  reason: string;
+  history: unknown[];
+  changes?: string;
+};
 
 /**
  * Skip the calling spec file without a model key: the same key the dev
