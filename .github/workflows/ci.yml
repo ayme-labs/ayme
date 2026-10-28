@@ -33,7 +33,7 @@ jobs:
       e2e_suites: ${{ steps.detect.outputs.e2e_suites }}
       live_goals: ${{ steps.detect.outputs.live_goals }}
       docs_checks: ${{ steps.compatibility.outputs.docs_checks }}
-      compatibility_packages: ${{ steps.compatibility.outputs.packages }}
+      compatibility_matrix: ${{ steps.compatibility.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -89,6 +89,104 @@ jobs:
       # an edited lane is tested before it merges.
       - name: Detect affected compatibility lanes
         id: compatibility
+        env:
+          LANES: |
+            - name: Vue 3.2 compatibility
+              package: "@ayme-dev/vue"
+              dir: packages/vue
+              version: "3.2.0"
+              pins: vue @vue/server-renderer
+              build: "@ayme-dev/ayme... --filter=@ayme-dev/inspector... --filter=@ayme-dev/webmcp"
+              browser: true
+            - name: Svelte 3.54.0 compatibility
+              package: "@ayme-dev/svelte"
+              dir: packages/svelte
+              version: "3.54.0"
+              pins: svelte
+              build: "@ayme-dev/ayme --filter=@ayme-dev/webmcp"
+              browser: true
+            - name: Svelte 4.2.20 compatibility
+              package: "@ayme-dev/svelte"
+              dir: packages/svelte
+              version: "4.2.20"
+              pins: svelte
+              build: "@ayme-dev/ayme --filter=@ayme-dev/webmcp"
+              browser: true
+            # @angular/animations 19.0.0, which @angular/platform-server loads,
+            # imports @angular/common without declaring it, so it would reach the
+            # workspace's hoisted Angular 22. The extension links it to 19.0.0.
+            - name: Angular 19.0 compatibility
+              package: "@ayme-dev/angular"
+              dir: packages/angular
+              version: "19.0.0"
+              pins: >-
+                @angular/core @angular/common @angular/compiler
+                @angular/platform-browser @angular/platform-server
+                @angular-devkit/schematics @schematics/angular
+              build: "@ayme-dev/angular..."
+              workspace: |
+                packageExtensions:
+                  "@angular/animations@19.0.0":
+                    peerDependencies:
+                      "@angular/common": 19.0.0
+              browser: true
+            # React 18.0.0's own @types/react needs an old @types/scheduler, so
+            # the lane pairs the runtime with the 18.3 type packages.
+            - name: React 18.0.0 compatibility
+              package: "@ayme-dev/react"
+              dir: packages/react
+              version: "18.0.0"
+              pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
+              build: "@ayme-dev/ayme... --filter=@ayme-dev/inspector... --filter=@ayme-dev/webmcp"
+              browser: true
+            # The Next, Nuxt and SvelteKit minima run the example apps' build,
+            # typecheck and E2E suites, with every framework process on the Node
+            # floor.
+            - name: Next 16.0 compatibility
+              package: "@ayme-dev/example-next"
+              dir: apps/example-next
+              version: "16.0.0"
+              pins: next
+              build: "@ayme-dev/example-next^..."
+              node: "20.19.0"
+              e2e: true
+            - name: Nuxt 4.0.1 compatibility
+              package: "@ayme-dev/example-nuxt"
+              dir: apps/example-nuxt
+              version: "4.0.1"
+              pins: nuxt
+              build: "@ayme-dev/example-nuxt^..."
+              node: "20.19.0"
+              e2e: true
+            # SvelteKit 2.53.0 is the first release that accepts Vite 8 and
+            # vite-plugin-svelte 7, which the example runs on.
+            - name: SvelteKit 2.53.0 compatibility
+              package: "@ayme-dev/example-sveltekit"
+              dir: apps/example-sveltekit
+              version: "2.53.0"
+              pins: "@sveltejs/kit"
+              build: "@ayme-dev/example-sveltekit^..."
+              node: "20.19.0"
+              e2e: true
+            # The Angular example uses APIs and an angular.json setting from
+            # Angular 21 and @angular/build 21.1.5, so its floor is above the
+            # package's. @ayme-dev/angular resolves Angular from its own
+            # devDependencies, so `linked` pins them too, or the app would load
+            # two Angular cores.
+            - name: Angular 21.0 example compatibility
+              package: "@ayme-dev/example-angular"
+              dir: apps/example-angular
+              version: "21.0.0"
+              pins: >-
+                @angular/common @angular/compiler @angular/core
+                @angular/platform-browser @angular/platform-server
+                @angular/router @angular/ssr @angular/cli @angular/compiler-cli
+                @angular/build@21.1.5 @angular-builders/custom-esbuild@21.1.0
+                typescript@5.9.3
+              linked: packages/angular
+              build: "@ayme-dev/example-angular^..."
+              node: "20.19.0"
+              e2e: true
         shell: bash
         run: |
           set -eo pipefail
@@ -101,7 +199,12 @@ jobs:
 
           packages=$(pnpm exec turbo ls $affected --output=json | jq -c '[.packages.items[].name]')
           echo "Packages the compatibility lanes check: $packages"
-          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          matrix=$(ruby -ryaml -rjson -e '
+            packages = JSON.parse(ARGV.fetch(0))
+            puts JSON.generate(YAML.safe_load(ENV.fetch("LANES")).select { |lane| packages.include?(lane.fetch("package")) })
+          ' "$packages")
+          echo "Compatibility lanes: $matrix"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
           # Markdown outside the packages, such as docs/guide/, affects no
           # package task but still needs the docs check. Workflows' Playwright
@@ -247,129 +350,23 @@ jobs:
   compatibility:
     name: ${{ matrix.name }}
     needs: changes
-    if: needs.changes.outputs.compatibility_packages != '[]'
+    if: needs.changes.outputs.compatibility_matrix != '[]'
     runs-on: ubuntu-latest
-    env:
-      AFFECTED: ${{ contains(fromJSON(needs.changes.outputs.compatibility_packages), matrix.package) }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: Vue 3.2 compatibility
-            package: "@ayme-dev/vue"
-            dir: packages/vue
-            version: "3.2.0"
-            pins: vue @vue/server-renderer
-            build: "@ayme-dev/ayme... --filter=@ayme-dev/inspector... --filter=@ayme-dev/webmcp"
-            browser: true
-          - name: Svelte 3.54.0 compatibility
-            package: "@ayme-dev/svelte"
-            dir: packages/svelte
-            version: "3.54.0"
-            pins: svelte
-            build: "@ayme-dev/ayme --filter=@ayme-dev/webmcp"
-            browser: true
-          - name: Svelte 4.2.20 compatibility
-            package: "@ayme-dev/svelte"
-            dir: packages/svelte
-            version: "4.2.20"
-            pins: svelte
-            build: "@ayme-dev/ayme --filter=@ayme-dev/webmcp"
-            browser: true
-          # @angular/animations 19.0.0, which @angular/platform-server loads,
-          # imports @angular/common without declaring it, so it would reach the
-          # workspace's hoisted Angular 22. The extension links it to 19.0.0.
-          - name: Angular 19.0 compatibility
-            package: "@ayme-dev/angular"
-            dir: packages/angular
-            version: "19.0.0"
-            pins: >-
-              @angular/core @angular/common @angular/compiler
-              @angular/platform-browser @angular/platform-server
-              @angular-devkit/schematics @schematics/angular
-            build: "@ayme-dev/angular..."
-            workspace: |
-              packageExtensions:
-                "@angular/animations@19.0.0":
-                  peerDependencies:
-                    "@angular/common": 19.0.0
-            browser: true
-          # React 18.0.0's own @types/react needs an old @types/scheduler, so
-          # the lane pairs the runtime with the 18.3 type packages.
-          - name: React 18.0.0 compatibility
-            package: "@ayme-dev/react"
-            dir: packages/react
-            version: "18.0.0"
-            pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
-            build: "@ayme-dev/ayme... --filter=@ayme-dev/inspector... --filter=@ayme-dev/webmcp"
-            browser: true
-          # The Next, Nuxt and SvelteKit minima run the example apps' build,
-          # typecheck and E2E suites, with every framework process on the Node
-          # floor.
-          - name: Next 16.0 compatibility
-            package: "@ayme-dev/example-next"
-            dir: apps/example-next
-            version: "16.0.0"
-            pins: next
-            build: "@ayme-dev/example-next^..."
-            node: "20.19.0"
-            e2e: true
-          - name: Nuxt 4.0.1 compatibility
-            package: "@ayme-dev/example-nuxt"
-            dir: apps/example-nuxt
-            version: "4.0.1"
-            pins: nuxt
-            build: "@ayme-dev/example-nuxt^..."
-            node: "20.19.0"
-            e2e: true
-          # SvelteKit 2.53.0 is the first release that accepts Vite 8 and
-          # vite-plugin-svelte 7, which the example runs on.
-          - name: SvelteKit 2.53.0 compatibility
-            package: "@ayme-dev/example-sveltekit"
-            dir: apps/example-sveltekit
-            version: "2.53.0"
-            pins: "@sveltejs/kit"
-            build: "@ayme-dev/example-sveltekit^..."
-            node: "20.19.0"
-            e2e: true
-          # The Angular example uses APIs and an angular.json setting from
-          # Angular 21 and @angular/build 21.1.5, so its floor is above the
-          # package's. @ayme-dev/angular resolves Angular from its own
-          # devDependencies, so `linked` pins them too, or the app would load
-          # two Angular cores.
-          - name: Angular 21.0 example compatibility
-            package: "@ayme-dev/example-angular"
-            dir: apps/example-angular
-            version: "21.0.0"
-            pins: >-
-              @angular/common @angular/compiler @angular/core
-              @angular/platform-browser @angular/platform-server
-              @angular/router @angular/ssr @angular/cli @angular/compiler-cli
-              @angular/build@21.1.5 @angular-builders/custom-esbuild@21.1.0
-              typescript@5.9.3
-            linked: packages/angular
-            build: "@ayme-dev/example-angular^..."
-            node: "20.19.0"
-            e2e: true
+        include: ${{ fromJSON(needs.changes.outputs.compatibility_matrix) }}
     steps:
-      - name: Skip, no change reaches ${{ matrix.package }}
-        if: env.AFFECTED != 'true'
-        run: echo "No change in this pull request reaches ${{ matrix.package }}."
       - uses: actions/checkout@v7
-        if: env.AFFECTED == 'true'
       - uses: actions/setup-node@v7
-        if: env.AFFECTED == 'true'
         with:
           node-version: 24
       - run: corepack enable
-        if: env.AFFECTED == 'true'
       - name: Resolve pnpm store path
-        if: env.AFFECTED == 'true'
         id: pnpm-store
         shell: bash
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
       - name: Cache pnpm store
-        if: env.AFFECTED == 'true'
         uses: actions/cache@v6
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -377,7 +374,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
       - name: Install the pinned minimum versions
-        if: env.AFFECTED == 'true'
         env:
           DIR: ${{ matrix.dir }}
           LINKED: ${{ matrix.linked }}
@@ -408,39 +404,36 @@ jobs:
           fi
           pnpm install --no-frozen-lockfile
       - name: Build ${{ matrix.build }}
-        if: env.AFFECTED == 'true'
         run: pnpm exec turbo run build --filter=${{ matrix.build }}
       - name: Install Chromium
-        if: env.AFFECTED == 'true' && (matrix.e2e || matrix.browser)
+        if: (matrix.e2e || matrix.browser)
         run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium
       # pnpm 11 needs Node 22.13, so pnpm stays on this Node 24 while the
       # scripts it starts resolve `node` from PATH, which becomes the floor.
       - name: Keep pnpm on Node 24
-        if: env.AFFECTED == 'true' && matrix.node
+        if: matrix.node
         run: |
           shim="$RUNNER_TEMP/pnpm-node24"
           mkdir -p "$shim"
           printf '#!/bin/sh\nexec "%s" "%s" "$@"\n' "$(command -v node)" "$(readlink -f "$(command -v pnpm)")" > "$shim/pnpm"
           chmod +x "$shim/pnpm"
       - uses: actions/setup-node@v7
-        if: env.AFFECTED == 'true' && matrix.node
+        if: matrix.node
         with:
           node-version: ${{ matrix.node }}
       - name: Run the framework on Node ${{ matrix.node }}
-        if: env.AFFECTED == 'true' && matrix.node
+        if: matrix.node
         env:
           NODE_FLOOR: ${{ matrix.node }}
         run: |
           echo "$RUNNER_TEMP/pnpm-node24" >> "$GITHUB_PATH"
           test "$(node --version)" = "v$NODE_FLOOR"
       - name: Build ${{ matrix.package }}
-        if: env.AFFECTED == 'true' && matrix.e2e
+        if: matrix.e2e
         run: pnpm --filter ${{ matrix.package }} build
       - name: Typecheck ${{ matrix.package }}
-        if: env.AFFECTED == 'true'
         run: pnpm --filter ${{ matrix.package }} typecheck
       - name: Test ${{ matrix.package }}
-        if: env.AFFECTED == 'true'
         run: pnpm --filter ${{ matrix.package }} ${{ matrix.e2e && 'test:e2e' || 'test' }}
 
   # Branch protection requires this job instead of the lanes, because a
