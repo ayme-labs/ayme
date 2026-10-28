@@ -149,10 +149,10 @@ describe("renderChangeRecord", () => {
   });
 
   describe("Page Object Roots", () => {
-    const labels = (entries: Record<string, string[]> = {}) =>
+    const marks = (entries: Record<string, string[]> = {}) =>
       new Map(
         Object.entries(entries).map(
-          ([ref, refLabels]) => [AriaRefSchema.parse(ref), refLabels] as const
+          ([ref, refMarks]) => [AriaRefSchema.parse(ref), refMarks] as const
         )
       );
     const LIST_PAGE = [
@@ -162,7 +162,7 @@ describe("renderChangeRecord", () => {
       "    - listitem [ref=e10]: Milk",
     ].join("\n");
 
-    it("labels a root kept as a path marker with its Page Object's name, role suppressed", () => {
+    it("marks a root kept as a path marker with its Page Object's name, role suppressed", () => {
       const reconciled = reconcile(
         LIST_PAGE,
         `${LIST_PAGE}\n    - listitem [ref=e12]: Eggs`
@@ -170,8 +170,8 @@ describe("renderChangeRecord", () => {
 
       expect(
         renderChangeRecord(reconciled, {
-          before: labels({ e3: ["ListPage"] }),
-          after: labels({ e3: ["ListPage"] }),
+          before: marks({ e3: ["ListPage"] }),
+          after: marks({ e3: ["ListPage"] }),
         })
       ).toBe(
         [
@@ -182,7 +182,7 @@ describe("renderChangeRecord", () => {
       );
     });
 
-    it("labels a removed root by the label it had before", () => {
+    it("marks a removed root by the mark it had before", () => {
       const reconciled = reconcile(
         LIST_PAGE,
         LIST_PAGE.replace("\n    - listitem [ref=e10]: Milk", "")
@@ -190,8 +190,8 @@ describe("renderChangeRecord", () => {
 
       expect(
         renderChangeRecord(reconciled, {
-          before: labels({ e10: ["ListItem"] }),
-          after: labels(),
+          before: marks({ e10: ["ListItem"] }),
+          after: marks(),
         })
       ).toBe(
         [
@@ -202,7 +202,7 @@ describe("renderChangeRecord", () => {
       );
     });
 
-    it("labels a present node by the labels it has after", () => {
+    it("marks a present node by the marks it has after", () => {
       const reconciled = reconcile(
         LIST_PAGE,
         `${LIST_PAGE}\n    - listitem [ref=e12]: Eggs`
@@ -210,8 +210,8 @@ describe("renderChangeRecord", () => {
 
       expect(
         renderChangeRecord(reconciled, {
-          before: labels({ e3: ["ListPage"] }),
-          after: labels({ e12: ["ListItem"] }),
+          before: marks({ e3: ["ListPage"] }),
+          after: marks({ e12: ["ListItem"] }),
         })
       ).toBe(
         ["- e3 main:", "  - e9 list:", "    - e12 ListItem <added>: Eggs"].join(
@@ -220,7 +220,7 @@ describe("renderChangeRecord", () => {
       );
     });
 
-    it("labels a synthetic root the reconciled tree keeps under its before ref", () => {
+    it("marks a synthetic root the reconciled tree keeps under its before ref", () => {
       const reconciled = reconcile(
         "- generic [ref=s_1]:\n  - listitem [ref=e2]: Milk",
         "- generic [ref=s_2]:\n  - listitem [ref=e2]: Eggs"
@@ -228,18 +228,18 @@ describe("renderChangeRecord", () => {
 
       expect(
         renderChangeRecord(reconciled, {
-          before: labels({ s_1: ["ListItem"] }),
-          after: labels({ s_2: ["ListItem"] }),
+          before: marks({ s_1: ["ListItem"] }),
+          after: marks({ s_2: ["ListItem"] }),
         })
       ).toBe(["- s_1 ListItem:", "  - e2 <changed> listitem: Eggs"].join("\n"));
     });
 
-    it("shows several labels on one root as the pom property", () => {
+    it("shows several marks on one root as the pom property", () => {
       const reconciled = reconcile(
         LIST_PAGE,
         `${LIST_PAGE}\n    - listitem [ref=e12]: Eggs`
       );
-      const shared = labels({ e3: ["ListPage", "Cart"] });
+      const shared = marks({ e3: ["ListPage", "Cart"] });
 
       expect(
         renderChangeRecord(reconciled, { before: shared, after: shared })

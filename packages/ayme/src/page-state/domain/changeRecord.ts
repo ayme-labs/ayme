@@ -6,15 +6,18 @@ import {
   type StructuralTree,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import { pomLabelProjection, type PomLabels } from "./pomLabels";
+import { pomRootMarkProjection, type PomRootMarks } from "./pomRootMarks";
 
-/** The Page Object labels of the two observations a Change Record reads between. */
-export type ChangeRecordLabels = {
-  readonly before: PomLabels;
-  readonly after: PomLabels;
+/** The Page Object Root Marks of the two observations a Change Record reads between. */
+export type ChangeRecordRootMarks = {
+  readonly before: PomRootMarks;
+  readonly after: PomRootMarks;
 };
 
-const noLabels: ChangeRecordLabels = { before: new Map(), after: new Map() };
+const noRootMarks: ChangeRecordRootMarks = {
+  before: new Map(),
+  after: new Map(),
+};
 
 /**
  * Render the changed subtrees of a reconciled structural tree
@@ -27,13 +30,13 @@ const noLabels: ChangeRecordLabels = { before: new Map(), after: new Map() };
  * every descendant). Nodes whose own content changed show their text content;
  * unchanged structural children below them are pruned.
  *
- * A Page Object Root reads as `snapshot` shows it, labelled by the side it
- * is read from: a removed node by the labels it had before, every other node
- * by the labels it has after.
+ * A Page Object Root reads as `snapshot` shows it, marked by the side it
+ * is read from: a removed node by the marks it had before, every other node
+ * by the marks it has after.
  */
 export function renderChangeRecord(
   reconciled: StructuralTree,
-  labels: ChangeRecordLabels = noLabels
+  marks: ChangeRecordRootMarks = noRootMarks
 ): string {
   const changed = new Set<AriaRef>();
   reconciled.walk((node) => {
@@ -60,8 +63,10 @@ export function renderChangeRecord(
     return result;
   };
 
-  const before = pomLabelProjection(labels.before);
-  const after = pomLabelProjection(reconciledLabels(reconciled, labels.after));
+  const before = pomRootMarkProjection(marks.before);
+  const after = pomRootMarkProjection(
+    reconciledRootMarks(reconciled, marks.after)
+  );
   const sideOf = (node: StructuralNode) =>
     node.status?.kind === "removed" ? before : after;
 
@@ -92,21 +97,21 @@ export function renderChangeRecord(
 }
 
 /**
- * The after side's labels by the refs the reconciled tree uses: a synthetic
+ * The after side's marks by the refs the reconciled tree uses: a synthetic
  * root matched to a synthetic root before keeps its before ref there.
  */
-function reconciledLabels(
+function reconciledRootMarks(
   reconciled: StructuralTree,
-  after: PomLabels
-): PomLabels {
+  after: PomRootMarks
+): PomRootMarks {
   return new Map(
-    [...after].map(([ref, refLabels]) => {
+    [...after].map(([ref, refMarks]) => {
       const before = isSyntheticRef(ref)
         ? reconciled.getBeforeNodeForAfterRef(ref)?.ref
         : undefined;
       return [
         before !== undefined && isSyntheticRef(before) ? before : ref,
-        refLabels,
+        refMarks,
       ] as const;
     })
   );

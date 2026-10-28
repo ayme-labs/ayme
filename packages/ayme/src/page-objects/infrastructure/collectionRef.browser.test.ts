@@ -19,15 +19,14 @@ const action = (methodName: string, description: string) => ({
   returnPoms: [],
 });
 
-function refInPageState(text: string, label: string, index = 0): string {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function refInPageState(text: string, mark: string, index = 0): string {
+  const escaped = mark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = [
     ...text.matchAll(
       new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
     ),
   ][index];
-  if (!match?.[1])
-    throw new Error(`No ref found for "${label}" in page state.`);
+  if (!match?.[1]) throw new Error(`No ref found for "${mark}" in page state.`);
   return match[1];
 }
 

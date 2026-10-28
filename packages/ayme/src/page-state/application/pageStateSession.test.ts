@@ -10,7 +10,7 @@ import {
 import { createCursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession, type ActionPage } from "./pageStateSession";
-import type { PomLabels } from "../domain/pomLabels";
+import type { PomRootMarks } from "../domain/pomRootMarks";
 import type { PageCapture } from "../domain/structuralPageState";
 
 const ref = AriaRefSchema.parse;
@@ -31,7 +31,7 @@ const element = (name: string) => ({ name }) as unknown as Element;
 function capture(
   yaml: string,
   elements: [ref: string, element: Element][] = [],
-  pomLabels: PomLabels = new Map()
+  pomRootMarks: PomRootMarks = new Map()
 ): PageCapture {
   return {
     tree: StructuralTree.fromAriaSnapshotYaml(
@@ -39,7 +39,7 @@ function capture(
       new SyntheticAriaRefFactory()
     ),
     elementsByRef: new Map(elements.map(([key, value]) => [ref(key), value])),
-    pomLabels,
+    pomRootMarks,
   };
 }
 
@@ -226,7 +226,7 @@ describe("an action's before capture", () => {
     return latest!;
   }
 
-  it("records nothing when the page and its labels are as last recorded", async () => {
+  it("records nothing when the page and its marks are as last recorded", async () => {
     const { session } = sessionOver(capture(page));
 
     expect(await latestAsPerformed(session)).toBe(
@@ -234,7 +234,7 @@ describe("an action's before capture", () => {
     );
   });
 
-  it("records a before when only a Page Object label changed", async () => {
+  it("records a before when only a Page Object Root Mark changed", async () => {
     const { session } = sessionOver(
       capture(page),
       capture(page, [], new Map([[ref("e2"), ["SaveButton"]]]))
@@ -243,7 +243,7 @@ describe("an action's before capture", () => {
     const before = await latestAsPerformed(session);
 
     expect(before).not.toBe(session.history.firstObservation);
-    expect(session.history.pomLabels(before)).toEqual(
+    expect(session.history.pomRootMarks(before)).toEqual(
       new Map([[ref("e2"), ["SaveButton"]]])
     );
   });

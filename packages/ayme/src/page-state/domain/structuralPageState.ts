@@ -6,7 +6,7 @@ import {
   type ProjectedStructuralNodeForest,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import { pomLabelProjection, type PomLabels } from "./pomLabels";
+import { pomRootMarkProjection, type PomRootMarks } from "./pomRootMarks";
 
 export type { AriaRef };
 
@@ -43,10 +43,10 @@ export type PageStateCapture = {
   readonly elementsByRef: ReadonlyMap<AriaRef, Element>;
 };
 
-/** One capture of the page: its tree, element map and Page Object labels. */
+/** One capture of the page: its tree, element map and Page Object Root Marks. */
 export type PageCapture = PageStateCapture & {
-  /** The Page Object labels of the tree's Page Object Roots, by ref. */
-  readonly pomLabels: PomLabels;
+  /** The Page Object Root Marks of the tree's Page Object Roots, by ref. */
+  readonly pomRootMarks: PomRootMarks;
 };
 
 /** A capture as the model is shown it. */
@@ -65,20 +65,20 @@ export type PageStateLook = PageStateCapture & RenderedPageState;
 /** The page state text of a capture, and the projected forest it renders. */
 export function renderPageState({
   tree,
-  pomLabels,
-}: Pick<PageCapture, "tree" | "pomLabels">): RenderedPageState {
-  const labels = pomLabelProjection(pomLabels);
+  pomRootMarks,
+}: Pick<PageCapture, "tree" | "pomRootMarks">): RenderedPageState {
+  const marks = pomRootMarkProjection(pomRootMarks);
   const projected = projectStructuralNodeForest(
     {
       roots: tree.getRootNodes(),
-      structuralNode: labels.structuralNode,
+      structuralNode: marks.structuralNode,
       children: (node) => node.children,
     },
     {
       includeIdentity: false,
       includeStatus: false,
-      prefixes: labels.prefixes,
-      properties: labels.properties,
+      prefixes: marks.prefixes,
+      properties: marks.properties,
     }
   );
   return { text: renderCompactStructuralNodeForest(projected), projected };
@@ -104,21 +104,21 @@ export function pageStateNodeEntry(node: ProjectedStructuralNode): {
 }
 
 /**
- * Whether two captures give the same nodes the same labels: each `after`
- * label is read on the `before` node `reconciled` matched it to.
+ * Whether two captures give the same nodes the same marks: each `after`
+ * mark is read on the `before` node `reconciled` matched it to.
  */
-export function sameLabels(
-  before: PomLabels,
-  after: PomLabels,
+export function sameRootMarks(
+  before: PomRootMarks,
+  after: PomRootMarks,
   reconciled: StructuralTree
 ): boolean {
-  const key = (labels: readonly string[]) => [...labels].sort().join("\n");
+  const key = (marks: readonly string[]) => [...marks].sort().join("\n");
   return (
     before.size === after.size &&
-    [...after].every(([ref, labels]) => {
+    [...after].every(([ref, marks]) => {
       const beforeRef = reconciled.getBeforeNodeForAfterRef(ref)?.ref ?? ref;
-      const beforeLabels = before.get(beforeRef);
-      return beforeLabels !== undefined && key(beforeLabels) === key(labels);
+      const beforeMarks = before.get(beforeRef);
+      return beforeMarks !== undefined && key(beforeMarks) === key(marks);
     })
   );
 }

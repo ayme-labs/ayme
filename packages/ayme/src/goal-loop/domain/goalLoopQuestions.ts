@@ -3,6 +3,7 @@ import {
   renderJsonStructuralNodeForest,
   renderTree,
   structuralNodeForest,
+  type JsonStructuralNode,
   type JsonStructuralNodeForest,
   type ProjectedStructuralNodeForest,
   type StructuralNode,
@@ -17,7 +18,12 @@ import type {
   JsonPrimitive,
 } from "../../shared";
 import type { DecisionQuestions, DecisionRequest } from "./decisionWire";
-import type { AriaRef, PageStateCapture } from "../../page-state/domain";
+import type {
+  AriaRef,
+  PageCapture,
+  PageStateCapture,
+  PomRootMarks,
+} from "../../page-state/domain";
 import { acceptedRefNodes } from "../../tools/application";
 import type {
   ArgumentSpec,
@@ -860,14 +866,16 @@ function addValuePresets(
 // --- Decision requests (ADR-0022: built in the browser) ---
 
 /**
- * A node the model is not shown: a `generic` with no name, props, state or
- * pointer cursor, whatever its children. Nothing targetable is among them: a
- * ref-only wrapper is never an option, and a single-character text leaf is
- * not interactive. Exploding them hoists their children, so a chain of
- * wrappers vanishes and the text of a leaf is hoisted as the string it is.
+ * A node the model is not shown: a `generic` with no name, props, state,
+ * pointer cursor or Page Object Root Mark, whatever its children. Nothing
+ * targetable is among them: a ref-only wrapper is never a ref option, an
+ * instance option's root is marked, and a single-character text leaf is not
+ * interactive. Exploding them hoists their children, so a chain of wrappers
+ * vanishes and the text of a leaf is hoisted as the string it is.
  */
-function prunable(node: StructuralNode): boolean {
+function prunable(node: StructuralNode, marks: PomRootMarks): boolean {
   return (
+    !marks.has(node.ref) &&
     node.role === "generic" &&
     node.name === "" &&
     Object.keys(node.props).length === 0 &&
@@ -890,17 +898,50 @@ const pageRendering: TreeRendering<
 };
 
 /**
- * The page as the model is shown it: the full capture's root nodes with the
- * prunable nodes exploded, then `pageRendering`. This forest is derived for
- * serialization only; the ref options and the Change Record keep walking the
- * full capture, so the refs the model reads are the capture's.
- * (`structuralPageState.ts` and `changeRecord.ts` compose the stages by hand.)
+ * A node of the page as the model is shown it: a Page Object Root carries its
+ * Page Object Root Marks as `pom`, one class name or several, as `snapshot`
+ * writes them.
  */
-function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
-  const shown = structuralNodeForest(pageTree.getRootNodes()).explode(
-    (_entry, node) => prunable(node)
+type PageNode = JsonStructuralNode & { pom?: string | readonly string[] };
+type PageForest = readonly (PageNode | string)[];
+
+function withRootMarks(
+  forest: JsonStructuralNodeForest,
+  marks: PomRootMarks
+): PageForest {
+  return forest.map((child) => {
+    if (typeof child === "string") return child;
+    const { ref, role, name, children, ...rest } = child;
+    const sorted = [...(marks.get(ref) ?? [])].sort();
+    return {
+      ref,
+      role,
+      name,
+      ...(sorted.length > 0
+        ? { pom: sorted.length === 1 ? sorted[0]! : sorted }
+        : {}),
+      ...rest,
+      children: withRootMarks(children, marks),
+    };
+  });
+}
+
+/**
+ * The page as the model is shown it: the full capture's root nodes with the
+ * prunable nodes exploded, then `pageRendering`, then the Page Object Root
+ * Marks. This forest is derived for serialization only; the ref options and
+ * the Change Record keep walking the full capture, so the refs the model
+ * reads are the capture's. (`structuralPageState.ts` and `changeRecord.ts`
+ * compose the stages by hand.)
+ */
+function renderPage({
+  tree,
+  pomRootMarks,
+}: Pick<PageCapture, "tree" | "pomRootMarks">): PageForest {
+  const shown = structuralNodeForest(tree.getRootNodes()).explode(
+    (_entry, node) => prunable(node, pomRootMarks)
   );
-  return renderTree(pageRendering, shown);
+  return withRootMarks(renderTree(pageRendering, shown), pomRootMarks);
 }
 
 /** The state of one step, as both stages of it are sent (or built from) it. */
@@ -918,14 +959,14 @@ export type StepState = {
 export function buildStepState(
   goal: string,
   values: GoalValues | undefined,
-  pageTree: StructuralTree,
+  capture: Pick<PageCapture, "tree" | "pomRootMarks">,
   pomDefinitionsText: string,
   history: readonly GoalLoopStepRecord[]
 ): StepState {
   return {
     goal,
     ...(values ? { values } : {}),
-    page: renderPage(pageTree),
+    page: renderPage(capture),
     page_objects: pomDefinitionsText,
     history,
   };

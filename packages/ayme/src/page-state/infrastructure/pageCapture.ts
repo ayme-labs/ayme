@@ -1,6 +1,6 @@
 // The Page State Session's capture of a document: Playwright Lite's ARIA
 // snapshot, with ignored subtrees and absent Page Object Roots left out and
-// the present roots placed and labelled.
+// the present roots placed and marked.
 
 import { captureAriaSnapshot } from "@ayme-dev/playwright-lite/internal";
 import {
@@ -20,11 +20,11 @@ import {
 import type { PageCapture } from "../domain/structuralPageState";
 
 /**
- * The Page Object Roots a capture places: present roots are labelled, and
+ * The Page Object Roots a capture places: present roots are marked, and
  * absent ones are left out of it.
  */
 export type PageObjectStructure = {
-  roots: readonly { label: string; element: Element }[];
+  roots: readonly { mark: string; element: Element }[];
   absentElements: readonly Element[];
 };
 
@@ -108,9 +108,9 @@ export async function capturePage(
   const coalesced = coalesceByElement(registrations);
   const referenced: {
     candidate: ReferencedCapturedRoot;
-    labels: string[];
+    marks: string[];
   }[] = [];
-  const omitted: { element: Element; labels: string[] }[] = [];
+  const omitted: { element: Element; marks: string[] }[] = [];
 
   for (const entry of coalesced) {
     const rawRef = capture.refsByElement.get(entry.element);
@@ -120,7 +120,7 @@ export async function capturePage(
           kind: "referenced",
           ref: AriaRefSchema.parse(rawRef),
         },
-        labels: entry.labels,
+        marks: entry.marks,
       });
     } else {
       omitted.push(entry);
@@ -136,12 +136,12 @@ export async function capturePage(
     refFactory
   );
   let currentTree = refPlacement.tree;
-  const labelsByRef = new Map<AriaRef, string[]>();
+  const marksByRef = new Map<AriaRef, string[]>();
   const elementsBySyntheticRef = new Map<AriaRef, Element>();
 
   for (const [index, ref] of refPlacement.refs.entries()) {
     if (ref === null) continue;
-    labelsByRef.set(ref, referenced[index]!.labels);
+    marksByRef.set(ref, referenced[index]!.marks);
   }
 
   for (const entry of omitted) {
@@ -160,7 +160,7 @@ export async function capturePage(
     currentTree = placement.tree;
     const ref = placement.refs[0] ?? null;
     if (ref !== null) {
-      labelsByRef.set(ref, entry.labels);
+      marksByRef.set(ref, entry.marks);
       elementsBySyntheticRef.set(ref, entry.element);
     }
   }
@@ -175,12 +175,12 @@ export async function capturePage(
   return {
     tree: currentTree,
     elementsByRef,
-    pomLabels: labelsByRef,
+    pomRootMarks: marksByRef,
   };
 }
 
 function sortOuterToInner(
-  entries: { element: Element; labels: string[] }[]
+  entries: { element: Element; marks: string[] }[]
 ): void {
   const decorated = entries.map((entry, index) => ({
     entry,

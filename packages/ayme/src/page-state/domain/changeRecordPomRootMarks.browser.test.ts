@@ -23,7 +23,7 @@ type ActionResultShape = {
   changes?: string;
 };
 
-describe("Page Object labels in a Change Record, in Chromium", () => {
+describe("Page Object Root Marks in a Change Record, in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let session: TestSession | undefined;
 
@@ -128,7 +128,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
   /** The first line of a rendered forest: the root's own line. */
   const firstLine = (text: string | undefined) => text?.split("\n")[0];
 
-  it("labels the root of an action's changes as the snapshot does", async () => {
+  it("marks the root of an action's changes as the snapshot does", async () => {
     startShoppingList();
     await readStructure();
 
@@ -140,7 +140,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     expect(result.changes).toContain("<added> listitem: Eggs");
   });
 
-  it("labels a removed Page Object Root with the name it had", async () => {
+  it("marks a removed Page Object Root with the name it had", async () => {
     startShoppingList();
     await readStructure();
 
@@ -149,7 +149,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     expect(result.changes).toMatch(/- e\d+ Banner <removed>: Welcome/);
   });
 
-  it("labels a nested root appearing after an action and disappearing before the next action by class", async () => {
+  it("marks a nested root appearing after an action and disappearing before the next action by class", async () => {
     startShoppingList();
     await readStructure();
     await run("ListPage.dismissBanner");
@@ -174,7 +174,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     ]);
   });
 
-  it("labels a removed root by a Page Object registered after the Caller last looked", async () => {
+  it("marks a removed root by a Page Object registered after the Caller last looked", async () => {
     const { register } = startShoppingList();
     await readStructure();
     const currentPage = page;
@@ -192,7 +192,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     );
   });
 
-  it("labels a removed root by a Page Object moved onto it after the Caller last looked", async () => {
+  it("marks a removed root by a Page Object moved onto it after the Caller last looked", async () => {
     const { register } = startShoppingList();
     const currentPage = page;
     let target = "h1";
@@ -212,7 +212,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     expect(result.changes).toMatch(/- e\d+ Panel <removed>:/);
   });
 
-  it("labels the root in changes_before too", async () => {
+  it("marks the root in changes_before too", async () => {
     startShoppingList();
     await readStructure();
 

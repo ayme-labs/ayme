@@ -66,14 +66,14 @@ const manifest: PomManifest = {
   ],
 };
 
-function refOf(text: string, label: string, index = 0): string {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function refOf(text: string, mark: string, index = 0): string {
+  const escaped = mark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ref = [
     ...text.matchAll(
       new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
     ),
   ][index]?.[1];
-  if (!ref) throw new Error(`No ref found for "${label}" in page state.`);
+  if (!ref) throw new Error(`No ref found for "${mark}" in page state.`);
   return ref;
 }
 

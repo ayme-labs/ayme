@@ -181,7 +181,7 @@ describe("Structural Ref interactions", () => {
     root.append(button);
     document.body.append(root);
     pageObjectStructure.mockResolvedValue({
-      roots: [{ label: "Page", element: root }],
+      roots: [{ mark: "Page", element: root }],
       absentElements: [],
     });
     mockCapture(button, "e2");

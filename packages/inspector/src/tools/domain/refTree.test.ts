@@ -19,7 +19,7 @@ const { roots } = buildStructureTree(
         state: { level: 1 },
       }),
       node(
-        { ref: "e3", label: "ListPage" },
+        { ref: "e3", mark: "ListPage" },
         "New item",
         node({ ref: "e4", role: "textbox", name: "New item" }),
         node({

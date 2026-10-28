@@ -11,7 +11,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
 import type { DecisionRequest, DecisionResponse } from "../domain/decisionWire";
-import type { PageStateCapture } from "../../page-state/domain";
+import type { PageCapture, PageStateCapture } from "../../page-state/domain";
 import type { RootedToolInstance } from "../../page-objects/application";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
@@ -32,7 +32,7 @@ import {
 // --- Fixtures ---
 
 /** A capture of `count` buttons in document order, refs e1..e<count>. */
-export function captureOfButtons(count: number): PageStateCapture {
+export function captureOfButtons(count: number): PageCapture {
   const yaml = Array.from(
     { length: count },
     (_, index) => `- button "Item ${index + 1}" [ref=e${index + 1}]`
@@ -47,7 +47,7 @@ export function captureOfButtons(count: number): PageStateCapture {
       AriaRefSchema.parse(`e${index}`),
       document.createElement("button")
     );
-  return { tree, elementsByRef };
+  return { tree, elementsByRef, pomRootMarks: new Map() };
 }
 
 /** A required ref any element of the page may fill. */

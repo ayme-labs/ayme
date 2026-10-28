@@ -65,7 +65,7 @@ export type ChangeRecordStarts = {
 
 /**
  * Read the Change Record from observation `from` to `to` through core,
- * rendered with each side's Page Object labels. Absent when nothing changed.
+ * rendered with each side's Page Object Root Marks. Absent when nothing changed.
  */
 export async function readRenderedChange(
   history: InteractionHistory,
@@ -75,8 +75,8 @@ export async function readRenderedChange(
   const change = await history.readChange(from, to);
   if (!change.hasAnyChanges()) return undefined;
   return renderChangeRecord(change, {
-    before: history.pomLabels(from),
-    after: history.pomLabels(to),
+    before: history.pomRootMarks(from),
+    after: history.pomRootMarks(to),
   });
 }
 

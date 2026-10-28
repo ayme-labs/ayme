@@ -152,7 +152,7 @@ describe("the Ayme page state helper", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "AccountPage", element: account },
+      { mark: "AccountPage", element: account },
     ]);
 
     const state = await ayme.getPageState();
@@ -214,14 +214,14 @@ describe("the Ayme page state helper", () => {
       });
     pageObjectRoots
       .mockResolvedValueOnce([
-        { label: "Account", element: account },
-        { label: "Billing", element: billing },
+        { mark: "Account", element: account },
+        { mark: "Billing", element: billing },
       ])
       .mockResolvedValueOnce([
-        { label: "Account", element: account },
-        { label: "Billing", element: billing },
+        { mark: "Account", element: account },
+        { mark: "Billing", element: billing },
       ])
-      .mockResolvedValueOnce([{ label: "Billing", element: billing }]);
+      .mockResolvedValueOnce([{ mark: "Billing", element: billing }]);
 
     const state = await ayme.getPageState();
     expect(state.text).toContain("s_1 Account");
@@ -267,7 +267,7 @@ describe("the Ayme page state helper", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "AccountPage", element: account },
+      { mark: "AccountPage", element: account },
     ]);
 
     const state = await ayme.getPageState();
@@ -296,7 +296,7 @@ describe("the Ayme page state helper", () => {
       .mockReturnValueOnce(rerenderedCapture)
       .mockReturnValueOnce(rerenderedCapture);
     pageObjectRoots.mockResolvedValue([
-      { label: "AccountPage", element: account },
+      { mark: "AccountPage", element: account },
     ]);
 
     const rerendered = await ayme.getPageState();

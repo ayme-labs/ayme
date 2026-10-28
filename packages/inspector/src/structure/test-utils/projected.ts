@@ -8,16 +8,16 @@ import type {
 
 type Child = ProjectedStructuralNode | string;
 
-/** A node's own part of its line, and its Page Object labels. */
+/** A node's own part of its line, and its Page Object Root Marks. */
 export type Header = {
   ref: string;
   role?: ProjectedStructuralNode["role"];
   name?: string;
   state?: Partial<ProjectedStructuralNode["state"]>;
   cursorPointer?: boolean;
-  /** The Page Object label written on its line, e.g. "ListPage". */
-  label?: string;
-  /** The Page Object labels it lists as its `/pom` property. */
+  /** The Page Object Root Mark written on its line, e.g. "ListPage". */
+  mark?: string;
+  /** The Page Object Root Marks it lists as its `/pom` property. */
   pom?: readonly string[];
 };
 
@@ -30,7 +30,7 @@ export function node(
     ref: header.ref as ProjectedStructuralNode["ref"],
     identityToken: undefined,
     status: undefined,
-    prefixes: [header.ref, ...(header.label ? [header.label] : [])],
+    prefixes: [header.ref, ...(header.mark ? [header.mark] : [])],
     role: header.role ?? "generic",
     name: header.name ?? "",
     state: { ...header.state },

@@ -19,7 +19,7 @@ import type {
 } from "../domain/interactionHistory";
 import {
   renderPageState,
-  sameLabels,
+  sameRootMarks,
   type PageCapture,
   type PageState,
   type AymeNode,
@@ -273,17 +273,21 @@ export class PageStateSession {
       capture.tree
     );
     // A Page Object registered or unregistered without the DOM changing
-    // still makes a before: a removed root is labelled by it.
+    // still makes a before: a removed root is marked by it.
     if (
       !sinceLatest.hasAnyChanges() &&
-      sameLabels(this.history.pomLabels(latest), capture.pomLabels, sinceLatest)
+      sameRootMarks(
+        this.history.pomRootMarks(latest),
+        capture.pomRootMarks,
+        sinceLatest
+      )
     )
       return undefined;
     const before = this.history.observeBefore(
       actionId,
       capture.tree,
       this.history.now(),
-      capture.pomLabels
+      capture.pomRootMarks
     );
     this.rememberElements(capture);
     return before;
@@ -309,7 +313,7 @@ export class PageStateSession {
       actionId,
       capture.tree,
       this.history.now(),
-      capture.pomLabels
+      capture.pomRootMarks
     );
     this.rememberElements(capture);
     return after;
@@ -333,7 +337,7 @@ export class PageStateSession {
       actionId,
       capture.tree,
       this.history.now(),
-      capture.pomLabels
+      capture.pomRootMarks
     );
     this.rememberElements(capture);
     return after;
@@ -351,7 +355,7 @@ export class PageStateSession {
       actionId,
       tree,
       this.history.now(),
-      this.history.pomLabels(latest.observation)
+      this.history.pomRootMarks(latest.observation)
     );
     this.rememberElements(latest);
     return after;
@@ -381,7 +385,7 @@ export class PageStateSession {
     const observation = this.history.observe(
       capture.tree,
       this.history.now(),
-      capture.pomLabels
+      capture.pomRootMarks
     );
     cursor?.move(observation);
     this.rememberElements(capture);

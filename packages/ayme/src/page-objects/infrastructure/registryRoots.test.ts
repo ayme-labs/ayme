@@ -77,7 +77,7 @@ describe("registered Page Object roots", () => {
 
     await expect(listRegisteredPomRoots()).resolves.toEqual([
       {
-        label: "Root",
+        mark: "Root",
         element: document.querySelector(".one"),
       },
     ]);
