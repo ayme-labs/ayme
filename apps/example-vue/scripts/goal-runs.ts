@@ -27,7 +27,9 @@ import {
   type ReportSuite,
 } from "./goalRunReport.ts";
 import {
-  reasonToday,
+  doneBar as policyDoneBar,
+  reasonBeforePolicy,
+  recordedReasonReproduced,
   replayIsExact,
   replayedReason,
   stoppingStepOf,
@@ -324,9 +326,9 @@ function replay(file: string, doneBar: number) {
       );
       if (!stop) return;
       if (!replayIsExact(stop)) inexact.push(`  ${title}, ${label}`);
-      if (reasonToday(stop) !== run.reason)
+      if (!recordedReasonReproduced(run, stop))
         mismatched.push(
-          `  ${title}, ${label}: recorded ${run.reason}, today's rule gives ${reasonToday(stop)}`
+          `  ${title}, ${label}: recorded ${run.reason}, the rule before the policy gives ${reasonBeforePolicy(stop)}`
         );
     });
   }
@@ -357,7 +359,7 @@ function replay(file: string, doneBar: number) {
     );
   if (mismatched.length > 0)
     console.log(
-      `\nToday's rule does not reproduce the recorded reason:\n${mismatched.join("\n")}`
+      `\nNeither the rule before the policy nor the policy reproduces the recorded reason:\n${mismatched.join("\n")}`
     );
 }
 
@@ -369,7 +371,7 @@ if (args[0] === "compare") {
     fail("Usage: goals:runs compare <runA.json> <runB.json>");
   compare(args[1]!, args[2]!);
 } else if (args[0] === "replay") {
-  const doneBar = Number(optionValue(args, "--done-bar") ?? 0.7);
+  const doneBar = Number(optionValue(args, "--done-bar") ?? policyDoneBar);
   if (args[1] === undefined || !(doneBar > 0 && doneBar <= 1))
     fail("Usage: goals:runs replay <runs.json> [--done-bar <bar in (0, 1]>]");
   replay(args[1], doneBar);

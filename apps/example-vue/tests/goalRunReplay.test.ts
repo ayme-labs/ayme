@@ -3,7 +3,8 @@ import { expect, it } from "vitest";
 
 import type { GoalRun } from "../scripts/goalRunReport";
 import {
-  reasonToday,
+  reasonBeforePolicy,
+  recordedReasonReproduced,
   replayIsExact,
   replayedReason,
   stoppingStepOf,
@@ -78,9 +79,9 @@ it("keeps the reason of a run that did not stop on no operation", () => {
   expect(replayedReason(runOf(null, []), 0.7)).toBeNull();
 });
 
-it("reproduces today's reason from the stopping step", () => {
+it("reproduces the reason from before the policy from the stopping step", () => {
   const today = (steps: GoalRunStep[]) =>
-    reasonToday(stoppingStepOf(runOf("done", steps))!);
+    reasonBeforePolicy(stoppingStepOf(runOf("done", steps))!);
   expect(today([none(0.55, 0.9)])).toBe("done");
   expect(today([none(0.2, 0.45)])).toBe("done");
   expect(today([ran("Timeout"), none(0.2, 0.45)])).toBe("no_fitting_option");
@@ -104,4 +105,17 @@ it("counts the passed done runs a bar loses and the false done runs it catches",
     caught: 1,
   });
   expect(sweepDoneBar(runs, 0.6).lost).toEqual({ no_fitting_option: 1 });
+});
+
+it("replays a run recorded under the policy, and reproduces its reason", () => {
+  const unverified = runOf("unverified", [none(0.55, 0.45)], false);
+  const stop = stoppingStepOf(unverified)!;
+  expect(replayedReason(unverified, 0.5)).toBe("done");
+  expect(recordedReasonReproduced(unverified, stop)).toBe(true);
+  expect(
+    recordedReasonReproduced(
+      runOf("no_fitting_option", [none(0.55, 0.45)]),
+      stop
+    )
+  ).toBe(false);
 });

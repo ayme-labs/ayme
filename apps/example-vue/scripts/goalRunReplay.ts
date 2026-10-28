@@ -1,17 +1,17 @@
 /**
- * Re-scores recorded runs under the done policy issue 1059 proposes, offline.
- * The policy only relabels the step at which stage one chose no operation,
+ * Re-scores recorded runs offline under the Step Decision's stop policy
+ * (ADR-0047) at another done bar, or, for a file recorded before it, at its
+ * own. The policy only relabels the step at which stage one chose no operation,
  * and never changes a step that acts, so a recorded run's stopping step is
  * all it needs: its `goal_met` and `goal_remaining`, how many steps ran
  * before it, and whether the last of them failed.
  */
 import type { GoalRun } from "./goalRunReport";
 
-/** `goal_met` from here up to the done bar hands back `unverified`; below, it
- *  hands back `no_fitting_option`. */
-export const unverifiedFloor = 0.3;
-/** At most this `goal_remaining`, after a step that ran ok, ends `done`. */
-export const nothingRemainingBar = 0.3;
+/** The Step Decision's bars, `DONE_BAR` and `LOWER_BAR` in
+ *  `packages/ayme/src/goal-loop/application/stepDecision.ts`, which owns them. */
+export const doneBar = 0.7;
+export const lowerBar = 0.3;
 /** The done bars the sweep compares. */
 export const sweptDoneBars = [0.6, 0.65, 0.7, 0.75, 0.8];
 
@@ -30,9 +30,10 @@ export type StoppingStep = {
 export function stoppingStepOf(run: GoalRun): StoppingStep | undefined {
   const last = run.steps.at(-1);
   if (last?.operation !== "none" || last.goalMetScore === null) return;
-  // A stage-one "none" ends the run with one of these two; any other reason
-  // came from a later check, such as an answer that failed to read.
-  if (run.reason !== "done" && run.reason !== "no_fitting_option") return;
+  // A stage-one "none" ends the run with one of these; any other reason came
+  // from a later check, such as an answer that failed to read.
+  if (!["done", "unverified", "no_fitting_option"].includes(run.reason ?? ""))
+    return;
   return {
     goalMet: last.goalMetScore,
     goalRemaining: last.goalRemainingScore,
@@ -47,9 +48,9 @@ export function replayIsExact(stop: StoppingStep) {
   return stop.historyLength === 0 || stop.lastResult !== undefined;
 }
 
-/** The reason today's Step Decision gives the stopping step, to check that
- *  the record holds what decided it. */
-export function reasonToday(stop: StoppingStep) {
+/** The reason the Step Decision gave the stopping step before the policy,
+ *  to check that a file recorded then holds what decided it. */
+export function reasonBeforePolicy(stop: StoppingStep) {
   const lastStepFailed = stop.historyLength > 0 && stop.lastResult !== "ok";
   const nothingOutstanding =
     !lastStepFailed &&
@@ -60,23 +61,32 @@ export function reasonToday(stop: StoppingStep) {
     : "no_fitting_option";
 }
 
-/** The reason the proposed policy gives the stopping step at `doneBar`. A
- *  missing last result counts as a failed step. */
-export function reasonUnderDoneBar(stop: StoppingStep, doneBar: number) {
+/** The reason the policy gives the stopping step at `bar`. A missing last
+ *  result counts as a failed step. */
+export function reasonUnderDoneBar(stop: StoppingStep, bar: number) {
   const nothingRemaining =
     stop.historyLength > 0 &&
     stop.lastResult === "ok" &&
     stop.goalRemaining !== undefined &&
-    stop.goalRemaining <= nothingRemainingBar;
-  if (stop.goalMet >= doneBar || nothingRemaining) return "done";
-  return stop.goalMet >= unverifiedFloor ? "unverified" : "no_fitting_option";
+    stop.goalRemaining <= lowerBar;
+  if (stop.goalMet >= bar || nothingRemaining) return "done";
+  return stop.goalMet >= lowerBar ? "unverified" : "no_fitting_option";
+}
+
+/** The Step Decision, before the policy or under it, gives the stopping step
+ *  its recorded reason: the record holds what decided it. */
+export function recordedReasonReproduced(run: GoalRun, stop: StoppingStep) {
+  return (
+    reasonBeforePolicy(stop) === run.reason ||
+    reasonUnderDoneBar(stop, doneBar) === run.reason
+  );
 }
 
 /** A run's reason under the policy: relabelled when it stopped on "none",
  *  as recorded otherwise. */
-export function replayedReason(run: GoalRun, doneBar: number) {
+export function replayedReason(run: GoalRun, bar: number) {
   const stop = stoppingStepOf(run);
-  return stop ? reasonUnderDoneBar(stop, doneBar) : run.reason;
+  return stop ? reasonUnderDoneBar(stop, bar) : run.reason;
 }
 
 /**
@@ -84,16 +94,16 @@ export function replayedReason(run: GoalRun, doneBar: number) {
  * the ones that passed and would no longer end `done`, by their new reason;
  * `caught`, the ones that did not pass and would no longer end `done`.
  */
-export function sweepDoneBar(runs: GoalRun[], doneBar: number) {
+export function sweepDoneBar(runs: GoalRun[], bar: number) {
   const done = runs.filter((run) => run.reason === "done");
-  const changed = (run: GoalRun) => replayedReason(run, doneBar) !== "done";
+  const changed = (run: GoalRun) => replayedReason(run, bar) !== "done";
   const lost: Record<string, number> = {};
   for (const run of done.filter((run) => run.passed && changed(run))) {
-    const reason = replayedReason(run, doneBar)!;
+    const reason = replayedReason(run, bar)!;
     lost[reason] = (lost[reason] ?? 0) + 1;
   }
   return {
-    doneBar,
+    doneBar: bar,
     passedDone: done.filter((run) => run.passed).length,
     falseDone: done.filter((run) => !run.passed).length,
     lost,

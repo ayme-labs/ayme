@@ -144,7 +144,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 
 ```ts
 {
-  reason:  "done" | "no_fitting_option" | "needs_value"
+  reason:  "done" | "unverified" | "no_fitting_option" | "needs_value"
          | "action_failed" | "no_progress" | "step_budget"
          | "decide_failed" | "page_loading",
   next:    string,     // plain words: what the calling agent should do now
@@ -163,16 +163,17 @@ Each step sends the pruned page state, the goal and the step's question from the
 }
 ```
 
-| Reason              | Meaning                                                                                                                                                                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `done`              | The model chose no further operation and judged the goal achieved on the page (goal_met ≥ 0.5), or no step of it still outstanding (goal_remaining < 0.5) after a step that ran. A goal may end in an effect the page never shows.     |
-| `no_fitting_option` | The model chose "none", as no available operation fits, or answered "none of these" to a collection item or in every chunk of a ref.                                                                                                   |
-| `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters.                                                                                                   |
-| `action_failed`     | Two operations failed in a row.                                                                                                                                                                                                        |
-| `no_progress`       | The loop stopped before repeating its last step to no effect. `needs` names the tool and its parameters.                                                                                                                               |
-| `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                                                                                                                       |
-| `decide_failed`     | The decision function failed (network, no endpoint mounted, rejected or malformed), its answer could not be used, or the page offers more operations than one decision can choose from. `next` advises a retry only when one can help. |
-| `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded.                                                                                                   |
+| Reason              | Meaning                                                                                                                                                                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `done`              | The model chose no further operation and judged the goal achieved on the page (goal_met ≥ 0.7), or, after a step that ran ok, no step of it still outstanding (goal_remaining ≤ 0.3). A goal may end in an effect the page never shows.            |
+| `unverified`        | The model chose no further operation but could not tell whether the goal holds (goal_met from 0.3 up to 0.7), as when the page does not show it. Check the page with `snapshot`, or call `goal` again with the goal phrased as the action to take. |
+| `no_fitting_option` | The model chose "none" and judged the goal not achieved (goal_met < 0.3), as no available operation fits, or answered "none of these" to a collection item or in every chunk of a ref.                                                             |
+| `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters.                                                                                                               |
+| `action_failed`     | Two operations failed in a row.                                                                                                                                                                                                                    |
+| `no_progress`       | The loop stopped before repeating its last step to no effect. `needs` names the tool and its parameters.                                                                                                                                           |
+| `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                                                                                                                                   |
+| `decide_failed`     | The decision function failed (network, no endpoint mounted, rejected or malformed), its answer could not be used, or the page offers more operations than one decision can choose from. `next` advises a retry only when one can help.             |
+| `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded.                                                                                                               |
 
 A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
 

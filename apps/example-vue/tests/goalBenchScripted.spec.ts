@@ -168,12 +168,6 @@ test.beforeEach(({ context }) => recordPublishedTools(context));
 
 for (const bench of benchGoals) {
   test(`scripted: ${bench.title}`, async ({ page }) => {
-    // Issue 1059: the loop has no `unverified` yet; an undecided goal_met
-    // still ends `done`. Remove this once the done policy lands.
-    test.fail(
-      bench.reason === "unverified",
-      "The Goal Loop hands back no unverified yet (issue 1059)"
-    );
     const failures = await answerDecisions(
       page,
       bench.intended,
