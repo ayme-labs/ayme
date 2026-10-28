@@ -1,0 +1,212 @@
+{
+  "metadata": {
+    "browserVersion": "156.0.8078.4",
+    "nodeVersion": "v24.21.0",
+    "head": "a55e9d15fed89156c80765bc72e729c47ce4fbc4",
+    "mode": "probe"
+  },
+  "rows": [
+    {
+      "path": "host",
+      "workMs": 1400,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177840025.2,
+      "marks": {
+        "clickEntered": 215.5,
+        "effect": 215.5,
+        "workStarted": 215.5,
+        "workReturned": 1615.5,
+        "handlerReturned": 1615.5
+      },
+      "returnedMs": 1000.9053329999999,
+      "nodeStartedEpochMs": 1793177840196,
+      "nodeReturnedEpochMs": 1793177841197,
+      "error": "locator.click: Timeout 1000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#apply')\u001b[22m\n\u001b[2m    - locator resolved to <button id=\"apply\">Apply</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing click action\u001b[22m\n",
+      "protocol": [
+        {
+          "atEpochMs": 1793177840208,
+          "phase": "send",
+          "id": 32,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840209,
+          "phase": "receive",
+          "id": 32,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840209,
+          "phase": "send",
+          "id": 33,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840210,
+          "phase": "receive",
+          "id": 33,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840210,
+          "phase": "send",
+          "id": 34,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840210,
+          "phase": "receive",
+          "id": 34,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840210,
+          "phase": "send",
+          "id": 35,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840210,
+          "phase": "send",
+          "id": 37,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840211,
+          "phase": "receive",
+          "id": 35,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840238,
+          "phase": "receive",
+          "id": 37,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840239,
+          "phase": "send",
+          "id": 40,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840239,
+          "phase": "receive",
+          "id": 40,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840239,
+          "phase": "send",
+          "id": 41,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840239,
+          "phase": "receive",
+          "id": 41,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177840240,
+          "phase": "send",
+          "id": 42,
+          "method": "Input.dispatchMouseEvent",
+          "type": "mouseMoved"
+        },
+        {
+          "atEpochMs": 1793177840240,
+          "phase": "send",
+          "id": 43,
+          "method": "Input.dispatchMouseEvent",
+          "type": "mousePressed"
+        },
+        {
+          "atEpochMs": 1793177840240,
+          "phase": "send",
+          "id": 44,
+          "method": "Input.dispatchMouseEvent",
+          "type": "mouseReleased"
+        },
+        {
+          "atEpochMs": 1793177840240,
+          "phase": "receive",
+          "id": 42,
+          "method": "Input.dispatchMouseEvent",
+          "type": "mouseMoved"
+        },
+        {
+          "atEpochMs": 1793177840245,
+          "phase": "receive",
+          "id": 43,
+          "method": "Input.dispatchMouseEvent",
+          "type": "mousePressed"
+        },
+        {
+          "atEpochMs": 1793177841196,
+          "phase": "send",
+          "id": 45,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177841197,
+          "phase": "send",
+          "id": 47,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177841641,
+          "phase": "receive",
+          "id": 44,
+          "method": "Input.dispatchMouseEvent",
+          "type": "mouseReleased"
+        },
+        {
+          "atEpochMs": 1793177841658,
+          "phase": "receive",
+          "id": 45,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177841658,
+          "phase": "receive",
+          "id": 47,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177841659,
+          "phase": "send",
+          "id": 49,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        },
+        {
+          "atEpochMs": 1793177841659,
+          "phase": "receive",
+          "id": 49,
+          "method": "Runtime.callFunctionOn",
+          "purpose": "other-evaluation"
+        }
+      ]
+    }
+  ]
+}
