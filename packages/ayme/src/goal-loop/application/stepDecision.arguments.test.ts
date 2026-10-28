@@ -9,7 +9,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, GoalValues, JsonSchema } from "../../shared";
 import type { DecisionRequest } from "../domain/decisionWire";
-import type { PageStateCapture } from "../../page-state/domain";
+import type { PageCapture } from "../../page-state/domain";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,
@@ -121,7 +121,7 @@ describe("rooted instance choices", () => {
 
     const verdict = await step(decide, {
       goal: "Archive the second item in the list",
-      capture: { tree, elementsByRef },
+      capture: { tree, elementsByRef, pomRootMarks: new Map() },
       toolOptions: [optionOf(tool)],
     });
 
@@ -1193,7 +1193,7 @@ describe("Goal Values asked speculatively in stage one", () => {
 
 describe("the state a request that only picks an element is sent", () => {
   /** Unnamed textboxes under named regions, with text around them. */
-  function surveyCapture(): PageStateCapture {
+  function surveyCapture(): PageCapture {
     const yaml = [
       '- form "Survey editor" [ref=e1]:',
       '  - region "Question 1" [ref=e2]:',
@@ -1222,7 +1222,7 @@ describe("the state a request that only picks an element is sent", () => {
       AriaRefSchema.parse("e9"),
       document.createElement("button")
     );
-    return { tree, elementsByRef };
+    return { tree, elementsByRef, pomRootMarks: new Map() };
   }
 
   // A step that changed the page: its history entry carries what it changed.
@@ -1328,7 +1328,9 @@ describe("the state a request that only picks an element is sent", () => {
       answers: { ref: choice("e7") },
     });
 
-    await step(decide, { capture: { tree, elementsByRef } });
+    await step(decide, {
+      capture: { tree, elementsByRef, pomRootMarks: new Map() },
+    });
 
     const elements = (
       requests[1]!.state as { elements: Record<string, unknown>[] }

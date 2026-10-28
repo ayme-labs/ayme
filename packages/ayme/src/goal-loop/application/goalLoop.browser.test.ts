@@ -2341,6 +2341,116 @@ describe("Goal Loop goal in Chromium", () => {
     ).not.toContain(false);
   });
 
+  it("keeps an offered instance's ref-only root in the page it sends, with its Page Object Root Mark, and prunes the other wrappers", async () => {
+    document.body.innerHTML = `
+      <main>
+        <form aria-label="Add a list item">
+          <div id="bar">
+            <div><input aria-label="New item" /></div>
+            <button type="button">Add item</button>
+          </div>
+        </form>
+      </main>
+    `;
+    class ListPage {
+      readonly bars = [rooted(page.locator("#bar"), { addItem() {} })];
+    }
+    registerCompiledPom(
+      ListPage,
+      manifest(
+        "ListPage",
+        [collection("bars", "AddItemBar")],
+        [],
+        [
+          {
+            className: "AddItemBar",
+            members: [root()],
+            tools: [action("addItem", "AddItemBar.addItem")],
+          },
+        ]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "AddItemBar.addItem",
+          goal_met: 0.1,
+          arguments: { ref: { nth: 0 } },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    session.pom.register(ListPage);
+
+    await tool.execute({ goal: "add an item", maxSteps: 5 });
+
+    const [rootRef] = Object.keys(
+      offeredElements(criteriaOf(requests[1]!).ref!)
+    );
+    expect(rootRef).toBeDefined();
+    const generics: { ref?: string; pom?: unknown }[] = [];
+    const walk = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      const record = node as {
+        ref?: string;
+        role?: string;
+        pom?: unknown;
+        children?: unknown[];
+      };
+      if (record.role === "generic")
+        generics.push({ ref: record.ref, pom: record.pom });
+      walk(record.children);
+    };
+    walk((requests[0]!.state as { page: unknown }).page);
+    // The root is the only wrapper the page keeps, marked with its class: the
+    // one around the input is still pruned.
+    expect(generics).toEqual([{ ref: rootRef, pom: "AddItemBar" }]);
+    // A node that is no Page Object Root carries no mark.
+    const sent = JSON.stringify(requests[0]!.state);
+    expect(sent).toContain('"role":"form","name":"Add a list item","children"');
+  });
+
+  it("marks a root of several Page Objects with each class, in order", async () => {
+    document.body.innerHTML = `
+      <main>
+        <div id="bar"><button type="button">Add item</button></div>
+      </main>
+    `;
+    class ListPage {
+      readonly toolbars = [rooted(page.locator("#bar"), {})];
+      readonly bars = [rooted(page.locator("#bar"), { addItem() {} })];
+    }
+    registerCompiledPom(
+      ListPage,
+      manifest(
+        "ListPage",
+        [collection("toolbars", "Toolbar"), collection("bars", "AddItemBar")],
+        [],
+        [
+          { className: "Toolbar", members: [root()], tools: [] },
+          {
+            className: "AddItemBar",
+            members: [root()],
+            tools: [action("addItem", "AddItemBar.addItem")],
+          },
+        ]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([{ operation: "none", goal_met: 0.9 }])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    session.pom.register(ListPage);
+
+    await tool.execute({ goal: "add an item", maxSteps: 5 });
+
+    expect(JSON.stringify(requests[0]!.state)).toContain(
+      '"pom":["AddItemBar","Toolbar"]'
+    );
+  });
+
   // --- Stage two: a ref question over the option cap ---
 
   /** A page whose clickable elements outnumber one question's options. */
@@ -2946,10 +3056,13 @@ describe("Goal Loop goal in Chromium", () => {
       maxSteps: 5,
     })) as Record<string, unknown>;
 
-    // The page the model read: no wrapper, the leaves' text hoisted as it was.
+    // The page the model read: no wrapper, each item marked with its class,
+    // the leaves' text hoisted as it was.
     const sent = JSON.stringify(requests[0]!.state);
     expect(sent).not.toContain('"role":"generic"');
-    expect(sent).toContain('"name":"Item 1","children":["t","ask"]');
+    expect(sent).toContain(
+      '"name":"Item 1","pom":"Item","children":["t","ask"]'
+    );
 
     // The instance options come from the full capture and still resolve.
     const instanceRefs = Object.keys(

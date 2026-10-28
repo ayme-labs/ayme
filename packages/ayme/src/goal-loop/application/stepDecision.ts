@@ -13,7 +13,7 @@ import type {
   HandoverNeeds,
   HandoverReason,
 } from "../../shared";
-import type { PageStateCapture } from "../../page-state/domain";
+import type { PageCapture, PageStateCapture } from "../../page-state/domain";
 import {
   buildArgumentRequest,
   buildOperationRequest,
@@ -97,7 +97,7 @@ export type StepInput = {
   /** The steps executed so far, oldest first. */
   history: readonly GoalLoopStepRecord[];
   /** The page the loop received for this step; both stages decide on it. */
-  capture: PageStateCapture;
+  capture: PageCapture;
   /** The operations the page offers at this step. */
   toolOptions: readonly ToolOption[];
   /** The registered Page Object definitions, rendered for the model. */
@@ -474,13 +474,7 @@ export async function decideStep({
     );
   }
 
-  const state = buildStepState(
-    goal,
-    values,
-    capture.tree,
-    pomDefinitions,
-    history
-  );
+  const state = buildStepState(goal, values, capture, pomDefinitions, history);
   // Free values asked next to the operation, so stage two picks the element
   // with the value it will receive in view.
   const speculative = buildSpeculativeValueQuestions(toolOptions, values);
