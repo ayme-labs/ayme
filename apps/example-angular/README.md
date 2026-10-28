@@ -31,6 +31,12 @@ The default build renders on the server (`outputMode: "server"`, `RenderMode.Ser
 
 ## Verify
 
+The SPA server regression uses temporary build output and needs no Angular build:
+
+```sh
+pnpm --filter @ayme-dev/example-angular test
+```
+
 After building, with no manually started server:
 
 ```sh
