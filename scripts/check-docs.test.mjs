@@ -230,6 +230,26 @@ const experimentalPage = (list) => ({
 });
 const tagged = `/** Reads state. */\nexport function readState(): void {}\n\nexport type Options = {\n  /**\n   * Turns the loop on.\n   * @experimental\n   */\n  loop?: () => void;\n};\n\n/** @experimental */\nexport default function loader() {}\n`;
 
+for (const extension of ["ts", "tsx"]) {
+  test(`ignores screenshot directories ending in .${extension} and still detects experimental source`, () => {
+    const screenshot = `packages/lib/src/shared/__screenshots__/case.browser.test.${extension}/failure.png`;
+    const source = `packages/lib/src/nested/api.${extension}`;
+    const root = fixture({
+      [screenshot]: "failure evidence\n",
+      [source]: "/** @experimental */\nexport function preview() {}\n",
+    });
+
+    assert.deepEqual(checkDocs(root), [
+      `${source}:2: ` +
+        "`preview` in lib is marked @experimental but not listed in docs/guide/reference/experimental-apis.md",
+    ]);
+    assert.equal(
+      fs.readFileSync(path.join(root, screenshot), "utf8"),
+      "failure evidence\n"
+    );
+  });
+}
+
 test("passes when the page lists every API a published package marks experimental", () => {
   assert.deepEqual(
     checkDocs(
