@@ -258,15 +258,12 @@ it("starts the Agent Connection while a session with agentConnection is started"
     list.map(({ name }) => name);
   expect(names(tools.list())).toEqual(names(runtime.tools.list()));
   // MCP describes each tool by its Agent Description: a bare action has
-  // none, an action says what it shows afterwards, any other tool says its
-  // own.
-  expect(tools.list().find((tool) => tool.name === "snapshot")).toMatchObject({
-    description: runtime.tools.list().find((tool) => tool.name === "snapshot")
-      ?.agentDescription,
-  });
+  // none, an action says what it shows afterwards, a described one says
+  // what its author wrote.
   class Opener {
     open() {}
     close() {}
+    save() {}
   }
   registerCompiledPom(Opener, {
     className: "Opener",
@@ -280,6 +277,12 @@ it("starts the Agent Connection while a session with agentConnection is started"
         returnPoms: ["Dialog"],
       },
       { methodName: "close", toolName: "Opener.close", parameters: [] },
+      {
+        methodName: "save",
+        toolName: "Opener.save",
+        description: "Save the draft.",
+        parameters: [],
+      },
     ],
   });
   runtime.pom.register(Opener);
@@ -290,6 +293,9 @@ it("starts the Agent Connection while a session with agentConnection is started"
     description: "Shows Dialog.",
   });
   expect(listed("Opener.close")).not.toHaveProperty("description");
+  expect(listed("Opener.save")).toMatchObject({
+    description: "Save the draft.",
+  });
   runtime.pom.unregister(Opener);
   const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
   await expect(tools.run("snapshot", {})).resolves.toBe("ran");

@@ -919,7 +919,18 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         loadProcessConnection().then(
           ({ startAgentConnection }) =>
             () =>
-              startAgentConnection(ayme, where)
+              // Its tools listed as Ayme MCP lists the page's; its calls run
+              // through the session as before.
+              startAgentConnection(
+                {
+                  tools: {
+                    ...ayme.tools,
+                    list: aymeMcpTools.list,
+                    subscribe: aymeMcpTools.subscribe,
+                  },
+                },
+                where
+              )
         )
       );
     }

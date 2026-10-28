@@ -72,7 +72,21 @@ describe("createAyme in an App Process", () => {
     await loaded();
 
     expect(processConnections).toHaveLength(1);
-    expect(processConnections[0]!.ayme).toBe(ayme);
+    const { tools } = processConnections[0]!.ayme;
+    expect(tools.run).toBe(ayme.tools.run);
+    // The connection lists each tool as Ayme MCP does: by its Agent
+    // Description, before and after a change.
+    const heard: unknown[] = [];
+    cleanups.push(tools.subscribe((list) => heard.push(list)));
+    peek(ayme, () => 1, "jobs");
+    expect(tools.list()).toEqual([
+      expect.objectContaining({
+        name: "peek.node.jobs",
+        description:
+          'Read the current values of the Peek "jobs" from each live instance.',
+      }),
+    ]);
+    expect(heard.at(-1)).toEqual(tools.list());
   });
 
   it("passes the connect link and port of the agentConnection option to the connection", async () => {
@@ -219,7 +233,9 @@ describe("createAyme in an App Process", () => {
     for (const render of renders) cleanups.push(render.start());
     await loaded();
 
-    expect(processConnections.map(({ ayme }) => ayme)).toEqual([appProcess]);
+    expect(processConnections.map(({ ayme }) => ayme.tools.run)).toEqual([
+      appProcess.tools.run,
+    ]);
   });
 
   it("has one App Process per process: another start throws active-owner until the first stops", async () => {
@@ -233,7 +249,7 @@ describe("createAyme in an App Process", () => {
     expect(() => first.start()).toThrow(activeOwner);
     await loaded();
     expect(processConnections).toHaveLength(1);
-    expect(processConnections[0]!.ayme).toBe(first);
+    expect(processConnections[0]!.ayme.tools.run).toBe(first.tools.run);
     expect(first.tools.list().map(({ name }) => name)).toEqual([
       "peek.node.jobs",
     ]);
@@ -244,10 +260,10 @@ describe("createAyme in an App Process", () => {
     await loaded();
 
     expect(
-      processConnections.map(({ ayme, disposed }) => [ayme, disposed])
+      processConnections.map(({ ayme, disposed }) => [ayme.tools.run, disposed])
     ).toEqual([
-      [first, true],
-      [second, false],
+      [first.tools.run, true],
+      [second.tools.run, false],
     ]);
     expect(second.tools.list().map(({ name }) => name)).toEqual([
       "peek.node.jobs",
