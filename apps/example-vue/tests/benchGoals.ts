@@ -239,16 +239,23 @@ export const benchGoals: BenchGoal[] = [
     },
   },
   {
-    // The language select offers no Klingon.
-    title: "settings: set the language to one it does not offer",
+    // The page has no SMS notifications setting.
+    title: "settings: turn on a setting the page does not have",
     path: "/bench/settings",
     heading: "Settings",
-    goal: "Set the language to Klingon",
+    goal: "Turn on SMS notifications",
     maxSteps: 3,
     reason: "no_fitting_option",
     intended: [],
     async outcome(page) {
-      await expect(page.getByLabel("Language")).toHaveValue("English");
+      for (const name of [
+        "Email notifications",
+        "Push notifications",
+        "Weekly summary email",
+      ])
+        await expect(page.getByRole("checkbox", { name })).toBeChecked({
+          checked: name === "Email notifications",
+        });
     },
   },
   {

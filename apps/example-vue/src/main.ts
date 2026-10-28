@@ -24,11 +24,23 @@ const BenchRoute = import.meta.env.DEV
   ? defineAsyncComponent(() => import("./bench/BenchRoute.vue"))
   : undefined;
 
+// The run harness's goal pages that need Page Objects, under `harness/`, on
+// the dev server only as well.
+const harnessRoutes: Record<string, typeof App> = import.meta.env.DEV
+  ? {
+      "harness/create-menu": defineAsyncComponent(
+        () => import("./harness/CreateMenuRoute.vue")
+      ),
+    }
+  : {};
+
 export function startExampleApp() {
   window.__AYME_VUE_ACTIONS__ = [];
   const route = location.pathname.slice(import.meta.env.BASE_URL.length);
   const bench = route.startsWith("bench/") ? BenchRoute : undefined;
-  return createApp(routes[route] ?? bench ?? App).mount("#app");
+  return createApp(routes[route] ?? harnessRoutes[route] ?? bench ?? App).mount(
+    "#app"
+  );
 }
 
 startExampleApp();

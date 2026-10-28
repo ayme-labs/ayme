@@ -12,6 +12,9 @@ import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 export type GoalRunStep = {
   /** The operation option stage one chose; `none` when nothing fits. */
   operation: string | null;
+  /** Stage one's probability per operation option, as the loop scored them;
+   *  absent when the loop's run result could not be read. */
+  operationProbabilities?: Record<string, number>;
   goalMetScore: number | null;
   goalRemainingScore?: number;
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
@@ -193,6 +196,8 @@ function stepsOf(
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
+    if (score.operationProbabilities)
+      step.operationProbabilities = score.operationProbabilities;
     if (score.goalRemainingScore !== undefined)
       step.goalRemainingScore = score.goalRemainingScore;
     if (score.runOff) step.runOff = true;
