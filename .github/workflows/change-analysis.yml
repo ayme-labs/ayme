@@ -89,6 +89,8 @@ jobs:
     timeout-minutes: 90
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     steps:
       - uses: actions/checkout@v7
         with:
