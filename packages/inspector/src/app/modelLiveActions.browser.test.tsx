@@ -52,7 +52,8 @@ const save: RegisteredPomTool = {
   className: "Toolbar",
   name: "Toolbar.save",
   methodName: "save",
-  description: "Save the document.",
+  authorDescription: "Save the document.",
+  agentDescription: "Save the document.",
   inputSchema: noArguments,
   parameters: [],
 };
@@ -79,7 +80,8 @@ function editor(toolbarOnPage: boolean): RegisteredPom {
 const saveTool = (available: boolean): ToolInfo[] => [
   {
     name: save.name,
-    description: save.description,
+    authorDescription: save.authorDescription,
+    agentDescription: save.agentDescription,
     inputSchema: noArguments,
     group: "pageObject",
     available,
@@ -105,7 +107,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   startedAyme.webMCP.publicationStatus = runtime.publication;
   const {
     pageStateNodeEntry,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -121,7 +122,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     pageStateNodeEntry,
     rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -319,10 +319,14 @@ it("keeps unobserved model members visible before a child's first observation", 
 it.each([true, false])(
   "describes a model action as agents read it, on the page or off it: %s",
   async (toolbarOnPage) => {
-    const opener = { ...save, returnPoms: ["ConfirmDialog"] };
+    const shown = {
+      returnPoms: ["ConfirmDialog"],
+      agentDescription: "Save the document. Then shows ConfirmDialog.",
+    };
+    const opener = { ...save, ...shown };
     renderApp({
       toolbarOnPage,
-      live: [{ ...saveTool(toolbarOnPage)[0]!, returnPoms: ["ConfirmDialog"] }],
+      live: [{ ...saveTool(toolbarOnPage)[0]!, ...shown }],
       registrations: [{ ...editor(toolbarOnPage), tools: [opener] }],
     });
     await inspector.navigator.model.object("Editor.toolbar").click();

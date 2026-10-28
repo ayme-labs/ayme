@@ -45,75 +45,64 @@ export function inputSchemaFor(
 
 /**
  * What a Page Object Tool tells about its action beyond its name and schema:
- * the description its author wrote, and the other Page Objects it may
- * return, which the page shows afterwards. A blank description, or
- * returning its own class, tells nothing, so it is left out.
+ * the description its author wrote, the other Page Objects it may return,
+ * which the page shows afterwards, and its Agent Description, the text an
+ * agent reads from the two. A blank description, or returning its own class,
+ * tells nothing, so it is left out.
  */
 export function actionFacts(
   action: ToolManifest,
   ownClassName: string
-): { description?: string; returnPoms?: readonly string[] } {
+): {
+  authorDescription?: string;
+  agentDescription?: string;
+  returnPoms?: readonly string[];
+} {
   const returnPoms =
     action.returnPoms?.filter((name) => name !== ownClassName) ?? [];
+  // A blank description says nothing, and WebMCP refuses an empty one.
+  const authorDescription = action.description?.trim()
+    ? action.description
+    : undefined;
+  const agentDescription = describeAction(authorDescription, returnPoms);
   return {
-    // A blank description says nothing, and WebMCP refuses an empty one.
-    ...(action.description?.trim() ? { description: action.description } : {}),
+    ...(authorDescription === undefined ? {} : { authorDescription }),
+    ...(agentDescription === undefined ? {} : { agentDescription }),
     ...(returnPoms.length ? { returnPoms } : {}),
   };
 }
 
-/** A tool as `describeTool` reads it. */
-type DescribedTool = {
-  name: string;
-  description?: string;
-  returnPoms?: readonly string[];
-};
-
-/** Who reads a tool's description. */
-export type DescriptionReader =
-  "ayme-mcp" | "webmcp" | "goal-loop" | "inspector";
-
 /**
- * Whether a reader needs a description of every tool. WebMCP refuses a tool
- * without one, and the Goal Loop's model chooses an operation by it. Ayme
- * MCP allows none, and the Inspector shows what Ayme MCP gives agents.
+ * The author's description, then the Page Objects the page shows
+ * afterwards, by class: `Shows A or B.` alone, `Then shows A or B.` after
+ * the author's text. None when the action says nothing beyond its name and
+ * schema.
  */
-const descriptionRequired = {
-  "ayme-mcp": false,
-  webmcp: true,
-  "goal-loop": true,
-  inspector: false,
-} as const satisfies Record<DescriptionReader, boolean>;
-
-/**
- * A tool's description as `reader` reads it: its own, then the Page Objects
- * the page shows afterwards, by class. When the tool says nothing beyond its
- * name and schema, a reader that requires a description gets `Run addItem.`
- * and the others get none. A Browser or Custom Tool's description is its own.
- */
-export function describeTool(
-  tool: DescribedTool,
-  reader: "webmcp" | "goal-loop"
-): string;
-export function describeTool(
-  tool: DescribedTool,
-  reader: "ayme-mcp" | "inspector"
-): string | undefined;
-export function describeTool(
-  tool: DescribedTool,
-  reader: DescriptionReader
-): string | undefined;
-export function describeTool(
-  tool: DescribedTool,
-  reader: DescriptionReader
+function describeAction(
+  authorDescription: string | undefined,
+  returnPoms: readonly string[]
 ): string | undefined {
-  const parts = tool.description === undefined ? [] : [tool.description];
-  if (tool.returnPoms?.length)
-    parts.push(`Then shows ${tool.returnPoms.join(" or ")}.`);
-  if (parts.length) return parts.join(" ");
-  if (descriptionRequired[reader])
-    return `Run ${tool.name.slice(tool.name.lastIndexOf(".") + 1)}.`;
-  return undefined;
+  if (!returnPoms.length) return authorDescription;
+  const shown = returnPoms.join(" or ");
+  return authorDescription === undefined
+    ? `Shows ${shown}.`
+    : `${authorDescription} Then shows ${shown}.`;
+}
+
+/**
+ * A tool's description for a reader that needs one of every tool: its Agent
+ * Description, or `Run addItem.` when it has none. WebMCP refuses a tool
+ * without a description, and the Goal Loop's model chooses an operation by
+ * it.
+ */
+export function requiredDescription(tool: {
+  name: string;
+  agentDescription?: string;
+}): string {
+  return (
+    tool.agentDescription ??
+    `Run ${tool.name.slice(tool.name.lastIndexOf(".") + 1)}.`
+  );
 }
 
 /** The method's arguments: a rest parameter's list is its remaining ones. */

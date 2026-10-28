@@ -274,7 +274,7 @@ describe("POM definition catalog", () => {
           actions: [
             {
               name: "run",
-              description: callable?.description,
+              description: callable?.authorDescription,
               inputSchema: callable?.inputSchema,
               returnPoms: [],
             },

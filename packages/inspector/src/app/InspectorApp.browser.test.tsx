@@ -28,7 +28,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -45,7 +44,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     pageStateNodeEntry,
     rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
-    describeTool,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -81,7 +79,8 @@ function saveTool(pomId: string): RegisteredPomTool {
     rooted: false,
     methodName: "save",
     name: "Editor.save",
-    description: "Save the editor.",
+    authorDescription: "Save the editor.",
+    agentDescription: "Save the editor.",
     inputSchema: { type: "object" },
     parameters: [
       {
@@ -108,7 +107,7 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
       tools: tools.map((tool) => ({
         methodName: tool.methodName,
         toolName: tool.name,
-        description: tool.description,
+        description: tool.authorDescription,
         parameters: tool.parameters,
       })),
     },
@@ -142,13 +141,16 @@ function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
     activeTools as ReturnType<typeof listAvailablePomTools>
   );
   startedAyme.tools.list.mockReturnValue(
-    activeTools.map(({ name, description, inputSchema }) => ({
-      name,
-      description,
-      inputSchema,
-      group: "pageObject",
-      available: true,
-    }))
+    activeTools.map(
+      ({ name, authorDescription, agentDescription, inputSchema }) => ({
+        name,
+        authorDescription,
+        agentDescription,
+        inputSchema,
+        group: "pageObject",
+        available: true,
+      })
+    )
   );
 }
 
@@ -340,7 +342,8 @@ describe("the Inspector", () => {
       ...saveTool("editor"),
       methodName: "publish",
       name: "Editor.publish",
-      description: "Publish the editor.",
+      authorDescription: "Publish the editor.",
+      agentDescription: "Publish the editor.",
     };
     mockRegistry([editor("editor", save, publish)], [save, publish]);
     const settle = new Map<string, (result: unknown) => void>();

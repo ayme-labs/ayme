@@ -3,7 +3,6 @@ import { expect, it } from "vitest";
 import type { RegisteredPom } from "@ayme-dev/ayme/internal";
 
 import { listRunnableTools } from "./runnableTools";
-import { describeRegisteredPoms } from "../../shared";
 
 // Unit tests: the tools the run card runs, from the registry and the tools
 // the runtime lists as live. The registration and the live list are
@@ -14,7 +13,8 @@ const addItem: RegisteredPom["tools"][number] = {
   rooted: false,
   methodName: "addItem",
   name: "ListPage.addItem",
-  description: "Add an item to the list.",
+  authorDescription: "Add an item to the list.",
+  agentDescription: "Add an item to the list.",
   inputSchema: { type: "object" },
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
@@ -23,7 +23,8 @@ const rename: RegisteredPom["tools"][number] = {
   rooted: true,
   methodName: "rename",
   name: "ListItem.rename",
-  description: "Rename this item.",
+  authorDescription: "Rename this item.",
+  agentDescription: "Rename this item.",
   inputSchema: { type: "object" },
   parameters: [
     { name: "ref", optional: false, schema: { type: "string" } },
@@ -49,7 +50,7 @@ const listPage: RegisteredPom = {
 };
 const markElement = {
   name: "mark_element",
-  description: "Mark one element on the page.",
+  agentDescription: "Mark one element on the page.",
   inputSchema: {
     type: "object",
     properties: { ref: { type: "string" } },
@@ -108,28 +109,23 @@ it("describes a Page Object action the same on the page and off it", () => {
     name: "ListPage.openSettings",
     methodName: "openSettings",
     returnPoms: ["SettingsPage"],
+    agentDescription: "Shows SettingsPage.",
     parameters: [],
   };
-  delete openSettings.description;
-  const registered = describeRegisteredPoms([
-    { ...listPage, tools: [openSettings] },
-  ]);
-  const listed = {
-    ...openSettings,
-    description: "Then shows SettingsPage.",
-    available: true,
-  };
+  delete openSettings.authorDescription;
+  const registered = [{ ...listPage, tools: [openSettings] }];
+  const listed = { ...openSettings, available: true };
 
   const onPage = listRunnableTools(registered, [listed]);
   const offPage = listRunnableTools(registered, []);
 
   expect(onPage.get("ListPage.openSettings")).toMatchObject({
     present: true,
-    description: "Then shows SettingsPage.",
+    description: "Shows SettingsPage.",
   });
   expect(offPage.get("ListPage.openSettings")).toMatchObject({
     present: false,
-    description: "Then shows SettingsPage.",
+    description: "Shows SettingsPage.",
   });
 });
 
@@ -139,7 +135,7 @@ it("describes a Page Object action by its registration, not the session's listin
     [
       {
         ...addItem,
-        description: "Listed text.",
+        agentDescription: "Listed text.",
         inputSchema: addItem.inputSchema,
         available: true,
       },
@@ -191,7 +187,7 @@ it("runs every other live tool with its schema, and names its ref argument", () 
 it("names a Browser Tool's key argument, and no other tool's", () => {
   const keyed = (name: string, group: "browser" | "custom") => ({
     name,
-    description: "Press a key.",
+    agentDescription: "Press a key.",
     inputSchema: {
       type: "object" as const,
       properties: { key: { type: "string" as const } },
@@ -211,7 +207,7 @@ it("names a Browser Tool's key argument, and no other tool's", () => {
 it("gives the generate_locator Browser Tool its own form, and no other tool", () => {
   const grouped = (name: string, group: "browser" | "custom") => ({
     name,
-    description: "Generate Playwright locators for elements.",
+    agentDescription: "Generate Playwright locators for elements.",
     inputSchema: {
       type: "object" as const,
       properties: { groups: { type: "array" as const } },

@@ -7,7 +7,7 @@ export type ToolGroup = "pageObject" | "browser" | "custom" | "peek" | "agent";
  */
 export type LiveTool = {
   name: string;
-  description?: string;
+  agentDescription?: string;
   inputSchema: unknown;
   group: ToolGroup;
   /** For a Page object tool: the Page Object Model whose action it is. */

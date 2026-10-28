@@ -11,7 +11,7 @@ import {
   registerPageObject,
   subscribeToRegisteredPoms,
 } from "../page-objects/infrastructure";
-import { describeTool } from "../page-objects/domain";
+import { requiredDescription } from "../page-objects/domain";
 import {
   addPeek,
   configureCustomTools,
@@ -422,13 +422,18 @@ export function subscribeToStartedAyme(
 
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 
+/** A tool as Ayme MCP lists it. */
+type AymeMcpTool = ToolInfo & { description?: string };
+
 /**
- * A tool as Ayme MCP lists it: with the description agents read, and none
- * when the tool says nothing beyond its name and schema, which MCP allows.
+ * A tool as Ayme MCP lists it: its Agent Description as its description,
+ * and none when the tool says nothing beyond its name and schema, which MCP
+ * allows.
  */
-function forAymeMcp(tool: ToolInfo): ToolInfo {
-  const description = describeTool(tool, "ayme-mcp");
-  return description === undefined ? tool : { ...tool, description };
+function forAymeMcp(tool: ToolInfo): AymeMcpTool {
+  return tool.agentDescription === undefined
+    ? tool
+    : { ...tool, description: tool.agentDescription };
 }
 
 /**
@@ -510,7 +515,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     list: () =>
       ayme.tools.list().map((tool) => ({
         ...tool,
-        description: describeTool(tool, "webmcp"),
+        description: requiredDescription(tool),
       })),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
     run: (name: string, input: unknown) =>
@@ -735,7 +740,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    */
   const aymeMcpTools = {
     list: () => ayme.tools.list().map(forAymeMcp),
-    subscribe: (listener: (tools: readonly ToolInfo[]) => void) =>
+    subscribe: (listener: (tools: readonly AymeMcpTool[]) => void) =>
       ayme.tools.subscribe((tools) => listener(tools.map(forAymeMcp))),
     run: (name: string, input: unknown) =>
       ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
@@ -914,7 +919,18 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         loadProcessConnection().then(
           ({ startAgentConnection }) =>
             () =>
-              startAgentConnection(ayme, where)
+              // Its tools listed as Ayme MCP lists the page's; its calls run
+              // through the session as before.
+              startAgentConnection(
+                {
+                  tools: {
+                    ...ayme.tools,
+                    list: aymeMcpTools.list,
+                    subscribe: aymeMcpTools.subscribe,
+                  },
+                },
+                where
+              )
         )
       );
     }

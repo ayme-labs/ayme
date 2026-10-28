@@ -53,7 +53,7 @@ export type RunnableTool = {
  */
 export type ToolSummary = {
   name: string;
-  description?: string;
+  agentDescription?: string;
   inputSchema: JsonSchema;
   group?: PublishedToolGroup;
   available: boolean;
@@ -99,7 +99,7 @@ export function listRunnableTools(
       tools.set(tool.name, {
         name: tool.name,
         action: tool.name,
-        description: tool.description,
+        description: tool.agentDescription,
         argumentsSchema: tool.inputSchema,
         present: true,
         available: tool.available,
@@ -127,7 +127,7 @@ function pageObjectTool(
   const base = {
     name: tool.name,
     action: tool.methodName,
-    description: tool.description,
+    description: tool.agentDescription,
     ...availability,
   };
   if (!tool.rooted)

@@ -254,12 +254,16 @@ it("starts the Agent Connection while a session with agentConnection is started"
     { tools: Ayme["tools"]; recordAgentImage: unknown },
   ];
   expect(recordAgentImage).toBe(recordAgentImageRun);
-  expect(tools.list()).toEqual(runtime.tools.list());
-  // MCP lists a bare action without a description, and says what an action
-  // shows afterwards.
+  const names = (list: readonly { name: string }[]) =>
+    list.map(({ name }) => name);
+  expect(names(tools.list())).toEqual(names(runtime.tools.list()));
+  // MCP describes each tool by its Agent Description: a bare action has
+  // none, an action says what it shows afterwards, a described one says
+  // what its author wrote.
   class Opener {
     open() {}
     close() {}
+    save() {}
   }
   registerCompiledPom(Opener, {
     className: "Opener",
@@ -273,6 +277,12 @@ it("starts the Agent Connection while a session with agentConnection is started"
         returnPoms: ["Dialog"],
       },
       { methodName: "close", toolName: "Opener.close", parameters: [] },
+      {
+        methodName: "save",
+        toolName: "Opener.save",
+        description: "Save the draft.",
+        parameters: [],
+      },
     ],
   });
   runtime.pom.register(Opener);
@@ -280,9 +290,12 @@ it("starts the Agent Connection while a session with agentConnection is started"
   const listed = (name: string) =>
     tools.list().find((tool) => tool.name === name);
   expect(listed("Opener.open")).toMatchObject({
-    description: "Then shows Dialog.",
+    description: "Shows Dialog.",
   });
   expect(listed("Opener.close")).not.toHaveProperty("description");
+  expect(listed("Opener.save")).toMatchObject({
+    description: "Save the draft.",
+  });
   runtime.pom.unregister(Opener);
   const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
   await expect(tools.run("snapshot", {})).resolves.toBe("ran");

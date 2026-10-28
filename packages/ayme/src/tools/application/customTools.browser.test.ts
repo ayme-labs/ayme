@@ -73,7 +73,9 @@ describe("Custom Tools in Chromium", () => {
     const tool = ayme.tools
       .list()
       .find(({ name }) => name === "highlight_element");
-    expect(tool?.description).toBe("Highlight one element on the page.");
+    // A Custom Tool says what its author wrote, to agents too.
+    expect(tool?.authorDescription).toBe("Highlight one element on the page.");
+    expect(tool?.agentDescription).toBe("Highlight one element on the page.");
     expect(tool?.inputSchema).toEqual({
       type: "object",
       properties: { ref: { type: "string" } },

@@ -41,13 +41,16 @@ export type PublishedToolGroup =
   "pageObject" | "browser" | "custom" | "peek" | "agent";
 
 /**
- * A published tool, for reading only. A Page Object Tool's description is
- * only what its author wrote, and none when there is nothing to say;
- * `describeTool` makes the text each reader reads from it.
+ * A published tool, for reading only, with two descriptions: what its
+ * author wrote, and its Agent Description, the text an agent reads. They
+ * differ only on a Page Object Tool, whose Agent Description adds the Page
+ * Objects the page shows afterwards. A Page Object Tool that says nothing
+ * beyond its name and schema has neither.
  */
 export type PublishedToolInfo = Readonly<{
   name: string;
-  description?: string;
+  authorDescription?: string;
+  agentDescription?: string;
   /**
    * For a Page Object Tool: the other Page Objects its action may return,
    * which the page shows afterwards.
@@ -227,6 +230,25 @@ export async function listElementToolTargets(
   );
 }
 
+/** A tool's two descriptions: a tool that is not a Page Object Tool's are its own. */
+function descriptionsOf(
+  tool: PublishedTool
+): Pick<PublishedToolInfo, "authorDescription" | "agentDescription"> {
+  if ("className" in tool)
+    return {
+      ...(tool.authorDescription === undefined
+        ? {}
+        : { authorDescription: tool.authorDescription }),
+      ...(tool.agentDescription === undefined
+        ? {}
+        : { agentDescription: tool.agentDescription }),
+    };
+  return {
+    authorDescription: tool.description,
+    agentDescription: tool.description,
+  };
+}
+
 /** Each tool's reading. */
 function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
   return Object.freeze(
@@ -234,9 +256,7 @@ function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
       Object.freeze({
         name: tool.name,
         ...("className" in tool ? { className: tool.className } : {}),
-        ...(tool.description === undefined
-          ? {}
-          : { description: tool.description }),
+        ...descriptionsOf(tool),
         ...("returnPoms" in tool && tool.returnPoms
           ? {
               returnPoms: tool.returnPoms,

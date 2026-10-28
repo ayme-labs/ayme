@@ -19,6 +19,10 @@ A public method of a Page Object marked `@ayme.action`.
 **Page Object Tool**:
 A tool generated from a Page Object Action of a class, named after the class; one per action, whatever the number of instances. The Goal Loop may choose it, and WebMCP publication offers it to agents.
 
+**Agent Description**:
+The text an agent reads about a tool, beside its name and input schema. A Page Object Tool's is the description its author wrote, followed by the Page Objects the page shows afterwards; any other tool's is its own description. A Page Object Tool that says nothing beyond its name and schema has none; WebMCP publication and the Goal Loop, which need one, name the action instead.
+_Avoid_: computed description, composed description
+
 **Structural Page State**:
 A model-facing observation of the currently presented page structure and its Page Object associations. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 

@@ -140,7 +140,13 @@ export type ToolDescriptor = {
 export type RegisteredPomTool = {
   name: string;
   /** The description its author wrote; none when there is nothing to say. */
-  description?: string;
+  authorDescription?: string;
+  /**
+   * Its Agent Description: the author's description, then the Page Objects
+   * the page shows afterwards. None when it says nothing beyond its name and
+   * schema.
+   */
+  agentDescription?: string;
   /**
    * The other Page Objects the action may return, which the page shows
    * afterwards, by class name.

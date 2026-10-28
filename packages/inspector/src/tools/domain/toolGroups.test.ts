@@ -6,7 +6,7 @@ import { listTools, type LiveTool } from "./toolGroups";
 // Page Object Tools, Custom Tools, Browser Tools, Peek Tools, and snapshot and goal.
 
 function tool(name: string, group: LiveTool["group"]): LiveTool {
-  return { name, description: "", inputSchema: {}, group };
+  return { name, agentDescription: "", inputSchema: {}, group };
 }
 
 // The runtime's order.

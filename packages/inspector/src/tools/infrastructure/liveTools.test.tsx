@@ -33,14 +33,16 @@ vi.mock("@ayme-dev/ayme/internal", () => ({
 
 const addItem: ToolInfo = {
   name: "ListPage.addItem",
-  description: "Add an item to the list.",
+  authorDescription: "Add an item to the list.",
+  agentDescription: "Add an item to the list.",
   inputSchema: { type: "object" },
   group: "pageObject",
   available: true,
 };
 const getPageContext: ToolInfo = {
   name: "snapshot",
-  description: "Read the page.",
+  authorDescription: "Read the page.",
+  agentDescription: "Read the page.",
   inputSchema: { type: "object" },
   group: "agent",
   available: true,
@@ -169,8 +171,19 @@ it("gives the App Processes' tools beside the page's, and follows them", () => {
 
   expect(seen.at(-1)).toMatchObject({
     live: [getPageContext],
-    appProcess: [{ ...jobsPeek, group: "peek", side: "node" }],
+    appProcess: [
+      {
+        name: jobsPeek.name,
+        // An App Process's tool says what its author wrote, to agents too.
+        authorDescription: jobsPeek.description,
+        agentDescription: jobsPeek.description,
+        inputSchema: jobsPeek.inputSchema,
+        group: "peek",
+        side: "node",
+      },
+    ],
   });
+  expect(seen.at(-1)?.appProcess[0]).not.toHaveProperty("description");
 });
 
 it("keeps the live tools when publication fails, with its error", () => {
