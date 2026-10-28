@@ -85,6 +85,7 @@ function experimentalMarks(root) {
     for (const entry of fs.readdirSync(src, { recursive: true })) {
       if (!/\.tsx?$/.test(entry) || entry.includes("node_modules")) continue;
       const file = path.posix.join(dir, "src", entry.split(path.sep).join("/"));
+      if (!fs.statSync(path.join(root, file)).isFile()) continue;
       const text = fs.readFileSync(path.join(root, file), "utf8");
       for (const comment of text.matchAll(/\/\*\*([\s\S]*?)\*\/\s*/g)) {
         if (!/(?:^|\s)@experimental\b/.test(comment[1])) continue;
