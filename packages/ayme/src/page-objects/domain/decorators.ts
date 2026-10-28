@@ -34,7 +34,7 @@ export type AymeModelOptions<Self = unknown> = {
   /**
    * The locator of the element that anchors the Page Object (its Page Object
    * Root): the Page Object is present while the locator resolves to one
-   * rendered element, which the page state labels with its name and at
+   * rendered element, which the page state marks with its name and at
    * which its availability is measured. A subclass inherits it and may
    * declare its own.
    */

@@ -4,7 +4,7 @@ What an agent sees of your page: the Structural Page State, the Structural Refs 
 
 ## Structural Page State
 
-Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and labels each Page Object Root with its class, such as `ListItem`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same labels, including for removed roots. It covers the top-level document only.
+Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ListItem`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 

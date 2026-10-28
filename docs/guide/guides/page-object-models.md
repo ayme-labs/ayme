@@ -114,7 +114,7 @@ export class ListItem extends AppComponent {
 }
 ```
 
-- The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's class, and every rooted instance's `ref` is that element's.
+- The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state marks that element with the Page Object's class, and every rooted instance's `ref` is that element's.
 - `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. `root` and `present` are inherited separately: a drawer that extends `AppComponent` and adds `present` is present while its root is on the page and it is open.
 - The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. Only the option anchors a model: a model whose class chain declares none is root-less, also when it has a member named `root`.
 - The [root reference](../reference/ayme.md#page-object-root) defines which root-less classes can be registered.

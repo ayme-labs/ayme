@@ -15,7 +15,7 @@ export function pomToolFacts(
           schema: {
             type: "string",
             description:
-              "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+              "Structural Ref of the instance's Page Object Root, as marked in the page state.",
           } satisfies JsonSchema,
         },
         {

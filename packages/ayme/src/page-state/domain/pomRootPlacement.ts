@@ -238,19 +238,18 @@ function fullTreeOrder(
 
 /**
  * The Page Object Roots a capture places, one entry per element: an element
- * several Page Objects root on carries each of their labels once.
+ * several Page Objects root on carries each of their marks once.
  */
 export function coalesceByElement(
-  roots: readonly { label: string; element: Element }[]
-): { element: Element; labels: string[] }[] {
-  const seen = new Map<Element, { element: Element; labels: string[] }>();
+  roots: readonly { mark: string; element: Element }[]
+): { element: Element; marks: string[] }[] {
+  const seen = new Map<Element, { element: Element; marks: string[] }>();
   for (const root of roots) {
     const existing = seen.get(root.element);
     if (existing) {
-      if (!existing.labels.includes(root.label))
-        existing.labels.push(root.label);
+      if (!existing.marks.includes(root.mark)) existing.marks.push(root.mark);
     } else {
-      seen.set(root.element, { element: root.element, labels: [root.label] });
+      seen.set(root.element, { element: root.element, marks: [root.mark] });
     }
   }
   return [...seen.values()];

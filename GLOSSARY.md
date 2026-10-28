@@ -20,7 +20,7 @@ A public method of a Page Object marked `@ayme.action`.
 A tool generated from a Page Object Action of a class, named after the class; one per action, whatever the number of instances. The Goal Loop may choose it, and WebMCP publication offers it to agents.
 
 **Structural Page State**:
-A model-facing observation of the currently presented page structure and its Page Object associations. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
+A model-facing observation of the currently presented page structure and its Page Object Root Marks. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 
 **Structural Ref**:
 A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element.
@@ -33,6 +33,10 @@ One stretch of a Page State Session between navigations: from document load, or 
 
 **Page Object Root**:
 The element the model's `root` names: the one that anchors a Page Object instance in the observed structure.
+
+**Page Object Root Mark**:
+The class name a Structural Page State shows on a node that is the Page Object Root of a present Page Object. A node that is the root of several Page Objects carries one mark per class. Only roots are marked; the nodes nested under a root belong to its Page Object.
+_Avoid_: label, POM label, Page Object label
 
 **Page Object Presence**:
 Whether a Page Object can be associated with rendered UI in the current layout's normally scroll-reachable area, independently of modal blocking or obstruction. A Page Object Model may declare its own presence predicate, which narrows the default.

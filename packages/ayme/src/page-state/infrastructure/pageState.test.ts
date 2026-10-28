@@ -82,9 +82,9 @@ describe("the page state", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "Captured", element: captured },
-      { label: "Hidden", element: hidden },
-      { label: "Foreign", element: foreign },
+      { mark: "Captured", element: captured },
+      { mark: "Hidden", element: hidden },
+      { mark: "Foreign", element: foreign },
     ]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
@@ -97,15 +97,15 @@ describe("the page state", () => {
     ["ListPage.items[0]", '"ListPage.items[0]"'],
     ["Shell.panel", "Shell.panel"],
   ])(
-    "does not accept the path %s as an inline class label",
-    async (label, rendered) => {
+    "does not accept the path %s as an inline class mark",
+    async (mark, rendered) => {
       const captured = document.querySelector("#captured")!;
       captureAriaSnapshot.mockReturnValue({
         distilledText: '- button "Captured omitted" [ref=e2]',
         fullText: '- button "Captured omitted" [ref=e2]',
         refsByElement: new Map([[captured, "e2"]]),
       });
-      pageObjectRoots.mockResolvedValue([{ label, element: captured }]);
+      pageObjectRoots.mockResolvedValue([{ mark, element: captured }]);
       expect(await pageStateText()).toBe(
         `- e2 button "Captured omitted":\n  - /pom: ${rendered}`
       );
@@ -138,7 +138,7 @@ describe("the page state", () => {
         [child, "e3"],
       ]),
     });
-    pageObjectRoots.mockResolvedValue([{ label: "Item", element: pomRoot }]);
+    pageObjectRoots.mockResolvedValue([{ mark: "Item", element: pomRoot }]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
@@ -182,7 +182,7 @@ describe("the page state", () => {
         [following, "e5"],
       ]),
     });
-    pageObjectRoots.mockResolvedValue([{ label: "Item", element: pomRoot }]);
+    pageObjectRoots.mockResolvedValue([{ mark: "Item", element: pomRoot }]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
@@ -220,7 +220,7 @@ describe("the page state", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "Synthetic", element: pomRoot },
+      { mark: "Synthetic", element: pomRoot },
     ]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
@@ -230,7 +230,7 @@ describe("the page state", () => {
     `);
   });
 
-  it("coalesces two labels on the same omitted element into one synthetic ref", async () => {
+  it("coalesces two marks on the same omitted element into one synthetic ref", async () => {
     document.body.innerHTML = `
       <div id="pom-root" aria-label="Shared root">
         <button id="child">Child</button>
@@ -256,8 +256,8 @@ describe("the page state", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "PageA", element: pomRoot },
-      { label: "PageB", element: pomRoot },
+      { mark: "PageA", element: pomRoot },
+      { mark: "PageB", element: pomRoot },
     ]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
@@ -273,7 +273,7 @@ describe("the page state", () => {
     ["second-first", ["Second", "First"]],
   ])(
     "keeps sibling synthetic roots in full-tree order when registered %s",
-    async (_registrationOrder, labels) => {
+    async (_registrationOrder, marks) => {
       document.body.innerHTML = `
         <div id="first"><button id="first-child">First</button></div>
         <div id="second"><button id="second-child">Second</button></div>
@@ -309,7 +309,7 @@ describe("the page state", () => {
         ["Second", second],
       ]);
       pageObjectRoots.mockResolvedValue(
-        labels.map((label) => ({ label, element: roots.get(label)! }))
+        marks.map((mark) => ({ mark, element: roots.get(mark)! }))
       );
 
       const output = await pageStateText();
@@ -334,7 +334,7 @@ describe("the page state", () => {
     }
   );
 
-  it("deduplicates identical labels on one omitted element", async () => {
+  it("deduplicates identical marks on one omitted element", async () => {
     document.body.innerHTML = `
       <div id="pom-root"><button id="child">Child</button></div>
     `;
@@ -358,8 +358,8 @@ describe("the page state", () => {
       ]),
     });
     pageObjectRoots.mockResolvedValue([
-      { label: "Page", element: pomRoot },
-      { label: "Page", element: pomRoot },
+      { mark: "Page", element: pomRoot },
+      { mark: "Page", element: pomRoot },
     ]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
@@ -415,9 +415,9 @@ describe("the page state", () => {
     });
     // Registrations arrive inner-first with unrelated between inner and outer.
     pageObjectRoots.mockResolvedValue([
-      { label: "Inner", element: inner },
-      { label: "Unrelated", element: unrelated },
-      { label: "Outer", element: outer },
+      { mark: "Inner", element: inner },
+      { mark: "Unrelated", element: unrelated },
+      { mark: "Outer", element: outer },
     ]);
 
     // Unrelated (POM depth 0, reg idx 1) is processed before outer
@@ -461,7 +461,7 @@ describe("the page state", () => {
           [other, "e3"],
         ]),
       });
-    pageObjectRoots.mockResolvedValue([{ label: "Root", element: root }]);
+    pageObjectRoots.mockResolvedValue([{ mark: "Root", element: root }]);
     expect(await pageStateText()).toContain("s_1 Root");
 
     // The page changed since, so the action's before capture is recorded
@@ -491,7 +491,7 @@ describe("the page state", () => {
         "beforeend",
         '<button id="post-capture">Post-capture</button>'
       );
-      return [{ label: "PreCapture", element: preCaptureRoot }];
+      return [{ mark: "PreCapture", element: preCaptureRoot }];
     });
     captureAriaSnapshot.mockImplementation(() => {
       expect(rootsResolved).toBe(true);
@@ -600,7 +600,7 @@ describe("the page state", () => {
         [main, "e3"],
       ]),
     });
-    pageObjectRoots.mockResolvedValue([{ label: "Panel", element: panel }]);
+    pageObjectRoots.mockResolvedValue([{ mark: "Panel", element: panel }]);
 
     await expect(pageStateText()).resolves.toMatchInlineSnapshot(`
       "- e1:
@@ -778,11 +778,11 @@ describe("the look's projected forest", () => {
         [element("milk"), "e6"],
       ]),
     });
-    // A lowercase label is inline; two labels on one element are a property.
+    // A lowercase mark is inline; two marks on one element are a property.
     pageObjectRoots.mockResolvedValue([
-      { label: "listpage", element: element("list") },
-      { label: "Done", element: element("done") },
-      { label: "Toggle", element: element("done") },
+      { mark: "listpage", element: element("list") },
+      { mark: "Done", element: element("done") },
+      { mark: "Toggle", element: element("done") },
     ]);
     return lookAtPageStateForDocument(document);
   }
@@ -820,7 +820,7 @@ describe("the look's projected forest", () => {
     ]);
   });
 
-  it("carries a lowercase Page Object label as a label, not a role", async () => {
+  it("carries a lowercase Page Object Root Mark as a mark, not a role", async () => {
     const { projected } = await look();
     const main = [...walk(projected.roots)].find(({ ref }) => ref === "e2");
 

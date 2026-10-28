@@ -122,7 +122,7 @@ describe("Handover changes in Chromium", () => {
     expect(handover.changes).toContain(ARCHIVED);
     expect(handover.changes).toContain("<removed> listitem: Invoice 7");
     expect(handover.changes).not.toContain(DIALOG);
-    // The Page Object Root reads as the snapshot labels it.
+    // The Page Object Root reads as the snapshot marks it.
     expect(handover.changes).toMatch(/^- e\d+ Inbox:\n/);
     // Each executed step's own Change Record stays on the run result.
     const steps = getLastGoalLoopRunResult()!.stepScores;

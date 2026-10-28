@@ -292,7 +292,7 @@ describe("Page Object Root by option", () => {
     expect(open).not.toHaveBeenCalled();
   });
 
-  it("anchors a model at the element its root option names: present while it is on the page, labelled by it, and measured at it", async () => {
+  it("anchors a model at the element its root option names: present while it is on the page, marked on it, and measured at it", async () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu <button>Close</button></aside>';
     class SideDrawer {
@@ -331,7 +331,7 @@ describe("Page Object Root by option", () => {
     expect((await agent.getPageState()).text).toContain("SideDrawer");
   });
 
-  it("takes a collection item's ref and label from the element its root option names, and leaves the anchoring getter out of its children", async () => {
+  it("takes a collection item's ref and mark from the element its root option names, and leaves the anchoring getter out of its children", async () => {
     document.body.innerHTML =
       '<ul><li id="draft">Draft <button>Send</button></li><li id="sent">Sent <button>Send</button></li></ul>';
     class Item {
@@ -535,7 +535,7 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual([]);
   });
 
-  it("treats a model with a member named root and no option as root-less: tools listed while registered, no label, no reach measurement", async () => {
+  it("treats a model with a member named root and no option as root-less: tools listed while registered, no mark, no reach measurement", async () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu</aside>' +
       '<div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
@@ -550,7 +550,7 @@ describe("Page Object Root by option", () => {
     session.pom.register(SideDrawer);
     await probeRegisteredPomMembers();
     // The name anchors nothing: the element under the overlay is not a root
-    // a click must reach, and the page state does not label it.
+    // a click must reach, and the page state does not mark it.
     expect(listed("SideDrawer.open")).toEqual(
       expect.objectContaining({ available: true })
     );
@@ -602,7 +602,7 @@ describe("Page Object Root by option", () => {
     return Shell;
   };
 
-  it("lists a root-less single child's tools while the Page Object it is reached through is present, with no label and no reach measurement, and withdraws them with it", async () => {
+  it("lists a root-less single child's tools while the Page Object it is reached through is present, with no mark and no reach measurement, and withdraws them with it", async () => {
     document.body.innerHTML =
       '<section id="shell" style="width:200px;height:100px"><div id="panel">Panel</div></section>' +
       '<div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
@@ -1015,7 +1015,7 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual(["Row.open"]);
   });
 
-  it("lets a collection tool act on a nested instance of its class, labelled by class at every depth, without adding tools", async () => {
+  it("lets a collection tool act on a nested instance of its class, marked by class at every depth, without adding tools", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="src">src

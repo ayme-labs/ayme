@@ -64,6 +64,6 @@ On a page the POM is present on, check the tools and the page state:
   Model and Tools lenses show the Page Objects on the page and their tools; an
   unavailable tool shows dimmed with its reason.
 - `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
-  State an agent receives, labelled with Page Object class names.
+  State an agent receives, marked with Page Object class names.
 
 Confirm that the intended POM, its visible members, and its tools appear.

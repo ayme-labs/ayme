@@ -81,7 +81,7 @@ export type RegisteredPom = {
 };
 
 export type RegisteredPomRoot = {
-  label: string;
+  mark: string;
   element: Element;
 };
 
@@ -384,27 +384,27 @@ export function createPomRegistry(driver: PageDriver) {
     return (await getRegisteredPomStructure()).roots;
   }
 
-  // Capture labels and exclusions from the same completed observation. A
-  // present Page Object's root is labelled; a root that is not on the page
+  // Capture marks and exclusions from the same completed observation. A
+  // present Page Object's root is marked; a root that is not on the page
   // is left out of the capture, while one whose Page Object a predicate
-  // withdrew is unlabelled rendered content.
+  // withdrew is unmarked rendered content.
   async function getRegisteredPomStructure() {
     await probeRegisteredPomMembers();
     const observations = [...registeredPoms].flatMap((registration) =>
       (registration.instances ?? []).flatMap(({ className, root, present }) =>
-        root ? [{ root, present, label: className }] : []
+        root ? [{ root, present, mark: className }] : []
       )
     );
-    const roots = observations.flatMap(({ root, present, label }) =>
-      present && isRootPresent(root) ? [{ label, element: root.element }] : []
+    const roots = observations.flatMap(({ root, present, mark }) =>
+      present && isRootPresent(root) ? [{ mark, element: root.element }] : []
     );
-    const labelled = new Set(roots.map((root) => root.element));
+    const marked = new Set(roots.map((root) => root.element));
     const absentElements = [
       ...new Set(
         observations.flatMap(({ root }) =>
           !root.present &&
           root.element?.isConnected &&
-          !labelled.has(root.element)
+          !marked.has(root.element)
             ? [root.element]
             : []
         )
@@ -486,7 +486,7 @@ export function createPomRegistry(driver: PageDriver) {
 
   /**
    * Package-internal: the present instances each rooted tool acts on, by
-   * tool name, labelled as the page state labels them, each with whether
+   * tool name, marked as the page state marks them, each with whether
    * the tool would run on it now and why not. Root-less tools have no items.
    */
   function listRootedToolInstances(): Map<string, RootedToolInstance[]> {

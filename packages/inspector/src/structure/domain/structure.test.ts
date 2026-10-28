@@ -42,7 +42,7 @@ const pageState = forest(
         state: { level: 1 },
       }),
       node(
-        { ref: "e1", label: "ListPage" },
+        { ref: "e1", mark: "ListPage" },
         "New item",
         node({ ref: "e2", role: "textbox", name: "New item" })
       ),
@@ -606,11 +606,11 @@ describe("several pages over the same element", () => {
 });
 
 describe("what the text parser used to misread", () => {
-  it("keeps a lowercase Page Object label out of the role", () => {
+  it("keeps a lowercase Page Object Root Mark out of the role", () => {
     const { roots } = buildStructureTree(
       forest(
         node(
-          { ref: "e1", label: "listpage" },
+          { ref: "e1", mark: "listpage" },
           node({ ref: "e2", role: "button" })
         )
       ),

@@ -197,7 +197,7 @@ describe("live Page Object availability", () => {
     expect(names()).toEqual([]);
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["Rooted.close", "Rootless.open"]);
-    expect((await listRegisteredPomRoots()).map((root) => root.label)).toEqual([
+    expect((await listRegisteredPomRoots()).map((root) => root.mark)).toEqual([
       "Rooted",
     ]);
     document.getElementById("root")!.style.display = "none";
@@ -219,7 +219,7 @@ describe("live Page Object availability", () => {
     session.register(Shell);
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["Panel.close"]);
-    expect((await listRegisteredPomRoots()).map((root) => root.label)).toEqual([
+    expect((await listRegisteredPomRoots()).map((root) => root.mark)).toEqual([
       "Panel",
     ]);
     document.getElementById("second")!.setAttribute("hidden", "");
@@ -320,7 +320,7 @@ describe("live Page Object availability", () => {
       await previousProbe;
     }
     expect(names()).toEqual(["FreshShell.close"]);
-    expect((await listRegisteredPomRoots()).map((root) => root.label)).toEqual([
+    expect((await listRegisteredPomRoots()).map((root) => root.mark)).toEqual([
       "FreshShell",
     ]);
   });
@@ -354,7 +354,7 @@ describe("live Page Object availability", () => {
     expect(names()).toEqual(["Panel.close"]);
   });
 
-  it("keeps modal-blocked content and POM labels while removing only its tools", async () => {
+  it("keeps modal-blocked content and Page Object Root Marks while removing only its tools", async () => {
     document.body.innerHTML =
       '<section id="background">BACKGROUND CONTENT <button>Background action</button></section><dialog id="first"><button>Active confirmation</button></dialog><dialog id="second"><button>Earlier dialog</button></dialog>';
     class Shell {
@@ -458,7 +458,7 @@ describe("live Page Object availability", () => {
     }
   });
 
-  it("retains scroll-reachable content, labels and tools without scrolling", async () => {
+  it("retains scroll-reachable content, marks and tools without scrolling", async () => {
     document.body.innerHTML =
       '<div style="height:2000px"></div><section id="root">BELOW FOLD CONTENT</section>';
     class BelowFold {

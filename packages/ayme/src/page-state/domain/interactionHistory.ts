@@ -17,9 +17,9 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 import type { Cursor } from "./cursors";
-import type { PomLabels } from "./pomLabels";
+import type { PomRootMarks } from "./pomRootMarks";
 
-const noPomLabels: PomLabels = new Map();
+const noPomRootMarks: PomRootMarks = new Map();
 
 /** What core's Structural Action does not carry: the tool call behind it. */
 export type ToolCall = {
@@ -55,10 +55,10 @@ export class InteractionHistory {
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
   private first: StructuralObservationEntry | undefined;
   private latest: StructuralObservationEntry | undefined;
-  /** What core's observation does not carry: its Page Object Roots' labels. */
-  private readonly labels = new WeakMap<
+  /** What core's observation does not carry: its Page Object Roots' marks. */
+  private readonly marks = new WeakMap<
     StructuralObservationEntry,
-    PomLabels
+    PomRootMarks
   >();
 
   private readonly clock: MonotonicClock;
@@ -127,14 +127,14 @@ export class InteractionHistory {
   observe(
     tree: StructuralTree,
     at: MonotonicTimeMs,
-    pomLabels?: PomLabels
+    pomRootMarks?: PomRootMarks
   ): StructuralObservationEntry {
-    return this.record(tree, at, pomLabels);
+    return this.record(tree, at, pomRootMarks);
   }
 
-  /** The Page Object labels of an observation's Page Object Roots, by ref. */
-  pomLabels(observation: StructuralObservationEntry): PomLabels {
-    return this.labels.get(observation) ?? noPomLabels;
+  /** The Page Object Root Marks of an observation's Page Object Roots, by ref. */
+  pomRootMarks(observation: StructuralObservationEntry): PomRootMarks {
+    return this.marks.get(observation) ?? noPomRootMarks;
   }
 
   /** The observation recorded most recently, of any kind. */
@@ -182,9 +182,9 @@ export class InteractionHistory {
     actionId: StructuralActionId,
     tree: StructuralTree,
     at: MonotonicTimeMs,
-    pomLabels?: PomLabels
+    pomRootMarks?: PomRootMarks
   ): StructuralObservationEntry {
-    return this.record(tree, at, pomLabels, actionId, "before");
+    return this.record(tree, at, pomRootMarks, actionId, "before");
   }
 
   /**
@@ -197,9 +197,9 @@ export class InteractionHistory {
     actionId: StructuralActionId,
     settledPage: StructuralTree,
     at: MonotonicTimeMs,
-    pomLabels?: PomLabels
+    pomRootMarks?: PomRootMarks
   ): StructuralObservationEntry {
-    return this.complete(actionId, settledPage, at, pomLabels);
+    return this.complete(actionId, settledPage, at, pomRootMarks);
   }
 
   /** What changed between two observations of this document: core's reading. */
@@ -218,13 +218,13 @@ export class InteractionHistory {
     actionId: StructuralActionId,
     page: StructuralTree,
     at: MonotonicTimeMs,
-    pomLabels?: PomLabels
+    pomRootMarks?: PomRootMarks
   ): StructuralObservationEntry {
     this.recorded.set(actionId, {
       ...this.recordedAction(actionId),
       failed: true,
     });
-    return this.complete(actionId, page, at, pomLabels);
+    return this.complete(actionId, page, at, pomRootMarks);
   }
 
   /** The tool calls behind the recorded Structural Actions, in start order. */
@@ -243,9 +243,9 @@ export class InteractionHistory {
     actionId: StructuralActionId,
     page: StructuralTree,
     at: MonotonicTimeMs,
-    pomLabels: PomLabels | undefined
+    pomRootMarks: PomRootMarks | undefined
   ): StructuralObservationEntry {
-    const after = this.record(page, at, pomLabels, actionId);
+    const after = this.record(page, at, pomRootMarks, actionId);
     this.observations.recordActionCompleted({
       kind: "action-completed",
       at: this.now(),
@@ -258,7 +258,7 @@ export class InteractionHistory {
   private record(
     tree: StructuralTree,
     at: MonotonicTimeMs,
-    pomLabels: PomLabels | undefined,
+    pomRootMarks: PomRootMarks | undefined,
     capturedForActionId?: StructuralActionId,
     relation?: "before"
   ): StructuralObservationEntry {
@@ -270,7 +270,7 @@ export class InteractionHistory {
       ...(capturedForActionId ? { capturedForActionId } : {}),
       ...(relation ? { relation } : {}),
     });
-    if (pomLabels?.size) this.labels.set(entry, pomLabels);
+    if (pomRootMarks?.size) this.marks.set(entry, pomRootMarks);
     this.first ??= entry;
     this.latest = entry;
     return entry;

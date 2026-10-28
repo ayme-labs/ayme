@@ -5,7 +5,7 @@
 Slices, from the bottom up:
 
 - `shared`: the JSON contracts and tool descriptors, the error types, the Caller names, schema validation, the Goal Loop's contract with its Caller (the `goal` tool's input and the Handover), and small helpers: the composed tree, the monotonic clock, the Inspector's page marks.
-- `page-state`: the Structural Page State and its Page State Session, the interaction history it records, Change Records and the per-Caller cursors, Structural Refs and Ayme's selector engine, acting on the page and waiting for a Settled Page, Page Object labels and root placement in the captured tree, and reach: whether a click would land on an element, and the refusal when a call would not run.
+- `page-state`: the Structural Page State and its Page State Session, the interaction history it records, Change Records and the per-Caller cursors, Structural Refs and Ayme's selector engine, acting on the page and waiting for a Settled Page, Page Object Root Marks and root placement in the captured tree, and reach: whether a click would land on an element, and the refusal when a call would not run.
 - `runs`: the Run, the Run queue and executing a top-level Run, the Run log, Interactions and the Playwright call table, and the page instrumentation that records a Run's Interactions.
 - `page-objects`: the `@ayme` marks, the Page Object registry and the page driver it reads the page through, the Page Object tree, instances, roots, presence and availability, action tool facts, Page Object definitions and their text, and `createPage`.
 - `tools`: the Browser Tools, Custom Tools, Peek Tools, page context, screenshots and the agent's image calls the Inspector shows, and the built-in tools' input and result types.
