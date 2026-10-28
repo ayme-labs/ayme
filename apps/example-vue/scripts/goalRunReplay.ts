@@ -9,7 +9,8 @@
 import type { GoalRun } from "./goalRunReport";
 
 /** The Step Decision's bars, `DONE_BAR` and `LOWER_BAR` in
- *  `packages/ayme/src/goal-loop/application/stepDecision.ts`, which owns them. */
+ *  `packages/ayme/src/goal-loop/application/stepDecision.ts`, which owns them;
+ *  `goalRunReplay.test.ts` fails when the two differ. */
 export const doneBar = 0.7;
 export const lowerBar = 0.3;
 /** The done bars the sweep compares. */

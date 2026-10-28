@@ -1,8 +1,11 @@
 // @vitest-environment node
+import { DONE_BAR, LOWER_BAR } from "@ayme-dev/ayme/testing";
 import { expect, it } from "vitest";
 
 import type { GoalRun } from "../scripts/goalRunReport";
 import {
+  doneBar,
+  lowerBar,
   reasonBeforePolicy,
   recordedReasonReproduced,
   replayIsExact,
@@ -118,4 +121,8 @@ it("replays a run recorded under the policy, and reproduces its reason", () => {
       stop
     )
   ).toBe(false);
+});
+
+it("replays with the bars the Step Decision stops on", () => {
+  expect([doneBar, lowerBar]).toEqual([DONE_BAR, LOWER_BAR]);
 });
