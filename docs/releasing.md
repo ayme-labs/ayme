@@ -1,10 +1,10 @@
 # Releasing
 
-Maintainer instructions for releasing the packages under `packages/` that are not private. They carry one shared version and are released together, so a consumer never combines versions that were not tested together. Every release is a plain semver version under npm's `latest` tag.
+Maintainer instructions for releasing the packages under `packages/` that are not private. [`release-please-config.json`](../release-please-config.json) sets how they are versioned; the [Release Please docs](https://github.com/googleapis/release-please#readme) explain its options.
 
 ## Release
 
-[Release Please](https://github.com/googleapis/release-please) runs on every push to `main` and keeps one pull request, `chore: release main`, open with the next version and a changelog per package, derived from the Conventional Commits since the last release. [`release-please-config.json`](../release-please-config.json) configures it. `fix` bumps the patch version, `feat` bumps the minor version, and until 1.0 so does a breaking change; a release bumps every package, even one with no commits of its own.
+Release Please keeps a release pull request open on `main`.
 
 1. Review the version and the changelogs in the release pull request.
 2. Close the pull request and reopen it. A pull request the workflow token opened starts no workflows, and the checks `main` requires run on the reopen.
