@@ -37,6 +37,8 @@ This section is a one-time bootstrap. Trusted publishing cannot create a package
 
 Before the first release, turn on **Allow GitHub Actions to create and approve pull requests** in the repository's Actions settings; without it the workflow token cannot open the release pull request.
 
+The first changelogs start at `bootstrap-sha` in [`release-please-config.json`](../release-please-config.json), because the changelogs of the whole history overflow a pull request body. Release Please ignores it once a release exists.
+
 1. Merge the first release pull request. The publish job of the run that follows fails, because npm does not know the packages yet.
 2. Download the tarballs that run verified, and publish each by hand in the order the publish job would use, `@ayme-dev/ayme` first and the rest by name:
 
