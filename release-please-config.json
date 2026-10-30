@@ -3,6 +3,7 @@
   "release-type": "node",
   "initial-version": "0.1.0",
   "bump-minor-pre-major": true,
+  "bootstrap-sha": "8957c3ef8b26aee75830c337d129cfa6c75b1a28",
   "group-pull-request-title-pattern": "chore: release ${branch}",
   "plugins": [
     {
