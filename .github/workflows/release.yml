@@ -1,13 +1,12 @@
-name: Release alpha
+name: Release
 
 on:
+  push:
+    branches: [main]
+  # A dry run: builds and checks the tarballs of any branch, publishes nothing.
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish to npm under the alpha dist-tag. Leave off for a dry run.
-        type: boolean
-        default: false
 
+# Never cancel a release between creating its tags and publishing to npm.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -16,27 +15,43 @@ permissions:
   contents: read
 
 jobs:
+  release-please:
+    name: Release Please
+    if: github.repository == 'ayme-labs/ayme' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    # The linked packages release together, so one path stands for all of them.
+    outputs:
+      release_created: ${{ steps.release.outputs['packages/ayme--release_created'] }}
+      version: ${{ steps.release.outputs['packages/ayme--version'] }}
+      sha: ${{ steps.release.outputs['packages/ayme--sha'] }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          target-branch: main
+
   pack:
     name: Validate, build and pack
+    needs: release-please
+    # A dry run skips Release Please, which must not skip this job.
+    if: >-
+      !cancelled()
+      && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true')
     runs-on: ubuntu-latest
     steps:
-      - name: Refuse to publish from a branch other than the default branch
-        if: inputs.publish && github.ref != format('refs/heads/{0}', github.event.repository.default_branch)
-        env:
-          REF: ${{ github.ref }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          echo "::error::Publish only from $DEFAULT_BRANCH, not from $REF."
-          exit 1
       - uses: actions/checkout@v7
         with:
+          # Release Please can release a merge newer than this run's push.
+          ref: ${{ needs.release-please.outputs.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Check the shared alpha version
-        run: node scripts/release-version.mjs
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - name: Build the packages
@@ -56,13 +71,17 @@ jobs:
 
   publish:
     name: Publish to npm
-    needs: pack
-    if: inputs.publish
+    needs: [release-please, pack]
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -71,14 +90,8 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: packages
-          path: packages
-      # @ayme-dev/ayme goes first because every other package depends on it.
-      # The rest go alphabetically, which puts @ayme-dev/inspector before
-      # @ayme-dev/unplugin-ayme, its only dependent.
+          path: ${{ runner.temp }}/packages
       - name: Publish the checked tarballs
-        run: |
-          npm publish packages/ayme-dev-ayme-*.tgz --tag alpha
-          for tarball in packages/*.tgz; do
-            case "$tarball" in packages/ayme-dev-ayme-*) continue ;; esac
-            npm publish "$tarball" --tag alpha
-          done
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: node scripts/publish-packages.mjs "$RUNNER_TEMP/packages" "$VERSION"

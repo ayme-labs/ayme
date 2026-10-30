@@ -1,0 +1,11 @@
+{
+  "packages/angular": "0.0.0",
+  "packages/ayme": "0.0.0",
+  "packages/inspector": "0.0.0",
+  "packages/mcp": "0.0.0",
+  "packages/react": "0.0.0",
+  "packages/svelte": "0.0.0",
+  "packages/unplugin-ayme": "0.0.0",
+  "packages/vue": "0.0.0",
+  "packages/webmcp": "0.0.0"
+}
