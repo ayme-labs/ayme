@@ -48,7 +48,8 @@ The first changelogs start at `bootstrap-sha` in [`release-please-config.json`](
    ```
 
 3. In each package's settings on npmjs.com, add a trusted publisher: GitHub owner `ayme-labs`, repository `ayme`, workflow `release.yml`, with **Allow npm publish** turned on under its allowed actions. npm's default allows only `npm stage publish`, and with that the next release's publish job fails.
-4. Rerun the failed job, as below. It skips the published versions and passes.
+4. Rerun the failed job, as below. It skips the published versions and passes. That proves the workflow but not the trusted publishers, since nothing was published through them.
+5. Within two days of step 3, cut a real release through the workflow: the next version, from any `fix` or `feat` commit. npm [expires a new trusted publisher](https://docs.npmjs.com/trusted-publishers#trusted-publisher-configuration-expiry) that has no successful publish after two days; an expired one has to be deleted and created again.
 
 Provenance requires each manifest's `repository` to name this repository; the packed-consumer check asserts it.
 
