@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/react",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "React integration for Ayme.",
   "license": "FSL-1.1-ALv2",
   "repository": {
