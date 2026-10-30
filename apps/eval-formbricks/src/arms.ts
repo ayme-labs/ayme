@@ -143,7 +143,8 @@ function aymeArm(
     interfaceLine: () =>
       goalLoop ? `${interfaceLine} ${goalFirstSentence}` : interfaceLine,
     skill: aymeSkillName,
-    // The skill is loaded through the Skill tool, in the setup turn.
+    // The skill is loaded through the Skill tool, in the setup turn. Its references are read then
+    // too; the setup's readable folder is what lets Read reach them, so no Read rule is needed.
     tools: [...baseTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),

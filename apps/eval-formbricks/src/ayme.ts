@@ -23,13 +23,12 @@ import { createRequire } from "node:module";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import type { StartScreen } from "./missions.ts";
-import { labUrl } from "./paths.ts";
+import { labUrl, repoRoot } from "./paths.ts";
 import {
   decisionEndpointPrecondition,
   type Precondition,
@@ -53,11 +52,9 @@ export function aymeMcpVersion(): string {
 /** The MCP server's name in the agent's configuration; its tools are `mcp__ayme__<tool>`. */
 export const aymeServerName = "ayme";
 
-/** The eval's skill for the Ayme arms: how to drive a page through Ayme's MCP server. */
+/** The skill the Ayme arms load: the one this repository ships to consumers, so the eval measures that. */
 export const aymeSkillName = "ayme";
-const aymeSkillSource = fileURLToPath(
-  new URL(`../skills/${aymeSkillName}`, import.meta.url)
-);
+export const aymeSkillSource = path.join(repoRoot, "skills", aymeSkillName);
 
 /** Where Claude Code loads user skills from, inside the run's configuration folder. */
 export function aymeSkillDirectory(configDir: string) {
@@ -435,7 +432,7 @@ export async function setUpAymeAgent(
   context: ArmContext,
   options: { goalLoop: boolean; pageObjects: boolean }
 ): Promise<ArmSetup> {
-  // The eval's own skill for the Ayme arms, read from the fresh configuration folder, as the
+  // The shipped skill with its references, read from the fresh configuration folder, as the
   // Playwright CLI arm's skill is.
   const skillDir = aymeSkillDirectory(context.configDir);
   await cp(aymeSkillSource, skillDir, { recursive: true });

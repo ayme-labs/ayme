@@ -3,17 +3,18 @@ import { missionDefinitions, type Mission } from "./missions.ts";
 
 /**
  * The first message of every run. It names no app and no task, and keeps the
- * agent off the page. Starting up and loading the arm's skill happen in this
- * turn, outside the measured one, so the prompt names the skill: a bare "load
- * your skill if you have one" left the agent skipping it in some runs and
- * loading it in the measured turn instead.
+ * agent off the page. Starting up, loading the arm's skill and reading that
+ * skill's references happen in this turn, outside the measured one, so the
+ * prompt names the skill and asks for the references: a bare "load your skill
+ * if you have one" left the agent skipping it in some runs and loading it in
+ * the measured turn instead.
  */
 export function setupPrompt(arm: Pick<Arm, "skill">) {
-  const skillLine =
+  const readyLine =
     arm.skill === undefined
-      ? "Don't look for a skill."
-      : `Load the \`${arm.skill}\` skill now with the Skill tool.`;
-  return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${skillLine} Don't read files and don't use the browser; just reply ready.
+      ? "Don't look for a skill. Don't read files and don't use the browser; just reply ready."
+      : `Load the \`${arm.skill}\` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.`;
+  return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${readyLine}
 `;
 }
 
