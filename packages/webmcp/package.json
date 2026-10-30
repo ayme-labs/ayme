@@ -1,7 +1,19 @@
 {
   "name": "@ayme-dev/webmcp",
   "version": "0.1.0-alpha.0",
-  "description": "Publishes an Ayme session's tools through WebMCP.",
+  "description": "Publishing Ayme's tools through WebMCP, for agents that run in the browser.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",

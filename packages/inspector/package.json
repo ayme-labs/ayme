@@ -1,7 +1,21 @@
 {
   "name": "@ayme-dev/inspector",
   "version": "0.1.0-alpha.0",
-  "description": "Browser Inspector for Ayme Page Object Models.",
+  "description": "Ayme's in-page panel for a page's Page Objects, Structural Page State and tools.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e",
+    "inspector",
+    "devtools"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",

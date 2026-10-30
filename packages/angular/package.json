@@ -1,7 +1,21 @@
 {
   "name": "@ayme-dev/angular",
   "version": "0.1.0-alpha.0",
-  "description": "Angular integration for Ayme.",
+  "description": "ng add, starting Ayme in an Angular app and Page Objects in components.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e",
+    "angular",
+    "schematics"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",
