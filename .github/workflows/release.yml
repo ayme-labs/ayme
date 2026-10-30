@@ -23,11 +23,13 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    # The linked packages release together, so one path stands for all of them.
+    # The linked packages share a version and a commit, so any path released
+    # stands for all of them. A retry reports only the releases it created, so
+    # no one path is sure to be there.
     outputs:
-      release_created: ${{ steps.release.outputs['packages/ayme--release_created'] }}
-      version: ${{ steps.release.outputs['packages/ayme--version'] }}
-      sha: ${{ steps.release.outputs['packages/ayme--sha'] }}
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      version: ${{ steps.release.outputs[format('{0}--version', fromJSON(steps.release.outputs.paths_released)[0])] }}
+      sha: ${{ steps.release.outputs[format('{0}--sha', fromJSON(steps.release.outputs.paths_released)[0])] }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
@@ -40,7 +42,7 @@ jobs:
     # A dry run skips Release Please, which must not skip this job.
     if: >-
       !cancelled()
-      && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true')
+      && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.releases_created == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -72,7 +74,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: [release-please, pack]
-    if: needs.release-please.outputs.release_created == 'true'
+    if: needs.release-please.outputs.releases_created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
