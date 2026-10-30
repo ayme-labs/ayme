@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/unplugin-ayme",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Compiling Page Object Models and their tool schemas into the browser build, for Vite, the Angular CLI and Turbopack.",
   "keywords": [
     "ai-agent",
