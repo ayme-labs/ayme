@@ -76,6 +76,18 @@ const PUBLISHED_PACKAGES = [
 
 const PRIVATE_PACKAGES = ["@ayme-dev/playwright-lite", "@ayme-dev/core"];
 
+const SHARED_KEYWORDS = [
+  "ai-agent",
+  "coding-agent",
+  "mcp",
+  "webmcp",
+  "browser-automation",
+  "playwright",
+  "page-object-model",
+  "testing",
+  "e2e",
+];
+
 const DEPENDENCY_SECTIONS = [
   "dependencies",
   "devDependencies",
@@ -87,6 +99,9 @@ type Manifest = {
   name: string;
   version: string;
   private?: boolean;
+  description?: string;
+  keywords?: string[];
+  homepage?: string;
   repository?: Record<string, string>;
   exports?: Record<string, unknown>;
 } & Partial<
@@ -299,6 +314,17 @@ it("packed manifests name this repository, as npm provenance requires", () => {
       url: "git+https://github.com/ayme-labs/ayme.git",
       directory: `packages/${name}`,
     });
+});
+
+it("packed manifests carry the keywords, homepage and description npm shows", () => {
+  for (const name of PUBLISHED_PACKAGES) {
+    const { description, homepage, keywords } = readManifest(
+      packed[`@ayme-dev/${name}`]!.dir
+    );
+    expect(keywords, name).toEqual(expect.arrayContaining(SHARED_KEYWORDS));
+    expect(homepage, name).toBe("https://ayme.dev");
+    expect(description?.trim(), name).toBeTruthy();
+  }
 });
 
 // The README rules live in the repository's docs check (`pnpm docs:check`),

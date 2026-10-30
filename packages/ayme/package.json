@@ -1,7 +1,19 @@
 {
   "name": "@ayme-dev/ayme",
   "version": "0.1.0-alpha.0",
-  "description": "Ayme main library.",
+  "description": "Ayme's decorators, runtime and createAyme, and @ayme-dev/ayme/server for the Decision Endpoint.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",

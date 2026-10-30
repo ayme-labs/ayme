@@ -1,7 +1,23 @@
 {
   "name": "@ayme-dev/unplugin-ayme",
   "version": "0.1.0-alpha.0",
-  "description": "Unplugin integration for Ayme.",
+  "description": "Compiling Page Object Models and their tool schemas into the browser build, for Vite, the Angular CLI and Turbopack.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e",
+    "unplugin",
+    "vite",
+    "esbuild",
+    "turbopack"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",

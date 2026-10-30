@@ -1,7 +1,21 @@
 {
   "name": "@ayme-dev/vue",
   "version": "0.1.0-alpha.0",
-  "description": "Vue integration for Ayme.",
+  "description": "Starting Ayme in a Vue app and Page Objects in components.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e",
+    "vue",
+    "nuxt"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",
