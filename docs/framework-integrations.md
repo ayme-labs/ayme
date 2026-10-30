@@ -76,7 +76,7 @@ The package README owns installation, setup, the API, and the supported versions
 
 ## Release
 
-A package under `packages/` that is not private joins the alpha release set and its shared version; see [releasing](releasing.md).
+A package under `packages/` that is not private joins the release set and its shared version; see [adding a package](releasing.md#adding-a-package).
 
 ## Touch list
 

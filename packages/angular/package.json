@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/angular",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "ng add, starting Ayme in an Angular app and Page Objects in components.",
   "keywords": [
     "ai-agent",
