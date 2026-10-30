@@ -280,12 +280,22 @@ describe("the setup message", () => {
     );
   });
 
-  it("has an arm with a skill read that skill's references, and no file outside its folder", () => {
-    for (const armId of ["ayme-goal-loop-off", "playwright-cli"] as const) {
-      const prompt = setupPrompt(arms[armId]);
-      expect(prompt).toContain("read the references it points you to");
-      expect(prompt).toContain("Read no file outside that skill's folder");
-    }
+  it("has every Ayme arm read its skill's references, and no file outside the skill's folder", () => {
+    for (const armId of [
+      "ayme-goal-loop-off",
+      "ayme-goal-loop-on",
+      "ayme-no-page-objects-goal-loop-off",
+      "ayme-no-page-objects-goal-loop-on",
+    ] as const)
+      expect(setupPrompt(arms[armId])).toBe(
+        "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n"
+      );
+  });
+
+  it("keeps the Playwright CLI arm's setup message as its published runs had it", () => {
+    expect(setupPrompt(arms["playwright-cli"])).toBe(
+      "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `playwright-cli` skill now with the Skill tool. Don't read files and don't use the browser; just reply ready.\n"
+    );
   });
 
   it("tells an arm without a skill not to look for one, and to read no files", () => {

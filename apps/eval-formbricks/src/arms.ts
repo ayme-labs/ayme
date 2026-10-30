@@ -70,6 +70,8 @@ export type Arm = {
   interfaceLine: (start: Mission["start"]) => string;
   /** The interface's skill, which the setup turn names and loads; none for an arm without one. */
   skill?: string;
+  /** The setup turn also reads the skill's references, from the folder the arm's setup makes readable. */
+  readsSkillReferences?: boolean;
   /** Built-in Claude Code tools the agent keeps. Read-only file tools; the arm's interface does the rest. */
   tools: string[];
   /** Permission rules letting the agent call the arm's interface without a prompt. */
@@ -143,8 +145,9 @@ function aymeArm(
     interfaceLine: () =>
       goalLoop ? `${interfaceLine} ${goalFirstSentence}` : interfaceLine,
     skill: aymeSkillName,
+    readsSkillReferences: true,
     // The skill is loaded through the Skill tool, in the setup turn. Its references are read then
-    // too; the setup's readable folder is what lets Read reach them, so no Read rule is needed.
+    // too; the setup's readable folder is expected to let Read reach them, without a Read rule.
     tools: [...baseTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),

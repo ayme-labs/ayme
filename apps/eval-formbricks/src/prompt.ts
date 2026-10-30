@@ -1,20 +1,29 @@
 import type { Arm } from "./arms.ts";
 import { missionDefinitions, type Mission } from "./missions.ts";
 
+/** What the setup turn asks of the arm's skill, and that the agent stays off the page. */
+function readyLine({
+  skill,
+  readsSkillReferences,
+}: Pick<Arm, "skill" | "readsSkillReferences">) {
+  if (skill === undefined)
+    return "Don't look for a skill. Don't read files and don't use the browser; just reply ready.";
+  const load = `Load the \`${skill}\` skill now with the Skill tool`;
+  return readsSkillReferences
+    ? `${load} and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.`
+    : `${load}. Don't read files and don't use the browser; just reply ready.`;
+}
+
 /**
  * The first message of every run. It names no app and no task, and keeps the
- * agent off the page. Starting up, loading the arm's skill and reading that
- * skill's references happen in this turn, outside the measured one, so the
- * prompt names the skill and asks for the references: a bare "load your skill
- * if you have one" left the agent skipping it in some runs and loading it in
- * the measured turn instead.
+ * agent off the page. Starting up and loading the arm's skill happen in this
+ * turn, outside the measured one, so the prompt names the skill: a bare "load
+ * your skill if you have one" left the agent skipping it in some runs and
+ * loading it in the measured turn instead. An arm whose skill keeps what the
+ * agent needs in references has them read here too.
  */
-export function setupPrompt(arm: Pick<Arm, "skill">) {
-  const readyLine =
-    arm.skill === undefined
-      ? "Don't look for a skill. Don't read files and don't use the browser; just reply ready."
-      : `Load the \`${arm.skill}\` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.`;
-  return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${readyLine}
+export function setupPrompt(arm: Pick<Arm, "skill" | "readsSkillReferences">) {
+  return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${readyLine(arm)}
 `;
 }
 
