@@ -1,5 +1,6 @@
 /**
- * Publishes a release's packed tarballs, each after the packages it depends on.
+ * Publishes a release's packed tarballs, `@ayme-dev/ayme` first and the rest
+ * by name.
  *
  *   node scripts/publish-packages.mjs <directory> <version>
  *
@@ -11,6 +12,8 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+
+const MAIN_PACKAGE = "@ayme-dev/ayme";
 
 const [directory, version] = process.argv.slice(2);
 const registry =
@@ -25,19 +28,13 @@ function readPacked(tarball) {
   return { ...JSON.parse(manifest), tarball };
 }
 
-// Only `dependencies` order the packages: the main package's peers on the
-// optional packages point back at packages that depend on it.
-function inDependencyOrder(packages) {
-  const pending = packages.toSorted((a, b) => a.name.localeCompare(b.name));
-  const ordered = [];
-  while (pending.length > 0) {
-    const next = pending.findIndex(
-      ({ dependencies = {} }) =>
-        !pending.some(({ name }) => name in dependencies)
-    );
-    ordered.push(...pending.splice(next, 1));
-  }
-  return ordered;
+// The other packages depend on the main package, so it goes first.
+function inPublishOrder(packages) {
+  return packages.toSorted(
+    (a, b) =>
+      (b.name === MAIN_PACKAGE) - (a.name === MAIN_PACKAGE) ||
+      a.name.localeCompare(b.name)
+  );
 }
 
 async function isPublished({ name, version }) {
@@ -65,7 +62,7 @@ if (strays.length > 0) {
   process.exit(1);
 }
 
-for (const packed of inDependencyOrder(packages)) {
+for (const packed of inPublishOrder(packages)) {
   const id = `${packed.name}@${packed.version}`;
   if (await isPublished(packed)) {
     console.log(`Skipping ${id}: the registry already has it`);

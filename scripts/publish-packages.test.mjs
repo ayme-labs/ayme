@@ -100,24 +100,18 @@ async function run(t, packages, { answers = {}, npmFails, version } = {}) {
   return { ...result, directory, published };
 }
 
-const pinned = (...names) =>
-  Object.fromEntries(names.map((name) => [name, "0.2.0"]));
-
-// The published set, with the dependencies its packed manifests carry.
+// The published set.
 const RELEASE = [
-  { name: "@ayme-dev/angular", dependencies: pinned("@ayme-dev/ayme") },
-  {
-    name: "@ayme-dev/ayme",
-    peerDependencies: pinned("@ayme-dev/inspector", "@ayme-dev/mcp"),
-  },
-  { name: "@ayme-dev/inspector", dependencies: pinned("@ayme-dev/ayme") },
-  { name: "@ayme-dev/mcp" },
-  { name: "@ayme-dev/react", dependencies: pinned("@ayme-dev/ayme") },
-  { name: "@ayme-dev/svelte", dependencies: pinned("@ayme-dev/ayme") },
-  { name: "@ayme-dev/unplugin-ayme", dependencies: pinned("@ayme-dev/ayme") },
-  { name: "@ayme-dev/vue", dependencies: pinned("@ayme-dev/ayme") },
-  { name: "@ayme-dev/webmcp" },
-].map((manifest) => ({ ...manifest, version: "0.2.0" }));
+  "@ayme-dev/angular",
+  "@ayme-dev/ayme",
+  "@ayme-dev/inspector",
+  "@ayme-dev/mcp",
+  "@ayme-dev/react",
+  "@ayme-dev/svelte",
+  "@ayme-dev/unplugin-ayme",
+  "@ayme-dev/vue",
+  "@ayme-dev/webmcp",
+].map((name) => ({ name, version: "0.2.0" }));
 
 const tarballNames = ({ published }) =>
   published.map(([, tarball]) => path.basename(tarball, ".tgz"));
@@ -136,16 +130,6 @@ test("publishes the main package first, then the rest by name", async (t) => {
     "ayme-dev-vue",
     "ayme-dev-webmcp",
   ]);
-});
-
-test("publishes a package after the packages it depends on, whatever their names", async (t) => {
-  const result = await run(t, [
-    { name: "a-app", version: "1.0.0", dependencies: { "m-lib": "1.0.0" } },
-    { name: "m-lib", version: "1.0.0", dependencies: { "z-base": "1.0.0" } },
-    { name: "z-base", version: "1.0.0" },
-  ]);
-  assert.equal(result.code, 0, result.stderr);
-  assert.deepEqual(tarballNames(result), ["z-base", "m-lib", "a-app"]);
 });
 
 test("publishes public packages without running their scripts and without a dist-tag", async (t) => {
