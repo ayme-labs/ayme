@@ -7,7 +7,7 @@ Maintainer instructions for releasing the packages under `packages/` that are no
 Release Please keeps a release pull request open on `main`.
 
 1. Review the version and the changelogs in the release pull request.
-2. Close the pull request and reopen it. A pull request the workflow token opened starts no workflows, and the checks `main` requires run on the reopen.
+2. Approve the CI run GitHub holds on the release pull request, with **Approve and run** on its checks or on the run in the Actions tab. If no run appears, close the pull request and reopen it to create one.
 3. Merge it.
 
 Merging runs [`.github/workflows/release.yml`](../.github/workflows/release.yml) again. Release Please tags the release and creates a GitHub release per package. The workflow then builds that commit and runs the packed-consumer check (`pnpm --filter @ayme-dev/ayme test:package`), which packs each package and keeps the tarballs. It uploads exactly those tarballs as the `packages` artifact, and the publish job hands them to [`scripts/publish-packages.mjs`](../scripts/publish-packages.mjs), which publishes them through npm trusted publishing, with no npm token. A failing check stops the run before anything is published.
