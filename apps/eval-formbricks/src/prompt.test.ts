@@ -264,25 +264,44 @@ describe("the setup message", () => {
       const prompt = setupPrompt(arm);
       for (const word of ["Formbricks", "survey", "goal", "localhost", "sign"])
         expect(prompt.toLowerCase()).not.toContain(word.toLowerCase());
-      expect(prompt).toContain("Don't read files and don't use the browser");
+      expect(prompt).toContain("don't use the browser; just reply ready.");
     }
   });
 
   it("names the arm's skill and loads it now", () => {
     expect(setupPrompt(arms["ayme-goal-loop-off"])).toContain(
-      "Load the `ayme` skill now with the Skill tool."
+      "Load the `ayme` skill now with the Skill tool"
     );
     expect(setupPrompt(arms["ayme-no-page-objects-goal-loop-on"])).toContain(
-      "Load the `ayme` skill now with the Skill tool."
+      "Load the `ayme` skill now with the Skill tool"
     );
     expect(setupPrompt(arms["playwright-cli"])).toContain(
-      "Load the `playwright-cli` skill now with the Skill tool."
+      "Load the `playwright-cli` skill now with the Skill tool"
     );
   });
 
-  it("tells an arm without a skill not to look for one", () => {
+  it("has every Ayme arm read its skill's references, and no file outside the skill's folder", () => {
+    for (const armId of [
+      "ayme-goal-loop-off",
+      "ayme-goal-loop-on",
+      "ayme-no-page-objects-goal-loop-off",
+      "ayme-no-page-objects-goal-loop-on",
+    ] as const)
+      expect(setupPrompt(arms[armId])).toBe(
+        "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n"
+      );
+  });
+
+  it("keeps the Playwright CLI arm's setup message as its published runs had it", () => {
+    expect(setupPrompt(arms["playwright-cli"])).toBe(
+      "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `playwright-cli` skill now with the Skill tool. Don't read files and don't use the browser; just reply ready.\n"
+    );
+  });
+
+  it("tells an arm without a skill not to look for one, and to read no files", () => {
     const prompt = setupPrompt(arms["playwright-mcp"]);
     expect(prompt).toContain("Don't look for a skill.");
+    expect(prompt).toContain("Don't read files and don't use the browser");
     expect(prompt.toLowerCase()).not.toContain("playwright");
   });
 
@@ -316,7 +335,7 @@ describe.each([
     });
   });
 
-  it("leaves the agent read-only file tools, the server's tools and the eval's ayme skill, with nothing denied", () => {
+  it("leaves the agent read-only file tools, the server's tools and the shipped ayme skill, with nothing denied", () => {
     expect(arm.tools).toEqual(["Read", "Glob", "Grep", "ToolSearch", "Skill"]);
     expect(arm.allowedTools).toEqual(["mcp__ayme", "Skill(ayme)"]);
     expect(arm.disallowedTools).toBeUndefined();

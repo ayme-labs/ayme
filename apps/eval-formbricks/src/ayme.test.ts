@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +10,8 @@ import {
   agentSocketPath,
   aymeMcpCliPath,
   aymeMcpServer,
+  aymeSkillDirectory,
+  aymeSkillSource,
   mcpToolTimeoutMs,
   pageObjectToolNames,
   proxyScript,
@@ -17,6 +19,28 @@ import {
   serverPorts,
   settledStartPageProblem,
 } from "./ayme.ts";
+import { evalRoot, repoRoot } from "./paths.ts";
+
+describe("the Ayme arms' skill", () => {
+  it("is the one the repository ships, under skills/", () => {
+    const skills = path.join(repoRoot, "skills");
+    expect(aymeSkillSource.startsWith(`${skills}${path.sep}`)).toBe(true);
+    expect(existsSync(path.join(aymeSkillSource, "SKILL.md"))).toBe(true);
+    expect(
+      existsSync(path.join(aymeSkillSource, "references/page-tools.md"))
+    ).toBe(true);
+  });
+
+  it("has no copy in this package", () => {
+    expect(existsSync(path.join(evalRoot, "skills"))).toBe(false);
+  });
+
+  it("is copied into the run's configuration folder, where Claude Code loads user skills from", () => {
+    expect(aymeSkillDirectory("/run/claude-config")).toBe(
+      "/run/claude-config/skills/ayme"
+    );
+  });
+});
 
 describe("the agent's MCP server entry", () => {
   it("is the proxy in the run folder, pointed at the run's socket", () => {
