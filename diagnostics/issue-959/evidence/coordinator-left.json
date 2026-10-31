@@ -1,0 +1,1486 @@
+{
+  "head": "d75498f21726055407dfea69b26bfd8cf697bb94",
+  "browser": "156.0.8078.4",
+  "radix": "2.1.16",
+  "react": "19.2.6",
+  "oldAvailabilityApplied": 0,
+  "results": [
+    {
+      "driver": "host",
+      "mode": "hover",
+      "iteration": 0,
+      "rows": 7,
+      "gap": 8,
+      "width": 640,
+      "rowWidth": 480,
+      "overflow": "auto",
+      "prime": "none",
+      "oldAvailability": false,
+      "openMs": 55.46912499999985,
+      "ms": 3048.064625,
+      "error": "locator.click: Timeout 3000ms exceeded.\nCall log:\n  - waiting for getByTestId('survey-status-option-completed')\n    - locator resolved to <div tabindex=\"-1\" role=\"menuitemradio\" aria-checked=\"false\" data-state=\"unchecked\" data-orientation=\"vertical\" data-radix-collection-item=\"\" data-testid=\"survey-status-option-completed\">…</div>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n    - <html>…</html> intercepts pointer events\n  - retrying click action\n    - waiting for element to be visible, enabled and stable\n  - element was detached from the DOM, retrying\n",
+      "openEvents": [
+        {
+          "t": 664.3000000007451,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 670.3000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.5
+        },
+        {
+          "t": 670.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.19999999925494194
+        },
+        {
+          "t": 670.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 670.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 670.9000000003725,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 670.9000000003725,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 671.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 671.2000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 671.3000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 671.4000000003725,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 671.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 671.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 671.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 671.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 851.4000000003725,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.40000000037252903
+        },
+        {
+          "t": 851.6000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 851.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 851.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 852,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 852,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 852,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 852.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 852.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 852.2000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 852.3000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 852.3000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 852.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 852.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 980,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 980,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1015.9000000003725,
+          "kind": "pointerout",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1015.9000000003725,
+          "kind": "pointerover",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1016.5,
+          "kind": "pointermove",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1016.7000000001863,
+          "kind": "pointerdown",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1030.6000000005588,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1032.4000000003725,
+          "kind": "pointerout",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1032.4000000003725,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1032.5,
+          "kind": "pointerup",
+          "target": "HTML",
+          "related": null,
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1032.5,
+          "kind": "click",
+          "target": "HTML",
+          "related": null,
+          "x": 464,
+          "y": 122,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "events": [
+        {
+          "t": 1080.9000000003725,
+          "kind": "pointerout",
+          "target": "HTML",
+          "related": "change-status",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1080.9000000003725,
+          "kind": "pointerover",
+          "target": "change-status",
+          "related": "HTML",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1081.1000000005588,
+          "kind": "pointermove",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1198.800000000745,
+          "kind": "dom",
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress",
+          "subSide": "right"
+        },
+        {
+          "t": 1283.9000000003725,
+          "kind": "pointerout",
+          "target": "change-status",
+          "related": "survey-status-option-completed",
+          "x": 270,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress",
+          "subSide": "left"
+        },
+        {
+          "t": 1295.6000000005588,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1296,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": "menu",
+          "x": 270,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "state": {
+        "trigger": "closed",
+        "itemPresent": false,
+        "status": "inProgress"
+      }
+    },
+    {
+      "driver": "lite",
+      "mode": "hover",
+      "iteration": 0,
+      "rows": 7,
+      "gap": 8,
+      "width": 640,
+      "rowWidth": 480,
+      "overflow": "auto",
+      "prime": "none",
+      "oldAvailability": false,
+      "openMs": 34.182959000000665,
+      "ms": 3074.853915999999,
+      "error": "page.evaluate: TimeoutError: locator.click: Timeout 3000ms exceeded. No elements found for locator page.locator(\"internal:testid=[data-testid=\\\"survey-status-option-completed\\\"s]\")\nCall log:\n  - waiting for getByTestId('survey-status-option-completed')\n    - locator resolved to <div tabindex=\"-1\" role=\"menuitemradio\" aria-checked=\"false\" data-state=\"unchecked\" data-orientation=\"vertical\" data-radix-collection-item=\"\" data-testid=\"survey-status-option-completed\">…</div>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n  - waiting for getByTestId('survey-status-option-completed')\n    at timeoutError (http://127.0.0.1:63692/@fs/Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/packages/ayme/dist/runtime-BGy-cO_L.mjs:29382:30)\n    at PageImpl.retryActionability (http://127.0.0.1:63692/@fs/Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/packages/ayme/dist/runtime-BGy-cO_L.mjs:29461:54)\n    at async PageImpl.performPointerAction (http://127.0.0.1:63692/@fs/Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/packages/ayme/dist/runtime-BGy-cO_L.mjs:27524:21)\n    at async PageImpl.clickSelector (http://127.0.0.1:63692/@fs/Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/packages/ayme/dist/runtime-BGy-cO_L.mjs:27469:3)\n    at async LocatorImpl.click (http://127.0.0.1:63692/@fs/Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/packages/ayme/dist/runtime-BGy-cO_L.mjs:31148:3)\n    at async LocatorImpl.value (http://127.0.0.1:63692/@fs/Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/packages/ayme/dist/runtime-BGy-cO_L.mjs:6991:13)\n    at async SurveyList.setCompleted (http://127.0.0.1:63692/SurveyList.ts:57:3)\n    at async <anonymous>:396:30",
+      "openEvents": [
+        {
+          "t": 42.89999999944121,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 44.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 44.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 44.39999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.39999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.799999999813735,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 44.799999999813735,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 45,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 45,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 45,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 45.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 52.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 52.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.299999999813735,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.39999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 52.39999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 52.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.89999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 52.89999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.89999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 52.89999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 139.29999999981374,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 139.29999999981374,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 159.19999999925494,
+          "kind": "pointerout",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 159.19999999925494,
+          "kind": "pointerover",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 159.3999999994412,
+          "kind": "pointermove",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 159.59999999962747,
+          "kind": "pointerdown",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 172.09999999962747,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 173,
+          "kind": "pointerout",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 173,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 173.09999999962747,
+          "kind": "pointerup",
+          "target": "HTML",
+          "related": null,
+          "x": 464.3500061035156,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 173.09999999962747,
+          "kind": "click",
+          "target": "HTML",
+          "related": null,
+          "x": 464,
+          "y": 122,
+          "pointerType": "mouse",
+          "trusted": true,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "events": [
+        {
+          "t": 178.59999999962747,
+          "kind": "action-start",
+          "mode": "hover"
+        },
+        {
+          "t": 242.29999999981374,
+          "kind": "pointerover",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 242.79999999981374,
+          "kind": "pointermove",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 246.19999999925494,
+          "kind": "trigger-done",
+          "itemPresent": false
+        },
+        {
+          "t": 361.3999999994412,
+          "kind": "dom",
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress",
+          "subSide": "right"
+        },
+        {
+          "t": 425,
+          "kind": "pointerout",
+          "target": "change-status",
+          "related": "survey-status-option-completed",
+          "x": 270,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress",
+          "subSide": "left"
+        },
+        {
+          "t": 432.3999999994412,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 432.8999999994412,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 270,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "state": {
+        "trigger": "closed",
+        "itemPresent": false,
+        "status": "inProgress"
+      }
+    },
+    {
+      "driver": "ayme",
+      "mode": "hover",
+      "iteration": 0,
+      "rows": 7,
+      "gap": 8,
+      "width": 640,
+      "rowWidth": 480,
+      "overflow": "auto",
+      "prime": "none",
+      "oldAvailability": false,
+      "openMs": 415.77287500000057,
+      "ms": 3319.053082999999,
+      "error": "TimeoutError: locator.click: Timeout 3000ms exceeded. No elements found for locator page.locator(\"internal:testid=[data-testid=\\\"survey-status-option-completed\\\"s]\")\nCall log:\n  - waiting for getByTestId('survey-status-option-completed')\n    - locator resolved to <div tabindex=\"-1\" role=\"menuitemradio\" aria-checked=\"false\" data-state=\"unchecked\" data-orientation=\"vertical\" data-radix-collection-item=\"\" data-testid=\"survey-status-option-completed\">…</div>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n  - waiting for getByTestId('survey-status-option-completed')",
+      "openEvents": [
+        {
+          "t": 153.5,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 154.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 154.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 154.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 154.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 155.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 155.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 159.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 159.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 159.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 159.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 159.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 159.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 159.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 159.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 160,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 160,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 160.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 160.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 160.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 160.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 268.29999999981374,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 268.29999999981374,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 270.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 270.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 270.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 270.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 270.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 271.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 271.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 271.5,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 278.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 278.59999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 278.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 278.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 278.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 278.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 279,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 279.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 279.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 279.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 279.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 279.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 279.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 279.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 326.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 326.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 326.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 326.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 327.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.29999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.3999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 327.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 327.79999999981374,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 327.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 393.19999999925494,
+          "kind": "pointerover",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 393.59999999962747,
+          "kind": "pointermove",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 394.19999999925494,
+          "kind": "pointerdown",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 413.29999999981374,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 414.59999999962747,
+          "kind": "pointerout",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 414.69999999925494,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 414.79999999981374,
+          "kind": "pointerup",
+          "target": "HTML",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 414.8999999994412,
+          "kind": "click",
+          "target": "HTML",
+          "related": null,
+          "x": 464,
+          "y": 122,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "events": [
+        {
+          "t": 697,
+          "kind": "action-start",
+          "mode": "hover"
+        },
+        {
+          "t": 743.1999999992549,
+          "kind": "pointerout",
+          "target": "HTML",
+          "related": "change-status",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 743.1999999992549,
+          "kind": "pointerover",
+          "target": "change-status",
+          "related": "HTML",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 743.5,
+          "kind": "pointermove",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 750.0999999996275,
+          "kind": "trigger-done",
+          "itemPresent": false
+        },
+        {
+          "t": 865.7999999998137,
+          "kind": "dom",
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress",
+          "subSide": "right"
+        },
+        {
+          "t": 927,
+          "kind": "pointerout",
+          "target": "change-status",
+          "related": "survey-status-option-completed",
+          "x": 270,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress",
+          "subSide": "left"
+        },
+        {
+          "t": 939.0999999996275,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 939.5,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 270,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "state": {
+        "trigger": "closed",
+        "itemPresent": false,
+        "status": "inProgress"
+      }
+    }
+  ]
+}
