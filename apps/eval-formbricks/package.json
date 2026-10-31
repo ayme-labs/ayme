@@ -6,6 +6,8 @@
   "scripts": {
     "eval:report": "node src/report.ts",
     "eval:run": "node src/run.ts",
+    "eval:startup": "node src/startup.ts",
+    "eval:startup-suite": "node src/startupSuite.ts",
     "eval:suite": "node src/suite.ts",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",

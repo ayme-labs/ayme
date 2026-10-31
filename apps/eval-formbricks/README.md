@@ -6,6 +6,8 @@ This package is separate from the lab app on purpose. The agent's working root i
 
 It runs by hand, on a Mac or [on a hosted runner](#on-a-hosted-runner). It is never part of CI or `pnpm check`; only its unit tests are.
 
+The package also holds [the startup lane](#the-startup-lane), which checks that the shipped `ayme` skill routes an agent to the right references. It needs none of what follows but Claude Code and the token.
+
 ## Prerequisites
 
 - The lab app prepared and running: `pnpm lab:prepare` and `pnpm lab:dev` in `apps/lab-formbricks`
@@ -188,6 +190,61 @@ Set up outside the measured window, from the pinned package, with no download:
 - **No update check, and no page tools.** The CLI's update check is off, and so is its handling of tools a page registers through WebMCP, which would hand the agent the lab app's own Ayme tools.
 - **Denied commands.** `npx` (the skill pre-approves `npx playwright`, which would run the lab app's own Playwright), `playwright-cli install` and `install-browser`, and `playwright-cli kill-all`, which kills every Playwright daemon on the machine.
 
+## The startup lane
+
+Measures only the agent's first turn after loading the skill: whether the skill sends it to the references the task needs, and nothing more. A run costs cents and takes under a minute. It needs Claude Code and the token from [the prerequisites](#prerequisites), and no lab app, Docker, browser or key.
+
+From this directory inside `devbox shell`:
+
+```sh
+pnpm eval:startup
+pnpm eval:startup -- --scenario drive-the-open-page --model sonnet
+```
+
+Every run calls the model and costs money. The exit code is `0` for a pass, `1` for a fail and `2` when the run could not complete, as for [a mission](#one-run).
+
+A scenario is data in [`src/scenarios.ts`](src/scenarios.ts): a framing of the task, the references it should lead the agent to read, and optionally references it must not read. There are no arms.
+
+| Scenario              | Framing                                                  | Expected read                      | Forbidden                                                 |
+| --------------------- | -------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- |
+| `drive-the-open-page` | Get ready to drive the open, connected page through Ayme | `references/page-tools.md`         |                                                           |
+| `set-up-ayme`         | Get ready to set up Ayme in this project                 | `references/onboarding.md`         | `references/page-tools.md`, `references/browser-setup.md` |
+| `design-page-objects` | Get ready to design page objects for a flow              | `references/page-object-design.md` |                                                           |
+
+The agent starts on the lab app folder, which every checkout holds, with the [shared isolated configuration](#missions-and-arms). Its one file tool is `Read`, so no reference is seen without counting as read; beside it, it has the `Skill` tool and no MCP server, and the shipped skill is copied into its configuration folder as for the Ayme arms. That copy is the one place outside the working root it can read. It gets one message: the scenario's framing and the Ayme arms' setup sentence, which names the skill, says to read what it points to, to read no file outside its folder, not to use the browser, and to reply ready. The message names no reference, so routing stays the skill's job.
+
+The verdict is read from the transcript. A run passes when no condition fails, and `failed` names each one that did:
+
+| Condition                | Holds when                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `skill-loaded`           | The Skill tool loaded `ayme`.                                                                            |
+| `expected-files-read`    | The files read equal the expected set. A surplus read fails, `SKILL.md` or a working-root file included. |
+| `no-forbidden-file`      | None of the scenario's forbidden references was read.                                                    |
+| `nothing-denied`         | Claude Code's result reports no permission denial.                                                       |
+| `no-browser-or-mcp-tool` | Every tool called is one of the lane's own, which no browser or MCP tool is.                             |
+| `within-setup-timeout`   | The turn ended within the [setup turn's 120 seconds](#what-is-measured).                                 |
+
+A timed-out turn is a failed run and stores a result without a wall time or tokens. A turn that ends with an error, or an agent that ends without answering, says nothing about routing: the run could not complete, and only the transcript stays. A `Read` that failed or was denied is not a file read.
+
+Under `results/runs/<run id>/`, a run holds `setup-prompt.txt`, the message as sent; `mcp.json`, the empty MCP server list; `transcript.jsonl`; `stderr.log`; and `result.json`, printed when the run ends: `pass`, `failed` and the measures, `wallTimeMs`, `tokens` and `filesRead`, with what a rerun must match. The configuration folder is deleted afterwards.
+
+### A startup suite
+
+From this directory inside `devbox shell`:
+
+```sh
+pnpm eval:startup-suite -- --runs 10
+pnpm eval:report -- --publish
+```
+
+Options: `--runs` per scenario (default `3`), `--model` (default `sonnet`). The suite runs every scenario round-robin (run 1 of each, then run 2), writes its manifest (`suite.json`) after every run, and writes its summary at the end, both under `results/suites/<suite id>/`. Its manifest carries `lane: "startup"`, which is how the report tells it from a mission suite; `pnpm eval:report` takes the newest suite of either kind, or `--suite <suite id>`.
+
+A failed verdict, a timed-out turn included, is a result, and the suite goes on. The first run that cannot complete ends it: the runs stored so far are summarized and the summary says the suite stopped early. The exit code is `0` when every run completed, whatever their verdicts, and `2` when the suite stopped early. A suite killed mid-way leaves a manifest of the runs it finished, and `pnpm eval:report` summarizes those.
+
+Per scenario the summary shows the passes out of the runs stored, the median, lowest and highest of setup time and tokens (input, cache creation, cache read and output added up; a timed-out run has neither and the cell says how many runs it rests on), and how many runs read each file. A file outside the skill's folder counts under one line, `outside the skill's folder`, so a local path is never published; `result.json` keeps the path. It also records what a rerun must match: the date, the Claude Code version, the model and effort, the Ayme commit and the timeout. The skill is read from the working tree, so the commit pins it only for a clean one.
+
+`--publish` writes the summary, formatted with the repository's Prettier, to `summaries/<date>-startup/`, a folder of its own that no Formbricks summary uses. A second startup summary for the same day replaces the first.
+
 ## Tests
 
-`pnpm test` runs the unit tests, which CI runs too. They cover building the summary from stored results (medians and ranges for odd and even run counts, failed runs in the pass counts, a run without usage data), the suite's options, the step from stored run artifacts to the normalized result, with recorded-shape two-turn fixture transcripts under [`src/fixtures/`](src/fixtures) (a complete run, with the measured figures taken from the task turn and the setup turn kept apart; a task turn without a usage block; a task turn that timed out), the Claude Code driver itself, against a stand-in `claude` in [`src/fixtures/bin/`](src/fixtures/bin) that replays a fixture turn by turn (the task sent only after the setup turn's result, a setup turn that ends with an error, a setup turn and a task turn that run out of their timeouts), the missions (their start, and a stored mission read back), the verdict function (mission plus the workspace's survey records to pass or fail, the database read staying outside it: for the seeded survey, and for a created one, with two surveys, the first headline left in place and no survey failing), the Goal Loop's usage (selecting a run's lines by its window, tokens and cost from the lines and OpenRouter's records, an unknown cost when a record is missing, and the combined cost with and without a Goal Loop), the arms' interfaces, the Ayme arms' proxy to the server (its stdio reaches the socket and back), the prompt, which for either mission differs between arms in its interface line alone and for the default mission is the text the published numbers were measured with, the setup message, which names no app or task, names the arm's skill, and has the Ayme arms alone read that skill's references, in its folder only, with the Playwright CLI arm's text pinned, and the Ayme arms' skill, which resolves inside the repository's `skills/`, with no copy in this package. Nothing in the tests needs the lab app, a browser or a model.
+`pnpm test` runs the unit tests, which CI runs too. They cover building the summary from stored results (medians and ranges for odd and even run counts, failed runs in the pass counts, a run without usage data), the suite's options, the step from stored run artifacts to the normalized result, with recorded-shape two-turn fixture transcripts under [`src/fixtures/`](src/fixtures) (a complete run, with the measured figures taken from the task turn and the setup turn kept apart; a task turn without a usage block; a task turn that timed out), the Claude Code driver itself, against a stand-in `claude` in [`src/fixtures/bin/`](src/fixtures/bin) that replays a fixture turn by turn (the task sent only after the setup turn's result, a setup turn that ends with an error, a setup turn and a task turn that run out of their timeouts), the missions (their start, and a stored mission read back), the verdict function (mission plus the workspace's survey records to pass or fail, the database read staying outside it: for the seeded survey, and for a created one, with two surveys, the first headline left in place and no survey failing), the Goal Loop's usage (selecting a run's lines by its window, tokens and cost from the lines and OpenRouter's records, an unknown cost when a record is missing, and the combined cost with and without a Goal Loop), the arms' interfaces, the Ayme arms' proxy to the server (its stdio reaches the socket and back), the prompt, which for either mission differs between arms in its interface line alone and for the default mission is the text the published numbers were measured with, the setup message, which names no app or task, names the arm's skill, and has the Ayme arms alone read that skill's references, in its folder only, with the Playwright CLI arm's text pinned, the Ayme arms' skill, which resolves inside the repository's `skills/`, with no copy in this package, and the startup lane, which runs through the same stand-in on fixtures under [`src/fixtures/`](src/fixtures) and checks what it stored: the expected set read exactly, a reference too many, one missing, a skill never loaded, a denied `Read`, a browser tool called, a setup turn that times out and one that ends with an error, its scenarios as data, a suite through the same stand-in (round-robin order, the manifest, a failed verdict that goes on, a run that cannot complete and ends it), and the startup summary from stored results (per-scenario counts, file-read frequencies, medians for odd and even run counts, a published folder of its own). Nothing in the tests needs the lab app, a browser or a model.
