@@ -67,3 +67,4 @@ export async function startMcpServer({
   await mcp.connect(new StdioServerTransport());
   log(`Listening for pages on ${pairing.address}.`);
 }
+export { readCommand } from "./readCommand";
