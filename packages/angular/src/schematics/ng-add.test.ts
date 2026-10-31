@@ -116,6 +116,7 @@ describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
     };
+    expect(manifest.dependencies["@ayme-dev/angular"]).toBe(version);
     expect(manifest.dependencies["@ayme-dev/ayme"]).toBe(version);
     expect(manifest.devDependencies["@ayme-dev/unplugin-ayme"]).toBe(version);
     expect(manifest.devDependencies["@playwright/test"]).toBe("~1.64.0");
@@ -155,6 +156,28 @@ it("maps Angular 19's builders and installs the matching custom-esbuild major", 
     "provideAyme()"
   );
   expect(messages.filter(({ level }) => level === "warn")).toEqual([]);
+});
+
+it("pins @ayme-dev/angular over the caret the Angular CLI's install step saved", async () => {
+  const before = await workspace({ ssr: false });
+  const manifest = before.readJson("package.json") as {
+    dependencies: Record<string, string>;
+  };
+  manifest.dependencies["@ayme-dev/angular"] = `^${version}`;
+  before.overwrite("package.json", JSON.stringify(manifest, null, 2));
+
+  const { tree, messages } = await ngAdd(before);
+
+  expect(
+    (tree.readJson("package.json") as { dependencies: Record<string, string> })
+      .dependencies["@ayme-dev/angular"]
+  ).toBe(version);
+  expect(messages.filter(({ level }) => level === "warn")).toEqual([
+    {
+      level: "warn",
+      message: `Package dependency "@ayme-dev/angular" already exists with a different specifier. "^${version}" will be replaced with "${version}".`,
+    },
+  ]);
 });
 
 it("keeps the @playwright/test version a project already has", async () => {
