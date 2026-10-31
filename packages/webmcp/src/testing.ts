@@ -1,4 +1,4 @@
-/// <reference types="@mcp-b/webmcp-types" preserve="true" />
+/// <reference types="webmcp-types" preserve="true" />
 // The testing entry (ADR-0026): a recording WebMCP driver for Playwright
 // tests, which only tests may import. The helpers receive the test's own
 // `Page` and `BrowserContext`. The reference above declares

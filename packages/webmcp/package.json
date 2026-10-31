@@ -50,7 +50,7 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
-    "@mcp-b/webmcp-types": "^5.0.1"
+    "webmcp-types": "^0.1.10"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.29 <1.65"
