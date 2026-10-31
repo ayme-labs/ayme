@@ -5,17 +5,35 @@
 // without a result event is replayed and then left hanging, as a stuck agent
 // would, until the harness stops the process. FAKE_CLAUDE_TRANSCRIPT names
 // the fixture; FAKE_CLAUDE_RESULT_DELAY_MS delays each turn's result event.
-// Each user message's text goes to stderr, so a test can see what was sent.
-import { readFileSync } from "node:fs";
+// Each user message's text goes to stderr, so a test can see what was sent,
+// as do the arguments and the skills in its configuration folder. The fixture
+// writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { createInterface } from "node:readline";
 
+if (process.argv[2] === "--version") {
+  process.stdout.write("2.1.281 (Claude Code)\n");
+  process.exit(0);
+}
+if (process.argv[2] === "auth") {
+  process.stdout.write(`${JSON.stringify({ loggedIn: true })}\n`);
+  process.exit(0);
+}
 if (!process.argv.includes("--input-format")) {
   process.stderr.write("fake claude: expected --input-format stream-json\n");
   process.exit(64);
 }
 
+const configDir = process.env.CLAUDE_CONFIG_DIR ?? "";
+const skillsDir = path.join(configDir, "skills");
+process.stderr.write(
+  `fake claude: started in ${process.cwd()} with ${JSON.stringify(process.argv.slice(2))} and skills ${existsSync(skillsDir) ? readdirSync(skillsDir) : "none"}\n`
+);
+
 const turns = [[]];
 for (const line of readFileSync(process.env.FAKE_CLAUDE_TRANSCRIPT, "utf8")
+  .replaceAll("$CLAUDE_CONFIG_DIR", configDir)
   .split("\n")
   .filter((line) => line.trim())) {
   turns.at(-1).push(line);

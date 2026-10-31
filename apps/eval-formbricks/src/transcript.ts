@@ -245,6 +245,29 @@ export function summarizeTranscript(lines: string[]): TranscriptSummary {
   return { turns, unparsedLines };
 }
 
+/** One tool call with its input; `succeeded` once a result that is no error came back. */
+export type ToolCall = { name: string; input: Json; succeeded: boolean };
+
+/** Every tool call of a transcript, in order. */
+export function toolCalls(lines: string[]): ToolCall[] {
+  const calls = new Map<string, ToolCall>();
+  for (const event of parseEvents(lines).events) {
+    for (const block of contentBlocks(event)) {
+      if (block.type === "tool_use")
+        calls.set(String(block.id), {
+          name: stringOrNull(block.name) ?? "unknown",
+          input: isRecord(block.input) ? block.input : {},
+          succeeded: false,
+        });
+      if (block.type === "tool_result") {
+        const call = calls.get(String(block.tool_use_id));
+        if (call !== undefined) call.succeeded = block.is_error !== true;
+      }
+    }
+  }
+  return [...calls.values()];
+}
+
 /** The init event lists skills as names or as objects with a name. */
 function skillName(skill: unknown): string | null {
   if (typeof skill === "string") return skill;
