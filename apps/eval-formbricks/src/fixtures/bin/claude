@@ -4,7 +4,8 @@
 // The turns are the fixture's events split at its result events. A turn
 // without a result event is replayed and then left hanging, as a stuck agent
 // would, until the harness stops the process. FAKE_CLAUDE_TRANSCRIPT names
-// the fixture; FAKE_CLAUDE_RESULT_DELAY_MS delays each turn's result event.
+// the fixture, or several when it holds `{scenario}`, the startup scenario the
+// run's folder names; FAKE_CLAUDE_RESULT_DELAY_MS delays each turn's result event.
 // Each user message's text goes to stderr, so a test can see what was sent,
 // as do the arguments and the skills in its configuration folder. The fixture
 // writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
@@ -31,8 +32,15 @@ process.stderr.write(
   `fake claude: started in ${process.cwd()} with ${JSON.stringify(process.argv.slice(2))} and skills ${existsSync(skillsDir) ? readdirSync(skillsDir) : "none"}\n`
 );
 
+const [, scenario = ""] =
+  /-startup-(.+)-[0-9a-f]{6}\/claude-config$/.exec(configDir) ?? [];
+const fixture = process.env.FAKE_CLAUDE_TRANSCRIPT.replace(
+  "{scenario}",
+  scenario
+);
+
 const turns = [[]];
-for (const line of readFileSync(process.env.FAKE_CLAUDE_TRANSCRIPT, "utf8")
+for (const line of readFileSync(fixture, "utf8")
   .replaceAll("$CLAUDE_CONFIG_DIR", configDir)
   .split("\n")
   .filter((line) => line.trim())) {
