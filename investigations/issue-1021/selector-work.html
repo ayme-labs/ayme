@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        font-family: var(--font-sans);
+        color: var(--foreground);
+      }
+      body {
+        margin: 0;
+      }
+      figure {
+        margin: 0;
+      }
+      figcaption {
+        margin-bottom: 18px;
+        font-weight: 500;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 64px 1fr 78px;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .track {
+        height: 24px;
+        background: var(--muted);
+      }
+      .bar {
+        height: 24px;
+        background: var(--chart-1);
+        min-width: 3px;
+      }
+      .value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .units {
+        margin-left: 76px;
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <figure
+      aria-label="Selector candidate work grows from 4,915 at 12 rows to 281,191 at 96 rows, 57 times more work for 8 times more rows."
+    >
+      <figcaption>Selector candidates in one registry observation</figcaption>
+      <div class="row">
+        <span>12 rows</span>
+        <div class="track"><div class="bar" style="width: 1.748%"></div></div>
+        <span class="value">4,915</span>
+      </div>
+      <div class="row">
+        <span>24 rows</span>
+        <div class="track"><div class="bar" style="width: 6.566%"></div></div>
+        <span class="value">18,463</span>
+      </div>
+      <div class="row">
+        <span>48 rows</span>
+        <div class="track"><div class="bar" style="width: 25.42%"></div></div>
+        <span class="value">71,479</span>
+      </div>
+      <div class="row">
+        <span>96 rows</span>
+        <div class="track"><div class="bar" style="width: 100%"></div></div>
+        <span class="value">281,191</span>
+      </div>
+      <div class="units">Returned native querySelectorAll candidates</div>
+    </figure>
+  </body>
+</html>

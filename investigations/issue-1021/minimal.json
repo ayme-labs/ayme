@@ -1,0 +1,82 @@
+[
+  {
+    "rows": 4,
+    "members": false,
+    "actions": false,
+    "plainRows": true,
+    "ms": 1,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 4,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 8,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 4
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 4,
+      "isVisible": 4
+    },
+    "qsaCalls": 55,
+    "candidates": 323,
+    "dom": {
+      "document:*": {
+        "calls": 17,
+        "candidates": 153
+      },
+      "BODY:li": {
+        "calls": 17,
+        "candidates": 68
+      },
+      "BODY:*": {
+        "calls": 17,
+        "candidates": 102
+      },
+      "document::modal": {
+        "calls": 4,
+        "candidates": 0
+      }
+    },
+    "observedRows": 4
+  },
+  {
+    "rows": 8,
+    "members": false,
+    "actions": false,
+    "plainRows": true,
+    "ms": 1.3,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 8,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 16,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 8
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 8,
+      "isVisible": 8
+    },
+    "qsaCalls": 107,
+    "candidates": 1023,
+    "dom": {
+      "document:*": {
+        "calls": 33,
+        "candidates": 429
+      },
+      "BODY:li": {
+        "calls": 33,
+        "candidates": 264
+      },
+      "BODY:*": {
+        "calls": 33,
+        "candidates": 330
+      },
+      "document::modal": {
+        "calls": 8,
+        "candidates": 0
+      }
+    },
+    "observedRows": 8
+  }
+]

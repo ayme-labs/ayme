@@ -1,0 +1,98 @@
+[
+  {
+    "stage": "repro",
+    "small": {
+      "rows": 12,
+      "calls": 255,
+      "matches": 5864,
+      "ms": 4
+    },
+    "large": {
+      "rows": 24,
+      "calls": 507,
+      "matches": 20348,
+      "ms": 8
+    },
+    "ratio": 3.469986357435198
+  },
+  {
+    "stage": "minimize-no-actions",
+    "small": {
+      "rows": 12,
+      "calls": 255,
+      "matches": 5864,
+      "ms": 4
+    },
+    "large": {
+      "rows": 24,
+      "calls": 507,
+      "matches": 20348,
+      "ms": 8
+    },
+    "ratio": 3.469986357435198
+  },
+  {
+    "stage": "minimize-no-members",
+    "small": {
+      "rows": 12,
+      "calls": 159,
+      "matches": 3920,
+      "ms": 3
+    },
+    "large": {
+      "rows": 24,
+      "calls": 315,
+      "matches": 13580,
+      "ms": 6
+    },
+    "ratio": 3.4642857142857144
+  },
+  {
+    "stage": "minimize-no-buttons",
+    "small": {
+      "rows": 12,
+      "calls": 159,
+      "matches": 2744,
+      "ms": 2
+    },
+    "large": {
+      "rows": 24,
+      "calls": 315,
+      "matches": 8924,
+      "ms": 5
+    },
+    "ratio": 3.252186588921283
+  },
+  {
+    "stage": "minimize-small",
+    "small": {
+      "rows": 4,
+      "calls": 55,
+      "matches": 544,
+      "ms": 1
+    },
+    "large": {
+      "rows": 8,
+      "calls": 107,
+      "matches": 1452,
+      "ms": 1
+    },
+    "ratio": 2.6691176470588234
+  },
+  {
+    "stage": "current-main-repro",
+    "small": {
+      "rows": 4,
+      "calls": 55,
+      "matches": 544,
+      "ms": 1
+    },
+    "large": {
+      "rows": 8,
+      "calls": 107,
+      "matches": 1452,
+      "ms": 1
+    },
+    "ratio": 2.6691176470588234
+  }
+]
