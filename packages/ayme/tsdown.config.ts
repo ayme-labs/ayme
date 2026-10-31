@@ -2,6 +2,9 @@ import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 
 // Private workspace packages, copied into the output instead of imported.
+// Core is bundled but its third-party dependency zod is declared in
+// package.json and left external, so a consumer's own zod dedupes and
+// `npm audit` sees it.
 const bundled = ["@ayme-dev/playwright-lite", "@ayme-dev/core"];
 const ownSource = join(import.meta.dirname, "src") + sep;
 

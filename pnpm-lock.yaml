@@ -731,6 +731,9 @@ importers:
       "@ayme-dev/webmcp":
         specifier: workspace:*
         version: link:../webmcp
+      zod:
+        specifier: ^4.5.4
+        version: 4.6.5
     devDependencies:
       "@ayme-dev/core":
         specifier: workspace:*

@@ -27,7 +27,7 @@ Publish these packages:
 
 Keep WebMCP publication, the Inspector and the MCP server in their own
 packages, as optional peers of `@ayme-dev/ayme`. Each carries dependencies
-the dependency-free main package must not impose on every consumer.
+the main package must not impose on every consumer.
 
 Keep the structural observation engine as an internal workspace package,
 `@ayme-dev/core`, bundled into the published packages that use it. Do not
