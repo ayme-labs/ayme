@@ -64,6 +64,9 @@
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
     "test:mutation": "stryker run"
   },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
   "peerDependencies": {
     "@playwright/test": ">=1.29 <1.65",
     "@ayme-dev/inspector": "workspace:*",
