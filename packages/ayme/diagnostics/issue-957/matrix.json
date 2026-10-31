@@ -1,0 +1,262 @@
+{
+  "metadata": {
+    "browserVersion": "156.0.8078.4",
+    "nodeVersion": "v24.21.0",
+    "head": "a55e9d15fed89156c80765bc72e729c47ce4fbc4",
+    "mode": "matrix"
+  },
+  "rows": [
+    {
+      "path": "browser",
+      "workMs": 0,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177823091.6,
+      "marks": {
+        "started": 175.40000000037253,
+        "clickEntered": 298.09999999962747,
+        "effect": 298.09999999962747,
+        "workStarted": 298.09999999962747,
+        "workReturned": 298.09999999962747,
+        "handlerReturned": 298.09999999962747,
+        "returned": 554.0999999996275
+      },
+      "result": {
+        "page_changed": true,
+        "settled": true,
+        "changes": "- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+      }
+    },
+    {
+      "path": "browser",
+      "workMs": 1400,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177823700.7,
+      "marks": {
+        "started": 96.1000000005588,
+        "clickEntered": 224,
+        "effect": 224,
+        "workStarted": 224,
+        "workReturned": 1624,
+        "handlerReturned": 1624,
+        "returned": 1883.7000000001863
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('ayme-ref=e2')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n\nchanges:\n- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "path": "pom",
+      "workMs": 0,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177825632.1,
+      "marks": {
+        "started": 93.29999999981374,
+        "clickEntered": 140.20000000018626,
+        "effect": 140.29999999981374,
+        "workStarted": 140.29999999981374,
+        "workReturned": 140.29999999981374,
+        "handlerReturned": 140.29999999981374,
+        "returned": 395.20000000018626
+      },
+      "result": {
+        "page_changed": true,
+        "settled": true,
+        "changes": "- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+      }
+    },
+    {
+      "path": "pom",
+      "workMs": 1400,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177826077.7,
+      "marks": {
+        "started": 95.70000000018626,
+        "clickEntered": 156.70000000018626,
+        "effect": 156.79999999981374,
+        "workStarted": 156.79999999981374,
+        "workReturned": 1556.7999999998137,
+        "handlerReturned": 1556.7999999998137,
+        "returned": 1810.5999999996275
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('#apply')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n\nchanges:\n- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "path": "lite",
+      "workMs": 0,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177827931.5,
+      "marks": {
+        "started": 85.40000000037253,
+        "clickEntered": 140.5,
+        "effect": 140.5,
+        "workStarted": 140.5,
+        "workReturned": 140.5,
+        "handlerReturned": 140.5,
+        "returned": 140.5
+      }
+    },
+    {
+      "path": "lite",
+      "workMs": 1400,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177828105.9,
+      "marks": {
+        "started": 81.1000000005588,
+        "clickEntered": 139.6000000005588,
+        "effect": 139.6000000005588,
+        "workStarted": 139.6000000005588,
+        "workReturned": 1539.6000000005588,
+        "handlerReturned": 1539.6000000005588,
+        "returned": 1541.7999999998137
+      },
+      "error": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('#apply')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action",
+      "stack": "TimeoutError: click: Timeout 1000ms exceeded.\n    at PageImpl.assertActionDeadline (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:22395:61)\n    at PageImpl.performPointerAction (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:20842:11)\n    at async PageImpl.clickSelector (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:20743:3)\n    at async LocatorImpl.click (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:24422:3)\n    at async LocatorImpl.value (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:266:13)\n    at async window.diagnose957 (http://127.0.0.1:19570/diagnostics/issue-957/fixture.ts:87:33)\n    at async <anonymous>:396:30"
+    },
+    {
+      "path": "host",
+      "workMs": 0,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177829680.5,
+      "marks": {
+        "clickEntered": 123.90000000037253,
+        "effect": 123.90000000037253,
+        "workStarted": 123.90000000037253,
+        "workReturned": 123.90000000037253,
+        "handlerReturned": 123.90000000037253
+      },
+      "returnedMs": 48.03770799999984,
+      "nodeStartedEpochMs": 1793177829757,
+      "nodeReturnedEpochMs": 1793177829805
+    },
+    {
+      "path": "host",
+      "workMs": 1400,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177829839.1,
+      "marks": {
+        "clickEntered": 123,
+        "effect": 123,
+        "workStarted": 123,
+        "workReturned": 1523,
+        "handlerReturned": 1523
+      },
+      "returnedMs": 1000.2472919999991,
+      "nodeStartedEpochMs": 1793177829916,
+      "nodeReturnedEpochMs": 1793177830917,
+      "error": "locator.click: Timeout 1000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#apply')\u001b[22m\n\u001b[2m    - locator resolved to <button id=\"apply\">Apply</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing click action\u001b[22m\n"
+    },
+    {
+      "path": "lite",
+      "workMs": 1400,
+      "scheduling": "microtask",
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177831412.1,
+      "marks": {
+        "started": 81.5,
+        "clickEntered": 140,
+        "effect": 140,
+        "handlerReturned": 140,
+        "workStarted": 140,
+        "workReturned": 1540,
+        "returned": 1542.1000000005588
+      },
+      "error": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('#apply')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action",
+      "stack": "TimeoutError: click: Timeout 1000ms exceeded.\n    at PageImpl.assertActionDeadline (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:22395:61)\n    at PageImpl.performPointerAction (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:20842:11)\n    at async PageImpl.clickSelector (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:20743:3)\n    at async LocatorImpl.click (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:24422:3)\n    at async LocatorImpl.value (http://127.0.0.1:19570/node_modules/.vite/deps/locator-B74v-BQd-CWXI_cNO.js?v=688a3b47:266:13)\n    at async window.diagnose957 (http://127.0.0.1:19570/diagnostics/issue-957/fixture.ts:87:33)\n    at async <anonymous>:396:30"
+    },
+    {
+      "path": "host",
+      "workMs": 1400,
+      "scheduling": "microtask",
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177832986.6,
+      "marks": {
+        "clickEntered": 122.90000000037253,
+        "effect": 122.90000000037253,
+        "handlerReturned": 123,
+        "workStarted": 123,
+        "workReturned": 1523
+      },
+      "returnedMs": 1000.2935840000009,
+      "nodeStartedEpochMs": 1793177833067,
+      "nodeReturnedEpochMs": 1793177834067,
+      "error": "locator.click: Timeout 1000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#apply')\u001b[22m\n\u001b[2m    - locator resolved to <button id=\"apply\">Apply</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing click action\u001b[22m\n"
+    },
+    {
+      "path": "lite",
+      "workMs": 1400,
+      "scheduling": "timer",
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177834560.8,
+      "marks": {
+        "started": 77.90000000037253,
+        "clickEntered": 140,
+        "effect": 140,
+        "handlerReturned": 140,
+        "returned": 140.1000000005588,
+        "workStarted": 140.1000000005588,
+        "workReturned": 1540.1000000005588
+      }
+    },
+    {
+      "path": "host",
+      "workMs": 1400,
+      "scheduling": "timer",
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177836133.3,
+      "marks": {
+        "clickEntered": 122.90000000037253,
+        "effect": 122.90000000037253,
+        "handlerReturned": 122.90000000037253,
+        "workStarted": 157.90000000037253,
+        "workReturned": 1557.9000000003725
+      },
+      "returnedMs": 45.24274999999943,
+      "nodeStartedEpochMs": 1793177836211,
+      "nodeReturnedEpochMs": 1793177836256
+    },
+    {
+      "path": "host",
+      "workMs": 1400,
+      "timeoutMs": 0,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793177837724.8,
+      "marks": {
+        "clickEntered": 106.70000000018626,
+        "effect": 106.79999999981374,
+        "workStarted": 106.79999999981374,
+        "workReturned": 1506.7999999998137,
+        "handlerReturned": 1506.7999999998137
+      },
+      "returnedMs": 1448.4164579999997,
+      "nodeStartedEpochMs": 1793177837801,
+      "nodeReturnedEpochMs": 1793177839250
+    }
+  ]
+}

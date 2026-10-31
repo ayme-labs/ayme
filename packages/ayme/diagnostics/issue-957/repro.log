@@ -1,0 +1,62 @@
+{"browserVersion":"156.0.8078.4","nodeVersion":"v24.21.0","head":"a55e9d15fed89156c80765bc72e729c47ce4fbc4","mode":"red-capable"}
+{
+  "path": "browser",
+  "workMs": 0,
+  "clicks": 1,
+  "effect": "Applied 1",
+  "timeOrigin": 1793177982510.3,
+  "marks": {
+    "started": 181.29999999981374,
+    "clickEntered": 298.3999999994412,
+    "effect": 298.3999999994412,
+    "workStarted": 298.3999999994412,
+    "workReturned": 298.3999999994412,
+    "handlerReturned": 298.3999999994412,
+    "returned": 554
+  },
+  "result": {
+    "page_changed": true,
+    "settled": true,
+    "changes": "- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+  }
+}
+{
+  "path": "browser",
+  "workMs": 1400,
+  "clicks": 1,
+  "effect": "Applied 1",
+  "timeOrigin": 1793177983114.7,
+  "marks": {
+    "started": 112.90000000037253,
+    "clickEntered": 224.30000000074506,
+    "effect": 224.40000000037253,
+    "workStarted": 224.40000000037253,
+    "workReturned": 1624.4000000003725,
+    "handlerReturned": 1624.4000000003725,
+    "returned": 1877.5
+  },
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('ayme-ref=e2')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n\nchanges:\n- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+      }
+    ],
+    "isError": true
+  }
+}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: #957 REPRODUCED: click effect in the same isError result's Change Record
+    at file:///Users/abelenekes/.t3/worktrees/ayme/t3-fd0faacb/packages/ayme/diagnostics/issue-957/run.mjs:183:14 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.21.0
