@@ -28,6 +28,13 @@ describe("readCommand", () => {
     });
   });
 
+  it.each([[1], [65_535]])("accepts the edge port %i", (port) => {
+    expect(readCommand(["mcp", "--port", String(port)])).toEqual({
+      kind: "start",
+      port,
+    });
+  });
+
   it.each([["0"], ["65536"], ["1.5"], ["abc"]])(
     "rejects the port %j and shows the usage text",
     (port) => {
