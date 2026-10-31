@@ -78,7 +78,7 @@ describe("runStartup", () => {
   it("sends one message, which names the skill and no reference", async () => {
     const { stored } = await start("startup-exact.jsonl");
     const message =
-      "Get ready to drive the web page that is already open and connected through Ayme; the task follows in the next message. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
+      "Get ready to drive the web page that is already open and connected through Ayme. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
     expect(await stored("setup-prompt.txt")).toBe(message);
     const stderr = await stored("stderr.log");
     expect(stderr).toContain(`user message 1: ${message}`);
@@ -90,7 +90,7 @@ describe("runStartup", () => {
     const stderr = await stored("stderr.log");
     const skillDir = path.join(runDir, "claude-config/skills/ayme");
     expect(stderr).toContain(`started in ${labRoot} with`);
-    expect(stderr).toContain(`"--tools","Read,Glob,Grep,Skill"`);
+    expect(stderr).toContain(`"--tools","Read,Skill"`);
     expect(stderr).toContain(`"--allowedTools","Skill(ayme)"`);
     expect(stderr).toContain(`"--add-dir","${skillDir}",`);
     expect(stderr).toContain("and skills ayme\n");
@@ -121,6 +121,24 @@ describe("runStartup", () => {
     expect(result.failed.map(({ condition }) => condition)).toEqual([
       "expected-files-read",
       "no-forbidden-file",
+    ]);
+  });
+
+  it("names the driving reference a setup scenario read", async () => {
+    const { result } = await start("startup-exact.jsonl", {
+      scenario: startupScenarios["set-up-ayme"],
+    });
+    expect(result.scenario).toBe("set-up-ayme");
+    expect(result.failed).toEqual([
+      {
+        condition: "expected-files-read",
+        detail:
+          "expected references/onboarding.md; read references/page-tools.md",
+      },
+      {
+        condition: "no-forbidden-file",
+        detail: "read references/page-tools.md",
+      },
     ]);
   });
 
@@ -212,6 +230,19 @@ describe("the startup scenarios", () => {
   it("default to driving the open page, which expects the page-tools reference alone", () => {
     expect(startupScenarios[defaultScenarioId].expected).toEqual([
       "references/page-tools.md",
+    ]);
+  });
+
+  it("expect onboarding alone for setting up Ayme, with the driving references forbidden", () => {
+    expect(startupScenarios["set-up-ayme"]).toMatchObject({
+      expected: ["references/onboarding.md"],
+      forbidden: ["references/page-tools.md", "references/browser-setup.md"],
+    });
+  });
+
+  it("expect page object design alone for designing page objects", () => {
+    expect(startupScenarios["design-page-objects"]?.expected).toEqual([
+      "references/page-object-design.md",
     ]);
   });
 

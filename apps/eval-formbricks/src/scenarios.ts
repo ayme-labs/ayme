@@ -18,9 +18,21 @@ export const startupScenarios: Record<string, StartupScenario> = {
   "drive-the-open-page": {
     id: "drive-the-open-page",
     framing:
-      "Get ready to drive the web page that is already open and connected through Ayme; the task follows in the next message.",
+      "Get ready to drive the web page that is already open and connected through Ayme.",
     // The framing says the page is connected, so browser setup has no part in it.
     expected: ["references/page-tools.md"],
+  },
+  "set-up-ayme": {
+    id: "set-up-ayme",
+    framing: "Get ready to set up Ayme in this project.",
+    expected: ["references/onboarding.md"],
+    // An agent only installing Ayme never carries the driving guidance.
+    forbidden: ["references/page-tools.md", "references/browser-setup.md"],
+  },
+  "design-page-objects": {
+    id: "design-page-objects",
+    framing: "Get ready to design page objects for a flow in this project.",
+    expected: ["references/page-object-design.md"],
   },
 };
 

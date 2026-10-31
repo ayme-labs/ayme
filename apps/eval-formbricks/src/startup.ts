@@ -39,9 +39,9 @@ import {
   type TokenUsage,
 } from "./transcript.ts";
 
-/** The agent's tools: read-only file tools and the Skill tool, allowed for the one skill. */
+/** The agent's tools: `Read`, so no reference is seen without counting as read, and the Skill tool, allowed for the one skill. */
 const agentTools = {
-  tools: ["Read", "Glob", "Grep", "Skill"],
+  tools: ["Read", "Skill"],
   allowedTools: [`Skill(${aymeSkillName})`],
 };
 
