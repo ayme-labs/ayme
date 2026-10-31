@@ -1308,9 +1308,9 @@ importers:
 
   packages/webmcp:
     dependencies:
-      "@mcp-b/webmcp-types":
-        specifier: ^5.0.1
-        version: 5.1.0
+      webmcp-types:
+        specifier: ^0.1.10
+        version: 0.1.10
     devDependencies:
       "@ayme-dev/ayme":
         specifier: workspace:*
@@ -14286,6 +14286,12 @@ packages:
       }
     engines: { node: ">=20" }
 
+  webmcp-types@0.1.10:
+    resolution:
+      {
+        integrity: sha512-U4GQ1RpJ0tqCUt2ALMV9Pnhi+hsy8L31f/Q1v4mLVhW64r5sYhh+2+SjP/Lq4/9jP33vZgNkuRZARJl65A/ZIg==,
+      }
+
   webpack-virtual-modules@0.6.2:
     resolution:
       {
@@ -23251,6 +23257,8 @@ snapshots:
   webidl-conversions@3.0.1: {}
 
   webidl-conversions@8.0.1: {}
+
+  webmcp-types@0.1.10: {}
 
   webpack-virtual-modules@0.6.2: {}
 
