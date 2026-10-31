@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/ayme-labs/ayme/compare/mcp-v0.1.1...mcp-v0.1.2) (2026-10-31)
+
+
+### Bug Fixes
+
+* **mcp:** print usage on --help and -h and exit 0 ([#1108](https://github.com/ayme-labs/ayme/issues/1108)) ([8b03ec0](https://github.com/ayme-labs/ayme/commit/8b03ec010157645c8a381ef6dfe02cf841a597f4))
+
 ## [0.1.1](https://github.com/ayme-labs/ayme/compare/mcp-v0.1.0...mcp-v0.1.1) (2026-10-30)
 
 

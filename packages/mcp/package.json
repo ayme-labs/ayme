@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Ayme's MCP server for coding agents, and the page client it pairs with.",
   "keywords": [
     "ai-agent",

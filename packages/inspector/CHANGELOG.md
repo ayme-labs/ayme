@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/ayme-labs/ayme/compare/inspector-v0.1.1...inspector-v0.1.2) (2026-10-31)
+
+
+### Miscellaneous Chores
+
+* **inspector:** Synchronize ayme versions
+
 ## [0.1.1](https://github.com/ayme-labs/ayme/compare/inspector-v0.1.0...inspector-v0.1.1) (2026-10-30)
 
 
