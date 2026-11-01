@@ -78,6 +78,16 @@ function filesRead(runs: SummarizedStartupRun[]) {
     .sort((a, b) => b.runs - a.runs || a.file.localeCompare(b.file));
 }
 
+/**
+ * A stored error can name the run's folder, which a committed summary must not
+ * carry; the manifest keeps the error whole.
+ *
+ * shortcut: a path with a space keeps what follows the space, replace known roots if a checkout ever has one.
+ */
+export function withoutLocalPaths(text: string) {
+  return text.replace(/(?<![\w.-])\/[^\s'"]*[^\s'".,:;)]/g, "the run folder");
+}
+
 export function buildStartupSummary(input: {
   suiteId: string;
   date: string;

@@ -19,16 +19,19 @@ import { defaultMissionId } from "./missions.ts";
 import { evalRoot, summariesRoot } from "./paths.ts";
 import {
   completeStoredCosts,
-  isStartupSuite,
   latestSuiteId,
-  readStartupSuite,
-  readSuite,
+  parseStartupRun,
+  parseStoredRun,
+  readManifest,
+  readResults,
   suiteDirectory,
   writeSummaryFiles,
+  type StartupManifest,
 } from "./store.ts";
 import {
   buildStartupSummary,
   renderStartupSummaryMarkdown,
+  withoutLocalPaths,
 } from "./startupSummary.ts";
 import { buildSummary, renderSummaryMarkdown } from "./summary.ts";
 
@@ -47,27 +50,40 @@ export function publishedFolder(summary: { date: string; missions: string[] }) {
 
 const log = (line: string) => process.stderr.write(`${line}\n`);
 
-async function reportStartupSuite(suiteId: string, publish: boolean) {
-  const { manifest, results } = await readStartupSuite(suiteId);
+/** Writes the summary beside the manifest and, when given a folder, there too. */
+async function writeSummaries(
+  summary: { suiteId: string },
+  markdown: string,
+  published: string | null
+) {
+  const written = [suiteDirectory(summary.suiteId)];
+  if (published !== null) written.push(published);
+  for (const directory of written)
+    await writeSummaryFiles(directory, summary, markdown);
+  return { markdown, written };
+}
+
+async function reportStartupSuite(
+  suiteId: string,
+  manifest: StartupManifest,
+  publish: boolean
+) {
   const summary = buildStartupSummary({
     suiteId,
     date: manifest.startedAt.slice(0, 10),
     scenarios: manifest.scenarios,
     requestedRunsPerScenario: manifest.runsPerScenario,
-    results,
+    results: await readResults(manifest.runIds, parseStartupRun),
   });
   if (manifest.error !== null)
-    summary.notes.unshift(`The suite stopped early: ${manifest.error}`);
-  const markdown = renderStartupSummaryMarkdown(summary);
-  const suiteFolder = suiteDirectory(suiteId);
-  const written = [suiteFolder];
-  await writeSummaryFiles(suiteFolder, summary, markdown);
-  if (publish) {
-    const published = path.join(summariesRoot, `${summary.date}-startup`);
-    await writeSummaryFiles(published, summary, markdown);
-    written.push(published);
-  }
-  return { markdown, written };
+    summary.notes.unshift(
+      `The suite stopped early: ${withoutLocalPaths(manifest.error)}`
+    );
+  return writeSummaries(
+    summary,
+    renderStartupSummaryMarkdown(summary),
+    publish ? path.join(summariesRoot, `${summary.date}-startup`) : null
+  );
 }
 
 /**
@@ -79,37 +95,31 @@ export async function reportSuite(
   suiteId: string,
   options: { publish: boolean; openRouterApiKey: string | undefined }
 ): Promise<{ markdown: string; written: string[] }> {
-  if (await isStartupSuite(suiteId))
-    return reportStartupSuite(suiteId, options.publish);
-  const { manifest: stored } = await readSuite(suiteId);
+  const manifest = await readManifest(suiteId);
+  if ("lane" in manifest)
+    return reportStartupSuite(suiteId, manifest, options.publish);
   if (options.openRouterApiKey !== undefined) {
-    const completed = await completeStoredCosts(stored.runIds, {
+    const completed = await completeStoredCosts(manifest.runIds, {
       openRouterApiKey: options.openRouterApiKey,
       log,
     });
     if (completed.length > 0)
       log(`Filled in the Goal Loop cost of ${completed.join(", ")}.`);
   }
-  const { manifest, results } = await readSuite(suiteId);
   const summary = buildSummary({
     suiteId,
     date: manifest.startedAt.slice(0, 10),
     arms: manifest.arms,
     requestedRunsPerArm: manifest.runsPerArm,
-    results,
+    results: await readResults(manifest.runIds, parseStoredRun),
   });
   if (manifest.error !== null)
     summary.notes.unshift(`The suite stopped early: ${manifest.error}`);
-  const markdown = renderSummaryMarkdown(summary);
-  const suiteFolder = suiteDirectory(suiteId);
-  const written = [suiteFolder];
-  await writeSummaryFiles(suiteFolder, summary, markdown);
-  if (options.publish) {
-    const published = path.join(summariesRoot, publishedFolder(summary));
-    await writeSummaryFiles(published, summary, markdown);
-    written.push(published);
-  }
-  return { markdown, written };
+  return writeSummaries(
+    summary,
+    renderSummaryMarkdown(summary),
+    options.publish ? path.join(summariesRoot, publishedFolder(summary)) : null
+  );
 }
 
 async function main() {

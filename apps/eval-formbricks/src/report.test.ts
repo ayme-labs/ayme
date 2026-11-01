@@ -171,6 +171,31 @@ describe("a stored startup suite", () => {
     );
   });
 
+  it("keeps a local path in the manifest's error out of the published summary", async () => {
+    const runFolder = "/Users/someone/ayme/results/runs/a-run";
+    const suiteId = await store(
+      [
+        {
+          scenario: "drive-the-open-page",
+          pass: true,
+          filesRead: ["references/page-tools.md"],
+        },
+      ],
+      {
+        error: `The run could not complete: the setup turn ended with an error. The transcript is in ${runFolder}.`,
+      }
+    );
+    const { markdown } = await report(suiteId, true);
+    expect(markdown).toContain("The transcript is in the run folder.");
+    for (const file of ["summary.md", "summary.json"])
+      expect(await readFile(path.join(published, file), "utf8")).not.toContain(
+        "/Users/someone"
+      );
+    expect(
+      await readFile(path.join(suiteDirectory(suiteId), "suite.json"), "utf8")
+    ).toContain(runFolder);
+  });
+
   it("names the file and field of a result it cannot read", async () => {
     const suiteId = await store([
       {

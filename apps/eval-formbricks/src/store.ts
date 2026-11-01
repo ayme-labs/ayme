@@ -184,7 +184,10 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
   };
 }
 
-function parseStartupRun(value: unknown, what: string): SummarizedStartupRun {
+export function parseStartupRun(
+  value: unknown,
+  what: string
+): SummarizedStartupRun {
   const run = record(value, what);
   const versions = record(run.versions, `${what} versions`);
   const model = record(versions.model, `${what} model`);
@@ -220,6 +223,23 @@ export function parseSuiteManifest(value: unknown): SuiteManifest {
     mission: string(manifest, "mission", what),
     arms: strings(manifest, "arms", what),
     runsPerArm: number(manifest, "runsPerArm", what),
+    runIds: strings(manifest, "runIds", what),
+    error: nullableString(manifest, "error", what),
+  };
+}
+
+function parseStartupManifest(value: unknown): StartupManifest {
+  const what = "Suite manifest";
+  const manifest = record(value, what);
+  return {
+    lane: "startup",
+    suiteId: string(manifest, "suiteId", what),
+    startedAt: string(manifest, "startedAt", what),
+    finishedAt: nullableString(manifest, "finishedAt", what),
+    model: string(manifest, "model", what),
+    timeoutSeconds: number(manifest, "timeoutSeconds", what),
+    scenarios: strings(manifest, "scenarios", what),
+    runsPerScenario: number(manifest, "runsPerScenario", what),
     runIds: strings(manifest, "runIds", what),
     error: nullableString(manifest, "error", what),
   };
@@ -302,61 +322,29 @@ export async function completeStoredCosts(
   return completed;
 }
 
-/** The manifest and the stored result of each run it lists. */
-export async function readSuite(suiteId: string): Promise<{
-  manifest: SuiteManifest;
-  results: SummarizedRun[];
-}> {
-  const manifest = parseSuiteManifest(
-    await readJson(path.join(suiteDirectory(suiteId), "suite.json"))
+/** A stored manifest, of either lane. */
+export async function readManifest(
+  suiteId: string
+): Promise<SuiteManifest | StartupManifest> {
+  const value = await readJson(
+    path.join(suiteDirectory(suiteId), "suite.json")
   );
-  const results: SummarizedRun[] = [];
-  for (const runId of manifest.runIds) {
-    const file = path.join(runsRoot, runId, "result.json");
-    results.push(parseStoredRun(await readJson(file), file));
-  }
-  return { manifest, results };
+  return record(value, "Suite manifest").lane === "startup"
+    ? parseStartupManifest(value)
+    : parseSuiteManifest(value);
 }
 
-export async function isStartupSuite(suiteId: string) {
-  const manifest = record(
-    await readJson(path.join(suiteDirectory(suiteId), "suite.json")),
-    "Suite manifest"
-  );
-  return manifest.lane === "startup";
-}
-
-/** A startup suite's manifest and the stored result of each run it lists. */
-export async function readStartupSuite(suiteId: string): Promise<{
-  manifest: StartupManifest;
-  results: SummarizedStartupRun[];
-}> {
-  const what = "Suite manifest";
-  const manifest = record(
-    await readJson(path.join(suiteDirectory(suiteId), "suite.json")),
-    what
-  );
-  const runIds = strings(manifest, "runIds", what);
-  const results: SummarizedStartupRun[] = [];
+/** The stored result of each run a manifest lists. */
+export async function readResults<Run>(
+  runIds: string[],
+  parse: (value: unknown, what: string) => Run
+) {
+  const results: Run[] = [];
   for (const runId of runIds) {
     const file = path.join(runsRoot, runId, "result.json");
-    results.push(parseStartupRun(await readJson(file), file));
+    results.push(parse(await readJson(file), file));
   }
-  return {
-    manifest: {
-      lane: "startup",
-      suiteId: string(manifest, "suiteId", what),
-      startedAt: string(manifest, "startedAt", what),
-      finishedAt: nullableString(manifest, "finishedAt", what),
-      model: string(manifest, "model", what),
-      timeoutSeconds: number(manifest, "timeoutSeconds", what),
-      scenarios: strings(manifest, "scenarios", what),
-      runsPerScenario: number(manifest, "runsPerScenario", what),
-      runIds,
-      error: nullableString(manifest, "error", what),
-    },
-    results,
-  };
+  return results;
 }
 
 type Prettier = {

@@ -184,12 +184,15 @@ export async function runStartup(
     const message = `${scenario.framing} ${readyLine({ skill: aymeSkillName, readsSkillReferences: true })}\n`;
     const mcpConfigPath = path.join(runDir, "mcp.json");
     await writeFile(path.join(runDir, "setup-prompt.txt"), message);
-    const stubServer = {
-      command: process.execPath,
-      args: [stubServerPath, JSON.stringify(scenario.tools)],
-    };
     await writeJson(mcpConfigPath, {
-      mcpServers: scenario.tools ? { [aymeServerName]: stubServer } : {},
+      mcpServers: scenario.tools
+        ? {
+            [aymeServerName]: {
+              command: process.execPath,
+              args: [stubServerPath, JSON.stringify(scenario.tools)],
+            },
+          }
+        : {},
     });
 
     log(
