@@ -20,29 +20,101 @@ export type StartupScenario = {
   tools?: StubTool[];
 };
 
+/** What a connected page lists: the server's own tools, Browser Tools and two Page Object Tools, without `goal`. */
+const connectedPageTools: StubTool[] = [
+  {
+    name: "ayme_connect",
+    description:
+      "Returns a link that connects a browser tab to this Ayme MCP server.",
+  },
+  {
+    name: "ayme_list_tools",
+    description: "Lists the current tools of the connected page.",
+  },
+  {
+    name: "ayme_call",
+    description: "Runs one of the tools of the connected page by name.",
+  },
+  {
+    name: "snapshot",
+    description:
+      "Return the current live structural page state together with compact POM capability definitions known to Ayme.",
+  },
+  { name: "click", description: "Click one element." },
+  {
+    name: "fill",
+    description: "Replace the value of one editable element with text.",
+  },
+  { name: "type", description: "Type text into one editable element." },
+  {
+    name: "navigate",
+    description:
+      "Open a URL on the page's own origin, or a path relative to the current page.",
+  },
+  {
+    name: "SurveyEditorPage.setSurveyName",
+    description: "Set the survey's name.",
+  },
+  {
+    name: "SurveyEditorPage.saveAndClose",
+    description: "Save the survey and close the editor.",
+  },
+];
+
+/** Listed in one drive scenario and not the other, so the `goal` route is checked both ways. */
+const goalTool: StubTool = {
+  name: "goal",
+  description:
+    "Drive the page toward a goal in steps. Takes the goal and, in values, anything it needs typed in, each under a label of your own.",
+};
+
+const driveFraming =
+  "Get ready to drive the web page that is already open and connected through Ayme.";
+
+/** The framing says the page is connected and its tools are listed, so browser setup has no part in it. */
+const notForDriving = [
+  "references/browser-setup.md",
+  "references/onboarding.md",
+  "references/page-object-design.md",
+  "references/live-mapping.md",
+  "references/runtime-integration.md",
+  "references/peeks.md",
+];
+
+/** An agent that isn't driving a page never carries the driving guidance. */
+const onlyForDriving = [
+  "references/page-tools.md",
+  "references/browser-setup.md",
+  "references/goal.md",
+];
+
 export const startupScenarios: Record<string, StartupScenario> = {
   "drive-the-open-page": {
     id: "drive-the-open-page",
-    framing:
-      "Get ready to drive the web page that is already open and connected through Ayme.",
-    // The framing says the page is connected, so browser setup has no part in it.
+    framing: driveFraming,
+    tools: connectedPageTools,
     expected: ["references/page-tools.md"],
+    forbidden: [...notForDriving, "references/goal.md"],
+  },
+  "drive-the-open-page-with-goal": {
+    id: "drive-the-open-page-with-goal",
+    framing: driveFraming,
+    tools: [...connectedPageTools, goalTool],
+    expected: ["references/page-tools.md", "references/goal.md"],
+    forbidden: notForDriving,
   },
   "set-up-ayme": {
     id: "set-up-ayme",
     framing: "Get ready to set up Ayme in this project.",
-    expected: ["references/onboarding.md"],
-    // An agent only installing Ayme never carries the driving guidance.
-    forbidden: [
-      "references/page-tools.md",
-      "references/goal.md",
-      "references/browser-setup.md",
-    ],
+    expected: ["references/onboarding.md", "references/runtime-integration.md"],
+    allowed: ["references/page-object-design.md"],
+    forbidden: onlyForDriving,
   },
   "design-page-objects": {
     id: "design-page-objects",
-    framing: "Get ready to design page objects for a flow in this project.",
+    framing: "Get ready to design page object models for this project.",
     expected: ["references/page-object-design.md"],
+    forbidden: onlyForDriving,
   },
 };
 

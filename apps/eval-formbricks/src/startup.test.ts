@@ -188,12 +188,35 @@ describe("runStartup", () => {
       {
         condition: "expected-files-read",
         detail:
-          "expected references/onboarding.md; read references/page-tools.md",
+          "expected references/onboarding.md, references/runtime-integration.md; read references/page-tools.md",
       },
       {
         condition: "no-forbidden-file",
         detail: "read references/page-tools.md",
       },
+    ]);
+  });
+
+  it("passes a drive run that reads goal when it is listed", async () => {
+    const { result } = await start("startup-drive-goal-listed.jsonl", {
+      scenario: startupScenarios["drive-the-open-page-with-goal"],
+    });
+    expect(result.pass).toBe(true);
+    expect(result.filesRead).toEqual([
+      "references/page-tools.md",
+      "references/goal.md",
+    ]);
+  });
+
+  it("fails a drive run that reads goal when it is not listed", async () => {
+    const { result } = await start("startup-drive-goal-not-listed.jsonl");
+    expect(result.failed).toEqual([
+      {
+        condition: "expected-files-read",
+        detail:
+          "expected references/page-tools.md; read references/page-tools.md, references/goal.md",
+      },
+      { condition: "no-forbidden-file", detail: "read references/goal.md" },
     ]);
   });
 
@@ -282,35 +305,90 @@ describe("runStartup", () => {
 });
 
 describe("the startup scenarios", () => {
-  it("default to driving the open page, which expects the page-tools reference alone", () => {
-    expect(startupScenarios[defaultScenarioId].expected).toEqual([
-      "references/page-tools.md",
-    ]);
-  });
-
-  it("expect onboarding alone for setting up Ayme, with the driving references forbidden", () => {
-    expect(startupScenarios["set-up-ayme"]).toMatchObject({
-      expected: ["references/onboarding.md"],
-      forbidden: [
-        "references/page-tools.md",
-        "references/goal.md",
-        "references/browser-setup.md",
-      ],
-    });
-  });
-
-  it("expect page object design alone for designing page objects", () => {
-    expect(startupScenarios["design-page-objects"]?.expected).toEqual([
+  const driving = {
+    framing:
+      "Get ready to drive the web page that is already open and connected through Ayme.",
+    forbiddenBesidesGoal: [
+      "references/browser-setup.md",
+      "references/onboarding.md",
       "references/page-object-design.md",
-    ]);
+      "references/live-mapping.md",
+      "references/runtime-integration.md",
+      "references/peeks.md",
+    ],
+    tools: [
+      "ayme_connect",
+      "ayme_list_tools",
+      "ayme_call",
+      "snapshot",
+      "click",
+      "fill",
+      "type",
+      "navigate",
+      "SurveyEditorPage.setSurveyName",
+      "SurveyEditorPage.saveAndClose",
+    ],
+  };
+  const notDriving = [
+    "references/page-tools.md",
+    "references/browser-setup.md",
+    "references/goal.md",
+  ];
+  const toolNames = (id: string) =>
+    startupScenarios[id].tools?.map(({ name }) => name);
+
+  it("default to driving the open page, with a page's tools listed and no goal", () => {
+    expect(defaultScenarioId).toBe("drive-the-open-page");
+    expect(startupScenarios[defaultScenarioId]).toMatchObject({
+      framing: driving.framing,
+      expected: ["references/page-tools.md"],
+      forbidden: [...driving.forbiddenBesidesGoal, "references/goal.md"],
+    });
+    expect(toolNames(defaultScenarioId)).toEqual(driving.tools);
+  });
+
+  it("expect the goal reference beside page tools when goal is listed", () => {
+    const id = "drive-the-open-page-with-goal";
+    expect(startupScenarios[id]).toMatchObject({
+      framing: driving.framing,
+      expected: ["references/page-tools.md", "references/goal.md"],
+      forbidden: driving.forbiddenBesidesGoal,
+    });
+    expect(toolNames(id)).toEqual([...driving.tools, "goal"]);
+    expect(startupScenarios[id].tools?.at(-1)?.description).toMatch(
+      /goal.*values/
+    );
+  });
+
+  it("expect onboarding and runtime integration for setting up Ayme, tolerating page object design", () => {
+    expect(startupScenarios["set-up-ayme"]).toMatchObject({
+      framing: "Get ready to set up Ayme in this project.",
+      expected: [
+        "references/onboarding.md",
+        "references/runtime-integration.md",
+      ],
+      allowed: ["references/page-object-design.md"],
+      forbidden: notDriving,
+    });
+    expect(toolNames("set-up-ayme")).toBeUndefined();
+  });
+
+  it("expect page object design alone for designing page object models", () => {
+    expect(startupScenarios["design-page-objects"]).toMatchObject({
+      framing: "Get ready to design page object models for this project.",
+      expected: ["references/page-object-design.md"],
+      forbidden: notDriving,
+    });
+    expect(toolNames("design-page-objects")).toBeUndefined();
   });
 
   it.each(Object.values(startupScenarios))(
-    "$id names references the skill ships, with expected and forbidden apart",
-    ({ expected, forbidden = [] }) => {
-      for (const reference of [...expected, ...forbidden])
+    "$id names references the skill ships, with expected, forbidden and allowed apart",
+    ({ expected, forbidden = [], allowed = [] }) => {
+      const references = [...expected, ...forbidden, ...allowed];
+      for (const reference of references)
         expect(existsSync(path.join(aymeSkillSource, reference))).toBe(true);
-      expect(expected.filter((file) => forbidden.includes(file))).toEqual([]);
+      expect(new Set(references).size).toBe(references.length);
     }
   );
 });

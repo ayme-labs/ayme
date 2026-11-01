@@ -1,9 +1,9 @@
 /**
  * The startup lane: one scenario, once. Measures only the agent's first turn
- * after loading the skill, with no browser, no running app and no MCP server,
- * and reads the verdict from the transcript. It needs Claude Code and a token
- * and nothing else. `runStartup` is what a suite calls; the command below
- * wraps it.
+ * after loading the skill, with no browser, no running app and no MCP server
+ * but a stub for a scenario that names tools, and reads the verdict from the
+ * transcript. It needs Claude Code and a token and nothing else. `runStartup`
+ * is what a suite calls; the command below wraps it.
  *
  *   node src/startup.ts [--scenario <id>] [--model sonnet]
  */
