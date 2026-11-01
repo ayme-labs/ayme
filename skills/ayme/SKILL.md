@@ -8,9 +8,10 @@ description: Set up Ayme in a consumer project, expose existing Page Object Acti
 For package installation, application integration, or exposing an existing POM,
 read [Onboarding](references/onboarding.md).
 
-To connect yourself to the app's page with `ayme_connect`, when the page's tools
-are missing from your tool list, or after a call the page didn't answer because
-it reloaded, navigated or closed, read
+Once Ayme is integrated and the app runs: to connect yourself to the app's page
+with `ayme_connect`, when the page's tools are missing from your tool list, or
+after a call the page didn't answer because it reloaded, navigated or closed,
+read
 [Browser setup](references/browser-setup.md). A connected page with its tools
 listed needs no Browser setup.
 
@@ -19,11 +20,12 @@ is unavailable, read [Page tools](references/page-tools.md).
 
 When `goal` is among your tools, read [Goal](references/goal.md).
 
-For designing or restructuring Page Object Models, read
+For the principles of designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md). Where it conflicts with
 the project's conventions, raise the conflict with the user.
 
-For mapping a user flow into a POM against the running app, read
+For the workflow of mapping a user flow into a POM, screen by screen against
+the running app, read
 [Live mapping](references/live-mapping.md).
 
 For registering Page Objects, placing or configuring the runtime owner, or
