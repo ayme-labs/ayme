@@ -7,7 +7,8 @@
  * message, so that starting up and loading the arm's skill happen before the
  * task, and then the task. The task turn is the measured one; its timing is
  * taken from sending its message to its `result` event. The setup turn has
- * its own, shorter timeout, and the task is sent only after it completed.
+ * its own, shorter timeout, and the task is sent only after it completed. A
+ * run without a task ends after the setup turn.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createWriteStream } from "node:fs";
@@ -22,28 +23,35 @@ export const setupTimeoutMs = 120_000;
 /** How long Claude Code may take to exit once its input is closed before it is stopped. */
 const exitGraceMs = 30_000;
 
+/** The arm's part of the agent's configuration: its built-in tools and permission rules. */
+type AgentTools = Pick<Arm, "tools" | "allowedTools" | "disallowedTools">;
+
 export type ClaudeInvocation = {
   /** The agent's working root. */
   cwd: string;
   /** The agent's environment, from `claudeEnvironment`. */
   environment: NodeJS.ProcessEnv;
   model: string;
-  arm: Arm;
+  arm: AgentTools;
   /** The MCP servers file, written by the caller from `arm.mcpServers`. */
   mcpConfigPath: string;
   /** Folders outside the working root the agent may read, from the arm's setup. */
   readableDirectories?: string[];
   /** The first message: get ready, without touching the page. */
   setupPrompt: string;
-  /** The second message: the task. */
-  prompt: string;
-  /** The task turn's timeout. */
-  timeoutMs: number;
   /** The setup turn's timeout; `setupTimeoutMs` by default. */
   setupTimeoutMs?: number;
   transcriptPath: string;
   stderrPath: string;
-};
+} & (
+  | {
+      /** The second message: the task. */
+      prompt: string;
+      /** The task turn's timeout. */
+      timeoutMs: number;
+    }
+  | { prompt?: undefined; timeoutMs?: undefined }
+);
 
 /** One user message and the agent's answer to it. */
 export type Turn = {
@@ -86,7 +94,7 @@ export const agentEffort = "medium";
 
 export function claudeArguments(invocation: {
   model: string;
-  arm: Arm;
+  arm: AgentTools;
   mcpConfigPath: string;
   readableDirectories?: string[];
 }) {
@@ -324,7 +332,7 @@ export async function runClaude(
             ? "the agent ended right after the setup turn"
             : null;
     const task =
-      setupFailure === null
+      setupFailure === null && invocation.prompt !== undefined
         ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
         : null;
     child.stdin.end();

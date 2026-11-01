@@ -8,16 +8,16 @@ description: Set up Ayme in a consumer project, expose existing Page Object Acti
 For package installation, application integration, or exposing an existing POM,
 read [Onboarding](references/onboarding.md).
 
-For connecting yourself to the app's page with `ayme_connect`, diagnosing
-missing page tools, or a call the page didn't answer because it reloaded,
-navigated or closed, read [Browser setup](references/browser-setup.md).
+To connect yourself to the app's page with `ayme_connect`, when the page's tools
+are missing from your tool list, or after a call the page didn't answer because
+it reloaded, navigated or closed, read
+[Browser setup](references/browser-setup.md). A connected page with its tools
+listed needs no Browser setup.
 
-When you use the page's tools, a ref fails to resolve, `goal` hands over, or a
-tool answers that it is unavailable, read [Page tools](references/page-tools.md).
+When you use the page's tools, a ref fails to resolve, or a tool answers that it
+is unavailable, read [Page tools](references/page-tools.md).
 
-The page's tools change as the page does. If your client doesn't update your
-tool list by itself, `ayme_list_tools` lists the current tools and `ayme_call`
-runs them.
+When `goal` is among your tools, read [Goal](references/goal.md).
 
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md). Where it conflicts with

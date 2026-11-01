@@ -1,0 +1,131 @@
+{
+  "suiteId": "2026-11-01T09-51-11-938Z-startup-suite-8e4a0b",
+  "date": "2026-11-01",
+  "timeoutSeconds": [120],
+  "versions": {
+    "claudeCode": ["2.1.312"],
+    "modelRequested": ["sonnet"],
+    "modelUsed": ["claude-sonnet-5-5"],
+    "effort": ["medium"],
+    "aymeCommit": ["d243bdf267bfcb57c31d0bd36f15169f56ef6a65"]
+  },
+  "scenarios": [
+    {
+      "scenario": "drive-the-open-page",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "filesRead": [
+        {
+          "file": "references/page-tools.md",
+          "runs": 10
+        }
+      ],
+      "wallTimeMs": {
+        "n": 10,
+        "median": 11765,
+        "min": 10214,
+        "max": 14482
+      },
+      "tokens": {
+        "n": 10,
+        "median": 28801,
+        "min": 28749,
+        "max": 28918
+      }
+    },
+    {
+      "scenario": "drive-the-open-page-with-goal",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "filesRead": [
+        {
+          "file": "references/goal.md",
+          "runs": 10
+        },
+        {
+          "file": "references/page-tools.md",
+          "runs": 10
+        }
+      ],
+      "wallTimeMs": {
+        "n": 10,
+        "median": 11689.5,
+        "min": 7448,
+        "max": 18834
+      },
+      "tokens": {
+        "n": 10,
+        "median": 29814,
+        "min": 29672,
+        "max": 29887
+      }
+    },
+    {
+      "scenario": "set-up-ayme",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 9,
+      "filesRead": [
+        {
+          "file": "references/onboarding.md",
+          "runs": 10
+        },
+        {
+          "file": "references/runtime-integration.md",
+          "runs": 10
+        },
+        {
+          "file": "references/page-object-design.md",
+          "runs": 3
+        },
+        {
+          "file": "references/browser-setup.md",
+          "runs": 1
+        }
+      ],
+      "wallTimeMs": {
+        "n": 10,
+        "median": 12884.5,
+        "min": 9906,
+        "max": 19453
+      },
+      "tokens": {
+        "n": 10,
+        "median": 27623.5,
+        "min": 27437,
+        "max": 44915
+      }
+    },
+    {
+      "scenario": "design-page-objects",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 8,
+      "filesRead": [
+        {
+          "file": "references/page-object-design.md",
+          "runs": 10
+        },
+        {
+          "file": "references/live-mapping.md",
+          "runs": 2
+        }
+      ],
+      "wallTimeMs": {
+        "n": 10,
+        "median": 12223.5,
+        "min": 9077,
+        "max": 15525
+      },
+      "tokens": {
+        "n": 10,
+        "median": 29739.5,
+        "min": 29402,
+        "max": 30052
+      }
+    }
+  ],
+  "notes": []
+}

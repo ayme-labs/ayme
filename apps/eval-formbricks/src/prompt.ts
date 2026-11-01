@@ -2,7 +2,7 @@ import type { Arm } from "./arms.ts";
 import { missionDefinitions, type Mission } from "./missions.ts";
 
 /** What the setup turn asks of the arm's skill, and that the agent stays off the page. */
-function readyLine({
+export function readyLine({
   skill,
   readsSkillReferences,
 }: Pick<Arm, "skill" | "readsSkillReferences">) {

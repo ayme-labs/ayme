@@ -108,7 +108,7 @@ export function spread(values: (number | null)[]): Spread | null {
   return { n: present.length, median, min, max };
 }
 
-function distinct<T extends string>(values: (T | null)[]): T[] {
+export function distinct<T extends string>(values: (T | null)[]): T[] {
   return [...new Set(values.filter((value): value is T => value !== null))];
 }
 
@@ -233,7 +233,7 @@ export function buildSummary(input: {
 
 const integer = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
-function range(
+export function range(
   value: Spread | null,
   format: (n: number) => string,
   runs: number
@@ -243,11 +243,11 @@ function range(
   return value.n < runs ? `${text}, ${value.n} of ${runs} runs` : text;
 }
 
-const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
-const count = (n: number) => integer.format(n);
+export const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
+export const count = (n: number) => integer.format(n);
 const dollars = (n: number) => `$${n.toFixed(3)}`;
 
-function list(values: string[]) {
+export function list(values: string[]) {
   return values.length === 0 ? "unknown" : values.join(", ");
 }
 

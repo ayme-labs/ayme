@@ -6,6 +6,8 @@
   "scripts": {
     "eval:report": "node src/report.ts",
     "eval:run": "node src/run.ts",
+    "eval:startup": "node src/startup.ts",
+    "eval:startup-suite": "node src/startupSuite.ts",
     "eval:suite": "node src/suite.ts",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
@@ -15,6 +17,7 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "@playwright/cli": "0.1.22",
     "@playwright/mcp": "0.0.83",
     "@types/node": "^24.0.0",

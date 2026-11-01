@@ -1,5 +1,11 @@
 # Page tools
 
+## Prefer the Page Object Tools
+
+Use the Page Object Tools first, reading each tool's schema: one call can do
+what several clicks and keystrokes would. Use Browser Tools for what no Page
+Object covers.
+
 Once the page is connected, its tools are the Browser Tools and the Page
 Object Tools it publishes. Each Page Object Tool is named after its class and action,
 such as `ListItem.archive`, across all instances of the class. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
@@ -7,11 +13,7 @@ lists every built-in tool with its input. To connect to the page, when its
 tools are missing, or when the page left before a call answered, read
 [Browser setup](browser-setup.md).
 
-## Prefer the Page Object Tools
-
-Use the Page Object Tools first, reading each tool's schema: one call can do
-what several clicks and keystrokes would. Use Browser Tools for what no Page
-Object covers.
+When `goal` is among your tools, read [Goal](goal.md).
 
 ## The tools follow the screen
 
@@ -23,6 +25,10 @@ screen you are on.
 Call each tool directly, by its name in your tool list. When a call answers
 that the tool doesn't exist, use `ayme_list_tools` and `ayme_call`.
 
+The page's tools change as the page does. If your client doesn't update your
+tool list by itself, `ayme_list_tools` lists the current tools and `ayme_call`
+runs them.
+
 ## Read each answer
 
 Every action answers with `page_changed` and `settled`. `changes` holds what
@@ -32,30 +38,11 @@ only when it has a change, element refs included;
 explains the two. A tool's own return value is in `result`.
 
 - When `changes` shows the effect you expected, move on.
-- `page_changed: false` with no effect in `result` means the page shows no
-  effect: try another way rather than repeating the call.
 - `settled: false` means the page was still changing when the call answered,
   so `changes` may not hold all the call did.
 - After an action, take a `snapshot` only when an answer is empty or
   inconclusive about whether the call worked, when its `next` says to, or when
   you need a fresh ref.
-
-## Use `goal`
-
-To use `goal`, pass every value the task names in `values`, each labelled in
-plain words, such as `{ "survey name": "Q4 Feedback" }`. The Goal Loop takes
-free text only from `values`; when a step needs text you did not pass, it hands
-back with `needs_value`.
-
-Every run ends in a
-[Handover](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md#the-handover):
-follow its `next`, and when it names a tool in `needs`, finish with that tool.
-
-When `goal` hands over with `needs_value` because none of a parameter's
-allowed values belongs in it, the loop offered that parameter only its
-allowed values, so a Goal Value of a type it does not take changes nothing.
-Call the tool named in `needs` yourself with the value, or call `goal` again
-with a goal that names it.
 
 ## Refs and refused calls
 

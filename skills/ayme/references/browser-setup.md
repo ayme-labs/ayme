@@ -6,8 +6,7 @@ server registered in your agent, pinned to the project's `@ayme-dev/mcp`
 version. Diagnose with the "The agent cannot reach the page" section of
 [Troubleshooting](https://github.com/ayme-labs/ayme/blob/main/docs/guide/troubleshooting.md).
 For using the page's tools once it is connected, such as a ref that fails to
-resolve, a `goal` Handover or an unavailable tool's reason, read
-[Page tools](page-tools.md).
+resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
 
 - The server's tools reach you only after your client restarts. When you
   cannot register the server or restart yourself, give the user the
