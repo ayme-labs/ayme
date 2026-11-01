@@ -205,11 +205,11 @@ Every run calls the model and costs money. The exit code is `0` for a pass, `1` 
 
 A scenario is data in [`src/scenarios.ts`](src/scenarios.ts): a framing of the task, the references it should lead the agent to read, and optionally references it must not read. There are no arms.
 
-| Scenario              | Framing                                                  | Expected read                      | Forbidden                                                 |
-| --------------------- | -------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- |
-| `drive-the-open-page` | Get ready to drive the open, connected page through Ayme | `references/page-tools.md`         |                                                           |
-| `set-up-ayme`         | Get ready to set up Ayme in this project                 | `references/onboarding.md`         | `references/page-tools.md`, `references/browser-setup.md` |
-| `design-page-objects` | Get ready to design page objects for a flow              | `references/page-object-design.md` |                                                           |
+| Scenario              | Framing                                                  | Expected read                      | Forbidden                                                                       |
+| --------------------- | -------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------- |
+| `drive-the-open-page` | Get ready to drive the open, connected page through Ayme | `references/page-tools.md`         |                                                                                 |
+| `set-up-ayme`         | Get ready to set up Ayme in this project                 | `references/onboarding.md`         | `references/page-tools.md`, `references/goal.md`, `references/browser-setup.md` |
+| `design-page-objects` | Get ready to design page objects for a flow              | `references/page-object-design.md` |                                                                                 |
 
 The agent starts on the lab app folder, which every checkout holds, with the [shared isolated configuration](#missions-and-arms). Its one file tool is `Read`, so no reference is seen without counting as read; beside it, it has the `Skill` tool and no MCP server, and the shipped skill is copied into its configuration folder as for the Ayme arms. That copy is the one place outside the working root it can read. It gets one message: the scenario's framing and the Ayme arms' setup sentence, which names the skill, says to read what it points to, to read no file outside its folder, not to use the browser, and to reply ready. The message names no reference, so routing stays the skill's job.
 

@@ -27,7 +27,11 @@ export const startupScenarios: Record<string, StartupScenario> = {
     framing: "Get ready to set up Ayme in this project.",
     expected: ["references/onboarding.md"],
     // An agent only installing Ayme never carries the driving guidance.
-    forbidden: ["references/page-tools.md", "references/browser-setup.md"],
+    forbidden: [
+      "references/page-tools.md",
+      "references/goal.md",
+      "references/browser-setup.md",
+    ],
   },
   "design-page-objects": {
     id: "design-page-objects",

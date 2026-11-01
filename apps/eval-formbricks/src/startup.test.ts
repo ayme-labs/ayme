@@ -236,7 +236,11 @@ describe("the startup scenarios", () => {
   it("expect onboarding alone for setting up Ayme, with the driving references forbidden", () => {
     expect(startupScenarios["set-up-ayme"]).toMatchObject({
       expected: ["references/onboarding.md"],
-      forbidden: ["references/page-tools.md", "references/browser-setup.md"],
+      forbidden: [
+        "references/page-tools.md",
+        "references/goal.md",
+        "references/browser-setup.md",
+      ],
     });
   });
 
