@@ -179,6 +179,23 @@ describe("runStartup", () => {
     expect(unread.result.pass).toBe(true);
   });
 
+  it("leaves an allowed reference out of a surplus read's detail", async () => {
+    const { result } = await start("startup-extra-reference.jsonl", {
+      scenario: {
+        ...scenario,
+        expected: ["references/goal.md"],
+        forbidden: [],
+        allowed: ["references/page-tools.md"],
+      },
+    });
+    expect(result.failed).toEqual([
+      {
+        condition: "expected-files-read",
+        detail: "expected references/goal.md; read references/peeks.md",
+      },
+    ]);
+  });
+
   it("names the driving reference a setup scenario read", async () => {
     const { result } = await start("startup-exact.jsonl", {
       scenario: startupScenarios["set-up-ayme"],

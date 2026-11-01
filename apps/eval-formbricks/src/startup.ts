@@ -120,7 +120,7 @@ function judge(scenario: StartupScenario, run: ClaudeRun, skillDir: string) {
       holds:
         judged.length === scenario.expected.length &&
         judged.every((file) => scenario.expected.includes(file)),
-      detail: `expected ${list(scenario.expected)}; read ${list(filesRead)}`,
+      detail: `expected ${list(scenario.expected)}; read ${list(judged)}`,
     },
     {
       condition: "no-forbidden-file",
