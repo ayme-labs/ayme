@@ -92,6 +92,7 @@ function judge(scenario: StartupScenario, run: ClaudeRun, skillDir: string) {
       return relative.startsWith("..") ? file : relative;
     });
   const filesRead = [...new Set(reads)];
+  const judged = filesRead.filter((file) => !scenario.allowed?.includes(file));
   const forbidden = filesRead.filter((file) =>
     scenario.forbidden?.includes(file)
   );
@@ -110,8 +111,8 @@ function judge(scenario: StartupScenario, run: ClaudeRun, skillDir: string) {
     {
       condition: "expected-files-read",
       holds:
-        filesRead.length === scenario.expected.length &&
-        filesRead.every((file) => scenario.expected.includes(file)),
+        judged.length === scenario.expected.length &&
+        judged.every((file) => scenario.expected.includes(file)),
       detail: `expected ${list(scenario.expected)}; read ${list(filesRead)}`,
     },
     {

@@ -99,7 +99,9 @@ describe("runStartup", () => {
   });
 
   it("fails a run that reads one reference too many", async () => {
-    const { result } = await start("startup-extra-reference.jsonl");
+    const { result } = await start("startup-extra-reference.jsonl", {
+      scenario: { ...scenario, forbidden: [] },
+    });
     expect(result.pass).toBe(false);
     expect(result.filesRead).toEqual([
       "references/page-tools.md",
@@ -122,6 +124,24 @@ describe("runStartup", () => {
       "expected-files-read",
       "no-forbidden-file",
     ]);
+  });
+
+  it("ignores an allowed reference, read or not, and keeps it under the files read", async () => {
+    const allowing = {
+      ...scenario,
+      forbidden: [],
+      allowed: ["references/peeks.md"],
+    };
+    const read = await start("startup-extra-reference.jsonl", {
+      scenario: allowing,
+    });
+    expect(read.result.pass).toBe(true);
+    expect(read.result.filesRead).toEqual([
+      "references/page-tools.md",
+      "references/peeks.md",
+    ]);
+    const unread = await start("startup-exact.jsonl", { scenario: allowing });
+    expect(unread.result.pass).toBe(true);
   });
 
   it("names the driving reference a setup scenario read", async () => {

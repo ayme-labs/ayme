@@ -12,6 +12,8 @@ export type StartupScenario = {
   expected: string[];
   /** The surplus reads that matter most, named in the verdict on their own. */
   forbidden?: string[];
+  /** Ignored by the verdict: read or not, neither expected nor surplus. The summary still counts them. */
+  allowed?: string[];
 };
 
 export const startupScenarios: Record<string, StartupScenario> = {

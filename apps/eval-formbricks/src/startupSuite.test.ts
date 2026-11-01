@@ -96,6 +96,22 @@ describe("runStartupSuite", () => {
     );
   });
 
+  it("counts an allowed reference under the files read of a passing run", async () => {
+    const { markdown } = await start(
+      [
+        {
+          ...replaying("startup-extra-reference"),
+          allowed: ["references/peeks.md"],
+        },
+      ],
+      1
+    );
+    expect(markdown).toContain("| startup-extra-reference | 1 of 1 |");
+    expect(markdown).toContain(
+      "| startup-extra-reference | references/peeks.md | 1 of 1 |"
+    );
+  });
+
   it("keeps going past a failed verdict, which is a result", async () => {
     const { stored } = await start([replaying("startup-read-denied")], 2);
     expect(stored.error).toBeNull();
