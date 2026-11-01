@@ -3,8 +3,11 @@ import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
+import type { McpServer } from "./arms.ts";
 import { aymeSkillSource } from "./ayme.ts";
 import { labRoot } from "./paths.ts";
 import {
@@ -86,7 +89,9 @@ describe("runStartup", () => {
   });
 
   it("runs in the lab app folder with the skill copied and read-only tools, no MCP server and nothing else readable", async () => {
-    const { runDir, stored } = await start("startup-exact.jsonl");
+    const { runDir, stored } = await start("startup-exact.jsonl", {
+      scenario: { ...scenario, tools: undefined },
+    });
     const stderr = await stored("stderr.log");
     const skillDir = path.join(runDir, "claude-config/skills/ayme");
     expect(stderr).toContain(`started in ${labRoot} with`);
@@ -96,6 +101,36 @@ describe("runStartup", () => {
     expect(stderr).toContain("and skills ayme\n");
     expect(JSON.parse(await stored("mcp.json"))).toEqual({ mcpServers: {} });
     expect(existsSync(path.join(runDir, "claude-config"))).toBe(false);
+  });
+
+  it("gives a tool list a stub `ayme` server, which lists those tools and answers a call", async () => {
+    const tools = [
+      { name: "ayme_list_tools", description: "Lists the tools." },
+      { name: "SurveyEditorPage.saveAndClose", description: "Saves." },
+    ];
+    const { stored, result } = await start("startup-exact.jsonl", {
+      scenario: { ...scenario, tools },
+    });
+    expect(result.pass).toBe(true);
+    const { mcpServers } = JSON.parse(await stored("mcp.json")) as {
+      mcpServers: Record<string, McpServer>;
+    };
+    expect(Object.keys(mcpServers)).toEqual(["ayme"]);
+
+    const client = new Client({ name: "the-test", version: "0.0.0" });
+    await client.connect(new StdioClientTransport(mcpServers.ayme));
+    const listed = await client.listTools();
+    expect(
+      listed.tools.map(({ name, description }) => ({ name, description }))
+    ).toEqual(tools);
+    expect(
+      await client.callTool({ name: "SurveyEditorPage.saveAndClose" })
+    ).toMatchObject({
+      content: [
+        { type: "text", text: "SurveyEditorPage.saveAndClose is a stub." },
+      ],
+    });
+    await client.close();
   });
 
   it("fails a run that reads one reference too many", async () => {

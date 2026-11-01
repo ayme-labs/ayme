@@ -11,7 +11,12 @@ import { randomBytes } from "node:crypto";
 import { cp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { aymeSkillDirectory, aymeSkillName, aymeSkillSource } from "./ayme.ts";
+import {
+  aymeServerName,
+  aymeSkillDirectory,
+  aymeSkillName,
+  aymeSkillSource,
+} from "./ayme.ts";
 import { parseFlags } from "./cli.ts";
 import {
   agentEffort,
@@ -44,6 +49,8 @@ const agentTools = {
   tools: ["Read", "Skill"],
   allowedTools: [`Skill(${aymeSkillName})`],
 };
+
+const stubServerPath = path.join(evalRoot, "src/stubMcpServer.ts");
 
 export type StartupOptions = {
   scenario: StartupScenario;
@@ -177,7 +184,13 @@ export async function runStartup(
     const message = `${scenario.framing} ${readyLine({ skill: aymeSkillName, readsSkillReferences: true })}\n`;
     const mcpConfigPath = path.join(runDir, "mcp.json");
     await writeFile(path.join(runDir, "setup-prompt.txt"), message);
-    await writeJson(mcpConfigPath, { mcpServers: {} });
+    const stubServer = {
+      command: process.execPath,
+      args: [stubServerPath, JSON.stringify(scenario.tools)],
+    };
+    await writeJson(mcpConfigPath, {
+      mcpServers: scenario.tools ? { [aymeServerName]: stubServer } : {},
+    });
 
     log(
       `Starting the agent (${scenario.id}, ${model}, ${timeoutMs / 1000} s).`

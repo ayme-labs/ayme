@@ -4,6 +4,8 @@
  * the skill's folder. Adding a scenario is adding an entry to
  * `startupScenarios`.
  */
+export type StubTool = { name: string; description: string };
+
 export type StartupScenario = {
   id: string;
   /** Frames the task; it names no reference, so routing stays the skill's job. */
@@ -14,6 +16,8 @@ export type StartupScenario = {
   forbidden?: string[];
   /** Ignored by the verdict: read or not, neither expected nor surplus. The summary still counts them. */
   allowed?: string[];
+  /** Listed by a stub `ayme` server, so the agent sees a connected page's tools; without them no server starts. */
+  tools?: StubTool[];
 };
 
 export const startupScenarios: Record<string, StartupScenario> = {
