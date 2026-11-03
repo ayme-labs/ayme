@@ -243,62 +243,115 @@ function declaredChild(
   const unresolved = () =>
     fail(`has a type the build cannot resolve (${typeText})`);
   const description = decoratorDescription(checker, decorator, owner);
-  const described = description === undefined ? {} : { description };
-  const collection = marker === "collection";
 
   if (isUnresolvedType(type)) throw unresolved();
   const items = itemsType(checker, type);
   if (items && isUnresolvedType(items)) throw unresolved();
-  const itemsDeclaration =
-    items && componentDeclaration(checker, items, memberName);
+  const child: DeclaredChild = {
+    checker,
+    member,
+    memberName,
+    type,
+    typeText,
+    fail,
+    unresolved,
+    described: description === undefined ? {} : { description },
+    collection: marker === "collection",
+    itemsDeclaration: items && componentDeclaration(checker, items, memberName),
+  };
+  return access === "method"
+    ? declaredChildMethod(child)
+    : declaredChildValue(child, access);
+}
 
-  if (access === "method") {
-    if (!collection)
-      throw itemsDeclaration
-        ? fail(
-            `is declared @ayme.child but returns many Page Objects; declare it @ayme.collection`
-          )
-        : fail(`is a method; @ayme.child declares a field or getter`);
-    if ((member as ts.MethodDeclaration).parameters.length > 0)
-      throw fail(
-        `takes parameters; @ayme.collection declares a method without parameters`
-      );
-    if (isLocatorType(type))
-      throw fail(
-        `is a method returning a Locator; declare a Locator collection as a field or getter`
-      );
-    if (!itemsDeclaration?.name) {
-      const value = awaitedType(checker, type);
-      if (isUnresolvedType(value)) throw unresolved();
-      throw componentDeclaration(checker, value, memberName)
-        ? fail(
-            `returns one Page Object (${typeText}); a Child Collection method returns an array of Page Objects`
-          )
-        : fail(`returns no Page Objects (${typeText})`);
-    }
-    // Returned synchronously, the array must be read-only.
-    if (
-      awaitedType(checker, type) === type &&
-      !isNamedType(type, "ReadonlyArray")
-    ) {
-      const item = itemsDeclaration.name.text;
-      throw fail(
-        `returns a mutable array (${typeText}); a Child Collection method returns Promise<${item}[]> or readonly ${item}[]`
-      );
-    }
-    return {
-      member: {
-        memberName,
-        kind: "component",
-        access,
-        componentClassName: itemsDeclaration.name.text,
-        collection: true,
-        ...described,
-      },
-      declaration: itemsDeclaration,
-    };
+/** What `declaredChild` checks a member's type against. */
+type DeclaredChild = {
+  checker: ts.TypeChecker;
+  member: ts.ClassElement;
+  memberName: string;
+  type: ts.Type;
+  typeText: string;
+  fail: (problem: string) => Error;
+  unresolved: () => Error;
+  described: { description?: string };
+  collection: boolean;
+  /** The Page Object the member's array or promised array holds. */
+  itemsDeclaration: ts.ClassDeclaration | undefined;
+};
+
+/** A Child Collection method: `@ayme.collection` returning Page Objects. */
+function declaredChildMethod({
+  checker,
+  member,
+  memberName,
+  type,
+  typeText,
+  fail,
+  unresolved,
+  described,
+  collection,
+  itemsDeclaration,
+}: DeclaredChild): PomChild {
+  if (!collection)
+    throw itemsDeclaration
+      ? fail(
+          `is declared @ayme.child but returns many Page Objects; declare it @ayme.collection`
+        )
+      : fail(`is a method; @ayme.child declares a field or getter`);
+  if ((member as ts.MethodDeclaration).parameters.length > 0)
+    throw fail(
+      `takes parameters; @ayme.collection declares a method without parameters`
+    );
+  if (isLocatorType(type))
+    throw fail(
+      `is a method returning a Locator; declare a Locator collection as a field or getter`
+    );
+  if (!itemsDeclaration?.name) {
+    const value = awaitedType(checker, type);
+    if (isUnresolvedType(value)) throw unresolved();
+    throw componentDeclaration(checker, value, memberName)
+      ? fail(
+          `returns one Page Object (${typeText}); a Child Collection method returns an array of Page Objects`
+        )
+      : fail(`returns no Page Objects (${typeText})`);
   }
+  // Returned synchronously, the array must be read-only.
+  if (
+    awaitedType(checker, type) === type &&
+    !isNamedType(type, "ReadonlyArray")
+  ) {
+    const item = itemsDeclaration.name.text;
+    throw fail(
+      `returns a mutable array (${typeText}); a Child Collection method returns Promise<${item}[]> or readonly ${item}[]`
+    );
+  }
+  return {
+    member: {
+      memberName,
+      kind: "component",
+      access: "method",
+      componentClassName: itemsDeclaration.name.text,
+      collection: true,
+      ...described,
+    },
+    declaration: itemsDeclaration,
+  };
+}
 
+/** A field or getter holding a Locator, a Locator collection or a Page Object. */
+function declaredChildValue(
+  {
+    checker,
+    memberName,
+    type,
+    typeText,
+    fail,
+    described,
+    collection,
+    itemsDeclaration,
+  }: DeclaredChild,
+  access: PomMemberAccess
+): PomChild {
   if (isLocatorType(type))
     return {
       member: { memberName, kind: "locator", access, collection, ...described },
@@ -343,33 +396,9 @@ function rejectUnsupportedChildDeclarations(
   declaration: ts.ClassDeclaration
 ) {
   for (const member of declaration.members) {
-    const declared = (
-      ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : []
-    ).some(
-      (decorator) =>
-        isMemberMarker(decorator, "ayme", "child") ||
-        isMemberMarker(decorator, "ayme", "collection")
-    );
-    if (!declared) continue;
-    const modifiers = ts.canHaveModifiers(member)
-      ? (ts.getModifiers(member) ?? [])
-      : [];
-    const visibility =
-      member.name && ts.isPrivateIdentifier(member.name)
-        ? "private"
-        : (
-            [
-              [ts.SyntaxKind.PrivateKeyword, "private"],
-              [ts.SyntaxKind.ProtectedKeyword, "protected"],
-              [ts.SyntaxKind.StaticKeyword, "static"],
-            ] as const
-          ).find(([kind]) => modifiers.some((m) => m.kind === kind))?.[1];
-    const memberName =
-      member.name &&
-      (ts.isIdentifier(member.name) || ts.isPrivateIdentifier(member.name))
-        ? member.name.text
-        : member.name?.getText();
-    const owner = `Page Object Child ${declaration.name?.text}.${memberName}`;
+    if (!hasChildMarker(member)) continue;
+    const visibility = nonPublicVisibility(member);
+    const owner = `Page Object Child ${declaration.name?.text}.${childMemberName(member)}`;
     if (visibility)
       throw new Error(
         `${owner} is ${visibility}; only a public instance member can be a Page Object Child.`
@@ -381,6 +410,40 @@ function rejectUnsupportedChildDeclarations(
   }
   for (const base of baseClassDeclarations(checker, declaration))
     rejectUnsupportedChildDeclarations(checker, base);
+}
+
+/** Whether a member is marked `@ayme.child` or `@ayme.collection`. */
+function hasChildMarker(member: ts.ClassElement) {
+  return (
+    ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : []
+  ).some(
+    (decorator) =>
+      isMemberMarker(decorator, "ayme", "child") ||
+      isMemberMarker(decorator, "ayme", "collection")
+  );
+}
+
+/** What keeps a member from being a public instance member, if anything. */
+function nonPublicVisibility(member: ts.ClassElement) {
+  if (member.name && ts.isPrivateIdentifier(member.name)) return "private";
+  const modifiers = ts.canHaveModifiers(member)
+    ? (ts.getModifiers(member) ?? [])
+    : [];
+  return (
+    [
+      [ts.SyntaxKind.PrivateKeyword, "private"],
+      [ts.SyntaxKind.ProtectedKeyword, "protected"],
+      [ts.SyntaxKind.StaticKeyword, "static"],
+    ] as const
+  ).find(([kind]) => modifiers.some((m) => m.kind === kind))?.[1];
+}
+
+/** A member's name as errors show it: `#row`, `"row"` or `["row"]` too. */
+function childMemberName(member: ts.ClassElement) {
+  return member.name &&
+    (ts.isIdentifier(member.name) || ts.isPrivateIdentifier(member.name))
+    ? member.name.text
+    : member.name?.getText();
 }
 
 /** `any`, `unknown`, or a type the program could not resolve. */
