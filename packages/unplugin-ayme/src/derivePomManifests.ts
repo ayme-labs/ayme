@@ -929,7 +929,8 @@ function toolParameter(
  * An object pattern's fields: every property of its type, by property name,
  * whatever the pattern binds or renames, with the literal default of a
  * binding that gives one. Its type must be an object with known properties,
- * among them every one the pattern binds.
+ * among them every one the pattern binds by name; a rest binding takes the
+ * rest.
  */
 function objectPatternFields(
   context: SchemaContext,
@@ -946,6 +947,8 @@ function objectPatternFields(
   const defaults = new Map<string, JsonPrimitive>();
   const untyped: string[] = [];
   for (const element of pattern.elements) {
+    // A rest binding gathers the properties the others leave.
+    if (element.dotDotDotToken) continue;
     const key = element.propertyName ?? element.name;
     if (!ts.isIdentifier(key) && !ts.isLiteralExpression(key)) continue;
     if (!Object.hasOwn(properties, key.text)) untyped.push(key.text);
@@ -973,7 +976,7 @@ function objectPatternFields(
 
 /**
  * An array pattern's fields: the names it binds, in order, a rest element's
- * as a list. A tuple's optional element is optional, and so is every element
+ * as a list. Its type is one array or tuple, never a union of them. A tuple's optional element is optional, and so is every element
  * of a plain array, which may be shorter. Every element needs a name, and
  * every fixed element of a tuple needs binding.
  */
@@ -984,9 +987,10 @@ function arrayPatternFields(
   type: ts.Type
 ): NamedToolParameter[] {
   const { checker } = context;
+  // A union, of tuples or arrays, gives its elements no one type each.
   const arrayType = checker.getNonNullableType(type);
-  if (!checker.isArrayLikeType(arrayType))
-    throw unsupportedInputType(context, type, context.parameter);
+  if (arrayType.isUnion() || !checker.isArrayLikeType(arrayType))
+    throw unsupportedInputType(context, arrayType, context.parameter);
   const flags = checker.isTupleType(arrayType)
     ? (arrayType as ts.TupleTypeReference).target.elementFlags
     : undefined;

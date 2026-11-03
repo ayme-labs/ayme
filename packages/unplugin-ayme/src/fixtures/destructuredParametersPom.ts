@@ -46,6 +46,11 @@ export class DestructuredParametersPom {
     return [first, alias, last];
   }
 
+  @ayme.action({ description: "Sign in, the other options by a rest." })
+  remember({ email, ...options }: { email: string; remember?: boolean }) {
+    return { email, options };
+  }
+
   @ayme.action({ description: "Take a tuple's fixed elements by a rest." })
   tail([head, ...rest]: [string, number, number]) {
     return { head, rest };

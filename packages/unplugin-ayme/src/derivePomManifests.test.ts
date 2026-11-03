@@ -1200,6 +1200,14 @@ describe("derivePomManifests", () => {
           `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
         ],
         [
+          "tupleUnionPom",
+          `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "correlatedTuplePom",
+          `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
           "renamedDuplicatePom",
           "Page Object Action RenamedDuplicatePom.search takes two input fields named query: parameter query, and property query of { query: q }: { query: string }.",
         ],
@@ -1236,6 +1244,19 @@ describe("derivePomManifests", () => {
                 default: "Ann",
               },
               { name: "last", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+      });
+
+      it("takes the properties an object pattern's rest binding gathers", () => {
+        expect(destructuredParametersOf("remember")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "remember", optional: true, schema: { type: "boolean" } },
             ],
           },
         ]);
