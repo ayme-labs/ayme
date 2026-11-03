@@ -625,6 +625,14 @@ describe("derivePomManifests", () => {
         "inheritedPrivateChildPom",
         "Page Object Child ListBase.rows is private; only a public instance member can be a Page Object Child.",
       ],
+      [
+        "stringNamedChildPom",
+        'Page Object Child StringNamedChildPom."row" is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
+      [
+        "computedNamedChildPom",
+        'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
     ])("fails the build for %s", (fixture, message) => {
       expect(() =>
         derivePomManifests(
@@ -640,6 +648,26 @@ describe("derivePomManifests", () => {
       expect(() => derivePomManifests(fileName)).toThrow(
         `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
       );
+    });
+
+    it("reads a Child Collection declared on an overloaded method's implementation", () => {
+      const manifest = manifestForClass(
+        "overloadedCollectionPom",
+        "OverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Row",
+      ]);
     });
 
     it("inherits declared children through the class chain", () => {

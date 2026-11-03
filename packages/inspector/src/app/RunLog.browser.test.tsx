@@ -260,6 +260,49 @@ it("names each Interaction by the member whose locator it names, for any Caller"
     ]);
 });
 
+it("names an Interaction on a Locator collection holding one element by that element", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          {
+            memberName: "buttons",
+            kind: "locator",
+            access: "field",
+            collection: true,
+          },
+        ],
+      },
+      memberObservations: [
+        { memberName: "buttons", kind: "locator", access: "field", count: 1 },
+      ],
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      collectionLocator: "locator('button')",
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button')" });
+  save.interact({ operation: "click", locator: "locator('button').first()" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[0]" },
+      { operation: "click", target: "Editor.buttons[0]" },
+    ]);
+});
+
 it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
   registerEditor();
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
