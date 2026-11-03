@@ -17,10 +17,12 @@ export type RegisteredPomTarget = {
    */
   locator: string;
   /**
-   * For the one element of a Locator collection that holds one, the
-   * collection's own locator: an Interaction on the whole collection names it.
+   * For an element of a Locator collection, the other locators an
+   * Interaction on it names: `last()` for the last element, and the
+   * collection's own locator for the one element of a collection that holds
+   * one.
    */
-  collectionLocator?: string;
+  aliases?: readonly string[];
 };
 
 /**

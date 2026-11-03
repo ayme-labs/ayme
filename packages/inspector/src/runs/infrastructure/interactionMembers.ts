@@ -14,8 +14,9 @@ import {
 
 /**
  * The Page Object member each Interaction acted on, by place: the member
- * whose locator it names (a Locator collection holding one element names
- * that element), or, for a Browser Tool's Interaction by Structural
+ * whose locator it names (a Locator collection's `last()` names its last
+ * element, and a collection holding one element names that element), or,
+ * for a Browser Tool's Interaction by Structural
  * Ref, the member whose element has that ref now, while that member's
  * element is on the page. Read from the registry as it is now, so a member a
  * Run added, such as a new item, is named too.
@@ -50,7 +51,7 @@ export async function interactionMembers(
       .filter((target, index) =>
         ref
           ? targetRefs[index] === ref
-          : target.locator === locator || target.collectionLocator === locator
+          : target.locator === locator || target.aliases?.includes(locator)
       )
       .map(({ path }) => members.member(path)?.path)
       .find((path) => path !== undefined);

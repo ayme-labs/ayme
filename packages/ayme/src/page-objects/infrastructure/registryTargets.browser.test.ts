@@ -88,7 +88,7 @@ describe("registered Locator children's targets in Chromium", () => {
     ]);
   });
 
-  it("names the one element of a Locator collection by the collection's locator too, as an Interaction on the whole collection names it", async () => {
+  it("names the last element of a Locator collection by its last() locator too, and the one element of a collection that holds one by the collection's locator, as Interactions on them name them", async () => {
     document.body.innerHTML = `
       <table><tr><td>only</td></tr></table>
       <ul><li>first</li><li>second</li></ul>
@@ -113,26 +113,22 @@ describe("registered Locator children's targets in Chromium", () => {
     const targets = await listRegisteredPomTargets();
 
     expect(
-      targets.map(({ path, locator, collectionLocator }) => ({
-        path,
-        locator,
-        collectionLocator,
-      }))
+      targets.map(({ path, locator, aliases }) => ({ path, locator, aliases }))
     ).toStrictEqual([
       {
         path: "RunsTable.rows[0]",
         locator: "locator('tr').first()",
-        collectionLocator: "locator('tr')",
+        aliases: ["locator('tr')", "locator('tr').last()"],
       },
       {
         path: "RunsTable.items[0]",
         locator: "locator('li').first()",
-        collectionLocator: undefined,
+        aliases: [],
       },
       {
         path: "RunsTable.items[1]",
         locator: "locator('li').nth(1)",
-        collectionLocator: undefined,
+        aliases: ["locator('li').last()"],
       },
     ]);
   });

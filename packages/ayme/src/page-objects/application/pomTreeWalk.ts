@@ -29,8 +29,9 @@ import {
  * Package-internal: the elements `sources` hold now, in their order. A
  * locator that cannot be resolved holds none; its observation says why. Each
  * element of a Locator collection is at its index and named by its `nth`
- * locator, as an Interaction on that element names it; the one element of a
- * collection that holds one is also named by the collection's locator.
+ * locator, as an Interaction on that element names it; the last element is
+ * also named by its `last()` locator, and the one element of a collection
+ * that holds one by the collection's locator.
  */
 export function resolveTargets(
   driver: PageDriver,
@@ -53,13 +54,18 @@ export function resolveTargets(
   return sources.flatMap(({ path, locator, root, collection }) => {
     const elements = elementsOf(locator);
     if (root && isRootElement(elements, elementsOf(root))) return [];
-    if (collection)
+    if (collection) {
+      const last = elements.length - 1;
       return elements.map((element, index) => ({
         path: `${path}[${index}]`,
         element,
         locator: locator.nth(index).toString(),
-        ...(elements.length === 1 && { collectionLocator: locator.toString() }),
+        aliases: [
+          ...(last === 0 ? [locator.toString()] : []),
+          ...(index === last ? [locator.last().toString()] : []),
+        ],
       }));
+    }
     const name = locator.toString();
     return elements.map((element) => ({ path, element, locator: name }));
   });
