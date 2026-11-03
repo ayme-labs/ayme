@@ -147,15 +147,19 @@ describe("a Locator collection", () => {
     locators: ["heading"],
     locatorCollections: { rows: 2 },
   });
-  const runs = indexMembers(
-    {
-      objects: [table],
-      models: [model("RunsTable", ["heading", "rows"])],
-    },
-    rootTargetPath
-  );
+  // Indexed inside each test: Stryker activates a mutant only while a test
+  // runs, so an index built while Vitest collects the tests escapes it.
+  const indexRuns = () =>
+    indexMembers(
+      {
+        objects: [table],
+        models: [model("RunsTable", ["heading", "rows"])],
+      },
+      rootTargetPath
+    );
 
   it("is each of its elements' member, at the element's index", () => {
+    const runs = indexRuns();
     expect(runs.member("RunsTable.rows[1]")).toMatchObject({
       path: "RunsTable.rows[1]",
       owner: table,
@@ -165,6 +169,7 @@ describe("a Locator collection", () => {
   });
 
   it("stands for its elements, on its Page Object and on its model", () => {
+    const runs = indexRuns();
     const elements = new Set(["RunsTable.rows[0]", "RunsTable.rows[1]"]);
     expect(runs.targets("RunsTable.rows")).toEqual(elements);
     expect(runs.targets("RunsTable.rows[1]")).toEqual(
