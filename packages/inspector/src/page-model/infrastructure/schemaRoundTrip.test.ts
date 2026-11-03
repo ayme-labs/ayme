@@ -80,6 +80,9 @@ const calls: Record<string, Record<string, JsonValue>> = {
   "DestructuredParametersPom.move": { x: 1, y: 2 },
   "DestructuredParametersPom.follow": { start: 1, others: ["b", "c"] },
   "DestructuredParametersPom.spread": { name: "a", count: 2 },
+  "DestructuredParametersPom.name": { "first-name": "Ann", last: "Lee" },
+  "DestructuredParametersPom.tail": { head: "a", rest: [1, 2] },
+  "DestructuredParametersPom.first": { x: 1 },
 };
 
 /** The action's line in the definition text agents read. */

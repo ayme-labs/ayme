@@ -4,7 +4,7 @@ import { ayme } from "@ayme-dev/ayme";
 export class UntypedBindingPom {
   @ayme.action({ description: "Sign in." })
   // @ts-expect-error TypeScript types the unannotated parameter `{}`.
-  login({ email, password } = {}) {
-    return [email, password];
+  login({ email, password, remember } = {}) {
+    return [email, password, remember];
   }
 }

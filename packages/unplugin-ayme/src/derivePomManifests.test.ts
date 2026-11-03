@@ -1075,7 +1075,7 @@ describe("derivePomManifests", () => {
       }
 
       it("takes an object pattern's fields from its type, keyed by property name", () => {
-        expect(destructuredParametersOf("signIn")).toEqual([
+        expect(destructuredParametersOf("signIn")).toStrictEqual([
           {
             destructured: "object",
             optional: false,
@@ -1086,7 +1086,7 @@ describe("derivePomManifests", () => {
           },
         ]);
         // Every property of the type, whatever the pattern binds or renames.
-        expect(destructuredParametersOf("signInAs")).toEqual([
+        expect(destructuredParametersOf("signInAs")).toStrictEqual([
           {
             destructured: "object",
             optional: false,
@@ -1100,7 +1100,7 @@ describe("derivePomManifests", () => {
       });
 
       it("records a defaulted object pattern beside a named parameter, with its bindings' literal defaults", () => {
-        expect(destructuredParametersOf("search")).toEqual([
+        expect(destructuredParametersOf("search")).toStrictEqual([
           { name: "query", optional: false, schema: { type: "string" } },
           {
             destructured: "object",
@@ -1123,7 +1123,7 @@ describe("derivePomManifests", () => {
       });
 
       it("keys an array pattern's fields by the names it binds", () => {
-        expect(destructuredParametersOf("move")).toEqual([
+        expect(destructuredParametersOf("move")).toStrictEqual([
           {
             destructured: "array",
             optional: false,
@@ -1136,7 +1136,7 @@ describe("derivePomManifests", () => {
       });
 
       it("takes an array pattern's optional elements, a plain array's elements and a rest element", () => {
-        expect(destructuredParametersOf("follow")).toEqual([
+        expect(destructuredParametersOf("follow")).toStrictEqual([
           {
             destructured: "array",
             optional: false,
@@ -1181,11 +1181,23 @@ describe("derivePomManifests", () => {
         ],
         [
           "untypedBindingPom",
-          "Page Object Action UntypedBindingPom.login: email and password in { email, password } have no type. Annotate the parameter.",
+          "Page Object Action UntypedBindingPom.login: email, password and remember in { email, password, remember } have no type. Annotate the parameter.",
         ],
         [
           "misspelledBindingPom",
           "Page Object Action MisspelledBindingPom.signIn: emial in { emial, password: secret }: Credentials has no type.",
+        ],
+        [
+          "arrayDuplicatePom",
+          "Page Object Action ArrayDuplicatePom.move takes two input fields named x: property x of { y }: { x: number; y: number }, and binding x of [x]: [number].",
+        ],
+        [
+          "indexSignaturePatternPom",
+          `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "stringPatternPom",
+          `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
         ],
         [
           "renamedDuplicatePom",
@@ -1200,15 +1212,69 @@ describe("derivePomManifests", () => {
           "Page Object Action SharedPropertyPom.copy takes two input fields named id: property id of { id }: { id: string }, and property id of { id: other }: { id: string }.",
         ],
       ])("fails the build for %s", (fixture, message) => {
-        expect(() =>
+        let thrown: unknown;
+        try {
           derivePomManifests(
             path.resolve(`src/fixtures/unsupportedPatterns/${fixture}.ts`)
-          )
-        ).toThrow(message);
+          );
+        } catch (error) {
+          thrown = error;
+        }
+        expect((thrown as Error | undefined)?.message).toBe(message);
+      });
+
+      it("takes an object pattern's quoted keys with their defaults, and its computed ones from the type", () => {
+        expect(destructuredParametersOf("name")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              {
+                name: "first-name",
+                optional: false,
+                schema: { type: "string" },
+                default: "Ann",
+              },
+              { name: "last", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+      });
+
+      it("binds a tuple's remaining fixed elements, or leaves its variadic ones, to a rest element", () => {
+        expect(destructuredParametersOf("tail")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "head", optional: false, schema: { type: "string" } },
+              {
+                name: "rest",
+                optional: false,
+                schema: {
+                  type: "array",
+                  prefixItems: [{ type: "number" }, { type: "number" }],
+                  minItems: 2,
+                  maxItems: 2,
+                },
+                rest: true,
+              },
+            ],
+          },
+        ]);
+        expect(destructuredParametersOf("first")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "x", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
       });
 
       it("records a destructured rest parameter as a rest array pattern", () => {
-        expect(destructuredParametersOf("spread")).toEqual([
+        expect(destructuredParametersOf("spread")).toStrictEqual([
           {
             destructured: "array",
             optional: false,

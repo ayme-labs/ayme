@@ -45,6 +45,7 @@ describe("the build report", () => {
         "  UnmarkedMethodsPom.each: no @ayme.action mark, and parameter callback has the unsupported type (row: Locator) => void",
         "  UnmarkedMethodsPom.find: no @ayme.action mark, and id in parameter { id } has no type",
         "  UnmarkedMethodsPom.open: no @ayme.action mark, and element 0 of parameter [, name]: [string, string] has no name",
+        "  UnmarkedMethodsPom.search: no @ayme.action mark, and two input fields are named query",
       ].join("\n"),
     ]);
   });
@@ -60,6 +61,7 @@ describe("the build report", () => {
         "  UnmarkedMethodsPom.find: no @ayme.action mark, and id in parameter { id } has no type",
         "  UnmarkedMethodsPom.open: no @ayme.action mark, and element 0 of parameter [, name]: [string, string] has no name",
         "  UnmarkedMethodsPom.row: no @ayme.action mark",
+        "  UnmarkedMethodsPom.search: no @ayme.action mark, and two input fields are named query",
       ].join("\n"),
     ]);
   });

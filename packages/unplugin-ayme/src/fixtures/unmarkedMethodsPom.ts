@@ -29,6 +29,11 @@ export class UnmarkedMethodsPom {
     return id;
   }
 
+  /** Unmarked, with two input fields of one name. */
+  search(query: string, { query: q }: { query: string }) {
+    return [query, q];
+  }
+
   async items(): Promise<ItemPom[]> {
     return [new ItemPom(this.root)];
   }

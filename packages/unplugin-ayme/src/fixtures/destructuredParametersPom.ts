@@ -4,6 +4,8 @@ type Credentials = { email: string; password: string; remember?: boolean };
 
 type SearchOptions = { limit?: number; order: "asc" | "desc" };
 
+const lastName = "last";
+
 @ayme
 export class DestructuredParametersPom {
   @ayme.action({ description: "Sign in." })
@@ -29,6 +31,29 @@ export class DestructuredParametersPom {
   @ayme.action({ description: "Follow a path." })
   follow([start, end = 9]: [number, number?], [first, ...others]: string[]) {
     return { start, end, first, others };
+  }
+
+  @ayme.action({ description: "Name a person by quoted and computed keys." })
+  name({
+    "first-name": first = "Ann",
+    // A second binding of the property, without a default, keeps it.
+    "first-name": alias,
+    [lastName]: last,
+  }: {
+    "first-name": string;
+    last: string;
+  }) {
+    return [first, alias, last];
+  }
+
+  @ayme.action({ description: "Take a tuple's fixed elements by a rest." })
+  tail([head, ...rest]: [string, number, number]) {
+    return { head, rest };
+  }
+
+  @ayme.action({ description: "Leave a tuple's variadic elements unbound." })
+  first([x]: [number, ...number[]]) {
+    return x;
   }
 
   @ayme.action({ description: "Take a destructured rest parameter." })
