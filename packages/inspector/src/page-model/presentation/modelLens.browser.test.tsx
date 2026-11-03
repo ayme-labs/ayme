@@ -856,6 +856,19 @@ it("doesn't select a member that is not on the page", async () => {
   expect(onSelect).not.toHaveBeenCalled();
 });
 
+it("shows a selected member of a Page Object that is not on the page as not on the page", async () => {
+  renderLens({
+    selection: { kind: "member", path: "TodoPage.archiveDialog.confirmButton" },
+  });
+
+  await expect
+    .poll(() => detail.fact("On the page").textContent())
+    .toBe("not on the page");
+  expect(await detail.fact("Owner").textContent()).toBe(
+    "TodoPage.archiveDialog"
+  );
+});
+
 it("dims a model's actions as not on page when none of its objects is, without running them", async () => {
   const { renderRun } = renderLens({
     selection: { kind: "model", className: "ArchiveDialog" },
