@@ -16,6 +16,11 @@ export type RegisteredPomTarget = {
    * on the member names.
    */
   locator: string;
+  /**
+   * For the one element of a Locator collection that holds one, the
+   * collection's own locator: an Interaction on the whole collection names it.
+   */
+  collectionLocator?: string;
 };
 
 /**

@@ -87,4 +87,53 @@ describe("registered Locator children's targets in Chromium", () => {
       },
     ]);
   });
+
+  it("names the one element of a Locator collection by the collection's locator too, as an Interaction on the whole collection names it", async () => {
+    document.body.innerHTML = `
+      <table><tr><td>only</td></tr></table>
+      <ul><li>first</li><li>second</li></ul>
+    `;
+    class RunsTable {
+      readonly rows = page.locator("tr");
+      readonly items = page.locator("li");
+    }
+    registerCompiledPom(RunsTable, {
+      className: "RunsTable",
+      tools: [],
+      members: ["rows", "items"].map((memberName) => ({
+        memberName,
+        kind: "locator",
+        access: "field",
+        collection: true,
+      })),
+      components: [],
+    });
+    session.register(RunsTable);
+
+    const targets = await listRegisteredPomTargets();
+
+    expect(
+      targets.map(({ path, locator, collectionLocator }) => ({
+        path,
+        locator,
+        collectionLocator,
+      }))
+    ).toStrictEqual([
+      {
+        path: "RunsTable.rows[0]",
+        locator: "locator('tr').first()",
+        collectionLocator: "locator('tr')",
+      },
+      {
+        path: "RunsTable.items[0]",
+        locator: "locator('li').first()",
+        collectionLocator: undefined,
+      },
+      {
+        path: "RunsTable.items[1]",
+        locator: "locator('li').nth(1)",
+        collectionLocator: undefined,
+      },
+    ]);
+  });
 });
