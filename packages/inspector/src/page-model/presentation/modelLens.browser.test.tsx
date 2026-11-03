@@ -869,6 +869,16 @@ it("shows a selected member of a Page Object that is not on the page as not on t
   );
 });
 
+it("says a selected member that is gone is no longer on the page", async () => {
+  renderLens({
+    selection: { kind: "member", path: "TodoPage.removedButton" },
+  });
+
+  await expect
+    .poll(() => page.getByRole("region", { name: "Selected" }).textContent())
+    .toContain("TodoPage.removedButton is no longer on the page.");
+});
+
 it("dims a model's actions as not on page when none of its objects is, without running them", async () => {
   const { renderRun } = renderLens({
     selection: { kind: "model", className: "ArchiveDialog" },
