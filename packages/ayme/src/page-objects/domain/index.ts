@@ -4,6 +4,7 @@ export type {
   ActionAvailability,
   AvailabilityPredicate,
   AymeActionOptions,
+  AymeChildOptions,
   AymeModelOptions,
   PresencePredicate,
   RootPredicate,

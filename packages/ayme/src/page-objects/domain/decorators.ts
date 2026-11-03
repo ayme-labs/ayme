@@ -1,7 +1,8 @@
 import type { Locator } from "@playwright/test";
 
-// The decorators mark a class or method; the build integration reads the
-// marks from source and generates the Page Object Tools. The decorators also
+// The decorators mark a class or member; the build integration reads the
+// marks from source and generates the Page Object Tools and Children. The
+// child marks keep nothing at runtime. The decorators also
 // keep the predicates that only exist at runtime: `@ayme` a model's root and
 // presence predicates, `@ayme.action` an action's availability predicate.
 
@@ -219,9 +220,81 @@ function action(...args: unknown[]) {
   return options?.available ? keepingPredicate(options.available) : markAction;
 }
 
+export type AymeChildOptions = {
+  /** What the part stands for, which agents read in the model's definition. */
+  description?: string;
+};
+
+type LegacyMemberDecorator = (
+  target: object,
+  propertyKey: string | symbol,
+  descriptor?: PropertyDescriptor
+) => void;
+type StandardFieldDecorator = <This, Value>(
+  value: undefined,
+  context: ClassFieldDecoratorContext<This, Value>
+) => void;
+type StandardGetterDecorator = <This, Value>(
+  value: (this: This) => Value,
+  context: ClassGetterDecoratorContext<This, Value>
+) => void;
+type AymeChildDecorator = LegacyMemberDecorator &
+  StandardFieldDecorator &
+  StandardGetterDecorator;
+type AymeCollectionDecorator = AymeChildDecorator & StandardMethodDecorator;
+
+// The build reads the child marks from source; at runtime they keep nothing.
+const markChild: AymeCollectionDecorator = () => {};
+
+function child(
+  target: object,
+  propertyKey: string | symbol,
+  descriptor?: PropertyDescriptor
+): void;
+function child<This, Value>(
+  value: undefined,
+  context: ClassFieldDecoratorContext<This, Value>
+): void;
+function child<This, Value>(
+  value: (this: This) => Value,
+  context: ClassGetterDecoratorContext<This, Value>
+): void;
+function child(options?: AymeChildOptions): AymeChildDecorator;
+function child(...args: unknown[]): AymeChildDecorator | undefined {
+  // Applied directly, a member decorator receives two or three arguments in
+  // both decorator modes; the options form receives at most one.
+  if (args.length >= 2) return;
+  return markChild;
+}
+
+function collection(
+  target: object,
+  propertyKey: string | symbol,
+  descriptor?: PropertyDescriptor
+): void;
+function collection<This, Value>(
+  value: undefined,
+  context: ClassFieldDecoratorContext<This, Value>
+): void;
+function collection<This, Value>(
+  value: (this: This) => Value,
+  context: ClassGetterDecoratorContext<This, Value>
+): void;
+function collection<This, Value extends AnyMethod<This>>(
+  value: Value,
+  context: ClassMethodDecoratorContext<This, Value>
+): void;
+function collection(options?: AymeChildOptions): AymeCollectionDecorator;
+function collection(...args: unknown[]): AymeCollectionDecorator | undefined {
+  if (args.length >= 2) return;
+  return markChild;
+}
+
 /**
  * Marks a Page Object Model and keeps its root and presence predicates when
  * it has them. `@ayme.action` marks a Page Object Action, which becomes a
  * Page Object Tool, and keeps its availability predicate when it has one.
+ * `@ayme.child` declares a Page Object Child that is one element or one
+ * Page Object, `@ayme.collection` a Child Collection.
  */
-export const ayme = Object.assign(aymeClass, { action });
+export const ayme = Object.assign(aymeClass, { action, child, collection });

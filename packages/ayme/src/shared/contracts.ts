@@ -28,6 +28,14 @@ export type PomLocatorMemberManifest = {
   memberName: string;
   kind: "locator";
   access: PomMemberAccess;
+  /**
+   * Whether the Locator is declared a Child Collection (`@ayme.collection`)
+   * rather than one element (`@ayme.child`). Absent for a Locator the build
+   * infers without a declaration.
+   */
+  collection?: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
 };
 
 export type PomComponentMemberManifest = {
@@ -36,6 +44,8 @@ export type PomComponentMemberManifest = {
   access: PomMemberAccess;
   componentClassName: string;
   collection: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
 };
 
 export type PomMemberManifest =

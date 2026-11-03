@@ -216,6 +216,58 @@ registerCompiledPom(ResponsesPage, {
   ],
 });
 
+/** A page whose children are declared, two of them with a description. */
+class RunsTable {
+  readonly heading;
+  readonly rows;
+  readonly toolbar = new RunsToolbar();
+
+  constructor(page: Page) {
+    this.heading = page.locator("h1");
+    this.rows = page.locator("tr");
+  }
+
+  refresh() {}
+}
+
+class RunsToolbar {}
+
+registerCompiledPom(RunsTable, {
+  className: "RunsTable",
+  description: "The runs of a project.",
+  members: [
+    {
+      memberName: "heading",
+      kind: "locator",
+      access: "field",
+      collection: false,
+    },
+    {
+      memberName: "rows",
+      kind: "locator",
+      access: "field",
+      collection: true,
+      description: "One row per run.",
+    },
+    {
+      memberName: "toolbar",
+      kind: "component",
+      access: "field",
+      componentClassName: "RunsToolbar",
+      collection: false,
+      description: "Filters the runs.",
+    },
+  ],
+  tools: [
+    {
+      methodName: "refresh",
+      toolName: "RunsTable.refresh",
+      parameters: [],
+    },
+  ],
+  components: [{ className: "RunsToolbar", members: [], tools: [] }],
+});
+
 /** A Custom Tool with its own filter. */
 const highlight: CustomTool = {
   name: "highlight",
@@ -537,6 +589,22 @@ describe("the session's tools in Chromium", () => {
     expect(all).toMatch(
       /TodoPage[\s\S]*SettingsPage|SettingsPage[\s\S]*TodoPage/
     );
+  });
+
+  it("gives declared children in the definitions snapshot returns: a Locator collection with [], a description as a comment", async () => {
+    await startSession();
+    cleanups.push(registered(RunsTable));
+
+    const { pomDefinitions } = (await ayme.tools.run("snapshot", {
+      names: ["RunsTable"],
+    })) as { pomDefinitions: string };
+
+    expect(pomDefinitions).toBe(`RunsTable // The runs of a project.
+  heading
+  rows[] // One row per run.
+  toolbar: RunsToolbar // Filters the runs.
+
+  refresh()`);
   });
 
   it("lists a described action with its author's words as both descriptions", async () => {
