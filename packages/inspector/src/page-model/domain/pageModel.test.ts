@@ -605,6 +605,140 @@ describe("the page model", () => {
     expect(models[0]?.actions[0]?.description).toBe("Add an item.");
   });
 
+  it("gives a declared child its description, on the object and on its model, and keeps its live state", () => {
+    const declared: PomManifest = {
+      ...manifest,
+      members: [
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+          description: "The page's title.",
+        },
+        {
+          memberName: "rows",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "One row per item.",
+        },
+        {
+          ...manifest.members[2]!,
+          description: "Asks before archiving.",
+        } as PomManifest["members"][number],
+      ],
+    };
+    const { objects, models } = buildPageModel(
+      [
+        {
+          ...registration(
+            [
+              { memberName: "heading", kind: "locator", count: 2 },
+              { memberName: "rows", kind: "locator", count: 3 },
+              ...probed.filter(({ memberName }) =>
+                memberName.startsWith("archiveDialog")
+              ),
+            ],
+            [""],
+            []
+          ),
+          manifest: declared,
+        },
+      ],
+      live,
+      [{ ...definitions[0]!, children: declared.members }],
+      actionSignature
+    );
+
+    expect(
+      objectAt(objects, "TodoPage").members.map(
+        ({ name, description, state }) => ({ name, description, state })
+      )
+    ).toEqual([
+      { name: "heading", description: "The page's title.", state: "2 matches" },
+      { name: "rows", description: "One row per item.", state: "3 matches" },
+      {
+        name: "archiveDialog",
+        description: "Asks before archiving.",
+        state: "not on page",
+      },
+    ]);
+    expect(
+      models[0]?.members.map(({ name, collection, description }) => ({
+        name,
+        collection,
+        description,
+      }))
+    ).toEqual([
+      {
+        name: "heading",
+        collection: undefined,
+        description: "The page's title.",
+      },
+      { name: "rows", collection: true, description: "One row per item." },
+      {
+        name: "archiveDialog",
+        collection: false,
+        description: "Asks before archiving.",
+      },
+    ]);
+  });
+
+  it("marks a declared Locator collection with how many elements it holds, and no other Locator", () => {
+    const { objects, models } = buildPageModel(
+      [
+        {
+          ...registration(
+            [
+              { memberName: "heading", kind: "locator", count: 1 },
+              { memberName: "rows", kind: "locator", count: 3 },
+              { memberName: "hint", kind: "locator", count: 2 },
+            ],
+            [""],
+            []
+          ),
+          manifest: {
+            ...manifest,
+            members: [
+              {
+                memberName: "heading",
+                kind: "locator",
+                access: "field",
+                collection: false,
+              },
+              {
+                memberName: "rows",
+                kind: "locator",
+                access: "field",
+                collection: true,
+              },
+              { memberName: "hint", kind: "locator", access: "field" },
+            ],
+          },
+        },
+      ],
+      live,
+      [],
+      actionSignature
+    );
+
+    expect(
+      objectAt(objects, "TodoPage").members.map(
+        ({ name, collection, elementCount }) => ({
+          name,
+          collection,
+          elementCount,
+        })
+      )
+    ).toEqual([
+      { name: "heading", collection: undefined, elementCount: undefined },
+      { name: "rows", collection: true, elementCount: 3 },
+      { name: "hint", collection: undefined, elementCount: undefined },
+    ]);
+    expect(models).toEqual([]);
+  });
+
   it("gives a model its members and its actions, live or not", () => {
     const { models } = buildPageModel(
       [registration()],

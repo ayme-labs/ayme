@@ -14,6 +14,7 @@ class Item extends Lib.BaseItem {
 
 @ayme
 export class NamespaceAmbientBaseCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }

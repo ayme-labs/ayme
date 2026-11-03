@@ -47,10 +47,9 @@ therefore refused exactly when they are needed, for example while a modal menu
 or dialog that blocks pointer events on the rest of the page is open.
 
 Portaled content, such as menus, dialogs, and popovers, gets its own POM rooted
-at that content, through the component base class or its own `root`. The trigger that opens it stays on the parent POM. Expose the
-content POM as a member of the parent, a
-[Page Object Child](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children),
-so its tools are published, and return it from the opening action.
+at that content, through the component base class or its own `root`. The trigger that opens it stays on the parent POM. Declare the
+content POM on the parent as a Page Object Child with `@ayme.child`, so its
+tools are published, and return it from the opening action.
 
 ```ts
 // Rooted at the portaled content, a page-level locator rather than a descendant of the trigger.
@@ -64,6 +63,7 @@ class ProfileMenuContent {
 }
 
 // On the parent POM, which keeps the trigger:
+@ayme.child
 readonly content = new ProfileMenuContent(this.page);
 
 @ayme.action
@@ -73,15 +73,39 @@ async open() {
 }
 ```
 
+## Declare the parts agents should see
+
+A POM's model holds only the members it declares as
+[Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children);
+the guide lists the members each decorator fits.
+
+- `@ayme.child` on a locator that matches one element, or on a member holding
+  one child POM.
+- `@ayme.collection` on a locator that matches any number of elements, such as
+  rows, or on a method without parameters returning child POMs, such as
+  `async items(): Promise<ListItem[]>`.
+- No decorator on a locator that only tests or helper code use: it stays out
+  of the model.
+
+Never leave a member holding a child POM undeclared: that POM drops out of the
+model, and its tools are not published unless something else reaches it. A
+console warning that a declared child matches several elements means the
+locator is too loose, or the member is a collection.
+
+Give a child a description only when its name and the page do not say what the
+part is for; agents read it in the POM's definition. It is a constant string,
+as an action's description is.
+
 ## Keep controls as locators
 
-Expose individual buttons, links, and inputs as named locators. Introduce helper
-objects when they supply meaningful reusable behavior. Include collections when
-the flow or structural observation needs them. See the
+Declare individual buttons, links, and inputs as named locators. Introduce
+helper objects when they supply meaningful reusable behavior. Include
+collections when the flow or structural observation needs them. See the
 [root rules](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
 for classes reached through several members or collections.
 
 ```ts
+@ayme.child
 readonly createButton = this.root.getByTestId("create-button");
 ```
 

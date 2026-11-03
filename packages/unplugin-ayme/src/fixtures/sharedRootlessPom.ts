@@ -8,6 +8,8 @@ class Toolbar {
 
 @ayme
 export class SharedRootlessPom {
+  @ayme.child
   first = new Toolbar();
+  @ayme.child
   second = new Toolbar();
 }

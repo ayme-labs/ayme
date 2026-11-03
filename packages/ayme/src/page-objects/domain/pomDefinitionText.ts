@@ -40,10 +40,14 @@ function renderPomDefinition(definition: PomDefinition): string {
 }
 
 function renderChild(child: PomDefinition["children"][number]): string {
-  if (child.kind === "locator") return child.memberName;
-  return `${child.memberName}: ${child.componentClassName}${
-    child.collection ? "[]" : ""
-  }`;
+  const brackets = child.collection ? "[]" : "";
+  const declaration =
+    child.kind === "locator"
+      ? `${child.memberName}${brackets}`
+      : `${child.memberName}: ${child.componentClassName}${brackets}`;
+  return child.description
+    ? `${declaration} // ${child.description}`
+    : declaration;
 }
 
 function renderAction(action: PomDefinitionAction, ownerName: string): string {

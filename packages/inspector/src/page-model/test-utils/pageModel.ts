@@ -16,6 +16,8 @@ import type {
  */
 export type Contents = {
   locators?: readonly string[];
+  /** Its Locator collections by name, with how many elements each holds. */
+  locatorCollections?: Readonly<Record<string, number>>;
   children?: readonly Child[];
   actions?: readonly Action[];
   live?: boolean;
@@ -107,7 +109,13 @@ function objectNode(
   name: string,
   kind: PageObjectNode["kind"],
   className: string,
-  { locators = [], children = [], actions = [], live = true }: Contents
+  {
+    locators = [],
+    locatorCollections = {},
+    children = [],
+    actions = [],
+    live = true,
+  }: Contents
 ): PageObjectNode {
   const built = children.map((child) => child(path));
   return {
@@ -125,6 +133,17 @@ function objectNode(
         state: live ? "1 match" : "absent",
         path: `${path}.${locator}`,
       })),
+      ...Object.entries(locatorCollections).map(
+        ([locator, count]): ObjectMember => ({
+          name: locator,
+          kind: "locator",
+          collection: true,
+          elementCount: count,
+          live: count > 0,
+          state: `${count} ${count === 1 ? "match" : "matches"}`,
+          path: `${path}.${locator}`,
+        })
+      ),
       ...built.map(componentMember),
     ],
     actions: actions.map((action) => ({

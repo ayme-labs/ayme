@@ -5,6 +5,8 @@ import { Row as RowB } from "./listB";
 
 @ayme
 export class ListsPage {
+  @ayme.child
   first!: RowA;
+  @ayme.child
   second!: RowB;
 }

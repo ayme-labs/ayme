@@ -11,22 +11,35 @@ import { ListItem } from "./ListItem";
  */
 @ayme
 export class ListPage {
+  @ayme.child
   readonly newItemInput: Locator;
+  @ayme.child
   readonly addItemButton: Locator;
+  @ayme.child
   readonly clearButton: Locator;
+  @ayme.collection
   readonly items: Locator;
+  @ayme.collection({
+    description: "The new item's fields: its text and whether it is urgent.",
+  })
+  readonly newItemFields: Locator;
 
   constructor(page: Page) {
     this.newItemInput = page.getByRole("textbox", { name: "New item" });
     this.addItemButton = page.getByRole("button", { name: "Add item" });
-    // The Inspector's Runs view has a "Clear" button too.
-    this.clearButton = page.getByRole("button", { name: "Clear" });
+    // The Inspector's Runs view has a "Clear" button too, inside an open
+    // shadow root on the dogfood page, so the page's own is the one in main.
+    this.clearButton = page
+      .getByRole("main")
+      .getByRole("button", { name: "Clear" });
     this.items = page
       .getByRole("list", { name: "Items" })
       .getByRole("listitem");
+    this.newItemFields = page.getByRole("main").locator("input");
   }
 
   /** The items, as Page Objects a collection action runs on. */
+  @ayme.collection
   async entries(): Promise<ListItem[]> {
     return (await this.items.all()).map((item) => new ListItem(item));
   }

@@ -116,6 +116,18 @@ describe("snapshot", () => {
     );
   });
 
+  it("explains how definitions show children: bare Locators, [] for collections and authored // comments", () => {
+    expect(getPageContextTool.description).toContain(
+      "A bare member is a Locator and member: ChildPom a child POM"
+    );
+    expect(getPageContextTool.description).toContain(
+      "member[] is a collection of Locators and member: ChildPom[] a collection of child POMs"
+    );
+    expect(getPageContextTool.description).toContain(
+      "A // comment after a member is its authored description, as is one above an action"
+    );
+  });
+
   it("renders child members and action signatures without empty sections", async () => {
     getPomDefinitions.mockReturnValue({
       definitions: [

@@ -9,5 +9,6 @@ class AdminMenu extends BaseMenu {}
 
 @ayme
 export class AmbiguousInheritedChildrenPom {
+  @ayme.child
   readonly ambiguousMenu!: UserMenu & AdminMenu;
 }

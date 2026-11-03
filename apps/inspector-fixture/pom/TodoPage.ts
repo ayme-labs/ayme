@@ -11,8 +11,11 @@ import { AppComponent } from "./AppComponent";
  */
 @ayme
 export class TodoPage {
+  @ayme.child
   readonly newItemInput: Locator;
+  @ayme.child
   readonly addItemButton: Locator;
+  @ayme.child
   readonly archiveDialog: ArchiveDialog;
   private readonly rows: Locator;
 
@@ -23,6 +26,7 @@ export class TodoPage {
     this.archiveDialog = new ArchiveDialog(page.locator("#todo-archive"));
   }
 
+  @ayme.collection
   async items(): Promise<TodoItem[]> {
     return (await this.rows.all()).map((row) => new TodoItem(row));
   }
@@ -35,6 +39,7 @@ export class TodoPage {
 }
 
 export class TodoItem extends AppComponent {
+  @ayme.child
   readonly archiveButton: Locator;
 
   constructor(root: Locator) {
@@ -49,6 +54,7 @@ export class TodoItem extends AppComponent {
 }
 
 export class ArchiveDialog extends AppComponent {
+  @ayme.child
   readonly confirmButton: Locator;
 
   constructor(root: Locator) {

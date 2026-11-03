@@ -9,7 +9,9 @@ class Toolbar {}
 })
 export class RecursiveCollectionRootlessDescendantPom {
   element!: Locator;
+  @ayme.child
   toolbar = new Toolbar();
+  @ayme.collection
   async children(): Promise<RecursiveCollectionRootlessDescendantPom[]> {
     return [];
   }

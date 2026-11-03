@@ -8,5 +8,6 @@ export class Row {
 
 @ayme
 export class Table {
+  @ayme.child
   row!: Row;
 }

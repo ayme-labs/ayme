@@ -262,6 +262,98 @@ it("names each Interaction by the member whose locator it names, for any Caller"
     ]);
 });
 
+it("names an Interaction on a Locator collection holding one element by that element", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          {
+            memberName: "buttons",
+            kind: "locator",
+            access: "field",
+            collection: true,
+          },
+        ],
+      },
+      memberObservations: [
+        { memberName: "buttons", kind: "locator", access: "field", count: 1 },
+      ],
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      aliases: ["locator('button')", "locator('button').last()"],
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button')" });
+  save.interact({ operation: "click", locator: "locator('button').first()" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[0]" },
+      { operation: "click", target: "Editor.buttons[0]" },
+    ]);
+});
+
+it("names an Interaction on a Locator collection's last element by that element", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          {
+            memberName: "buttons",
+            kind: "locator",
+            access: "field",
+            collection: true,
+          },
+        ],
+      },
+      memberObservations: [
+        { memberName: "buttons", kind: "locator", access: "field", count: 2 },
+      ],
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      aliases: [],
+    },
+    {
+      path: "Editor.buttons[1]",
+      element: document.body,
+      locator: "locator('button').nth(1)",
+      aliases: ["locator('button').last()"],
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button').last()" });
+  save.interact({ operation: "click", locator: "locator('button').nth(1)" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[1]" },
+      { operation: "click", target: "Editor.buttons[1]" },
+    ]);
+});
+
 it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
   registerEditor();
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
@@ -273,6 +365,49 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
   ]);
   vi.mocked(getPageStateForElements).mockResolvedValue({
     refs: ["e2"],
+  } as Awaited<ReturnType<typeof getPageStateForElements>>);
+  const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e2')",
+    ref: "e2" as Interaction["ref"],
+  });
+  click.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("click").interactionList())
+    .toEqual([{ operation: "click", target: "Editor.saveButton" }]);
+});
+
+it("names a Browser Tool's Interaction by the member whose element has its ref, not by another member", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          { memberName: "bodyInput", kind: "locator", access: "field" },
+          ...editor.manifest.members,
+        ],
+      },
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.bodyInput",
+      element: document.body,
+      locator: "getByRole('textbox', { name: 'Body' })",
+    },
+    {
+      path: "Editor.saveButton",
+      element: document.body,
+      locator: "getByRole('button', { name: 'Save' })",
+    },
+  ]);
+  vi.mocked(getPageStateForElements).mockResolvedValue({
+    refs: ["e1", "e2"],
   } as Awaited<ReturnType<typeof getPageStateForElements>>);
   const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
   click.interact({

@@ -13,6 +13,7 @@ export default class ListPage {
     this.page = page;
   }
 
+  @ayme.child({ description: "The dialog that adds an item." })
   get dialog(): Locator {
     return this.page.getByRole("dialog");
   }

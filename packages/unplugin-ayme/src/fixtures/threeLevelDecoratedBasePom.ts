@@ -4,6 +4,7 @@ import { ayme } from "@ayme-dev/ayme";
 
 @ayme
 class TopPom {
+  @ayme.child
   readonly topButton!: Locator;
 
   @ayme.action({ description: "Use the top tool." })
@@ -11,10 +12,12 @@ class TopPom {
 }
 
 class MiddlePom extends TopPom {
+  @ayme.child
   readonly middleButton!: Locator;
 }
 
 export class BottomPom extends MiddlePom {
+  @ayme.child
   readonly bottomButton!: Locator;
 
   @ayme.action({ description: "Use the bottom tool." })

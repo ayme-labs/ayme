@@ -24,9 +24,11 @@ lifetime and no URL states it, such as a sidebar mounted on several routes, or
 when the POM belongs in a route's chunk. Say which in a one-line comment at the
 call.
 
-Child POMs exposed through the registered POM's compiled members are discovered
-recursively and need no separate registration. An unrelated marked class or a
-POM only returned from an action is not registered, so its tools are never live.
+Child POMs the registered POM declares with `@ayme.child` or
+`@ayme.collection` are discovered recursively and need no separate
+registration. A POM held only by an undeclared member, an unrelated marked
+class, or a POM only returned from an action is not registered, so its tools
+are never live.
 
 ## Keep one runtime owner at the root
 
@@ -66,4 +68,4 @@ On a page the POM is present on, check the tools and the page state:
 - `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
   State an agent receives, marked with Page Object class names.
 
-Confirm that the intended POM, its visible members, and its tools appear.
+Confirm that the intended POM, its declared children, and its tools appear.

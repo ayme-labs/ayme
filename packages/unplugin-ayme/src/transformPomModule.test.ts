@@ -135,7 +135,10 @@ describe("a subclass in a module without the decorator", () => {
     expect(result).not.toBeNull();
     expect(createPomProgram).toHaveBeenCalledTimes(1);
     expect(result?.code).toContain("registerCompiledPom(UserMenu, {");
-    expect(result?.code).toContain('"memberName":"signOutItem"');
+    // Inherited and declared on the base; its own undeclared Locator is no
+    // Page Object Child.
+    expect(result?.code).toContain('"memberName":"baseItem"');
+    expect(result?.code).not.toContain('"memberName":"signOutItem"');
     expect(result?.code).toContain('"toolName":"UserMenu.open"');
   });
 
@@ -273,6 +276,8 @@ describe("a build without Ayme", () => {
     expect(code).not.toContain("getByLabel");
     expect(code).not.toContain("Add an item to the list.");
     expect(code).not.toContain("@ayme.action");
+    expect(code).not.toContain("@ayme.child");
+    expect(code).not.toContain("The dialog that adds an item.");
   });
 
   it("keeps an import only when the rest of the module refers to its binding, not when it names a key or a member", () => {
@@ -305,7 +310,7 @@ describe("a build without Ayme", () => {
     const code = transform(...fixture("annotatedChildrenPom"))?.code;
 
     expect(code).toMatch(
-      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["ordinaryMethod","locatorMethod","componentCollection",/
+      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["undeclaredCollection","undeclaredReadonlyCollection","ordinaryMethod","locatorMethod","componentCollection",/
     );
   });
 
@@ -342,6 +347,7 @@ describe("a build without Ayme", () => {
 
     expect(code).toContain("registerCompiledPom(ListPage, {");
     expect(code).toContain("Add an item to the list.");
+    expect(code).toContain("The dialog that adds an item.");
     expect(code).not.toContain("@ayme-dev/ayme/absent");
   });
 });

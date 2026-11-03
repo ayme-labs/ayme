@@ -12,11 +12,15 @@ export type ModelPaneName = "On this page" | "Page object models";
  */
 export class ModelLens extends PanelPart {
   /** The object tree, "On this page". */
+  @ayme.child
   readonly objectTree: Locator;
   /** The Page Object Model list, "Page object models". */
+  @ayme.child
   readonly modelList: Locator;
+  @ayme.collection
   readonly models: Locator;
   /** The divider between the two panes. */
+  @ayme.child
   readonly divider: Locator;
 
   constructor(root: Locator) {

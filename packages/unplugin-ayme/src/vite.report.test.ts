@@ -52,7 +52,8 @@ describe("the build report", () => {
 
   it("also lists unmarked methods that could be tools with `all`", async () => {
     // Actions, Page Object Children, and private and static methods are no
-    // candidates.
+    // candidates; an undeclared method returning Page Objects is one, and an
+    // undeclared Locator or Page Object field is no method.
     expect(await buildReport("all")).toEqual([
       [
         "[ayme] Page Object methods that are not tools:",
@@ -62,6 +63,7 @@ describe("the build report", () => {
         "  UnmarkedMethodsPom.open: no @ayme.action mark, and element 0 of parameter [, name]: [string, string] has no name",
         "  UnmarkedMethodsPom.row: no @ayme.action mark",
         "  UnmarkedMethodsPom.search: no @ayme.action mark, and two input fields are named query",
+        "  UnmarkedMethodsPom.undeclaredItems: no @ayme.action mark",
       ].join("\n"),
     ]);
   });

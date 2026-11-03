@@ -50,6 +50,15 @@ export type PomLocatorMemberManifest = {
   memberName: string;
   kind: "locator";
   access: PomMemberAccess;
+  /**
+   * Whether the Locator is declared a Child Collection (`@ayme.collection`)
+   * rather than one element (`@ayme.child`). The build always writes it;
+   * left out, as a hand-written manifest may, the Locator is neither warned
+   * about when it matches several elements nor indexed by element.
+   */
+  collection?: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
 };
 
 export type PomComponentMemberManifest = {
@@ -58,6 +67,8 @@ export type PomComponentMemberManifest = {
   access: PomMemberAccess;
   componentClassName: string;
   collection: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
 };
 
 export type PomMemberManifest =
@@ -82,6 +93,12 @@ export type PomMemberObservation = {
   count: number;
   access?: PomMemberAccess;
   error?: string;
+  /**
+   * What is wrong with a member that was still observed, such as a Locator
+   * declared as one that matches several elements. Never an error: the
+   * observation stands.
+   */
+  warning?: string;
   /** Whether this observation is a documented console diagnostic. */
   diagnostic?: boolean;
 };

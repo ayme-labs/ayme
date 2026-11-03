@@ -34,9 +34,19 @@ export class UnmarkedMethodsPom {
     return [query, q];
   }
 
+  @ayme.collection
   async items(): Promise<ItemPom[]> {
     return [new ItemPom(this.root)];
   }
+
+  /** Undeclared, so an ordinary method, though it returns Page Objects. */
+  async undeclaredItems(): Promise<ItemPom[]> {
+    return [new ItemPom(this.root)];
+  }
+
+  /** Undeclared, so neither a Page Object Child nor a method. */
+  readonly footer!: Locator;
+  readonly firstItem!: ItemPom;
 
   private helper(callback: () => void) {
     callback();

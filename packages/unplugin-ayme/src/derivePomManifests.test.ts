@@ -151,6 +151,7 @@ describe("derivePomManifests", () => {
           memberName: "actionButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
       ]);
     }
@@ -163,8 +164,18 @@ describe("derivePomManifests", () => {
     );
 
     expect(manifest?.components[0]?.members).toEqual([
-      { memberName: "root", kind: "locator", access: "field" },
-      { memberName: "child", kind: "locator", access: "field" },
+      {
+        memberName: "root",
+        kind: "locator",
+        access: "field",
+        collection: false,
+      },
+      {
+        memberName: "child",
+        kind: "locator",
+        access: "field",
+        collection: false,
+      },
     ]);
   });
 
@@ -176,11 +187,13 @@ describe("derivePomManifests", () => {
         memberName: "ownButton",
         kind: "locator",
         access: "field",
+        collection: false,
       },
       {
         memberName: "inheritedButton",
         kind: "locator",
         access: "field",
+        collection: false,
       },
     ]);
   });
@@ -289,21 +302,25 @@ describe("derivePomManifests", () => {
           memberName: "ownButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "middleButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "inheritedButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "overriddenButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
       ])
     );
@@ -405,11 +422,13 @@ describe("derivePomManifests", () => {
         memberName: "browserLocator",
         kind: "locator",
         access: "field",
+        collection: false,
       },
       {
         memberName: "locatorGetter",
         kind: "locator",
         access: "getter",
+        collection: false,
       },
       {
         memberName: "componentCollection",
@@ -452,12 +471,336 @@ describe("derivePomManifests", () => {
         className: "AnnotatedComponent",
         file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/annotatedChildrenPom.ts`,
         members: [
-          { memberName: "root", kind: "locator", access: "field" },
-          { memberName: "child", kind: "locator", access: "field" },
+          {
+            memberName: "root",
+            kind: "locator",
+            access: "field",
+            collection: false,
+          },
+          {
+            memberName: "child",
+            kind: "locator",
+            access: "field",
+            collection: false,
+          },
         ],
         tools: [],
       },
     ]);
+  });
+
+  describe("declared Page Object Children", () => {
+    it("reads each declared shape, its cardinality and its description", () => {
+      const manifest = manifestForClass(
+        "declaredChildrenPom",
+        "DeclaredChildrenPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+        {
+          memberName: "emptyMessage",
+          kind: "locator",
+          access: "getter",
+          collection: false,
+          description: "The message shown without runs.",
+        },
+        {
+          memberName: "cells",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "One cell per column.",
+        },
+        {
+          memberName: "links",
+          kind: "locator",
+          access: "getter",
+          collection: true,
+        },
+        {
+          memberName: "toolbar",
+          kind: "component",
+          access: "field",
+          componentClassName: "Toolbar",
+          collection: false,
+          description: "Filters the runs.",
+        },
+        {
+          memberName: "footer",
+          kind: "component",
+          access: "getter",
+          componentClassName: "Toolbar",
+          collection: false,
+        },
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+          description: "One row per run.",
+        },
+        {
+          memberName: "readonlyRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        {
+          memberName: "aliasedRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        {
+          memberName: "visibleRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Toolbar",
+        "Row",
+      ]);
+    });
+
+    it.each([
+      [
+        "neitherPom",
+        "Page Object Child NeitherPom.title holds neither a Locator nor a Page Object (string).",
+      ],
+      [
+        "anyPom",
+        "Page Object Child AnyPom.part has a type the build cannot resolve (any).",
+      ],
+      [
+        "anyCollectionPom",
+        "Page Object Child AnyCollectionPom.parts has a type the build cannot resolve (Promise<any[]>).",
+      ],
+      [
+        "anyPromiseCollectionPom",
+        "Page Object Child AnyPromiseCollectionPom.parts has a type the build cannot resolve (Promise<any>).",
+      ],
+      [
+        "tupleChildPom",
+        "Page Object Child TupleChildPom.pair holds neither a Locator nor a Page Object ([Row, Row]).",
+      ],
+      [
+        "arrayFieldPom",
+        "Page Object Child ArrayFieldPom.rows holds an array of Page Objects (Row[]); declare a method without parameters that returns them.",
+      ],
+      [
+        "childArrayFieldPom",
+        "Page Object Child ChildArrayFieldPom.rows is declared @ayme.child but holds many Page Objects (readonly Row[]).",
+      ],
+      [
+        "childOnMethodPom",
+        "Page Object Child ChildOnMethodPom.toolbar is a method; @ayme.child declares a field or getter.",
+      ],
+      [
+        "childMethodPom",
+        "Page Object Child ChildMethodPom.rows is declared @ayme.child but returns many Page Objects; declare it @ayme.collection.",
+      ],
+      [
+        "collectionFieldPom",
+        "Page Object Child CollectionFieldPom.toolbar is declared @ayme.collection but holds one Page Object (Toolbar); declare it @ayme.child.",
+      ],
+      [
+        "parameterizedCollectionPom",
+        "Page Object Child ParameterizedCollectionPom.rows takes parameters; @ayme.collection declares a method without parameters.",
+      ],
+      [
+        "locatorMethodPom",
+        "Page Object Child LocatorMethodPom.cells is a method returning a Locator; declare a Locator collection as a field or getter.",
+      ],
+      [
+        "noPomCollectionPom",
+        "Page Object Child NoPomCollectionPom.labels returns no Page Objects (Promise<string[]>).",
+      ],
+      [
+        "singleMethodPom",
+        "Page Object Child SingleMethodPom.toolbar returns one Page Object (Promise<Toolbar>); a Child Collection method returns an array of Page Objects.",
+      ],
+      [
+        "bothMarkersPom",
+        "Page Object Child BothMarkersPom.heading is declared more than once; mark it either @ayme.child or @ayme.collection.",
+      ],
+      [
+        "actionChildPom",
+        "Page Object Child ActionChildPom.rows is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.",
+      ],
+      [
+        "mutableArrayMethodPom",
+        "Page Object Child MutableArrayMethodPom.visibleRows returns a mutable array (Row[]); a Child Collection method returns Promise<Row[]> or readonly Row[].",
+      ],
+      [
+        "privateChildPom",
+        "Page Object Child PrivateChildPom.heading is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "protectedChildPom",
+        "Page Object Child ProtectedChildPom.rows is protected; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "hashPrivateChildPom",
+        "Page Object Child HashPrivateChildPom.#heading is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "staticChildPom",
+        "Page Object Child StaticChildPom.heading is static; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "inheritedPrivateChildPom",
+        "Page Object Child ListBase.rows is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "stringNamedChildPom",
+        'Page Object Child StringNamedChildPom."row" is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
+      [
+        "computedNamedChildPom",
+        'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
+      [
+        "setterChildPom",
+        "Page Object Child SetterChildPom.part is a setter; only a field, getter or method can be a Page Object Child.",
+      ],
+      [
+        "setterCollectionPom",
+        "Page Object Child SetterCollectionPom.parts is a setter; only a field, getter or method can be a Page Object Child.",
+      ],
+    ])("fails the build for %s", (fixture, message) => {
+      // An Error with this message: `toThrow(message)` also passes when
+      // `undefined` is thrown.
+      expect(() =>
+        derivePomManifests(
+          path.resolve(`src/fixtures/declaredChildErrors/${fixture}.ts`)
+        )
+      ).toThrow(new Error(message));
+    });
+
+    it("fails the build for a child description that is not a constant string", () => {
+      const fileName = path.resolve(
+        "src/fixtures/declaredChildErrors/descriptionPom.ts"
+      );
+      expect(() => derivePomManifests(fileName)).toThrow(
+        new Error(
+          `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
+        )
+      );
+    });
+
+    it("reads a Child Collection declared on an overloaded method's implementation", () => {
+      const manifest = manifestForClass(
+        "overloadedCollectionPom",
+        "OverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Row",
+      ]);
+    });
+
+    it("reads a Child Collection from its implementation past every overload signature", () => {
+      const manifest = manifestForClass(
+        "multiOverloadedCollectionPom",
+        "MultiOverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+    });
+
+    it("reads a Child Collection by its overload without parameters, declared after one with parameters", () => {
+      const manifest = manifestForClass(
+        "reversedOverloadedCollectionPom",
+        "ReversedOverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+    });
+
+    it("inherits a declared child from an anonymous class, without a description it has none", () => {
+      const manifest = manifestForClass(
+        "anonymousBase/page",
+        "AnonymousBasePom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+      ]);
+      expect(manifest?.members[0]).not.toHaveProperty("description");
+    });
+
+    it("inherits declared children through the class chain", () => {
+      const manifest = manifestForClass(
+        "inheritedDeclaredChildrenPom",
+        "InheritedDeclaredChildrenPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "title",
+          kind: "locator",
+          access: "field",
+          collection: false,
+          description: "The list's title.",
+        },
+        {
+          memberName: "rows",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "The list's rows.",
+        },
+        {
+          memberName: "items",
+          kind: "component",
+          access: "method",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ]);
+    });
   });
 
   it("rejects intersections containing multiple annotated components", () => {
@@ -611,7 +954,8 @@ describe("derivePomManifests", () => {
       {
         fixture: "userMenu",
         className: "UserMenu",
-        memberNames: ["signOutItem", "baseItem"],
+        // Its own undeclared Locator is no Page Object Child.
+        memberNames: ["baseItem"],
       },
       {
         fixture: "barrelUserMenu",
@@ -619,7 +963,7 @@ describe("derivePomManifests", () => {
         memberNames: ["baseItem"],
       },
     ])(
-      "recognises an undecorated subclass in $fixture.ts of a base decorated in another module",
+      "recognises an undecorated subclass in $fixture of a base decorated in another module, with only declared children",
       ({ fixture, className, memberNames }) => {
         const manifests = manifestsOf(`crossFile/${fixture}`);
         expectNames(
@@ -692,7 +1036,12 @@ describe("derivePomManifests", () => {
           className: "PageX",
           file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`,
           members: [
-            { memberName: "heading", kind: "locator", access: "field" },
+            {
+              memberName: "heading",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
           ],
           components: [],
           tools: [],

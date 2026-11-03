@@ -51,7 +51,12 @@ export type ObjectMember = {
   kind: "locator" | "component";
   /** A child Page Object's model. */
   className?: string;
+  /** Whether it is a Child Collection, of Page Objects or of elements. */
   collection?: boolean;
+  /** A Locator collection's element count, each a target at its index. */
+  elementCount?: number;
+  /** The description its child declaration gives. */
+  description?: string;
   live: boolean;
   /** What the page probe found, e.g. "1 match", "3 items" or "not on page". */
   state: string;
@@ -93,7 +98,10 @@ export type ModelMember = {
   name: string;
   kind: "locator" | "component";
   className?: string;
+  /** Whether it is a Child Collection, of Page Objects or of elements. */
   collection?: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
   /**
    * Its path on the model, e.g. "ListItem.nameButton": what selects and
    * highlights it on every instance.
@@ -184,7 +192,7 @@ export function* walk(
   }
 }
 
-/** An action's description as an object to spread: none when it has none. */
+/** A description as an object to spread: none when it has none. */
 function descriptionOf(description: string | undefined) {
   return description === undefined ? {} : { description };
 }
@@ -265,6 +273,11 @@ function objectParts(
       members.push({
         name: member.memberName,
         kind: "locator",
+        ...(member.collection === true && {
+          collection: true,
+          elementCount: isPresent(observation) ? observation.count : 0,
+        }),
+        ...descriptionOf(member.description),
         live: observation !== undefined && isPresent(observation),
         state: locatorState(observation),
         path: `${pageName}.${memberPath}`,
@@ -324,6 +337,7 @@ function objectParts(
         kind: "component",
         className: member.componentClassName,
         collection: true,
+        ...descriptionOf(member.description),
         live: count > 0,
         state: plural(count, "item", "items"),
         path: collection.path,
@@ -346,6 +360,7 @@ function objectParts(
       name: member.memberName,
       kind: "component",
       className: member.componentClassName,
+      ...descriptionOf(member.description),
       live,
       state: live ? "on page" : "not on page",
       path: child.path,
@@ -380,12 +395,19 @@ function modelMember(
 ): ModelMember {
   const path = `${className}.${member.memberName}`;
   if (member.kind === "locator")
-    return { name: member.memberName, kind: "locator", path };
+    return {
+      name: member.memberName,
+      kind: "locator",
+      ...(member.collection === true && { collection: true }),
+      ...descriptionOf(member.description),
+      path,
+    };
   return {
     name: member.memberName,
     kind: "component",
     className: member.componentClassName,
     collection: member.collection,
+    ...descriptionOf(member.description),
     path,
   };
 }
@@ -419,7 +441,9 @@ function rootMemberPaths(
   );
 }
 
-function isPresent(observation: PomMemberObservation | undefined) {
+function isPresent(
+  observation: PomMemberObservation | undefined
+): observation is PomMemberObservation {
   return (
     observation !== undefined &&
     observation.error === undefined &&

@@ -4,8 +4,11 @@ import { AppComponent } from "./AppComponent";
 import type { ArchiveDialog } from "./ArchiveDialog";
 
 export class ListItem extends AppComponent {
+  @ayme.child
   readonly archiveButton: Locator;
+  @ayme.child
   readonly nameButton: Locator;
+  @ayme.child
   readonly nameInput: Locator;
 
   constructor(

@@ -38,15 +38,15 @@ Demo mode pauses briefly before each action, though not before a scroll, and sho
 
 The navigator has three lenses:
 
-- **Model**: the Page Objects on the page and the Page Object Models it knows, with their members' states.
-- **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to.
+- **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](page-object-models.md#page-object-children), each with its description and its state on the page, such as `3 matches`.
+- **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `rows[1]`.
 - **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek) under Browser and, while the tab is paired with a coding agent's Ayme MCP server, those of the App Processes paired beside it under Node, which the panel runs through that server.
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 
 ## Running tools
 
-Every detail runs its tools through the same run card, a form typed from the tool's input schema, with an instance picker for every rooted Page Object Tool, with a single instance preselected and the last result. **Runs** lists every Run on the page, whoever started it: you from the panel, an agent, or the app. Each shows its Caller, its arguments, its result, which can be copied, and the Interactions it performed, such as clicks and fills, named by the Page Object member they acted on. The Runs a Run started sit under it: a goal Run shows the Runs its steps executed, and a Custom Tool the Runs it started, each with its own Interactions.
+Every detail runs its tools through the same run card, a form typed from the tool's input schema, with an instance picker for every rooted Page Object Tool, with a single instance preselected and the last result. **Runs** lists every Run on the page, whoever started it: you from the panel, an agent, or the app. Each shows its Caller, its arguments, its result, which can be copied, and the Interactions it performed, such as clicks and fills, named by the Page Object member they acted on, and an element of a Locator collection by its index, such as `rows[1]`. The Runs a Run started sit under it: a goal Run shows the Runs its steps executed, and a Custom Tool the Runs it started, each with its own Interactions.
 
 ## The panel
 
