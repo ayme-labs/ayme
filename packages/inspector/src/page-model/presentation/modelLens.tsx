@@ -182,6 +182,7 @@ function findMember(
         ...(member.collection === undefined
           ? {}
           : { collection: member.collection }),
+        // Stryker disable next-line ConditionalExpression: an undefined description renders the same as none.
         ...(member.description === undefined
           ? {}
           : { description: member.description }),
@@ -214,6 +215,7 @@ function findMember(
       ...(member.collection === undefined
         ? {}
         : { collection: member.collection }),
+      // Stryker disable next-line ConditionalExpression: an undefined description renders the same as none.
       ...(member.description === undefined
         ? {}
         : { description: member.description }),
