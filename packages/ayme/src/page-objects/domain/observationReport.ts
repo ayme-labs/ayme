@@ -47,6 +47,7 @@ function sameMemberObservations(
         observation.count === candidate.count &&
         observation.access === candidate.access &&
         observation.error === candidate.error &&
+        // Stryker disable next-line ConditionalExpression: equivalent, a warning follows from the member, its count and diagnostic, all compared here.
         observation.warning === candidate.warning &&
         observation.diagnostic === candidate.diagnostic
       );
@@ -97,6 +98,7 @@ export function newObservationErrors(
     const text = diagnosticText(observation);
     if (
       observation.diagnostic &&
+      // Stryker disable next-line ConditionalExpression: equivalent, a diagnostic always has an error or a warning; this narrows the type.
       text !== undefined &&
       !previousErrors.has(text)
     )
