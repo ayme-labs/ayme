@@ -203,8 +203,8 @@ function childDeclaration(
 }
 
 /**
- * The implementation of an overloaded method, which carries its decorators
- * and follows its signatures; any other member itself.
+ * The implementation of an overloaded method, which carries its decorators;
+ * any other member itself.
  */
 function overloadImplementation(member: ts.ClassElement): ts.ClassElement {
   if (
@@ -239,7 +239,7 @@ function declaredChild(
   { marker, decorator, memberName, owner }: ChildDeclaration
 ): PomChild {
   const fail = (problem: string) => new Error(`${owner} ${problem}.`);
-  const { access, type } = memberValueInfo(checker, member)!;
+  const { access, type, takesParameters } = memberValueInfo(checker, member)!;
   const typeText = checker.typeToString(type);
   const unresolved = () =>
     fail(`has a type the build cannot resolve (${typeText})`);
@@ -250,10 +250,10 @@ function declaredChild(
   if (items && isUnresolvedType(items)) throw unresolved();
   const child: DeclaredChild = {
     checker,
-    member,
     memberName,
     type,
     typeText,
+    takesParameters,
     fail,
     unresolved,
     described: description === undefined ? {} : { description },
@@ -268,10 +268,11 @@ function declaredChild(
 /** What `declaredChild` checks a member's type against. */
 type DeclaredChild = {
   checker: ts.TypeChecker;
-  member: ts.ClassElement;
   memberName: string;
   type: ts.Type;
   typeText: string;
+  /** Whether a method's signature without arguments, if any, takes them. */
+  takesParameters?: boolean;
   fail: (problem: string) => Error;
   unresolved: () => Error;
   described: { description?: string };
@@ -283,10 +284,10 @@ type DeclaredChild = {
 /** A Child Collection method: `@ayme.collection` returning Page Objects. */
 function declaredChildMethod({
   checker,
-  member,
   memberName,
   type,
   typeText,
+  takesParameters,
   fail,
   unresolved,
   described,
@@ -299,7 +300,7 @@ function declaredChildMethod({
           `is declared @ayme.child but returns many Page Objects; declare it @ayme.collection`
         )
       : fail(`is a method; @ayme.child declares a field or getter`);
-  if ((member as ts.MethodDeclaration).parameters.length > 0)
+  if (takesParameters)
     throw fail(
       `takes parameters; @ayme.collection declares a method without parameters`
     );
@@ -744,7 +745,9 @@ function classMembers(
 function memberValueInfo(
   checker: ts.TypeChecker,
   member: ts.ClassElement
-): { access: PomMemberAccess; type: ts.Type } | undefined {
+):
+  | { access: PomMemberAccess; type: ts.Type; takesParameters?: boolean }
+  | undefined {
   if (ts.isPropertyDeclaration(member)) {
     return { access: "field", type: checker.getTypeAtLocation(member.name) };
   }
@@ -755,12 +758,29 @@ function memberValueInfo(
       : undefined;
   }
   if (ts.isMethodDeclaration(member)) {
-    const signature = checker.getSignatureFromDeclaration(member);
-    return signature
-      ? { access: "method", type: checker.getReturnTypeOfSignature(signature) }
-      : undefined;
+    const signature = callableSignature(checker, member);
+    return {
+      access: "method",
+      type: checker.getReturnTypeOfSignature(signature),
+      takesParameters: signature.parameters.length > 0,
+    };
   }
   return undefined;
+}
+
+/**
+ * The signature a method is called by without arguments, else its first: an
+ * overloaded method is called by its overloads, not its implementation.
+ */
+function callableSignature(
+  checker: ts.TypeChecker,
+  member: ts.MethodDeclaration
+) {
+  const signatures = checker.getTypeAtLocation(member.name).getCallSignatures();
+  return (
+    signatures.find(({ parameters }) => parameters.length === 0) ??
+    signatures[0]!
+  );
 }
 
 function returnPomClassDeclarations(

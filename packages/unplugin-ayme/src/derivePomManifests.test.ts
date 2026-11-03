@@ -715,6 +715,23 @@ describe("derivePomManifests", () => {
       ]);
     });
 
+    it("reads a Child Collection by its overload without parameters, declared after one with parameters", () => {
+      const manifest = manifestForClass(
+        "reversedOverloadedCollectionPom",
+        "ReversedOverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+    });
+
     it("inherits a declared child from an anonymous class, without a description it has none", () => {
       const manifest = manifestForClass(
         "anonymousBase/page",
