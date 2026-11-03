@@ -938,7 +938,8 @@ function objectPatternFields(
   type: ts.Type
 ): NamedToolParameter[] {
   const schema = schemaForType(context, type, context.parameter);
-  if (schema.type !== "object" || schema.additionalProperties !== false)
+  // Only an object schema closes its properties.
+  if (schema.additionalProperties !== false)
     throw unsupportedInputType(context, type, context.parameter);
   const properties = schema.properties ?? {};
   const required = new Set(schema.required);
@@ -1007,9 +1008,8 @@ function arrayPatternFields(
     );
     if (element.dotDotDotToken)
       return { name, optional: false, schema, rest: true };
-    const flag = flags?.[index];
-    const optional =
-      flag === undefined || (flag & ts.ElementFlags.Required) === 0;
+    // A plain array's element has no flags, and may be missing.
+    const optional = ((flags?.[index] ?? 0) & ts.ElementFlags.Required) === 0;
     const value = element.initializer && literalDefault(element.initializer);
     return {
       name,
