@@ -291,6 +291,34 @@ describe("a destructured parameter", () => {
     ]);
   });
 
+  it("leaves out a destructured field the schema has no field for", () => {
+    expect(
+      groupFields(fieldsOf(search), [
+        {
+          destructured: "object",
+          optional: false,
+          fields: [
+            { name: "limit", optional: true, schema: { type: "number" } },
+            { name: "sort", optional: true, schema: { type: "string" } },
+          ],
+        },
+      ])
+    ).toEqual([
+      {
+        kind: "group",
+        fields: [
+          {
+            name: "limit",
+            optional: true,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+    ]);
+  });
+
   it("leaves the fields as they are without a destructured parameter", () => {
     const fields = fieldsOf(search);
 

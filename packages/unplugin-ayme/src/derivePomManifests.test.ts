@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +10,15 @@ import {
 import { derivePomManifests } from "./index";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../package.json";
+
+/**
+ * The line of a fixture that holds `text`, as the file stands: a header a
+ * tool adds to it, such as Stryker's `// @ts-nocheck`, moves it too.
+ */
+function lineOf(fileName: string, text: string) {
+  const lines = fs.readFileSync(fileName, "utf8").split("\n");
+  return lines.findIndex((line) => line.includes(text)) + 1;
+}
 
 function manifestFor(fixture: string) {
   return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`))[0];
@@ -87,34 +97,46 @@ describe("derivePomManifests", () => {
     });
 
     it.each([
-      ["templateActionPom", "Page Object Action TemplateActionPom.show", 8],
-      ["variableClassPom", "Page Object VariableClassPom", 5],
-      ["quotedKeyPom", "Page Object Action QuotedKeyPom.save", 8],
+      [
+        "templateActionPom",
+        "Page Object Action TemplateActionPom.show",
+        "description: `Show",
+      ],
+      [
+        "variableClassPom",
+        "Page Object VariableClassPom",
+        "@ayme({ description",
+      ],
+      [
+        "quotedKeyPom",
+        "Page Object Action QuotedKeyPom.save",
+        '"description": DESCRIPTION',
+      ],
     ])(
       "fails the build for the description of %s, which is not a constant string",
-      (fixture, owner, line) => {
+      (fixture, owner, description) => {
         const fileName = path.resolve(
           `src/fixtures/computedDescriptions/${fixture}.ts`
         );
         expect(() => derivePomManifests(fileName)).toThrow(
-          `The description of ${owner} is not a constant string (${fileName}:${line}).`
+          `The description of ${owner} is not a constant string (${fileName}:${lineOf(fileName, description)}).`
         );
       }
     );
   });
 
   it.each([
-    ["spreadActionPom", "SpreadActionPom.read", 9],
-    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", 7],
-    ["computedKeyActionPom", "ComputedKeyActionPom.read", 7],
+    ["spreadActionPom", "SpreadActionPom.read", "...options,"],
+    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", "...options })"],
+    ["computedKeyActionPom", "ComputedKeyActionPom.read", "[key]:"],
   ])(
     "fails the build for %s, whose description may come from a spread or a computed key",
-    (fixture, action, line) => {
+    (fixture, action, description) => {
       const fileName = path.resolve(
         `src/fixtures/computedDescriptions/${fixture}.ts`
       );
       expect(() => derivePomManifests(fileName)).toThrow(
-        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${line}).`
+        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${lineOf(fileName, description)}).`
       );
     }
   );
