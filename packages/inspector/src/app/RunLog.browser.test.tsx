@@ -600,12 +600,16 @@ it("captures a member before input and preserves it through later interactions a
     ]);
   // The persisted row must retain the pre-input description as well as its member.
   await expect
-    .poll(() => sessionStorage.getItem("ayme-inspector:runs"))
-    .toContain("Original");
-  const saved = JSON.parse(sessionStorage.getItem("ayme-inspector:runs")!);
-  expect(saved[0].className).toBe("Editor");
-  expect(saved[0].interactions[0].target).toBe('button "Original"');
-  expect(saved[0].interactions[1].target).toBe('button "Changed"');
+    .poll(
+      () => JSON.parse(sessionStorage.getItem("ayme-inspector:runs") ?? "[]")[0]
+    )
+    .toMatchObject({
+      className: "Editor",
+      interactions: [
+        { target: 'button "Original"' },
+        { target: 'button "Changed"' },
+      ],
+    });
 });
 
 it("does not invent a generic name for an unnamed target", async () => {
