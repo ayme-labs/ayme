@@ -121,6 +121,9 @@ describe("POM definition catalog", () => {
                 required: ["value"],
                 additionalProperties: false,
               },
+              parameters: [
+                { name: "value", optional: false, schema: { type: "string" } },
+              ],
               returnPoms: ["HiddenDialog"],
             },
           ],
@@ -276,6 +279,9 @@ describe("POM definition catalog", () => {
               name: "run",
               description: callable?.authorDescription,
               inputSchema: callable?.inputSchema,
+              parameters: [
+                { name: "value", optional: false, schema: { type: "string" } },
+              ],
               returnPoms: [],
             },
           ],

@@ -161,6 +161,7 @@ describe("snapshot", () => {
                 required: [],
                 additionalProperties: false,
               },
+              parameters: [],
               returnPoms: ["AppTopBarHelpMenu"],
             },
             {
@@ -172,6 +173,13 @@ describe("snapshot", () => {
                 required: ["documentName"],
                 additionalProperties: false,
               },
+              parameters: [
+                {
+                  name: "documentName",
+                  optional: false,
+                  schema: { type: "string" },
+                },
+              ],
               returnPoms: ["DocumentPage"],
             },
             {
@@ -182,6 +190,7 @@ describe("snapshot", () => {
                 required: [],
                 additionalProperties: false,
               },
+              parameters: [],
               returnPoms: [],
             },
           ],
@@ -199,6 +208,7 @@ describe("snapshot", () => {
                 required: [],
                 additionalProperties: false,
               },
+              parameters: [],
               returnPoms: ["AppTopBarHelpMenu"],
             },
           ],

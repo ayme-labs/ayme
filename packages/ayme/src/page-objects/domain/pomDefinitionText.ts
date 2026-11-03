@@ -2,7 +2,13 @@ import type {
   JsonSchema,
   PomDefinition,
   PomDefinitionAction,
+  ToolParameter,
 } from "../../shared";
+import {
+  inputParameters,
+  typeRequires,
+  type InputParameter,
+} from "./actionTool";
 
 export function renderPomDefinitions(
   definitions: readonly PomDefinition[]
@@ -45,7 +51,7 @@ function renderChild(child: PomDefinition["children"][number]): string {
 }
 
 function renderAction(action: PomDefinitionAction, ownerName: string): string {
-  const parameters = renderActionParameters(action.inputSchema);
+  const parameters = renderActionParameters(action.parameters);
   const returnPoms = action.returnPoms.map((name) =>
     name === ownerName ? "this" : name
   );
@@ -54,11 +60,52 @@ function renderAction(action: PomDefinitionAction, ownerName: string): string {
 }
 
 /**
- * Package-internal: an action's parameter list from its input schema, e.g.
- * `name: string, tags?: string[]`, the way the definition text writes it.
+ * Package-internal: an action's parameter list, e.g. `name: string, tags?:
+ * string[]`, the way the definition text writes it: from the parameters it
+ * declares, a destructured one in the shape of its pattern, e.g. `{ email:
+ * string }` or `[x: number, y: number]`, or from a tool's input schema.
  */
-export function renderActionParameters(inputSchema: JsonSchema): string {
-  return renderSchemaProperties(inputSchema, ", ");
+export function renderActionParameters(
+  input: JsonSchema | readonly ToolParameter[]
+): string {
+  if (!isParameters(input)) return renderSchemaProperties(input, ", ");
+  return input.map(renderParameter).join(", ");
+}
+
+function isParameters(
+  input: JsonSchema | readonly ToolParameter[]
+): input is readonly ToolParameter[] {
+  return Array.isArray(input);
+}
+
+/**
+ * A parameter as agents give it. A defaulted pattern is optional as a
+ * whole, `{ email: string }?`, and its fields read as its type has them.
+ */
+function renderParameter(parameter: ToolParameter): string {
+  if (!("destructured" in parameter))
+    return renderField(inputParameters([parameter])[0]!);
+  const fields = parameter.fields.map((field) => ({
+    ...field,
+    optional: !typeRequires(field),
+  }));
+  const shape =
+    parameter.destructured === "object"
+      ? fields.length
+        ? `{ ${fields.map(renderField).join("; ")} }`
+        : "{}"
+      : `[${fields
+          .map((field) =>
+            field.rest
+              ? `...${field.name}: ${renderSchema(field.schema)}`
+              : renderField(field)
+          )
+          .join(", ")}]`;
+  return `${parameter.rest ? "..." : ""}${shape}${parameter.optional ? "?" : ""}`;
+}
+
+function renderField({ name, optional, schema }: InputParameter): string {
+  return `${name}${optional ? "?" : ""}: ${renderSchema(schema)}`;
 }
 
 /** Package-internal: a schema as a TypeScript type, e.g. `[number, string?]`. */

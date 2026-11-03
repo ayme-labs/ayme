@@ -9,6 +9,7 @@ import type {
   PomManifest,
   PomMemberAccess,
   PomMemberManifest,
+  NamedToolParameter,
   ToolManifest,
   ToolParameter,
 } from "@ayme-dev/ayme/internal";
@@ -564,20 +565,11 @@ function skippedMethods(
     const className = declaration.name!.text;
     const { methodName } = role;
     const name = `${className}.${methodName}`;
-    for (const parameter of role.member.parameters) {
-      if (!ts.isIdentifier(parameter.name))
-        return [{ name, unsupported: "a parameter is destructured" }];
-      try {
-        toolParameter(checker, parameter, className, methodName);
-      } catch (error) {
-        if (!(error instanceof UnsupportedInputTypeError)) throw error;
-        return [
-          {
-            name,
-            unsupported: `parameter ${parameter.name.text} has the unsupported type ${error.typeText}`,
-          },
-        ];
-      }
+    try {
+      toolParameters(checker, role.member, className, methodName);
+    } catch (error) {
+      if (!(error instanceof UnsupportedParameterError)) throw error;
+      return [{ name, unsupported: error.reason }];
     }
     return [{ name }];
   });
@@ -606,9 +598,7 @@ function classManifest(
       if (role.child.declaration) childReferences.push(role.child.declaration);
     } else if (role?.role === "action") {
       const { member, methodName, description } = role;
-      const parameters = member.parameters.map((parameter) =>
-        toolParameter(checker, parameter, className, methodName)
-      );
+      const parameters = toolParameters(checker, member, className, methodName);
       // An inherited action that returns its declaring class shows this one.
       const returnPoms = returnPomClassDeclarations(checker, member).map(
         (pom) => (pom === member.parent ? declaration : pom)
@@ -1134,38 +1124,203 @@ function toolDescription(
   return authored === undefined ? {} : { authored };
 }
 
+/**
+ * A method's parameters, each a named parameter or a destructured one whose
+ * parts are input fields. Two fields of one input never share a key.
+ */
+function toolParameters(
+  checker: ts.TypeChecker,
+  method: ts.MethodDeclaration,
+  className: string,
+  methodName: string
+): ToolParameter[] {
+  const parameters = method.parameters.map((parameter) =>
+    toolParameter(checker, parameter, className, methodName)
+  );
+  const sources = new Map<string, string>();
+  for (const [index, parameter] of parameters.entries()) {
+    const declaration = method.parameters[index]!;
+    const fields =
+      "destructured" in parameter
+        ? parameter.fields.map(({ name }) => ({
+            name,
+            source: `${parameter.destructured === "object" ? "property" : "binding"} ${name} of ${patternLabel(declaration)}`,
+          }))
+        : [{ name: parameter.name, source: `parameter ${parameter.name}` }];
+    for (const { name, source } of fields) {
+      const first = sources.get(name);
+      if (first !== undefined)
+        throw new UnsupportedParameterError(
+          `Page Object Action ${className}.${methodName} takes two input fields named ${name}: ${first}, and ${source}.`,
+          `two input fields are named ${name}`
+        );
+      sources.set(name, source);
+    }
+  }
+  return parameters;
+}
+
 function toolParameter(
   checker: ts.TypeChecker,
   parameter: ts.ParameterDeclaration,
   className: string,
   methodName: string
 ): ToolParameter {
-  if (!ts.isIdentifier(parameter.name)) {
-    throw new Error(
-      `Page Object Action ${className}.${methodName} needs identifier parameter names.`
-    );
-  }
-
   const type = checker.getTypeAtLocation(parameter);
-  const rest = parameter.dotDotDotToken !== undefined;
-  const schema = schemaForType(
-    { checker, className, methodName, enclosing: new Set() },
-    type,
-    parameter.name.text
-  );
+  const context: SchemaContext = {
+    checker,
+    className,
+    methodName,
+    parameter: parameter.name.getText(),
+    enclosing: new Set(),
+  };
+  const rest =
+    parameter.dotDotDotToken === undefined ? {} : { rest: true as const };
   const optional =
     parameter.questionToken !== undefined ||
     parameter.initializer !== undefined ||
     typeIncludesUndefined(type);
+  if (ts.isObjectBindingPattern(parameter.name))
+    return {
+      destructured: "object",
+      optional,
+      fields: objectPatternFields(context, parameter, parameter.name, type),
+      ...rest,
+    };
+  if (ts.isArrayBindingPattern(parameter.name))
+    return {
+      destructured: "array",
+      optional,
+      fields: arrayPatternFields(context, parameter, parameter.name, type),
+      ...rest,
+    };
+
+  const schema = schemaForType(context, type, parameter.name.text);
   const defaultValue =
     parameter.initializer && literalDefault(parameter.initializer);
   return {
     name: parameter.name.text,
     optional,
     schema,
-    ...(rest ? { rest: true as const } : {}),
+    ...rest,
     ...(defaultValue === undefined ? {} : { default: defaultValue }),
   };
+}
+
+/**
+ * An object pattern's fields: every property of its type, by property name,
+ * whatever the pattern binds or renames, with the literal default of a
+ * binding that gives one. Its type must be an object with known properties,
+ * among them every one the pattern binds by name; a rest binding takes the
+ * rest.
+ */
+function objectPatternFields(
+  context: SchemaContext,
+  parameter: ts.ParameterDeclaration,
+  pattern: ts.ObjectBindingPattern,
+  type: ts.Type
+): NamedToolParameter[] {
+  const schema = schemaForType(context, type, context.parameter);
+  // Only an object schema closes its properties.
+  if (schema.additionalProperties !== false)
+    throw unsupportedInputType(context, type, context.parameter);
+  const properties = schema.properties ?? {};
+  const required = new Set(schema.required);
+  const defaults = new Map<string, JsonPrimitive>();
+  const untyped: string[] = [];
+  for (const element of pattern.elements) {
+    // A rest binding gathers the properties the others leave.
+    if (element.dotDotDotToken) continue;
+    const key = element.propertyName ?? element.name;
+    if (!ts.isIdentifier(key) && !ts.isLiteralExpression(key)) continue;
+    if (!Object.hasOwn(properties, key.text)) untyped.push(key.text);
+    const value = element.initializer && literalDefault(element.initializer);
+    if (value !== undefined) defaults.set(key.text, value);
+  }
+  if (untyped.length) {
+    const names = untyped.join(", ").replace(/, ([^,]*)$/, " and $1");
+    const verb = untyped.length === 1 ? "has" : "have";
+    throw new UnsupportedParameterError(
+      `Page Object Action ${context.className}.${context.methodName}: ${names} in ${patternLabel(parameter)} ${verb} no type.${parameter.type ? "" : " Annotate the parameter."}`,
+      `${names} in parameter ${patternLabel(parameter)} ${verb} no type`
+    );
+  }
+  return Object.entries(properties).map(([name, fieldSchema]) => {
+    const value = defaults.get(name);
+    return {
+      name,
+      optional: !required.has(name),
+      schema: fieldSchema,
+      ...(value === undefined ? {} : { default: value }),
+    };
+  });
+}
+
+/**
+ * An array pattern's fields: the names it binds, in order, a rest element's
+ * as a list. Its type is one array or tuple, never a union of them. A tuple's optional element is optional, and so is every element
+ * of a plain array, which may be shorter. Every element needs a name, and
+ * every fixed element of a tuple needs binding.
+ */
+function arrayPatternFields(
+  context: SchemaContext,
+  parameter: ts.ParameterDeclaration,
+  pattern: ts.ArrayBindingPattern,
+  type: ts.Type
+): NamedToolParameter[] {
+  const { checker } = context;
+  // A union, of tuples or arrays, gives its elements no one type each.
+  const arrayType = checker.getNonNullableType(type);
+  if (arrayType.isUnion() || !checker.isArrayLikeType(arrayType))
+    throw unsupportedInputType(context, arrayType, context.parameter);
+  const flags = checker.isTupleType(arrayType)
+    ? (arrayType as ts.TupleTypeReference).target.elementFlags
+    : undefined;
+  const unnamed = (index: number, why: string) =>
+    new UnsupportedParameterError(
+      `Page Object Action ${context.className}.${context.methodName} needs a name for every element of ${patternLabel(parameter)}: element ${index} ${why}.`,
+      `element ${index} of parameter ${patternLabel(parameter)} has no name`
+    );
+
+  const fields = pattern.elements.map((element, index): NamedToolParameter => {
+    if (ts.isOmittedExpression(element)) throw unnamed(index, "is a hole");
+    if (!ts.isIdentifier(element.name))
+      throw unnamed(index, "is a nested pattern");
+    const name = element.name.text;
+    const schema = schemaForType(
+      context,
+      checker.getTypeAtLocation(element),
+      name
+    );
+    if (element.dotDotDotToken)
+      return { name, optional: false, schema, rest: true };
+    // A plain array's element has no flags, and may be missing.
+    const optional = ((flags?.[index] ?? 0) & ts.ElementFlags.Required) === 0;
+    const value = element.initializer && literalDefault(element.initializer);
+    return {
+      name,
+      optional,
+      schema,
+      ...(value === undefined ? {} : { default: value }),
+    };
+  });
+
+  const bound = pattern.elements.some(
+    (element) => ts.isBindingElement(element) && element.dotDotDotToken
+  )
+    ? Infinity
+    : pattern.elements.length;
+  const unbound = flags?.findIndex(
+    (flag, index) => index >= bound && (flag & ts.ElementFlags.Fixed) !== 0
+  );
+  if (unbound !== undefined && unbound !== -1)
+    throw unnamed(unbound, "is not bound");
+  return fields;
+}
+
+/** A destructured parameter as the source declares it, e.g. `[x, y]: Point`. */
+function patternLabel(parameter: ts.ParameterDeclaration) {
+  return `${parameter.name.getText()}${parameter.type ? `: ${parameter.type.getText()}` : ""}`;
 }
 
 /** The value of a literal default (`"a"`, `3`, `-1`, `true`), if it is one. */
@@ -1188,6 +1343,8 @@ type SchemaContext = {
   checker: ts.TypeChecker;
   className: string;
   methodName: string;
+  /** The parameter being described, as its declaration names it. */
+  parameter: string;
   /** The object types being described, outermost first. */
   enclosing: Set<ts.Type>;
 };
@@ -1362,17 +1519,20 @@ function tupleSchema(
 }
 
 /**
- * Thrown for a parameter type no schema describes. The build reports the
- * type for an unmarked method.
+ * Thrown for a parameter no tool input can take. The build reports `reason`
+ * for an unmarked method.
  */
-class UnsupportedInputTypeError extends Error {
+class UnsupportedParameterError extends Error {
   constructor(
     message: string,
-    readonly typeText: string
+    readonly reason: string
   ) {
     super(message);
   }
 }
+
+/** Thrown for a parameter type no schema describes. */
+class UnsupportedInputTypeError extends UnsupportedParameterError {}
 
 /**
  * An unsupported type is often an import the tsconfig could not resolve, so
@@ -1401,7 +1561,7 @@ function unsupportedInputType(
   const typeText = context.checker.typeToString(type);
   return new UnsupportedInputTypeError(
     `Unsupported Page Object Tool input type for ${context.className}.${context.methodName}(${parameterName}): ${typeText}.`,
-    typeText
+    `parameter ${context.parameter} has the unsupported type ${typeText}`
   );
 }
 

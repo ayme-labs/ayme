@@ -2,6 +2,7 @@ import type { JsonSchema, RegisteredPomTool } from "@ayme-dev/ayme";
 import type {
   PublishedToolGroup,
   RegisteredPom,
+  ToolParameter,
 } from "@ayme-dev/ayme/internal";
 
 /** A tool as the run card runs it. */
@@ -15,6 +16,11 @@ export type RunnableTool = {
    * action the action's own arguments, without the instance's ref.
    */
   argumentsSchema: JsonSchema;
+  /**
+   * A Page Object action's parameters as it declares them, which group a
+   * destructured parameter's fields and write its signature.
+   */
+  parameters?: readonly ToolParameter[];
   /**
    * Whether the action takes `{ ref, args }`: the instance's root ref and
    * the action's arguments.
@@ -75,22 +81,8 @@ export function listRunnableTools(
   const live = new Map(otherTools.map((tool) => [tool.name, tool]));
   const tools = new Map<string, RunnableTool>();
   for (const registration of registeredPoms)
-    for (const tool of registration.tools) {
-      const listed = live.get(tool.name);
-      tools.set(
-        tool.name,
-        pageObjectTool(
-          tool,
-          listed
-            ? {
-                present: true,
-                available: listed.available,
-                reason: listed.reason,
-              }
-            : { present: false, available: false }
-        )
-      );
-    }
+    for (const tool of pageObjectTools(registration, live))
+      tools.set(tool.name, tool);
   for (const tool of otherTools)
     if (!tools.has(tool.name)) {
       const refField = (["target", "ref"] as const).find(
@@ -118,6 +110,39 @@ export function listRunnableTools(
       });
     }
   return tools;
+}
+
+/**
+ * A registration's tools as the run card runs them, each with the
+ * parameters its action declares. A tool is present when the session lists
+ * it, and then as available as the session says.
+ */
+function pageObjectTools(
+  { manifest, tools }: RegisteredPom,
+  live: ReadonlyMap<string, ToolSummary>
+): RunnableTool[] {
+  const declared = new Map(
+    [manifest, ...manifest.components].flatMap((model) =>
+      model.tools.map((tool) => [tool.toolName, tool.parameters] as const)
+    )
+  );
+  return tools.map((tool) => {
+    const listed = live.get(tool.name);
+    const parameters = declared.get(tool.name);
+    return {
+      ...pageObjectTool(
+        tool,
+        listed
+          ? {
+              present: true,
+              available: listed.available,
+              reason: listed.reason,
+            }
+          : { present: false, available: false }
+      ),
+      ...(parameters ? { parameters } : {}),
+    };
+  });
 }
 
 function pageObjectTool(

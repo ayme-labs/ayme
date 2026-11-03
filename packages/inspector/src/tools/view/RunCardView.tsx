@@ -28,7 +28,7 @@ import {
   type CollectionItem,
   type Run,
 } from "../../runs";
-import type { Field } from "../domain/fields";
+import type { Field, FieldGroup } from "../domain/fields";
 import type { RunCardLook } from "../domain/press";
 import type { RunnableTool } from "../domain/runnableTools";
 
@@ -76,7 +76,7 @@ export function RunCardView({
   onOpenImage: (src: string) => void;
   /** Its arguments, e.g. "(text: string)"; none when it takes no arguments. */
   signature?: string;
-  fields: readonly Field[];
+  fields: readonly (Field | FieldGroup)[];
   /** The JSON editor's state, while it edits the arguments. */
   json: { text?: string; error?: string } | undefined;
   /** Whether the form is open under the head. */

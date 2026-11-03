@@ -1,8 +1,4 @@
-import type {
-  JsonSchema,
-  PomDefinition,
-  PomMemberObservation,
-} from "@ayme-dev/ayme";
+import type { PomDefinition, PomMemberObservation } from "@ayme-dev/ayme";
 import type {
   PomManifest,
   PomMemberManifest,
@@ -113,13 +109,8 @@ export type ModelMember = {
   path: string;
 };
 
-/**
- * An action's arguments from its input schema, or from the parameters a
- * manifest records, e.g. "(text: string)".
- */
-export type Signature = (
-  input: JsonSchema | readonly ToolParameter[]
-) => string;
+/** An action's arguments from the parameters it declares, e.g. "(text: string)". */
+export type Signature = (parameters: readonly ToolParameter[]) => string;
 
 /**
  * Builds the page model from the registered Page Objects, the live tools
@@ -167,7 +158,7 @@ export function buildPageModel(
       return {
         name: action.name,
         ...describe(toolName, action.description),
-        signature: signature(action.inputSchema),
+        signature: signature(action.parameters),
         toolName,
         live: liveToolNames.has(toolName),
       };

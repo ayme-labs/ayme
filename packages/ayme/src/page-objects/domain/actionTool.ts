@@ -1,4 +1,9 @@
-import type { JsonSchema, ToolManifest, ToolParameter } from "../../shared";
+import type {
+  JsonSchema,
+  NamedToolParameter,
+  ToolManifest,
+  ToolParameter,
+} from "../../shared";
 
 /** A parameter as agents read it: whether they may leave it out, and its schema. */
 export type InputParameter = {
@@ -8,22 +13,71 @@ export type InputParameter = {
 };
 
 /**
- * An action's parameters as agents read them: a literal default sits in the
- * schema, and a rest parameter with no minimum may be left out.
+ * An action's parameters as agents read them, a destructured parameter's
+ * fields beside the others: a literal default sits in the schema, and a
+ * rest parameter or element with no minimum, or a field of an optional
+ * pattern, may be left out.
  */
 export function inputParameters(
   parameters: readonly ToolParameter[]
 ): InputParameter[] {
-  return parameters.map((parameter) => ({
+  return parameters.flatMap((parameter) =>
+    "destructured" in parameter
+      ? parameter.fields.map((field) =>
+          inputParameter(field, parameter.optional)
+        )
+      : [inputParameter(parameter, false)]
+  );
+}
+
+function inputParameter(
+  parameter: NamedToolParameter,
+  inOptionalPattern: boolean
+): InputParameter {
+  return {
     name: parameter.name,
     optional:
+      inOptionalPattern ||
       parameter.optional ||
       (parameter.rest === true && !parameter.schema.minItems),
     schema:
       parameter.default === undefined
         ? parameter.schema
         : { ...parameter.schema, default: parameter.default },
-  }));
+  };
+}
+
+/** A field the type requires, as agents read it: a rest with no minimum is not. */
+export function typeRequires(field: NamedToolParameter): boolean {
+  return !inputParameter(field, false).optional;
+}
+
+/** Where an input breaks a rule its schema cannot state, and how. */
+export type InputViolation = { path: string; message: string };
+
+/**
+ * How the input breaks the rule a defaulted pattern keeps beside its
+ * schema, which leaves each of its fields optional: all or nothing. Given
+ * any of its fields, it needs every one its type requires, named under
+ * `prefix`, as in a rooted action's `args`.
+ */
+export function patternViolations(
+  parameters: readonly ToolParameter[],
+  input: Readonly<Record<string, unknown>>,
+  prefix?: string
+): InputViolation[] {
+  const given = (name: string) => Object.hasOwn(input, name);
+  return parameters.flatMap((parameter) => {
+    if (!("destructured" in parameter) || !parameter.optional) return [];
+    const first = parameter.fields.find((field) => given(field.name));
+    if (!first) return [];
+    return parameter.fields
+      .filter((field) => typeRequires(field) && !given(field.name))
+      .map((field) => ({
+        path: prefix === undefined ? field.name : `${prefix}.${field.name}`,
+        message: `is required when ${first.name} is given`,
+      }));
+  });
 }
 
 /** The object schema an action's arguments are validated against. */
@@ -105,14 +159,35 @@ export function requiredDescription(tool: {
   );
 }
 
-/** The method's arguments: a rest parameter's list is its remaining ones. */
+/**
+ * The method's arguments from its tool's input, which the runtime checked:
+ * a destructured parameter's fields collected back into one object or
+ * array, and a rest parameter's list spread into the remaining arguments.
+ * An optional pattern none of whose fields are given is left out, so its
+ * default applies.
+ */
 export function methodArguments(
   parameters: readonly ToolParameter[],
-  values: readonly unknown[]
+  input: Readonly<Record<string, unknown>>
 ): unknown[] {
-  return parameters.flatMap((parameter, index) =>
-    parameter.rest
-      ? ((values[index] as unknown[] | undefined) ?? [])
-      : [values[index]]
-  );
+  // An inherited name, such as constructor, is no argument.
+  const given = (name: string) => Object.hasOwn(input, name);
+  // A rest parameter's or element's list is its remaining values.
+  const values = (field: NamedToolParameter) => {
+    const value = given(field.name) ? input[field.name] : undefined;
+    return field.rest ? ((value as unknown[] | undefined) ?? []) : [value];
+  };
+  return parameters.flatMap((parameter) => {
+    if (!("destructured" in parameter)) return values(parameter);
+    const fields = parameter.fields.filter((field) => given(field.name));
+    if (parameter.optional && fields.length === 0) return [undefined];
+    if (parameter.destructured === "object")
+      return [
+        Object.fromEntries(
+          fields.map((field) => [field.name, input[field.name]])
+        ),
+      ];
+    const array = parameter.fields.flatMap(values);
+    return parameter.rest ? array : [array];
+  });
 }

@@ -1,4 +1,8 @@
-export { inputSchemaFor, requiredDescription } from "./actionTool";
+export {
+  inputSchemaFor,
+  patternViolations,
+  requiredDescription,
+} from "./actionTool";
 export { ayme } from "./decorators";
 export type {
   ActionAvailability,

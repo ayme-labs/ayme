@@ -43,6 +43,46 @@ const manifest: PomManifest = {
         { name: "title", optional: false, schema: { type: "string" } },
       ],
     },
+    {
+      methodName: "signIn",
+      toolName: "InputPage.signIn",
+      description: "Sign in.",
+      // `signIn({ email, password }: Credentials, [x, y]: [number, number])`
+      parameters: [
+        {
+          destructured: "object",
+          optional: false,
+          fields: [
+            { name: "email", optional: false, schema: { type: "string" } },
+            { name: "password", optional: false, schema: { type: "string" } },
+          ],
+        },
+        {
+          destructured: "array",
+          optional: false,
+          fields: [
+            { name: "x", optional: false, schema: { type: "number" } },
+            { name: "y", optional: false, schema: { type: "number" } },
+          ],
+        },
+      ],
+    },
+    {
+      methodName: "save",
+      toolName: "InputPage.save",
+      description: "Save.",
+      // `save({ email, password }: Credentials = defaults)`
+      parameters: [
+        {
+          destructured: "object",
+          optional: true,
+          fields: [
+            { name: "email", optional: false, schema: { type: "string" } },
+            { name: "password", optional: false, schema: { type: "string" } },
+          ],
+        },
+      ],
+    },
   ],
   components: [
     {
@@ -63,22 +103,47 @@ const manifest: PomManifest = {
             { name: "top", optional: true, schema: { type: "boolean" } },
           ],
         },
+        {
+          methodName: "move",
+          toolName: "Item.move",
+          description: "Move the item.",
+          // `move([x, y]: [number, number] = [0, 0])`
+          parameters: [
+            {
+              destructured: "array",
+              optional: true,
+              fields: [
+                { name: "x", optional: false, schema: { type: "number" } },
+                { name: "y", optional: false, schema: { type: "number" } },
+              ],
+            },
+          ],
+        },
       ],
     },
   ],
 };
 
 const pin = vi.fn();
+const signIn = vi.fn();
+const save = vi.fn();
+const move = vi.fn();
 
 class InputPage {
   readonly items;
   constructor(page: Page) {
-    this.items = [rooted(page.locator("#item"), { archive() {}, pin })];
+    this.items = [rooted(page.locator("#item"), { archive() {}, pin, move })];
   }
   explode() {
     throw new Error("The page object action exploded.");
   }
   addTodo() {}
+  signIn(...args: unknown[]) {
+    signIn(...args);
+  }
+  save(...args: unknown[]) {
+    save(...args);
+  }
 }
 
 registerCompiledPom(InputPage, manifest);
@@ -210,6 +275,45 @@ describe("the one input check every Run passes, in Chromium", () => {
     expect(await call("Item.pin", input)).toBe("ran");
     expect(pin).toHaveBeenCalledOnce();
     expect(pin.mock.calls[0]![0]).toBeUndefined();
+  });
+
+  it("takes a destructured parameter's fields as input, and calls the action with them collected", async () => {
+    expect(await call("InputPage.signIn", { email: "a@b.c", x: 1, y: 2 })).toBe(
+      "ToolInputError: Input property password is required."
+    );
+    expect(signIn).not.toHaveBeenCalled();
+
+    expect(
+      await call("InputPage.signIn", {
+        email: "a@b.c",
+        password: "secret",
+        x: 1,
+        y: 2,
+      })
+    ).toBe("ran");
+    expect(signIn).toHaveBeenCalledExactlyOnceWith(
+      { email: "a@b.c", password: "secret" },
+      [1, 2]
+    );
+  });
+
+  it("takes a defaulted pattern all or nothing", async () => {
+    document.querySelector("#overlay")!.remove();
+    expect(await call("InputPage.save", { email: "a@b.c" })).toBe(
+      "ToolInputError: Input property password is required when email is given."
+    );
+    expect(save).not.toHaveBeenCalled();
+    expect(await call("InputPage.save", {})).toBe("ran");
+    expect(save).toHaveBeenCalledExactlyOnceWith(undefined);
+
+    const { structure } = (await run("snapshot", {})) as { structure: string };
+    const ref = structure.match(/(e\d+) Item\b/)?.[1];
+    expect(await call("Item.move", { ref, args: { y: 2 } })).toBe(
+      "ToolInputError: Input property args.x is required when y is given."
+    );
+    expect(move).not.toHaveBeenCalled();
+    expect(await call("Item.move", { ref, args: { x: 1, y: 2 } })).toBe("ran");
+    expect(move).toHaveBeenCalledExactlyOnceWith([1, 2]);
   });
 
   it("checks a child Run's input", async () => {
