@@ -10,7 +10,13 @@ const { resolveLocatorElements, latestPageStateRef } = vi.hoisted(() => ({
   resolveLocatorElements: vi.fn((): object[] => []),
   latestPageStateRef: vi.fn((): string | undefined => undefined),
 }));
-vi.mock("../../page-state/infrastructure", () => ({ latestPageStateRef }));
+vi.mock(
+  "../../page-state/infrastructure/pageState",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    latestPageStateRef,
+  })
+);
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   isPlaywrightLiteLocator: (value: unknown) =>
     typeof value === "object" && value !== null && "selector" in value,
