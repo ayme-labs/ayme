@@ -19,7 +19,7 @@ import {
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
 import { usePageLook } from "../shared";
-import { useRuns } from "../runs";
+import { interactionTarget, useRuns } from "../runs";
 import { itemsOf } from "./collectionItems";
 
 /**
@@ -73,6 +73,11 @@ export function useInspectorRuntime({
   const { runs, invoke, clear } = useRuns({
     onSettled: onRunSettled,
     itemOf,
+    describeInteraction: useCallback(
+      (interaction) =>
+        interactionTarget(interaction.ref, latestStructure.current),
+      []
+    ),
   });
   const tools = useLiveTools();
 

@@ -64,6 +64,36 @@ describe("The Run log, ayme.runs, in Chromium", () => {
     }
   });
 
+  it("records a selector input's element ref before the input removes it", async () => {
+    const before = ayme.runs.list();
+    const { structure } = await ayme.tools.run("snapshot", {});
+    const ref = structure.match(/(e\d+) button "Save"/)?.[1];
+    expect(ref).toBeDefined();
+    document
+      .querySelector("button")!
+      .addEventListener("click", (event) =>
+        (event.currentTarget as Element).remove()
+      );
+    let captured: string | undefined;
+    const stopListening = ayme.runs.subscribe(() => {
+      const interaction = runsSince(before).findLast(
+        (run) => run.tool === "click"
+      )?.interactions[0];
+      if (interaction) {
+        expect(document.querySelector("button")).not.toBeNull();
+        captured = interaction.ref;
+        stopListening();
+      }
+    });
+    try {
+      await ayme.tools.run("click", SAVE);
+      expect(captured).toBe(ref);
+      expect(document.querySelector("button")).toBeNull();
+    } finally {
+      stopListening();
+    }
+  });
+
   it("lists a Run as running when its turn starts, and tells subscribers when it starts, gains an Interaction and ends", async () => {
     const before = ayme.runs.list();
     const heard: (readonly Run[])[] = [];

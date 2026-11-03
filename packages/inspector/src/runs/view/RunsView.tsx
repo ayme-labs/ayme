@@ -35,6 +35,7 @@ import {
 import { formatDuration } from "../domain/duration";
 import { readableResult } from "../domain/readableResult";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
+import { runPresentation } from "../domain/runPresentation";
 import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
@@ -294,14 +295,17 @@ function RunRow({
           onCopyResult={(text) => copyResult(run.id, text)}
           resultCopied={run.id === copiedResult}
           onOpenImage={openImage}
-          onHover={onHover}
+          onHover={run.earlierDocument ? () => {} : onHover}
         />
         {open && run.children.length > 0 && (
           <ol aria-label="Child runs" className="m-0 flex flex-col gap-2 p-0">
             {run.children.map((child) => (
               <RunRow
                 key={child.id}
-                run={child}
+                run={{
+                  ...child,
+                  ...(run.earlierDocument ? { earlierDocument: true } : {}),
+                }}
                 nested
                 closedRuns={closedRuns}
                 openResults={openResults}
@@ -347,6 +351,7 @@ function RunEntryCard({
   onOpenImage: (src: string) => void;
   onHover: OnHover;
 }) {
+  const { primary, arguments: args } = runPresentation(run);
   return (
     <div
       data-run-card=""
@@ -373,6 +378,23 @@ function RunEntryCard({
           name={run.toolName}
           className="font-mono text-xs font-semibold"
         />
+        {primary && (
+          <>
+            <InteractionTarget
+              interaction={primary}
+              onHover={onHover}
+              passive
+            />
+            {primary.value !== undefined && (
+              <span
+                className="min-w-0 truncate font-mono text-xs"
+                title={primary.value}
+              >
+                {JSON.stringify(primary.value)}
+              </span>
+            )}
+          </>
+        )}
         {run.item && (
           <span
             className="max-w-[45%] min-w-0 truncate rounded-md border px-1.5 font-mono text-xs text-muted-foreground"
@@ -398,27 +420,18 @@ function RunEntryCard({
       </button>
       {open && (
         <>
-          {Object.keys(run.arguments).length > 0 && (
+          {Object.keys(args).length > 0 && (
             <figure
               aria-label="Arguments"
               className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-1.25 font-mono text-xs [overflow-wrap:anywhere]"
             >
-              {JSON.stringify(run.arguments)}
+              {JSON.stringify(args)}
             </figure>
           )}
           {run.status === "succeeded" && run.image && (
             <div className="mx-2.5 mb-2">
               <RunImageView image={run.image} onOpen={onOpenImage} />
             </div>
-          )}
-          {run.status === "succeeded" && run.result !== undefined && (
-            <RunResult
-              text={run.result}
-              open={resultOpen}
-              onToggle={onToggleResult}
-              onCopy={onCopyResult}
-              copied={resultCopied}
-            />
           )}
           {run.error && (
             <p
@@ -429,7 +442,7 @@ function RunEntryCard({
               {run.error}
             </p>
           )}
-          {run.interactions.length > 0 && (
+          {!primary && run.interactions.length > 0 && (
             <ol
               aria-label="Interactions"
               className="m-0 flex flex-col gap-0.5 px-2.5 pb-2"
@@ -442,6 +455,15 @@ function RunEntryCard({
                 />
               ))}
             </ol>
+          )}
+          {run.status === "succeeded" && run.result !== undefined && (
+            <RunResult
+              text={run.result}
+              open={resultOpen}
+              onToggle={onToggleResult}
+              onCopy={onCopyResult}
+              copied={resultCopied}
+            />
           )}
         </>
       )}
@@ -601,41 +623,66 @@ function InteractionRow({
     interaction.value === undefined
       ? undefined
       : JSON.stringify(interaction.value);
-  const member = interaction.member;
-  const title =
-    member === undefined
-      ? `Not on the page when the run ended: ${interaction.locator}`
-      : `${member}: ${interaction.locator}. Hover to highlight it on the page.`;
   return (
-    <li className="flex min-h-6 list-none items-center gap-2 text-xs">
+    <li className="flex min-h-6 list-none flex-wrap items-center gap-2 text-xs">
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
-      <span className="w-27.5 flex-none text-muted-foreground">
+      <span className="flex-none text-muted-foreground">
         {interaction.operation}
       </span>
-      {interaction.locator !== undefined && (
-        <button
-          type="button"
-          data-gone={member === undefined || undefined}
-          // Named by the member whole: its two parts would read apart.
-          aria-label={member}
-          title={title}
-          className="max-w-57.5 min-w-0 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
-          // The hover highlight finds the member's element while it's there.
-          onMouseEnter={() => member !== undefined && onHover({ path: member })}
-          onMouseLeave={() => member !== undefined && onHover(undefined)}
-        >
-          {member === undefined ? (
-            interaction.locator
-          ) : (
-            <QualifiedName name={member} title={title} />
-          )}
-        </button>
-      )}
+      <InteractionTarget interaction={interaction} onHover={onHover} />
       {value !== undefined && (
-        <span className="truncate font-mono text-xs text-muted-foreground">
+        <span
+          className="truncate font-mono text-xs text-muted-foreground"
+          title={interaction.value}
+        >
           {value}
         </span>
       )}
     </li>
+  );
+}
+
+/** The same target chip in a browser input's heading and a custom tool's steps. */
+function InteractionTarget({
+  interaction,
+  onHover,
+  passive = false,
+}: {
+  interaction: RunInteraction;
+  onHover: OnHover;
+  passive?: boolean;
+}) {
+  const { member, target, context, locator, ref } = interaction;
+  if (locator === undefined) return null;
+  const label = member ?? target ?? ref ?? locator;
+  const highlight = ref ? { ref } : member ? { path: member } : undefined;
+  const title = highlight
+    ? `${label}: ${locator}. Hover to highlight it on the page.`
+    : `Not on the page when the run ended: ${locator}`;
+  const Tag = passive ? "span" : "button";
+  return (
+    <>
+      <Tag
+        {...(passive ? {} : { type: "button" as const })}
+        data-gone={!highlight || undefined}
+        aria-label={label}
+        title={title}
+        className="max-w-full min-w-0 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
+        onMouseEnter={() => highlight && onHover(highlight)}
+        onMouseLeave={() => highlight && onHover(undefined)}
+        onFocus={() => highlight && onHover(highlight)}
+        onBlur={() => highlight && onHover(undefined)}
+      >
+        {member ? <QualifiedName name={member} title={title} /> : label}
+      </Tag>
+      {!member && context && (
+        <small
+          className="min-w-0 truncate text-xs text-muted-foreground"
+          title={context}
+        >
+          within {context}
+        </small>
+      )}
+    </>
   );
 }

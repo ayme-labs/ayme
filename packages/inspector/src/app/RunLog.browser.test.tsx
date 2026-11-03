@@ -4,6 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
 import {
   getPageStateForElements,
+  latestPageStateCapture,
   lookAtPageStateForDocument,
   listRegisteredPomTargets,
   listAvailablePomTools,
@@ -57,6 +58,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    latestPageStateCapture: vi.fn(() => undefined),
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
@@ -173,7 +175,8 @@ it("lists every Caller's Runs from the page's Run log, newest first, as they sta
     { icon: "Run by an agent through WebMCP" },
     { text: "support-assistant" },
   ]);
-  expect(await click.arguments.textContent()).toBe('{"target":"e2"}');
+  expect(await click.arguments.count()).toBe(0);
+  expect(await click.toggle.textContent()).toContain("e2");
 
   byAgent.fail('Ref "e2" does not match a present element.');
 
@@ -216,16 +219,15 @@ it("nests a goal Run's child Runs under it, each with its own Interactions", asy
   });
   expect(await run.interactions.count()).toBe(0);
   expect(await run.childTools()).toEqual(["fill", "click"]);
-  expect(await run.child("fill").interactionList()).toEqual([
-    {
-      operation: "fill",
-      target: "getByRole('textbox', { name: 'Body' })",
-      value: '"Draft"',
-    },
-  ]);
-  expect(await run.child("click").interactionList()).toEqual([
-    { operation: "click", target: "getByRole('button', { name: 'Save' })" },
-  ]);
+  expect(await run.child("fill").toggle.textContent()).toContain(
+    "getByRole('textbox', { name: 'Body' })"
+  );
+  expect(await run.child("fill").toggle.textContent()).toContain('"Draft"');
+  expect(await run.child("fill").interactions.count()).toBe(0);
+  expect(await run.child("click").toggle.textContent()).toContain(
+    "getByRole('button', { name: 'Save' })"
+  );
+  expect(await run.child("click").interactions.count()).toBe(0);
   expect(await run.child("click").status()).toBe("Succeeded");
 });
 
@@ -282,8 +284,27 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
   renderApp();
 
   await expect
-    .poll(() => inspector.runs.latest("click").interactionList())
-    .toEqual([{ operation: "click", target: "Editor.saveButton" }]);
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain("Editor.saveButton");
+});
+
+it("names a newly added target from the recorded page state before the Inspector's look catches up", async () => {
+  vi.mocked(latestPageStateCapture).mockReturnValueOnce({
+    tree: {
+      getNode: () => ({ role: "button", name: "Dismiss notice", children: [] }),
+    },
+  } as unknown as ReturnType<typeof latestPageStateCapture>);
+  const click = startedAyme.runs.start("click", { target: "e99" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e99')",
+    ref: "e99" as Interaction["ref"],
+  });
+  click.succeed();
+  renderApp();
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain('button "Dismiss notice"');
 });
 
 it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {

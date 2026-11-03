@@ -1,4 +1,5 @@
 import type { StructureNode } from "../../structure";
+import { nodeText } from "../../shared";
 
 /** A node a ref field can choose: one that carries a ref. */
 export type RefNode = StructureNode & { ref: string };
@@ -51,7 +52,7 @@ export function refTreeRows(
         continue;
       }
       const refNode = node as RefNode;
-      const text = node.name ? "" : textOf(node);
+      const text = node.name ? "" : nodeText(node);
       const haystack =
         `${node.ref} ${node.role} "${node.name}" ${text}`.toLowerCase();
       const row: RefTreeRow = {
@@ -74,14 +75,6 @@ export function refTreeRows(
 
   visit(roots, 0);
   return rows;
-}
-
-/** The text a node shows through its text children. */
-function textOf(node: StructureNode): string {
-  return node.children
-    .filter((child) => child.role === "text" && child.ref === undefined)
-    .map((child) => child.name)
-    .join(" ");
 }
 
 /** Where a ref field chooses its ref from. */

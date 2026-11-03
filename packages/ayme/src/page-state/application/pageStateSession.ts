@@ -24,6 +24,7 @@ import {
   type PageState,
   type AymeNode,
   type PageStateLook,
+  type PageStateCapture,
   type RefResolution,
 } from "../domain/structuralPageState";
 import { resolveRequestedRef } from "./refResolution";
@@ -64,6 +65,7 @@ export class PageStateSession {
     | {
         observation: StructuralObservationEntry;
         elementsByRef: ReadonlyMap<AriaRef, Element>;
+        tree: StructuralTree;
       }
     | undefined;
   private readonly recordedListeners = new Set<() => void>();
@@ -395,10 +397,12 @@ export class PageStateSession {
   /** Call in the same step as the observation of these elements is recorded. */
   private rememberElements({
     elementsByRef,
-  }: Pick<PageCapture, "elementsByRef">): void {
+    tree,
+  }: Pick<PageCapture, "elementsByRef" | "tree">): void {
     this.latestElements = {
       observation: this.history.latestObservation!,
       elementsByRef,
+      tree,
     };
     this.latestRefsByElement = undefined;
     for (const listener of this.recordedListeners) listener();
@@ -440,6 +444,11 @@ export class PageStateSession {
   /** The element the latest recorded page state maps `ref` to, if any. */
   latestElementOf(ref: AriaRef): Element | undefined {
     return this.latestElements?.elementsByRef.get(ref);
+  }
+
+  /** Read the recorded tree and its elements together, without another capture. */
+  latestCapture(): PageStateCapture | undefined {
+    return this.latestElements;
   }
 
   /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */

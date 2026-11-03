@@ -10,6 +10,7 @@ export {
   getPageStateForElements,
   getPageStateSession,
   latestPageStateElement,
+  latestPageStateCapture,
   latestPageStateRef,
   lookAtPageStateForDocument,
   onPageStateRecorded,

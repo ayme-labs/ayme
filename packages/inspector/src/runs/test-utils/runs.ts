@@ -48,9 +48,13 @@ export function aChildRun(fields: Partial<ChildRun> = {}): ChildRun {
 
 /** A click on a button. */
 export function anInteraction(
-  fields: Partial<RunInteraction> = {}
+  fields: Partial<Omit<RunInteraction, "ref">> & { ref?: string } = {}
 ): RunInteraction {
-  return { operation: "click", locator: "getByRole('button')", ...fields };
+  return {
+    operation: "click",
+    locator: "getByRole('button')",
+    ...fields,
+  } as RunInteraction;
 }
 
 /**

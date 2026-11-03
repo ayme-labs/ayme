@@ -2,6 +2,7 @@ export { INSPECTOR_DOGFOOD_ATTRIBUTE } from "./shared";
 export {
   capturePageState,
   getPageStateForElements,
+  latestPageStateCapture,
   lookAtPageStateForDocument,
   resolvePageStateRef,
 } from "./page-state/infrastructure";

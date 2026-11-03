@@ -6,9 +6,15 @@ import {
 } from "./pageInstrumentation";
 import type { AymePage } from "../../runtime";
 
+const { resolveLocatorElements, latestPageStateRef } = vi.hoisted(() => ({
+  resolveLocatorElements: vi.fn((): object[] => []),
+  latestPageStateRef: vi.fn((): string | undefined => undefined),
+}));
+vi.mock("../../page-state/infrastructure", () => ({ latestPageStateRef }));
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   isPlaywrightLiteLocator: (value: unknown) =>
     typeof value === "object" && value !== null && "selector" in value,
+  resolveLocatorElements,
 }));
 
 type FakeLocator = {
@@ -55,6 +61,35 @@ const installTracing = () => {
 afterEach(() => {
   uninstall();
   clicks.length = 0;
+  vi.clearAllMocks();
+});
+
+it("captures a locator's known element ref synchronously before its click", () => {
+  const element = {};
+  resolveLocatorElements.mockReturnValueOnce([element]);
+  latestPageStateRef.mockReturnValueOnce("e7");
+  const heard = vi.fn(() => expect(clicks).toEqual([]));
+  instrumentedPage(page, heard).locator("button").click();
+  expect(heard).toHaveBeenCalledWith(
+    expect.objectContaining({ operation: "click", ref: "e7" })
+  );
+  expect(latestPageStateRef).toHaveBeenCalledWith(element);
+  expect(clicks).toEqual(["raw button"]);
+});
+
+it("does not guess a ref for an ambiguous locator, or block an input when diagnostic resolution fails", () => {
+  const heard = vi.fn();
+  const button = instrumentedPage(page, heard).locator("button");
+  resolveLocatorElements.mockReturnValueOnce([{}, {}]);
+  button.click();
+  resolveLocatorElements.mockImplementationOnce(() => {
+    throw new Error("unresolved");
+  });
+  button.click();
+  expect(heard).toHaveBeenCalledTimes(2);
+  for (const [interaction] of heard.mock.calls)
+    expect(interaction).not.toHaveProperty("ref");
+  expect(clicks).toEqual(["raw button", "raw button"]);
 });
 
 it("routes a locator derived before an instrumentation was installed through it", () => {

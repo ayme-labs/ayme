@@ -682,6 +682,83 @@ describe("a run's result", () => {
 });
 
 describe("a run's arguments", () => {
+  it("shows a browser input once with its readable target and value, keeping Result and options", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "fill",
+          arguments: { target: "e7", text: "Milk", timeout: 0 },
+          result: '"Filled"',
+          interactions: [
+            anInteraction({
+              operation: "fill",
+              ref: "e7",
+              target: 'textbox "New item"',
+              value: "Milk",
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.toggle.textContent())
+      .toContain('textbox "New item"');
+    expect(await run.toggle.textContent()).toContain('"Milk"');
+    expect(await run.arguments.textContent()).toBe('{"timeout":0}');
+    expect(await run.interactions.count()).toBe(0);
+    expect(await run.resultToggle.count()).toBe(1);
+    expect(await run.card.textContent()).not.toContain("Details");
+  });
+
+  it("names a non-POM child separately from its parent and highlights its ref", async () => {
+    const { onHover } = renderRuns({
+      runs: [
+        aRun({
+          interactions: [
+            anInteraction({
+              ref: "e7",
+              target: 'button "Delete"',
+              context: "ListPage.items[1]",
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.interactionTarget(0).textContent())
+      .toBe('button "Delete"');
+    expect(await run.interactions.textContent()).toContain(
+      "within ListPage.items[1]"
+    );
+    await run.interactionTarget(0).hover();
+    expect(onHover).toHaveBeenCalledWith({ ref: "e7" });
+  });
+
+  it("retains readable names after reload without highlighting a new document's elements", async () => {
+    const { onHover } = renderRuns({
+      runs: [
+        aRun({
+          earlierDocument: true,
+          children: [
+            aChildRun({
+              interactions: [
+                anInteraction({ ref: "e7", target: 'button "Delete"' }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    const child = runsView.run(0).child("ListPage.addItem");
+    await expect
+      .poll(() => child.interactionTarget(0).textContent())
+      .toBe('button "Delete"');
+    await child.interactionTarget(0).hover();
+    expect(onHover).not.toHaveBeenCalled();
+  });
+
   it("aren't shown when there are none", async () => {
     renderRuns({ runs: [aRun({ arguments: {} })] });
 

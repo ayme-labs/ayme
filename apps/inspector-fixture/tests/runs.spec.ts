@@ -7,6 +7,34 @@ import { expect, INSPECTOR, openFixture, test } from "./fixtures";
 // E2E: running tools from the panel, on the fixture page with the real
 // ListPage Page Object, the Ayme runtime and a recording WebMCP driver.
 
+test("a non-POM target keeps its accessible name after clicking removes it and after reload", async ({
+  page,
+  inspector,
+}) => {
+  await page.evaluate(() => {
+    const button = document.createElement("button");
+    button.textContent = "Dismiss notice";
+    button.addEventListener("click", () => button.remove());
+    document.querySelector("main")!.append(button);
+  });
+  const agent = new AgentView(page);
+  const ref = await agent.ref('button "Dismiss notice"');
+  await inspector.runs.showAll();
+  await agent.call("click", { target: ref });
+  const run = inspector.runs.latest("click");
+  await expect
+    .poll(() => run.toggle.textContent())
+    .toContain('button "Dismiss notice"');
+  await expect(run.arguments).toHaveCount(0);
+  await expect(run.interactions).toHaveCount(0);
+  await page.reload();
+  await inspector.open();
+  await inspector.runs.showAll();
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain('button "Dismiss notice"');
+});
+
 test("a Page Object Tool run from the panel shows in Runs as the Inspector's, with its Interactions", async ({
   inspector,
 }) => {

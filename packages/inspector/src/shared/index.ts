@@ -1,4 +1,6 @@
 export type { ControlState } from "./domain/controlState";
+export { nodeLabel, nodeText } from "./domain/nodeDescription";
+export { NodeDetail } from "./view/NodeDetail";
 export { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "./domain/pageRendering";
 export { mapTargetsToRefs } from "./domain/targetsByRef";
 export {

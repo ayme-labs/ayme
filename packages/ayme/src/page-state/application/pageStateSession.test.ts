@@ -176,6 +176,7 @@ describe("the ref the latest page state gave an element", () => {
     await session.look();
 
     expect(session.latestRefOf(overlay)).toBeUndefined();
+    expect(session.latestCapture()).toBeUndefined();
   });
 
   it("is the ref the latest page state gave the element itself", async () => {
@@ -194,6 +195,10 @@ describe("the ref the latest page state gave an element", () => {
     expect(session.latestRefOf(overlay)).toBe(ref("e2"));
     expect(session.latestRefOf(holder)).toBe(ref("e3"));
     expect(session.latestRefOf(pane)).toBeUndefined();
+    expect(session.latestCapture()?.tree.getNode(ref("e2"))?.role).toBe(
+      "generic"
+    );
+    expect(session.latestCapture()?.elementsByRef.get(ref("e2"))).toBe(overlay);
   });
 
   it("is nothing for an element the page state gave two refs", async () => {

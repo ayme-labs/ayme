@@ -30,6 +30,10 @@ export type RunNotes = {
   target?: RunTarget;
   item?: CollectionItem;
   members?: readonly (string | undefined)[];
+  descriptions?: readonly Pick<
+    RunInteraction,
+    "member" | "target" | "context"
+  >[];
   savedTo?: string;
 };
 
@@ -75,10 +79,9 @@ function nodeOf(
       ? {}
       : { durationMs: Math.round(run.durationMs) }),
     interactions: run.interactions.map((interaction, index) => {
-      const member = notes.members?.[index];
-      return member === undefined
-        ? { ...interaction }
-        : { ...interaction, member };
+      const description = notes.descriptions?.[index];
+      const member = description?.member ?? notes.members?.[index];
+      return { ...interaction, ...description, ...(member ? { member } : {}) };
     }),
     children: (childrenOf.get(run.id) ?? []).map((child) =>
       nodeOf(child, notesOf, childrenOf)
@@ -113,10 +116,19 @@ export function shownRuns({
   for (const run of log)
     if (run.parent !== undefined)
       childrenOf.set(run.parent, [...(childrenOf.get(run.parent) ?? []), run]);
-  const notesOf: Notes = (rowId) => ({
-    ...keptNotes.get(rowId),
-    ...notes.get(rowId),
-  });
+  const notesOf: Notes = (rowId) => {
+    const kept = keptNotes.get(rowId);
+    const current = notes.get(rowId);
+    return {
+      ...kept,
+      ...current,
+      descriptions:
+        current?.descriptions?.map((description, index) => {
+          const captured = kept?.descriptions?.[index];
+          return captured?.member || captured?.target ? captured : description;
+        }) ?? kept?.descriptions,
+    };
+  };
   const live = log
     .filter(
       (run): run is TopLevelRun =>
@@ -143,6 +155,11 @@ function noteTree(
     ...(className !== undefined ? { target: { className, objectPath } } : {}),
     ...(item ? { item } : {}),
     members: interactions.map(({ member }: RunInteraction) => member),
+    descriptions: interactions.map(({ member, target, context }) => ({
+      member,
+      target,
+      context,
+    })),
     ...(image?.savedTo === undefined ? {} : { savedTo: image.savedTo }),
   });
   for (const child of children) noteTree(child, notes);
