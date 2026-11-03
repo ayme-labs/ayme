@@ -30,8 +30,9 @@ export type PomLocatorMemberManifest = {
   access: PomMemberAccess;
   /**
    * Whether the Locator is declared a Child Collection (`@ayme.collection`)
-   * rather than one element (`@ayme.child`). Absent for a Locator the build
-   * infers without a declaration.
+   * rather than one element (`@ayme.child`). The build always writes it;
+   * left out, as a hand-written manifest may, the Locator is neither warned
+   * about when it matches several elements nor indexed by element.
    */
   collection?: boolean;
   /** The description its child declaration gives. */

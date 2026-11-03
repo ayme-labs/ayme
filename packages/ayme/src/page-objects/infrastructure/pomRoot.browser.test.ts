@@ -1021,7 +1021,7 @@ describe("Page Object Root by option", () => {
 
   it.each([
     ["a Locator collection matching several", true, 2],
-    ["an undeclared Locator matching several", undefined, 2],
+    ["a Locator whose manifest leaves its cardinality out", undefined, 2],
     ["a Locator declared as one matching one", false, 1],
   ] as const)("logs nothing for %s", async (_, collection, buttons) => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});

@@ -10,7 +10,7 @@ import {
 // What every consumer of the registry's targets reads of declared Locator
 // children, on a real page: each element of a Locator collection at its
 // index, as a Page Object collection's items are; a single Locator child,
-// declared or inferred, at its own path.
+// or one whose manifest leaves its cardinality out, at its own path.
 
 describe("registered Locator children's targets in Chromium", () => {
   let page: ReturnType<typeof createPage>;
