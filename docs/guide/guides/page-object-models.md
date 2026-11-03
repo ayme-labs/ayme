@@ -146,7 +146,6 @@ export class ListPage {
     const rows = await this.itemRows.all();
     return rows.map((row) => new ListItem(row));
   }
-  // ...
 }
 
 // Anchored at the row: AppComponent names the Page Object Root, above.
