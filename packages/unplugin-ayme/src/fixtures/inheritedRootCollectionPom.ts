@@ -16,6 +16,7 @@ class Item extends BaseItem {
 
 @ayme
 export class InheritedRootCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }

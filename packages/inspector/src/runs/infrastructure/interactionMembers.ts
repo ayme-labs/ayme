@@ -15,8 +15,9 @@ import { mapTargetsToRefs } from "../../shared";
 
 /**
  * The Page Object member each Interaction acted on, by place: the member
- * whose locator it names, or whose element has its captured Structural
- * Ref in an unrecorded look, while that member's
+ * whose locator or alias it names (including a Locator collection's `last()`
+ * or sole element), or whose element has its captured Structural Ref in an
+ * unrecorded look, while that member's
  * element is on the page. Read from the registry as it is now, so a member a
  * Run added, such as a new item, is named too.
  */
@@ -48,7 +49,10 @@ export async function interactionMembers(
     const paths = ref
       ? (targetsByRef.get(ref) ?? [])
       : targets
-          .filter((target) => target.locator === locator)
+          .filter(
+            (target) =>
+              target.locator === locator || target.aliases?.includes(locator)
+          )
           .map(({ path }) => path);
     return paths
       .map((path) => members.member(path)?.path)

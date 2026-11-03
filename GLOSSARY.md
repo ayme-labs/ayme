@@ -11,7 +11,11 @@ A class that describes a page or a meaningful part of a page through the element
 An instance of a Page Object Model. It represents one occurrence of the page or part of a page described by that model.
 
 **Page Object Child**:
-A named part of a Page Object. It may refer to one or more elements, or to one or more Page Objects.
+A part of a Page Object that its model declares, marked `@ayme.child` or `@ayme.collection`: one element, one Page Object, or a Child Collection of either. A member that is not marked is not a child, whatever it holds.
+
+**Child Collection**:
+A Page Object Child, marked `@ayme.collection`, that stands for any number of elements, or of Page Objects of one model. Each one it holds is told apart by its index, as in `rows[1]`.
+_Avoid_: Page Object Collection, collection child
 
 **Page Object Action**:
 A public method of a Page Object marked `@ayme.action`.

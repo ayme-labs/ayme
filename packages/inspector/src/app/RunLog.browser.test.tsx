@@ -30,6 +30,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
+    patternViolations,
     toolInputViolations,
     elementsOf,
     kindOf,
@@ -45,6 +46,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
+    patternViolations,
     toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(async () => ({
@@ -267,6 +269,98 @@ it("names each Interaction by the member whose locator it names, for any Caller"
   await expect.poll(() => run.interactionList()).toEqual(shown);
 });
 
+it("names an Interaction on a Locator collection holding one element by that element", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          {
+            memberName: "buttons",
+            kind: "locator",
+            access: "field",
+            collection: true,
+          },
+        ],
+      },
+      memberObservations: [
+        { memberName: "buttons", kind: "locator", access: "field", count: 1 },
+      ],
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      aliases: ["locator('button')", "locator('button').last()"],
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button')" });
+  save.interact({ operation: "click", locator: "locator('button').first()" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[0]" },
+      { operation: "click", target: "Editor.buttons[0]" },
+    ]);
+});
+
+it("names an Interaction on a Locator collection's last element by that element", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          {
+            memberName: "buttons",
+            kind: "locator",
+            access: "field",
+            collection: true,
+          },
+        ],
+      },
+      memberObservations: [
+        { memberName: "buttons", kind: "locator", access: "field", count: 2 },
+      ],
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      aliases: [],
+    },
+    {
+      path: "Editor.buttons[1]",
+      element: document.body,
+      locator: "locator('button').nth(1)",
+      aliases: ["locator('button').last()"],
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button').last()" });
+  save.interact({ operation: "click", locator: "locator('button').nth(1)" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[1]" },
+      { operation: "click", target: "Editor.buttons[1]" },
+    ]);
+});
+
 it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
   registerEditor();
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
@@ -314,6 +408,61 @@ it("names a newly added target from the recorded page state before the Inspector
   await expect
     .poll(() => inspector.runs.latest("click").toggle.textContent())
     .toContain('button "Dismiss notice"');
+});
+
+it("names a Browser Tool's Interaction by the member whose element has its ref, not by another member", async () => {
+  registerEditor();
+  const body = document.createElement("textarea");
+  const button = document.createElement("button");
+  document.body.append(body, button);
+  unmounts.push(() => {
+    body.remove();
+    button.remove();
+  });
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          { memberName: "bodyInput", kind: "locator", access: "field" },
+          ...editor.manifest.members,
+        ],
+      },
+    },
+  ]);
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.bodyInput",
+      element: body,
+      locator: "getByRole('textbox', { name: 'Body' })",
+    },
+    {
+      path: "Editor.saveButton",
+      element: button,
+      locator: "getByRole('button', { name: 'Save' })",
+    },
+  ]);
+  vi.mocked(lookAtPageStateForDocument).mockResolvedValue({
+    ...(await lookAtPageStateForDocument(document)),
+    elementsByRef: new Map<NonNullable<Interaction["ref"]>, Element>([
+      ["e1" as NonNullable<Interaction["ref"]>, body],
+      ["e2" as NonNullable<Interaction["ref"]>, button],
+    ]),
+  });
+  const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e2')",
+    ref: "e2" as Interaction["ref"],
+  });
+  click.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain("Editor.saveButton");
+  expect(getPageStateForElements).not.toHaveBeenCalled();
 });
 
 it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {

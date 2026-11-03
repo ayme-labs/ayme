@@ -18,14 +18,35 @@ export class UnmarkedMethodsPom {
     callback(this.root);
   }
 
-  /** Unmarked, with a destructured parameter. */
-  open({ name }: { name: string }) {
+  /** Unmarked, with an array pattern element that has no name. */
+  open([, name]: [string, string]) {
     return name;
   }
 
+  /** Unmarked, with an object pattern binding a name its type lacks. */
+  // @ts-expect-error TypeScript types the unannotated parameter `{}`.
+  find({ id } = {}) {
+    return id;
+  }
+
+  /** Unmarked, with two input fields of one name. */
+  search(query: string, { query: q }: { query: string }) {
+    return [query, q];
+  }
+
+  @ayme.collection
   async items(): Promise<ItemPom[]> {
     return [new ItemPom(this.root)];
   }
+
+  /** Undeclared, so an ordinary method, though it returns Page Objects. */
+  async undeclaredItems(): Promise<ItemPom[]> {
+    return [new ItemPom(this.root)];
+  }
+
+  /** Undeclared, so neither a Page Object Child nor a method. */
+  readonly footer!: Locator;
+  readonly firstItem!: ItemPom;
 
   private helper(callback: () => void) {
     callback();

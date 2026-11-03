@@ -6,7 +6,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { ToolArguments } from "../../runs";
 import { focusRing, pressable, pressableIcon } from "../../shared";
-import { initialValues, type Field } from "../domain/fields";
+import { initialValues, type Field, type FieldGroup } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { ValueType } from "../domain/valueRows";
 
@@ -55,7 +55,14 @@ export type FieldControls = {
   }>;
 };
 
-/** The typed form: one control per field, editing the arguments in place. */
+const groupClass =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+  "m-0 flex flex-col gap-2 rounded-lg border px-2.5 pt-2 pb-2.5";
+
+/**
+ * The typed form: one control per field, editing the arguments in place. A
+ * destructured parameter's fields sit together in a group without a label.
+ */
 export function ArgumentsFormView({
   fields,
   values,
@@ -64,7 +71,7 @@ export function ArgumentsFormView({
   controls,
   onValidity = alwaysValid,
 }: {
-  fields: readonly Field[];
+  fields: readonly (Field | FieldGroup)[];
   values: ToolArguments;
   onChange: Change;
   /** Reports a field that can't be sent as it is, such as a map with a bad row. */
@@ -73,20 +80,35 @@ export function ArgumentsFormView({
   refSource?: RefSource;
   controls: FieldControls;
 }) {
+  const rows = (rowFields: readonly Field[]) =>
+    rowFields.map((field) => (
+      <FieldRow
+        key={field.name}
+        field={field}
+        path={[field.name]}
+        value={values[field.name]}
+        onChange={onChange}
+        onValidity={onValidity}
+        refSource={refSource}
+        controls={controls}
+      />
+    ));
   return (
     <>
-      {fields.map((field) => (
-        <FieldRow
-          key={field.name}
-          field={field}
-          path={[field.name]}
-          value={values[field.name]}
-          onChange={onChange}
-          onValidity={onValidity}
-          refSource={refSource}
-          controls={controls}
-        />
-      ))}
+      {fields.map((entry, index) =>
+        entry.kind === "group" ? (
+          <fieldset key={index} className={groupClass}>
+            {entry.optional && (
+              <span className="text-xs font-medium text-muted-foreground">
+                optional
+              </span>
+            )}
+            {rows(entry.fields)}
+          </fieldset>
+        ) : (
+          rows([entry])
+        )
+      )}
     </>
   );
 }
@@ -188,7 +210,7 @@ function FieldRow({
     const entries =
       on && typeof value === "object" && !Array.isArray(value) ? value : {};
     return (
-      <fieldset className="m-0 flex flex-col gap-2 rounded-lg border px-2.5 pt-2 pb-2.5">
+      <fieldset className={groupClass}>
         {field.optional ? (
           <label className="flex min-w-0 cursor-pointer items-baseline gap-2 text-xs font-semibold">
             <input

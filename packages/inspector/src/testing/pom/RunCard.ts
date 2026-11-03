@@ -21,34 +21,49 @@ export type ArgumentValue =
  * input, the first press opens the typed form.
  */
 export class RunCard extends PanelPart {
+  @ayme.child
   readonly runButton: Locator;
   /** Why the tool is unavailable, under its name; absent while it's available. */
+  @ayme.child
   readonly reason: Locator;
   /** Shows or hides the form, on a card with a head. */
+  @ayme.child
   readonly argumentsToggle: Locator;
+  @ayme.child
   readonly formSwitch: Locator;
+  @ayme.child
   readonly jsonSwitch: Locator;
+  @ayme.child
   readonly jsonEditor: Locator;
   /** Why the JSON editor's text isn't JSON, or isn't an object. */
+  @ayme.child
   readonly jsonError: Locator;
   /**
    * How the JSON editor's arguments break the tool's schema, one entry per
    * violation, e.g. "values.zip: must be a string or a number".
    */
+  @ayme.collection
   readonly schemaErrors: Locator;
   /** Pretty-prints the JSON editor's text. */
+  @ayme.child
   readonly formatButton: Locator;
   /** The items a rooted action can run on. */
+  @ayme.collection
   readonly items: Locator;
   /** The last run's status, its duration, and its error. */
+  @ayme.child
   readonly lastResult: Locator;
   /** Shows the last successful run in Runs. */
+  @ayme.child
   readonly lastSuccessLink: Locator;
   /** `fill_form`'s form. */
+  @ayme.child
   readonly fillForm: FillForm;
   /** `generate_locator`'s form. */
+  @ayme.child
   readonly locatorGroups: LocatorGroups;
   /** `goal`'s map of values. */
+  @ayme.child
   readonly values: ValueRows;
 
   constructor(root: Locator) {
@@ -88,6 +103,16 @@ export class RunCard extends PanelPart {
    */
   field(path: string): Locator {
     return this.root.getByLabel(path, { exact: true });
+  }
+
+  /**
+   * The group a field sits in, by the field's path: an object's, or the
+   * unlabelled one of a destructured parameter's fields.
+   */
+  fieldGroup(path: string): Locator {
+    return this.root.getByRole("group").filter({
+      has: this.root.page().getByLabel(path, { exact: true }),
+    });
   }
 
   /** A ref argument's field, by its path, e.g. "ref". */

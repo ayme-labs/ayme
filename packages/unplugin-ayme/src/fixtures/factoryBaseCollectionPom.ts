@@ -16,6 +16,7 @@ class Item extends withRoot(BaseItem) {
 
 @ayme
 export class FactoryBaseCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }

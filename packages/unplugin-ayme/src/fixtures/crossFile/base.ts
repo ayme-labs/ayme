@@ -4,6 +4,7 @@ import { ayme } from "@ayme-dev/ayme";
 
 @ayme
 export abstract class BaseMenu {
+  @ayme.child
   readonly baseItem!: Locator;
 
   @ayme.action({ description: "Open the menu." })

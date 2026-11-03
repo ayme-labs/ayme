@@ -74,7 +74,7 @@ test("form fields keep their names and values without repeating their refs", asy
     .poll(() => run.interactionList())
     .toEqual([
       { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
-      { operation: "setChecked", target: 'checkbox "Urgent"' },
+      { operation: "setChecked", target: "ListPage.newItemFields[1]" },
     ]);
   expect(JSON.parse((await run.arguments.textContent()) ?? "")).toEqual({
     fields: [

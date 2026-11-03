@@ -15,12 +15,15 @@ class Inherited extends RootedBase {}
 
 @ayme
 export class SharedRootOptionsPom {
+  @ayme.collection
   async computedItems(): Promise<Computed[]> {
     return [];
   }
+  @ayme.collection
   async spreadItems(): Promise<Spread[]> {
     return [];
   }
+  @ayme.collection
   async inheritedItems(): Promise<Inherited[]> {
     return [];
   }

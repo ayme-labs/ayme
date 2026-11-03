@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +10,15 @@ import {
 import { derivePomManifests } from "./index";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../package.json";
+
+/**
+ * The line of a fixture that holds `text`, as the file stands: a header a
+ * tool adds to it, such as Stryker's `// @ts-nocheck`, moves it too.
+ */
+function lineOf(fileName: string, text: string) {
+  const lines = fs.readFileSync(fileName, "utf8").split("\n");
+  return lines.findIndex((line) => line.includes(text)) + 1;
+}
 
 function manifestFor(fixture: string) {
   return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`))[0];
@@ -87,34 +97,46 @@ describe("derivePomManifests", () => {
     });
 
     it.each([
-      ["templateActionPom", "Page Object Action TemplateActionPom.show", 8],
-      ["variableClassPom", "Page Object VariableClassPom", 5],
-      ["quotedKeyPom", "Page Object Action QuotedKeyPom.save", 8],
+      [
+        "templateActionPom",
+        "Page Object Action TemplateActionPom.show",
+        "description: `Show",
+      ],
+      [
+        "variableClassPom",
+        "Page Object VariableClassPom",
+        "@ayme({ description",
+      ],
+      [
+        "quotedKeyPom",
+        "Page Object Action QuotedKeyPom.save",
+        '"description": DESCRIPTION',
+      ],
     ])(
       "fails the build for the description of %s, which is not a constant string",
-      (fixture, owner, line) => {
+      (fixture, owner, description) => {
         const fileName = path.resolve(
           `src/fixtures/computedDescriptions/${fixture}.ts`
         );
         expect(() => derivePomManifests(fileName)).toThrow(
-          `The description of ${owner} is not a constant string (${fileName}:${line}).`
+          `The description of ${owner} is not a constant string (${fileName}:${lineOf(fileName, description)}).`
         );
       }
     );
   });
 
   it.each([
-    ["spreadActionPom", "SpreadActionPom.read", 9],
-    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", 7],
-    ["computedKeyActionPom", "ComputedKeyActionPom.read", 7],
+    ["spreadActionPom", "SpreadActionPom.read", "...options,"],
+    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", "...options })"],
+    ["computedKeyActionPom", "ComputedKeyActionPom.read", "[key]:"],
   ])(
     "fails the build for %s, whose description may come from a spread or a computed key",
-    (fixture, action, line) => {
+    (fixture, action, description) => {
       const fileName = path.resolve(
         `src/fixtures/computedDescriptions/${fixture}.ts`
       );
       expect(() => derivePomManifests(fileName)).toThrow(
-        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${line}).`
+        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${lineOf(fileName, description)}).`
       );
     }
   );
@@ -129,6 +151,7 @@ describe("derivePomManifests", () => {
           memberName: "actionButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
       ]);
     }
@@ -141,8 +164,18 @@ describe("derivePomManifests", () => {
     );
 
     expect(manifest?.components[0]?.members).toEqual([
-      { memberName: "root", kind: "locator", access: "field" },
-      { memberName: "child", kind: "locator", access: "field" },
+      {
+        memberName: "root",
+        kind: "locator",
+        access: "field",
+        collection: false,
+      },
+      {
+        memberName: "child",
+        kind: "locator",
+        access: "field",
+        collection: false,
+      },
     ]);
   });
 
@@ -154,11 +187,13 @@ describe("derivePomManifests", () => {
         memberName: "ownButton",
         kind: "locator",
         access: "field",
+        collection: false,
       },
       {
         memberName: "inheritedButton",
         kind: "locator",
         access: "field",
+        collection: false,
       },
     ]);
   });
@@ -267,21 +302,25 @@ describe("derivePomManifests", () => {
           memberName: "ownButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "middleButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "inheritedButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "overriddenButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
       ])
     );
@@ -383,11 +422,13 @@ describe("derivePomManifests", () => {
         memberName: "browserLocator",
         kind: "locator",
         access: "field",
+        collection: false,
       },
       {
         memberName: "locatorGetter",
         kind: "locator",
         access: "getter",
+        collection: false,
       },
       {
         memberName: "componentCollection",
@@ -430,12 +471,336 @@ describe("derivePomManifests", () => {
         className: "AnnotatedComponent",
         file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/annotatedChildrenPom.ts`,
         members: [
-          { memberName: "root", kind: "locator", access: "field" },
-          { memberName: "child", kind: "locator", access: "field" },
+          {
+            memberName: "root",
+            kind: "locator",
+            access: "field",
+            collection: false,
+          },
+          {
+            memberName: "child",
+            kind: "locator",
+            access: "field",
+            collection: false,
+          },
         ],
         tools: [],
       },
     ]);
+  });
+
+  describe("declared Page Object Children", () => {
+    it("reads each declared shape, its cardinality and its description", () => {
+      const manifest = manifestForClass(
+        "declaredChildrenPom",
+        "DeclaredChildrenPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+        {
+          memberName: "emptyMessage",
+          kind: "locator",
+          access: "getter",
+          collection: false,
+          description: "The message shown without runs.",
+        },
+        {
+          memberName: "cells",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "One cell per column.",
+        },
+        {
+          memberName: "links",
+          kind: "locator",
+          access: "getter",
+          collection: true,
+        },
+        {
+          memberName: "toolbar",
+          kind: "component",
+          access: "field",
+          componentClassName: "Toolbar",
+          collection: false,
+          description: "Filters the runs.",
+        },
+        {
+          memberName: "footer",
+          kind: "component",
+          access: "getter",
+          componentClassName: "Toolbar",
+          collection: false,
+        },
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+          description: "One row per run.",
+        },
+        {
+          memberName: "readonlyRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        {
+          memberName: "aliasedRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        {
+          memberName: "visibleRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Toolbar",
+        "Row",
+      ]);
+    });
+
+    it.each([
+      [
+        "neitherPom",
+        "Page Object Child NeitherPom.title holds neither a Locator nor a Page Object (string).",
+      ],
+      [
+        "anyPom",
+        "Page Object Child AnyPom.part has a type the build cannot resolve (any).",
+      ],
+      [
+        "anyCollectionPom",
+        "Page Object Child AnyCollectionPom.parts has a type the build cannot resolve (Promise<any[]>).",
+      ],
+      [
+        "anyPromiseCollectionPom",
+        "Page Object Child AnyPromiseCollectionPom.parts has a type the build cannot resolve (Promise<any>).",
+      ],
+      [
+        "tupleChildPom",
+        "Page Object Child TupleChildPom.pair holds neither a Locator nor a Page Object ([Row, Row]).",
+      ],
+      [
+        "arrayFieldPom",
+        "Page Object Child ArrayFieldPom.rows holds an array of Page Objects (Row[]); declare a method without parameters that returns them.",
+      ],
+      [
+        "childArrayFieldPom",
+        "Page Object Child ChildArrayFieldPom.rows is declared @ayme.child but holds many Page Objects (readonly Row[]).",
+      ],
+      [
+        "childOnMethodPom",
+        "Page Object Child ChildOnMethodPom.toolbar is a method; @ayme.child declares a field or getter.",
+      ],
+      [
+        "childMethodPom",
+        "Page Object Child ChildMethodPom.rows is declared @ayme.child but returns many Page Objects; declare it @ayme.collection.",
+      ],
+      [
+        "collectionFieldPom",
+        "Page Object Child CollectionFieldPom.toolbar is declared @ayme.collection but holds one Page Object (Toolbar); declare it @ayme.child.",
+      ],
+      [
+        "parameterizedCollectionPom",
+        "Page Object Child ParameterizedCollectionPom.rows takes parameters; @ayme.collection declares a method without parameters.",
+      ],
+      [
+        "locatorMethodPom",
+        "Page Object Child LocatorMethodPom.cells is a method returning a Locator; declare a Locator collection as a field or getter.",
+      ],
+      [
+        "noPomCollectionPom",
+        "Page Object Child NoPomCollectionPom.labels returns no Page Objects (Promise<string[]>).",
+      ],
+      [
+        "singleMethodPom",
+        "Page Object Child SingleMethodPom.toolbar returns one Page Object (Promise<Toolbar>); a Child Collection method returns an array of Page Objects.",
+      ],
+      [
+        "bothMarkersPom",
+        "Page Object Child BothMarkersPom.heading is declared more than once; mark it either @ayme.child or @ayme.collection.",
+      ],
+      [
+        "actionChildPom",
+        "Page Object Child ActionChildPom.rows is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.",
+      ],
+      [
+        "mutableArrayMethodPom",
+        "Page Object Child MutableArrayMethodPom.visibleRows returns a mutable array (Row[]); a Child Collection method returns Promise<Row[]> or readonly Row[].",
+      ],
+      [
+        "privateChildPom",
+        "Page Object Child PrivateChildPom.heading is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "protectedChildPom",
+        "Page Object Child ProtectedChildPom.rows is protected; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "hashPrivateChildPom",
+        "Page Object Child HashPrivateChildPom.#heading is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "staticChildPom",
+        "Page Object Child StaticChildPom.heading is static; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "inheritedPrivateChildPom",
+        "Page Object Child ListBase.rows is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "stringNamedChildPom",
+        'Page Object Child StringNamedChildPom."row" is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
+      [
+        "computedNamedChildPom",
+        'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
+      [
+        "setterChildPom",
+        "Page Object Child SetterChildPom.part is a setter; only a field, getter or method can be a Page Object Child.",
+      ],
+      [
+        "setterCollectionPom",
+        "Page Object Child SetterCollectionPom.parts is a setter; only a field, getter or method can be a Page Object Child.",
+      ],
+    ])("fails the build for %s", (fixture, message) => {
+      // An Error with this message: `toThrow(message)` also passes when
+      // `undefined` is thrown.
+      expect(() =>
+        derivePomManifests(
+          path.resolve(`src/fixtures/declaredChildErrors/${fixture}.ts`)
+        )
+      ).toThrow(new Error(message));
+    });
+
+    it("fails the build for a child description that is not a constant string", () => {
+      const fileName = path.resolve(
+        "src/fixtures/declaredChildErrors/descriptionPom.ts"
+      );
+      expect(() => derivePomManifests(fileName)).toThrow(
+        new Error(
+          `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
+        )
+      );
+    });
+
+    it("reads a Child Collection declared on an overloaded method's implementation", () => {
+      const manifest = manifestForClass(
+        "overloadedCollectionPom",
+        "OverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Row",
+      ]);
+    });
+
+    it("reads a Child Collection from its implementation past every overload signature", () => {
+      const manifest = manifestForClass(
+        "multiOverloadedCollectionPom",
+        "MultiOverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+    });
+
+    it("reads a Child Collection by its overload without parameters, declared after one with parameters", () => {
+      const manifest = manifestForClass(
+        "reversedOverloadedCollectionPom",
+        "ReversedOverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+    });
+
+    it("inherits a declared child from an anonymous class, without a description it has none", () => {
+      const manifest = manifestForClass(
+        "anonymousBase/page",
+        "AnonymousBasePom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+      ]);
+      expect(manifest?.members[0]).not.toHaveProperty("description");
+    });
+
+    it("inherits declared children through the class chain", () => {
+      const manifest = manifestForClass(
+        "inheritedDeclaredChildrenPom",
+        "InheritedDeclaredChildrenPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "title",
+          kind: "locator",
+          access: "field",
+          collection: false,
+          description: "The list's title.",
+        },
+        {
+          memberName: "rows",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "The list's rows.",
+        },
+        {
+          memberName: "items",
+          kind: "component",
+          access: "method",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ]);
+    });
   });
 
   it("rejects intersections containing multiple annotated components", () => {
@@ -589,7 +954,8 @@ describe("derivePomManifests", () => {
       {
         fixture: "userMenu",
         className: "UserMenu",
-        memberNames: ["signOutItem", "baseItem"],
+        // Its own undeclared Locator is no Page Object Child.
+        memberNames: ["baseItem"],
       },
       {
         fixture: "barrelUserMenu",
@@ -597,7 +963,7 @@ describe("derivePomManifests", () => {
         memberNames: ["baseItem"],
       },
     ])(
-      "recognises an undecorated subclass in $fixture.ts of a base decorated in another module",
+      "recognises an undecorated subclass in $fixture of a base decorated in another module, with only declared children",
       ({ fixture, className, memberNames }) => {
         const manifests = manifestsOf(`crossFile/${fixture}`);
         expectNames(
@@ -670,7 +1036,12 @@ describe("derivePomManifests", () => {
           className: "PageX",
           file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`,
           members: [
-            { memberName: "heading", kind: "locator", access: "field" },
+            {
+              memberName: "heading",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
           ],
           components: [],
           tools: [],
@@ -1015,7 +1386,7 @@ describe("derivePomManifests", () => {
           { type: "object" },
         ],
       };
-      expect(parametersOf("recursive")?.[0]?.schema).toEqual({
+      expect(parametersOf("recursive")?.[0]).toHaveProperty("schema", {
         anyOf: [
           { type: "string" },
           { type: "number" },
@@ -1042,6 +1413,248 @@ describe("derivePomManifests", () => {
             },
           },
         ],
+      });
+    });
+
+    describe("a destructured parameter", () => {
+      function destructuredParametersOf(methodName: string) {
+        return manifestFor("destructuredParametersPom")?.tools.find(
+          (tool) => tool.methodName === methodName
+        )?.parameters;
+      }
+
+      it("takes an object pattern's fields from its type, keyed by property name", () => {
+        expect(destructuredParametersOf("signIn")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "password", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+        // Every property of the type, whatever the pattern binds or renames.
+        expect(destructuredParametersOf("signInAs")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "password", optional: false, schema: { type: "string" } },
+              { name: "remember", optional: true, schema: { type: "boolean" } },
+            ],
+          },
+        ]);
+      });
+
+      it("records a defaulted object pattern beside a named parameter, with its bindings' literal defaults", () => {
+        expect(destructuredParametersOf("search")).toStrictEqual([
+          { name: "query", optional: false, schema: { type: "string" } },
+          {
+            destructured: "object",
+            optional: true,
+            fields: [
+              {
+                name: "limit",
+                optional: true,
+                schema: { type: "number" },
+                default: 10,
+              },
+              {
+                name: "order",
+                optional: false,
+                schema: { type: "string", enum: ["asc", "desc"] },
+              },
+            ],
+          },
+        ]);
+      });
+
+      it("keys an array pattern's fields by the names it binds", () => {
+        expect(destructuredParametersOf("move")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "x", optional: false, schema: { type: "number" } },
+              { name: "y", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
+      });
+
+      it("takes an array pattern's optional elements, a plain array's elements and a rest element", () => {
+        expect(destructuredParametersOf("follow")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "start", optional: false, schema: { type: "number" } },
+              {
+                name: "end",
+                optional: true,
+                schema: { type: "number" },
+                default: 9,
+              },
+            ],
+          },
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "first", optional: true, schema: { type: "string" } },
+              {
+                name: "others",
+                optional: false,
+                schema: { type: "array", items: { type: "string" } },
+                rest: true,
+              },
+            ],
+          },
+        ]);
+      });
+
+      it.each([
+        [
+          "holePom",
+          "Page Object Action HolePom.move needs a name for every element of [, y]: [number, number]: element 0 is a hole.",
+        ],
+        [
+          "nestedElementPom",
+          "Page Object Action NestedElementPom.pick needs a name for every element of [{ a }, b]: [{ a: string }, number]: element 0 is a nested pattern.",
+        ],
+        [
+          "unboundElementPom",
+          "Page Object Action UnboundElementPom.move needs a name for every element of [x]: [number, number]: element 1 is not bound.",
+        ],
+        [
+          "untypedBindingPom",
+          "Page Object Action UntypedBindingPom.login: email, password and remember in { email, password, remember } have no type. Annotate the parameter.",
+        ],
+        [
+          "misspelledBindingPom",
+          "Page Object Action MisspelledBindingPom.signIn: emial in { emial, password: secret }: Credentials has no type.",
+        ],
+        [
+          "arrayDuplicatePom",
+          "Page Object Action ArrayDuplicatePom.move takes two input fields named x: property x of { y }: { x: number; y: number }, and binding x of [x]: [number].",
+        ],
+        [
+          "indexSignaturePatternPom",
+          `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "stringPatternPom",
+          `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "tupleUnionPom",
+          `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "correlatedTuplePom",
+          `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "renamedDuplicatePom",
+          "Page Object Action RenamedDuplicatePom.search takes two input fields named query: parameter query, and property query of { query: q }: { query: string }.",
+        ],
+        [
+          "typeDuplicatePom",
+          "Page Object Action TypeDuplicatePom.search takes two input fields named limit: parameter limit, and property limit of { order }: Options.",
+        ],
+        [
+          "sharedPropertyPom",
+          "Page Object Action SharedPropertyPom.copy takes two input fields named id: property id of { id }: { id: string }, and property id of { id: other }: { id: string }.",
+        ],
+      ])("fails the build for %s", (fixture, message) => {
+        let thrown: unknown;
+        try {
+          derivePomManifests(
+            path.resolve(`src/fixtures/unsupportedPatterns/${fixture}.ts`)
+          );
+        } catch (error) {
+          thrown = error;
+        }
+        expect((thrown as Error | undefined)?.message).toBe(message);
+      });
+
+      it("takes an object pattern's quoted keys with their defaults, and its computed ones from the type", () => {
+        expect(destructuredParametersOf("name")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              {
+                name: "first-name",
+                optional: false,
+                schema: { type: "string" },
+                default: "Ann",
+              },
+              { name: "last", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+      });
+
+      it("takes the properties an object pattern's rest binding gathers", () => {
+        expect(destructuredParametersOf("remember")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "remember", optional: true, schema: { type: "boolean" } },
+            ],
+          },
+        ]);
+      });
+
+      it("binds a tuple's remaining fixed elements, or leaves its variadic ones, to a rest element", () => {
+        expect(destructuredParametersOf("tail")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "head", optional: false, schema: { type: "string" } },
+              {
+                name: "rest",
+                optional: false,
+                schema: {
+                  type: "array",
+                  prefixItems: [{ type: "number" }, { type: "number" }],
+                  minItems: 2,
+                  maxItems: 2,
+                },
+                rest: true,
+              },
+            ],
+          },
+        ]);
+        expect(destructuredParametersOf("first")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "x", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
+      });
+
+      it("records a destructured rest parameter as a rest array pattern", () => {
+        expect(destructuredParametersOf("spread")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            rest: true,
+            fields: [
+              { name: "name", optional: false, schema: { type: "string" } },
+              { name: "count", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
       });
     });
 

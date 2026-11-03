@@ -8,10 +8,13 @@ import { PanelPart } from "./PanelPart";
  * nodes, each tagged with the Page Object member it maps to.
  */
 export class StructureLens extends PanelPart {
+  @ayme.child
   readonly tree: Locator;
   /** Every row: nodes with a ref, and text. */
+  @ayme.collection
   readonly rows: Locator;
   /** Why the structure could not be captured. */
+  @ayme.child
   readonly error: Locator;
 
   constructor(navigator: Locator) {

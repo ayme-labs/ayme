@@ -122,3 +122,65 @@ describe("@ayme.action({ available })", () => {
     expect(availabilityPredicateOf(undefined)).toBeUndefined();
   });
 });
+
+class Parts {
+  readonly field = "value";
+  get getter() {
+    return "value";
+  }
+  items() {
+    return ["value"];
+  }
+}
+
+const getter = Object.getOwnPropertyDescriptor(Parts.prototype, "getter")!;
+const items = Object.getOwnPropertyDescriptor(Parts.prototype, "items")!;
+const fieldContext = {
+  kind: "field",
+  name: "field",
+} as ClassFieldDecoratorContext<Parts, string>;
+const getterContext = {
+  kind: "getter",
+  name: "getter",
+} as ClassGetterDecoratorContext<Parts, string>;
+const itemsContext = {
+  kind: "method",
+  name: "items",
+} as ClassMethodDecoratorContext<Parts, () => string[]>;
+
+describe.each(["child", "collection"] as const)("@ayme.%s", (marker) => {
+  it("leaves fields and getters unchanged in the bare form", () => {
+    const decorate = ayme[marker];
+
+    expect(decorate(Parts.prototype, "field")).toBeUndefined();
+    expect(decorate(Parts.prototype, "getter", getter)).toBeUndefined();
+    expect(decorate(undefined, fieldContext)).toBeUndefined();
+    expect(decorate(getter.get!, getterContext)).toBeUndefined();
+  });
+
+  it.each([[undefined], [{}], [{ description: "The part." }]])(
+    "returns a decorator that leaves fields and getters unchanged in the options form %j",
+    (options) => {
+      const decorate = ayme[marker](options);
+
+      expect(decorate(Parts.prototype, "field")).toBeUndefined();
+      expect(decorate(Parts.prototype, "getter", getter)).toBeUndefined();
+      expect(decorate(undefined, fieldContext)).toBeUndefined();
+      expect(decorate(getter.get!, getterContext)).toBeUndefined();
+      expect(new Parts().getter).toBe("value");
+    }
+  );
+});
+
+describe("@ayme.collection on a method", () => {
+  it("leaves the method unchanged in the bare and options forms", () => {
+    expect(ayme.collection(Parts.prototype, "items", items)).toBeUndefined();
+    expect(
+      ayme.collection(Parts.prototype.items, itemsContext)
+    ).toBeUndefined();
+    const decorate = ayme.collection({ description: "The items." });
+    expect(decorate(Parts.prototype, "items", items)).toBeUndefined();
+    expect(decorate(Parts.prototype.items, itemsContext)).toBeUndefined();
+    expect(new Parts().items()).toEqual(["value"]);
+  });
+});

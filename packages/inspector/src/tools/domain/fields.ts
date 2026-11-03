@@ -1,4 +1,5 @@
 import type { JsonPrimitive, JsonSchema, JsonValue } from "@ayme-dev/ayme";
+import type { ToolParameter } from "@ayme-dev/ayme/internal";
 
 import type { ToolArguments } from "../../runs";
 import { jsonSyntaxError } from "./jsonSyntax";
@@ -44,13 +45,26 @@ export type FieldKind =
   | { kind: "json" };
 
 /**
+ * A destructured parameter's fields, which the form shows together without
+ * a label: each is an argument of its own, beside the other parameters'. A
+ * defaulted pattern's group is optional as a whole: left out entirely, or
+ * given with every field its type requires.
+ */
+export type FieldGroup = {
+  kind: "group";
+  optional?: true;
+  fields: readonly Field[];
+};
+
+/**
  * How a schema reads as TypeScript, the way the definition text agents read
  * writes it: one type, e.g. `string | number`, and an action's signature,
- * e.g. `(text: string, tags?: string[])`.
+ * e.g. `(text: string, tags?: string[])`, from its schema or from the
+ * parameters it declares.
  */
 export type SchemaText = {
   type: (schema: JsonSchema) => string;
-  signature: (schema: JsonSchema) => string;
+  signature: (input: JsonSchema | readonly ToolParameter[]) => string;
 };
 
 const inputTypes: Partial<Record<string, TextInputType>> = {
@@ -83,6 +97,45 @@ export function fieldsOf(
       return { name, optional, kind, typeLabel: kind };
     }
     return fieldOf(name, property, optional, typeOf);
+  });
+}
+
+/**
+ * The fields in the shape of the parameters an action declares: each
+ * destructured parameter's fields in one group. Without a destructured
+ * parameter, the fields as they are.
+ */
+export function groupFields(
+  fields: readonly Field[],
+  parameters: readonly ToolParameter[] = []
+): (Field | FieldGroup)[] {
+  if (!parameters.some((parameter) => "destructured" in parameter))
+    return [...fields];
+  const byName = new Map(fields.map((field) => [field.name, field]));
+  const fieldsNamed = (names: readonly { name: string }[]) =>
+    names.flatMap(({ name }) => byName.get(name) ?? []);
+  return parameters.flatMap((parameter): (Field | FieldGroup)[] => {
+    if (!("destructured" in parameter)) return fieldsNamed([parameter]);
+    if (!parameter.optional)
+      return [{ kind: "group", fields: fieldsNamed(parameter.fields) }];
+    // What the type requires: a rest element with no minimum may be empty.
+    const required = new Set(
+      parameter.fields
+        .filter(
+          (field) => !field.optional && !(field.rest && !field.schema.minItems)
+        )
+        .map(({ name }) => name)
+    );
+    return [
+      {
+        kind: "group",
+        optional: true,
+        fields: fieldsNamed(parameter.fields).map((field) => ({
+          ...field,
+          optional: !required.has(field.name),
+        })),
+      },
+    ];
   });
 }
 
@@ -255,13 +308,14 @@ export function argumentsFromJson(text: string): ParsedArguments {
 }
 
 /**
- * An action's signature from its schema, written by `signature`, e.g.
- * "(text: string, details?: { due: string })", or none when it takes no
- * arguments.
+ * An action's signature, written by `signature` from the parameters it
+ * declares or else its schema, e.g. "(text: string, details?: { due: string
+ * })", or none when it takes no arguments.
  */
 export function signatureOf(
   schema: JsonSchema,
-  signature: SchemaText["signature"]
+  signature: SchemaText["signature"],
+  parameters?: readonly ToolParameter[]
 ) {
-  return fieldsOf(schema).length ? signature(schema) : undefined;
+  return fieldsOf(schema).length ? signature(parameters ?? schema) : undefined;
 }

@@ -5,6 +5,7 @@ import {
   argumentsFromJson,
   argumentsToJson,
   fieldsOf,
+  groupFields,
   initialArguments,
   signatureOf,
   withArgument,
@@ -224,6 +225,208 @@ describe("schema to fields", () => {
       fields: [{ kind: "json", typeLabel: "<object>" }],
     });
     expect(text).toMatchObject({ kind: "text", typeLabel: "string" });
+  });
+});
+
+describe("a destructured parameter", () => {
+  const search = {
+    type: "object",
+    properties: {
+      query: { type: "string" },
+      limit: { type: "number" },
+      x: { type: "number" },
+    },
+    required: ["query", "x"],
+  } satisfies JsonSchema;
+
+  it("groups its fields, beside the other parameters' fields", () => {
+    expect(
+      groupFields(fieldsOf(search), [
+        { name: "query", optional: false, schema: { type: "string" } },
+        {
+          destructured: "object",
+          optional: false,
+          fields: [
+            { name: "limit", optional: true, schema: { type: "number" } },
+          ],
+        },
+        {
+          destructured: "array",
+          optional: false,
+          fields: [{ name: "x", optional: false, schema: { type: "number" } }],
+        },
+      ])
+    ).toEqual([
+      {
+        name: "query",
+        optional: false,
+        kind: "text",
+        inputType: "text",
+        typeLabel: "string",
+      },
+      {
+        kind: "group",
+        fields: [
+          {
+            name: "limit",
+            optional: true,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+      {
+        kind: "group",
+        fields: [
+          {
+            name: "x",
+            optional: false,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("marks a defaulted pattern's group optional, its fields as its type has them", () => {
+    expect(
+      groupFields(fieldsOf(search), [
+        {
+          destructured: "object",
+          optional: true,
+          fields: [
+            { name: "query", optional: false, schema: { type: "string" } },
+            { name: "limit", optional: true, schema: { type: "number" } },
+          ],
+        },
+      ])
+    ).toEqual([
+      {
+        kind: "group",
+        optional: true,
+        fields: [
+          {
+            name: "query",
+            optional: false,
+            kind: "text",
+            inputType: "text",
+            typeLabel: "string",
+          },
+          {
+            name: "limit",
+            optional: true,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("leaves a defaulted array pattern's rest element optional unless its type needs items", () => {
+    const point = {
+      type: "object",
+      properties: {
+        x: { type: "number" },
+        others: { type: "array", items: { type: "number" } },
+        first: { type: "number" },
+        more: { type: "array", items: { type: "number" }, minItems: 1 },
+      },
+    } satisfies JsonSchema;
+    // `[x, ...others]: [number, ...number[]] = [0]` and
+    // `[first, ...more]: [number, number, ...number[]] = [0, 0]`
+    const groups = groupFields(fieldsOf(point), [
+      {
+        destructured: "array",
+        optional: true,
+        fields: [
+          { name: "x", optional: false, schema: { type: "number" } },
+          {
+            name: "others",
+            optional: false,
+            schema: { type: "array", items: { type: "number" } },
+            rest: true,
+          },
+        ],
+      },
+      {
+        destructured: "array",
+        optional: true,
+        fields: [
+          { name: "first", optional: false, schema: { type: "number" } },
+          {
+            name: "more",
+            optional: false,
+            schema: {
+              type: "array",
+              items: { type: "number" },
+              minItems: 1,
+            },
+            rest: true,
+          },
+        ],
+      },
+    ]);
+
+    expect(
+      groups.map((group) =>
+        group.kind === "group"
+          ? group.fields.map(({ name, optional }) => [name, optional])
+          : []
+      )
+    ).toEqual([
+      [
+        ["x", false],
+        ["others", true],
+      ],
+      [
+        ["first", false],
+        ["more", false],
+      ],
+    ]);
+  });
+
+  it("leaves out a destructured field the schema has no field for", () => {
+    expect(
+      groupFields(fieldsOf(search), [
+        {
+          destructured: "object",
+          optional: false,
+          fields: [
+            { name: "limit", optional: true, schema: { type: "number" } },
+            { name: "sort", optional: true, schema: { type: "string" } },
+          ],
+        },
+      ])
+    ).toEqual([
+      {
+        kind: "group",
+        fields: [
+          {
+            name: "limit",
+            optional: true,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("leaves the fields as they are without a destructured parameter", () => {
+    const fields = fieldsOf(search);
+
+    expect(groupFields(fields)).toEqual(fields);
+    expect(
+      groupFields(fields, [
+        { name: "query", optional: false, schema: { type: "string" } },
+      ])
+    ).toEqual(fields);
   });
 });
 

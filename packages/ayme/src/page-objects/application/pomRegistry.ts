@@ -7,7 +7,7 @@ import type {
   RegisteredPomTool,
 } from "../../shared";
 import { modelOption } from "../domain/decorators";
-import { methodArguments } from "../domain/actionTool";
+import { methodArguments, patternViolations } from "../domain/actionTool";
 import {
   assertAvailable,
   refFailure,
@@ -19,7 +19,11 @@ import {
   assertReachable,
   providePageObjectStructure,
 } from "../../page-state/infrastructure";
-import { RefResolutionError, RuntimeStateError } from "../../shared";
+import {
+  RefResolutionError,
+  refuseViolations,
+  RuntimeStateError,
+} from "../../shared";
 import {
   availabilityOf,
   combinedAvailability,
@@ -612,6 +616,19 @@ function createTool(
     execute: async (input, context) => {
       let args = input;
       let targetName = tool.name;
+      // The rule a defaulted pattern keeps beside the input schema.
+      refuseViolations(
+        tool.rooted
+          ? patternViolations(
+              action.parameters,
+              (input as { args?: Record<string, unknown> }).args ?? {},
+              "args"
+            )
+          : patternViolations(
+              action.parameters,
+              input as Record<string, unknown>
+            )
+      );
       const instances = instancesOf(tool);
       let observed: PomInstanceObservation | undefined = instances[0];
       if (tool.rooted) {
@@ -721,7 +738,7 @@ async function performPageObjectAction(
 
   const parameters = methodArguments(
     tool.parameters,
-    argumentValues(tool, args)
+    args as Record<string, unknown>
   );
   if (root)
     await assertReachable(
@@ -735,15 +752,6 @@ async function performPageObjectAction(
   // Change Record then starts from the page right before the action.
   return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>
     method.apply(instance, parameters)
-  );
-}
-
-/** The values of `tool`'s parameters in `args`, input the runtime checked. */
-function argumentValues(tool: ToolManifest, args: unknown) {
-  const input = args as Record<string, unknown>;
-  // An inherited name, such as constructor, is no argument.
-  return tool.parameters.map((parameter) =>
-    Object.hasOwn(input, parameter.name) ? input[parameter.name] : undefined
   );
 }
 

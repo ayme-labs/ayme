@@ -1,7 +1,9 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
 
 export class ArchiveDialog extends AppComponent {
+  @ayme.child
   readonly confirmArchiveButton: Locator;
 
   constructor(root: Locator) {

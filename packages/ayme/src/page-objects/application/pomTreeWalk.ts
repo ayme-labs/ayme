@@ -27,7 +27,11 @@ import {
 
 /**
  * Package-internal: the elements `sources` hold now, in their order. A
- * locator that cannot be resolved holds none; its observation says why.
+ * locator that cannot be resolved holds none; its observation says why. Each
+ * element of a Locator collection is at its index and named by its `nth`
+ * locator, as an Interaction on that element names it; the last element is
+ * also named by its `last()` locator, and the one element of a collection
+ * that holds one by the collection's locator.
  */
 export function resolveTargets(
   driver: PageDriver,
@@ -47,9 +51,21 @@ export function resolveTargets(
     }
     return elements;
   };
-  return sources.flatMap(({ path, locator, root }) => {
+  return sources.flatMap(({ path, locator, root, collection }) => {
     const elements = elementsOf(locator);
     if (root && isRootElement(elements, elementsOf(root))) return [];
+    if (collection) {
+      const last = elements.length - 1;
+      return elements.map((element, index) => ({
+        path: `${path}[${index}]`,
+        element,
+        locator: locator.nth(index).toString(),
+        aliases: [
+          ...(last === 0 ? [locator.toString()] : []),
+          ...(index === last ? [locator.last().toString()] : []),
+        ],
+      }));
+    }
     const name = locator.toString();
     return elements.map((element) => ({ path, element, locator: name }));
   });
@@ -261,16 +277,24 @@ async function walkMembers(
           path: joinPath(walk.label, memberPath),
           locator: value,
           root: place.rootLocator,
+          ...(member.collection === true && { collection: true }),
         });
         if (resolvesToRoot(walk.driver, value, place.rootElement)) {
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
+        const count = await value.count();
         walk.memberObservations.push({
           memberName: memberPath,
           kind: "locator",
           access: member.access,
-          count: await value.count(),
+          count,
+          // A Locator declared as one element that matches several.
+          ...(member.collection === false &&
+            count >= 2 && {
+              diagnostic: true,
+              warning: `${instanceLabel(place.className, walk.label, place.path)}: its ${member.memberName} matches ${count} elements.`,
+            }),
         });
       } else
         await walkComponentMember(walk, value, member, place, nextAncestors);

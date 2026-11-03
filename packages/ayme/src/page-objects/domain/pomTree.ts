@@ -16,6 +16,13 @@ export type RegisteredPomTarget = {
    * on the member names.
    */
   locator: string;
+  /**
+   * For an element of a Locator collection, the other locators an
+   * Interaction on it names: `last()` for the last element, and the
+   * collection's own locator for the one element of a collection that holds
+   * one.
+   */
+  aliases?: readonly string[];
 };
 
 /**
@@ -32,6 +39,12 @@ export type PomTargetSource = {
    * since it is the root.
    */
   root?: Locator;
+  /**
+   * Whether the member is declared a Locator collection: each element it
+   * holds is a target of its own, at the path with its index, e.g.
+   * "RunsTable.rows[1]".
+   */
+  collection?: boolean;
 };
 
 /** Package-internal: what one observation of a registered Page Object found. */
@@ -42,7 +55,7 @@ export type PageObjectObservation = {
   /**
    * The locators its members and roots hold, one per concrete member path,
    * in declaration order. Paths through collections carry their item
-   * indices.
+   * indices; a Locator collection's elements take theirs when resolved.
    */
   targetSources: PomTargetSource[];
   /** The paths of the locator members that resolved to their root. */

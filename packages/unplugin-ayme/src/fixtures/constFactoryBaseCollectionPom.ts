@@ -18,6 +18,7 @@ class Item extends RootedBase {
 
 @ayme
 export class ConstFactoryBaseCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }
