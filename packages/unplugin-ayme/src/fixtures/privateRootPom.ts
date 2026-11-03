@@ -9,5 +9,6 @@ class PageObjectBase {
 
 @ayme
 export class PrivateRootPom extends PageObjectBase {
+  @ayme.child
   readonly actionButton!: Locator;
 }

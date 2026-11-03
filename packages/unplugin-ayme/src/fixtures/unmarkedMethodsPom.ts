@@ -23,6 +23,7 @@ export class UnmarkedMethodsPom {
     return name;
   }
 
+  @ayme.collection
   async items(): Promise<ItemPom[]> {
     return [new ItemPom(this.root)];
   }

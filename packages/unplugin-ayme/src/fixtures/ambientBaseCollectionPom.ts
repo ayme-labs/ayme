@@ -11,6 +11,7 @@ class Item extends AmbientBase {
 
 @ayme
 export class AmbientBaseCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }

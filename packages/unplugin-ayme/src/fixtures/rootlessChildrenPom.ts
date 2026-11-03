@@ -16,6 +16,7 @@ class Row extends AppComponent {
 // No root in its chain: a single child of it builds.
 @ayme
 class Toolbar {
+  @ayme.child
   readonly saveButton!: Locator;
 
   @ayme.action
@@ -24,8 +25,10 @@ class Toolbar {
 
 @ayme
 export class RootlessChildrenPom {
+  @ayme.child
   readonly toolbar!: Toolbar;
 
+  @ayme.collection
   async rows(): Promise<Row[]> {
     return [];
   }

@@ -4,6 +4,7 @@ import type { CounterMode } from "./CounterMode";
 
 @ayme
 export class CounterPage {
+  @ayme.child
   readonly incrementButton: Locator;
 
   constructor(page: Page) {

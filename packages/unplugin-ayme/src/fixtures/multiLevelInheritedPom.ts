@@ -3,6 +3,7 @@ import type { Locator } from "@playwright/test";
 import { ayme } from "@ayme-dev/ayme";
 
 class BasePom {
+  @ayme.child
   readonly inheritedButton!: Locator;
   declare readonly overriddenButton: Locator;
   private readonly basePrivateButton!: Locator;
@@ -24,7 +25,9 @@ class BasePom {
 }
 
 class MiddlePom extends BasePom {
+  @ayme.child
   readonly middleButton!: Locator;
+  @ayme.child
   override readonly overriddenButton: Locator = undefined as unknown as Locator;
   private readonly middlePrivateButton!: Locator;
   protected readonly middleProtectedButton!: Locator;
@@ -40,7 +43,9 @@ class MiddlePom extends BasePom {
 
 @ayme
 export class MultiLevelInheritedPom extends MiddlePom {
+  @ayme.child
   readonly ownButton!: Locator;
+  @ayme.child
   override readonly overriddenButton: Locator = undefined as unknown as Locator;
   private readonly finalPrivateButton!: Locator;
   protected readonly finalProtectedButton!: Locator;

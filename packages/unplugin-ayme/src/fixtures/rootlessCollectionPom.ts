@@ -9,6 +9,7 @@ class RootlessItem {
 
 @ayme
 export class RootlessCollectionPom {
+  @ayme.collection
   async items(): Promise<RootlessItem[]> {
     return [];
   }

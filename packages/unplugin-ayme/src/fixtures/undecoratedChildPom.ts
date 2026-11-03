@@ -12,6 +12,7 @@ class UserMenu extends MenuBase {
 
 @ayme
 export class PageX {
+  @ayme.child
   readonly heading!: Locator;
   readonly userMenu!: UserMenu;
 }
