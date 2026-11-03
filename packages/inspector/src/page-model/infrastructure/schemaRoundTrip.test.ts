@@ -1,5 +1,8 @@
 // @vitest-environment node
 
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
 import type { JsonValue } from "@ayme-dev/ayme";
 import {
   inputSchemaFor,
@@ -18,12 +21,21 @@ import { actionSignature } from "./actionSignature";
 // must accept a matching call, and the Inspector must show the signature
 // the definition text gives agents.
 
+/**
+ * The build plugin's compiler test fixtures, found through its package, so
+ * they resolve from a copy of this test elsewhere too, such as Stryker's
+ * sandbox.
+ */
+const fixtures = new URL(
+  "../src/fixtures/",
+  pathToFileURL(
+    createRequire(import.meta.url).resolve("@ayme-dev/unplugin-ayme")
+  )
+);
+
 /** A fixture of the build plugin's compiler tests. */
 function fixture(name: string) {
-  return new URL(
-    `../../../../unplugin-ayme/src/fixtures/${name}.ts`,
-    import.meta.url
-  ).pathname;
+  return fileURLToPath(new URL(`${name}.ts`, fixtures));
 }
 
 const tools = [

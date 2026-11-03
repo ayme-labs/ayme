@@ -147,6 +147,10 @@ describe("renderPomDefinitions", () => {
               ],
             },
           ]),
+          // `reset({ ...options }: {})`
+          action("reset", [
+            { destructured: "object", optional: false, fields: [] },
+          ]),
           action("spread", [
             {
               destructured: "array",
@@ -172,6 +176,8 @@ describe("renderPomDefinitions", () => {
         "",
         // An optional pattern's fields may each be left out.
         "  follow([first?: string, ...others: string[]])",
+        "",
+        "  reset({})",
         "",
         "  spread(...[name: string])",
       ].join("\n")
