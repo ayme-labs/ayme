@@ -21,6 +21,8 @@ export class ModelDetailView extends PanelPart {
   /** A member's link to the Page Object or model it belongs to. */
   @ayme.child
   readonly ownerLink: Locator;
+  /** A member's description, as its child declaration gives it. */
+  readonly description: Locator;
 
   constructor(root: Locator) {
     super(root);
@@ -29,6 +31,7 @@ export class ModelDetailView extends PanelPart {
       name: /^Open the \S+ page object model$/,
     });
     this.ownerLink = root.getByRole("button", { name: /^Open its owner / });
+    this.description = root.locator("[data-description]");
   }
 
   /**

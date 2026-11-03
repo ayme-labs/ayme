@@ -70,6 +70,12 @@ export type PomMemberObservation = {
   count: number;
   access?: PomMemberAccess;
   error?: string;
+  /**
+   * What is wrong with a member that was still observed, such as a Locator
+   * declared as one that matches several elements. Never an error: the
+   * observation stands.
+   */
+  warning?: string;
   /** Whether this observation is a documented console diagnostic. */
   diagnostic?: boolean;
 };

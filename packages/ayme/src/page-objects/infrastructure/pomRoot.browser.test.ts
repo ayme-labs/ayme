@@ -963,6 +963,107 @@ describe("Page Object Root by option", () => {
     expect(logged).toHaveBeenCalledOnce();
   });
 
+  it("logs that a Locator declared as one matches several elements once, again when the count changes or comes back, and keeps the tools published", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<nav id="drawer"><button>Close</button><button>Close</button></nav>';
+    class Drawer {
+      close = page.getByRole("button", { name: "Close" });
+      open() {}
+    }
+    registerCompiledPom(
+      Drawer,
+      pageManifest("Drawer", [{ ...locator("close"), collection: false }])
+    );
+    session.pom.register(Drawer);
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Drawer.open"]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Drawer: its close matches 2 elements."
+    );
+    // The Inspector keeps showing the count, not a failed probe.
+    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
+      {
+        memberName: "close",
+        kind: "locator",
+        access: "field",
+        count: 2,
+        diagnostic: true,
+        warning: "Drawer: its close matches 2 elements.",
+      },
+    ]);
+
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+
+    const drawer = document.getElementById("drawer")!;
+    drawer.insertAdjacentHTML("beforeend", "<button>Close</button>");
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(2);
+    expect(logged).toHaveBeenLastCalledWith(
+      "Drawer: its close matches 3 elements."
+    );
+
+    drawer.replaceChildren();
+    await probeRegisteredPomMembers();
+    drawer.innerHTML = "<button>Close</button>";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(2);
+
+    drawer.insertAdjacentHTML("beforeend", "<button>Close</button>");
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Drawer.open"]);
+    expect(logged).toHaveBeenCalledTimes(3);
+    expect(logged).toHaveBeenLastCalledWith(
+      "Drawer: its close matches 2 elements."
+    );
+  });
+
+  it.each([
+    ["a Locator collection matching several", true, 2],
+    ["an undeclared Locator matching several", undefined, 2],
+    ["a Locator declared as one matching one", false, 1],
+  ] as const)("logs nothing for %s", async (_, collection, buttons) => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML = "<button>Close</button>".repeat(buttons);
+    class Drawer {
+      close = page.getByRole("button", { name: "Close" });
+      open() {}
+    }
+    registerCompiledPom(
+      Drawer,
+      pageManifest("Drawer", [
+        collection === undefined
+          ? locator("close")
+          : { ...locator("close"), collection },
+      ])
+    );
+    session.pom.register(Drawer);
+    await probeRegisteredPomMembers();
+    expect(logged).not.toHaveBeenCalled();
+    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
+      { memberName: "close", kind: "locator", access: "field", count: buttons },
+    ]);
+  });
+
+  it("names a child's class and path when its Locator declared as one matches several elements", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<section id="shell"><a href="#">Help</a><a href="#">Help</a></section>';
+    class Panel {
+      link = page.getByRole("link", { name: "Help" });
+      close() {}
+    }
+    session.pom.register(
+      shellWithPanel(Panel, [{ ...locator("link"), collection: false }])
+    );
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Panel.close"]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Panel at Shell.panel: its link matches 2 elements."
+    );
+  });
+
   it("refuses a root-less child of a collection item while keeping its rooted parent's tools", async () => {
     document.body.innerHTML = "<ul><li>First</li></ul>";
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});

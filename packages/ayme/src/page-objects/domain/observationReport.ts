@@ -47,6 +47,7 @@ function sameMemberObservations(
         observation.count === candidate.count &&
         observation.access === candidate.access &&
         observation.error === candidate.error &&
+        observation.warning === candidate.warning &&
         observation.diagnostic === candidate.diagnostic
       );
     })
@@ -56,9 +57,9 @@ function sameMemberObservations(
 /**
  * Package-internal: what `observation` of the registered Page Object `pomId`
  * found wrong that `last` did not, one message each: a presence or root
- * predicate that threw, an invalid member or root, or a root matching several
- * elements. A problem is reported again only when
- * it changed, or was gone and is back. A root matching none is ordinary
+ * predicate that threw, an invalid member or root, or a root or a Locator
+ * declared as one matching several elements. A problem is reported again only
+ * when it changed, or was gone and is back. A root matching none is ordinary
  * absence, never reported.
  */
 export function newObservationErrors(
@@ -90,10 +91,21 @@ export function newObservationErrors(
   const previousErrors = new Set(
     last.memberObservations
       .filter(({ diagnostic }) => diagnostic)
-      .map(({ error }) => error)
+      .map(diagnosticText)
   );
-  for (const { error, diagnostic } of memberObservations)
-    if (diagnostic && error !== undefined && !previousErrors.has(error))
-      errors.push(error);
+  for (const observation of memberObservations) {
+    const text = diagnosticText(observation);
+    if (
+      observation.diagnostic &&
+      text !== undefined &&
+      !previousErrors.has(text)
+    )
+      errors.push(text);
+  }
   return errors;
+}
+
+/** What a member observation's console diagnostic says. */
+function diagnosticText({ error, warning }: PomMemberObservation) {
+  return error ?? warning;
 }
