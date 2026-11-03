@@ -145,6 +145,14 @@ function memberRole(
   if (!member.name || !ts.isIdentifier(member.name)) return undefined;
   const memberName = member.name.text;
 
+  const declaration = childDeclaration(member, memberName);
+  if (declaration)
+    return {
+      role: "child",
+      child: declaredChild(checker, member, declaration),
+    };
+
+  // A member without a child declaration is still inferred from its type.
   if (ts.isMethodDeclaration(member)) {
     const description = toolDescription(checker, member, memberName);
     if (description)
@@ -188,6 +196,160 @@ function pomChild(
     },
     declaration,
   };
+}
+
+type ChildMarker = "child" | "collection";
+
+/** A member's `@ayme.child` or `@ayme.collection`, and whom errors name. */
+type ChildDeclaration = {
+  marker: ChildMarker;
+  decorator: ts.Decorator;
+  memberName: string;
+  /** `Page Object Child <declaring class>.<member>`. */
+  owner: string;
+};
+
+function childDeclaration(
+  member: ts.ClassElement,
+  memberName: string
+): ChildDeclaration | undefined {
+  const decorators = ts.canHaveDecorators(member)
+    ? (ts.getDecorators(member) ?? [])
+    : [];
+  const marks = decorators.flatMap((decorator) =>
+    (["child", "collection"] as const)
+      .filter((marker) => isMemberMarker(decorator, "ayme", marker))
+      .map((marker) => ({ marker, decorator }))
+  );
+  const [mark] = marks;
+  if (!mark) return undefined;
+  const className = ts.isClassLike(member.parent)
+    ? member.parent.name?.text
+    : undefined;
+  const owner = `Page Object Child ${className}.${memberName}`;
+  if (marks.length > 1)
+    throw new Error(
+      `${owner} is declared more than once; mark it either @ayme.child or @ayme.collection.`
+    );
+  if (decorators.some((d) => isMemberMarker(d, "ayme", "action")))
+    throw new Error(
+      `${owner} is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.`
+    );
+  return { ...mark, memberName, owner };
+}
+
+/**
+ * The Page Object Child a member declares. The member's type must agree
+ * with the declaration: `@ayme.child` on a field or getter holding a
+ * Locator or a Page Object, `@ayme.collection` on a field or getter holding
+ * a Locator or on a method without parameters returning an array of Page
+ * Objects. Anything else fails the build.
+ */
+function declaredChild(
+  checker: ts.TypeChecker,
+  member: ts.ClassElement,
+  { marker, decorator, memberName, owner }: ChildDeclaration
+): PomChild {
+  const fail = (problem: string) => new Error(`${owner} ${problem}.`);
+  const { access, type } = memberValueInfo(checker, member)!;
+  const typeText = checker.typeToString(type);
+  const unresolved = () =>
+    fail(`has a type the build cannot resolve (${typeText})`);
+  const description = decoratorDescription(checker, decorator, owner);
+  const described = description === undefined ? {} : { description };
+  const collection = marker === "collection";
+
+  if (isUnresolvedType(type)) throw unresolved();
+  const items = itemsType(checker, type);
+  if (items && isUnresolvedType(items)) throw unresolved();
+  const itemsDeclaration =
+    items && componentDeclaration(checker, items, memberName);
+
+  if (access === "method") {
+    if (!collection)
+      throw itemsDeclaration
+        ? fail(
+            `is declared @ayme.child but returns many Page Objects; declare it @ayme.collection`
+          )
+        : fail(`is a method; @ayme.child declares a field or getter`);
+    if ((member as ts.MethodDeclaration).parameters.length > 0)
+      throw fail(
+        `takes parameters; @ayme.collection declares a method without parameters`
+      );
+    if (isLocatorType(type))
+      throw fail(
+        `is a method returning a Locator; declare a Locator collection as a field or getter`
+      );
+    if (!itemsDeclaration?.name) {
+      const value = awaitedType(checker, type);
+      if (isUnresolvedType(value)) throw unresolved();
+      throw componentDeclaration(checker, value, memberName)
+        ? fail(
+            `returns one Page Object (${typeText}); a Child Collection method returns an array of Page Objects`
+          )
+        : fail(`returns no Page Objects (${typeText})`);
+    }
+    return {
+      member: {
+        memberName,
+        kind: "component",
+        access,
+        componentClassName: itemsDeclaration.name.text,
+        collection: true,
+        ...described,
+      },
+      declaration: itemsDeclaration,
+    };
+  }
+
+  if (isLocatorType(type))
+    return {
+      member: { memberName, kind: "locator", access, collection, ...described },
+    };
+  if (itemsDeclaration)
+    throw collection
+      ? fail(
+          `holds an array of Page Objects (${typeText}); declare a method without parameters that returns them`
+        )
+      : fail(
+          `is declared @ayme.child but holds many Page Objects (${typeText})`
+        );
+  const declaration = componentDeclaration(checker, type, memberName);
+  if (!declaration?.name)
+    throw fail(`holds neither a Locator nor a Page Object (${typeText})`);
+  if (collection)
+    throw fail(
+      `is declared @ayme.collection but holds one Page Object (${declaration.name.text}); declare it @ayme.child`
+    );
+  return {
+    member: {
+      memberName,
+      kind: "component",
+      access,
+      componentClassName: declaration.name.text,
+      collection: false,
+      ...described,
+    },
+    declaration,
+  };
+}
+
+/** `any`, `unknown`, or a type the program could not resolve. */
+function isUnresolvedType(type: ts.Type) {
+  return (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) !== 0;
+}
+
+/** The value a `Promise` resolves to, or the type itself. */
+function awaitedType(checker: ts.TypeChecker, type: ts.Type) {
+  if (!isNamedType(type, "Promise")) return type;
+  return checker.getTypeArguments(type as ts.TypeReference)[0] ?? type;
+}
+
+/** The item type of an array or read-only array, awaited first. */
+function itemsType(checker: ts.TypeChecker, type: ts.Type) {
+  const value = awaitedType(checker, type);
+  if (!checker.isArrayType(value)) return undefined;
+  return checker.getIndexTypeOfType(value, ts.IndexKind.Number);
 }
 
 type RootState = "declared" | "undeclared" | "unreadable";

@@ -273,6 +273,8 @@ describe("a build without Ayme", () => {
     expect(code).not.toContain("getByLabel");
     expect(code).not.toContain("Add an item to the list.");
     expect(code).not.toContain("@ayme.action");
+    expect(code).not.toContain("@ayme.child");
+    expect(code).not.toContain("The dialog that adds an item.");
   });
 
   it("keeps an import only when the rest of the module refers to its binding, not when it names a key or a member", () => {
@@ -342,6 +344,7 @@ describe("a build without Ayme", () => {
 
     expect(code).toContain("registerCompiledPom(ListPage, {");
     expect(code).toContain("Add an item to the list.");
+    expect(code).toContain("The dialog that adds an item.");
     expect(code).not.toContain("@ayme-dev/ayme/absent");
   });
 });

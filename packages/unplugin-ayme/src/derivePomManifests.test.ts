@@ -438,6 +438,190 @@ describe("derivePomManifests", () => {
     ]);
   });
 
+  describe("declared Page Object Children", () => {
+    it("reads each declared shape, its cardinality and its description", () => {
+      const manifest = manifestForClass(
+        "declaredChildrenPom",
+        "DeclaredChildrenPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+        {
+          memberName: "emptyMessage",
+          kind: "locator",
+          access: "getter",
+          collection: false,
+          description: "The message shown without runs.",
+        },
+        {
+          memberName: "cells",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "One cell per column.",
+        },
+        {
+          memberName: "links",
+          kind: "locator",
+          access: "getter",
+          collection: true,
+        },
+        {
+          memberName: "toolbar",
+          kind: "component",
+          access: "field",
+          componentClassName: "Toolbar",
+          collection: false,
+          description: "Filters the runs.",
+        },
+        {
+          memberName: "footer",
+          kind: "component",
+          access: "getter",
+          componentClassName: "Toolbar",
+          collection: false,
+        },
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+          description: "One row per run.",
+        },
+        {
+          memberName: "readonlyRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        {
+          memberName: "aliasedRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        {
+          memberName: "visibleRows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+        { memberName: "inferred", kind: "locator", access: "field" },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Toolbar",
+        "Row",
+      ]);
+    });
+
+    it.each([
+      [
+        "neitherPom",
+        "Page Object Child NeitherPom.title holds neither a Locator nor a Page Object (string).",
+      ],
+      [
+        "anyPom",
+        "Page Object Child AnyPom.part has a type the build cannot resolve (any).",
+      ],
+      [
+        "anyCollectionPom",
+        "Page Object Child AnyCollectionPom.parts has a type the build cannot resolve (Promise<any[]>).",
+      ],
+      [
+        "arrayFieldPom",
+        "Page Object Child ArrayFieldPom.rows holds an array of Page Objects (Row[]); declare a method without parameters that returns them.",
+      ],
+      [
+        "childArrayFieldPom",
+        "Page Object Child ChildArrayFieldPom.rows is declared @ayme.child but holds many Page Objects (readonly Row[]).",
+      ],
+      [
+        "childMethodPom",
+        "Page Object Child ChildMethodPom.rows is declared @ayme.child but returns many Page Objects; declare it @ayme.collection.",
+      ],
+      [
+        "collectionFieldPom",
+        "Page Object Child CollectionFieldPom.toolbar is declared @ayme.collection but holds one Page Object (Toolbar); declare it @ayme.child.",
+      ],
+      [
+        "parameterizedCollectionPom",
+        "Page Object Child ParameterizedCollectionPom.rows takes parameters; @ayme.collection declares a method without parameters.",
+      ],
+      [
+        "locatorMethodPom",
+        "Page Object Child LocatorMethodPom.cells is a method returning a Locator; declare a Locator collection as a field or getter.",
+      ],
+      [
+        "singleMethodPom",
+        "Page Object Child SingleMethodPom.toolbar returns one Page Object (Promise<Toolbar>); a Child Collection method returns an array of Page Objects.",
+      ],
+      [
+        "bothMarkersPom",
+        "Page Object Child BothMarkersPom.heading is declared more than once; mark it either @ayme.child or @ayme.collection.",
+      ],
+      [
+        "actionChildPom",
+        "Page Object Child ActionChildPom.rows is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.",
+      ],
+    ])("fails the build for %s", (fixture, message) => {
+      expect(() =>
+        derivePomManifests(
+          path.resolve(`src/fixtures/declaredChildErrors/${fixture}.ts`)
+        )
+      ).toThrow(message);
+    });
+
+    it("fails the build for a child description that is not a constant string", () => {
+      const fileName = path.resolve(
+        "src/fixtures/declaredChildErrors/descriptionPom.ts"
+      );
+      expect(() => derivePomManifests(fileName)).toThrow(
+        `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
+      );
+    });
+
+    it("inherits declared children through the class chain", () => {
+      const manifest = manifestForClass(
+        "inheritedDeclaredChildrenPom",
+        "InheritedDeclaredChildrenPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "title",
+          kind: "locator",
+          access: "field",
+          collection: false,
+          description: "The list's title.",
+        },
+        {
+          memberName: "rows",
+          kind: "locator",
+          access: "field",
+          collection: true,
+          description: "The list's rows.",
+        },
+        {
+          memberName: "items",
+          kind: "component",
+          access: "method",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ]);
+    });
+  });
+
   it("rejects intersections containing multiple annotated components", () => {
     expect(() => manifestFor("ambiguousAnnotatedChildrenPom")).toThrow(
       'Page Object Child "ambiguousChild" is ambiguous: FirstComponent, SecondComponent.'
