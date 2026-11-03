@@ -566,12 +566,24 @@ describe("derivePomManifests", () => {
         "Page Object Child AnyCollectionPom.parts has a type the build cannot resolve (Promise<any[]>).",
       ],
       [
+        "anyPromiseCollectionPom",
+        "Page Object Child AnyPromiseCollectionPom.parts has a type the build cannot resolve (Promise<any>).",
+      ],
+      [
+        "tupleChildPom",
+        "Page Object Child TupleChildPom.pair holds neither a Locator nor a Page Object ([Row, Row]).",
+      ],
+      [
         "arrayFieldPom",
         "Page Object Child ArrayFieldPom.rows holds an array of Page Objects (Row[]); declare a method without parameters that returns them.",
       ],
       [
         "childArrayFieldPom",
         "Page Object Child ChildArrayFieldPom.rows is declared @ayme.child but holds many Page Objects (readonly Row[]).",
+      ],
+      [
+        "childOnMethodPom",
+        "Page Object Child ChildOnMethodPom.toolbar is a method; @ayme.child declares a field or getter.",
       ],
       [
         "childMethodPom",
@@ -588,6 +600,10 @@ describe("derivePomManifests", () => {
       [
         "locatorMethodPom",
         "Page Object Child LocatorMethodPom.cells is a method returning a Locator; declare a Locator collection as a field or getter.",
+      ],
+      [
+        "noPomCollectionPom",
+        "Page Object Child NoPomCollectionPom.labels returns no Page Objects (Promise<string[]>).",
       ],
       [
         "singleMethodPom",
@@ -634,11 +650,13 @@ describe("derivePomManifests", () => {
         'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
       ],
     ])("fails the build for %s", (fixture, message) => {
+      // An Error with this message: `toThrow(message)` also passes when
+      // `undefined` is thrown.
       expect(() =>
         derivePomManifests(
           path.resolve(`src/fixtures/declaredChildErrors/${fixture}.ts`)
         )
-      ).toThrow(message);
+      ).toThrow(new Error(message));
     });
 
     it("fails the build for a child description that is not a constant string", () => {
@@ -646,7 +664,9 @@ describe("derivePomManifests", () => {
         "src/fixtures/declaredChildErrors/descriptionPom.ts"
       );
       expect(() => derivePomManifests(fileName)).toThrow(
-        `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
+        new Error(
+          `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
+        )
       );
     });
 
@@ -668,6 +688,40 @@ describe("derivePomManifests", () => {
       expect(manifest?.components.map(({ className }) => className)).toEqual([
         "Row",
       ]);
+    });
+
+    it("reads a Child Collection from its implementation past every overload signature", () => {
+      const manifest = manifestForClass(
+        "multiOverloadedCollectionPom",
+        "MultiOverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+    });
+
+    it("inherits a declared child from an anonymous class, without a description it has none", () => {
+      const manifest = manifestForClass(
+        "anonymousBase/page",
+        "AnonymousBasePom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "heading",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+      ]);
+      expect(manifest?.members[0]).not.toHaveProperty("description");
     });
 
     it("inherits declared children through the class chain", () => {
