@@ -649,6 +649,14 @@ describe("derivePomManifests", () => {
         "computedNamedChildPom",
         'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
       ],
+      [
+        "setterChildPom",
+        "Page Object Child SetterChildPom.part is a setter; only a field, getter or method can be a Page Object Child.",
+      ],
+      [
+        "setterCollectionPom",
+        "Page Object Child SetterCollectionPom.parts is a setter; only a field, getter or method can be a Page Object Child.",
+      ],
     ])("fails the build for %s", (fixture, message) => {
       // An Error with this message: `toThrow(message)` also passes when
       // `undefined` is thrown.

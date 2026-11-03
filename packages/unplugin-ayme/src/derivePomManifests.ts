@@ -390,7 +390,7 @@ function declaredChildValue(
  * public instance member fails the build: no one outside the class can read
  * it, so it cannot be a Page Object Child. So does one on a member whose name
  * is not an identifier, such as `"row"` or `["row"]`, which no Page Object
- * member is named by.
+ * member is named by, and one on a setter, which holds no child to read.
  */
 function rejectUnsupportedChildDeclarations(
   checker: ts.TypeChecker,
@@ -407,6 +407,10 @@ function rejectUnsupportedChildDeclarations(
     if (!member.name || !ts.isIdentifier(member.name))
       throw new Error(
         `${owner} is not named by an identifier; only a member with an identifier name can be a Page Object Child.`
+      );
+    if (ts.isSetAccessorDeclaration(member))
+      throw new Error(
+        `${owner} is a setter; only a field, getter or method can be a Page Object Child.`
       );
   }
   for (const base of baseClassDeclarations(checker, declaration))
