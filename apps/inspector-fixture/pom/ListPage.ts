@@ -19,6 +19,10 @@ export class ListPage {
   readonly clearButton: Locator;
   @ayme.collection
   readonly items: Locator;
+  @ayme.collection({
+    description: "The new item's fields: its text and whether it is urgent.",
+  })
+  readonly newItemFields: Locator;
 
   constructor(page: Page) {
     this.newItemInput = page.getByRole("textbox", { name: "New item" });
@@ -31,6 +35,7 @@ export class ListPage {
     this.items = page
       .getByRole("list", { name: "Items" })
       .getByRole("listitem");
+    this.newItemFields = page.getByRole("main").locator("input");
   }
 
   /** The items, as Page Objects a collection action runs on. */
