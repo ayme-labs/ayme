@@ -15,6 +15,7 @@ class Item {
 
 @ayme
 export class ConstOptionsCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }

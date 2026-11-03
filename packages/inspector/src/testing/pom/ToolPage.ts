@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
@@ -7,15 +8,21 @@ import { WhatTheModelSees } from "./WhatTheModelSees";
 /** A tool's page in the detail pane. */
 export class ToolPage extends PanelPart {
   /** The tool's name. */
+  @ayme.child
   readonly title: Locator;
   /** Its description; a tool without one shows none. */
+  @ayme.child
   readonly description: Locator;
   /** What kind of tool it is, e.g. "Browser tool" or "Node Peek tool". */
+  @ayme.child
   readonly kind: Locator;
   /** A Page object tool's link to its Page Object Model. */
+  @ayme.child
   readonly modelLink: Locator;
+  @ayme.child
   readonly modelSees: WhatTheModelSees;
   /** The tool's run card. */
+  @ayme.child
   readonly card: RunCard;
 
   constructor(detail: Locator) {

@@ -129,6 +129,7 @@ describe("derivePomManifests", () => {
           memberName: "actionButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
       ]);
     }
@@ -141,8 +142,18 @@ describe("derivePomManifests", () => {
     );
 
     expect(manifest?.components[0]?.members).toEqual([
-      { memberName: "root", kind: "locator", access: "field" },
-      { memberName: "child", kind: "locator", access: "field" },
+      {
+        memberName: "root",
+        kind: "locator",
+        access: "field",
+        collection: false,
+      },
+      {
+        memberName: "child",
+        kind: "locator",
+        access: "field",
+        collection: false,
+      },
     ]);
   });
 
@@ -154,11 +165,13 @@ describe("derivePomManifests", () => {
         memberName: "ownButton",
         kind: "locator",
         access: "field",
+        collection: false,
       },
       {
         memberName: "inheritedButton",
         kind: "locator",
         access: "field",
+        collection: false,
       },
     ]);
   });
@@ -267,21 +280,25 @@ describe("derivePomManifests", () => {
           memberName: "ownButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "middleButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "inheritedButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
         {
           memberName: "overriddenButton",
           kind: "locator",
           access: "field",
+          collection: false,
         },
       ])
     );
@@ -383,11 +400,13 @@ describe("derivePomManifests", () => {
         memberName: "browserLocator",
         kind: "locator",
         access: "field",
+        collection: false,
       },
       {
         memberName: "locatorGetter",
         kind: "locator",
         access: "getter",
+        collection: false,
       },
       {
         memberName: "componentCollection",
@@ -430,8 +449,18 @@ describe("derivePomManifests", () => {
         className: "AnnotatedComponent",
         file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/annotatedChildrenPom.ts`,
         members: [
-          { memberName: "root", kind: "locator", access: "field" },
-          { memberName: "child", kind: "locator", access: "field" },
+          {
+            memberName: "root",
+            kind: "locator",
+            access: "field",
+            collection: false,
+          },
+          {
+            memberName: "child",
+            kind: "locator",
+            access: "field",
+            collection: false,
+          },
         ],
         tools: [],
       },
@@ -854,7 +883,12 @@ describe("derivePomManifests", () => {
           className: "PageX",
           file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`,
           members: [
-            { memberName: "heading", kind: "locator", access: "field" },
+            {
+              memberName: "heading",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
           ],
           components: [],
           tools: [],

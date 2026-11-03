@@ -7,6 +7,8 @@ class Toolbar {}
 @ayme({ root: (self: RecursiveRootlessDescendantPom) => self.element })
 export class RecursiveRootlessDescendantPom {
   element!: Locator;
+  @ayme.child
   toolbar = new Toolbar();
+  @ayme.child
   next!: RecursiveRootlessDescendantPom;
 }

@@ -4,6 +4,7 @@ import { ayme } from "@ayme-dev/ayme";
 
 @ayme
 export abstract class BaseMenu {
+  @ayme.child
   readonly baseItem!: Locator;
 
   @ayme.action({ description: "Open the menu." })
@@ -11,6 +12,7 @@ export abstract class BaseMenu {
 }
 
 export class UserMenu extends BaseMenu {
+  @ayme.child
   readonly signOutItem!: Locator;
 
   @ayme.action({ description: "Sign out." })

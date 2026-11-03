@@ -5,6 +5,7 @@ class Toolbar {}
 
 @ayme
 export class RootlessReturnPom {
+  @ayme.child
   toolbar = new Toolbar();
 
   @ayme.action

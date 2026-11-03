@@ -20,6 +20,7 @@ export class CartItem {
 
 @ayme
 export class Cart {
+  @ayme.collection
   async items(): Promise<CartItem[]> {
     return [];
   }

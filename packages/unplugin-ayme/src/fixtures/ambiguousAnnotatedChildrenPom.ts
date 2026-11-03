@@ -8,5 +8,6 @@ class SecondComponent {}
 
 @ayme
 export class AmbiguousAnnotatedChildrenPom {
+  @ayme.child
   readonly ambiguousChild!: FirstComponent & SecondComponent;
 }

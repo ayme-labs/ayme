@@ -14,6 +14,7 @@ class Item {
 
 @ayme
 export class StackedDecoratorsCollectionPom {
+  @ayme.collection
   async items(): Promise<Item[]> {
     return [];
   }

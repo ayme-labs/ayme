@@ -5,5 +5,6 @@ import { Row as ListRow } from "./listA";
 // A Page Object named like one of its Children.
 @ayme
 export class Row {
+  @ayme.child
   item!: ListRow;
 }

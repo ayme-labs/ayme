@@ -5,6 +5,7 @@ import type { Row as OtherRow } from "./listB";
 
 @ayme
 export class ReturningListsPage {
+  @ayme.child
   row!: Row;
 
   @ayme.action
