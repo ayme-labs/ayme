@@ -16,6 +16,13 @@ class DeclaredBase {
   async items(): Promise<Item[]> {
     return [];
   }
+
+  // Inherited but not declared, so no Page Object Child of any subclass.
+  readonly undeclaredRows!: Locator;
+  readonly undeclaredItem!: Item;
+  async undeclaredItems(): Promise<Item[]> {
+    return [];
+  }
 }
 
 export class InheritedDeclaredChildrenPom extends DeclaredBase {

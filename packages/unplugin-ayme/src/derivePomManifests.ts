@@ -57,8 +57,8 @@ export function derivePomManifests(
 
 /**
  * `onSkipped` receives the public methods of this file's Page Object Models
- * and their Page Object Children that are not actions, Page Object Children
- * themselves aside.
+ * and their Page Object Children that are neither actions nor declared
+ * Page Object Children.
  */
 export function derivePomManifestsFromProgram(
   fileName: string,
@@ -124,8 +124,9 @@ type PomChild = {
 
 /**
  * The role of a Page Object member: a Page Object Child, a Page Object Action,
- * a public method that is neither, or nothing Ayme reads. The action marker
- * decides: a marked method is an action, never also a child.
+ * a public method that is neither, or nothing Ayme reads. Markers decide:
+ * `@ayme.child` and `@ayme.collection` declare a child, `@ayme.action` an
+ * action, and an unmarked member is neither, whatever its type.
  */
 type MemberRole =
   | { role: "child"; child: PomChild }
@@ -152,50 +153,11 @@ function memberRole(
       child: declaredChild(checker, member, declaration),
     };
 
-  // A member without a child declaration is still inferred from its type.
-  if (ts.isMethodDeclaration(member)) {
-    const description = toolDescription(checker, member, memberName);
-    if (description)
-      return { role: "action", member, methodName: memberName, description };
-    const child =
-      member.parameters.length === 0
-        ? pomChild(checker, member, memberName)
-        : undefined;
-    return child
-      ? { role: "child", child }
-      : { role: "method", member, methodName: memberName };
-  }
-  const child = pomChild(checker, member, memberName);
-  return child && { role: "child", child };
-}
-
-function pomChild(
-  checker: ts.TypeChecker,
-  member: ts.ClassElement,
-  memberName: string
-): PomChild | undefined {
-  const memberInfo = memberValueInfo(checker, member);
-  if (!memberInfo) return undefined;
-  const { access, type } = memberInfo;
-
-  if (access !== "method" && isLocatorType(type))
-    return { member: { memberName, kind: "locator", access } };
-
-  const declaration =
-    access === "method"
-      ? componentCollectionDeclaration(checker, type, memberName)
-      : componentDeclaration(checker, type, memberName);
-  if (!declaration?.name) return undefined;
-  return {
-    member: {
-      memberName,
-      kind: "component",
-      access,
-      componentClassName: declaration.name.text,
-      collection: access === "method",
-    },
-    declaration,
-  };
+  if (!ts.isMethodDeclaration(member)) return undefined;
+  const description = toolDescription(checker, member, memberName);
+  return description
+    ? { role: "action", member, methodName: memberName, description }
+    : { role: "method", member, methodName: memberName };
 }
 
 type ChildMarker = "child" | "collection";
@@ -242,8 +204,8 @@ function childDeclaration(
  * The Page Object Child a member declares. The member's type must agree
  * with the declaration: `@ayme.child` on a field or getter holding a
  * Locator or a Page Object, `@ayme.collection` on a field or getter holding
- * a Locator or on a method without parameters returning an array of Page
- * Objects. Anything else fails the build.
+ * a Locator or on a method without parameters returning `Promise<T[]>` or
+ * `readonly T[]` of a Page Object. Anything else fails the build.
  */
 function declaredChild(
   checker: ts.TypeChecker,
@@ -289,6 +251,16 @@ function declaredChild(
           )
         : fail(`returns no Page Objects (${typeText})`);
     }
+    // Returned synchronously, the array must be read-only.
+    if (
+      awaitedType(checker, type) === type &&
+      !isNamedType(type, "ReadonlyArray")
+    ) {
+      const item = itemsDeclaration.name.text;
+      throw fail(
+        `returns a mutable array (${typeText}); a Child Collection method returns Promise<${item}[]> or readonly ${item}[]`
+      );
+    }
     return {
       member: {
         memberName,
@@ -332,6 +304,51 @@ function declaredChild(
     },
     declaration,
   };
+}
+
+/**
+ * A child declaration on a member of the class or an ancestor that is not a
+ * public instance member fails the build: no one outside the class can read
+ * it, so it cannot be a Page Object Child.
+ */
+function rejectNonPublicChildDeclarations(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+) {
+  for (const member of declaration.members) {
+    const declared = (
+      ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : []
+    ).some(
+      (decorator) =>
+        isMemberMarker(decorator, "ayme", "child") ||
+        isMemberMarker(decorator, "ayme", "collection")
+    );
+    if (!declared) continue;
+    const modifiers = ts.canHaveModifiers(member)
+      ? (ts.getModifiers(member) ?? [])
+      : [];
+    const visibility =
+      member.name && ts.isPrivateIdentifier(member.name)
+        ? "private"
+        : (
+            [
+              [ts.SyntaxKind.PrivateKeyword, "private"],
+              [ts.SyntaxKind.ProtectedKeyword, "protected"],
+              [ts.SyntaxKind.StaticKeyword, "static"],
+            ] as const
+          ).find(([kind]) => modifiers.some((m) => m.kind === kind))?.[1];
+    if (!visibility) continue;
+    const memberName =
+      member.name &&
+      (ts.isIdentifier(member.name) || ts.isPrivateIdentifier(member.name))
+        ? member.name.text
+        : member.name?.getText();
+    throw new Error(
+      `Page Object Child ${declaration.name?.text}.${memberName} is ${visibility}; only a public instance member can be a Page Object Child.`
+    );
+  }
+  for (const base of baseClassDeclarations(checker, declaration))
+    rejectNonPublicChildDeclarations(checker, base);
 }
 
 /** `any`, `unknown`, or a type the program could not resolve. */
@@ -478,6 +495,7 @@ function classManifest(
   const childReferences: ts.ClassDeclaration[] = [];
   const returnReferences: ts.ClassDeclaration[] = [];
 
+  rejectNonPublicChildDeclarations(checker, declaration);
   for (const member of classMembers(checker, declaration)) {
     const role = memberRole(checker, member);
     if (role?.role === "child") {
@@ -673,26 +691,6 @@ function returnPomDeclarations(
     );
   }
   return pomDeclarations(checker, type);
-}
-
-function componentCollectionDeclaration(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  memberName: string
-) {
-  if (!isNamedType(type, "Promise")) return undefined;
-
-  const promiseType = type as ts.TypeReference;
-  const promiseValue = checker.getTypeArguments(promiseType)[0];
-  if (!promiseValue || !checker.isArrayType(promiseValue)) return undefined;
-
-  const arrayElement = checker.getIndexTypeOfType(
-    promiseValue,
-    ts.IndexKind.Number
-  );
-  return arrayElement
-    ? componentDeclaration(checker, arrayElement, memberName)
-    : undefined;
 }
 
 function componentDeclaration(

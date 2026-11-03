@@ -43,6 +43,19 @@ export class AnnotatedChildrenPom {
     "#fynk"
   );
 
+  // Undeclared look-alikes of each child shape: none is a Page Object Child.
+  readonly undeclaredLocator!: Locator;
+  get undeclaredLocatorGetter(): Locator {
+    return undefined as unknown as Locator;
+  }
+  readonly undeclaredComponent!: AnnotatedComponent;
+  async undeclaredCollection(): Promise<AnnotatedComponent[]> {
+    return [];
+  }
+  undeclaredReadonlyCollection(): readonly AnnotatedComponent[] {
+    return [];
+  }
+
   readonly asyncField!: Promise<AnnotatedComponent>;
   readonly synchronousChildren!: AnnotatedComponent[];
   readonly mapChildren!: Map<string, AnnotatedComponent>;

@@ -545,7 +545,6 @@ describe("derivePomManifests", () => {
           componentClassName: "Row",
           collection: true,
         },
-        { memberName: "inferred", kind: "locator", access: "field" },
       ]);
       expect(manifest?.components.map(({ className }) => className)).toEqual([
         "Toolbar",
@@ -601,6 +600,30 @@ describe("derivePomManifests", () => {
       [
         "actionChildPom",
         "Page Object Child ActionChildPom.rows is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.",
+      ],
+      [
+        "mutableArrayMethodPom",
+        "Page Object Child MutableArrayMethodPom.visibleRows returns a mutable array (Row[]); a Child Collection method returns Promise<Row[]> or readonly Row[].",
+      ],
+      [
+        "privateChildPom",
+        "Page Object Child PrivateChildPom.heading is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "protectedChildPom",
+        "Page Object Child ProtectedChildPom.rows is protected; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "hashPrivateChildPom",
+        "Page Object Child HashPrivateChildPom.#heading is private; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "staticChildPom",
+        "Page Object Child StaticChildPom.heading is static; only a public instance member can be a Page Object Child.",
+      ],
+      [
+        "inheritedPrivateChildPom",
+        "Page Object Child ListBase.rows is private; only a public instance member can be a Page Object Child.",
       ],
     ])("fails the build for %s", (fixture, message) => {
       expect(() =>
@@ -802,7 +825,8 @@ describe("derivePomManifests", () => {
       {
         fixture: "userMenu",
         className: "UserMenu",
-        memberNames: ["signOutItem", "baseItem"],
+        // Its own undeclared Locator is no Page Object Child.
+        memberNames: ["baseItem"],
       },
       {
         fixture: "barrelUserMenu",
@@ -810,7 +834,7 @@ describe("derivePomManifests", () => {
         memberNames: ["baseItem"],
       },
     ])(
-      "recognises an undecorated subclass in $fixture.ts of a base decorated in another module",
+      "recognises an undecorated subclass in $fixture of a base decorated in another module, with only declared children",
       ({ fixture, className, memberNames }) => {
         const manifests = manifestsOf(`crossFile/${fixture}`);
         expectNames(

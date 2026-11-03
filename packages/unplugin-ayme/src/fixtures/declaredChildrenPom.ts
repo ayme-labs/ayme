@@ -60,6 +60,6 @@ export class DeclaredChildrenPom {
     return [];
   }
 
-  // Undeclared members are still inferred until declarations are required.
-  readonly inferred!: Locator;
+  // Not declared, so not a Page Object Child whatever its type.
+  readonly undeclared!: Locator;
 }

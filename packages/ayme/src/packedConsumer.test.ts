@@ -573,8 +573,14 @@ import { usePageObject } from '@ayme-dev/vue';
 import { usePageObject as useSveltePageObject } from '@ayme-dev/svelte';
 @ayme
 class Pom {
+  @ayme.child
   readonly input: Locator;
-  constructor(page: Page) { this.input = page.getByRole('textbox', { name: 'Name' }); }
+  // Not declared, so no Page Object Child.
+  readonly helper: Locator;
+  constructor(page: Page) {
+    this.input = page.getByRole('textbox', { name: 'Name' });
+    this.helper = page.getByRole('status');
+  }
   @ayme.action({ description: 'Fill and submit the input.' })
   async act(value: string) {
     await this.input.fill(value, { timeout: 10 });
@@ -718,7 +724,7 @@ assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
 const manifest = JSON.parse(registration.slice('registerCompiledPom(Pom, '.length, -2));
-assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'field' }]);
+assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'field', collection: false }]);
 assert.deepEqual(manifest.tools, [{
   methodName: 'act',
   toolName: 'Pom.act',

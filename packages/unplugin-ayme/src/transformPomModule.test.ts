@@ -135,7 +135,10 @@ describe("a subclass in a module without the decorator", () => {
     expect(result).not.toBeNull();
     expect(createPomProgram).toHaveBeenCalledTimes(1);
     expect(result?.code).toContain("registerCompiledPom(UserMenu, {");
-    expect(result?.code).toContain('"memberName":"signOutItem"');
+    // Inherited and declared on the base; its own undeclared Locator is no
+    // Page Object Child.
+    expect(result?.code).toContain('"memberName":"baseItem"');
+    expect(result?.code).not.toContain('"memberName":"signOutItem"');
     expect(result?.code).toContain('"toolName":"UserMenu.open"');
   });
 
@@ -307,7 +310,7 @@ describe("a build without Ayme", () => {
     const code = transform(...fixture("annotatedChildrenPom"))?.code;
 
     expect(code).toMatch(
-      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["ordinaryMethod","locatorMethod","componentCollection",/
+      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["undeclaredCollection","undeclaredReadonlyCollection","ordinaryMethod","locatorMethod","componentCollection",/
     );
   });
 
