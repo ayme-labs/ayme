@@ -170,7 +170,7 @@ it("leaves out a malformed run", () => {
   ).toEqual([before(succeeded)]);
 });
 
-it.each(["locator", "ref", "member", "target", "context"])(
+it.each(["locator", "ref", "value", "member", "target", "context"])(
   "discards a saved interaction with a malformed %s",
   (field) => {
     expect(

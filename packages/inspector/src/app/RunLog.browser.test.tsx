@@ -266,6 +266,9 @@ it("names each Interaction by the member whose locator it names, for any Caller"
     ]);
   const shown = await run.interactionList();
   startedAyme.runs.start("snapshot", {}, "webmcp").succeed();
+  await expect
+    .poll(() => inspector.runs.latest("snapshot").status())
+    .toBe("Succeeded");
   await expect.poll(() => run.interactionList()).toEqual(shown);
 });
 
@@ -783,9 +786,15 @@ it("does not invent a generic name for an unnamed target", async () => {
 });
 
 it("discards pending target descriptions when the log drops their run", async () => {
+  const unhandled = vi.fn();
+  window.addEventListener("unhandledrejection", unhandled);
+  unmounts.push(() =>
+    window.removeEventListener("unhandledrejection", unhandled)
+  );
   renderApp();
   await inspector.navigator.showLens("Structure");
   await inspector.structure.pick("e2");
+  await inspector.runs.showAll();
   const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
   click.interact({
     operation: "click",
@@ -797,12 +806,20 @@ it("discards pending target descriptions when the log drops their run", async ()
     Promise.withResolvers<
       Awaited<ReturnType<typeof listRegisteredPomTargets>>
     >();
-  vi.mocked(listRegisteredPomTargets).mockReturnValueOnce(pending.promise);
+  vi.mocked(listRegisteredPomTargets).mockReturnValue(pending.promise);
   click.succeed();
   startedAyme.runs.newDocument();
-  pending.resolve([]);
   await expect.poll(() => inspector.runs.runs.count()).toBe(0);
   await expect
     .poll(() => sessionStorage.getItem("ayme-inspector:runs"))
     .toBe("[]");
+  pending.resolve([]);
+  startedAyme.runs.start("snapshot", {}, "webmcp").succeed();
+  await expect
+    .poll(() => inspector.runs.latest("snapshot").status())
+    .toBe("Succeeded");
+  expect(await inspector.runs.runs.count()).toBe(1);
+  // The browser runner logs unhandled rejections without failing the test.
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  expect(unhandled).not.toHaveBeenCalled();
 });

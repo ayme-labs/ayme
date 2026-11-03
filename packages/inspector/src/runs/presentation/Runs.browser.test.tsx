@@ -950,3 +950,25 @@ it("omits an empty interaction list and results on unfinished or failed runs", a
   expect(await runsView.run(1).resultToggle.count()).toBe(0);
   expect(await runsView.run(2).resultToggle.count()).toBe(0);
 });
+
+it("shows a keyboard input's key without inventing an element to highlight", async () => {
+  renderRuns({
+    runs: [
+      aRun({
+        toolName: "press_key",
+        arguments: { key: "Enter" },
+        interactions: [
+          anInteraction({
+            operation: "keyboard.press",
+            locator: undefined,
+            value: "Enter",
+          }),
+        ],
+      }),
+    ],
+  });
+  const run = runsView.run(0);
+  await expect.poll(() => run.toggle.textContent()).toContain('"Enter"');
+  expect(await run.toggle.getByTitle(/highlight/).count()).toBe(0);
+  expect(await run.arguments.count()).toBe(0);
+});
