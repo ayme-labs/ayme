@@ -1,6 +1,6 @@
 # Page Object Models
 
-How to mark a Page Object Model and its actions so Ayme turns them into Page Object Tools, how those tools are named, when a page or a component is on the page, and how Page Object Children become tools too.
+How to mark a Page Object Model and its actions so Ayme turns them into Page Object Tools, how those tools are named, when a page or a component is on the page, and how to declare its Page Object Children.
 
 ## Mark a model and its actions
 
@@ -28,7 +28,7 @@ export class ProjectsPage {
 ```
 
 - Both decorators take an optional description, a constant string: a string literal, a template literal without `${...}`, or a `+` concatenation of those. The build reads it from the source and fails on any other expression. `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes without one over Ayme MCP. WebMCP requires a description, so there it gets `Run createProject.` for the action above. An action that returns another Page Object gets `Then shows <Model>.` after its description, or `Shows <Model>.` when it has none. The sentence names the returned class, as in `Shows ResponseFilterPopover.` A description says what the action means for the product beyond what an agent sees on the page: who may do it, and what it commits that outlives the page or reaches other people. An action that only changes the UI needs none. A model's description says the same for the surface: whose data it shows, how far it reaches (one project or the whole workspace), and what it holds that outlives the page. A model whose name and page say enough needs none. Agents read it in the model's definition, which the `snapshot` tool returns. A subclass inherits it, from the nearest base class that declares one, and may declare its own. `@ayme` also takes `present` and `root`, which say when the model is on the page; see [Pages and components](#pages-and-components). `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
-- Only marked actions become tools. Public members are not published on their own.
+- Only marked actions become tools. Public members are not published on their own, and enter the model only when you declare them as [Page Object Children](#page-object-children).
 - A class that extends an `@ayme` class is a Page Object Model too, even without the decorator. Its actions still need `@ayme.action`.
 - No Ayme base class is needed, and the same class keeps working in your Playwright tests.
 
@@ -103,6 +103,7 @@ export abstract class AppComponent {
 }
 
 export class ListItem extends AppComponent {
+  @ayme.child
   readonly archiveButton = this.container.getByRole("button", {
     name: "Archive",
   });
@@ -116,25 +117,36 @@ export class ListItem extends AppComponent {
 
 - The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state marks that element with the Page Object's class, and every rooted instance's `ref` is that element's.
 - `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. `root` and `present` are inherited separately: a drawer that extends `AppComponent` and adds `present` is present while its root is on the page and it is open.
-- The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. Only the option anchors a model: a model whose class chain declares none is root-less, also when it has a member named `root`.
+- The member that holds the root locator, `container` here, needs no declaration. A Locator declared as a Page Object Child that resolves to the root's element is the root, not a child, so the model does not list it twice. Only the option anchors a model: a model whose class chain declares none is root-less, also when it has a member named `root`.
 - The [root reference](../reference/ayme.md#page-object-root) defines which root-less classes can be registered.
 
 Presence lists tools; availability says whether they would run. A present Page Object whose root a click would not reach, such as one under an open dialog, keeps its tools listed, flagged unavailable with a reason that names what is in the way, and a call is refused with that reason. [`ayme.tools`](../reference/ayme.md#aymetools) has the form of the reason.
 
 ## Page Object Children
 
-A model can hold other Page Objects as Page Object Children: a field or getter typed as a model holds one, and an async method without parameters that returns an array of a model holds several, a collection. Their actions become tools too, named after their class:
+A model declares its parts as Page Object Children: `@ayme.child` declares one element or one Page Object, and `@ayme.collection` a Child Collection, any number of elements or of Page Objects of one model. The actions of a child Page Object become tools too, named after their class:
 
 ```ts
 @ayme
 export class ListPage {
-  readonly archiveDialog: ArchiveDialog; // one Page Object Child
+  @ayme.child
+  readonly heading: Locator; // one element
 
+  @ayme.collection({ description: "The filters applied to the list." })
+  readonly filterChips: Locator; // any number of elements
+
+  @ayme.child
+  readonly archiveDialog: ArchiveDialog; // one Page Object
+
+  readonly itemRows: Locator; // not declared: a helper, not a child
+
+  @ayme.collection
   async items(): Promise<ListItem[]> {
-    // several Page Object Children: a collection
+    // any number of Page Objects
     const rows = await this.itemRows.all();
     return rows.map((row) => new ListItem(row));
   }
+  // ...
 }
 
 // Anchored at the row: AppComponent names the Page Object Root, above.
@@ -146,12 +158,38 @@ export class ListItem extends AppComponent {
 }
 ```
 
+Each decorator fits these members, and only a public instance member can be declared:
+
+| Decorator          | Member                      | Its type                                                                   |
+| ------------------ | --------------------------- | -------------------------------------------------------------------------- |
+| `@ayme.child`      | A field or getter           | A `Locator` expected to match one element, or a Page Object                |
+| `@ayme.collection` | A field or getter           | A `Locator` expected to match any number of elements                       |
+| `@ayme.collection` | A method without parameters | `Promise<T[]>`, `Promise<readonly T[]>` or `readonly T[]` of a Page Object |
+
+- Any other declaration fails the build with an error that names the class and the member. That covers a member holding neither a Locator nor a Page Object, a type the build cannot resolve, such as `any`, a decorator the type disagrees with, such as `@ayme.child` on a method returning Page Objects, a member also marked `@ayme.action`, and an array field of Page Objects: declare a method that returns them instead, so they are the ones the page shows when it is read. The [build plugin's errors](../reference/build-plugin.md#errors) list the messages.
+- A member that is not declared is not a child, whatever it holds, and appears nowhere in the model, so a public Locator can serve your tests and helper code. A Page Object held only by undeclared members is not observed: its Page Object Root is not marked in the page state, and its model's tools are not published unless the model is reached another way. Nothing warns about a forgotten `@ayme.child`; the [Inspector](inspector.md)'s Model view shows what the model holds.
+- A child declared on a base class is a child of every subclass.
+- Both decorators take an optional description, `@ayme.child({ description })`, a constant string under the same rules as an [action's](#mark-a-model-and-its-actions). Give one when the member's name and the page do not say what the part is for. Agents read it as a `//` comment after the member in the model's definition, which the `snapshot` tool returns; the Inspector's Model view shows it too.
+- A Locator declared `@ayme.child` that matches several elements logs a [warning](../reference/errors.md#messages) to the console, such as `ListPage: its heading matches 2 elements.`, and the model's tools stay published. An action on such a Locator fails in Playwright's strict mode, so narrow it, or declare it `@ayme.collection` if it stands for many.
+- Each element of a Locator collection is named by its index, as in `filterChips[1]`, in the Inspector's Structure view and Runs.
+
+The definition `snapshot` gives agents for `ListPage` lists its children before its actions. A bare member is a Locator, `[]` marks a collection, and `//` starts a description:
+
+```text
+ListPage
+  heading
+  filterChips[] // The filters applied to the list.
+  archiveDialog: ArchiveDialog
+  items: ListItem[]
+```
+
 For example, `ArchiveDialog.confirm({ ref: "e12" })` calls `confirm` on the dialog whose root has ref `e12` in `snapshot`. The [calling rules](../reference/ayme.md#page-object-root) apply to pages, single children and collection items.
 
 A collection's items can hold items of their own model:
 
 ```ts
 export class ListItem extends AppComponent {
+  @ayme.collection
   async subItems(): Promise<ListItem[]> {
     // ...
   }
@@ -187,6 +225,7 @@ const canRemove = async (self: SettingsPanel) =>
   "This dashboard is built in or the last of its type";
 
 export class SettingsPanel extends AppComponent {
+  @ayme.child
   readonly removeButton = this.container.getByTestId("removeButton");
 
   @ayme.action({

@@ -17,8 +17,14 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@ayme` or `@ayme({ description, root, present })`           | A class as a Page Object Model. Its subclasses are Page Object Models too. A subclass inherits `description`, `root` and `present` and may declare its own. `root` is the model's root predicate and `present` its presence predicate; see below.                 |
 | `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. Agents read its description followed by the Page Objects it returns; see [Page Object Models](../guides/page-object-models.md). `available` is the action's availability predicate; see below. |
+| `@ayme.child` or `@ayme.child({ description })`              | A field or getter as a Page Object Child: a Locator expected to match one element, or one Page Object.                                                                                                                                                            |
+| `@ayme.collection` or `@ayme.collection({ description })`    | A field or getter holding a Locator, or a method without parameters returning Page Objects, as a Child Collection.                                                                                                                                                |
 
 [Page Object Models](../guides/page-object-models.md) covers naming, input schemas and Page Object Children.
+
+### Page Object Children
+
+`@ayme.child` and `@ayme.collection` take the same options (`AymeChildOptions`): an optional `description`, a constant string that agents read after the member in its model's definition. Both type-check with TypeScript's legacy and standard decorators, as `@ayme.action` does. The build plugin reads them from the source: only a declared member is a Page Object Child, and a declaration whose member does not fit fails the build. At runtime they keep nothing, and a [build without Ayme](build-plugin.md#include-ayme-in-a-build) leaves them out with the rest of the model, as it does `@ayme.action`. [Page Object Children](../guides/page-object-models.md#page-object-children) has the members each fits and what an undeclared member is.
 
 ### Action availability
 
@@ -34,7 +40,7 @@ Availability never adds or withdraws a tool. [`ayme.tools`](#aymetools) says how
 
 ### Page Object root
 
-`root` is a root predicate, `(self) => Locator | Promise<Locator>` (`RootPredicate`). The Locator it answers names the Page Object Root: the Page Object is present while the locator resolves to one rendered element, the page state marks that element with the Page Object's class, every tool of the class takes that element's Structural Ref as `ref`, and availability is measured at it. Declared as its own function: `const rootOf = (self: AppComponent) => self.container`. A locator member that resolves to the root's element is the root, not a child, so it is listed once, also when it is a getter that builds a fresh Locator on each read. A predicate that throws makes the Page Object absent, and a child's observation records what it threw.
+`root` is a root predicate, `(self) => Locator | Promise<Locator>` (`RootPredicate`). The Locator it answers names the Page Object Root: the Page Object is present while the locator resolves to one rendered element, the page state marks that element with the Page Object's class, every tool of the class takes that element's Structural Ref as `ref`, and availability is measured at it. Declared as its own function: `const rootOf = (self: AppComponent) => self.container`. A Locator declared as a Page Object Child that resolves to the root's element is the root, not a child, so it is listed once, also when it is a getter that builds a fresh Locator on each read. A predicate that throws makes the Page Object absent, and a child's observation records what it threw.
 
 Each action is published once per class. A rooted class's tools take `{ ref, args }`, for pages, single children and collection items alike. `ref` names the instance's own root, and `args` holds the action's arguments. Omit `args` when the action needs no input. Two instances of one class on the same root element count as one instance. A ref that is not a root of an instance the tool covers is refused with the ref and class named. A root-less class's tools take the action's arguments directly.
 
