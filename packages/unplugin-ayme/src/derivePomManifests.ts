@@ -178,7 +178,8 @@ function childDeclaration(
   const decorated = overloadImplementation(member);
   const decorators = ts.canHaveDecorators(decorated)
     ? (ts.getDecorators(decorated) ?? [])
-    : [];
+    : // Stryker disable next-line ArrayDeclaration: equivalent, a public member named by an identifier can always have decorators.
+      [];
   const marks = decorators.flatMap((decorator) =>
     (["child", "collection"] as const)
       .filter((marker) => isMemberMarker(decorator, "ayme", marker))
@@ -207,21 +208,21 @@ function childDeclaration(
  */
 function overloadImplementation(member: ts.ClassElement): ts.ClassElement {
   if (
+    // Stryker disable next-line ConditionalExpression,LogicalOperator: equivalent, it only skips a search that finds no other implementation.
     !ts.isMethodDeclaration(member) ||
     member.body ||
     !ts.isClassLike(member.parent)
   )
     return member;
-  const { members } = member.parent;
+  // TypeScript allows one implementation per method name.
   return (
-    members
-      .slice(members.indexOf(member) + 1)
-      .find(
-        (other) =>
-          ts.isMethodDeclaration(other) &&
-          other.body !== undefined &&
-          other.name.getText() === member.name.getText()
-      ) ?? member
+    member.parent.members.find(
+      (other) =>
+        // Stryker disable next-line ConditionalExpression: equivalent, only a method has a body here.
+        ts.isMethodDeclaration(other) &&
+        other.body !== undefined &&
+        other.name.getText() === member.name.getText()
+    ) ?? member
   );
 }
 
@@ -427,8 +428,10 @@ function hasChildMarker(member: ts.ClassElement) {
 function nonPublicVisibility(member: ts.ClassElement) {
   if (member.name && ts.isPrivateIdentifier(member.name)) return "private";
   const modifiers = ts.canHaveModifiers(member)
-    ? (ts.getModifiers(member) ?? [])
-    : [];
+    ? // Stryker disable next-line ArrayDeclaration: equivalent, no modifier matches an item that is not one.
+      (ts.getModifiers(member) ?? [])
+    : // Stryker disable next-line ArrayDeclaration: equivalent, a member with decorators can always have modifiers.
+      [];
   return (
     [
       [ts.SyntaxKind.PrivateKeyword, "private"],
@@ -438,12 +441,12 @@ function nonPublicVisibility(member: ts.ClassElement) {
   ).find(([kind]) => modifiers.some((m) => m.kind === kind))?.[1];
 }
 
-/** A member's name as errors show it: `#row`, `"row"` or `["row"]` too. */
+/**
+ * A member's name as errors show it: `#row`, `"row"` or `["row"]` too. A
+ * member with decorators always has one.
+ */
 function childMemberName(member: ts.ClassElement) {
-  return member.name &&
-    (ts.isIdentifier(member.name) || ts.isPrivateIdentifier(member.name))
-    ? member.name.text
-    : member.name?.getText();
+  return member.name!.getText();
 }
 
 /** `any`, `unknown`, or a type the program could not resolve. */
