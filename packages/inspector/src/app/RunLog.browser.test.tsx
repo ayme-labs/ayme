@@ -271,9 +271,12 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
       locator: "getByRole('button', { name: 'Save' })",
     },
   ]);
-  vi.mocked(getPageStateForElements).mockResolvedValue({
-    refs: ["e2"],
-  } as Awaited<ReturnType<typeof getPageStateForElements>>);
+  vi.mocked(lookAtPageStateForDocument).mockResolvedValue({
+    ...(await lookAtPageStateForDocument(document)),
+    elementsByRef: new Map([
+      ["e2" as NonNullable<Interaction["ref"]>, document.body],
+    ]),
+  });
   const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
   click.interact({
     operation: "click",
@@ -286,6 +289,7 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
   await expect
     .poll(() => inspector.runs.latest("click").toggle.textContent())
     .toContain("Editor.saveButton");
+  expect(getPageStateForElements).not.toHaveBeenCalled();
 });
 
 it("names a newly added target from the recorded page state before the Inspector's look catches up", async () => {

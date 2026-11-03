@@ -1,12 +1,11 @@
-import { nodeLabel } from "../../shared";
 import type { StructureNode, StructureTree } from "../../structure";
-import type { RunInteraction } from "./run";
+import type { InteractionDescription } from "./run";
 
 /** Describe the actual target, retaining a containing object's identity as context only. */
 export function interactionTarget(
   ref: string | undefined,
   structure: StructureTree
-): Pick<RunInteraction, "member" | "target" | "context"> {
+): Omit<InteractionDescription, "target"> {
   if (!ref) return {};
   function visit(
     nodes: readonly StructureNode[],
@@ -16,7 +15,6 @@ export function interactionTarget(
       if (node.ref === ref)
         return {
           ...(node.member ? { member: node.member } : {}),
-          ...(nodeLabel(node) === "generic" ? {} : { target: nodeLabel(node) }),
           ...(context ? { context } : {}),
         };
       const found = visit(node.children, node.owner ?? context);

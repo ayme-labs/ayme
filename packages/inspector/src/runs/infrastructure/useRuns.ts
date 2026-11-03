@@ -24,7 +24,7 @@ import {
 } from "../domain/logRuns";
 import type {
   CollectionItem,
-  RunInteraction,
+  InteractionDescription,
   ToolArguments,
 } from "../domain/run";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
@@ -67,7 +67,7 @@ export function useRuns({
   /** Reads the latest look synchronously, before an interaction changes the page. */
   describeInteraction: (
     interaction: Interaction
-  ) => Pick<RunInteraction, "member" | "target" | "context">;
+  ) => Omit<InteractionDescription, "target">;
 }) {
   const [stored, setStored] = useTabState(runsKey, decodeRuns, encodeRuns);
   // The rows kept from before the panel mounted, read once.
@@ -117,10 +117,7 @@ export function useRuns({
     // The Runs seen so far, the ended Runs whose Interactions have been
     // named, and the agent's image Runs whose file has been noted, by row id.
     const seen = new Set<string>();
-    const descriptions = new Map<
-      string,
-      ReturnType<typeof describeInteraction>[]
-    >();
+    const descriptions = new Map<string, InteractionDescription[]>();
     const described = new Set<string>();
     const saved = new Set<string>();
     let listedRuns = NO_RUNS;
@@ -174,9 +171,17 @@ export function useRuns({
         if (run.status === "running" || described.has(rowId)) continue;
         described.add(rowId);
         if (!run.interactions.length) continue;
-        void interactionMembers(run.interactions).then((members) =>
-          note(rowId, { members })
-        );
+        void interactionMembers(run.interactions).then((members) => {
+          const captured = descriptions.get(rowId);
+          if (!captured) return;
+          const resolved = captured.map((description, index) =>
+            description.member || !members[index]
+              ? description
+              : { ...description, member: members[index] }
+          );
+          descriptions.set(rowId, resolved);
+          note(rowId, { descriptions: resolved });
+        });
       }
     };
 

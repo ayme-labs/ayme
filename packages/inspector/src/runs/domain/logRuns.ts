@@ -4,8 +4,8 @@ import { runImageOf } from "./runImage";
 import type {
   ChildRun,
   CollectionItem,
+  InteractionDescription,
   Run,
-  RunInteraction,
   ToolArguments,
 } from "./run";
 
@@ -29,11 +29,7 @@ export type RunTarget = { className: string; objectPath?: string };
 export type RunNotes = {
   target?: RunTarget;
   item?: CollectionItem;
-  members?: readonly (string | undefined)[];
-  descriptions?: readonly Pick<
-    RunInteraction,
-    "member" | "target" | "context"
-  >[];
+  descriptions?: readonly InteractionDescription[];
   savedTo?: string;
 };
 
@@ -78,11 +74,10 @@ function nodeOf(
     ...(run.durationMs === undefined
       ? {}
       : { durationMs: Math.round(run.durationMs) }),
-    interactions: run.interactions.map((interaction, index) => {
-      const description = notes.descriptions?.[index];
-      const member = description?.member ?? notes.members?.[index];
-      return { ...interaction, ...description, ...(member ? { member } : {}) };
-    }),
+    interactions: run.interactions.map((interaction, index) => ({
+      ...interaction,
+      ...notes.descriptions?.[index],
+    })),
     children: (childrenOf.get(run.id) ?? []).map((child) =>
       nodeOf(child, notesOf, childrenOf)
     ),
@@ -154,7 +149,6 @@ function noteTree(
   notes.set(id, {
     ...(className !== undefined ? { target: { className, objectPath } } : {}),
     ...(item ? { item } : {}),
-    members: interactions.map(({ member }: RunInteraction) => member),
     descriptions: interactions.map(({ member, target, context }) => ({
       member,
       target,

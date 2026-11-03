@@ -27,6 +27,9 @@ test("a non-POM target keeps its accessible name after clicking removes it and a
     .toContain('button "Dismiss notice"');
   await expect(run.arguments).toHaveCount(0);
   await expect(run.interactions).toHaveCount(0);
+  await expect(
+    run.toggle.getByTitle(/^Not available to highlight:/)
+  ).toHaveAttribute("data-gone", "true");
   await page.reload();
   await inspector.open();
   await inspector.runs.showAll();

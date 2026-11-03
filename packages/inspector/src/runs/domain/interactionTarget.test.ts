@@ -21,33 +21,24 @@ const item: StructureNode = {
 };
 const structure = { roots: [item], refCount: 2 };
 
-it("names a non-POM child by its own accessible identity, with its containing object as context", () => {
+it("keeps a non-POM child's containing object as context without claiming its root was acted on", () => {
   expect(interactionTarget("e7", structure)).toEqual({
-    target: 'button "Delete"',
     context: "ListPage.items[1]",
   });
 });
 
-it("identifies a root by its actual member and retains an unnamed element's direct text", () => {
+it("identifies a root by its actual member", () => {
   expect(interactionTarget("e3", structure).member).toBe("ListPage.items[1]");
-  const unnamed = {
-    ...button,
-    name: "",
-    children: [{ role: "text", name: "Archive", members: [], children: [] }],
-  };
-  expect(interactionTarget("e7", { roots: [unnamed], refCount: 1 })).toEqual({
-    target: "button Archive",
-  });
 });
 
 it("captures strings that remain readable when the source node changes or disappears", () => {
-  const mutable = { ...button };
+  const mutable = { ...item };
   const tree = { roots: [mutable], refCount: 1 };
-  const captured = interactionTarget("e7", tree);
-  mutable.name = "Removed";
+  const captured = interactionTarget("e3", tree);
+  mutable.member = "ListPage.items[2]";
   tree.roots.length = 0;
-  expect(captured).toEqual({ target: 'button "Delete"' });
-  expect(interactionTarget("e7", tree)).toEqual({});
+  expect(captured).toEqual({ member: "ListPage.items[1]" });
+  expect(interactionTarget("e3", tree)).toEqual({});
 });
 
 it("leaves keyboard inputs and unknown refs without a made-up element", () => {

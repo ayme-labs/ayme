@@ -1,7 +1,7 @@
 import type { Caller, Interaction, JsonValue } from "@ayme-dev/ayme";
 
-/** An Interaction of a Run, from the Run log, as Runs shows it. */
-export type RunInteraction = Interaction & {
+/** Captured identity of an Interaction's target. */
+export type InteractionDescription = {
   /**
    * The Page Object member it acted on, e.g. "ListPage.addItemButton",
    * captured before the input when known, otherwise resolved when the Run ends.
@@ -12,6 +12,9 @@ export type RunInteraction = Interaction & {
   /** The nearest containing Page Object, without claiming its root was acted on. */
   context?: string;
 };
+
+/** An Interaction of a Run, from the Run log, as Runs shows it. */
+export type RunInteraction = Interaction & InteractionDescription;
 
 export type ToolArguments = Record<string, JsonValue>;
 

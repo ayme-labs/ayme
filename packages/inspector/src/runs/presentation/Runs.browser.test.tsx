@@ -76,6 +76,7 @@ function renderRuns(props: Partial<RunsProps> = {}, width?: number) {
             open={open}
             focus={focus}
             {...callbacks}
+            canHighlight={() => true}
             onAllRunsChange={(all) => {
               callbacks.onAllRunsChange(all);
               setAllRuns(all);
@@ -366,7 +367,7 @@ describe("Runs", () => {
 
     await expect
       .poll(() => target.getAttribute("title"))
-      .toMatch(/^Not on the page when the run ended/);
+      .toMatch(/^Not available to highlight/);
     expect(onHover).not.toHaveBeenCalled();
   });
 
@@ -682,6 +683,26 @@ describe("a run's result", () => {
 });
 
 describe("a run's arguments", () => {
+  it("keeps a removed target's name while marking it gone and disabling its hover", async () => {
+    const { onHover } = renderRuns({
+      canHighlight: () => false,
+      runs: [
+        aRun({
+          interactions: [
+            anInteraction({ ref: "e7", target: 'button "Dismiss"' }),
+          ],
+        }),
+      ],
+    });
+    const target = runsView.run(0).interactionTarget(0);
+    await expect.poll(() => target.textContent()).toBe('button "Dismiss"');
+    expect(await target.getAttribute("data-gone")).toBe("true");
+    expect(await target.getAttribute("title")).not.toContain(
+      "Hover to highlight"
+    );
+    await target.hover();
+    expect(onHover).not.toHaveBeenCalled();
+  });
   it("shows a browser input once with its readable target and value, keeping Result and options", async () => {
     renderRuns({
       runs: [

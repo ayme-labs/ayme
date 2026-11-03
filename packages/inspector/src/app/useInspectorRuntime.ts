@@ -176,7 +176,7 @@ export function useInspectorRuntime({
      * over in the panel, `pin` (solid) for the selection. The app pins the
      * selection; lenses only hover.
      */
-    highlight: { hover, pin },
+    highlight: { hover, pin, canHighlight: highlight.canHighlight },
     /**
      * Every registered Page Object tool once by name, and every other live
      * tool, as the run card runs them.

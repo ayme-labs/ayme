@@ -24,7 +24,7 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "../../navigation";
+import type { HighlightTarget, OnHover } from "../../navigation";
 import {
   focusRing,
   pressable,
@@ -52,6 +52,7 @@ export type RunsViewProps = {
   onClear: () => void;
   /** Highlights an Interaction's member on the page while it's hovered. */
   onHover: OnHover;
+  canHighlight: (target: HighlightTarget) => boolean;
   /** The timeline list, which a focused run scrolls into view in. */
   timeline: RefObject<HTMLOListElement | null>;
   /** The runs whose details are closed. */
@@ -180,6 +181,7 @@ type RowProps = Pick<
   | "copiedResult"
   | "openImage"
   | "onHover"
+  | "canHighlight"
 >;
 
 /**
@@ -247,6 +249,7 @@ function RunRow({
   copiedResult,
   openImage,
   onHover,
+  canHighlight,
 }: RowProps & {
   /** A top-level Run names its Caller; a child Run doesn't. */
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
@@ -296,6 +299,7 @@ function RunRow({
           resultCopied={run.id === copiedResult}
           onOpenImage={openImage}
           onHover={run.earlierDocument ? () => {} : onHover}
+          canHighlight={run.earlierDocument ? () => false : canHighlight}
         />
         {open && run.children.length > 0 && (
           <ol aria-label="Child runs" className="m-0 flex flex-col gap-2 p-0">
@@ -316,6 +320,7 @@ function RunRow({
                 copiedResult={copiedResult}
                 openImage={openImage}
                 onHover={onHover}
+                canHighlight={canHighlight}
               />
             ))}
           </ol>
@@ -337,6 +342,7 @@ function RunEntryCard({
   resultCopied,
   onOpenImage,
   onHover,
+  canHighlight,
 }: {
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
   open: boolean;
@@ -350,6 +356,7 @@ function RunEntryCard({
   resultCopied: boolean;
   onOpenImage: (src: string) => void;
   onHover: OnHover;
+  canHighlight: RunsViewProps["canHighlight"];
 }) {
   const { primary, arguments: args } = runPresentation(run);
   return (
@@ -383,6 +390,7 @@ function RunEntryCard({
             <InteractionTarget
               interaction={primary}
               onHover={onHover}
+              canHighlight={canHighlight}
               passive
             />
             {primary.value !== undefined && (
@@ -452,6 +460,7 @@ function RunEntryCard({
                   key={index}
                   interaction={interaction}
                   onHover={onHover}
+                  canHighlight={canHighlight}
                 />
               ))}
             </ol>
@@ -614,9 +623,11 @@ const interactionIcons: Record<string, typeof TypeIcon> = {
 function InteractionRow({
   interaction,
   onHover,
+  canHighlight,
 }: {
   interaction: RunInteraction;
   onHover: OnHover;
+  canHighlight: RunsViewProps["canHighlight"];
 }) {
   const Icon = interactionIcons[interaction.operation] ?? ChevronRightIcon;
   const value =
@@ -629,7 +640,11 @@ function InteractionRow({
       <span className="flex-none text-muted-foreground">
         {interaction.operation}
       </span>
-      <InteractionTarget interaction={interaction} onHover={onHover} />
+      <InteractionTarget
+        interaction={interaction}
+        onHover={onHover}
+        canHighlight={canHighlight}
+      />
       {value !== undefined && (
         <span
           className="truncate font-mono text-xs text-muted-foreground"
@@ -646,19 +661,23 @@ function InteractionRow({
 function InteractionTarget({
   interaction,
   onHover,
+  canHighlight,
   passive = false,
 }: {
   interaction: RunInteraction;
   onHover: OnHover;
+  canHighlight: RunsViewProps["canHighlight"];
   passive?: boolean;
 }) {
   const { member, target, context, locator, ref } = interaction;
   if (locator === undefined) return null;
   const label = member ?? target ?? ref ?? locator;
-  const highlight = ref ? { ref } : member ? { path: member } : undefined;
+  const candidate = ref ? { ref } : member ? { path: member } : undefined;
+  const highlight =
+    candidate && canHighlight(candidate) ? candidate : undefined;
   const title = highlight
     ? `${label}: ${locator}. Hover to highlight it on the page.`
-    : `Not on the page when the run ended: ${locator}`;
+    : `Not available to highlight: ${locator}`;
   const Tag = passive ? "span" : "button";
   return (
     <>
