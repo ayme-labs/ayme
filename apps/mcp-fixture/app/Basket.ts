@@ -13,7 +13,9 @@ const canClear = async (self: Basket) =>
  */
 @ayme
 export class Basket {
+  @ayme.child
   readonly heading: Locator;
+  @ayme.collection
   readonly items: Locator;
 
   constructor(private readonly page: Page) {
@@ -21,6 +23,7 @@ export class Basket {
     this.items = page.getByRole("listitem");
   }
 
+  @ayme.collection
   async rows(): Promise<BasketItem[]> {
     if (!new URL(this.page.url()).searchParams.has("class-tools")) return [];
     return (await this.items.all()).map((root) => new BasketItem(root));

@@ -11,9 +11,13 @@ import { ListItem } from "./ListItem";
  */
 @ayme
 export class ListPage {
+  @ayme.child
   readonly newItemInput: Locator;
+  @ayme.child
   readonly addItemButton: Locator;
+  @ayme.child
   readonly clearButton: Locator;
+  @ayme.collection
   readonly items: Locator;
 
   constructor(page: Page) {
@@ -27,6 +31,7 @@ export class ListPage {
   }
 
   /** The items, as Page Objects a collection action runs on. */
+  @ayme.collection
   async entries(): Promise<ListItem[]> {
     return (await this.items.all()).map((item) => new ListItem(item));
   }
