@@ -3,6 +3,7 @@
  * the package's fast-lane Vitest config. See docs/testing.md#change-analysis.
  */
 import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
 
 import { nonProductionPatterns } from "./analysis.js";
@@ -24,7 +25,15 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
     ignoreStatic: !full,
     // Two workers keep a local run light; CI's full lane takes every core.
     ...(full ? {} : { concurrency: 2 }),
-    tempDirName: ".stryker-tmp",
+    // The sandbox stands where the package does: `packages/<tempDir>/sandbox-*/`
+    // beside `packages/<package>/`. A path that climbs out of the package, such
+    // as an import of the root's `playwright-range.json`, then resolves as it
+    // does outside Stryker. Each package has its own directory, since Stryker
+    // removes the directory once its run leaves it empty.
+    tempDirName: path.join(
+      "..",
+      `.stryker-tmp-${path.basename(process.cwd())}`
+    ),
     reporters: full ? ["clear-text", "json", "html"] : ["clear-text", "json"],
     htmlReporter: { fileName: `reports/mutation/mutation-full${suffix}.html` },
     jsonReporter: {
