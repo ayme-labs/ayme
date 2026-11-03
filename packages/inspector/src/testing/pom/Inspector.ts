@@ -27,14 +27,22 @@ export class Inspector {
    */
   readonly container: Locator;
   /** The expanded panel. */
+  @ayme.child
   readonly panel: Locator;
+  @ayme.child
   readonly shell: PanelShell;
+  @ayme.child
   readonly header: InspectorHeader;
+  @ayme.child
   readonly logo: CollapsedLogo;
+  @ayme.child
   readonly navigator: Navigator;
+  @ayme.child
   readonly detail: DetailPane;
+  @ayme.child
   readonly runs: RunsView;
   /** The Structure lens's tree, in the navigator. */
+  @ayme.child
   readonly structure: StructureLens;
 
   /**

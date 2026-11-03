@@ -12,13 +12,19 @@ export type LensName = "Model" | "Structure" | "Tools";
  * tree. Each lens's own page object works inside {@link Navigator.root}.
  */
 export class Navigator extends PanelPart {
+  @ayme.child
   readonly searchBox: Locator;
+  @ayme.child
   readonly legend: Locator;
+  @ayme.collection
   readonly searchResults: Locator;
+  @ayme.child
   readonly noResults: Locator;
   /** The Model lens's tree. */
+  @ayme.child
   readonly model: ModelLens;
   /** The Tools lens's tree, while that lens is shown. */
+  @ayme.child
   readonly tools: ToolsLens;
 
   constructor(root: Locator) {

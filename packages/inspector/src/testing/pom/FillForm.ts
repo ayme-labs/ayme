@@ -14,9 +14,12 @@ const editorRoot = (self: FillForm) => self.card;
 @ayme({ root: editorRoot })
 export class FillForm extends PanelPart {
   /** The rows of the list of fields, in fill order. */
+  @ayme.collection
   readonly rows: Locator;
   /** How many rows are changed, e.g. "2 changed". */
+  @ayme.child
   readonly changedCount: Locator;
+  @ayme.child
   readonly undoAllButton: Locator;
 
   constructor(readonly card: Locator) {

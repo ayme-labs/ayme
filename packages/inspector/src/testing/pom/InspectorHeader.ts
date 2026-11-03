@@ -13,6 +13,7 @@ export type LayoutChoice =
 /** The System / Light / Dark switch. Each press moves to the next theme. */
 @ayme
 export class ThemeSwitch {
+  @ayme.child
   readonly button: Locator;
 
   constructor(root: Locator) {
@@ -41,7 +42,9 @@ export class ThemeSwitch {
 /** The layout menu. It opens in the Inspector's portal. */
 @ayme
 export class LayoutMenu {
+  @ayme.child
   readonly trigger: Locator;
+  @ayme.child
   readonly menu: Locator;
 
   /**
@@ -75,10 +78,15 @@ export class LayoutMenu {
  * the layout menu and collapse. The panel drags by it.
  */
 export class InspectorHeader extends PanelPart {
+  @ayme.child
   readonly title: Locator;
+  @ayme.child
   readonly connections: Connections;
+  @ayme.child
   readonly themeSwitch: ThemeSwitch;
+  @ayme.child
   readonly layoutMenu: LayoutMenu;
+  @ayme.child
   readonly collapseButton: Locator;
 
   /**
