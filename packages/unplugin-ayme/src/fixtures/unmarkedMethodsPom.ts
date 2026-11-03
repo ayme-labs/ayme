@@ -23,6 +23,12 @@ export class UnmarkedMethodsPom {
     return name;
   }
 
+  /** Unmarked, with an object pattern binding a name its type lacks. */
+  // @ts-expect-error TypeScript types the unannotated parameter `{}`.
+  find({ id } = {}) {
+    return id;
+  }
+
   async items(): Promise<ItemPom[]> {
     return [new ItemPom(this.root)];
   }

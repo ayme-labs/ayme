@@ -902,7 +902,7 @@ function toolParameter(
     return {
       destructured: "object",
       optional,
-      fields: objectPatternFields(context, parameter.name, type),
+      fields: objectPatternFields(context, parameter, parameter.name, type),
       ...rest,
     };
   if (ts.isArrayBindingPattern(parameter.name))
@@ -928,28 +928,38 @@ function toolParameter(
 /**
  * An object pattern's fields: every property of its type, by property name,
  * whatever the pattern binds or renames, with the literal default of a
- * binding that gives one. Its type must be an object with known properties.
+ * binding that gives one. Its type must be an object with known properties,
+ * among them every one the pattern binds.
  */
 function objectPatternFields(
   context: SchemaContext,
+  parameter: ts.ParameterDeclaration,
   pattern: ts.ObjectBindingPattern,
   type: ts.Type
 ): NamedToolParameter[] {
   const schema = schemaForType(context, type, context.parameter);
   if (schema.type !== "object" || schema.additionalProperties !== false)
     throw unsupportedInputType(context, type, context.parameter);
+  const properties = schema.properties ?? {};
   const required = new Set(schema.required);
   const defaults = new Map<string, JsonPrimitive>();
+  const untyped: string[] = [];
   for (const element of pattern.elements) {
     const key = element.propertyName ?? element.name;
+    if (!ts.isIdentifier(key) && !ts.isLiteralExpression(key)) continue;
+    if (!Object.hasOwn(properties, key.text)) untyped.push(key.text);
     const value = element.initializer && literalDefault(element.initializer);
-    if (
-      value !== undefined &&
-      (ts.isIdentifier(key) || ts.isLiteralExpression(key))
-    )
-      defaults.set(key.text, value);
+    if (value !== undefined) defaults.set(key.text, value);
   }
-  return Object.entries(schema.properties ?? {}).map(([name, fieldSchema]) => {
+  if (untyped.length) {
+    const names = untyped.join(", ").replace(/, ([^,]*)$/, " and $1");
+    const verb = untyped.length === 1 ? "has" : "have";
+    throw new UnsupportedParameterError(
+      `Page Object Action ${context.className}.${context.methodName}: ${names} in ${patternLabel(parameter)} ${verb} no type.${parameter.type ? "" : " Annotate the parameter."}`,
+      `${names} in parameter ${patternLabel(parameter)} ${verb} no type`
+    );
+  }
+  return Object.entries(properties).map(([name, fieldSchema]) => {
     const value = defaults.get(name);
     return {
       name,

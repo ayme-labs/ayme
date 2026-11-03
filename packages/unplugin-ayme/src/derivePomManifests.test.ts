@@ -1158,6 +1158,14 @@ describe("derivePomManifests", () => {
           "Page Object Action UnboundElementPom.move needs a name for every element of [x]: [number, number]: element 1 is not bound.",
         ],
         [
+          "untypedBindingPom",
+          "Page Object Action UntypedBindingPom.login: email and password in { email, password } have no type. Annotate the parameter.",
+        ],
+        [
+          "misspelledBindingPom",
+          "Page Object Action MisspelledBindingPom.signIn: emial in { emial, password: secret }: Credentials has no type.",
+        ],
+        [
           "renamedDuplicatePom",
           "Page Object Action RenamedDuplicatePom.search takes two input fields named query: parameter query, and property query of { query: q }: { query: string }.",
         ],
