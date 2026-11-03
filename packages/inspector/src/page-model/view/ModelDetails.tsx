@@ -285,6 +285,8 @@ export type MemberView = {
   kind: "locator" | "component";
   className?: string;
   collection?: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
   live: boolean;
   /** What the page has of it now, e.g. "2 matches" or "not on the page". */
   state: string;
@@ -296,8 +298,9 @@ export type MemberView = {
 };
 
 /**
- * A Page Object member: what it is, its owner, how snapshot declares
- * it, what the page has of it now, and for a child Page Object a way to it.
+ * A Page Object member: what it is, its description, its owner, how
+ * snapshot declares it, what the page has of it now, and for a child Page
+ * Object a way to it.
  */
 export function MemberDetail({
   member,
@@ -325,6 +328,14 @@ export function MemberDetail({
           live: member.live,
         }}
       />
+      {member.description && (
+        <p
+          data-description
+          className="-mt-2 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]"
+        >
+          {member.description}
+        </p>
+      )}
       <dl className="grid grid-cols-1 gap-1.5 text-xs">
         <Fact term="Owner">
           <button
@@ -355,7 +366,9 @@ export function MemberDetail({
         </Fact>
         <Fact term="Declared as">
           <code className="font-mono [overflow-wrap:anywhere]">
-            {locator ? member.name : `${member.name}: ${kind}`}
+            {locator
+              ? `${member.name}${member.collection ? "[]" : ""}`
+              : `${member.name}: ${kind}`}
           </code>
         </Fact>
         <Fact term="On the page">{member.state}</Fact>

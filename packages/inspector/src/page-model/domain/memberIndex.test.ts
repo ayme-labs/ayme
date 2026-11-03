@@ -142,6 +142,43 @@ describe("what a path covers", () => {
   });
 });
 
+describe("a Locator collection", () => {
+  const table = page("RunsTable", {
+    locators: ["heading"],
+    locatorCollections: { rows: 2 },
+  });
+  const runs = indexMembers(
+    {
+      objects: [table],
+      models: [model("RunsTable", ["heading", "rows"])],
+    },
+    rootTargetPath
+  );
+
+  it("is each of its elements' member, at the element's index", () => {
+    expect(runs.member("RunsTable.rows[1]")).toMatchObject({
+      path: "RunsTable.rows[1]",
+      owner: table,
+      locator: { name: "rows" },
+    });
+    expect(runs.member("RunsTable.rows[2]")).toBeUndefined();
+  });
+
+  it("stands for its elements, on its Page Object and on its model", () => {
+    const elements = new Set(["RunsTable.rows[0]", "RunsTable.rows[1]"]);
+    expect(runs.targets("RunsTable.rows")).toEqual(elements);
+    expect(runs.targets("RunsTable.rows[1]")).toEqual(
+      new Set(["RunsTable.rows[1]"])
+    );
+    expect(runs.within("RunsTable.rows", { models: false })).toEqual(
+      new Set(["RunsTable.rows", ...elements])
+    );
+    expect(runs.within("RunsTable", { models: false })).toEqual(
+      new Set(["RunsTable", "RunsTable.heading", "RunsTable.rows", ...elements])
+    );
+  });
+});
+
 it("keeps a Page Object's root apart from its member named root", () => {
   const editor = page("Editor", { locators: ["root", "titleInput"] });
   const anchored = indexMembers(

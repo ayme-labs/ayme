@@ -256,12 +256,16 @@ function specificity({ owner, locator }: IndexedMember, index: MemberIndex) {
 }
 
 /**
- * A member tag kept short: a locator by its name, a Page Object's root by its
+ * A member tag kept short: a locator by its name, an element of a Locator
+ * collection by its name and index (".rows[1]"), a Page Object's root by its
  * path below the Page Object it is in and its class. A page's root is the
  * page.
  */
 function shortTag(member: IndexedMember, index: MemberIndex) {
-  if (member.locator) return `.${member.locator.name}`;
+  if (member.locator) {
+    const elementIndex = member.path.slice(member.locator.path.length);
+    return `.${member.locator.name}${elementIndex}`;
+  }
   const { owner } = member;
   if (owner.kind === "page") return member.path;
   // An item is named by its collection: "items" and "[0]" make "items[0]".
