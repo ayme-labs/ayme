@@ -170,6 +170,17 @@ it("leaves out a malformed run", () => {
   ).toEqual([before(succeeded)]);
 });
 
+it.each(["locator", "ref", "member", "target", "context"])(
+  "discards a saved interaction with a malformed %s",
+  (field) => {
+    expect(
+      decodeRuns([
+        { ...succeeded, interactions: [{ operation: "click", [field]: 42 }] },
+      ])
+    ).toEqual([]);
+  }
+);
+
 it("keeps a run's image description but not the image itself", () => {
   const screenshot: Run = {
     ...succeeded,

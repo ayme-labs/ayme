@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 
 import { aRun, anInteraction, anItem } from "../test-utils/runs";
+import type { RunInteraction, ToolArguments } from "./run";
 import { runPresentation } from "./runPresentation";
 
 it("shows one input once, without losing modifiers or other falsy arguments", () => {
@@ -138,3 +139,142 @@ it("shows selected options in the heading without flattening multi-selection or 
     runPresentation({ ...run, arguments: { target: "e7", values: [] } }).value
   ).toEqual([]);
 });
+
+it.each([
+  {
+    toolName: "press_key",
+    arguments: { key: "Escape" },
+    primary: { operation: "press_key", value: "Escape" },
+    value: "Escape",
+    shown: {},
+  },
+  {
+    toolName: "click",
+    arguments: { key: "Escape" },
+    primary: undefined,
+    value: undefined,
+    shown: { key: "Escape" },
+  },
+  {
+    toolName: "press_key",
+    arguments: { key: 1 },
+    primary: undefined,
+    value: undefined,
+    shown: { key: 1 },
+  },
+])(
+  "keeps unresolved keyboard arguments readable: $toolName $arguments",
+  ({ toolName, arguments: args, primary, value, shown }) => {
+    expect(runPresentation(aRun({ toolName, arguments: args }))).toEqual({
+      primary,
+      value,
+      arguments: shown,
+    });
+  }
+);
+
+it("keeps a multi-input browser action's steps and removes only arguments represented by a step", () => {
+  const interactions = [
+    anInteraction({ value: "Milk" }),
+    anInteraction({
+      locator: undefined,
+      operation: "keyboard.press",
+      value: "Enter",
+    }),
+  ];
+  const run = aRun({
+    toolName: "type",
+    arguments: { target: "e7", text: "Milk", key: "Escape" },
+    interactions,
+  });
+  expect(runPresentation(run)).toEqual({
+    primary: undefined,
+    arguments: { key: "Escape" },
+  });
+  expect(
+    runPresentation({ ...run, arguments: { target: "e7", text: "Other" } })
+      .arguments
+  ).toEqual({ text: "Other" });
+  expect(
+    runPresentation({
+      ...run,
+      interactions: interactions.map((input) => ({
+        ...input,
+        locator: undefined,
+      })),
+    }).arguments
+  ).toEqual(run.arguments);
+});
+
+it.each<{
+  toolName: string;
+  arguments: ToolArguments;
+  interactions: RunInteraction[];
+  shown: ToolArguments;
+}>([
+  {
+    toolName: "select_option",
+    arguments: { target: "e7", values: [42] },
+    interactions: [anInteraction()],
+    shown: { values: [42] },
+  },
+  {
+    toolName: "select_option",
+    arguments: { target: "e7", values: "Large" },
+    interactions: [anInteraction()],
+    shown: { values: "Large" },
+  },
+  {
+    toolName: "select_option",
+    arguments: { values: ["Large"] },
+    interactions: [],
+    shown: { values: ["Large"] },
+  },
+  {
+    toolName: "Form.submit",
+    arguments: { values: ["Large"] },
+    interactions: [anInteraction()],
+    shown: { values: ["Large"] },
+  },
+  {
+    toolName: "click",
+    arguments: { values: ["Large"] },
+    interactions: [anInteraction()],
+    shown: { values: ["Large"] },
+  },
+])(
+  "retains options that a heading cannot represent: $toolName $arguments",
+  ({ shown, ...fields }) => {
+    const presentation = runPresentation(aRun(fields));
+    expect(presentation.value).toBeUndefined();
+    expect(presentation.arguments).toEqual(shown);
+  }
+);
+
+it("retains malformed saved form fields and fields without an element target", () => {
+  const fields = [null, "Email", ["Email"], { target: "e7" }, { target: "e8" }];
+  const interactions = fields.map(() =>
+    anInteraction({ member: "Form.email" })
+  );
+  interactions[3] = anInteraction({ locator: undefined, target: "Email" });
+  expect(
+    runPresentation(
+      aRun({ toolName: "fill_form", arguments: { fields }, interactions })
+    ).arguments
+  ).toEqual({ fields: [...fields.slice(0, 4), {}] });
+});
+
+it.each(["hover", "check", "uncheck"])(
+  "shows a single %s input once in the heading",
+  (toolName) => {
+    const input = anInteraction({
+      operation: toolName,
+      member: "ListPage.urgent",
+    });
+    expect(
+      runPresentation(
+        aRun({ toolName, arguments: { target: "e7" }, interactions: [input] })
+      )
+    ).toEqual({ primary: input, arguments: {} });
+  }
+);

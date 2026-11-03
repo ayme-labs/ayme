@@ -386,26 +386,12 @@ function RunEntryCard({
           name={run.toolName}
           className="font-mono text-xs font-semibold"
         />
-        {primary && (
-          <>
-            <InteractionTarget
-              interaction={primary}
-              onHover={onHover}
-              canHighlight={canHighlight}
-              passive
-            />
-            {value !== undefined && (
-              <span
-                className="min-w-0 truncate font-mono text-xs"
-                title={
-                  typeof value === "string" ? value : JSON.stringify(value)
-                }
-              >
-                {JSON.stringify(value)}
-              </span>
-            )}
-          </>
-        )}
+        <RunInput
+          primary={primary}
+          value={value}
+          onHover={onHover}
+          canHighlight={canHighlight}
+        />
         {run.item && (
           <span
             className="max-w-[45%] min-w-0 truncate rounded-md border px-1.5 font-mono text-xs text-muted-foreground"
@@ -423,11 +409,7 @@ function RunEntryCard({
             Earlier page
           </span>
         )}
-        <span className="ml-auto flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-          {run.status === "running"
-            ? "Running…"
-            : `${run.durationMs === undefined ? "" : `${formatDuration(run.durationMs)} · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
-        </span>
+        <RunTime run={run} />
       </button>
       {open && (
         <>
@@ -480,6 +462,45 @@ function RunEntryCard({
         </>
       )}
     </div>
+  );
+}
+
+/** The compact input in a browser tool's heading. */
+function RunInput({
+  primary,
+  value,
+  onHover,
+  canHighlight,
+}: Pick<ReturnType<typeof runPresentation>, "primary" | "value"> &
+  Pick<RunsViewProps, "onHover" | "canHighlight">) {
+  if (!primary) return null;
+  return (
+    <>
+      <InteractionTarget
+        interaction={primary}
+        onHover={onHover}
+        canHighlight={canHighlight}
+        passive
+      />
+      {value !== undefined && (
+        <span
+          className="min-w-0 truncate font-mono text-xs"
+          title={typeof value === "string" ? value : JSON.stringify(value)}
+        >
+          {JSON.stringify(value)}
+        </span>
+      )}
+    </>
+  );
+}
+
+function RunTime({ run }: { run: ChildRun }) {
+  return (
+    <span className="ml-auto flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+      {run.status === "running"
+        ? "Running…"
+        : `${run.durationMs === undefined ? "" : `${formatDuration(run.durationMs)} · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
+    </span>
   );
 }
 
@@ -675,9 +696,7 @@ function InteractionTarget({
   const { member, target, context, locator, ref } = interaction;
   if (locator === undefined) return null;
   const label = member ?? target ?? ref ?? locator;
-  const candidate = ref ? { ref } : member ? { path: member } : undefined;
-  const highlight =
-    candidate && canHighlight(candidate) ? candidate : undefined;
+  const highlight = highlightOf(interaction, canHighlight);
   const title = highlight
     ? `${label}: ${locator}. Hover to highlight it on the page.`
     : `Not available to highlight: ${locator}`;
@@ -707,4 +726,13 @@ function InteractionTarget({
       )}
     </>
   );
+}
+
+/** Prefer the captured element over its member path, which may now name another element. */
+function highlightOf(
+  { ref, member }: RunInteraction,
+  canHighlight: RunsViewProps["canHighlight"]
+): HighlightTarget | undefined {
+  const candidate = ref ? { ref } : member ? { path: member } : undefined;
+  return candidate && canHighlight(candidate) ? candidate : undefined;
 }

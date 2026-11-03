@@ -148,6 +148,7 @@ function unmountApp() {
 afterEach(() => {
   unmountApp();
   vi.clearAllMocks();
+  vi.mocked(latestPageStateCapture).mockReset().mockReturnValue(undefined);
   startedAyme.reset();
   localStorage.clear();
   sessionStorage.clear();
@@ -235,6 +236,7 @@ it("names each Interaction by the member whose locator it names, for any Caller"
   registerEditor();
   const saveButton = "getByRole('button', { name: 'Save' })";
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    { path: "Unknown.button", element: document.body, locator: saveButton },
     { path: "Editor.saveButton", element: document.body, locator: saveButton },
   ]);
   const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
@@ -260,6 +262,9 @@ it("names each Interaction by the member whose locator it names, for any Caller"
       },
       { operation: "keyboard.press", target: "", value: '"Enter"' },
     ]);
+  const shown = await run.interactionList();
+  startedAyme.runs.start("snapshot", {}, "webmcp").succeed();
+  await expect.poll(() => run.interactionList()).toEqual(shown);
 });
 
 it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
@@ -534,4 +539,117 @@ it("finds a root-less class run from a structure node belonging to that class", 
   expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
     "Editor.save"
   );
+});
+
+it("captures a member before input and preserves it through later interactions and run-end resolution", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPoms).mockReturnValue([
+    {
+      ...editor,
+      manifest: {
+        ...editor.manifest,
+        members: [
+          ...editor.manifest.members,
+          { memberName: "otherButton", kind: "locator", access: "field" },
+        ],
+      },
+    },
+  ]);
+  const button = document.createElement("button");
+  document.body.append(button);
+  unmounts.push(() => button.remove());
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    { path: "Editor.saveButton", element: button, locator: "saveButton" },
+  ]);
+  vi.mocked(lookAtPageStateForDocument).mockResolvedValue({
+    ...(await lookAtPageStateForDocument(document)),
+    elementsByRef: new Map([["e2" as NonNullable<Interaction["ref"]>, button]]),
+  });
+  const node = { role: "button", name: "Original", children: [] };
+  vi.mocked(latestPageStateCapture).mockReturnValue({
+    tree: { getNode: () => node },
+  } as unknown as ReturnType<typeof latestPageStateCapture>);
+  renderApp();
+  await inspector.navigator.showLens("Structure");
+  await inspector.structure.pick("e2");
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({
+    operation: "click",
+    locator: "different locator spelling",
+    ref: "e2" as Interaction["ref"],
+  });
+  const run = inspector.runs.latest("Editor.save");
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([{ operation: "click", target: "Editor.saveButton" }]);
+  node.name = "Changed";
+  save.interact({
+    operation: "click",
+    locator: "another button",
+    ref: "e99" as Interaction["ref"],
+  });
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    { path: "Editor.otherButton", element: button, locator: "saveButton" },
+  ]);
+  save.succeed();
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.saveButton" },
+      { operation: "click", target: 'button "Changed"' },
+    ]);
+  // The persisted row must retain the pre-input description as well as its member.
+  await expect
+    .poll(() => sessionStorage.getItem("ayme-inspector:runs"))
+    .toContain("Original");
+  const saved = JSON.parse(sessionStorage.getItem("ayme-inspector:runs")!);
+  expect(saved[0].className).toBe("Editor");
+  expect(saved[0].interactions[0].target).toBe('button "Original"');
+  expect(saved[0].interactions[1].target).toBe('button "Changed"');
+});
+
+it("does not invent a generic name for an unnamed target", async () => {
+  vi.mocked(latestPageStateCapture).mockReturnValue({
+    tree: { getNode: () => ({ role: "generic", name: "", children: [] }) },
+  } as unknown as ReturnType<typeof latestPageStateCapture>);
+  renderApp();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(0);
+  const click = startedAyme.runs.start("click", { target: "e99" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e99')",
+    ref: "e99" as Interaction["ref"],
+  });
+  click.succeed();
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain("e99");
+  expect(
+    await inspector.runs.latest("click").toggle.textContent()
+  ).not.toContain("generic");
+});
+
+it("discards pending target descriptions when the log drops their run", async () => {
+  renderApp();
+  await inspector.navigator.showLens("Structure");
+  await inspector.structure.pick("e2");
+  const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "saveButton",
+    ref: "e2" as Interaction["ref"],
+  });
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  const pending =
+    Promise.withResolvers<
+      Awaited<ReturnType<typeof listRegisteredPomTargets>>
+    >();
+  vi.mocked(listRegisteredPomTargets).mockReturnValueOnce(pending.promise);
+  click.succeed();
+  startedAyme.runs.newDocument();
+  pending.resolve([]);
+  await expect.poll(() => inspector.runs.runs.count()).toBe(0);
+  await expect
+    .poll(() => sessionStorage.getItem("ayme-inspector:runs"))
+    .toBe("[]");
 });

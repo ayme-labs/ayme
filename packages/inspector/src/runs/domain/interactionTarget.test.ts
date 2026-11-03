@@ -45,3 +45,14 @@ it("leaves keyboard inputs and unknown refs without a made-up element", () => {
   expect(interactionTarget(undefined, structure)).toEqual({});
   expect(interactionTarget("e99", structure)).toEqual({});
 });
+
+it("skips unrelated siblings and never matches an unreferenced node to a keyboard input", () => {
+  const tree = {
+    roots: [{ ...button, ref: undefined, member: "Other.button" }, item],
+    refCount: 2,
+  };
+  expect(interactionTarget(undefined, tree)).toEqual({});
+  expect(interactionTarget("e7", tree)).toEqual({
+    context: "ListPage.items[1]",
+  });
+});

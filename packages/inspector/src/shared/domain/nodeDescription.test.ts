@@ -21,9 +21,13 @@ it("falls back to direct text without borrowing another element's accessible nam
       name: "",
       children: [
         { role: "text", name: "Milk" },
+        "and",
+        { role: "text", name: "Eggs" },
+        { role: "text", name: "Referenced text", ref: "e9" },
+        { role: "button", name: "Unreferenced button" },
         { role: "button", name: "Delete", ref: "e8" },
       ],
     })
-  ).toBe("listitem Milk");
+  ).toBe("listitem Milk and Eggs");
   expect(nodeLabel({ role: "button", name: "", children: [] })).toBe("button");
 });

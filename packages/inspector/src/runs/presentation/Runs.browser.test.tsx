@@ -780,6 +780,12 @@ describe("a run's arguments", () => {
     expect(onHover).not.toHaveBeenCalled();
     expect(await runsView.run(0).earlierPage.count()).toBe(1);
     expect(await child.earlierPage.count()).toBe(0);
+    expect(await child.interactionTarget(0).getAttribute("data-gone")).toBe(
+      "true"
+    );
+    expect(
+      await child.interactionTarget(0).getAttribute("title")
+    ).not.toContain("Hover to highlight");
   });
 
   it("aren't shown when there are none", async () => {
@@ -854,4 +860,93 @@ describe("a run's arguments", () => {
       .poll(() => runsView.run(0).arguments.textContent())
       .toBe(JSON.stringify(args));
   });
+});
+
+it("highlights targets on keyboard focus and clears highlights on blur or pointer exit", async () => {
+  const { onHover } = renderRuns({
+    runs: [
+      aRun({
+        interactions: [
+          anInteraction({
+            member: "ListPage.addItemButton",
+            context: "ListPage",
+          }),
+        ],
+      }),
+    ],
+  });
+  const run = runsView.run(0);
+  const target = run.interactionTarget(0);
+  await target.focus();
+  expect(onHover).toHaveBeenLastCalledWith({ path: "ListPage.addItemButton" });
+  expect(await target.getAttribute("data-gone")).toBeNull();
+  expect(await run.card.textContent()).not.toContain("within");
+  await run.toggle.focus();
+  expect(onHover).toHaveBeenLastCalledWith(undefined);
+  await target.hover();
+  expect(onHover).toHaveBeenLastCalledWith({ path: "ListPage.addItemButton" });
+  await runsView.header.hover();
+  expect(onHover).toHaveBeenLastCalledWith(undefined);
+});
+
+it("does not highlight an unavailable target on focus or blur", async () => {
+  const { onHover } = renderRuns({
+    canHighlight: () => false,
+    runs: [
+      aRun({
+        interactions: [anInteraction({ member: "ListPage.addItemButton" })],
+      }),
+    ],
+  });
+  await runsView.run(0).interactionTarget(0).focus();
+  await runsView.run(0).toggle.focus();
+  await runsView.run(0).interactionTarget(0).hover();
+  await runsView.header.hover();
+  expect(onHover).not.toHaveBeenCalled();
+});
+
+it("keeps full string and array values in heading tooltips", async () => {
+  renderRuns({
+    runs: [
+      aRun({
+        toolName: "fill",
+        interactions: [anInteraction({ value: "Milk" })],
+      }),
+      aRun({
+        toolName: "select_option",
+        arguments: { values: ["Small", "Large"] },
+        interactions: [anInteraction()],
+      }),
+    ],
+  });
+  await expect
+    .poll(() =>
+      runsView.run(0).toggle.getByTitle("Milk", { exact: true }).textContent()
+    )
+    .toBe('"Milk"');
+  expect(
+    await runsView
+      .run(1)
+      .toggle.getByTitle('["Small","Large"]', { exact: true })
+      .textContent()
+  ).toBe('["Small","Large"]');
+});
+
+it("omits an empty interaction list and results on unfinished or failed runs", async () => {
+  renderRuns({
+    runs: [
+      aRun({ result: '"Done"' }),
+      aRun({ status: "failed", result: '"Partial"' }),
+      aRun({ status: "running", result: '"Partial"' }),
+    ],
+  });
+  await expect.poll(() => runsView.runs.count()).toBe(3);
+  expect(
+    await runsView
+      .run(0)
+      .card.getByRole("list", { name: "Interactions" })
+      .count()
+  ).toBe(0);
+  expect(await runsView.run(1).resultToggle.count()).toBe(0);
+  expect(await runsView.run(2).resultToggle.count()).toBe(0);
 });

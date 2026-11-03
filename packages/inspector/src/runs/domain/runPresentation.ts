@@ -17,27 +17,11 @@ export function runPresentation(run: ChildRun): {
   value?: string | readonly string[];
   arguments: ToolArguments;
 } {
-  const primary =
-    elementTools.has(run.toolName) && run.interactions.length <= 1
-      ? (run.interactions[0] ??
-        (typeof run.arguments.target === "string"
-          ? { operation: run.toolName, locator: run.arguments.target }
-          : run.toolName === "press_key" &&
-              typeof run.arguments.key === "string"
-            ? { operation: run.toolName, value: run.arguments.key }
-            : undefined))
-      : undefined;
+  const primary = primaryInput(run);
   const args = { ...run.arguments };
-  let value: string | readonly string[] | undefined = primary?.value;
-  if (
-    primary &&
-    run.toolName === "select_option" &&
-    Array.isArray(args.values) &&
-    args.values.every((option) => typeof option === "string")
-  ) {
-    value = args.values;
-    delete args.values;
-  }
+  const selected = selectedOptions(run, primary);
+  const value = selected ?? primary?.value;
+  if (selected) delete args.values;
   if (
     primary ||
     (elementTools.has(run.toolName) &&
@@ -51,20 +35,44 @@ export function runPresentation(run: ChildRun): {
   if (run.item?.ref === args.ref) delete args.ref;
   if (run.toolName === "fill_form" && Array.isArray(args.fields)) {
     // One input per field, in order; a failed tail keeps its unresolved targets.
-    args.fields = args.fields.map((field, index) => {
-      const interaction = run.interactions[index];
-      if (
-        !field ||
-        typeof field !== "object" ||
-        Array.isArray(field) ||
-        !interaction?.locator ||
-        !(interaction.member || interaction.target)
-      )
-        return field;
-      const shown = { ...field };
-      delete shown.target;
-      return shown;
-    });
+    args.fields = args.fields.map((field, index) =>
+      shownField(field, run.interactions[index])
+    );
   }
   return { primary, value, arguments: args };
+}
+
+function selectedOptions(run: ChildRun, primary: RunInteraction | undefined) {
+  const values = run.arguments.values;
+  if (
+    primary &&
+    run.toolName === "select_option" &&
+    Array.isArray(values) &&
+    values.every((option) => typeof option === "string")
+  )
+    return values;
+  return undefined;
+}
+
+function primaryInput(run: ChildRun): RunInteraction | undefined {
+  if (!elementTools.has(run.toolName) || run.interactions.length > 1)
+    return undefined;
+  if (run.interactions[0]) return run.interactions[0];
+  if (typeof run.arguments.target === "string")
+    return { operation: run.toolName, locator: run.arguments.target };
+  if (run.toolName === "press_key" && typeof run.arguments.key === "string")
+    return { operation: run.toolName, value: run.arguments.key };
+  return undefined;
+}
+
+function shownField(
+  field: ToolArguments[string],
+  interaction: RunInteraction | undefined
+) {
+  if (!field || typeof field !== "object" || Array.isArray(field)) return field;
+  if (!interaction?.locator || !(interaction.member || interaction.target))
+    return field;
+  const shown: ToolArguments = { ...field };
+  delete shown.target;
+  return shown;
 }

@@ -82,10 +82,12 @@ it("does not guess a ref for an ambiguous locator, or block an input when diagno
   const button = instrumentedPage(page, heard).locator("button");
   resolveLocatorElements.mockReturnValueOnce([{}, {}]);
   button.click();
+  expect(latestPageStateRef).not.toHaveBeenCalled();
   resolveLocatorElements.mockImplementationOnce(() => {
     throw new Error("unresolved");
   });
   button.click();
+  expect(resolveLocatorElements).toHaveBeenCalledTimes(2);
   expect(heard).toHaveBeenCalledTimes(2);
   for (const [interaction] of heard.mock.calls)
     expect(interaction).not.toHaveProperty("ref");
