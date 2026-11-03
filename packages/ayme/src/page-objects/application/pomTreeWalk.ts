@@ -266,11 +266,18 @@ async function walkMembers(
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
+        const count = await value.count();
         walk.memberObservations.push({
           memberName: memberPath,
           kind: "locator",
           access: member.access,
-          count: await value.count(),
+          count,
+          // A Locator declared as one element that matches several.
+          ...(member.collection === false &&
+            count >= 2 && {
+              diagnostic: true,
+              warning: `${instanceLabel(place.className, walk.label, place.path)}: its ${member.memberName} matches ${count} elements.`,
+            }),
         });
       } else
         await walkComponentMember(walk, value, member, place, nextAncestors);
