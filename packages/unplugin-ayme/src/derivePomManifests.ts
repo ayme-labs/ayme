@@ -175,8 +175,9 @@ function childDeclaration(
   member: ts.ClassElement,
   memberName: string
 ): ChildDeclaration | undefined {
-  const decorators = ts.canHaveDecorators(member)
-    ? (ts.getDecorators(member) ?? [])
+  const decorated = overloadImplementation(member);
+  const decorators = ts.canHaveDecorators(decorated)
+    ? (ts.getDecorators(decorated) ?? [])
     : [];
   const marks = decorators.flatMap((decorator) =>
     (["child", "collection"] as const)
@@ -198,6 +199,30 @@ function childDeclaration(
       `${owner} is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.`
     );
   return { ...mark, memberName, owner };
+}
+
+/**
+ * The implementation of an overloaded method, which carries its decorators
+ * and follows its signatures; any other member itself.
+ */
+function overloadImplementation(member: ts.ClassElement): ts.ClassElement {
+  if (
+    !ts.isMethodDeclaration(member) ||
+    member.body ||
+    !ts.isClassLike(member.parent)
+  )
+    return member;
+  const { members } = member.parent;
+  return (
+    members
+      .slice(members.indexOf(member) + 1)
+      .find(
+        (other) =>
+          ts.isMethodDeclaration(other) &&
+          other.body !== undefined &&
+          other.name.getText() === member.name.getText()
+      ) ?? member
+  );
 }
 
 /**

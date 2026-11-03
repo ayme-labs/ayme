@@ -642,6 +642,26 @@ describe("derivePomManifests", () => {
       );
     });
 
+    it("reads a Child Collection declared on an overloaded method's implementation", () => {
+      const manifest = manifestForClass(
+        "overloadedCollectionPom",
+        "OverloadedCollectionPom"
+      );
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "method",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ]);
+      expect(manifest?.components.map(({ className }) => className)).toEqual([
+        "Row",
+      ]);
+    });
+
     it("inherits declared children through the class chain", () => {
       const manifest = manifestForClass(
         "inheritedDeclaredChildrenPom",
