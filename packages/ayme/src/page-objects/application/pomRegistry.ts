@@ -7,7 +7,7 @@ import type {
   RegisteredPomTool,
 } from "../../shared";
 import { modelOption } from "../domain/decorators";
-import { methodArguments } from "../domain/actionTool";
+import { methodArguments, patternViolations } from "../domain/actionTool";
 import {
   assertAvailable,
   refFailure,
@@ -19,7 +19,11 @@ import {
   assertReachable,
   providePageObjectStructure,
 } from "../../page-state/infrastructure";
-import { RefResolutionError, RuntimeStateError } from "../../shared";
+import {
+  RefResolutionError,
+  refuseViolations,
+  RuntimeStateError,
+} from "../../shared";
 import {
   availabilityOf,
   combinedAvailability,
@@ -612,6 +616,19 @@ function createTool(
     execute: async (input, context) => {
       let args = input;
       let targetName = tool.name;
+      // The rule a defaulted pattern keeps beside the input schema.
+      refuseViolations(
+        tool.rooted
+          ? patternViolations(
+              action.parameters,
+              (input as { args?: Record<string, unknown> }).args ?? {},
+              "args"
+            )
+          : patternViolations(
+              action.parameters,
+              input as Record<string, unknown>
+            )
+      );
       const instances = instancesOf(tool);
       let observed: PomInstanceObservation | undefined = instances[0];
       if (tool.rooted) {

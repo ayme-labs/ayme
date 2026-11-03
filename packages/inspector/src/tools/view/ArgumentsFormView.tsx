@@ -98,6 +98,11 @@ export function ArgumentsFormView({
       {fields.map((entry, index) =>
         entry.kind === "group" ? (
           <fieldset key={index} className={groupClass}>
+            {entry.optional && (
+              <span className="text-xs font-medium text-muted-foreground">
+                optional
+              </span>
+            )}
             {rows(entry.fields)}
           </fieldset>
         ) : (

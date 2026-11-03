@@ -47,6 +47,39 @@ function inputParameter(
   };
 }
 
+/** A field the type requires, as agents read it: a rest with no minimum is not. */
+export function typeRequires(field: NamedToolParameter): boolean {
+  return !inputParameter(field, false).optional;
+}
+
+/** Where an input breaks a rule its schema cannot state, and how. */
+export type InputViolation = { path: string; message: string };
+
+/**
+ * How the input breaks the rule a defaulted pattern keeps beside its
+ * schema, which leaves each of its fields optional: all or nothing. Given
+ * any of its fields, it needs every one its type requires, named under
+ * `prefix`, as in a rooted action's `args`.
+ */
+export function patternViolations(
+  parameters: readonly ToolParameter[],
+  input: Readonly<Record<string, unknown>>,
+  prefix?: string
+): InputViolation[] {
+  const given = (name: string) => Object.hasOwn(input, name);
+  return parameters.flatMap((parameter) => {
+    if (!("destructured" in parameter) || !parameter.optional) return [];
+    const first = parameter.fields.find((field) => given(field.name));
+    if (!first) return [];
+    return parameter.fields
+      .filter((field) => typeRequires(field) && !given(field.name))
+      .map((field) => ({
+        path: prefix === undefined ? field.name : `${prefix}.${field.name}`,
+        message: `is required when ${first.name} is given`,
+      }));
+  });
+}
+
 /** The object schema an action's arguments are validated against. */
 export function inputSchemaFor(
   parameters: readonly ToolParameter[]

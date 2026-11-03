@@ -49,4 +49,4 @@ export {
   INSPECTOR_HOST_SELECTOR,
   onlyHitTestMarks,
 } from "./inspectorMarks";
-export { checkedToolInput } from "./schemaValidation";
+export { checkedToolInput, refuseViolations } from "./schemaValidation";

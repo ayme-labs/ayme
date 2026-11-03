@@ -147,6 +147,20 @@ describe("renderPomDefinitions", () => {
               ],
             },
           ]),
+          action("save", [
+            {
+              destructured: "object",
+              optional: true,
+              fields: [
+                { name: "email", optional: false, schema: { type: "string" } },
+                {
+                  name: "remember",
+                  optional: true,
+                  schema: { type: "boolean" },
+                },
+              ],
+            },
+          ]),
           // `reset({ ...options }: {})`
           action("reset", [
             { destructured: "object", optional: false, fields: [] },
@@ -174,8 +188,11 @@ describe("renderPomDefinitions", () => {
         "",
         "  move([x: number, y: number])",
         "",
-        // An optional pattern's fields may each be left out.
-        "  follow([first?: string, ...others: string[]])",
+        // An optional pattern is optional as a whole, its fields as its type
+        // has them.
+        "  follow([first: string, ...others: string[]]?)",
+        "",
+        "  save({ email: string; remember?: boolean }?)",
         "",
         "  reset({})",
         "",

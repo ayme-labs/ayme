@@ -46,9 +46,15 @@ export type FieldKind =
 
 /**
  * A destructured parameter's fields, which the form shows together without
- * a label: each is an argument of its own, beside the other parameters'.
+ * a label: each is an argument of its own, beside the other parameters'. A
+ * defaulted pattern's group is optional as a whole: left out entirely, or
+ * given with every field its type requires.
  */
-export type FieldGroup = { kind: "group"; fields: readonly Field[] };
+export type FieldGroup = {
+  kind: "group";
+  optional?: true;
+  fields: readonly Field[];
+};
 
 /**
  * How a schema reads as TypeScript, the way the definition text agents read
@@ -108,11 +114,29 @@ export function groupFields(
   const byName = new Map(fields.map((field) => [field.name, field]));
   const fieldsNamed = (names: readonly { name: string }[]) =>
     names.flatMap(({ name }) => byName.get(name) ?? []);
-  return parameters.flatMap((parameter): (Field | FieldGroup)[] =>
-    "destructured" in parameter
-      ? [{ kind: "group", fields: fieldsNamed(parameter.fields) }]
-      : fieldsNamed([parameter])
-  );
+  return parameters.flatMap((parameter): (Field | FieldGroup)[] => {
+    if (!("destructured" in parameter)) return fieldsNamed([parameter]);
+    if (!parameter.optional)
+      return [{ kind: "group", fields: fieldsNamed(parameter.fields) }];
+    // What the type requires: a rest element with no minimum may be empty.
+    const required = new Set(
+      parameter.fields
+        .filter(
+          (field) => !field.optional && !(field.rest && !field.schema.minItems)
+        )
+        .map(({ name }) => name)
+    );
+    return [
+      {
+        kind: "group",
+        optional: true,
+        fields: fieldsNamed(parameter.fields).map((field) => ({
+          ...field,
+          optional: !required.has(field.name),
+        })),
+      },
+    ];
+  });
 }
 
 function fieldOf(

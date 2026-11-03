@@ -5,6 +5,7 @@ import {
   inputParameters,
   inputSchemaFor,
   methodArguments,
+  patternViolations,
   requiredDescription,
 } from "./actionTool";
 import type { ToolManifest, ToolParameter } from "../../shared";
@@ -219,6 +220,60 @@ describe("inputSchemaFor", () => {
   });
 });
 
+describe("patternViolations", () => {
+  // `[x, y, ...rest]: [number, number, ...number[]] = [0, 0]`
+  const point: ToolParameter = {
+    destructured: "array",
+    optional: true,
+    fields: [
+      { name: "x", optional: false, schema: { type: "number" } },
+      { name: "y", optional: false, schema: { type: "number" } },
+      {
+        name: "rest",
+        optional: false,
+        schema: { type: "array", items: { type: "number" } },
+        rest: true,
+      },
+    ],
+  };
+
+  it("lets agents leave out a defaulted pattern as a whole", () => {
+    expect(patternViolations([query, searchOptions, point], {})).toEqual([]);
+  });
+
+  it("requires every field a defaulted pattern's type requires once one is given", () => {
+    expect(
+      patternViolations([searchOptions, point], { limit: 5, x: 1 })
+    ).toEqual([
+      { path: "order", message: "is required when limit is given" },
+      { path: "y", message: "is required when x is given" },
+    ]);
+    expect(
+      patternViolations([searchOptions, point], {
+        order: "asc",
+        x: 1,
+        y: 2,
+      })
+    ).toEqual([]);
+  });
+
+  it("names the fields under a prefix, as a rooted action's `args` holds them", () => {
+    expect(patternViolations([searchOptions], { limit: 5 }, "args")).toEqual([
+      { path: "args.order", message: "is required when limit is given" },
+    ]);
+  });
+
+  it("leaves a pattern without a default to the schema, and reads only the input's own fields", () => {
+    expect(patternViolations([credentials], { email: "a@b.c" })).toEqual([]);
+    expect(
+      patternViolations(
+        [searchOptions],
+        Object.create({ limit: 5 }) as Record<string, unknown>
+      )
+    ).toEqual([]);
+  });
+});
+
 describe("methodArguments", () => {
   it("spreads a rest parameter's list into the remaining arguments", () => {
     expect(
@@ -241,6 +296,21 @@ describe("methodArguments", () => {
         password: "secret",
       })
     ).toEqual(["milk", { email: "a@b.c", password: "secret" }]);
+  });
+
+  it("collects the fields an object pattern's rest binding gathers with the others", () => {
+    // `{ email, ...options }: { email: string; remember?: boolean }`
+    const signInOptions: ToolParameter = {
+      destructured: "object",
+      optional: false,
+      fields: [
+        { name: "email", optional: false, schema: { type: "string" } },
+        { name: "remember", optional: true, schema: { type: "boolean" } },
+      ],
+    };
+    expect(
+      methodArguments([signInOptions], { email: "a@b.c", remember: true })
+    ).toEqual([{ email: "a@b.c", remember: true }]);
   });
 
   it("passes an optional pattern none of whose fields are given as undefined, so its default applies", () => {

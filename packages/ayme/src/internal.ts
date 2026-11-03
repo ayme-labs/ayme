@@ -29,6 +29,7 @@ export {
 } from "./page-objects/infrastructure";
 export {
   inputSchemaFor,
+  patternViolations,
   renderActionParameters,
   renderPomDefinitions,
   renderSchema,

@@ -4,7 +4,11 @@ import type {
   PomDefinitionAction,
   ToolParameter,
 } from "../../shared";
-import { inputParameters, type InputParameter } from "./actionTool";
+import {
+  inputParameters,
+  typeRequires,
+  type InputParameter,
+} from "./actionTool";
 
 export function renderPomDefinitions(
   definitions: readonly PomDefinition[]
@@ -70,18 +74,30 @@ function isParameters(
   return Array.isArray(input);
 }
 
-/** A parameter as agents give it: its fields, as optional as the input has them. */
+/**
+ * A parameter as agents give it. A defaulted pattern is optional as a
+ * whole, `{ email: string }?`, and its fields read as its type has them.
+ */
 function renderParameter(parameter: ToolParameter): string {
-  const fields = inputParameters([parameter]);
-  if (!("destructured" in parameter)) return renderField(fields[0]!);
-  if (parameter.destructured === "object")
-    return fields.length ? `{ ${fields.map(renderField).join("; ")} }` : "{}";
-  const elements = parameter.fields.map((field, index) =>
-    field.rest
-      ? `...${field.name}: ${renderSchema(field.schema)}`
-      : renderField(fields[index]!)
-  );
-  return `${parameter.rest ? "..." : ""}[${elements.join(", ")}]`;
+  if (!("destructured" in parameter))
+    return renderField(inputParameters([parameter])[0]!);
+  const fields = parameter.fields.map((field) => ({
+    ...field,
+    optional: !typeRequires(field),
+  }));
+  const shape =
+    parameter.destructured === "object"
+      ? fields.length
+        ? `{ ${fields.map(renderField).join("; ")} }`
+        : "{}"
+      : `[${fields
+          .map((field) =>
+            field.rest
+              ? `...${field.name}: ${renderSchema(field.schema)}`
+              : renderField(field)
+          )
+          .join(", ")}]`;
+  return `${parameter.rest ? "..." : ""}${shape}${parameter.optional ? "?" : ""}`;
 }
 
 function renderField({ name, optional, schema }: InputParameter): string {

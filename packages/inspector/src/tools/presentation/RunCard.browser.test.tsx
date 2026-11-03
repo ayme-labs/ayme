@@ -324,6 +324,53 @@ describe("a destructured parameter", () => {
   });
 });
 
+describe("a defaulted destructured parameter", () => {
+  const save: RunnableTool = {
+    name: "LoginPage.save",
+    action: "save",
+    description: "Save the credentials.",
+    present: true,
+    available: true,
+    argumentsSchema: {
+      type: "object",
+      properties: {
+        email: { type: "string" },
+        password: { type: "string" },
+      },
+      required: [],
+    },
+    // `save({ email, password }: Credentials = defaults)`
+    parameters: [
+      {
+        destructured: "object",
+        optional: true,
+        fields: [
+          { name: "email", optional: false, schema: { type: "string" } },
+          { name: "password", optional: false, schema: { type: "string" } },
+        ],
+      },
+    ],
+  };
+
+  it("shows the group optional as a whole, and asks for its type's required fields once one is given", async () => {
+    const { card } = renderCard({ tool: save });
+
+    await card.openArguments();
+
+    await expect
+      .poll(() => card.root.textContent())
+      .toContain("({ email: string; password: string }?)");
+    const group = card.fieldGroup("email");
+    expect(await group.textContent()).toBe("optionalemailstringpasswordstring");
+
+    await card.fillJson('{ "email": "ann@example.com" }');
+
+    await expect
+      .poll(() => card.schemaErrors.allTextContents())
+      .toEqual(["password: is required when email is given"]);
+  });
+});
+
 describe("the typed form", () => {
   it("runs with text, integers, booleans, choices, lists and optional objects", async () => {
     const { card, onRun } = renderCard({ tool: addItem });

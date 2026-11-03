@@ -80,6 +80,7 @@ const calls: Record<string, Record<string, JsonValue>> = {
   "DestructuredParametersPom.move": { x: 1, y: 2 },
   "DestructuredParametersPom.follow": { start: 1, others: ["b", "c"] },
   "DestructuredParametersPom.spread": { name: "a", count: 2 },
+  "DestructuredParametersPom.remember": { email: "a@b.c" },
   "DestructuredParametersPom.name": { "first-name": "Ann", last: "Lee" },
   "DestructuredParametersPom.tail": { head: "a", rest: [1, 2] },
   "DestructuredParametersPom.first": { x: 1 },
@@ -156,9 +157,12 @@ describe("an action's schema, compiled, validated and rendered", () => {
     expect(signatureOf("signInAs")).toBe(
       "({ email: string; password: string; remember?: boolean })"
     );
-    // A defaulted pattern's fields may each be left out.
+    // A defaulted pattern is optional as a whole.
     expect(signatureOf("search")).toBe(
-      '(query: string, { limit?: number; order?: "asc" | "desc" })'
+      '(query: string, { limit?: number; order: "asc" | "desc" }?)'
+    );
+    expect(signatureOf("remember")).toBe(
+      "({ email: string; remember?: boolean })"
     );
     expect(signatureOf("move")).toBe("([x: number, y: number])");
     expect(signatureOf("follow")).toBe(
