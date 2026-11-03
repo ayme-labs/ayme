@@ -17,7 +17,6 @@ export type PageContext = {
 export const getPageContextTool = {
   name: "snapshot",
   description:
-    // Stryker disable next-line StringLiteral: tool description wording, set when the module loads, before Stryker activates a mutant.
     "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is a Locator and member: ChildPom a child POM; [] marks a collection, so member[] is a collection of Locators and member: ChildPom[] a collection of child POMs. A // comment after a member is its authored description, as is one above an action. action(args): this | OtherPom is an action with possible next POMs, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
   inputSchema: {
     type: "object",
