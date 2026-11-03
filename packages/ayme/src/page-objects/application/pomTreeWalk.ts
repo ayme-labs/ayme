@@ -27,7 +27,9 @@ import {
 
 /**
  * Package-internal: the elements `sources` hold now, in their order. A
- * locator that cannot be resolved holds none; its observation says why.
+ * locator that cannot be resolved holds none; its observation says why. Each
+ * element of a Locator collection is at its index and named by its `nth`
+ * locator, as an Interaction on that element names it.
  */
 export function resolveTargets(
   driver: PageDriver,
@@ -47,9 +49,15 @@ export function resolveTargets(
     }
     return elements;
   };
-  return sources.flatMap(({ path, locator, root }) => {
+  return sources.flatMap(({ path, locator, root, collection }) => {
     const elements = elementsOf(locator);
     if (root && isRootElement(elements, elementsOf(root))) return [];
+    if (collection)
+      return elements.map((element, index) => ({
+        path: `${path}[${index}]`,
+        element,
+        locator: locator.nth(index).toString(),
+      }));
     const name = locator.toString();
     return elements.map((element) => ({ path, element, locator: name }));
   });
@@ -261,6 +269,7 @@ async function walkMembers(
           path: joinPath(walk.label, memberPath),
           locator: value,
           root: place.rootLocator,
+          ...(member.collection === true && { collection: true }),
         });
         if (resolvesToRoot(walk.driver, value, place.rootElement)) {
           walk.rootMemberPaths.add(memberPath);
