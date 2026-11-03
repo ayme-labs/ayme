@@ -55,6 +55,60 @@ test("a Page Object Tool run from the panel shows in Runs as the Inspector's, wi
     ]);
 });
 
+test("form fields keep their names and values without repeating their refs", async ({
+  page,
+  inspector,
+}) => {
+  const agent = new AgentView(page);
+  const text = await agent.ref('textbox "New item"');
+  const urgent = await agent.ref('checkbox "Urgent"');
+  await inspector.runs.showAll();
+  await agent.call("fill_form", {
+    fields: [
+      { name: "New item", type: "textbox", target: text, value: "Milk" },
+      { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
+    ],
+  });
+  const run = inspector.runs.latest("fill_form");
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([
+      { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
+      { operation: "setChecked", target: 'checkbox "Urgent"' },
+    ]);
+  expect(JSON.parse((await run.arguments.textContent()) ?? "")).toEqual({
+    fields: [
+      { name: "New item", type: "textbox", value: "Milk" },
+      { name: "Urgent", type: "checkbox", value: "true" },
+    ],
+  });
+});
+
+test("a selection's chosen values show beside its readable target", async ({
+  page,
+  inspector,
+}) => {
+  await page.evaluate(() => {
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", "Size");
+    for (const name of ["Small", "Large"]) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.append(option);
+    }
+    document.querySelector("main")!.append(select);
+  });
+  const agent = new AgentView(page);
+  const target = await agent.ref('combobox "Size"');
+  await inspector.runs.showAll();
+  await agent.call("select_option", { target, values: ["Large"] });
+  const run = inspector.runs.latest("select_option");
+  await expect.poll(() => run.toggle.textContent()).toContain('["Large"]');
+  expect(await run.toggle.textContent()).toContain('combobox "Size"');
+  await expect(run.arguments).toHaveCount(0);
+});
+
 test("an agent's call over WebMCP shows in Runs as the agent's", async ({
   page,
   inspector,

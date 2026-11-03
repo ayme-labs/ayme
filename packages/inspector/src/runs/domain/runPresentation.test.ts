@@ -18,7 +18,7 @@ it("shows one input once, without losing modifiers or other falsy arguments", ()
         interactions: [interaction],
       })
     )
-  ).toEqual({ primary: interaction, arguments: { submit: false } });
+  ).toEqual({ primary: interaction, value: "", arguments: { submit: false } });
 });
 
 it("keeps every interaction of custom and multi-input tools", () => {
@@ -68,7 +68,7 @@ it("shows a keyboard input's key once without inventing a target", () => {
         interactions: [interaction],
       })
     )
-  ).toEqual({ primary: interaction, arguments: {} });
+  ).toEqual({ primary: interaction, value: "Enter", arguments: {} });
 });
 
 it("removes an item's redundant ref only when the displayed item actually identifies it", () => {
@@ -81,4 +81,60 @@ it("removes an item's redundant ref only when the displayed item actually identi
   expect(
     runPresentation({ ...run, arguments: { ref: "e8" } }).arguments
   ).toEqual({ ref: "e8" });
+});
+
+it("removes only form targets already represented by readable interaction rows", () => {
+  const fields = [
+    { name: "Email", type: "textbox", target: "e7", value: "a@b" },
+    { name: "Country", type: "combobox", target: "e8", value: "Germany" },
+  ];
+  const run = aRun({
+    toolName: "fill_form",
+    arguments: { fields },
+    interactions: [
+      anInteraction({
+        operation: "fill",
+        ref: "e7",
+        target: 'textbox "Email"',
+        value: "a@b",
+      }),
+    ],
+  });
+  expect(runPresentation(run).arguments).toEqual({
+    fields: [{ name: "Email", type: "textbox", value: "a@b" }, fields[1]],
+  });
+  expect(fields[0]?.target).toBe("e7");
+  expect(runPresentation({ ...run, interactions: [] }).arguments).toEqual({
+    fields,
+  });
+  expect(
+    runPresentation({ ...run, interactions: [anInteraction({ ref: "e7" })] })
+      .arguments
+  ).toEqual({ fields });
+  expect(
+    runPresentation({ ...run, toolName: "Form.submit" }).arguments
+  ).toEqual({ fields });
+});
+
+it("shows selected options in the heading without flattening multi-selection or losing punctuation", () => {
+  const values = ["Small, regular", 'Large "wide"'];
+  const interaction = anInteraction({
+    operation: "selectOption",
+    ref: "e7",
+    target: 'combobox "Size"',
+  });
+  const run = aRun({
+    toolName: "select_option",
+    arguments: { target: "e7", values },
+    interactions: [interaction],
+  });
+  expect(runPresentation(run)).toEqual({
+    primary: interaction,
+    value: values,
+    arguments: {},
+  });
+  expect(run.arguments.values).toEqual(values);
+  expect(
+    runPresentation({ ...run, arguments: { target: "e7", values: [] } }).value
+  ).toEqual([]);
 });

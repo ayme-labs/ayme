@@ -778,6 +778,8 @@ describe("a run's arguments", () => {
       .toBe('button "Delete"');
     await child.interactionTarget(0).hover();
     expect(onHover).not.toHaveBeenCalled();
+    expect(await runsView.run(0).earlierPage.count()).toBe(1);
+    expect(await child.earlierPage.count()).toBe(0);
   });
 
   it("aren't shown when there are none", async () => {
@@ -786,6 +788,62 @@ describe("a run's arguments", () => {
     await expect.poll(() => runsView.run(0).status()).toBe("Succeeded");
     expect(await runsView.run(0).arguments.count()).toBe(0);
     expect(await runsView.run(0).root.textContent()).not.toContain("{}");
+  });
+
+  it("shows chosen options beside a single selection's readable target", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "select_option",
+          arguments: { target: "e7", values: ["Small", "Large"] },
+          interactions: [
+            anInteraction({
+              operation: "selectOption",
+              ref: "e7",
+              target: 'combobox "Size"',
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.toggle.textContent())
+      .toContain('["Small","Large"]');
+    expect(await run.toggle.textContent()).toContain('combobox "Size"');
+    expect(await run.arguments.count()).toBe(0);
+  });
+
+  it("shows a form's named inputs without repeating their refs in Arguments", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "fill_form",
+          arguments: {
+            fields: [
+              { name: "Email", type: "textbox", target: "e7", value: "a@b" },
+            ],
+          },
+          interactions: [
+            anInteraction({
+              operation: "fill",
+              ref: "e7",
+              target: 'textbox "Email"',
+              value: "a@b",
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.interactionList())
+      .toEqual([
+        { operation: "fill", target: 'textbox "Email"', value: '"a@b"' },
+      ]);
+    expect(await run.arguments.textContent()).toBe(
+      '{"fields":[{"name":"Email","type":"textbox","value":"a@b"}]}'
+    );
   });
 
   it("are shown with their null and falsy fields", async () => {

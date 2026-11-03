@@ -238,6 +238,7 @@ const statusIcon = {
  */
 function RunRow({
   run,
+  earlierDocument = run.earlierDocument === true,
   nested = false,
   entering = false,
   closedRuns,
@@ -253,6 +254,8 @@ function RunRow({
 }: RowProps & {
   /** A top-level Run names its Caller; a child Run doesn't. */
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
+  /** Inherited only for highlighting; the top-level Run owns the page badge. */
+  earlierDocument?: boolean;
   /** Whether it's a child run, nested under the run that started it. */
   nested?: boolean;
   /** Whether it slides in as it appears. */
@@ -298,18 +301,16 @@ function RunRow({
           onCopyResult={(text) => copyResult(run.id, text)}
           resultCopied={run.id === copiedResult}
           onOpenImage={openImage}
-          onHover={run.earlierDocument ? () => {} : onHover}
-          canHighlight={run.earlierDocument ? () => false : canHighlight}
+          onHover={earlierDocument ? () => {} : onHover}
+          canHighlight={earlierDocument ? () => false : canHighlight}
         />
         {open && run.children.length > 0 && (
           <ol aria-label="Child runs" className="m-0 flex flex-col gap-2 p-0">
             {run.children.map((child) => (
               <RunRow
                 key={child.id}
-                run={{
-                  ...child,
-                  ...(run.earlierDocument ? { earlierDocument: true } : {}),
-                }}
+                run={child}
+                earlierDocument={earlierDocument}
                 nested
                 closedRuns={closedRuns}
                 openResults={openResults}
@@ -358,7 +359,7 @@ function RunEntryCard({
   onHover: OnHover;
   canHighlight: RunsViewProps["canHighlight"];
 }) {
-  const { primary, arguments: args } = runPresentation(run);
+  const { primary, value, arguments: args } = runPresentation(run);
   return (
     <div
       data-run-card=""
@@ -393,12 +394,14 @@ function RunEntryCard({
               canHighlight={canHighlight}
               passive
             />
-            {primary.value !== undefined && (
+            {value !== undefined && (
               <span
                 className="min-w-0 truncate font-mono text-xs"
-                title={primary.value}
+                title={
+                  typeof value === "string" ? value : JSON.stringify(value)
+                }
               >
-                {JSON.stringify(primary.value)}
+                {JSON.stringify(value)}
               </span>
             )}
           </>
