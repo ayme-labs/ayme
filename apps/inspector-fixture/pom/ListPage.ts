@@ -23,8 +23,11 @@ export class ListPage {
   constructor(page: Page) {
     this.newItemInput = page.getByRole("textbox", { name: "New item" });
     this.addItemButton = page.getByRole("button", { name: "Add item" });
-    // The Inspector's Runs view has a "Clear" button too.
-    this.clearButton = page.getByRole("button", { name: "Clear" });
+    // The Inspector's Runs view has a "Clear" button too, inside an open
+    // shadow root on the dogfood page, so the page's own is the one in main.
+    this.clearButton = page
+      .getByRole("main")
+      .getByRole("button", { name: "Clear" });
     this.items = page
       .getByRole("list", { name: "Items" })
       .getByRole("listitem");
