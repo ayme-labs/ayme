@@ -29,6 +29,7 @@ export {
 } from "./page-objects/infrastructure";
 export {
   inputSchemaFor,
+  patternViolations,
   renderActionParameters,
   renderPomDefinitions,
   renderSchema,
@@ -39,6 +40,8 @@ export { registerCompiledPom } from "./page-objects/application";
 // The compiled Page Object manifest the build plugin writes and the runtime
 // reads; both ship together, so it is no public contract.
 export type {
+  DestructuredToolParameter,
+  NamedToolParameter,
   PomComponentManifest,
   PomComponentMemberManifest,
   PomLocatorMemberManifest,

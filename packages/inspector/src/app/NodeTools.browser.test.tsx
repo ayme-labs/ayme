@@ -18,6 +18,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
+    patternViolations,
     toolInputViolations,
     elementsOf,
     kindOf,
@@ -49,6 +50,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
+    patternViolations,
     toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(

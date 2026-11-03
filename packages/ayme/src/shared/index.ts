@@ -4,9 +4,11 @@ export type { BuiltInCaller, Caller } from "./callers";
 export { containsThroughShadow, parentElement } from "./composedTree";
 export { isJsonPrimitive, isJsonValue } from "./contracts";
 export type {
+  DestructuredToolParameter,
   JsonPrimitive,
   JsonSchema,
   JsonValue,
+  NamedToolParameter,
   PomComponentManifest,
   PomComponentMemberManifest,
   PomDefinition,
@@ -47,4 +49,4 @@ export {
   INSPECTOR_HOST_SELECTOR,
   onlyHitTestMarks,
 } from "./inspectorMarks";
-export { checkedToolInput } from "./schemaValidation";
+export { checkedToolInput, refuseViolations } from "./schemaValidation";

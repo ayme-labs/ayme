@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+import type { RegisteredPom, ToolParameter } from "@ayme-dev/ayme/internal";
 
 import { listRunnableTools } from "./runnableTools";
 
@@ -76,6 +76,58 @@ it("runs a Page Object action with its parameters", () => {
     present: true,
     available: true,
   });
+});
+
+it("gives a Page Object action the parameters its manifest declares, a Child's too", () => {
+  const credentials: ToolParameter = {
+    destructured: "object",
+    optional: false,
+    fields: [
+      { name: "email", optional: false, schema: { type: "string" } },
+      { name: "password", optional: false, schema: { type: "string" } },
+    ],
+  };
+  const point: ToolParameter = {
+    destructured: "array",
+    optional: false,
+    fields: [
+      { name: "x", optional: false, schema: { type: "number" } },
+      { name: "y", optional: false, schema: { type: "number" } },
+    ],
+  };
+  const loginPage: RegisteredPom = {
+    ...listPage,
+    id: "LoginPage",
+    manifest: {
+      className: "LoginPage",
+      members: [],
+      components: [
+        {
+          className: "ListItem",
+          members: [],
+          tools: [
+            {
+              methodName: "rename",
+              toolName: "ListItem.rename",
+              parameters: [point],
+            },
+          ],
+        },
+      ],
+      tools: [
+        {
+          methodName: "addItem",
+          toolName: "ListPage.addItem",
+          parameters: [credentials],
+        },
+      ],
+    },
+  };
+
+  const tools = listRunnableTools([loginPage], []);
+
+  expect(tools.get("ListPage.addItem")?.parameters).toEqual([credentials]);
+  expect(tools.get("ListItem.rename")?.parameters).toEqual([point]);
 });
 
 it("runs a rooted action on an item, with the action's own arguments", () => {

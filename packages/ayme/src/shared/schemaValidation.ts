@@ -2,6 +2,7 @@ import {
   toolInputViolations,
   violationSentences,
   type JsonSchema,
+  type SchemaViolation,
 } from "@ayme-dev/core/tool-input";
 
 import { ToolInputError } from "./errors";
@@ -24,10 +25,17 @@ export function checkedToolInput(
       : isRecord(input)
         ? Object.fromEntries(Object.entries(input))
         : input;
-  const violations = toolInputViolations(schema, value);
+  refuseViolations(toolInputViolations(schema, value));
+  return value as Record<string, unknown>;
+}
+
+/**
+ * Package-internal: refuses an input with violations, as the runtime's
+ * input check does, with a sentence for each.
+ */
+export function refuseViolations(violations: readonly SchemaViolation[]) {
   if (violations.length > 0)
     throw new ToolInputError(violationSentences(violations));
-  return value as Record<string, unknown>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

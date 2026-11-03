@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +10,15 @@ import {
 import { derivePomManifests } from "./index";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../package.json";
+
+/**
+ * The line of a fixture that holds `text`, as the file stands: a header a
+ * tool adds to it, such as Stryker's `// @ts-nocheck`, moves it too.
+ */
+function lineOf(fileName: string, text: string) {
+  const lines = fs.readFileSync(fileName, "utf8").split("\n");
+  return lines.findIndex((line) => line.includes(text)) + 1;
+}
 
 function manifestFor(fixture: string) {
   return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`))[0];
@@ -87,34 +97,46 @@ describe("derivePomManifests", () => {
     });
 
     it.each([
-      ["templateActionPom", "Page Object Action TemplateActionPom.show", 8],
-      ["variableClassPom", "Page Object VariableClassPom", 5],
-      ["quotedKeyPom", "Page Object Action QuotedKeyPom.save", 8],
+      [
+        "templateActionPom",
+        "Page Object Action TemplateActionPom.show",
+        "description: `Show",
+      ],
+      [
+        "variableClassPom",
+        "Page Object VariableClassPom",
+        "@ayme({ description",
+      ],
+      [
+        "quotedKeyPom",
+        "Page Object Action QuotedKeyPom.save",
+        '"description": DESCRIPTION',
+      ],
     ])(
       "fails the build for the description of %s, which is not a constant string",
-      (fixture, owner, line) => {
+      (fixture, owner, description) => {
         const fileName = path.resolve(
           `src/fixtures/computedDescriptions/${fixture}.ts`
         );
         expect(() => derivePomManifests(fileName)).toThrow(
-          `The description of ${owner} is not a constant string (${fileName}:${line}).`
+          `The description of ${owner} is not a constant string (${fileName}:${lineOf(fileName, description)}).`
         );
       }
     );
   });
 
   it.each([
-    ["spreadActionPom", "SpreadActionPom.read", 9],
-    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", 7],
-    ["computedKeyActionPom", "ComputedKeyActionPom.read", 7],
+    ["spreadActionPom", "SpreadActionPom.read", "...options,"],
+    ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", "...options })"],
+    ["computedKeyActionPom", "ComputedKeyActionPom.read", "[key]:"],
   ])(
     "fails the build for %s, whose description may come from a spread or a computed key",
-    (fixture, action, line) => {
+    (fixture, action, description) => {
       const fileName = path.resolve(
         `src/fixtures/computedDescriptions/${fixture}.ts`
       );
       expect(() => derivePomManifests(fileName)).toThrow(
-        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${line}).`
+        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${lineOf(fileName, description)}).`
       );
     }
   );
@@ -1015,7 +1037,7 @@ describe("derivePomManifests", () => {
           { type: "object" },
         ],
       };
-      expect(parametersOf("recursive")?.[0]?.schema).toEqual({
+      expect(parametersOf("recursive")?.[0]).toHaveProperty("schema", {
         anyOf: [
           { type: "string" },
           { type: "number" },
@@ -1042,6 +1064,248 @@ describe("derivePomManifests", () => {
             },
           },
         ],
+      });
+    });
+
+    describe("a destructured parameter", () => {
+      function destructuredParametersOf(methodName: string) {
+        return manifestFor("destructuredParametersPom")?.tools.find(
+          (tool) => tool.methodName === methodName
+        )?.parameters;
+      }
+
+      it("takes an object pattern's fields from its type, keyed by property name", () => {
+        expect(destructuredParametersOf("signIn")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "password", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+        // Every property of the type, whatever the pattern binds or renames.
+        expect(destructuredParametersOf("signInAs")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "password", optional: false, schema: { type: "string" } },
+              { name: "remember", optional: true, schema: { type: "boolean" } },
+            ],
+          },
+        ]);
+      });
+
+      it("records a defaulted object pattern beside a named parameter, with its bindings' literal defaults", () => {
+        expect(destructuredParametersOf("search")).toStrictEqual([
+          { name: "query", optional: false, schema: { type: "string" } },
+          {
+            destructured: "object",
+            optional: true,
+            fields: [
+              {
+                name: "limit",
+                optional: true,
+                schema: { type: "number" },
+                default: 10,
+              },
+              {
+                name: "order",
+                optional: false,
+                schema: { type: "string", enum: ["asc", "desc"] },
+              },
+            ],
+          },
+        ]);
+      });
+
+      it("keys an array pattern's fields by the names it binds", () => {
+        expect(destructuredParametersOf("move")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "x", optional: false, schema: { type: "number" } },
+              { name: "y", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
+      });
+
+      it("takes an array pattern's optional elements, a plain array's elements and a rest element", () => {
+        expect(destructuredParametersOf("follow")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "start", optional: false, schema: { type: "number" } },
+              {
+                name: "end",
+                optional: true,
+                schema: { type: "number" },
+                default: 9,
+              },
+            ],
+          },
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "first", optional: true, schema: { type: "string" } },
+              {
+                name: "others",
+                optional: false,
+                schema: { type: "array", items: { type: "string" } },
+                rest: true,
+              },
+            ],
+          },
+        ]);
+      });
+
+      it.each([
+        [
+          "holePom",
+          "Page Object Action HolePom.move needs a name for every element of [, y]: [number, number]: element 0 is a hole.",
+        ],
+        [
+          "nestedElementPom",
+          "Page Object Action NestedElementPom.pick needs a name for every element of [{ a }, b]: [{ a: string }, number]: element 0 is a nested pattern.",
+        ],
+        [
+          "unboundElementPom",
+          "Page Object Action UnboundElementPom.move needs a name for every element of [x]: [number, number]: element 1 is not bound.",
+        ],
+        [
+          "untypedBindingPom",
+          "Page Object Action UntypedBindingPom.login: email, password and remember in { email, password, remember } have no type. Annotate the parameter.",
+        ],
+        [
+          "misspelledBindingPom",
+          "Page Object Action MisspelledBindingPom.signIn: emial in { emial, password: secret }: Credentials has no type.",
+        ],
+        [
+          "arrayDuplicatePom",
+          "Page Object Action ArrayDuplicatePom.move takes two input fields named x: property x of { y }: { x: number; y: number }, and binding x of [x]: [number].",
+        ],
+        [
+          "indexSignaturePatternPom",
+          `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "stringPatternPom",
+          `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "tupleUnionPom",
+          `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "correlatedTuplePom",
+          `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+        ],
+        [
+          "renamedDuplicatePom",
+          "Page Object Action RenamedDuplicatePom.search takes two input fields named query: parameter query, and property query of { query: q }: { query: string }.",
+        ],
+        [
+          "typeDuplicatePom",
+          "Page Object Action TypeDuplicatePom.search takes two input fields named limit: parameter limit, and property limit of { order }: Options.",
+        ],
+        [
+          "sharedPropertyPom",
+          "Page Object Action SharedPropertyPom.copy takes two input fields named id: property id of { id }: { id: string }, and property id of { id: other }: { id: string }.",
+        ],
+      ])("fails the build for %s", (fixture, message) => {
+        let thrown: unknown;
+        try {
+          derivePomManifests(
+            path.resolve(`src/fixtures/unsupportedPatterns/${fixture}.ts`)
+          );
+        } catch (error) {
+          thrown = error;
+        }
+        expect((thrown as Error | undefined)?.message).toBe(message);
+      });
+
+      it("takes an object pattern's quoted keys with their defaults, and its computed ones from the type", () => {
+        expect(destructuredParametersOf("name")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              {
+                name: "first-name",
+                optional: false,
+                schema: { type: "string" },
+                default: "Ann",
+              },
+              { name: "last", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+      });
+
+      it("takes the properties an object pattern's rest binding gathers", () => {
+        expect(destructuredParametersOf("remember")).toStrictEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "remember", optional: true, schema: { type: "boolean" } },
+            ],
+          },
+        ]);
+      });
+
+      it("binds a tuple's remaining fixed elements, or leaves its variadic ones, to a rest element", () => {
+        expect(destructuredParametersOf("tail")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "head", optional: false, schema: { type: "string" } },
+              {
+                name: "rest",
+                optional: false,
+                schema: {
+                  type: "array",
+                  prefixItems: [{ type: "number" }, { type: "number" }],
+                  minItems: 2,
+                  maxItems: 2,
+                },
+                rest: true,
+              },
+            ],
+          },
+        ]);
+        expect(destructuredParametersOf("first")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "x", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
+      });
+
+      it("records a destructured rest parameter as a rest array pattern", () => {
+        expect(destructuredParametersOf("spread")).toStrictEqual([
+          {
+            destructured: "array",
+            optional: false,
+            rest: true,
+            fields: [
+              { name: "name", optional: false, schema: { type: "string" } },
+              { name: "count", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
       });
     });
 
