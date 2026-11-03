@@ -97,7 +97,7 @@ export function ArgumentsFormView({
     <>
       {fields.map((entry, index) =>
         entry.kind === "group" ? (
-          <fieldset key={`group ${index}`} className={groupClass}>
+          <fieldset key={index} className={groupClass}>
             {rows(entry.fields)}
           </fieldset>
         ) : (
