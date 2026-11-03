@@ -268,6 +268,68 @@ registerCompiledPom(RunsTable, {
   components: [{ className: "RunsToolbar", members: [], tools: [] }],
 });
 
+/**
+ * A page holding two Page Objects, only one declared a child. As the build
+ * compiles it, its manifest lists the undeclared one's class only because an
+ * action returns it, and no member reaches it.
+ */
+class InboxPage {
+  readonly filters = new InboxFilters();
+  readonly menu = new InboxMenu();
+
+  openMenu() {
+    return this.menu;
+  }
+}
+
+class InboxFilters {
+  apply() {}
+}
+
+class InboxMenu {
+  signOut() {}
+}
+
+const inboxFilters: PomManifest = {
+  className: "InboxFilters",
+  members: [],
+  components: [],
+  tools: [
+    { methodName: "apply", toolName: "InboxFilters.apply", parameters: [] },
+  ],
+};
+const inboxMenu: PomManifest = {
+  className: "InboxMenu",
+  members: [],
+  components: [],
+  tools: [
+    { methodName: "signOut", toolName: "InboxMenu.signOut", parameters: [] },
+  ],
+};
+registerCompiledPom(InboxFilters, inboxFilters);
+registerCompiledPom(InboxMenu, inboxMenu);
+registerCompiledPom(InboxPage, {
+  className: "InboxPage",
+  members: [
+    {
+      memberName: "filters",
+      kind: "component",
+      access: "field",
+      componentClassName: "InboxFilters",
+      collection: false,
+    },
+  ],
+  tools: [
+    {
+      methodName: "openMenu",
+      toolName: "InboxPage.openMenu",
+      parameters: [],
+      returnPoms: ["InboxMenu"],
+    },
+  ],
+  components: [inboxFilters, inboxMenu],
+});
+
 /** A Custom Tool with its own filter. */
 const highlight: CustomTool = {
   name: "highlight",
@@ -605,6 +667,27 @@ describe("the session's tools in Chromium", () => {
   toolbar: RunsToolbar // Filters the runs.
 
   refresh()`);
+  });
+
+  it("publishes tools only through declared children, not through a Page Object an undeclared member holds", async () => {
+    await startSession();
+    cleanups.push(registered(InboxPage));
+    await probeRegisteredPomMembers();
+
+    const listed = names(ayme.tools.list());
+    expect(listed).toEqual(
+      expect.arrayContaining(["InboxPage.openMenu", "InboxFilters.apply"])
+    );
+    expect(listed).not.toContain("InboxMenu.signOut");
+    await expect(agentCall("InboxMenu.signOut", {})).rejects.toThrow();
+
+    const { pomDefinitions } = (await ayme.tools.run("snapshot", {
+      names: ["InboxPage"],
+    })) as { pomDefinitions: string };
+    expect(pomDefinitions).toBe(`InboxPage
+  filters: InboxFilters
+
+  openMenu(): InboxMenu`);
   });
 
   it("lists a described action with its author's words as both descriptions", async () => {
