@@ -400,6 +400,30 @@ describe("where each of a node's members leads", () => {
     ]);
   });
 
+  it("tags an element of a Locator collection by its index, and leads it to its instance and model member", () => {
+    const table = [
+      page("RunsTable", {
+        children: [
+          collection("runs", "RunRow", [{ locatorCollections: { cells: 3 } }]),
+        ],
+      }),
+    ];
+
+    expect(nodeOf(["RunsTable.runs[0].cells[2]"], table)).toMatchObject({
+      members: ["RunsTable.runs[0].cells[2]"],
+      member: "RunsTable.runs[0].cells[2]",
+      tag: ".cells[2]",
+      owner: "RunsTable.runs[0]",
+      memberLinks: [
+        {
+          member: "RunsTable.runs[0].cells[2]",
+          owner: { object: "RunsTable.runs[0]" },
+        },
+        { member: "RunRow.cells", owner: { model: "RunRow" } },
+      ],
+    });
+  });
+
   it("tags an item's member over the item's own root", () => {
     expect(
       nodeOf(

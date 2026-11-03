@@ -653,6 +653,70 @@ it("selects a Page Object's member by clicking it, and shows it", async () => {
   expect(await detail.fact("Owner").textContent()).toBe("TodoPage");
 });
 
+/** A dashboard whose runs table declares its rows, with a description. */
+function runsDashboard(): PageModel {
+  const dashboard = pageObject("Dashboard", {
+    children: [
+      component("runs", "RunsTable", { locatorCollections: { rows: 3 } }),
+    ],
+  });
+  const runs = dashboard.children[0]!;
+  return {
+    objects: [
+      {
+        ...dashboard,
+        children: [
+          {
+            ...runs,
+            members: [{ ...runs.members[0]!, description: "One row per run." }],
+          },
+        ],
+      },
+    ],
+    models: [
+      {
+        className: "RunsTable",
+        members: [
+          {
+            name: "rows",
+            kind: "locator",
+            collection: true,
+            description: "One row per run.",
+            path: "RunsTable.rows",
+          },
+        ],
+        actions: [],
+        instancePaths: ["Dashboard.runs"],
+      },
+    ],
+  };
+}
+
+it("shows a declared child's description beside its live state", async () => {
+  renderLens({
+    selection: { kind: "member", path: "Dashboard.runs.rows" },
+    pageModel: runsDashboard(),
+  });
+
+  await expect
+    .poll(() => detail.description.textContent())
+    .toBe("One row per run.");
+  expect(await detail.fact("Declared as").textContent()).toBe("rows[]");
+  expect(await detail.fact("On the page").textContent()).toBe("3 matches");
+});
+
+it("shows a model's declared child's description", async () => {
+  renderLens({
+    selection: { kind: "member", path: "RunsTable.rows" },
+    pageModel: runsDashboard(),
+  });
+
+  await expect
+    .poll(() => detail.description.textContent())
+    .toBe("One row per run.");
+  expect(await detail.fact("Owner").textContent()).toBe("RunsTable");
+});
+
 it("goes from a member to the Page Object it belongs to", async () => {
   const { onSelect } = renderLens({
     selection: { kind: "member", path: "TodoPage.items[1].archiveButton" },
