@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  JsonSchema,
   PomDefinition,
   PomMemberObservation,
   RegisteredPomTool,
@@ -20,17 +19,13 @@ import {
 // items, and an archive dialog that isn't open.
 
 /** A stand-in for the definition text's rendering, enough for these actions. */
-const actionSignature: Signature = (input) =>
-  `(${(isSchema(input)
-    ? Object.entries(input.properties ?? {})
-    : input.map(({ name, schema }) => [name, schema] as const)
-  )
-    .map(([name, property]) => `${name}: ${String(property.type)}`)
+const actionSignature: Signature = (parameters) =>
+  `(${parameters
+    .flatMap((parameter) =>
+      "destructured" in parameter ? parameter.fields : [parameter]
+    )
+    .map(({ name, schema }) => `${name}: ${String(schema.type)}`)
     .join(", ")})`;
-
-function isSchema(input: Parameters<Signature>[0]): input is JsonSchema {
-  return !Array.isArray(input);
-}
 
 const noArguments = {
   type: "object" as const,
@@ -183,6 +178,9 @@ const definitions: PomDefinition[] = [
         name: "addItem",
         description: "Add an item.",
         inputSchema: textArgument,
+        parameters: [
+          { name: "text", optional: false, schema: { type: "string" } },
+        ],
         returnPoms: [],
       },
     ],
@@ -195,6 +193,7 @@ const definitions: PomDefinition[] = [
         name: "archive",
         description: "Archive this item.",
         inputSchema: noArguments,
+        parameters: [],
         returnPoms: [],
       },
     ],
@@ -202,7 +201,14 @@ const definitions: PomDefinition[] = [
   {
     name: "ArchiveDialog",
     children: manifest.components[1]!.members,
-    actions: [{ name: "confirm", inputSchema: noArguments, returnPoms: [] }],
+    actions: [
+      {
+        name: "confirm",
+        inputSchema: noArguments,
+        parameters: [],
+        returnPoms: [],
+      },
+    ],
   },
 ];
 

@@ -2,6 +2,7 @@ import type { JsonSchema, RegisteredPomTool } from "@ayme-dev/ayme";
 import type {
   PublishedToolGroup,
   RegisteredPom,
+  ToolParameter,
 } from "@ayme-dev/ayme/internal";
 
 /** A tool as the run card runs it. */
@@ -15,6 +16,11 @@ export type RunnableTool = {
    * action the action's own arguments, without the instance's ref.
    */
   argumentsSchema: JsonSchema;
+  /**
+   * A Page Object action's parameters as it declares them, which group a
+   * destructured parameter's fields and write its signature.
+   */
+  parameters?: readonly ToolParameter[];
   /**
    * Whether the action takes `{ ref, args }`: the instance's root ref and
    * the action's arguments.
@@ -74,12 +80,18 @@ export function listRunnableTools(
 ): ReadonlyMap<string, RunnableTool> {
   const live = new Map(otherTools.map((tool) => [tool.name, tool]));
   const tools = new Map<string, RunnableTool>();
-  for (const registration of registeredPoms)
+  for (const registration of registeredPoms) {
+    const { manifest } = registration;
+    const declared = new Map(
+      [manifest, ...manifest.components].flatMap(({ tools }) =>
+        tools.map((tool) => [tool.toolName, tool.parameters] as const)
+      )
+    );
     for (const tool of registration.tools) {
       const listed = live.get(tool.name);
-      tools.set(
-        tool.name,
-        pageObjectTool(
+      const parameters = declared.get(tool.name);
+      tools.set(tool.name, {
+        ...pageObjectTool(
           tool,
           listed
             ? {
@@ -88,9 +100,11 @@ export function listRunnableTools(
                 reason: listed.reason,
               }
             : { present: false, available: false }
-        )
-      );
+        ),
+        ...(parameters ? { parameters } : {}),
+      });
     }
+  }
   for (const tool of otherTools)
     if (!tools.has(tool.name)) {
       const refField = (["target", "ref"] as const).find(

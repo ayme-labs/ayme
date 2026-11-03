@@ -43,6 +43,30 @@ const manifest: PomManifest = {
         { name: "title", optional: false, schema: { type: "string" } },
       ],
     },
+    {
+      methodName: "signIn",
+      toolName: "InputPage.signIn",
+      description: "Sign in.",
+      // `signIn({ email, password }: Credentials, [x, y]: [number, number])`
+      parameters: [
+        {
+          destructured: "object",
+          optional: false,
+          fields: [
+            { name: "email", optional: false, schema: { type: "string" } },
+            { name: "password", optional: false, schema: { type: "string" } },
+          ],
+        },
+        {
+          destructured: "array",
+          optional: false,
+          fields: [
+            { name: "x", optional: false, schema: { type: "number" } },
+            { name: "y", optional: false, schema: { type: "number" } },
+          ],
+        },
+      ],
+    },
   ],
   components: [
     {
@@ -69,6 +93,7 @@ const manifest: PomManifest = {
 };
 
 const pin = vi.fn();
+const signIn = vi.fn();
 
 class InputPage {
   readonly items;
@@ -79,6 +104,9 @@ class InputPage {
     throw new Error("The page object action exploded.");
   }
   addTodo() {}
+  signIn(...args: unknown[]) {
+    signIn(...args);
+  }
 }
 
 registerCompiledPom(InputPage, manifest);
@@ -210,6 +238,26 @@ describe("the one input check every Run passes, in Chromium", () => {
     expect(await call("Item.pin", input)).toBe("ran");
     expect(pin).toHaveBeenCalledOnce();
     expect(pin.mock.calls[0]![0]).toBeUndefined();
+  });
+
+  it("takes a destructured parameter's fields as input, and calls the action with them collected", async () => {
+    expect(await call("InputPage.signIn", { email: "a@b.c", x: 1, y: 2 })).toBe(
+      "ToolInputError: Input property password is required."
+    );
+    expect(signIn).not.toHaveBeenCalled();
+
+    expect(
+      await call("InputPage.signIn", {
+        email: "a@b.c",
+        password: "secret",
+        x: 1,
+        y: 2,
+      })
+    ).toBe("ran");
+    expect(signIn).toHaveBeenCalledExactlyOnceWith(
+      { email: "a@b.c", password: "secret" },
+      [1, 2]
+    );
   });
 
   it("checks a child Run's input", async () => {

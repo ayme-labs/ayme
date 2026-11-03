@@ -18,8 +18,8 @@ export class UnmarkedMethodsPom {
     callback(this.root);
   }
 
-  /** Unmarked, with a destructured parameter. */
-  open({ name }: { name: string }) {
+  /** Unmarked, with an array pattern element that has no name. */
+  open([, name]: [string, string]) {
     return name;
   }
 

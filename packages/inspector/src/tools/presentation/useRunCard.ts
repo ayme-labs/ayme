@@ -7,6 +7,7 @@ import {
   argumentsFromJson,
   argumentsToJson,
   fieldsOf,
+  groupFields,
   initialArguments,
   signatureOf,
   withArgument,
@@ -42,12 +43,21 @@ export function useRunCard({
 }: RunCardProps) {
   const fields = useMemo(
     () =>
-      fieldsOf(tool.argumentsSchema, {
-        ref: tool.refField,
-        key: tool.keyField,
-        typeOf: schemaText.type,
-      }),
-    [tool.argumentsSchema, tool.refField, tool.keyField, schemaText]
+      groupFields(
+        fieldsOf(tool.argumentsSchema, {
+          ref: tool.refField,
+          key: tool.keyField,
+          typeOf: schemaText.type,
+        }),
+        tool.parameters
+      ),
+    [
+      tool.argumentsSchema,
+      tool.parameters,
+      tool.refField,
+      tool.keyField,
+      schemaText,
+    ]
   );
   // The field the given ref fills: a Custom Tool's `ref`, a Browser Tool's `target`.
   const refField =
@@ -135,7 +145,11 @@ export function useRunCard({
 
   return {
     head,
-    signature: signatureOf(tool.argumentsSchema, schemaText.signature),
+    signature: signatureOf(
+      tool.argumentsSchema,
+      schemaText.signature,
+      tool.parameters
+    ),
     fields,
     args,
     json,

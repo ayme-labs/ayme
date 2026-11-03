@@ -4,9 +4,11 @@ export type { BuiltInCaller, Caller } from "./callers";
 export { containsThroughShadow, parentElement } from "./composedTree";
 export { isJsonPrimitive, isJsonValue } from "./contracts";
 export type {
+  DestructuredToolParameter,
   JsonPrimitive,
   JsonSchema,
   JsonValue,
+  NamedToolParameter,
   PomComponentManifest,
   PomComponentMemberManifest,
   PomDefinition,

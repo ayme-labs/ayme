@@ -1015,7 +1015,7 @@ describe("derivePomManifests", () => {
           { type: "object" },
         ],
       };
-      expect(parametersOf("recursive")?.[0]?.schema).toEqual({
+      expect(parametersOf("recursive")?.[0]).toHaveProperty("schema", {
         anyOf: [
           { type: "string" },
           { type: "number" },
@@ -1042,6 +1042,153 @@ describe("derivePomManifests", () => {
             },
           },
         ],
+      });
+    });
+
+    describe("a destructured parameter", () => {
+      function destructuredParametersOf(methodName: string) {
+        return manifestFor("destructuredParametersPom")?.tools.find(
+          (tool) => tool.methodName === methodName
+        )?.parameters;
+      }
+
+      it("takes an object pattern's fields from its type, keyed by property name", () => {
+        expect(destructuredParametersOf("signIn")).toEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "password", optional: false, schema: { type: "string" } },
+            ],
+          },
+        ]);
+        // Every property of the type, whatever the pattern binds or renames.
+        expect(destructuredParametersOf("signInAs")).toEqual([
+          {
+            destructured: "object",
+            optional: false,
+            fields: [
+              { name: "email", optional: false, schema: { type: "string" } },
+              { name: "password", optional: false, schema: { type: "string" } },
+              { name: "remember", optional: true, schema: { type: "boolean" } },
+            ],
+          },
+        ]);
+      });
+
+      it("records a defaulted object pattern beside a named parameter, with its bindings' literal defaults", () => {
+        expect(destructuredParametersOf("search")).toEqual([
+          { name: "query", optional: false, schema: { type: "string" } },
+          {
+            destructured: "object",
+            optional: true,
+            fields: [
+              {
+                name: "limit",
+                optional: true,
+                schema: { type: "number" },
+                default: 10,
+              },
+              {
+                name: "order",
+                optional: false,
+                schema: { type: "string", enum: ["asc", "desc"] },
+              },
+            ],
+          },
+        ]);
+      });
+
+      it("keys an array pattern's fields by the names it binds", () => {
+        expect(destructuredParametersOf("move")).toEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "x", optional: false, schema: { type: "number" } },
+              { name: "y", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
+      });
+
+      it("takes an array pattern's optional elements, a plain array's elements and a rest element", () => {
+        expect(destructuredParametersOf("follow")).toEqual([
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "start", optional: false, schema: { type: "number" } },
+              {
+                name: "end",
+                optional: true,
+                schema: { type: "number" },
+                default: 9,
+              },
+            ],
+          },
+          {
+            destructured: "array",
+            optional: false,
+            fields: [
+              { name: "first", optional: true, schema: { type: "string" } },
+              {
+                name: "others",
+                optional: false,
+                schema: { type: "array", items: { type: "string" } },
+                rest: true,
+              },
+            ],
+          },
+        ]);
+      });
+
+      it.each([
+        [
+          "holePom",
+          "Page Object Action HolePom.move needs a name for every element of [, y]: [number, number]: element 0 is a hole.",
+        ],
+        [
+          "nestedElementPom",
+          "Page Object Action NestedElementPom.pick needs a name for every element of [{ a }, b]: [{ a: string }, number]: element 0 is a nested pattern.",
+        ],
+        [
+          "unboundElementPom",
+          "Page Object Action UnboundElementPom.move needs a name for every element of [x]: [number, number]: element 1 is not bound.",
+        ],
+        [
+          "renamedDuplicatePom",
+          "Page Object Action RenamedDuplicatePom.search takes two input fields named query: parameter query, and property query of { query: q }: { query: string }.",
+        ],
+        [
+          "typeDuplicatePom",
+          "Page Object Action TypeDuplicatePom.search takes two input fields named limit: parameter limit, and property limit of { order }: Options.",
+        ],
+        [
+          "sharedPropertyPom",
+          "Page Object Action SharedPropertyPom.copy takes two input fields named id: property id of { id }: { id: string }, and property id of { id: other }: { id: string }.",
+        ],
+      ])("fails the build for %s", (fixture, message) => {
+        expect(() =>
+          derivePomManifests(
+            path.resolve(`src/fixtures/unsupportedPatterns/${fixture}.ts`)
+          )
+        ).toThrow(message);
+      });
+
+      it("records a destructured rest parameter as a rest array pattern", () => {
+        expect(destructuredParametersOf("spread")).toEqual([
+          {
+            destructured: "array",
+            optional: false,
+            rest: true,
+            fields: [
+              { name: "name", optional: false, schema: { type: "string" } },
+              { name: "count", optional: false, schema: { type: "number" } },
+            ],
+          },
+        ]);
       });
     });
 

@@ -1,4 +1,8 @@
-import type { JsonPrimitive, JsonSchema, ToolParameter } from "../../shared";
+import type {
+  JsonPrimitive,
+  JsonSchema,
+  NamedToolParameter,
+} from "../../shared";
 import type { TargetField } from "../../tools/application";
 import type { RootedToolInstance } from "../../page-objects/application";
 import type { StartChildRun } from "../../runs/application";
@@ -189,7 +193,7 @@ function specsOf(
 
 /** A parameter whose closed set is given, such as the ref a tool acts on. */
 function closedSpecOf(
-  parameter: ToolParameter,
+  parameter: NamedToolParameter,
   closedSet: ClosedSet
 ): ArgumentSpec {
   return { ...specBase([parameter.name], parameter), closedSet };
@@ -211,13 +215,13 @@ function specBase(
 
 /** Classify every parameter of an action, its tuples' slots one by one. */
 export function specsOfParameters(
-  parameters: readonly ToolParameter[]
+  parameters: readonly NamedToolParameter[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) => specsOf(parameter));
 }
 
-/** The parameters of an object schema, each a `ToolParameter`. */
-function parametersOfObjectSchema(schema: JsonSchema): ToolParameter[] {
+/** The parameters of an object schema, each a `NamedToolParameter`. */
+function parametersOfObjectSchema(schema: JsonSchema): NamedToolParameter[] {
   const required = new Set(schema.required ?? []);
   return Object.entries(schema.properties ?? {}).map(
     ([name, propertySchema]) => ({
@@ -259,7 +263,7 @@ export function specsOfElementToolSchema(
  * inside `args` and are classified like any other parameter.
  */
 export function specsOfRootedTool(
-  parameters: readonly ToolParameter[],
+  parameters: readonly NamedToolParameter[],
   roots: readonly RootedToolInstance[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) =>
@@ -280,7 +284,7 @@ export function specsOfRootedTool(
  * The parameters a caller must pass, by name: for a rooted tool, its `ref` and the required ones inside `args`, dotted.
  */
 export function requiredParamsOf(
-  parameters: readonly ToolParameter[],
+  parameters: readonly NamedToolParameter[],
   rooted: boolean
 ): string[] {
   return parameters.flatMap((parameter) =>

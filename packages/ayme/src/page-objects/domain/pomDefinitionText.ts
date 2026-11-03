@@ -2,7 +2,9 @@ import type {
   JsonSchema,
   PomDefinition,
   PomDefinitionAction,
+  ToolParameter,
 } from "../../shared";
+import { inputParameters, type InputParameter } from "./actionTool";
 
 export function renderPomDefinitions(
   definitions: readonly PomDefinition[]
@@ -41,7 +43,7 @@ function renderChild(child: PomDefinition["children"][number]): string {
 }
 
 function renderAction(action: PomDefinitionAction, ownerName: string): string {
-  const parameters = renderActionParameters(action.inputSchema);
+  const parameters = renderActionParameters(action.parameters);
   const returnPoms = action.returnPoms.map((name) =>
     name === ownerName ? "this" : name
   );
@@ -50,11 +52,40 @@ function renderAction(action: PomDefinitionAction, ownerName: string): string {
 }
 
 /**
- * Package-internal: an action's parameter list from its input schema, e.g.
- * `name: string, tags?: string[]`, the way the definition text writes it.
+ * Package-internal: an action's parameter list, e.g. `name: string, tags?:
+ * string[]`, the way the definition text writes it: from the parameters it
+ * declares, a destructured one in the shape of its pattern, e.g. `{ email:
+ * string }` or `[x: number, y: number]`, or from a tool's input schema.
  */
-export function renderActionParameters(inputSchema: JsonSchema): string {
-  return renderSchemaProperties(inputSchema, ", ");
+export function renderActionParameters(
+  input: JsonSchema | readonly ToolParameter[]
+): string {
+  if (!isParameters(input)) return renderSchemaProperties(input, ", ");
+  return input.map(renderParameter).join(", ");
+}
+
+function isParameters(
+  input: JsonSchema | readonly ToolParameter[]
+): input is readonly ToolParameter[] {
+  return Array.isArray(input);
+}
+
+/** A parameter as agents give it: its fields, as optional as the input has them. */
+function renderParameter(parameter: ToolParameter): string {
+  const fields = inputParameters([parameter]);
+  if (!("destructured" in parameter)) return renderField(fields[0]!);
+  if (parameter.destructured === "object")
+    return fields.length ? `{ ${fields.map(renderField).join("; ")} }` : "{}";
+  const elements = parameter.fields.map((field, index) =>
+    field.rest
+      ? `...${field.name}: ${renderSchema(field.schema)}`
+      : renderField(fields[index]!)
+  );
+  return `${parameter.rest ? "..." : ""}[${elements.join(", ")}]`;
+}
+
+function renderField({ name, optional, schema }: InputParameter): string {
+  return `${name}${optional ? "?" : ""}: ${renderSchema(schema)}`;
 }
 
 /** Package-internal: a schema as a TypeScript type, e.g. `[number, string?]`. */

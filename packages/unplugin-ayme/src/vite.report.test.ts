@@ -43,7 +43,7 @@ describe("the build report", () => {
         "[ayme] Page Object methods that are not tools:",
         "  ItemPom.select: no @ayme.action mark, and parameter at has the unsupported type Date",
         "  UnmarkedMethodsPom.each: no @ayme.action mark, and parameter callback has the unsupported type (row: Locator) => void",
-        "  UnmarkedMethodsPom.open: no @ayme.action mark, and a parameter is destructured",
+        "  UnmarkedMethodsPom.open: no @ayme.action mark, and element 0 of parameter [, name]: [string, string] has no name",
       ].join("\n"),
     ]);
   });
@@ -56,7 +56,7 @@ describe("the build report", () => {
         "[ayme] Page Object methods that are not tools:",
         "  ItemPom.select: no @ayme.action mark, and parameter at has the unsupported type Date",
         "  UnmarkedMethodsPom.each: no @ayme.action mark, and parameter callback has the unsupported type (row: Locator) => void",
-        "  UnmarkedMethodsPom.open: no @ayme.action mark, and a parameter is destructured",
+        "  UnmarkedMethodsPom.open: no @ayme.action mark, and element 0 of parameter [, name]: [string, string] has no name",
         "  UnmarkedMethodsPom.row: no @ayme.action mark",
       ].join("\n"),
     ]);

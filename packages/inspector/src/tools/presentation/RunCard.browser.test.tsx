@@ -264,6 +264,66 @@ describe("the types agents read", () => {
   });
 });
 
+describe("a destructured parameter", () => {
+  const search: RunnableTool = {
+    name: "SearchPage.search",
+    action: "search",
+    description: "Search.",
+    present: true,
+    available: true,
+    argumentsSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        limit: { type: "number" },
+        order: { type: "string", enum: ["asc", "desc"] },
+      },
+      required: ["query", "order"],
+    },
+    // `search(query: string, { limit, order }: Options)`
+    parameters: [
+      { name: "query", optional: false, schema: { type: "string" } },
+      {
+        destructured: "object",
+        optional: false,
+        fields: [
+          { name: "limit", optional: true, schema: { type: "number" } },
+          {
+            name: "order",
+            optional: false,
+            schema: { type: "string", enum: ["asc", "desc"] },
+          },
+        ],
+      },
+    ],
+  };
+
+  it("shows the pattern's shape and its fields in one unlabelled group, and runs with them as arguments of their own", async () => {
+    const { card, onRun } = renderCard({ tool: search });
+
+    await card.openArguments();
+
+    await expect
+      .poll(() => card.root.textContent())
+      .toContain('(query: string, { limit?: number; order: "asc" | "desc" })');
+    await expect.poll(() => card.field("limit").count()).toBe(1);
+    const group = card.fieldGroup("limit");
+    expect(await group.count()).toBe(1);
+    expect(await group.locator("legend").count()).toBe(0);
+    expect(await group.getAttribute("aria-label")).toBeNull();
+    expect(await group.getByLabel("order", { exact: true }).count()).toBe(1);
+    expect(await card.fieldGroup("query").count()).toBe(0);
+
+    await card.run({ query: "milk", limit: 5, order: "desc" });
+
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({
+      query: "milk",
+      limit: 5,
+      order: "desc",
+    });
+  });
+});
+
 describe("the typed form", () => {
   it("runs with text, integers, booleans, choices, lists and optional objects", async () => {
     const { card, onRun } = renderCard({ tool: addItem });

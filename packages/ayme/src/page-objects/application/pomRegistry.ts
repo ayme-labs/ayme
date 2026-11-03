@@ -721,7 +721,7 @@ async function performPageObjectAction(
 
   const parameters = methodArguments(
     tool.parameters,
-    argumentValues(tool, args)
+    args as Record<string, unknown>
   );
   if (root)
     await assertReachable(
@@ -735,15 +735,6 @@ async function performPageObjectAction(
   // Change Record then starts from the page right before the action.
   return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>
     method.apply(instance, parameters)
-  );
-}
-
-/** The values of `tool`'s parameters in `args`, input the runtime checked. */
-function argumentValues(tool: ToolManifest, args: unknown) {
-  const input = args as Record<string, unknown>;
-  // An inherited name, such as constructor, is no argument.
-  return tool.parameters.map((parameter) =>
-    Object.hasOwn(input, parameter.name) ? input[parameter.name] : undefined
   );
 }
 

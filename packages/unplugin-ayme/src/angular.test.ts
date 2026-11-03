@@ -250,7 +250,7 @@ it("never claims a Page Object Model under node_modules", async () => {
   }
 });
 
-it("surfaces compiler diagnostics, like the error for a destructured action parameter", async () => {
+it("surfaces compiler diagnostics, like the error for an unsupported parameter type", async () => {
   const root = await workspace({
     "tsconfig.json": tsconfig,
     "main.ts":
@@ -260,15 +260,15 @@ it("surfaces compiler diagnostics, like the error for a destructured action para
 @ayme
 export class SavePage {
   @ayme.action
-  async save({ name }: { name: string }) {
-    void name;
+  async save(at: Date) {
+    void at;
   }
 }
 `,
   });
   try {
     await expect(bundle("browser", root)).rejects.toThrow(
-      "Page Object Action SavePage.save needs identifier parameter names."
+      "Unsupported Page Object Tool input type for SavePage.save(at): Date."
     );
   } finally {
     await rm(root, { recursive: true, force: true });

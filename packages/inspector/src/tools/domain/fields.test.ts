@@ -5,6 +5,7 @@ import {
   argumentsFromJson,
   argumentsToJson,
   fieldsOf,
+  groupFields,
   initialArguments,
   signatureOf,
   withArgument,
@@ -224,6 +225,81 @@ describe("schema to fields", () => {
       fields: [{ kind: "json", typeLabel: "<object>" }],
     });
     expect(text).toMatchObject({ kind: "text", typeLabel: "string" });
+  });
+});
+
+describe("a destructured parameter", () => {
+  const search = {
+    type: "object",
+    properties: {
+      query: { type: "string" },
+      limit: { type: "number" },
+      x: { type: "number" },
+    },
+    required: ["query", "x"],
+  } satisfies JsonSchema;
+
+  it("groups its fields, beside the other parameters' fields", () => {
+    expect(
+      groupFields(fieldsOf(search), [
+        { name: "query", optional: false, schema: { type: "string" } },
+        {
+          destructured: "object",
+          optional: false,
+          fields: [
+            { name: "limit", optional: true, schema: { type: "number" } },
+          ],
+        },
+        {
+          destructured: "array",
+          optional: false,
+          fields: [{ name: "x", optional: false, schema: { type: "number" } }],
+        },
+      ])
+    ).toEqual([
+      {
+        name: "query",
+        optional: false,
+        kind: "text",
+        inputType: "text",
+        typeLabel: "string",
+      },
+      {
+        kind: "group",
+        fields: [
+          {
+            name: "limit",
+            optional: true,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+      {
+        kind: "group",
+        fields: [
+          {
+            name: "x",
+            optional: false,
+            kind: "number",
+            integer: false,
+            typeLabel: "number",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("leaves the fields as they are without a destructured parameter", () => {
+    const fields = fieldsOf(search);
+
+    expect(groupFields(fields)).toEqual(fields);
+    expect(
+      groupFields(fields, [
+        { name: "query", optional: false, schema: { type: "string" } },
+      ])
+    ).toEqual(fields);
   });
 });
 

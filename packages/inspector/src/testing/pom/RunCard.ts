@@ -90,6 +90,16 @@ export class RunCard extends PanelPart {
     return this.root.getByLabel(path, { exact: true });
   }
 
+  /**
+   * The group a field sits in, by the field's path: an object's, or the
+   * unlabelled one of a destructured parameter's fields.
+   */
+  fieldGroup(path: string): Locator {
+    return this.root.getByRole("group").filter({
+      has: this.root.page().getByLabel(path, { exact: true }),
+    });
+  }
+
   /** A ref argument's field, by its path, e.g. "ref". */
   refField(path = "ref"): RefField {
     return new RefField(this.root, path);

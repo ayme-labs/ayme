@@ -1,4 +1,5 @@
 import type { JsonPrimitive, JsonSchema, JsonValue } from "@ayme-dev/ayme";
+import type { ToolParameter } from "@ayme-dev/ayme/internal";
 
 import type { ToolArguments } from "../../runs";
 import { jsonSyntaxError } from "./jsonSyntax";
@@ -44,13 +45,20 @@ export type FieldKind =
   | { kind: "json" };
 
 /**
+ * A destructured parameter's fields, which the form shows together without
+ * a label: each is an argument of its own, beside the other parameters'.
+ */
+export type FieldGroup = { kind: "group"; fields: readonly Field[] };
+
+/**
  * How a schema reads as TypeScript, the way the definition text agents read
  * writes it: one type, e.g. `string | number`, and an action's signature,
- * e.g. `(text: string, tags?: string[])`.
+ * e.g. `(text: string, tags?: string[])`, from its schema or from the
+ * parameters it declares.
  */
 export type SchemaText = {
   type: (schema: JsonSchema) => string;
-  signature: (schema: JsonSchema) => string;
+  signature: (input: JsonSchema | readonly ToolParameter[]) => string;
 };
 
 const inputTypes: Partial<Record<string, TextInputType>> = {
@@ -84,6 +92,27 @@ export function fieldsOf(
     }
     return fieldOf(name, property, optional, typeOf);
   });
+}
+
+/**
+ * The fields in the shape of the parameters an action declares: each
+ * destructured parameter's fields in one group. Without a destructured
+ * parameter, the fields as they are.
+ */
+export function groupFields(
+  fields: readonly Field[],
+  parameters: readonly ToolParameter[] = []
+): (Field | FieldGroup)[] {
+  if (!parameters.some((parameter) => "destructured" in parameter))
+    return [...fields];
+  const byName = new Map(fields.map((field) => [field.name, field]));
+  const fieldsNamed = (names: readonly { name: string }[]) =>
+    names.flatMap(({ name }) => byName.get(name) ?? []);
+  return parameters.flatMap((parameter): (Field | FieldGroup)[] =>
+    "destructured" in parameter
+      ? [{ kind: "group", fields: fieldsNamed(parameter.fields) }]
+      : fieldsNamed([parameter])
+  );
 }
 
 function fieldOf(
@@ -255,13 +284,14 @@ export function argumentsFromJson(text: string): ParsedArguments {
 }
 
 /**
- * An action's signature from its schema, written by `signature`, e.g.
- * "(text: string, details?: { due: string })", or none when it takes no
- * arguments.
+ * An action's signature, written by `signature` from the parameters it
+ * declares or else its schema, e.g. "(text: string, details?: { due: string
+ * })", or none when it takes no arguments.
  */
 export function signatureOf(
   schema: JsonSchema,
-  signature: SchemaText["signature"]
+  signature: SchemaText["signature"],
+  parameters?: readonly ToolParameter[]
 ) {
-  return fieldsOf(schema).length ? signature(schema) : undefined;
+  return fieldsOf(schema).length ? signature(parameters ?? schema) : undefined;
 }

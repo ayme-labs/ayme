@@ -1,10 +1,11 @@
 // @vitest-environment node
 
-import type { JsonSchema, JsonValue } from "@ayme-dev/ayme";
+import type { JsonValue } from "@ayme-dev/ayme";
 import {
   inputSchemaFor,
   renderPomDefinitions,
   toolInputViolations,
+  type ToolParameter,
 } from "@ayme-dev/ayme/internal";
 import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
 import { describe, expect, it } from "vitest";
@@ -25,7 +26,11 @@ function fixture(name: string) {
   ).pathname;
 }
 
-const tools = ["parameterShapesPom", "defaultedParametersPom"].flatMap((name) =>
+const tools = [
+  "parameterShapesPom",
+  "defaultedParametersPom",
+  "destructuredParametersPom",
+].flatMap((name) =>
   derivePomManifests(fixture(name)).flatMap((manifest) => manifest.tools)
 );
 
@@ -53,15 +58,32 @@ const calls: Record<string, Record<string, JsonValue>> = {
   "DefaultedParametersPom.computed": { count: 2 },
   "DefaultedParametersPom.optional": { note: "n" },
   "DefaultedParametersPom.both": { type: "team" },
+  "DestructuredParametersPom.signIn": { email: "a@b.c", password: "secret" },
+  "DestructuredParametersPom.signInAs": {
+    email: "a@b.c",
+    password: "secret",
+    remember: true,
+  },
+  "DestructuredParametersPom.search": { query: "milk" },
+  "DestructuredParametersPom.move": { x: 1, y: 2 },
+  "DestructuredParametersPom.follow": { start: 1, others: ["b", "c"] },
+  "DestructuredParametersPom.spread": { name: "a", count: 2 },
 };
 
 /** The action's line in the definition text agents read. */
-function definitionLine(name: string, inputSchema: JsonSchema) {
+function definitionLine(name: string, parameters: readonly ToolParameter[]) {
   return renderPomDefinitions([
     {
       name: "Pom",
       children: [],
-      actions: [{ name, inputSchema, returnPoms: [] }],
+      actions: [
+        {
+          name,
+          inputSchema: inputSchemaFor(parameters),
+          parameters,
+          returnPoms: [],
+        },
+      ],
     },
   ]).split("\n")[1];
 }
@@ -86,7 +108,7 @@ describe("an action's schema, compiled, validated and rendered", () => {
     "%s shows agents' signature in the Inspector",
     (_, tool) => {
       expect(`  ${tool.methodName}${actionSignature(tool.parameters)}`).toBe(
-        definitionLine(tool.methodName, inputSchemaFor(tool.parameters))
+        definitionLine(tool.methodName, tool.parameters)
       );
     }
   );
@@ -107,5 +129,26 @@ describe("an action's schema, compiled, validated and rendered", () => {
       "(values: { [key: string]: string | number })"
     );
     expect(signatureOf("rest")).toBe("(group: number, refs?: string[])");
+  });
+
+  it("renders a destructured parameter in the shape of its pattern", () => {
+    const signatureOf = (methodName: string) =>
+      actionSignature(
+        tools.find((tool) => tool.methodName === methodName)!.parameters
+      );
+
+    expect(signatureOf("signIn")).toBe("({ email: string; password: string })");
+    expect(signatureOf("signInAs")).toBe(
+      "({ email: string; password: string; remember?: boolean })"
+    );
+    // A defaulted pattern's fields may each be left out.
+    expect(signatureOf("search")).toBe(
+      '(query: string, { limit?: number; order?: "asc" | "desc" })'
+    );
+    expect(signatureOf("move")).toBe("([x: number, y: number])");
+    expect(signatureOf("follow")).toBe(
+      "([start: number, end?: number], [first?: string, ...others: string[]])"
+    );
+    expect(signatureOf("spread")).toBe("(...[name: string, count: number])");
   });
 });
