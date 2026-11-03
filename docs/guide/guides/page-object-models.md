@@ -157,7 +157,7 @@ export class ListItem extends AppComponent {
 }
 ```
 
-Each decorator fits these members, and only a public instance member can be declared:
+Each decorator fits these members, and only a public instance member named by an identifier can be declared:
 
 | Decorator          | Member                      | Its type                                                                   |
 | ------------------ | --------------------------- | -------------------------------------------------------------------------- |

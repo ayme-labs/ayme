@@ -334,9 +334,11 @@ function declaredChild(
 /**
  * A child declaration on a member of the class or an ancestor that is not a
  * public instance member fails the build: no one outside the class can read
- * it, so it cannot be a Page Object Child.
+ * it, so it cannot be a Page Object Child. So does one on a member whose name
+ * is not an identifier, such as `"row"` or `["row"]`, which no Page Object
+ * member is named by.
  */
-function rejectNonPublicChildDeclarations(
+function rejectUnsupportedChildDeclarations(
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
 ) {
@@ -362,18 +364,23 @@ function rejectNonPublicChildDeclarations(
               [ts.SyntaxKind.StaticKeyword, "static"],
             ] as const
           ).find(([kind]) => modifiers.some((m) => m.kind === kind))?.[1];
-    if (!visibility) continue;
     const memberName =
       member.name &&
       (ts.isIdentifier(member.name) || ts.isPrivateIdentifier(member.name))
         ? member.name.text
         : member.name?.getText();
-    throw new Error(
-      `Page Object Child ${declaration.name?.text}.${memberName} is ${visibility}; only a public instance member can be a Page Object Child.`
-    );
+    const owner = `Page Object Child ${declaration.name?.text}.${memberName}`;
+    if (visibility)
+      throw new Error(
+        `${owner} is ${visibility}; only a public instance member can be a Page Object Child.`
+      );
+    if (!member.name || !ts.isIdentifier(member.name))
+      throw new Error(
+        `${owner} is not named by an identifier; only a member with an identifier name can be a Page Object Child.`
+      );
   }
   for (const base of baseClassDeclarations(checker, declaration))
-    rejectNonPublicChildDeclarations(checker, base);
+    rejectUnsupportedChildDeclarations(checker, base);
 }
 
 /** `any`, `unknown`, or a type the program could not resolve. */
@@ -520,7 +527,7 @@ function classManifest(
   const childReferences: ts.ClassDeclaration[] = [];
   const returnReferences: ts.ClassDeclaration[] = [];
 
-  rejectNonPublicChildDeclarations(checker, declaration);
+  rejectUnsupportedChildDeclarations(checker, declaration);
   for (const member of classMembers(checker, declaration)) {
     const role = memberRole(checker, member);
     if (role?.role === "child") {

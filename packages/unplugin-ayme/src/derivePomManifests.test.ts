@@ -625,6 +625,14 @@ describe("derivePomManifests", () => {
         "inheritedPrivateChildPom",
         "Page Object Child ListBase.rows is private; only a public instance member can be a Page Object Child.",
       ],
+      [
+        "stringNamedChildPom",
+        'Page Object Child StringNamedChildPom."row" is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
+      [
+        "computedNamedChildPom",
+        'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
+      ],
     ])("fails the build for %s", (fixture, message) => {
       expect(() =>
         derivePomManifests(
