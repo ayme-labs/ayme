@@ -583,6 +583,30 @@ class Pom {
     await items[0]?.waitFor({ state: 'hidden', timeout: 10 });
   }
 }
+@ayme({ root: (self: ItemPom) => self.root })
+class ItemPom {
+  constructor(readonly root: Locator) {}
+}
+@ayme
+class ChildrenPom {
+  @ayme.child
+  readonly heading: Locator;
+  @ayme.collection
+  readonly rows: Locator;
+  constructor(readonly page: Page) {
+    this.heading = page.getByRole('heading');
+    this.rows = page.getByRole('row');
+  }
+  @ayme.child({ description: 'The first item.' })
+  get first(): ItemPom { return new ItemPom(this.page.getByRole('listitem').first()); }
+  @ayme.collection({ description: 'Every cell.' })
+  get cells(): Locator { return this.page.getByRole('cell'); }
+  @ayme.collection({ description: 'The items.' })
+  async items(): Promise<ItemPom[]> {
+    return (await this.page.getByRole('listitem').all()).map((item) => new ItemPom(item));
+  }
+}
+void ChildrenPom;
 const ctor: PageObjectConstructor<Pom> = Pom;
 const instance: Pom = usePageObject(ctor);
 const svelteInstance: Pom = useSveltePageObject(ctor);
@@ -1162,7 +1186,7 @@ it(
       [
         'const main = await import("@ayme-dev/ayme");',
         'const internal = await import("@ayme-dev/ayme/internal");',
-        'if (typeof main.ayme !== "function" || typeof main.ayme.action !== "function") throw new Error("missing the ayme decorators");',
+        'if (typeof main.ayme !== "function" || typeof main.ayme.action !== "function" || typeof main.ayme.child !== "function" || typeof main.ayme.collection !== "function") throw new Error("missing the ayme decorators");',
         'if ("default" in main || "getPageState" in main.ayme) throw new Error("the helper object must not be on the main entry");',
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
         'if (typeof main.createAyme !== "function") throw new Error("missing createAyme");',
