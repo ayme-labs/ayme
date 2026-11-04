@@ -19,6 +19,7 @@ import {
   getPageStateForDocument,
   getPageStateSession,
   latestPageStateElement,
+  latestPageStateCapture,
   lookAtPageStateForDocument,
   providePageObjectStructure,
 } from "./pageState";
@@ -54,6 +55,24 @@ describe("the page state", () => {
   afterEach(() => {
     configurePageStateIgnore(undefined);
     vi.unstubAllGlobals();
+  });
+
+  it("reads the latest capture without creating a session or recording another observation", async () => {
+    expect(latestPageStateCapture(document)).toBeUndefined();
+    expect(captureAriaSnapshot).not.toHaveBeenCalled();
+    const button = document.querySelector("#captured")!;
+    captureAriaSnapshot.mockReturnValue({
+      distilledText: '- button "Captured" [ref=e2]',
+      fullText: '- button "Captured" [ref=e2]',
+      refsByElement: new Map([[button, "e2"]]),
+    });
+    pageObjectRoots.mockResolvedValue([]);
+    await pageStateText();
+    const capture = latestPageStateCapture(document);
+    expect(capture?.tree.getNode(ref("e2"))?.name).toBe("Captured");
+    expect(capture?.elementsByRef.get(ref("e2"))).toBe(button);
+    expect(latestPageStateCapture(document)).toBe(capture);
+    expect(captureAriaSnapshot).toHaveBeenCalledTimes(1);
   });
 
   it("decorates a retained real POM root and omits unrepresented leaf and foreign roots", async () => {

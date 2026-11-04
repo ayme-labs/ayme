@@ -19,7 +19,7 @@ import {
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
 import { usePageLook } from "../shared";
-import { useRuns } from "../runs";
+import { interactionTarget, useRuns } from "../runs";
 import { itemsOf } from "./collectionItems";
 
 /**
@@ -73,6 +73,11 @@ export function useInspectorRuntime({
   const { runs, invoke, clear } = useRuns({
     onSettled: onRunSettled,
     itemOf,
+    describeInteraction: useCallback(
+      (interaction) =>
+        interactionTarget(interaction.ref, latestStructure.current),
+      []
+    ),
   });
   const tools = useLiveTools();
 
@@ -171,7 +176,7 @@ export function useInspectorRuntime({
      * over in the panel, `pin` (solid) for the selection. The app pins the
      * selection; lenses only hover.
      */
-    highlight: { hover, pin },
+    highlight: { hover, pin, canHighlight: highlight.canHighlight },
     /**
      * Every registered Page Object tool once by name, and every other live
      * tool, as the run card runs them.

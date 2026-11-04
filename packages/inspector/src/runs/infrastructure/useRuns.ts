@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { callers, type Ayme, type Run as LogRun } from "@ayme-dev/ayme";
+import {
+  callers,
+  type Ayme,
+  type Run as LogRun,
+  type Interaction,
+} from "@ayme-dev/ayme";
 import {
   getAppProcessTools,
   getStartedAyme,
+  latestPageStateCapture,
   listAvailablePomTools,
   subscribeToAgentImageRuns,
   subscribeToStartedAyme,
 } from "@ayme-dev/ayme/internal";
 
-import { useTabState } from "../../shared";
+import { nodeLabel, useTabState } from "../../shared";
 import {
   rowIdOf,
   shownRuns,
   type RunNotes,
   type RunTarget,
 } from "../domain/logRuns";
-import type { CollectionItem, ToolArguments } from "../domain/run";
+import type {
+  CollectionItem,
+  InteractionDescription,
+  ToolArguments,
+} from "../domain/run";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { interactionMembers } from "./interactionMembers";
 
@@ -49,10 +59,15 @@ type PendingRun = {
 export function useRuns({
   onSettled,
   itemOf,
+  describeInteraction,
 }: {
   onSettled: () => void;
   /** The item of the collection tool `toolName` whose root is `ref` now. */
   itemOf: (toolName: string, ref: string) => CollectionItem | undefined;
+  /** Reads the latest look synchronously, before an interaction changes the page. */
+  describeInteraction: (
+    interaction: Interaction
+  ) => Omit<InteractionDescription, "target">;
 }) {
   const [stored, setStored] = useTabState(runsKey, decodeRuns, encodeRuns);
   // The rows kept from before the panel mounted, read once.
@@ -102,9 +117,36 @@ export function useRuns({
     // The Runs seen so far, the ended Runs whose Interactions have been
     // named, and the agent's image Runs whose file has been noted, by row id.
     const seen = new Set<string>();
+    const descriptions = new Map<string, InteractionDescription[]>();
     const described = new Set<string>();
     const saved = new Set<string>();
     let listedRuns = NO_RUNS;
+    const captureInputs = (run: LogRun, rowId: string) => {
+      const captured = descriptions.get(rowId) ?? [];
+      for (const interaction of run.interactions.slice(captured.length)) {
+        const node =
+          interaction.ref &&
+          latestPageStateCapture(document)?.tree.getNode(interaction.ref);
+        const target = node && nodeLabel(node);
+        captured.push({
+          ...describeInteraction(interaction),
+          ...(target && target !== "generic" ? { target } : {}),
+        });
+      }
+      descriptions.set(rowId, captured);
+    };
+    const resolveMembers = async (run: LogRun, rowId: string) => {
+      const members = await interactionMembers(run.interactions);
+      const captured = descriptions.get(rowId);
+      if (!captured) return;
+      const resolved = captured.map((description, index) =>
+        description.member || !members[index]
+          ? description
+          : { ...description, member: members[index] }
+      );
+      descriptions.set(rowId, resolved);
+      note(rowId, { descriptions: resolved });
+    };
     const read = (runs: readonly LogRun[]) => {
       listedRuns = runs;
       const listed = new Set(runs.map(rowIdOf));
@@ -114,6 +156,7 @@ export function useRuns({
       const fresh = new Map<string, RunNotes>();
       for (const run of runs) {
         const rowId = rowIdOf(run);
+        captureInputs(run, rowId);
         if (seen.has(rowId)) continue;
         seen.add(rowId);
         fresh.set(rowId, {
@@ -127,16 +170,23 @@ export function useRuns({
         );
         for (const [rowId, runNotes] of fresh)
           notes.set(rowId, { ...notes.get(rowId), ...runNotes });
+        for (const [rowId, captured] of descriptions) {
+          if (!listed.has(rowId)) continue;
+          notes.set(rowId, {
+            ...notes.get(rowId),
+            descriptions: [...captured],
+          });
+        }
         return { runs, notes };
       });
+      for (const rowId of descriptions.keys())
+        if (!listed.has(rowId)) descriptions.delete(rowId);
       for (const run of runs) {
         const rowId = rowIdOf(run);
         if (run.status === "running" || described.has(rowId)) continue;
         described.add(rowId);
         if (!run.interactions.length) continue;
-        void interactionMembers(run.interactions).then((members) =>
-          note(rowId, { members })
-        );
+        void resolveMembers(run, rowId);
       }
     };
 
@@ -172,7 +222,7 @@ export function useRuns({
       unsubscribeFromLog();
       unsubscribeFromImages();
     };
-  }, [itemOf]);
+  }, [itemOf, describeInteraction]);
 
   const runs = useMemo(
     () =>

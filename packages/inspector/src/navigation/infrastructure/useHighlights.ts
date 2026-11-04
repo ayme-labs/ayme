@@ -77,7 +77,17 @@ export function useHighlights({
     };
   }, []);
 
-  return { onLook, hover, pin };
+  /** Whether this target still has a connected element in the latest look. */
+  const canHighlight = useCallback(
+    (target: HighlightTarget) =>
+      latest.current !== undefined &&
+      targetElements(target, latest.current, resolve.current).some(
+        (element) => element.isConnected
+      ),
+    []
+  );
+
+  return { onLook, hover, pin, canHighlight };
 }
 
 /**
@@ -90,9 +100,8 @@ function targetElements(
   targetsOf: (path: string) => ReadonlySet<string>
 ): Element[] {
   if ("ref" in target) {
-    const element = [...look.state.elementsByRef].find(
-      ([ref]) => ref === target.ref
-    )?.[1];
+    const elements: ReadonlyMap<string, Element> = look.state.elementsByRef;
+    const element = elements.get(target.ref);
     return element ? [element] : [];
   }
   const paths = targetsOf(target.path);

@@ -24,7 +24,7 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "../../navigation";
+import type { HighlightTarget, OnHover } from "../../navigation";
 import {
   focusRing,
   pressable,
@@ -35,6 +35,7 @@ import {
 import { formatDuration } from "../domain/duration";
 import { readableResult } from "../domain/readableResult";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
+import { runPresentation } from "../domain/runPresentation";
 import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
@@ -51,6 +52,7 @@ export type RunsViewProps = {
   onClear: () => void;
   /** Highlights an Interaction's member on the page while it's hovered. */
   onHover: OnHover;
+  canHighlight: (target: HighlightTarget) => boolean;
   /** The timeline list, which a focused run scrolls into view in. */
   timeline: RefObject<HTMLOListElement | null>;
   /** The runs whose details are closed. */
@@ -179,6 +181,7 @@ type RowProps = Pick<
   | "copiedResult"
   | "openImage"
   | "onHover"
+  | "canHighlight"
 >;
 
 /**
@@ -235,6 +238,7 @@ const statusIcon = {
  */
 function RunRow({
   run,
+  earlierDocument = run.earlierDocument === true,
   nested = false,
   entering = false,
   closedRuns,
@@ -246,9 +250,12 @@ function RunRow({
   copiedResult,
   openImage,
   onHover,
+  canHighlight,
 }: RowProps & {
   /** A top-level Run names its Caller; a child Run doesn't. */
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
+  /** Inherited only for highlighting; the top-level Run owns the page badge. */
+  earlierDocument?: boolean;
   /** Whether it's a child run, nested under the run that started it. */
   nested?: boolean;
   /** Whether it slides in as it appears. */
@@ -294,7 +301,8 @@ function RunRow({
           onCopyResult={(text) => copyResult(run.id, text)}
           resultCopied={run.id === copiedResult}
           onOpenImage={openImage}
-          onHover={onHover}
+          onHover={earlierDocument ? () => {} : onHover}
+          canHighlight={earlierDocument ? () => false : canHighlight}
         />
         {open && run.children.length > 0 && (
           <ol aria-label="Child runs" className="m-0 flex flex-col gap-2 p-0">
@@ -302,6 +310,7 @@ function RunRow({
               <RunRow
                 key={child.id}
                 run={child}
+                earlierDocument={earlierDocument}
                 nested
                 closedRuns={closedRuns}
                 openResults={openResults}
@@ -312,6 +321,7 @@ function RunRow({
                 copiedResult={copiedResult}
                 openImage={openImage}
                 onHover={onHover}
+                canHighlight={canHighlight}
               />
             ))}
           </ol>
@@ -333,6 +343,7 @@ function RunEntryCard({
   resultCopied,
   onOpenImage,
   onHover,
+  canHighlight,
 }: {
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
   open: boolean;
@@ -346,7 +357,9 @@ function RunEntryCard({
   resultCopied: boolean;
   onOpenImage: (src: string) => void;
   onHover: OnHover;
+  canHighlight: RunsViewProps["canHighlight"];
 }) {
+  const { primary, value, arguments: args } = runPresentation(run);
   return (
     <div
       data-run-card=""
@@ -373,6 +386,12 @@ function RunEntryCard({
           name={run.toolName}
           className="font-mono text-xs font-semibold"
         />
+        <RunInput
+          primary={primary}
+          value={value}
+          onHover={onHover}
+          canHighlight={canHighlight}
+        />
         {run.item && (
           <span
             className="max-w-[45%] min-w-0 truncate rounded-md border px-1.5 font-mono text-xs text-muted-foreground"
@@ -390,35 +409,22 @@ function RunEntryCard({
             Earlier page
           </span>
         )}
-        <span className="ml-auto flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-          {run.status === "running"
-            ? "Running…"
-            : `${run.durationMs === undefined ? "" : `${formatDuration(run.durationMs)} · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
-        </span>
+        <RunTime run={run} />
       </button>
       {open && (
         <>
-          {Object.keys(run.arguments).length > 0 && (
+          {Object.keys(args).length > 0 && (
             <figure
               aria-label="Arguments"
               className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-1.25 font-mono text-xs [overflow-wrap:anywhere]"
             >
-              {JSON.stringify(run.arguments)}
+              {JSON.stringify(args)}
             </figure>
           )}
           {run.status === "succeeded" && run.image && (
             <div className="mx-2.5 mb-2">
               <RunImageView image={run.image} onOpen={onOpenImage} />
             </div>
-          )}
-          {run.status === "succeeded" && run.result !== undefined && (
-            <RunResult
-              text={run.result}
-              open={resultOpen}
-              onToggle={onToggleResult}
-              onCopy={onCopyResult}
-              copied={resultCopied}
-            />
           )}
           {run.error && (
             <p
@@ -429,7 +435,7 @@ function RunEntryCard({
               {run.error}
             </p>
           )}
-          {run.interactions.length > 0 && (
+          {!primary && run.interactions.length > 0 && (
             <ol
               aria-label="Interactions"
               className="m-0 flex flex-col gap-0.5 px-2.5 pb-2"
@@ -439,13 +445,62 @@ function RunEntryCard({
                   key={index}
                   interaction={interaction}
                   onHover={onHover}
+                  canHighlight={canHighlight}
                 />
               ))}
             </ol>
           )}
+          {run.status === "succeeded" && run.result !== undefined && (
+            <RunResult
+              text={run.result}
+              open={resultOpen}
+              onToggle={onToggleResult}
+              onCopy={onCopyResult}
+              copied={resultCopied}
+            />
+          )}
         </>
       )}
     </div>
+  );
+}
+
+/** The compact input in a browser tool's heading. */
+function RunInput({
+  primary,
+  value,
+  onHover,
+  canHighlight,
+}: Pick<ReturnType<typeof runPresentation>, "primary" | "value"> &
+  Pick<RunsViewProps, "onHover" | "canHighlight">) {
+  if (!primary) return null;
+  return (
+    <>
+      <InteractionTarget
+        interaction={primary}
+        onHover={onHover}
+        canHighlight={canHighlight}
+        passive
+      />
+      {value !== undefined && (
+        <span
+          className="min-w-0 truncate font-mono text-xs"
+          title={typeof value === "string" ? value : JSON.stringify(value)}
+        >
+          {JSON.stringify(value)}
+        </span>
+      )}
+    </>
+  );
+}
+
+function RunTime({ run }: { run: ChildRun }) {
+  return (
+    <span className="ml-auto flex-none text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+      {run.status === "running"
+        ? "Running…"
+        : `${run.durationMs === undefined ? "" : `${formatDuration(run.durationMs)} · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
+    </span>
   );
 }
 
@@ -592,50 +647,92 @@ const interactionIcons: Record<string, typeof TypeIcon> = {
 function InteractionRow({
   interaction,
   onHover,
+  canHighlight,
 }: {
   interaction: RunInteraction;
   onHover: OnHover;
+  canHighlight: RunsViewProps["canHighlight"];
 }) {
   const Icon = interactionIcons[interaction.operation] ?? ChevronRightIcon;
   const value =
     interaction.value === undefined
       ? undefined
       : JSON.stringify(interaction.value);
-  const member = interaction.member;
-  const title =
-    member === undefined
-      ? `Not on the page when the run ended: ${interaction.locator}`
-      : `${member}: ${interaction.locator}. Hover to highlight it on the page.`;
   return (
-    <li className="flex min-h-6 list-none items-center gap-2 text-xs">
+    <li className="flex min-h-6 list-none flex-wrap items-center gap-2 text-xs">
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
-      <span className="w-27.5 flex-none text-muted-foreground">
+      <span className="flex-none text-muted-foreground">
         {interaction.operation}
       </span>
-      {interaction.locator !== undefined && (
-        <button
-          type="button"
-          data-gone={member === undefined || undefined}
-          // Named by the member whole: its two parts would read apart.
-          aria-label={member}
-          title={title}
-          className="max-w-57.5 min-w-0 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
-          // The hover highlight finds the member's element while it's there.
-          onMouseEnter={() => member !== undefined && onHover({ path: member })}
-          onMouseLeave={() => member !== undefined && onHover(undefined)}
-        >
-          {member === undefined ? (
-            interaction.locator
-          ) : (
-            <QualifiedName name={member} title={title} />
-          )}
-        </button>
-      )}
+      <InteractionTarget
+        interaction={interaction}
+        onHover={onHover}
+        canHighlight={canHighlight}
+      />
       {value !== undefined && (
-        <span className="truncate font-mono text-xs text-muted-foreground">
+        <span
+          className="truncate font-mono text-xs text-muted-foreground"
+          title={interaction.value}
+        >
           {value}
         </span>
       )}
     </li>
   );
+}
+
+/** The same target chip in a browser input's heading and a custom tool's steps. */
+function InteractionTarget({
+  interaction,
+  onHover,
+  canHighlight,
+  passive = false,
+}: {
+  interaction: RunInteraction;
+  onHover: OnHover;
+  canHighlight: RunsViewProps["canHighlight"];
+  passive?: boolean;
+}) {
+  const { member, target, context, locator, ref } = interaction;
+  if (locator === undefined) return null;
+  const label = member ?? target ?? ref ?? locator;
+  const highlight = highlightOf(interaction, canHighlight);
+  const title = highlight
+    ? `${label}: ${locator}. Hover to highlight it on the page.`
+    : `Not available to highlight: ${locator}`;
+  const Tag = passive ? "span" : "button";
+  return (
+    <>
+      <Tag
+        {...(passive ? {} : { type: "button" as const })}
+        data-gone={!highlight || undefined}
+        aria-label={label}
+        title={title}
+        className="max-w-full min-w-0 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
+        onMouseEnter={() => highlight && onHover(highlight)}
+        onMouseLeave={() => highlight && onHover(undefined)}
+        onFocus={() => highlight && onHover(highlight)}
+        onBlur={() => highlight && onHover(undefined)}
+      >
+        {member ? <QualifiedName name={member} title={title} /> : label}
+      </Tag>
+      {!member && context && (
+        <small
+          className="min-w-0 truncate text-xs text-muted-foreground"
+          title={context}
+        >
+          within {context}
+        </small>
+      )}
+    </>
+  );
+}
+
+/** Prefer the captured element over its member path, which may now name another element. */
+function highlightOf(
+  { ref, member }: RunInteraction,
+  canHighlight: RunsViewProps["canHighlight"]
+): HighlightTarget | undefined {
+  const candidate = ref ? { ref } : member ? { path: member } : undefined;
+  return candidate && canHighlight(candidate) ? candidate : undefined;
 }

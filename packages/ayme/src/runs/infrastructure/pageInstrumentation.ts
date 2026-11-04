@@ -1,5 +1,10 @@
-import type { Page } from "@playwright/test";
-import { isPlaywrightLiteLocator } from "@ayme-dev/playwright-lite/internal";
+import type { Locator, Page } from "@playwright/test";
+import {
+  isPlaywrightLiteLocator,
+  resolveLocatorElements,
+} from "@ayme-dev/playwright-lite/internal";
+
+import { latestPageStateRef } from "../../page-state/infrastructure";
 
 import {
   interactionOf,
@@ -119,7 +124,8 @@ export function instrumentedPage(
         return (...args: unknown[]) => {
           const target = resolve();
           const interaction =
-            onInteraction && interactionOf(subject, target, property, args);
+            onInteraction &&
+            interactionOf(subject, target, property, args, refOfLocator);
           if (interaction) onInteraction(interaction);
           return bindResult(call(target, property, args), property, args);
         };
@@ -132,4 +138,14 @@ export function instrumentedPage(
   resolvePage = root.resolve;
   const proxyPage = root.proxy;
   return proxyPage;
+}
+
+/** Diagnostic resolution must never wait for an element or prevent the actual call. */
+function refOfLocator(locator: Locator) {
+  try {
+    const elements = resolveLocatorElements(locator);
+    return elements.length === 1 ? latestPageStateRef(elements[0]!) : undefined;
+  } catch {
+    return undefined;
+  }
 }

@@ -168,6 +168,11 @@ export function latestPageStateRef(element: Element): AriaRef | undefined {
   return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
 }
 
+/** The last recorded tree and element map; reading it records and captures nothing. */
+export function latestPageStateCapture(currentDocument: Document) {
+  return pageStateSessions.get(currentDocument)?.latestCapture();
+}
+
 /**
  * Package-internal: the element the latest recorded page state of
  * `currentDocument` maps `ref` to; undefined until one is recorded, or when

@@ -1,6 +1,6 @@
 import type { Interaction } from "@ayme-dev/ayme";
 import {
-  getPageStateForElements,
+  lookAtPageStateForDocument,
   listRegisteredPomTargets,
   listRegisteredPoms,
   rootTargetPath,
@@ -11,13 +11,13 @@ import {
   buildPageModel,
   indexMembers,
 } from "../../page-model";
+import { mapTargetsToRefs } from "../../shared";
 
 /**
  * The Page Object member each Interaction acted on, by place: the member
- * whose locator it names (a Locator collection's `last()` names its last
- * element, and a collection holding one element names that element), or,
- * for a Browser Tool's Interaction by Structural
- * Ref, the member whose element has that ref now, while that member's
+ * whose locator or alias it names (including a Locator collection's `last()`
+ * or sole element), or whose element has its captured Structural Ref in an
+ * unrecorded look, while that member's
  * element is on the page. Read from the registry as it is now, so a member a
  * Run added, such as a new item, is named too.
  */
@@ -32,12 +32,11 @@ export async function interactionMembers(
   } catch {
     // Without the registry's targets, Interactions keep their locators.
   }
-  let targetRefs: readonly (string | undefined)[] = [];
+  let targetsByRef: ReadonlyMap<string, readonly string[]> = new Map();
   if (interactions.some(({ ref }) => ref !== undefined) && targets.length)
     try {
-      ({ refs: targetRefs } = await getPageStateForElements(
-        targets.map(({ element }) => element)
-      ));
+      const look = await lookAtPageStateForDocument(document);
+      targetsByRef = mapTargetsToRefs(look.elementsByRef, targets);
     } catch {
       // Without the targets' refs, a ref locator names no member.
     }
@@ -47,13 +46,16 @@ export async function interactionMembers(
   );
   return interactions.map(({ locator, ref }) => {
     if (locator === undefined) return undefined;
-    return targets
-      .filter((target, index) =>
-        ref
-          ? targetRefs[index] === ref
-          : target.locator === locator || target.aliases?.includes(locator)
-      )
-      .map(({ path }) => members.member(path)?.path)
+    const paths = ref
+      ? (targetsByRef.get(ref) ?? [])
+      : targets
+          .filter(
+            (target) =>
+              target.locator === locator || target.aliases?.includes(locator)
+          )
+          .map(({ path }) => path);
+    return paths
+      .map((path) => members.member(path)?.path)
       .find((path) => path !== undefined);
   });
 }

@@ -76,6 +76,7 @@ function renderRuns(props: Partial<RunsProps> = {}, width?: number) {
             open={open}
             focus={focus}
             {...callbacks}
+            canHighlight={() => true}
             onAllRunsChange={(all) => {
               callbacks.onAllRunsChange(all);
               setAllRuns(all);
@@ -366,7 +367,7 @@ describe("Runs", () => {
 
     await expect
       .poll(() => target.getAttribute("title"))
-      .toMatch(/^Not on the page when the run ended/);
+      .toMatch(/^Not available to highlight/);
     expect(onHover).not.toHaveBeenCalled();
   });
 
@@ -682,12 +683,173 @@ describe("a run's result", () => {
 });
 
 describe("a run's arguments", () => {
+  it("keeps a removed target's name while marking it gone and disabling its hover", async () => {
+    const { onHover } = renderRuns({
+      canHighlight: () => false,
+      runs: [
+        aRun({
+          interactions: [
+            anInteraction({ ref: "e7", target: 'button "Dismiss"' }),
+          ],
+        }),
+      ],
+    });
+    const target = runsView.run(0).interactionTarget(0);
+    await expect.poll(() => target.textContent()).toBe('button "Dismiss"');
+    expect(await target.getAttribute("data-gone")).toBe("true");
+    expect(await target.getAttribute("title")).not.toContain(
+      "Hover to highlight"
+    );
+    await target.hover();
+    expect(onHover).not.toHaveBeenCalled();
+  });
+  it("shows a browser input once with its readable target and value, keeping Result and options", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "fill",
+          arguments: { target: "e7", text: "Milk", timeout: 0 },
+          result: '"Filled"',
+          interactions: [
+            anInteraction({
+              operation: "fill",
+              ref: "e7",
+              target: 'textbox "New item"',
+              value: "Milk",
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.toggle.textContent())
+      .toContain('textbox "New item"');
+    expect(await run.toggle.textContent()).toContain('"Milk"');
+    expect(await run.arguments.textContent()).toBe('{"timeout":0}');
+    expect(await run.interactions.count()).toBe(0);
+    expect(await run.resultToggle.count()).toBe(1);
+    expect(await run.card.textContent()).not.toContain("Details");
+  });
+
+  it("names a non-POM child separately from its parent and highlights its ref", async () => {
+    const { onHover } = renderRuns({
+      runs: [
+        aRun({
+          interactions: [
+            anInteraction({
+              ref: "e7",
+              target: 'button "Delete"',
+              context: "ListPage.items[1]",
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.interactionTarget(0).textContent())
+      .toBe('button "Delete"');
+    expect(await run.interactions.textContent()).toContain(
+      "within ListPage.items[1]"
+    );
+    await run.interactionTarget(0).hover();
+    expect(onHover).toHaveBeenCalledWith({ ref: "e7" });
+  });
+
+  it("retains readable names after reload without highlighting a new document's elements", async () => {
+    const { onHover } = renderRuns({
+      runs: [
+        aRun({
+          earlierDocument: true,
+          children: [
+            aChildRun({
+              interactions: [
+                anInteraction({ ref: "e7", target: 'button "Delete"' }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    const child = runsView.run(0).child("ListPage.addItem");
+    await expect
+      .poll(() => child.interactionTarget(0).textContent())
+      .toBe('button "Delete"');
+    await child.interactionTarget(0).hover();
+    expect(onHover).not.toHaveBeenCalled();
+    expect(await runsView.run(0).earlierPage.count()).toBe(1);
+    expect(await child.earlierPage.count()).toBe(0);
+    expect(await child.interactionTarget(0).getAttribute("data-gone")).toBe(
+      "true"
+    );
+    expect(
+      await child.interactionTarget(0).getAttribute("title")
+    ).not.toContain("Hover to highlight");
+  });
+
   it("aren't shown when there are none", async () => {
     renderRuns({ runs: [aRun({ arguments: {} })] });
 
     await expect.poll(() => runsView.run(0).status()).toBe("Succeeded");
     expect(await runsView.run(0).arguments.count()).toBe(0);
     expect(await runsView.run(0).root.textContent()).not.toContain("{}");
+  });
+
+  it("shows chosen options beside a single selection's readable target", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "select_option",
+          arguments: { target: "e7", values: ["Small", "Large"] },
+          interactions: [
+            anInteraction({
+              operation: "selectOption",
+              ref: "e7",
+              target: 'combobox "Size"',
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.toggle.textContent())
+      .toContain('["Small","Large"]');
+    expect(await run.toggle.textContent()).toContain('combobox "Size"');
+    expect(await run.arguments.count()).toBe(0);
+  });
+
+  it("shows a form's named inputs without repeating their refs in Arguments", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "fill_form",
+          arguments: {
+            fields: [
+              { name: "Email", type: "textbox", target: "e7", value: "a@b" },
+            ],
+          },
+          interactions: [
+            anInteraction({
+              operation: "fill",
+              ref: "e7",
+              target: 'textbox "Email"',
+              value: "a@b",
+            }),
+          ],
+        }),
+      ],
+    });
+    const run = runsView.run(0);
+    await expect
+      .poll(() => run.interactionList())
+      .toEqual([
+        { operation: "fill", target: 'textbox "Email"', value: '"a@b"' },
+      ]);
+    expect(await run.arguments.textContent()).toBe(
+      '{"fields":[{"name":"Email","type":"textbox","value":"a@b"}]}'
+    );
   });
 
   it("are shown with their null and falsy fields", async () => {
@@ -698,4 +860,115 @@ describe("a run's arguments", () => {
       .poll(() => runsView.run(0).arguments.textContent())
       .toBe(JSON.stringify(args));
   });
+});
+
+it("highlights targets on keyboard focus and clears highlights on blur or pointer exit", async () => {
+  const { onHover } = renderRuns({
+    runs: [
+      aRun({
+        interactions: [
+          anInteraction({
+            member: "ListPage.addItemButton",
+            context: "ListPage",
+          }),
+        ],
+      }),
+    ],
+  });
+  const run = runsView.run(0);
+  const target = run.interactionTarget(0);
+  await target.focus();
+  expect(onHover).toHaveBeenLastCalledWith({ path: "ListPage.addItemButton" });
+  expect(await target.getAttribute("data-gone")).toBeNull();
+  expect(await run.card.textContent()).not.toContain("within");
+  await run.toggle.focus();
+  expect(onHover).toHaveBeenLastCalledWith(undefined);
+  await target.hover();
+  expect(onHover).toHaveBeenLastCalledWith({ path: "ListPage.addItemButton" });
+  await runsView.header.hover();
+  expect(onHover).toHaveBeenLastCalledWith(undefined);
+});
+
+it("does not highlight an unavailable target on focus or blur", async () => {
+  const { onHover } = renderRuns({
+    canHighlight: () => false,
+    runs: [
+      aRun({
+        interactions: [anInteraction({ member: "ListPage.addItemButton" })],
+      }),
+    ],
+  });
+  await runsView.run(0).interactionTarget(0).focus();
+  await runsView.run(0).toggle.focus();
+  await runsView.run(0).interactionTarget(0).hover();
+  await runsView.header.hover();
+  expect(onHover).not.toHaveBeenCalled();
+});
+
+it("keeps full string and array values in heading tooltips", async () => {
+  renderRuns({
+    runs: [
+      aRun({
+        toolName: "fill",
+        interactions: [anInteraction({ value: "Milk" })],
+      }),
+      aRun({
+        toolName: "select_option",
+        arguments: { values: ["Small", "Large"] },
+        interactions: [anInteraction()],
+      }),
+    ],
+  });
+  await expect
+    .poll(() =>
+      runsView.run(0).toggle.getByTitle("Milk", { exact: true }).textContent()
+    )
+    .toBe('"Milk"');
+  expect(
+    await runsView
+      .run(1)
+      .toggle.getByTitle('["Small","Large"]', { exact: true })
+      .textContent()
+  ).toBe('["Small","Large"]');
+});
+
+it("omits an empty interaction list and results on unfinished or failed runs", async () => {
+  renderRuns({
+    runs: [
+      aRun({ result: '"Done"' }),
+      aRun({ status: "failed", result: '"Partial"' }),
+      aRun({ status: "running", result: '"Partial"' }),
+    ],
+  });
+  await expect.poll(() => runsView.runs.count()).toBe(3);
+  expect(
+    await runsView
+      .run(0)
+      .card.getByRole("list", { name: "Interactions" })
+      .count()
+  ).toBe(0);
+  expect(await runsView.run(1).resultToggle.count()).toBe(0);
+  expect(await runsView.run(2).resultToggle.count()).toBe(0);
+});
+
+it("shows a keyboard input's key without inventing an element to highlight", async () => {
+  renderRuns({
+    runs: [
+      aRun({
+        toolName: "press_key",
+        arguments: { key: "Enter" },
+        interactions: [
+          anInteraction({
+            operation: "keyboard.press",
+            locator: undefined,
+            value: "Enter",
+          }),
+        ],
+      }),
+    ],
+  });
+  const run = runsView.run(0);
+  await expect.poll(() => run.toggle.textContent()).toContain('"Enter"');
+  expect(await run.toggle.getByTitle(/highlight/).count()).toBe(0);
+  expect(await run.arguments.count()).toBe(0);
 });

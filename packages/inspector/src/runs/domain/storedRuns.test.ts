@@ -28,6 +28,9 @@ const succeeded: Run = {
       locator: "getByRole('textbox')",
       value: "Milk",
       member: "ListPage.newItem",
+      ref: "e7" as NonNullable<Run["interactions"][number]["ref"]>,
+      target: 'textbox "New item"',
+      context: "ListPage",
     },
   ],
   children: [],
@@ -166,6 +169,17 @@ it("leaves out a malformed run", () => {
     ])
   ).toEqual([before(succeeded)]);
 });
+
+it.each(["locator", "ref", "value", "member", "target", "context"])(
+  "discards a saved interaction with a malformed %s",
+  (field) => {
+    expect(
+      decodeRuns([
+        { ...succeeded, interactions: [{ operation: "click", [field]: 42 }] },
+      ])
+    ).toEqual([]);
+  }
+);
 
 it("keeps a run's image description but not the image itself", () => {
   const screenshot: Run = {

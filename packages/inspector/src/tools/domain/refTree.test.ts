@@ -90,6 +90,7 @@ it("matches every word of the query in a node's ref, role, name or text", () => 
     "    e7 listitem",
   ]);
   expect(refTreeRows(roots, { query: "e7" }).at(-1)?.text).toBe("Milk");
+  expect(refTreeRows(roots, { query: "e2" }).at(-1)?.text).toBe("");
 });
 
 it("shows nothing when no node matches", () => {

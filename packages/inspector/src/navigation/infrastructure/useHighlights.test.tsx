@@ -58,3 +58,16 @@ it("removes both highlights when it unmounts", () => {
   expect(element.hasAttribute("data-ayme-hover")).toBe(false);
   expect(element.hasAttribute("data-ayme-highlight")).toBe(false);
 });
+
+it("only offers a highlight while its target is connected in the latest look", () => {
+  const { highlights, unmount } = mountHighlights();
+  const element = document.createElement("button");
+  document.body.append(element);
+  expect(highlights.canHighlight({ ref: "e1" })).toBe(false);
+  highlights.onLook(lookOf({ e1: element }));
+  expect(highlights.canHighlight({ ref: "e1" })).toBe(true);
+  expect(highlights.canHighlight({ ref: "unknown" })).toBe(false);
+  element.remove();
+  expect(highlights.canHighlight({ ref: "e1" })).toBe(false);
+  unmount();
+});
