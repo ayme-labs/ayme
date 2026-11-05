@@ -292,7 +292,6 @@ const liteInternalExceptions = [
     file: "src/page-objects/infrastructure/pomRootObservation.ts",
     issue: "#1175",
   },
-  { file: "src/runs/infrastructure/pageInstrumentation.ts", issue: "#1173" },
   { file: "src/tools/application/elementTools.ts", issue: "#1176" },
   { file: "src/tools/infrastructure/generateLocator.ts", issue: "#1176" },
   { file: "src/tools/infrastructure/pressKey.ts", issue: "#1176" },

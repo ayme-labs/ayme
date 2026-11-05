@@ -55,6 +55,10 @@ describe("the in-page module over Playwright Lite", () => {
       const next = await loaded(frame, () => window.location.reload());
       return next.page;
     },
+    async nextDocument(page) {
+      const next = await loaded(frames.get(page)!, () => {});
+      return next.page;
+    },
     hostsOutliveLoads: false,
   });
 });

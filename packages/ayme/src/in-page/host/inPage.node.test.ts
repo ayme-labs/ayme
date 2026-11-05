@@ -128,7 +128,155 @@ describe("the in-page module over real Playwright, as built", () => {
       await page.reload();
       return page;
     },
+    async nextDocument(page) {
+      await page.waitForEvent("load");
+      return page;
+    },
     hostsOutliveLoads: true,
+  });
+});
+
+/** `page`, counting the calls that evaluate in it. */
+function countingEvaluations(page: Page) {
+  const counted = new Set<string | symbol>([
+    "evaluate",
+    "evaluateHandle",
+    "$eval",
+    "$$eval",
+  ]);
+  const evaluations: string[] = [];
+  const counting = new Proxy(page, {
+    get(target, property) {
+      const member: unknown = Reflect.get(target, property);
+      if (typeof member !== "function") return member;
+      return (...args: unknown[]) => {
+        if (counted.has(property)) evaluations.push(String(property));
+        return (member as (...args: unknown[]) => unknown).apply(target, args);
+      };
+    },
+  });
+  return { page: counting, evaluations };
+}
+
+describe("an action in Node", () => {
+  it("costs at most two evaluations: one before it, and one held through its settle", async () => {
+    const raw = await newPage();
+    await raw.evaluate(() => {
+      document.body.innerHTML =
+        '<button>Add</button><ul aria-label="Items"></ul>';
+      document.querySelector("button")!.addEventListener("click", () => {
+        for (let item = 1; item <= 3; item += 1)
+          setTimeout(
+            () =>
+              document
+                .querySelector("ul")!
+                .insertAdjacentHTML("beforeend", `<li>Item ${item}</li>`),
+            item * 100
+          );
+      });
+    });
+    const { page, evaluations } = countingEvaluations(raw);
+    const node = built.createInPageHost().inPage(page);
+    await node.bound();
+    evaluations.length = 0;
+
+    const action = await node.begin();
+    const outcome = await action.perform(() => page.locator("button").click());
+
+    expect(outcome).toMatchObject({
+      kind: "settled",
+      stable: true,
+      after: { distilledText: expect.stringContaining("Item 3") },
+    });
+    expect(evaluations).toEqual(["evaluate", "evaluate"]);
+  });
+
+  it("answers a load it starts itself as a load of where the page went", async () => {
+    const page = await newPage();
+    const node = built.inPage(page);
+    const before = await node.capture();
+
+    const action = await node.begin();
+    const outcome = await action.perform(() => page.goto(`${origin}/next`));
+
+    expect(outcome).toMatchObject({ kind: "loading", url: `${origin}/next` });
+    expect((await node.capture()).document).not.toBe(before.document);
+  });
+
+  it("answers a load that destroys the page's context while it settles as a load", async () => {
+    const page = await newPage();
+    await page.evaluate(() => {
+      document.body.innerHTML = "<button>Busy</button>";
+      // A second of activity, so the settle still waits when the load comes.
+      document.querySelector("button")!.addEventListener("click", () => {
+        const busy = setInterval(
+          () => document.body.append(document.createElement("p")),
+          50
+        );
+        setTimeout(() => clearInterval(busy), 1_000);
+      });
+    });
+    const node = built.createInPageHost().inPage(page);
+    const action = await node.begin();
+
+    const outcome = await action.perform(async () => {
+      await page.locator("button").click();
+      setTimeout(() => void page.goto(`${origin}/next`).catch(() => {}), 200);
+    });
+
+    expect(outcome).toMatchObject({ kind: "loading" });
+  });
+
+  it("rejects a settle that fails for anything but a load", async () => {
+    const page = await newPage();
+    const node = built.createInPageHost().inPage(page);
+    const elements = (await page.evaluateHandle(() => ({}))) as NonNullable<
+      Testing.ActionOptions["elements"]
+    >;
+    const action = await node.begin({ elements });
+
+    // The settle reads the inputs again, through a handle gone by then: the
+    // evaluate's own error, and no load.
+    await expect(action.perform(() => elements.dispose())).rejects.toThrow(
+      "page.evaluate"
+    );
+  });
+});
+
+/** `page`, whose `exposeFunction` fails with `error` for the name it is given. */
+function exposingFails(page: Page, error: (name: string) => Error): Page {
+  return new Proxy(page, {
+    get(target, property) {
+      if (property === "exposeFunction")
+        return (name: string) => Promise.reject(error(name));
+      const member: unknown = Reflect.get(target, property);
+      return typeof member === "function" ? member.bind(target) : member;
+    },
+  });
+}
+
+describe("a host's binding in Node", () => {
+  it("is shared by a second Page object of one page, which finds it already registered", async () => {
+    const raw = await newPage();
+    const host = built.createInPageHost();
+    const first = await host.inPage(raw).bound();
+    const sameName = exposingFails(
+      raw,
+      (name) => new Error(`Function "${name}" has been already registered`)
+    );
+
+    expect(await host.inPage(sameName).bound()).toEqual(first);
+  });
+
+  it("lets any other failure to expose it through", async () => {
+    const page = exposingFails(
+      await newPage(),
+      () => new Error("Target page, context or browser has been closed")
+    );
+
+    await expect(built.createInPageHost().inPage(page).bound()).rejects.toThrow(
+      "Target page, context or browser has been closed"
+    );
   });
 });
 

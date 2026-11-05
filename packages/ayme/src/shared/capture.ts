@@ -27,3 +27,16 @@ export type Capture = {
   /** This host's present roots: referenced first, then the others from outer to inner. */
   roots: CapturedRoot[];
 };
+
+/**
+ * What an action came to, once its page settled or a full load started:
+ * `stable` says whether the page went quiet before the deadline, and
+ * `after` is the page after it. `threw` carries what perform threw, or else
+ * why capturing the page after it failed, and then has no `after`. A full
+ * load's `after` is the old document's last capture, when the old document
+ * saw the load start.
+ */
+export type ActionOutcome<T> =
+  | { kind: "settled"; result: T; stable: boolean; after: Capture }
+  | { kind: "threw"; error: unknown; stable: boolean; after?: Capture }
+  | { kind: "loading"; url: string; after?: Capture };

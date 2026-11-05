@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
+import { afterEach, beforeEach, expect, it } from "vitest";
 
-import { getBrowserPageActivitySource } from "./pageActivitySource";
+import { watchActivity } from "./activity";
 
 // Playwright's highlight adds an overlay host under <html> and moves boxes in
 // it. That is no activity of the page: a settle wait must not be extended by it.
@@ -29,9 +29,7 @@ const quiet = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 it("a highlight's overlay is no page activity", async () => {
   let activity = 0;
-  stop = getBrowserPageActivitySource(document).subscribe(
-    () => (activity += 1)
-  );
+  stop = watchActivity(document).subscribe(() => (activity += 1));
 
   await button.highlight({ style });
   await quiet();
@@ -43,9 +41,7 @@ it("a highlight's overlay is no page activity", async () => {
 
 it("a change of the app still is", async () => {
   let activity = 0;
-  stop = getBrowserPageActivitySource(document).subscribe(
-    () => (activity += 1)
-  );
+  stop = watchActivity(document).subscribe(() => (activity += 1));
 
   await button.highlight({ style });
   document.querySelector("#host")!.append(document.createElement("p"));

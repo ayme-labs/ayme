@@ -1,11 +1,18 @@
 // The browser runtime as a host of its document's in-page module: the
-// Playwright Lite page through which it installs the module and captures,
-// and the transitional lookup of elements by ref (#1182).
+// Playwright Lite page through which it installs the module, captures, runs
+// its actions and hears of its Visits, and the transitional lookup of
+// elements by ref (#1182).
 import { createPage } from "@ayme-dev/playwright-lite";
 import type { Page } from "@playwright/test";
-import { elementOfRef, inPage, type ElementInputs } from "../../in-page";
+import {
+  elementOfRef,
+  inPage,
+  type ActionInputs,
+  type ElementInputs,
+  type VisitSignal,
+} from "../../in-page";
 import type { Capture } from "../../shared";
-import type { ElementsOf } from "../application/pageStateSession";
+import type { ElementsOf, PageAction } from "../application/pageStateSession";
 
 const browserPages = new WeakMap<Document, Page>();
 
@@ -26,12 +33,20 @@ export function pageOfDocument(currentDocument: Document): Page {
 }
 
 /**
- * Installs `currentDocument`'s in-page module, or binds to the one there.
- * Every capture binds too, and reports what fails here.
+ * Installs `currentDocument`'s in-page module, or binds to the one there,
+ * and calls `onVisit` once it is bound and after each same-document
+ * navigation in it. Every capture binds too, and reports what fails here.
  */
-export function bindDocument(currentDocument: Document): void {
+export function bindDocument(
+  currentDocument: Document,
+  onVisit: (visit: VisitSignal) => void
+): void {
   void Promise.resolve()
-    .then(() => inPage(browserPageOf(currentDocument)).bound())
+    .then(() => {
+      const module = inPage(browserPageOf(currentDocument));
+      module.onVisit(onVisit);
+      return module.bound();
+    })
     .catch(() => {});
 }
 
@@ -48,6 +63,32 @@ export async function captureDocument(
     return await inPage(page).capture({ elements });
   } finally {
     void elements.dispose();
+  }
+}
+
+/**
+ * Begins an action on `currentDocument` through its module: the before
+ * capture, and the action, whose captures read `inputs` again each, as the
+ * registry probes its roots right before each capture.
+ */
+export async function beginDocumentAction(
+  currentDocument: Document,
+  inputs: () => Promise<ElementInputs>
+): Promise<PageAction> {
+  const page = browserPageOf(currentDocument);
+  // Playwright Lite calls the page function as it is, so the handle holds
+  // the function itself (transitional: #1175, #1177).
+  const elements = await page.evaluateHandle<ActionInputs>(() => inputs);
+  try {
+    const action = await inPage(page).begin({ elements });
+    return {
+      before: action.before,
+      perform: (perform) =>
+        action.perform(perform).finally(() => void elements.dispose()),
+    };
+  } catch (error) {
+    void elements.dispose();
+    throw error;
   }
 }
 

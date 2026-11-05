@@ -1,11 +1,23 @@
 // Stands in the browser runtime's host of its in-page module
 // (page-state/infrastructure/browserInPage.ts) where no browser lays the
 // page out, as in jsdom: a capture runs the module's own ref world over the
-// dual capture a test gives, in place of Playwright's.
-import type { AriaRef } from "@ayme-dev/core/structural-observation";
+// dual capture a test gives, in place of Playwright's, and an action waits
+// for a Settled Page with core's wait, as the module does, over a page with
+// no activity.
+import {
+  SETTLED_PAGE_DEADLINE_MS,
+  SETTLED_PAGE_QUIET_MS,
+  waitForSettled,
+  type AriaRef,
+} from "@ayme-dev/core/structural-observation";
 
 import { createRefWorld, type ElementInputs } from "../in-page";
-import type { Capture, DocumentToken } from "../shared";
+import {
+  browserMonotonicClock,
+  type ActionOutcome,
+  type Capture,
+  type DocumentToken,
+} from "../shared";
 
 /** Playwright's dual capture of `root`, as a test gives it. */
 export type DualCapture = (root: Element) => {
@@ -34,15 +46,45 @@ export function standInBrowserInPage(snapshot: DualCapture) {
     }
     return (latest = world);
   };
+  const capture = (
+    currentDocument: Document,
+    inputs: ElementInputs
+  ): Capture => ({
+    document: "standIn" as DocumentToken,
+    url: currentDocument.URL,
+    ...worldOf(currentDocument).capture(currentDocument.body, inputs),
+  });
   return {
     bindDocument: () => {},
-    captureDocument: async (
+    captureDocument: async (currentDocument: Document, inputs: ElementInputs) =>
+      capture(currentDocument, inputs),
+    beginDocumentAction: async (
       currentDocument: Document,
-      inputs: ElementInputs
-    ): Promise<Capture> => ({
-      document: "standIn" as DocumentToken,
-      url: currentDocument.URL,
-      ...worldOf(currentDocument).capture(currentDocument.body, inputs),
+      inputs: () => Promise<ElementInputs>
+    ) => ({
+      before: capture(currentDocument, await inputs()),
+      async perform<T>(
+        perform: () => T | Promise<T>
+      ): Promise<ActionOutcome<T>> {
+        let done:
+          { kind: "settled"; result: T } | { kind: "threw"; error: unknown };
+        try {
+          done = { kind: "settled", result: await perform() };
+        } catch (error) {
+          done = { kind: "threw", error };
+        }
+        const { stable } = await waitForSettled({
+          activity: { subscribe: () => () => {} },
+          clock: browserMonotonicClock,
+          quietMs: SETTLED_PAGE_QUIET_MS,
+          deadlineMs: SETTLED_PAGE_DEADLINE_MS,
+        });
+        return {
+          ...done,
+          stable,
+          after: capture(currentDocument, await inputs()),
+        };
+      },
     }),
     elementsOf: (refs: readonly AriaRef[]) =>
       new Map(

@@ -24,13 +24,16 @@ export {
   registerAymeRef,
 } from "./in-page";
 export type {
+  ActionOptions,
   Bound,
   Capture,
   CaptureOptions,
   ElementInputs,
   InPage,
+  InPageAction,
   InPageHost,
   PickOptions,
+  VisitSignal,
 } from "./in-page";
 
 type WithStore = typeof globalThis & {

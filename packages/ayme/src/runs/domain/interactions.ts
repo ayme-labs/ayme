@@ -2,7 +2,6 @@ import {
   refFromSelector,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import type { Locator } from "@playwright/test";
 import {
   elementsOf,
   isInteraction,
@@ -39,14 +38,13 @@ export function interactionOf(
   subject: CallSubject,
   target: object,
   method: string | symbol,
-  args: readonly unknown[],
-  refOfLocator?: (locator: Locator) => AriaRef | undefined
+  args: readonly unknown[]
 ): Interaction | undefined {
   if (!isInteraction(kindOf(subject, method))) return undefined;
   const [locator] = elementsOf(subject, target, method as string, args);
   const value = valueOf(subject, method as string, args);
-  const ref =
-    locator && (refFromSelector(locator.toString()) ?? refOfLocator?.(locator));
+  // A ref the locator names itself; the instrumentation reads any other.
+  const ref = locator && refFromSelector(locator.toString());
   return {
     operation:
       subject === "keyboard" || subject === "mouse"

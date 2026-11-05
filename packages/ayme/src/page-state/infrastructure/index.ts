@@ -13,6 +13,7 @@ export {
   latestPageStateElement,
   latestPageStateCapture,
   latestPageStateRef,
+  latestPageStateRefOf,
   lookAtPageStateForDocument,
   onPageStateRecorded,
   providePageObjectStructure,

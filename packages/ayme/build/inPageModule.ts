@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, sep } from "node:path";
 import { Rolldown } from "tsdown";
 
 import { pinnedAriaSnapshotModule } from "./pinnedAriaSnapshot.ts";
@@ -8,6 +9,16 @@ const resolvedId = `\0${moduleId}`;
 const ariaSnapshotId = "virtual:ayme-aria-snapshot";
 const resolvedAriaSnapshotId = `\0${ariaSnapshotId}`;
 const pagePart = join(import.meta.dirname, "..", "src", "in-page", "page");
+const ownSource = join(import.meta.dirname, "..", "src") + sep;
+const coreEntry = "@ayme-dev/core/structural-observation";
+// Core's source, which the page part bundles in place of its build: built,
+// core is one module whose zod schemas would come along with the Settled
+// Page wait; from source, only the modules the page part uses do.
+const coreSource = join(
+  dirname(createRequire(import.meta.url).resolve(coreEntry)),
+  "..",
+  "src"
+);
 
 /**
  * The functions `virtual:ayme-in-page` exports: each a file of the page part
@@ -28,7 +39,8 @@ const functions = [
  * it imports is bundled on its own, then wrapped in the function's body, so
  * it closes over nothing: Playwright Lite calls it in the page, and real
  * Playwright sends its source text. The page part's snapshot code is the
- * pinned Playwright's (`virtual:ayme-aria-snapshot`, build/pinnedAriaSnapshot.ts).
+ * pinned Playwright's (`virtual:ayme-aria-snapshot`, build/pinnedAriaSnapshot.ts),
+ * and its Settled Page wait is core's.
  * The package build and both test lanes load this plugin.
  */
 export function inPageModule() {
@@ -74,7 +86,20 @@ async function buildSelfContained(input: string) {
     // No build-machine paths, as in the package's own build.
     experimental: { attachDebugInfo: "none" },
     output: { format: "cjs", comments: false },
+    // As in the package's build, a module of Ayme's or core's sets up on
+    // import only the state its own exports use.
+    treeshake: {
+      moduleSideEffects: (id) =>
+        id.startsWith(ownSource) || id.startsWith(coreSource + sep)
+          ? false
+          : undefined,
+    },
     plugins: [
+      {
+        name: "ayme-core-source",
+        resolveId: (id) =>
+          id === coreEntry ? join(coreSource, "index.ts") : undefined,
+      },
       {
         name: "ayme-aria-snapshot",
         resolveId: (id) =>

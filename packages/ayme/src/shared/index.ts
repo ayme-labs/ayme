@@ -1,5 +1,10 @@
 export { browserMonotonicClock } from "./browserMonotonicClock";
-export type { Capture, CapturedRoot, DocumentToken } from "./capture";
+export type {
+  ActionOutcome,
+  Capture,
+  CapturedRoot,
+  DocumentToken,
+} from "./capture";
 export { callers } from "./callers";
 export type { BuiltInCaller, Caller } from "./callers";
 export { containsThroughShadow, parentElement } from "./composedTree";

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 
-import type { ElementInputs, InPageHost } from "./inPage";
+import type { ElementInputs, InPageHost, VisitSignal } from "./inPage";
 
 /**
  * One runtime the in-page module's contract runs on: Playwright Lite in the
@@ -14,6 +14,11 @@ export type InPageLane = {
   createHost(page: Page, version?: string): InPageHost;
   /** Loads the page's document again and answers the Page that shows the next one. */
   reload(page: Page): Promise<Page>;
+  /**
+   * The Page that shows the next document `page` loads, once it has loaded:
+   * asked before the page starts the load itself.
+   */
+  nextDocument(page: Page): Promise<Page>;
   /** Whether a host outlives a full load of its page, as a Node host does and the page's own runtime does not. */
   hostsOutliveLoads: boolean;
 };
@@ -231,7 +236,8 @@ export function inPageContract(lane: InPageLane) {
       }
     }
     expect(new Set(refsByItem.values()).size).toBe(100);
-  });
+    // 300 round trips: about 3 s alone, so a loaded machine needs headroom.
+  }, 20_000);
 
   it("a root without a node of its own gets one synthetic ref per element, whichever host labels it", async () => {
     const page = await lane.newPage();
@@ -636,4 +642,152 @@ export function inPageContract(lane: InPageLane) {
     // Nothing matches: no cue, and no wait.
     await inPage.cue(page.getByRole("button", { name: "Missing" }));
   });
+
+  it("an action answers the Settled Page after it, once the activity it set off has gone quiet", async () => {
+    const page = await lane.newPage();
+    await setBody(page, '<button>Add</button><ul aria-label="Items"></ul>');
+    // One item every 100 ms, the last 500 ms after the click: each extends
+    // the quiet window the Settled Page waits for.
+    await page.evaluate(`document.querySelector("button").addEventListener("click", () => {
+      for (let item = 1; item <= 5; item += 1)
+        setTimeout(() => document.querySelector("ul").insertAdjacentHTML("beforeend", "<li>Item " + item + "</li>"), item * 100);
+    })`);
+    const host = lane.createHost(page);
+
+    const action = await host.inPage(page).begin();
+    const outcome = await action.perform(async () => {
+      await page.locator("button").click();
+      return "clicked";
+    });
+
+    expect(action.before).toMatchObject({
+      document: (await host.inPage(page).bound()).document,
+      url: page.url(),
+    });
+    expect(action.before.distilledText).not.toContain("listitem");
+    expect(outcome).toEqual({
+      kind: "settled",
+      result: "clicked",
+      stable: true,
+      after: expect.objectContaining({
+        document: action.before.document,
+        url: page.url(),
+      }),
+    });
+    if (outcome.kind !== "settled") throw new Error("The action settled.");
+    expect(refsIn(outcome.after.distilledText)).toHaveLength(8);
+    expect(outcome.after.distilledText).toContain(
+      `- listitem [ref=${refOf(outcome.after.distilledText, "Item 5")}]: Item 5`
+    );
+  });
+
+  it("an action whose perform throws answers the error with the page settled after it", async () => {
+    const page = await lane.newPage();
+    await setBody(page, "<main><h1>Saving</h1></main>");
+    const host = lane.createHost(page);
+    const failure = new Error("Save failed.");
+
+    const action = await host.inPage(page).begin();
+    const outcome = await action.perform(async () => {
+      await page.evaluate(
+        `setTimeout(() => document.querySelector("main").insertAdjacentHTML("beforeend", "<p>Not saved</p>"), 100)`
+      );
+      throw failure;
+    });
+
+    expect(outcome).toEqual({
+      kind: "threw",
+      error: failure,
+      stable: true,
+      after: expect.objectContaining({
+        document: action.before.document,
+        distilledText: expect.stringContaining("Not saved"),
+      }),
+    });
+  });
+
+  it("an action that starts a full load answers the load with the old document's last capture, and the next capture is of a new document", async () => {
+    const page = await lane.newPage();
+    await setBody(page, "<p>Staying</p><button>Reload</button>");
+    await page.evaluate(`document.querySelector("button").addEventListener("click", () => {
+      document.querySelector("p").textContent = "Leaving";
+      location.reload();
+    })`);
+    const url = page.url();
+    const host = lane.createHost(page);
+    const next = lane.nextDocument(page);
+
+    const action = await host.inPage(page).begin();
+    const outcome = await action.perform(() => page.locator("button").click());
+
+    expect(outcome).toEqual({
+      kind: "loading",
+      url,
+      after: expect.objectContaining({
+        document: action.before.document,
+        distilledText: expect.stringContaining("Leaving"),
+      }),
+    });
+    const nextPage = await next;
+    const capture = await lane.createHost(nextPage).inPage(nextPage).capture();
+    expect(capture.document).not.toBe(action.before.document);
+  });
+
+  it("every host bound to a document hears of it, and of each same-document navigation in it", async () => {
+    const page = await lane.newPage();
+    const [one, other] = [lane.createHost(page), lane.createHost(page)];
+    const heard = new Map<InPageHost, VisitSignal[]>([
+      [one, []],
+      [other, []],
+    ]);
+    for (const [host, visits] of heard)
+      host.inPage(page).onVisit((visit) => visits.push(visit));
+    const { document } = await one.inPage(page).bound();
+    await other.inPage(page).bound();
+    const url = page.url();
+
+    await page.evaluate(`location.hash = "details"`);
+
+    for (const visits of heard.values())
+      await expect
+        .poll(() => visits)
+        .toEqual([
+          { document, url, cause: "initial" },
+          { document, url: `${url}#details`, cause: "navigate" },
+        ]);
+  });
+
+  it("a listener that stops hears of no later navigation", async () => {
+    const page = await lane.newPage();
+    const host = lane.createHost(page);
+    const [stopped, listening]: VisitSignal["cause"][][] = [[], []];
+    const stop = host.inPage(page).onVisit(({ cause }) => stopped.push(cause));
+    host.inPage(page).onVisit(({ cause }) => listening.push(cause));
+    await host.inPage(page).bound();
+
+    stop();
+    await page.evaluate(`location.hash = "details"`);
+
+    await expect.poll(() => listening).toEqual(["initial", "navigate"]);
+    expect(stopped).toEqual(["initial"]);
+  });
+
+  it.runIf(lane.hostsOutliveLoads)(
+    "a host that outlives a full load hears of the next document once it has loaded",
+    async () => {
+      const page = await lane.newPage();
+      const host = lane.createHost(page);
+      const visits: VisitSignal[] = [];
+      host.inPage(page).onVisit((visit) => visits.push(visit));
+      const before = await host.inPage(page).bound();
+
+      await lane.reload(page);
+
+      await expect
+        .poll(() => visits.map(({ cause }) => cause))
+        .toEqual(["initial", "initial"]);
+      expect(visits[1]!.document).not.toBe(before.document);
+      expect(visits[1]!.url).toBe(page.url());
+    }
+  );
 }

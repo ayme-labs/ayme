@@ -24,12 +24,6 @@ let now = 0;
 const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };
 const cursor = () => createCursors().of("app");
 
-/** A page that settles at once and never starts a full load. */
-const settledPage: ActionPage = {
-  settle: async () => ({ stable: true }),
-  watchFullLoad: () => ({ started: new Promise(() => {}), stop: () => {} }),
-};
-
 /** An element as the session sees one: something its captures map refs to. */
 const element = (name: string) => ({ name }) as unknown as Element;
 
@@ -54,37 +48,72 @@ function capture(
   };
 }
 
-/** A page on which every action starts a full load of `url` at once. */
-const loadingPage = (url: string): ActionPage => ({
-  settle: async () => ({ stable: true }),
-  watchFullLoad: () => ({ started: Promise.resolve(url), stop: () => {} }),
-});
-
 /**
  * A session whose captures are `captures`, in order, the last one repeated;
- * an error is a capture that throws it. `count()` is how many it took.
+ * an error is a capture that throws it. Its page settles at once after each
+ * action. `count()` is how many captures it took.
  */
 function sessionOver(...captures: (PageCapture | Error)[]) {
-  return sessionOn(settledPage, ...captures);
+  return sessionOn({}, ...captures);
 }
 
-/** `sessionOver` on `page`. */
-function sessionOn(page: ActionPage, ...captures: (PageCapture | Error)[]) {
+/**
+ * `sessionOver` on a page on which every action starts a full load of
+ * `loads` once it ran, when given.
+ */
+function sessionOn(
+  { loads }: { loads?: string },
+  ...captures: (PageCapture | Error)[]
+) {
   let taken = 0;
   let elements: ReadonlyMap<AriaRef, Element> = new Map();
+  const next = async () => {
+    const found = captures[Math.min(taken++, captures.length - 1)]!;
+    if (found instanceof Error) throw found;
+    elements = found.elementsByRef;
+    return found.capture;
+  };
+  // As the in-page module answers an action: the page before it, then the
+  // page after it, or the load it started.
+  const actionPage: ActionPage = {
+    async begin() {
+      const before = await next();
+      return {
+        before,
+        async perform<T>(perform: () => T | Promise<T>) {
+          let done:
+            { kind: "settled"; result: T } | { kind: "threw"; error: unknown };
+          try {
+            done = { kind: "settled", result: await perform() };
+          } catch (error) {
+            done = { kind: "threw", error };
+          }
+          const after = await next().catch((error: unknown) => error as Error);
+          if (loads)
+            return {
+              kind: "loading" as const,
+              url: loads,
+              ...(after instanceof Error ? {} : { after }),
+            };
+          if (after instanceof Error)
+            return {
+              kind: "threw" as const,
+              error: done.kind === "threw" ? done.error : after,
+              stable: true,
+            };
+          return { ...done, stable: true, after };
+        },
+      };
+    },
+  };
   const session = new PageStateSession(
     new InteractionHistory({
       pageId: PageIdSchema.parse("document_1"),
       url: "https://app.test/",
       clock,
     }),
-    async () => {
-      const next = captures[Math.min(taken++, captures.length - 1)]!;
-      if (next instanceof Error) throw next;
-      elements = next.elementsByRef;
-      return next.capture;
-    },
-    page,
+    next,
+    actionPage,
     (refs) =>
       new Map(
         refs.flatMap((key) => {
@@ -369,10 +398,7 @@ describe("runAction", () => {
   });
 
   it("answers at once when the action starts a full load, and moves the cursor to the page as it was then", async () => {
-    const { session } = sessionOn(
-      loadingPage("https://app.test/next"),
-      savePage
-    );
+    const { session } = sessionOn({ loads: "https://app.test/next" }, savePage);
     const reader = cursor();
 
     await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
@@ -386,7 +412,7 @@ describe("runAction", () => {
 
   it("still answers a full load when capturing the page as it goes away throws", async () => {
     const { session } = sessionOn(
-      loadingPage("https://app.test/next"),
+      { loads: "https://app.test/next" },
       savePage,
       savePage,
       new Error("The document is gone.")

@@ -9,12 +9,10 @@
 
 import {
   PageIdSchema,
-  SETTLED_PAGE_DEADLINE_MS,
-  SETTLED_PAGE_QUIET_MS,
-  waitForSettled,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import type { ElementInputs } from "../../in-page";
+import type { Locator } from "@playwright/test";
+import { inPage, type ElementInputs } from "../../in-page";
 import {
   browserMonotonicClock,
   INSPECTOR_HOST_SELECTOR,
@@ -24,13 +22,13 @@ import {
 import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
 import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
-import { watchFullLoad, watchSameDocumentNavigations } from "./navigation";
-import { getBrowserPageActivitySource } from "./pageActivitySource";
+import { PageStateSession } from "../application/pageStateSession";
 import {
-  PageStateSession,
-  type ActionPage,
-} from "../application/pageStateSession";
-import { bindDocument, captureDocument, elementsOf } from "./browserInPage";
+  beginDocumentAction,
+  bindDocument,
+  captureDocument,
+  elementsOf,
+} from "./browserInPage";
 import {
   renderPageState,
   type PageState,
@@ -101,16 +99,15 @@ const captureSources: PageCaptureSources = {
 };
 
 /**
- * A capture of `currentDocument` through its in-page module, with the Page
- * Object Roots and `ignore` this runtime places and leaves out. The
- * Inspector's own DOM is always left out.
+ * What a capture places and leaves out: the Page Object Roots and `ignore`
+ * of this runtime, read afresh. The Inspector's own DOM is always left out.
  */
-async function captureWithSources(currentDocument: Document): Promise<Capture> {
+async function elementInputs(): Promise<ElementInputs> {
   const structure = (await captureSources.pageObjectStructure()) ?? {
     roots: [],
     absentElements: [],
   };
-  const inputs: ElementInputs = {
+  return {
     roots: structure.roots.map(({ mark, element }) => ({
       label: mark,
       element,
@@ -120,7 +117,11 @@ async function captureWithSources(currentDocument: Document): Promise<Capture> {
       element.matches(INSPECTOR_HOST_SELECTOR) ||
       captureSources.ignores(element),
   };
-  return captureDocument(currentDocument, inputs);
+}
+
+/** A capture of `currentDocument` through its in-page module, with `elementInputs`. */
+async function captureWithSources(currentDocument: Document): Promise<Capture> {
+  return captureDocument(currentDocument, await elementInputs());
 }
 
 let documentCount = 0;
@@ -210,6 +211,23 @@ export function latestPageStateRef(element: Element): AriaRef | undefined {
   return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
 }
 
+/**
+ * Package-internal: the Structural Ref the agent's latest recorded page
+ * state of this document gave the one element `locator` matches, read in
+ * the page through its in-page module; undefined for none or several, or
+ * until a page state gave it one. Waits for no element.
+ */
+export async function latestPageStateRefOf(
+  locator: Locator
+): Promise<AriaRef | undefined> {
+  const refs = await inPage(locator.page()).elements.refs(locator);
+  const ref = refs.length === 1 ? (refs[0] as AriaRef | undefined) : undefined;
+  return ref !== undefined &&
+    pageStateSessions.get(document)?.latestElementOf(ref)
+    ? ref
+    : undefined;
+}
+
 /** The last recorded tree and element map; reading it records and captures nothing. */
 export function latestPageStateCapture(currentDocument: Document) {
   return pageStateSessions.get(currentDocument)?.latestCapture();
@@ -244,9 +262,12 @@ export function getPageStateSession(
 
 /**
  * A session over `currentDocument`: its history starts with the document's
- * first Visit and records each same-document navigation after it. Creating
- * it installs the document's in-page module, or binds to the one there, so
- * a runtime that starts first is the one that installs it.
+ * first Visit and records each same-document navigation its in-page module
+ * reports after it. Creating it installs the document's in-page module, or
+ * binds to the one there, so a runtime that starts first is the one that
+ * installs it; a navigation before then is recorded once it is bound. Its
+ * actions run through the module: the before capture, the Settled Page wait
+ * and the after capture, or the full load that ends them.
  */
 function createPageStateSession(currentDocument: Document): PageStateSession {
   const history = new InteractionHistory({
@@ -254,35 +275,18 @@ function createPageStateSession(currentDocument: Document): PageStateSession {
     url: currentDocument.URL,
     clock: browserMonotonicClock,
   });
-  const view = currentDocument.defaultView;
-  if (view)
-    watchSameDocumentNavigations(view, () =>
-      history.recordNavigation(currentDocument.URL)
-    );
-  bindDocument(currentDocument);
+  let url = currentDocument.URL;
+  bindDocument(currentDocument, (visit) => {
+    if (visit.cause === "initial" && visit.url === url) return;
+    url = visit.url;
+    history.recordNavigation(visit.url);
+  });
   return new PageStateSession(
     history,
     () => captureWithSources(currentDocument),
-    documentActionPage(currentDocument),
+    { begin: () => beginDocumentAction(currentDocument, elementInputs) },
     elementsOf
   );
-}
-
-/**
- * The action signals of `currentDocument`: a Settled Page is one with no
- * DOM, transition, animation, scroll or resize activity for a quiet window.
- */
-function documentActionPage(currentDocument: Document): ActionPage {
-  return {
-    settle: () =>
-      waitForSettled({
-        activity: getBrowserPageActivitySource(currentDocument),
-        clock: browserMonotonicClock,
-        quietMs: SETTLED_PAGE_QUIET_MS,
-        deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-      }),
-    watchFullLoad: () => watchFullLoad(currentDocument),
-  };
 }
 
 /** The document's page state text, from a capture nobody records. */

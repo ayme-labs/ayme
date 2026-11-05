@@ -7,7 +7,16 @@
 import { captureAriaSnapshot } from "virtual:ayme-aria-snapshot";
 
 import type { Capture, DocumentToken, ReachMeasurement } from "../../shared";
+import {
+  createActions,
+  type ActionInputs,
+  type Begun,
+  type LoadStarted,
+  type Settled,
+} from "./actions";
+import { watchActivity } from "./activity";
 import { createRefWorld, type ElementInputs } from "./capture";
+import { watchFullLoads, watchSameDocumentNavigations } from "./navigation";
 import { createReach } from "./reach";
 import { showCue } from "./cue";
 import { startPicking, type PickArguments, type PickNotice } from "./pick";
@@ -15,6 +24,7 @@ import { startPicking, type PickArguments, type PickNotice } from "./pick";
 export type { Capture, DocumentToken, ReachMeasurement };
 export type { ElementInputs } from "./capture";
 export type { PickArguments, PickNotice } from "./pick";
+export type { ActionInputs, Begun, Settled } from "./actions";
 
 /** What a host asks to pick a ref: `id` names this picking in the notices it gets back. */
 export type PickRequest = PickArguments & { id: string };
@@ -38,7 +48,18 @@ export type InstallArgument = {
 };
 
 export type InstallResult =
-  { kind: "bound"; bound: Bound } | { kind: "version"; found: string };
+  | { kind: "bound"; bound: Bound; url: string }
+  | { kind: "version"; found: string };
+
+/**
+ * What the module tells a bound host through its binding, with the
+ * document's token: a same-document navigation, for its Visits, a full load
+ * that ended one of its actions, or what the pointer is over in its picking.
+ */
+export type HostMessage =
+  | { kind: "visit"; url: string }
+  | LoadStarted
+  | { kind: "pick"; id: string; notice: PickNotice };
 
 /** What a host asks of the module about the reach of the element a ref names. */
 export type ReachRequest = {
@@ -76,6 +97,16 @@ export type Slot = {
    * browser runtime's, which holds them. Names what it finds by ref.
    */
   readonly reach: Reach;
+  /** The before capture of an action of `host`, whose full-load watch it arms. */
+  begin(host: HostKey, inputs?: ActionInputs): Promise<Begun>;
+  /** The Settled Page after `host`'s `action` and its capture, or the load that ended it. */
+  settle(
+    host: HostKey,
+    action: number,
+    inputs?: ActionInputs
+  ): Promise<Settled>;
+  /** The Structural Ref each element has in the document, if it was ever captured. */
+  refs(host: HostKey, elements: readonly Element[]): (string | undefined)[];
   /** The connected element under `root` that `ref` names: the `ayme-ref` engine's query. */
   queryRef(ref: string, root?: Node): Element[];
   /**
@@ -111,17 +142,21 @@ export function install({
   const found = (globalThis as { [slotKey]?: Slot })[slotKey];
   if (found)
     return found.version === version
-      ? { kind: "bound", bound: found.bind(host, binding) }
+      ? { kind: "bound", bound: found.bind(host, binding), url: location.href }
       : { kind: "version", found: found.version };
   const slot = createSlot(version, host);
   // Neither writable nor configurable, so no other copy can replace it.
   Object.defineProperty(globalThis, slotKey, { value: slot });
-  return { kind: "bound", bound: slot.bind(host, binding) };
+  return {
+    kind: "bound",
+    bound: slot.bind(host, binding),
+    url: location.href,
+  };
 }
 
 function createSlot(version: string, installedBy: HostKey): Slot {
   const token = mintToken();
-  // Each bound host's binding, through which the module will call it.
+  // Each bound host's binding, through which the module calls it.
   const bindings = new Map<HostKey, string>();
   // The document's one ref world: its marks, counters and ref map.
   const refs = createRefWorld(captureAriaSnapshot);
@@ -130,6 +165,37 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   const pickings = new Map<string, () => void>();
   // Pickings cancelled before they started: the cancel can arrive first.
   const cancelled = new Set<string>();
+  const capture = (_host: HostKey, inputs?: ElementInputs): Capture => ({
+    document: token,
+    url: location.href,
+    ...refs.capture(document.body, inputs),
+  });
+
+  /** Tells `host` of `message`, if it is still bound and listening. */
+  function tell(host: HostKey, message: HostMessage): void {
+    const binding = bindings.get(host);
+    const listener =
+      binding && (globalThis as Record<string, unknown>)[binding];
+    if (typeof listener !== "function") return;
+    try {
+      void Promise.resolve(listener(token, message)).catch(() => {});
+    } catch {
+      // A host that is gone hears nothing.
+    }
+  }
+
+  // The watchers are the document's own: a new document arms new ones.
+  const actions = createActions({
+    activity: watchActivity(document),
+    capture,
+    tell,
+  });
+  watchSameDocumentNavigations(window, () => {
+    for (const host of bindings.keys())
+      tell(host, { kind: "visit", url: location.href });
+  });
+  watchFullLoads(window, actions.loadStarted);
+
   return Object.freeze({
     version,
     token,
@@ -138,11 +204,7 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       bindings.set(host, binding);
       return { document: token, version, installedBy, host };
     },
-    capture: (_host: HostKey, inputs?: ElementInputs): Capture => ({
-      document: token,
-      url: location.href,
-      ...refs.capture(document.body, inputs),
-    }),
+    capture,
     measure: (_host: HostKey, { ref, stage }: ReachRequest): ReachAnswer => {
       const element = refs.elementOf(ref);
       if (!element?.isConnected) return { kind: "gone" };
@@ -159,21 +221,16 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       };
     },
     reach,
+    begin: actions.begin,
+    settle: actions.settle,
+    refs: (_host: HostKey, elements: readonly Element[]) =>
+      elements.map(refs.lastRefOf),
     queryRef: refs.queryRef,
     elementOf: refs.elementOf,
     pick(host: HostKey, { id, ...request }: PickRequest) {
       if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
-      const binding = bindings.get(host);
-      const picking = startPicking(
-        request,
-        refs.refOf,
-        (notice: PickNotice) => {
-          const call = (globalThis as { [name: string]: unknown })[
-            binding ?? ""
-          ];
-          if (typeof call === "function")
-            Promise.resolve(call({ id, ...notice })).catch(() => {});
-        }
+      const picking = startPicking(request, refs.refOf, (notice) =>
+        tell(host, { kind: "pick", id, notice })
       );
       const key = `${host}:${id}`;
       pickings.set(key, picking.cancel);

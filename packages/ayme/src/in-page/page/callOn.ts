@@ -1,23 +1,33 @@
 // Stryker disable all
 // The small function a host sends to call the document's module on the
-// elements a Locator matches (`locator.evaluateAll`): like `call`, built on its
-// own into `callOnInPage` (build/inPageModule.ts), so it closes over nothing.
-import type { Slot } from "./install";
+// elements a Locator matches, through `locator.evaluateAll`: the elements
+// never leave the page. Like `call`, built on its own into `callOnInPage`
+// (build/inPageModule.ts), so it closes over nothing. It never installs the
+// module: a host that needs one installs it and calls again.
+import type { HostKey, Slot } from "./install";
 
-/** What a host calls on matched elements: one of the slot's methods. */
-export type CallOnArgument = { version: string; host: string; name: "cue" };
+/** The slot's methods a host calls on the elements a Locator matches. */
+export type CallOnName = "refs" | "cue";
+
+export type CallOnArgument = {
+  version: string;
+  host: HostKey;
+  name: CallOnName;
+};
+
+export type CallOnResult<T> =
+  | { kind: "ok"; value: T }
+  | { kind: "missing"; matched: number }
+  | { kind: "version"; found: string };
 
 export async function callOn(
   elements: Element[],
   { version, host, name }: CallOnArgument
-): Promise<
-  { kind: "ok" } | { kind: "missing" } | { kind: "version"; found: string }
-> {
+): Promise<CallOnResult<unknown>> {
   const slot = (globalThis as { [key: symbol]: Slot | undefined })[
     Symbol.for("ayme.inPage")
   ];
-  if (!slot) return { kind: "missing" };
+  if (!slot) return { kind: "missing", matched: elements.length };
   if (slot.version !== version) return { kind: "version", found: slot.version };
-  await slot[name](host, elements);
-  return { kind: "ok" };
+  return { kind: "ok", value: await slot[name](host, elements) };
 }
