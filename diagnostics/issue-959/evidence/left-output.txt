@@ -1,0 +1,22 @@
+• turbo 2.11.3
+{"driver":"host","mode":"hover","iteration":0,"rows":7,"gap":8,"openMs":55,"ms":3048,"status":"inProgress","error":"locator.click: Timeout 3000ms exceeded."}
+{"driver":"lite","mode":"hover","iteration":0,"rows":7,"gap":8,"openMs":50,"ms":3071,"status":"inProgress","error":"page.evaluate: TimeoutError: locator.click: Timeout 3000ms exceeded. No elements found for locator page.locator(\"internal:testid=[data-testid=\\\"survey-status-option-completed\\\"s]\")"}
+{"driver":"ayme","mode":"hover","iteration":0,"rows":7,"gap":8,"openMs":412,"ms":3331,"status":"inProgress","error":"TimeoutError: locator.click: Timeout 3000ms exceeded. No elements found for locator page.locator(\"internal:testid=[data-testid=\\\"survey-status-option-completed\\\"s]\")"}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: 3/3 submenu selections failed; see the saved event evidence
+
+3 !== 0
+
+    at file:///Users/abelenekes/.t3/worktrees/ayme/t3-1cc5c0b1/diagnostics/issue-959/run.mjs:265:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 3,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

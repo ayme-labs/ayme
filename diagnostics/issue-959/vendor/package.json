@@ -1,0 +1,9 @@
+{
+  "name": "issue-959-fixture-dependencies",
+  "private": true,
+  "dependencies": {
+    "@radix-ui/react-dropdown-menu": "2.1.16",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  }
+}
