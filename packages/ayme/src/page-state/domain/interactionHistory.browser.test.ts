@@ -236,6 +236,27 @@ describe("Interaction history in Chromium", () => {
     ).toEqual([resolved.currentRef]);
   });
 
+  it("attributes a node that appeared on its own between two actions to the earlier action", async () => {
+    document.body.innerHTML = '<main><button id="save">Save</button></main>';
+    startRuntime();
+    await act("click", { target: refFor(await readStructure(), "Save") });
+    const earlier = lastActionId();
+
+    document
+      .querySelector("main")!
+      .insertAdjacentHTML("beforeend", '<p id="note">Saved elsewhere</p>');
+    // An action with no target captures the page only as its before.
+    await act("press_key", { key: "a" });
+    expect(lastActionId()).not.toBe(earlier);
+    const [noteRef] = (
+      await getPageStateForElements([document.querySelector("#note")!])
+    ).refs;
+    if (!noteRef) throw new Error("Expected a ref for the note.");
+    const ledger = await readLedger();
+
+    expect(ledger.lifecycle(noteRef)?.appeared.afterActionId).toBe(earlier);
+  });
+
   it("records the action and Visit a node disappeared in", async () => {
     document.body.innerHTML =
       '<main><p id="draft">Unsaved draft</p><button id="discard">Discard</button></main>';

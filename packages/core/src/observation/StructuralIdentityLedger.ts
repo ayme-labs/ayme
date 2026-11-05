@@ -8,8 +8,9 @@ export type StructuralLifecycleMoment = {
   readonly visitId: VisitId | null;
   /**
    * The action the observation followed: the action it was captured for when
-   * it is an action's after observation, otherwise the page's latest started
-   * action; null before any action.
+   * it is an action's after observation, otherwise the page's latest action
+   * started by the observation's time, and for an action's before observation
+   * the latest one started before that action; null before any action.
    */
   readonly afterActionId: StructuralActionId | null;
 };

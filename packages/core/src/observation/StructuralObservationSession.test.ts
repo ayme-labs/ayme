@@ -213,6 +213,63 @@ describe("StructuralObservationSession identity ledger", () => {
     });
   });
 
+  it("attributes an action's before observation, recorded once the action started, to the action before it", async () => {
+    const { session, observe, startAction, navigate, ledger } =
+      recordingSession();
+    navigate("https://example.test/", "initial");
+    observe('- button "Save" [ref=e1]');
+    const first = startAction("interaction_1");
+    observe('- button "Save" [ref=e2]', first);
+    const second = startAction("interaction_2");
+    const observedAt = MonotonicTimeMsSchema.parse(100);
+    const before = StructuralTree.fromAriaSnapshotYaml(
+      '- button "Save" [ref=e3]\n- status "Draft" [ref=e4]',
+      new SyntheticAriaRefFactory()
+    );
+    session.recordObservation({
+      kind: "observation",
+      at: observedAt,
+      pageId: PAGE,
+      tree: {
+        pageId: PAGE,
+        capturedAt: observedAt,
+        resolve: async () => before,
+      },
+      capturedForActionId: second,
+      relation: "before",
+    });
+
+    expect((await ledger()).lifecycle(ref("e4"))?.appeared).toEqual({
+      visitId: "visit_1",
+      afterActionId: first,
+    });
+  });
+
+  it("attributes an observation to the latest action started by its time, not by when it was recorded", async () => {
+    const { session, observe, startAction, navigate, ledger } =
+      recordingSession();
+    navigate("https://example.test/", "initial");
+    const observedAt = MonotonicTimeMsSchema.parse(
+      observe('- button "Save" [ref=e1]').at + 0.5
+    );
+    startAction("interaction_1");
+    const late = StructuralTree.fromAriaSnapshotYaml(
+      '- button "Save" [ref=e2]\n- status "Draft" [ref=e3]',
+      new SyntheticAriaRefFactory()
+    );
+    session.recordObservation({
+      kind: "observation",
+      at: observedAt,
+      pageId: PAGE,
+      tree: { pageId: PAGE, capturedAt: observedAt, resolve: async () => late },
+    });
+
+    expect((await ledger()).lifecycle(ref("e3"))?.appeared).toEqual({
+      visitId: "visit_1",
+      afterActionId: null,
+    });
+  });
+
   it("hands `read` the observation it last reconciled", async () => {
     const { session, observe } = recordingSession();
     observe('- button "Save" [ref=e1]');
@@ -389,7 +446,8 @@ describe("StructuralObservationSession readChange", () => {
       cause: "initial",
     });
     observe('- button "Save" [ref=e1]');
-    const actionId = StructuralActionIdSchema.parse("interaction_1");
+    // A host starts the action, then captures its before.
+    const actionId = startAction("interaction_1");
     const before = observe(
       '- button "Save" [ref=e1]\n- status "Draft" [ref=e2]',
       {
@@ -397,7 +455,6 @@ describe("StructuralObservationSession readChange", () => {
         relation: "before",
       }
     );
-    expect(startAction("interaction_1")).toBe(actionId);
     completeAction(actionId);
     const after = observe(
       '- button "Save" [ref=e1]\n- status "Saved" [ref=e2]',
