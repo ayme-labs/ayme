@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { ElementInputs, InPageHost } from "./inPage";
 
@@ -305,5 +305,119 @@ export function inPageContract(lane: InPageLane) {
     );
     expect(refOf(after.distilledText, '"Early"')).not.toBe(early);
     expect(await page.ariaSnapshot({ mode: "ai" })).toBe(playwright);
+  });
+
+  describe("reach", () => {
+    const covered =
+      '<button>Save</button><div role="dialog" aria-label="Cover" style="position:fixed;inset:0"></div>';
+
+    /** The refs a capture of the page's body gave, by what its line names. */
+    async function reachPage(html: string) {
+      const page = await lane.newPage();
+      await setBody(page, html);
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { fullText } = await inPageOf.capture();
+      return { page, inPageOf, ref: (name: string) => refOf(fullText, name) };
+    }
+
+    it("a button nothing covers is present and available", async () => {
+      const { inPageOf, ref } = await reachPage("<button>Save</button>");
+
+      expect(await inPageOf.measureReach(ref('"Save"'))).toEqual({
+        present: true,
+        available: true,
+      });
+    });
+
+    it("a button covered by an overlay is unavailable, and the overlay's ref names what is in the way", async () => {
+      const { inPageOf, ref } = await reachPage(covered);
+
+      expect(await inPageOf.measureReach(ref('"Save"'))).toEqual({
+        present: true,
+        available: false,
+        hit: [ref("dialog")],
+      });
+    });
+
+    it("an element nothing lays out any more is absent", async () => {
+      const { page, inPageOf, ref } = await reachPage("<button>Gone</button>");
+      await page.evaluate(
+        `document.querySelector("button").style.display = "none"`
+      );
+
+      expect(await inPageOf.measureReach(ref('"Gone"'))).toEqual({
+        present: false,
+        available: false,
+      });
+    });
+
+    it("what is in the way is named from the hit up to what holds the element, whether or not it has a node", async () => {
+      const { page, inPageOf, ref } = await reachPage(
+        '<button>Save</button><div id="plain" style="position:fixed;inset:0"><span id="inner" style="display:block;height:100%"></span></div>'
+      );
+
+      const { hit } = await inPageOf.measureReach(ref('"Save"'));
+      const named = await Promise.all(
+        (hit ?? []).map((ref) =>
+          page.locator(`ayme-ref=${ref}`).evaluate((element) => element.id)
+        )
+      );
+
+      expect(named).toEqual(["inner", "plain"]);
+    });
+
+    it("an open native modal blocks an element outside it, by the modal's ref", async () => {
+      const { page, inPageOf, ref } = await reachPage(
+        '<button>Behind</button><dialog aria-label="Modal"><button>Inside</button></dialog>'
+      );
+      await page.evaluate(`document.querySelector("dialog").showModal()`);
+      const { fullText } = await inPageOf.capture();
+
+      expect(await inPageOf.measureReach(ref('"Behind"'))).toEqual({
+        present: true,
+        available: false,
+        blocker: refOf(fullText, 'dialog "Modal"'),
+      });
+      expect(await inPageOf.blockingAncestor(ref('"Behind"'))).toBe(
+        refOf(fullText, 'dialog "Modal"')
+      );
+      expect(
+        await inPageOf.blockingAncestor(refOf(fullText, '"Inside"'))
+      ).toBeUndefined();
+    });
+
+    it("an inert ancestor blocks its content, by its own ref", async () => {
+      const { inPageOf, ref } = await reachPage(
+        '<section inert aria-label="Frozen"><button>Stuck</button></section>'
+      );
+
+      expect(await inPageOf.measureReach(ref('"Stuck"'))).toEqual({
+        present: true,
+        available: false,
+        blocker: ref('region "Frozen"'),
+      });
+    });
+
+    it("a blocker with no node of its own is named by a ref the ayme-ref engine resolves", async () => {
+      const { page, inPageOf, ref } = await reachPage(
+        '<div id="frozen" inert><button>Stuck</button></div>'
+      );
+
+      const { blocker } = await inPageOf.measureReach(ref('"Stuck"'));
+
+      expect(await page.locator(`ayme-ref=${blocker}`).getAttribute("id")).toBe(
+        "frozen"
+      );
+    });
+
+    it("at call time the element is scrolled into view first, and an overlay over the place it lands is found", async () => {
+      const { inPageOf, ref } = await reachPage(
+        '<div style="height:3000px"></div><button>Far</button><div role="dialog" aria-label="Cover" style="position:fixed;inset:0"></div>'
+      );
+
+      expect(
+        await inPageOf.measureReach(ref('"Far"'), { atCall: true })
+      ).toEqual({ present: true, available: false, hit: [ref("dialog")] });
+    });
   });
 }

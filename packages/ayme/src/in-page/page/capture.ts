@@ -127,9 +127,15 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     };
   }
 
+  /** The ref that names `element`: its mark's, else a synthetic one, minted when it has none. */
+  function nameOf(element: Element): string {
+    return marks.get(element)?.ref ?? syntheticRefOf(element);
+  }
+
   return {
     capture,
     elementOf,
+    nameOf,
     queryRef(ref: string, root?: Node): Element[] {
       const element = elementOf(ref);
       return element?.isConnected && (!root || holds(root, element))

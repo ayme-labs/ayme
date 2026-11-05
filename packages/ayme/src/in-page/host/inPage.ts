@@ -3,7 +3,14 @@ import { aymeRefEngine, callInPage, installInPage } from "virtual:ayme-in-page";
 
 import { version as packageVersion } from "../../../package.json";
 import { AymeError, RuntimeStateError, type Capture } from "../../shared";
-import type { Bound, ElementInputs, HostKey } from "../page/install";
+import type {
+  Bound,
+  ElementInputs,
+  HostKey,
+  ReachAnswer,
+  ReachMeasurement,
+  ReachRequest,
+} from "../page/install";
 
 export type {
   Bound,
@@ -11,7 +18,11 @@ export type {
   DocumentToken,
   ElementInputs,
   HostKey,
+  ReachMeasurement,
 } from "../page/install";
+
+const gone: ReachMeasurement = { present: false, available: false };
+const reached: ReachMeasurement = { present: true, available: true };
 
 /** The document runs another version's in-page module, so this host cannot use it. */
 export class InPageVersionError extends AymeError {
@@ -28,6 +39,22 @@ export type InPage = {
    * first when needed. Records nothing.
    */
   capture(options?: CaptureOptions): Promise<Capture>;
+  /**
+   * Reach (ADR-0041) of the element `ref` names, measured in the page: what
+   * a click would reach, and what blocks or takes it, named by Structural
+   * Ref. An element that is gone is absent. With `atCall`, the element is
+   * scrolled into view first, as the call that clicks it scrolls, and the
+   * hit test is where the click lands.
+   */
+  measureReach(
+    ref: string,
+    options?: { atCall?: boolean }
+  ): Promise<ReachMeasurement>;
+  /**
+   * The ref of what blocks every click on the element `ref` names and its
+   * focus: the last opened native modal it is not in, else its inert ancestor.
+   */
+  blockingAncestor(ref: string): Promise<string | undefined>;
 };
 
 export type CaptureOptions = {
@@ -74,24 +101,54 @@ export function createInPageHost(version = packageVersion): InPageHost {
         return result.bound;
       },
       async capture({ elements } = {}) {
-        // A document without the module gets it installed, once.
-        for (let installed = false; ; installed = true) {
-          const result = await page.evaluate(callInPage, {
-            version,
-            host,
-            name: "capture" as const,
-            inputs: elements,
-          });
-          if (result.kind === "ok") return result.value as Capture;
-          if (result.kind === "version") throw versionError(result.found);
-          if (installed)
-            throw new RuntimeStateError(
-              "The document lost Ayme's in-page module right after it was installed."
-            );
-          await inPage.bound();
+        return (await callModule("capture", elements)) as Capture;
+      },
+      async measureReach(ref, { atCall = false } = {}) {
+        const measure = async (stage: ReachRequest["stage"]) =>
+          (await callModule("measure", { ref, stage })) as ReachAnswer;
+        const answered = (answer: ReachAnswer): ReachMeasurement =>
+          answer.kind === "measured" && answer.measurement !== "scroll"
+            ? answer.measurement
+            : gone;
+        if (!atCall) return answered(await measure("current"));
+        const before = await measure("before-scroll");
+        if (before.kind !== "measured" || before.measurement !== "scroll")
+          return answered(before);
+        // A scroll that fails leaves the measurement to the action, whose
+        // own error says why.
+        try {
+          await page.locator(`ayme-ref=${ref}`).scrollIntoViewIfNeeded();
+        } catch {
+          return reached;
         }
+        return answered(await measure("after-scroll"));
+      },
+      async blockingAncestor(ref) {
+        const answer = (await callModule("measure", {
+          ref,
+          stage: "blocking",
+        })) as ReachAnswer;
+        return answer.kind === "blocking" ? answer.blocker : undefined;
       },
     };
+    /** A call of the document's module, which gets it installed, once, when it has none. */
+    async function callModule(name: "capture" | "measure", inputs: unknown) {
+      for (let installed = false; ; installed = true) {
+        const result = await page.evaluate(callInPage, {
+          version,
+          host,
+          name,
+          inputs,
+        });
+        if (result.kind === "ok") return result.value;
+        if (result.kind === "version") throw versionError(result.found);
+        if (installed)
+          throw new RuntimeStateError(
+            "The document lost Ayme's in-page module right after it was installed."
+          );
+        await inPage.bound();
+      }
+    }
     return inPage;
   }
 

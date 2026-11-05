@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { containsThroughShadow, parentElement } from "../../shared";
+import { elementOfRef } from "../../in-page";
 import { latestPageStateRef } from "./pageState";
 import {
   assertAvailable,
@@ -26,11 +26,13 @@ export type ElementInput = "click" | "focus";
  * `element`, since what holds it is not in its way. Empty when nothing was
  * found.
  */
-export function inTheWayOf(
-  { blocker, hit }: ReachMeasurement,
-  element: Element
-): Element[] {
-  return blocker ? [blocker] : hit ? walkedUp(hit, element) : [];
+export function inTheWayOf({ blocker, hit }: ReachMeasurement): Element[] {
+  return elementsOf(blocker ? [blocker] : (hit ?? []));
+}
+
+/** The elements the in-page module named by ref, as far as they are still there. */
+function elementsOf(refs: readonly string[]): Element[] {
+  return refs.flatMap((ref) => elementOfRef(ref) ?? []);
 }
 
 /**
@@ -85,35 +87,11 @@ async function unreachableReason(
   input: ElementInput
 ): Promise<string | undefined> {
   if (input === "focus") {
-    const blocker = reach.blockingAncestor(element);
-    return blocker && unfocusableReason(blocker, latestRefOf);
+    const ref = reach.blockingAncestor(element);
+    const blocker = ref && elementOfRef(ref);
+    return blocker ? unfocusableReason(blocker, latestRefOf) : undefined;
   }
   const measurement = await reach.measureReachAtCall(locator, element);
   if (measurement.available) return undefined;
-  return obstructionReason(inTheWayOf(measurement, element), latestRefOf);
-}
-
-/**
- * `hit` and its ancestors up to the first that holds `element`, or `hit`
- * alone when it holds `element` itself, as `element`'s own ancestor does when
- * nothing else takes the click, or is an open native modal.
- */
-function walkedUp(hit: Element, element: Element): Element[] {
-  if (containsThroughShadow(hit, element) || isModal(hit)) return [hit];
-  const elements: Element[] = [];
-  for (
-    let node: Element | null = hit;
-    node && !containsThroughShadow(node, element);
-    node = parentElement(node)
-  )
-    elements.push(node);
-  return elements;
-}
-
-function isModal(element: Element): boolean {
-  try {
-    return element.matches(":modal");
-  } catch {
-    return false;
-  }
+  return obstructionReason(inTheWayOf(measurement), latestRefOf);
 }

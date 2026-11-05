@@ -20,6 +20,12 @@ const {
     { node: { ref: string; element: Element } }
   >(),
 }));
+// A jsdom test has no in-page module: it stands in a ref world where every
+// ref names an element.
+vi.mock("../../in-page", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  elementOfRef: () => ({}) as Element,
+}));
 vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@ayme-dev/playwright-lite/internal")
@@ -1231,7 +1237,7 @@ describe("live Page Object registry", () => {
         measurePomRoot: async () => ({
           present: true,
           available: false,
-          blocker: {} as Element,
+          blocker: "e1",
         }),
       })
     );

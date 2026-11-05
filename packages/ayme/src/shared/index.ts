@@ -50,4 +50,5 @@ export {
   INSPECTOR_HOST_SELECTOR,
   onlyHitTestMarks,
 } from "./inspectorMarks";
+export type { ReachMeasurement } from "./reach";
 export { checkedToolInput, refuseViolations } from "./schemaValidation";

@@ -8,6 +8,11 @@ const { resolved } = vi.hoisted(() => ({
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   resolveLocatorElements: (locator: object) => resolved.get(locator)?.() ?? [],
 }));
+// The in-page module names what is in the way by ref; a jsdom test stands in
+// its ref world with the element ids.
+vi.mock("../../in-page", () => ({
+  elementOfRef: (ref: string) => document.getElementById(ref) ?? undefined,
+}));
 
 import type { Locator } from "@playwright/test";
 import type { ReachMeasurement } from "../../page-state/application";
@@ -56,11 +61,11 @@ describe("what a Page Object Root observation names as in the way", () => {
     });
   });
 
-  it("names the element hit and its ancestors up to the first that holds the root", async () => {
+  it("names the elements the measurement names by ref as in the way, nearest first", async () => {
     const reach = measuringRoots({
       present: true,
       available: false,
-      hit: byId("pane"),
+      hit: ["pane", "overlay"],
     });
 
     expect(await observe("root", reach)).toEqual({
@@ -71,34 +76,24 @@ describe("what a Page Object Root observation names as in the way", () => {
     });
   });
 
-  it("names a hit element that holds the root by itself only", async () => {
-    const reach = measuringRoots({
-      present: true,
-      available: false,
-      hit: byId("holder"),
-    });
-
-    expect((await observe("root", reach)).inTheWay).toEqual([byId("holder")]);
-  });
-
-  it("names only the hit when its parent holds the root", async () => {
-    const reach = measuringRoots({
-      present: true,
-      available: false,
-      hit: byId("cover"),
-    });
-
-    expect((await observe("root", reach)).inTheWay).toEqual([byId("cover")]);
-  });
-
   it("names what blocks every click, the open modal or inert ancestor, by itself only", async () => {
     const reach = measuringRoots({
       present: true,
       available: false,
-      blocker: byId("modal"),
+      blocker: "modal",
     });
 
     expect((await observe("root", reach)).inTheWay).toEqual([byId("modal")]);
+  });
+
+  it("leaves out a ref whose element has left the page", async () => {
+    const reach = measuringRoots({
+      present: true,
+      available: false,
+      hit: ["gone", "overlay"],
+    });
+
+    expect((await observe("root", reach)).inTheWay).toEqual([byId("overlay")]);
   });
 
   it("observes nothing unless the locator is one element throughout", async () => {

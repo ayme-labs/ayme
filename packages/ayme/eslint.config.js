@@ -71,6 +71,9 @@ const inPageHost = "src/in-page/host/**/*.ts";
 const inPageHostGlobalsExceptions = [
   // The transitional lookup of an element by ref for the browser runtime.
   { file: "src/in-page/host/elementLookup.ts", issue: "#1182" },
+  // The reach of the browser runtime, which measures the elements it holds
+  // in the document's own realm until it reads the page through Locators.
+  { file: "src/in-page/host/reachInRealm.ts", issue: "#1182" },
 ];
 // Test code may use any slice, so a test stays beside the module it is
 // about even when it starts a whole runtime.
@@ -289,7 +292,6 @@ const liteInternalExceptions = [
     file: "src/page-objects/infrastructure/pomRootObservation.ts",
     issue: "#1175",
   },
-  { file: "src/page-state/infrastructure/reachMeasurement.ts", issue: "#1172" },
   { file: "src/runs/infrastructure/pageInstrumentation.ts", issue: "#1173" },
   { file: "src/tools/application/elementTools.ts", issue: "#1176" },
   { file: "src/tools/infrastructure/generateLocator.ts", issue: "#1176" },

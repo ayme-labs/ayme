@@ -40,6 +40,6 @@ async function observeElement(
     element,
     present: true,
     available: measurement.available,
-    inTheWay: inTheWayOf(measurement, element),
+    inTheWay: inTheWayOf(measurement),
   };
 }

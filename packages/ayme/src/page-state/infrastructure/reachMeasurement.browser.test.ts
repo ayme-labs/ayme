@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
-import { inReachBatch, measureReach } from "./reachMeasurement";
+import { elementOfRef } from "../../in-page";
+import { geometryReach } from "./reachMeasurement";
+
+const { inReachBatch, measureReach } = geometryReach;
 
 const ROWS = 200;
 
@@ -53,6 +56,8 @@ describe("A batch reach pass, in Chromium", () => {
     );
 
     expect(before.every(({ blocker }) => !blocker)).toBe(true);
-    expect(after.every(({ blocker }) => blocker === dialog)).toBe(true);
+    expect(
+      after.every(({ blocker }) => blocker && elementOfRef(blocker) === dialog)
+    ).toBe(true);
   });
 });

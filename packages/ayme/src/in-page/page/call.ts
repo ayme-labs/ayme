@@ -9,7 +9,7 @@ import type { Slot } from "./install";
 export type CallArgument = {
   version: string;
   host: string;
-  name: "capture";
+  name: "capture" | "measure";
   inputs?: unknown;
 };
 
