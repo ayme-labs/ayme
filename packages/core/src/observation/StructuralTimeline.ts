@@ -98,15 +98,15 @@ export function normalizeNavigationUrl(raw: string): string {
   }
 }
 
-export function isHashOnlyNavigation(fromUrl: string, toUrl: string): boolean {
+function isSameOriginAndPath(fromUrl: string, toUrl: string): boolean {
   try {
     const previous = new URL(fromUrl);
     const next = new URL(toUrl);
+    // Not `origin`: every opaque origin (`about:`, `data:`, `file:`) is "null".
     return (
-      previous.origin === next.origin &&
-      previous.pathname === next.pathname &&
-      previous.search === next.search &&
-      previous.hash !== next.hash
+      previous.protocol === next.protocol &&
+      previous.host === next.host &&
+      previous.pathname === next.pathname
     );
   } catch {
     return false;
@@ -120,8 +120,8 @@ export function startsNewVisit(
   if (previousUrl === null) return true;
   if (normalizeNavigationUrl(previousUrl) === normalizeNavigationUrl(nextUrl))
     return false;
-  if (isHashOnlyNavigation(previousUrl, nextUrl)) return false;
-  return true;
+  // A change to the query or the hash alone stays in the current visit.
+  return !isSameOriginAndPath(previousUrl, nextUrl);
 }
 
 export type StructuralObservationEntry = {

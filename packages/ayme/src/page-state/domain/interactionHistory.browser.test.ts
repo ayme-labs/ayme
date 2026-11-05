@@ -135,11 +135,9 @@ describe("Interaction history in Chromium", () => {
     );
     expect(firstVisit.cause).toBe("initial");
 
-    window.history.pushState(null, "", "?route=orders");
+    window.history.pushState(null, "", "/orders");
     await expect.poll(() => visits()).toHaveLength(2);
-    expect(visits()[1]!.urls).toEqual([
-      new URL("?route=orders", LOADED_URL).href,
-    ]);
+    expect(visits()[1]!.urls).toEqual([new URL("/orders", LOADED_URL).href]);
     await readStructure();
     expect(
       (await history().observations.getVisitEvidence(visits()[1]!.id)).cause
@@ -153,11 +151,11 @@ describe("Interaction history in Chromium", () => {
     );
     expect(visits()).toHaveLength(2);
     expect(visits()[1]!.urls).toEqual([
-      new URL("?route=orders", LOADED_URL).href,
-      new URL("?route=orders#details", LOADED_URL).href,
+      new URL("/orders", LOADED_URL).href,
+      new URL("/orders#details", LOADED_URL).href,
     ]);
 
-    window.history.replaceState(null, "", "?route=customers");
+    window.history.replaceState(null, "", "/customers");
     await expect.poll(() => visits()).toHaveLength(3);
   });
 
@@ -291,7 +289,7 @@ describe("Interaction history in Chromium", () => {
     const saveRef = refFor(await readStructure(), "Save");
     const visitsBefore = history().observations.getVisits().length;
 
-    window.history.pushState(null, "", "?route=continuity");
+    window.history.pushState(null, "", "/continuity");
     const save = document.querySelector("#save")!;
     save.replaceWith(save.cloneNode(true));
     await expect
@@ -310,7 +308,7 @@ describe("Interaction history in Chromium", () => {
     document.body.innerHTML = '<main><a href="#" id="next">Orders</a></main>';
     document.querySelector("#next")!.addEventListener("click", (event) => {
       event.preventDefault();
-      window.history.pushState(null, "", "?route=orders-page");
+      window.history.pushState(null, "", "/orders-page");
       document.querySelector("main")!.innerHTML = "<h1>Orders page</h1>";
     });
     startRuntime();

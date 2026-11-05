@@ -102,6 +102,63 @@ describe("StructuralObservationSession", () => {
       "https://example.test/#details",
     ]);
   });
+
+  it.each([
+    // Same origin and pathname: the current visit continues.
+    ["https://example.test/rick", "https://example.test/rick?date=2026-11-06"],
+    [
+      "https://example.test/owner/repo/issues",
+      "https://example.test/owner/repo/issues?q=is%3Aissue+state%3Aopen",
+    ],
+    [
+      "https://example.test/rick?date=2026-11-06",
+      "https://example.test/rick?date=2026-11-06&month=2026-12",
+    ],
+    ["https://example.test/rick?date=2026-11-06", "https://example.test/rick"],
+    ["https://example.test/rick?a=1#x", "https://example.test/rick?a=2#y"],
+    ["https://example.test/rick?a=1", "https://example.test/rick?a=2#y"],
+    ["https://example.test/a#x", "https://example.test/a#y"],
+  ])("keeps %s -> %s in the current visit", (from, to) => {
+    const session = sessionWithClock([1, 2]);
+    session.recordNavigation({ pageId: PAGE, url: from, cause: "initial" });
+
+    const registration = session.recordNavigation({
+      pageId: PAGE,
+      url: to,
+      cause: "navigate",
+    });
+
+    expect(registration.kind).toBe("navigation-recorded");
+    expect(session.getVisits()).toHaveLength(1);
+    expect(session.getVisits()[0]?.urls).toEqual([from, to]);
+  });
+
+  it.each([
+    // A different pathname or origin opens a visit, whatever the query says.
+    [
+      "https://example.test/owner/repo/tree/main/source",
+      "https://example.test/owner/repo/tree/main/source/core",
+    ],
+    ["https://example.test/rick?a=1", "https://example.test/cart?a=1"],
+    ["https://example.test/rick?a=1", "https://other.test/rick?a=1"],
+    ["https://example.test/rick", "http://example.test/rick?a=1"],
+    ["not a url", "not a url?a=1"],
+    // Opaque origins all serialize as "null": the host and scheme still tell them apart.
+    ["about:blank", "data:blank"],
+    ["file://one/a?x=1", "file://two/a?x=2"],
+  ])("starts a new visit for %s -> %s", (from, to) => {
+    const session = sessionWithClock([1, 2]);
+    session.recordNavigation({ pageId: PAGE, url: from, cause: "initial" });
+
+    const registration = session.recordNavigation({
+      pageId: PAGE,
+      url: to,
+      cause: "navigate",
+    });
+
+    expect(registration.kind).toBe("visit-started");
+    expect(session.getVisits()).toHaveLength(2);
+  });
 });
 
 it.each(["https://example.test/two", "https://example.test/#details"])(
@@ -612,8 +669,8 @@ describe("StructuralObservationSession visit-start capture that completes after 
 
     const a = navigate(100, "https://app.test/");
     observe(150, '- heading "A" [ref=e1]', { capturedForVisitId: a });
-    const b = navigate(200, "https://app.test/?step=1");
-    const c = navigate(210, "https://app.test/?step=2");
+    const b = navigate(200, "https://app.test/step-1");
+    const c = navigate(210, "https://app.test/step-2");
     const lateB = () =>
       observe(
         260,
