@@ -16,6 +16,12 @@ type Edit = { find: string; replace: string; count: number; why: string };
 
 const edits: Edit[] = [
   {
+    why: "the module builds a selector generator and never acts, so its InjectedScript patches nothing on the page's window",
+    find: "    this._setupGlobalListenersRemovalDetection();\n    this._setupHitTargetInterceptors();\n",
+    replace: "",
+    count: 1,
+  },
+  {
     why: "an ES module exporting only the dual capture, so the build drops the rest of the InjectedScript",
     find: [
       "var injectedScript_exports = {};",
@@ -64,6 +70,9 @@ const edits: Edit[] = [
  * `virtual:ayme-aria-snapshot`: Playwright's `captureAriaSnapshot` from the
  * pinned InjectedScript, as an ES module whose marks and ref counter come
  * from its caller: `captureAriaSnapshot(root, { mode: "ai", aymeRefs })`.
+ * Next to it, Playwright's own selector generator and `asLocator`, which
+ * Locator Recommendation uses: `generateSelector(injectedScript, element,
+ * { testIdAttributeName, root })` over an `InjectedScript` of the module's.
  * Playwright Lite's and stock Playwright's copies keep their own; this one
  * never reads or writes theirs. It also exports Playwright's `isElementVisible`,
  * the visibility `locator.isVisible()` reads.
@@ -81,7 +90,15 @@ export function pinnedAriaSnapshotModule(): string {
   for (const left of ["_ariaRef", "lastRef", "injectedScript_exports"])
     if (source.includes(left))
       throw new Error(`The pinned InjectedScript still uses ${left}.`);
-  return `${source}\nexport { captureAriaSnapshot, isElementVisible };\n`;
+  return `${source}
+export {
+  asLocator,
+  captureAriaSnapshot,
+  generateSelector,
+  InjectedScript,
+  isElementVisible,
+};
+`;
 }
 
 function readPinnedSource(): string {

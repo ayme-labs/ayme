@@ -10,6 +10,7 @@ import {
   RuntimeStateError,
   type ActionOutcome,
   type Capture,
+  type Predicate,
 } from "../../shared";
 import {
   attachChangeRecord,
@@ -40,7 +41,13 @@ import { resolveRequestedRef } from "./refResolution";
  * plain data from the document's in-page module, whose refs, synthetic ones
  * included, are the document's own, whoever captures.
  */
-export type CapturePage = () => Promise<Capture>;
+export type CapturePage = (accepts?: readonly Predicate[]) => Promise<Capture>;
+
+/** What a reader of a capture asks of it besides its tree. */
+export type CaptureAsk = {
+  /** The predicates whose accepted refs the capture carries. */
+  accepts?: readonly Predicate[];
+};
 
 /**
  * Transitional (#1182): the elements a capture's refs name, for the browser
@@ -105,8 +112,10 @@ export class PageStateSession {
   ) {}
 
   /** A capture of the page as the session reads it: its tree, marks and elements. */
-  private async capturePage(): Promise<PageCapture> {
-    return this.read(await this.captureDocument());
+  private async capturePage({
+    accepts,
+  }: CaptureAsk = {}): Promise<PageCapture> {
+    return this.read(await this.captureDocument(accepts));
   }
 
   /** `capture` as the session reads it: its tree, marks and elements. */
@@ -116,6 +125,7 @@ export class PageStateSession {
       tree,
       pomRootMarks,
       elementsByRef: this.elementsOf(tree.getAllRefs()),
+      ...(capture.accepted ? { accepted: acceptedSets(capture.accepted) } : {}),
     };
   }
 
@@ -123,8 +133,11 @@ export class PageStateSession {
     return this.pageStateFor(await this.capture(cursor));
   }
 
-  async getPageStateCapture(cursor?: Cursor): Promise<PageCapture> {
-    return this.capture(cursor);
+  async getPageStateCapture(
+    cursor?: Cursor,
+    ask?: CaptureAsk
+  ): Promise<PageCapture> {
+    return this.capture(cursor, ask);
   }
 
   /**
@@ -134,8 +147,8 @@ export class PageStateSession {
    * gives the same elements, so a tool run on a ref the look printed acts on
    * the element it showed.
    */
-  async look(): Promise<PageStateLook> {
-    const capture = await this.capturePage();
+  async look(ask?: CaptureAsk): Promise<PageStateLook> {
+    const capture = await this.capturePage(ask);
     return { ...capture, ...renderPageState(capture) };
   }
 
@@ -431,8 +444,11 @@ export class PageStateSession {
   }
 
   /** Capture and record an observation; `cursor`, the reader receiving it, moves there. */
-  private async capture(cursor?: Cursor): Promise<PageCapture> {
-    const capture = await this.captureTree();
+  private async capture(
+    cursor?: Cursor,
+    ask?: CaptureAsk
+  ): Promise<PageCapture> {
+    const capture = await this.captureTree(ask);
     // Stamped once the capture is taken, so it cannot share its time with an
     // action started right after it.
     const observation = this.history.observe(
@@ -503,8 +519,10 @@ export class PageStateSession {
   }
 
   /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */
-  private async captureTree(): Promise<PageCapture> {
-    return this.checked(await this.captureDocument());
+  private async captureTree({
+    accepts,
+  }: CaptureAsk = {}): Promise<PageCapture> {
+    return this.checked(await this.captureDocument(accepts));
   }
 
   /** `page` for recording, rejected when the identity ledger could not accept it. */
@@ -567,6 +585,18 @@ export class PageStateSession {
       }
     );
   }
+}
+
+/** The refs each predicate keeps, as sets. */
+function acceptedSets(
+  accepted: NonNullable<Capture["accepted"]>
+): NonNullable<PageCapture["accepted"]> {
+  return Object.fromEntries(
+    Object.entries(accepted).map(([predicate, refs]) => [
+      predicate,
+      new Set(refs),
+    ])
+  );
 }
 
 function resolveOne(

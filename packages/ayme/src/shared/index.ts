@@ -1,9 +1,11 @@
 export { browserMonotonicClock } from "./browserMonotonicClock";
+export { PREDICATES } from "./capture";
 export type {
   ActionOutcome,
   Capture,
   CapturedRoot,
   DocumentToken,
+  Predicate,
 } from "./capture";
 export { callers } from "./callers";
 export type { BuiltInCaller, Caller } from "./callers";

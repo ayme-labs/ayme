@@ -1,9 +1,8 @@
 // press_key: the Browser Tool that presses a key on the focused element. It
-// lives here, not beside the other Browser Tools in application, because it
-// checks the key against Playwright Lite's key layout before it acts.
-import { isPressableKey } from "@ayme-dev/playwright-lite/internal";
+// checks the key against Playwright's key layout before it acts.
 import { ToolInputError, type JsonSchema } from "../../shared";
-import type { PublishedElementTool } from "../application/elementTools";
+import { isPressableKey } from "../domain/pressableKey";
+import type { PublishedElementTool } from "./elementTools";
 
 const pressKeySchema: JsonSchema = {
   type: "object",

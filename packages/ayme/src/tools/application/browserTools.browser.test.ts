@@ -5,7 +5,7 @@ import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import type { PomManifest } from "../../shared";
 import { errorText } from "../../shared";
-import { buildToolOptions } from "../../goal-loop/application";
+import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,
@@ -14,10 +14,7 @@ import {
   withoutElement,
 } from "../test-utils/playwrightMcp.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
-import {
-  geometryReach,
-  lookAtPageStateForDocument,
-} from "../../page-state/infrastructure";
+import { lookAtPageStateForDocument } from "../../page-state/infrastructure";
 import { createAyme, listElementToolTargets, type Ayme } from "../../runtime";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 
@@ -575,7 +572,7 @@ describe("Browser Tools in Chromium", () => {
     for (const tool of ["click", "hover"])
       expect(offered(tool)).toEqual(["Name", "Email", "Agree", "Size", "Save"]);
 
-    const options = buildToolOptions({ page, reach: geometryReach });
+    const options = await toolOptionsOf(page);
     const loopTools = options.map((option) => option.key);
     expect(loopTools).not.toContain("fill_form");
     expect(loopTools).not.toContain("press_key");

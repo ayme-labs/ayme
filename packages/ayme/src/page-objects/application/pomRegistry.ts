@@ -16,7 +16,7 @@ import {
   type ToolAvailability,
 } from "../../page-state/domain";
 import {
-  assertReachable,
+  assertLocatorReachable,
   providePageObjectProbe,
 } from "../../page-state/infrastructure";
 import {
@@ -716,7 +716,7 @@ async function performPageObjectAction(
   { instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
-  { cursor, pageStateSession, reach }: RunContext,
+  { cursor, page, pageStateSession, reach }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -730,11 +730,11 @@ async function performPageObjectAction(
     args as Record<string, unknown>
   );
   if (root)
-    await assertReachable(
+    await assertLocatorReachable(
       reach,
+      page,
       targetName,
       root.locator,
-      root.element,
       "click"
     );
   // A tool may be called without the Caller ever having read the page; the

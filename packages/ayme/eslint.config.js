@@ -71,9 +71,6 @@ const inPageHost = "src/in-page/host/**/*.ts";
 const inPageHostGlobalsExceptions = [
   // The transitional lookup of an element by ref for the browser runtime.
   { file: "src/in-page/host/elementLookup.ts", issue: "#1182" },
-  // The reach of the browser runtime, which measures the elements it holds
-  // in the document's own realm until it reads the page through Locators.
-  { file: "src/in-page/host/reachInRealm.ts", issue: "#1182" },
 ];
 // Test code may use any slice, so a test stays beside the module it is
 // about even when it starts a whole runtime.
@@ -251,11 +248,6 @@ const layerOrderExceptions = [
   },
   {
     file: "src/goal-loop/domain/goalLoopOperations.ts",
-    door: "page-state/application",
-    issues: ["follow-up: goal-loop domain uses other slices' application"],
-  },
-  {
-    file: "src/goal-loop/domain/goalLoopOperations.ts",
     door: "runs/application",
     issues: ["follow-up: goal-loop domain uses other slices' application"],
   },
@@ -274,23 +266,13 @@ const layerOrderExceptions = [
     door: "page-objects/application",
     issues: ["follow-up: goal-loop domain uses other slices' application"],
   },
-  {
-    file: "src/goal-loop/domain/goalLoopQuestions.ts",
-    door: "tools/application",
-    issues: ["follow-up: goal-loop domain uses other slices' application"],
-  },
 ];
 
 // Playwright Lite's internal entry is browser-only and not Playwright's API,
 // so no production file imports it (ADR-0049). These files still do: each
 // may, until the issue named with it is done. src/layout.test.ts fails when
 // one no longer imports it, so it leaves the list then.
-const liteInternalExceptions = [
-  { file: "src/internal.ts", issue: "#1182" },
-  { file: "src/tools/application/elementTools.ts", issue: "#1176" },
-  { file: "src/tools/infrastructure/generateLocator.ts", issue: "#1176" },
-  { file: "src/tools/infrastructure/pressKey.ts", issue: "#1176" },
-];
+const liteInternalExceptions = [{ file: "src/internal.ts", issue: "#1182" }];
 const liteInternal = "@ayme-dev/playwright-lite/internal";
 const liteInternalMessage = `No production file imports Playwright Lite's internal entry, ${liteInternal}: reach the page through Playwright's Page and Locator, or the in-page module (ADR-0049).`;
 const allowlistedEntries = liteInternalExceptions

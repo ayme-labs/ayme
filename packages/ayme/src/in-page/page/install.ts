@@ -4,9 +4,19 @@
 // `installInPage` (build/inPageModule.ts), which a host runs in the page:
 // Playwright Lite calls it, real Playwright sends its source. Nothing here may
 // rely on state outside that function.
-import { captureAriaSnapshot } from "virtual:ayme-aria-snapshot";
+import {
+  asLocator,
+  captureAriaSnapshot,
+  generateSelector,
+  InjectedScript,
+} from "virtual:ayme-aria-snapshot";
 
-import type { Capture, DocumentToken, ReachMeasurement } from "../../shared";
+import type {
+  Capture,
+  DocumentToken,
+  Predicate,
+  ReachMeasurement,
+} from "../../shared";
 import {
   createActions,
   type ActionInputs,
@@ -15,15 +25,17 @@ import {
   type Settled,
 } from "./actions";
 import { watchActivity } from "./activity";
-import { createRefWorld, type ElementInputs } from "./capture";
+import { createRefWorld, type CaptureAsk, type ElementInputs } from "./capture";
 import { watchFullLoads, watchSameDocumentNavigations } from "./navigation";
+import { predicates } from "./predicates";
 import { createReach } from "./reach";
 import { showCue } from "./cue";
 import { startPicking, type PickArguments, type PickNotice } from "./pick";
 import { createRoots, type ProbeRequest, type RootState } from "./roots";
+import { createRecommender } from "./recommend";
 
-export type { Capture, DocumentToken, ReachMeasurement };
-export type { ElementInputs } from "./capture";
+export type { Capture, DocumentToken, Predicate, ReachMeasurement };
+export type { CaptureAsk, ElementInputs } from "./capture";
 export type { PickArguments, PickNotice } from "./pick";
 export type { ActionInputs, Begun, Settled } from "./actions";
 export type { ProbeRequest, RootState } from "./roots";
@@ -86,6 +98,23 @@ export type ReachAnswer =
   | { kind: "blocking"; blocker?: string }
   | { kind: "gone" };
 
+/** What a host asks of the module for the Locator Recommendation of elements. */
+export type RecommendRequest = {
+  /** The element the locators are relative to, when given. */
+  within?: Element;
+  testIdAttribute?: string;
+};
+
+/** One element's Locator Recommendation, or why it has none. */
+export type RecommendationAnswer = { locator: string } | { error: string };
+
+/** What a host asks of the module about reach, for many elements in one batch. */
+export type ReachableRequest = {
+  refs: readonly string[];
+  /** `click`: a click would reach it. `focus`: nothing blocks its focus. */
+  input: "click" | "focus";
+};
+
 /** The reach of this document's elements, for a host in the document's own realm. */
 export type Reach = ReturnType<typeof createReach>;
 
@@ -97,9 +126,10 @@ export type Slot = {
   bind(host: HostKey, binding: string): Bound;
   /**
    * A capture of the document for `host`: its roots are the ones its latest
-   * completed probe run found, and `inputs` say what it leaves out.
+   * completed probe run found, and `inputs` say what it leaves out. `ask`
+   * says what else it carries.
    */
-  capture(host: HostKey, inputs?: ElementInputs): Capture;
+  capture(host: HostKey, inputs?: ElementInputs, ask?: CaptureAsk): Capture;
   /**
    * Probes the Page Object Root the elements a Locator matched are, for
    * `host`, never scrolling or sending input. With a `round`, the probe
@@ -125,6 +155,20 @@ export type Slot = {
   changes(host: HostKey): ChangeState;
   /** Reach (ADR-0041) of the element a ref names, for a host that sends refs. */
   measure(host: HostKey, request: ReachRequest): ReachAnswer;
+  /**
+   * The refs of `request.refs` whose element would be reached by the input,
+   * measured in one batch, in the order given; a ref that names no connected
+   * element is not.
+   */
+  reachable(host: HostKey, request: ReachableRequest): string[];
+  /** Whether the predicate keeps each of the elements a host's Locator matched. */
+  is(host: HostKey, elements: Element[], predicate: Predicate): boolean[];
+  /** The Locator Recommendation of each of the elements, or why it has none. */
+  recommend(
+    host: HostKey,
+    elements: Element[],
+    request?: RecommendRequest
+  ): RecommendationAnswer[];
   /**
    * Reach of elements, for a host in the document's own realm, such as the
    * browser runtime's, which holds them. Names what it finds by ref.
@@ -204,10 +248,14 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   // Pickings cancelled before they started: the cancel can arrive first.
   const cancelled = new Set<string>();
   const roots = createRoots({ measure: reach.measure, nameOf: refs.nameOf });
-  const capture = (host: HostKey, inputs?: ElementInputs): Capture => ({
+  const capture = (
+    host: HostKey,
+    inputs?: ElementInputs,
+    ask?: CaptureAsk
+  ): Capture => ({
     document: token,
     url: location.href,
-    ...refs.capture(document.body, { ...inputs, ...roots.labelled(host) }),
+    ...refs.capture(document.body, { ...inputs, ...roots.labelled(host) }, ask),
   });
 
   /** Tells `host` of `message`, if it is still bound and listening; answers when it has heard. */
@@ -255,6 +303,11 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   });
   watchFullLoads(window, actions.loadStarted);
 
+  const recommendLocator = createRecommender({
+    InjectedScript,
+    generateSelector,
+    asLocator,
+  });
   return Object.freeze({
     version,
     token,
@@ -310,6 +363,38 @@ function createSlot(version: string, installedBy: HostKey): Slot {
               : reach.measureAfterScroll(element),
       };
     },
+    reachable: (_host: HostKey, { refs: asked, input }: ReachableRequest) =>
+      reach.inBatch(() =>
+        asked.filter((ref) => {
+          const element = refs.elementOf(ref);
+          if (!element?.isConnected) return false;
+          return input === "focus"
+            ? reach.blockingAncestor(element) === undefined
+            : reach.measure(element).available;
+        })
+      ),
+    is: (_host: HostKey, elements: Element[], predicate: Predicate) =>
+      elements.map(predicates[predicate]),
+    recommend: (
+      _host: HostKey,
+      elements: Element[],
+      request: RecommendRequest = {}
+    ) =>
+      elements.map((element): RecommendationAnswer => {
+        try {
+          return {
+            locator: recommendLocator(
+              element,
+              request.within,
+              request.testIdAttribute
+            ),
+          };
+        } catch (error) {
+          return {
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }),
     reach,
     begin: actions.begin,
     settle: actions.settle,

@@ -16,8 +16,10 @@ import { elementEverNamed, inPage, type ElementInputs } from "../../in-page";
 import {
   browserMonotonicClock,
   INSPECTOR_HOST_SELECTOR,
+  PREDICATES,
   ToolInputError,
   type Capture,
+  type Predicate,
 } from "../../shared";
 import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
 import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
@@ -110,8 +112,11 @@ async function elementInputs(): Promise<ElementInputs> {
 }
 
 /** A capture of `currentDocument` through its in-page module, with `elementInputs`. */
-async function captureWithSources(currentDocument: Document): Promise<Capture> {
-  return captureDocument(currentDocument, await elementInputs());
+async function captureWithSources(
+  currentDocument: Document,
+  accepts?: readonly Predicate[]
+): Promise<Capture> {
+  return captureDocument(currentDocument, await elementInputs(), accepts);
 }
 
 let documentCount = 0;
@@ -135,7 +140,8 @@ export async function getPageStateForDocument(
 export async function lookAtPageStateForDocument(
   currentDocument: Document
 ): Promise<PageStateLook> {
-  return getPageStateSession(currentDocument).look();
+  // The Inspector offers each tool the refs it takes, so a look carries them.
+  return getPageStateSession(currentDocument).look({ accepts: PREDICATES });
 }
 
 /**
@@ -282,7 +288,7 @@ function createPageStateSession(currentDocument: Document): PageStateSession {
   });
   return new PageStateSession(
     history,
-    () => captureWithSources(currentDocument),
+    (accepts) => captureWithSources(currentDocument, accepts),
     { begin: () => beginDocumentAction(currentDocument, elementInputs) },
     elementsOf
   );

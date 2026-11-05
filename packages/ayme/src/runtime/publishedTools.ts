@@ -2,7 +2,7 @@ import type { JsonSchema } from "../shared";
 import { getPursueGoalTool } from "../goal-loop/infrastructure";
 import { type GoalTool } from "../goal-loop/application";
 import {
-  acceptedRefNodes,
+  elementToolTargets,
   getPageContextTool,
   type PeekTool,
   type PublishedElementTool,
@@ -215,18 +215,17 @@ export async function listElementToolTargets(
     throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   const elementTools = listElementTools();
   const current = capture ?? (await lookAtPageStateForDocument(document));
-  return started.reach.inReachBatch(
-    () =>
-      new Map(
-        elementTools.map(({ tool, filter }) => [
-          tool.name,
-          acceptedRefNodes(
-            started.reach,
-            (element) => filter(element, started),
-            current
-          ).map((node) => node.ref),
-        ])
-      )
+  return new Map(
+    await Promise.all(
+      elementTools.map(async (registered) => {
+        const { nodes } = await elementToolTargets(
+          registered,
+          started,
+          current
+        );
+        return [registered.tool.name, nodes.map(({ ref }) => ref)] as const;
+      })
+    )
   );
 }
 

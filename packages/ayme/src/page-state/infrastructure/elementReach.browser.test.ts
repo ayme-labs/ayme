@@ -2,10 +2,9 @@ import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
-import { listElementTools } from "../../tools/infrastructure";
-import { assertReachable, reaches } from "./elementReach";
+import { assertReachable, refsOfLocator } from "./elementReach";
 import { errorText } from "../../shared";
-import { buildToolOptions } from "../../goal-loop/application";
+import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
 import { planArguments } from "../../goal-loop/domain";
 import { lookAtPageStateForDocument } from "./pageState";
 import { agentTools } from "../../test-utils/publication.testSupport";
@@ -291,7 +290,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
   });
 
-  it("sees an overlay removed between two listings in the same task", async () => {
+  it("sees an overlay removed between two listings", async () => {
     document.body.innerHTML = `
       <style>
         #overlay { position: fixed; inset: 0; background: rgb(0 0 0 / 0.3); }
@@ -302,12 +301,14 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     const save = await refOf("button", "Save");
     const capture = await lookAtPageStateForDocument(document);
 
-    const covered = listElementToolTargets(capture);
+    // A listing measures in the page, so it is a task of its own: the
+    // second is not served from the first.
+    const covered = await listElementToolTargets(capture);
     document.querySelector("#overlay")!.remove();
-    const uncovered = listElementToolTargets(capture);
+    const uncovered = await listElementToolTargets(capture);
 
-    expect((await covered).get("click")).not.toContain(save);
-    expect((await uncovered).get("click")).toContain(save);
+    expect(covered.get("click")).not.toContain(save);
+    expect(uncovered.get("click")).toContain(save);
   });
 
   it("fails fill_form at a field behind the open modal and keeps the fields filled before it", async () => {
@@ -429,13 +430,13 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     host.attachShadow({ mode: "closed" }).innerHTML =
       `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>
        <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
-    const save = document.querySelector("#save")!;
     expect(document.elementFromPoint(20, 10)).toBe(host);
 
-    expect(reaches(geometryReach, page, save, "click")).toBe(true);
-    expect((await listElementToolTargets()).get("click")).toContain(
-      await refOf("button", "Save")
-    );
+    const saveRef = await refOf("button", "Save");
+    expect(await geometryReach.reachable(page, [saveRef], "click")).toEqual([
+      saveRef,
+    ]);
+    expect((await listElementToolTargets()).get("click")).toContain(saveRef);
   });
 
   // The Inspector lets the action through its own panel only: what the page
@@ -605,7 +606,7 @@ describe("Element reach timing in Chromium", () => {
     async (kind, cover) => {
       longList(cover);
       const capture = await lookAtPageStateForDocument(document);
-      const click = buildToolOptions({ page, reach: geometryReach }).find(
+      const click = (await toolOptionsOf(page)).find(
         ({ key }) => key === "click"
       )!;
       const targetOnly = {
@@ -616,10 +617,13 @@ describe("Element reach timing in Chromium", () => {
 
       const listing = await medianMs(() => listElementToolTargets(capture));
       const planning = await medianMs(() => planArguments(targetOnly, capture));
-      const measuring = await medianMs(() => {
-        for (const element of capture.elementsByRef.values())
-          reaches(geometryReach, page, element, "click");
-      });
+      const measuring = await medianMs(() =>
+        geometryReach.reachable(
+          page,
+          [...capture.elementsByRef.keys()],
+          "click"
+        )
+      );
       const offered = (await listElementToolTargets(capture)).get("click")!;
 
       console.log(
@@ -628,15 +632,13 @@ describe("Element reach timing in Chromium", () => {
           `reaches over all ${capture.elementsByRef.size} refs ${measuring.toFixed(1)}ms, ` +
           `median of 5; ${offered.length} click targets`
       );
-      const { matches } = listElementTools().find(
-        ({ tool }) => tool.name === "click"
-      )!;
-      const belowTheFold = [...capture.elementsByRef.values()].filter(
-        (element) =>
-          matches!(element) &&
-          element.getBoundingClientRect().top >=
+      const belowTheFold = [...capture.elementsByRef]
+        .filter(([ref]) => capture.accepted!.clickable!.has(ref))
+        .filter(
+          ([, element]) =>
+            element.getBoundingClientRect().top >=
             document.documentElement.clientHeight
-      );
+        );
       expect(belowTheFold.length).toBeGreaterThan(0);
       expect(offered.length).toBe(
         cover === "none"
@@ -676,13 +678,19 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     document.querySelector("#app")!.setAttribute("aria-hidden", "true");
   }
 
+  /** The ref of the row the page names, which no capture has named yet. */
+  async function rowRef(page: Page) {
+    return (await refsOfLocator(page, page.locator("#row")))[0]!;
+  }
+
   it("refuses it under the tool's name without scrolling", async () => {
     openLayerOver('<section id="row">Row</section>');
+    const page = createPage();
     const error = await assertReachable(
       geometryReach,
+      page,
       "Row.open",
-      createPage().locator("#row"),
-      document.querySelector("#row")!,
+      await rowRef(page),
       "click"
     ).then(() => "no error", errorText);
 
@@ -696,11 +704,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver(
       '<section id="row"><button style="pointer-events: auto; width: 100%">Row</button></section>'
     );
+    const page = createPage();
     await assertReachable(
       geometryReach,
+      page,
       "Row.open",
-      createPage().locator("#row"),
-      document.querySelector("#row")!,
+      await rowRef(page),
       "click"
     );
     expect(window.scrollY).toBeGreaterThan(0);
@@ -710,11 +719,12 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
     openLayerOver('<section id="row"></section>');
     document.querySelector("#row")!.attachShadow({ mode: "open" }).innerHTML =
       '<button style="pointer-events: auto; width: 100%">Row</button>';
+    const page = createPage();
     await assertReachable(
       geometryReach,
+      page,
       "Row.open",
-      createPage().locator("#row"),
-      document.querySelector("#row")!,
+      await rowRef(page),
       "click"
     );
     expect(window.scrollY).toBeGreaterThan(0);

@@ -8,12 +8,12 @@ import {
   StructuralTree,
   SyntheticAriaRefFactory,
   type AriaRef,
+  type StructuralNode,
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
 import type { DecisionRequest, DecisionResponse } from "../domain/decisionWire";
 import type { PageCapture, PageStateCapture } from "../../page-state/domain";
 import type { RootedToolInstance } from "../../page-objects/application";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -50,13 +50,59 @@ export function captureOfButtons(count: number): PageCapture {
   return { tree, elementsByRef, pomRootMarks: new Map() };
 }
 
+/**
+ * The closed set of a ref any node of the capture may fill: `step` replaces
+ * it with the nodes of the step's own capture.
+ */
+export const everyNode: readonly StructuralNode[] = [];
+
+/** The nodes of `capture`, in tree order, whose element `keep` keeps. */
+export function nodesOf(
+  capture: PageStateCapture,
+  keep: (element: Element) => boolean = () => true
+): StructuralNode[] {
+  const nodes: StructuralNode[] = [];
+  const pending = [...capture.tree.getRootNodes()].reverse();
+  while (pending.length > 0) {
+    const node = pending.pop()!;
+    const element = capture.elementsByRef.get(node.ref);
+    if (element && keep(element)) nodes.push(node);
+    for (const child of [...node.children].reverse())
+      if (typeof child !== "string") pending.push(child);
+  }
+  return nodes;
+}
+
 /** A required ref any element of the page may fill. */
 export const refArg = {
   name: "ref",
   path: ["ref"],
   optional: false,
-  closedSet: { kind: "ref", filter: () => true, reach: alwaysReaches() },
+  closedSet: { kind: "ref", nodes: everyNode, unreachable: 0 },
 } as const;
+
+/** `tool` with the nodes of `capture` in each ref closed set `refArg` stands for. */
+export function toolWithNodes(
+  tool: GoalLoopOperation,
+  capture: PageStateCapture
+): GoalLoopOperation {
+  return {
+    ...tool,
+    args: tool.args.map((arg) =>
+      arg.closedSet?.kind === "ref" && arg.closedSet.nodes === everyNode
+        ? { ...arg, closedSet: { ...arg.closedSet, nodes: nodesOf(capture) } }
+        : arg
+    ),
+  };
+}
+
+/** `option` with the nodes of `capture` in each ref closed set `refArg` stands for. */
+function withCapturedNodes(
+  option: ToolOption,
+  capture: PageStateCapture
+): ToolOption {
+  return { ...option, tool: toolWithNodes(option.tool, capture) };
+}
 
 export const clickTool: GoalLoopOperation = {
   name: "click",
@@ -312,16 +358,27 @@ export const criteriaKeys = (
 export const step = (
   decide: GoalLoopDecisionFunction,
   input: Partial<StepInput> = {}
-): ReturnType<typeof decideStep> =>
-  decideStep({
+): ReturnType<typeof decideStep> => {
+  const capture = input.capture ?? captureOfButtons(3);
+  return decideStep({
     goal: "do the thing",
     history: [],
-    capture: captureOfButtons(3),
-    toolOptions: [optionOf(clickTool), optionOf(saveTool)],
+    toolOptions: [optionOf(clickTool), optionOf(saveTool)].map((option) =>
+      withCapturedNodes(option, capture)
+    ),
     pomDefinitions: "",
     decide,
     ...input,
+    capture,
+    ...(input.toolOptions
+      ? {
+          toolOptions: input.toolOptions.map((option) =>
+            withCapturedNodes(option, capture)
+          ),
+        }
+      : {}),
   });
+};
 
 export const ranOk = (
   record: Pick<GoalLoopStepRecord, "operation" | "chosen" | "page_changed">

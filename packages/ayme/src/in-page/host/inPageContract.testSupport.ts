@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 
+import { PREDICATES, type Predicate } from "../../shared";
 import type { ElementInputs, InPage, InPageHost, VisitSignal } from "./inPage";
 import type {
   PageObjectConstructor,
@@ -1290,6 +1291,273 @@ export function inPageContract(lane: InPageLane) {
       await registry.probeRegisteredPomMembers();
       expect((await inPageOf.capture()).roots).toEqual([]);
       dispose();
+    });
+  });
+
+  describe("predicates", () => {
+    /** One element each, labelled by its text or aria-label, with the predicates that keep it. */
+    const fixtures: [html: string, label: string, kept: Predicate[]][] = [
+      ["<button>Save</button>", "Save", ["clickable"]],
+      ['<a href="/next">Next</a>', "Next", ["clickable"]],
+      ['<div role="button">Go</div>', "Go", ["clickable"]],
+      ['<div style="cursor: pointer">Card</div>', "Card", ["clickable"]],
+      ["<p>Just text</p>", "Just text", []],
+      ["<button disabled>Locked</button>", "Locked", []],
+      ['<button aria-disabled="true">Veiled</button>', "Veiled", []],
+      ['<input aria-label="Name">', "Name", ["clickable", "fillable"]],
+      [
+        '<input type="email" aria-label="Mail">',
+        "Mail",
+        ["clickable", "fillable"],
+      ],
+      [
+        '<textarea aria-label="Note"></textarea>',
+        "Note",
+        ["clickable", "fillable"],
+      ],
+      [
+        '<div contenteditable="true" aria-label="Rich"></div>',
+        "Rich",
+        ["clickable", "fillable"],
+      ],
+      ['<input readonly aria-label="Fixed">', "Fixed", ["clickable"]],
+      ['<input disabled aria-label="Off">', "Off", []],
+      ['<input type="file" aria-label="Upload">', "Upload", ["clickable"]],
+      [
+        '<input type="checkbox" aria-label="Done">',
+        "Done",
+        ["clickable", "checkable", "uncheckable"],
+      ],
+      [
+        '<input type="radio" aria-label="Pick">',
+        "Pick",
+        ["clickable", "checkable"],
+      ],
+      [
+        '<div role="switch" aria-label="Power"></div>',
+        "Power",
+        ["clickable", "checkable", "uncheckable"],
+      ],
+      ['<input type="checkbox" disabled aria-label="Frozen">', "Frozen", []],
+      [
+        '<select aria-label="Size"><option>S</option></select>',
+        "Size",
+        ["clickable", "select"],
+      ],
+      [
+        '<select disabled aria-label="Shut"><option>S</option></select>',
+        "Shut",
+        [],
+      ],
+      ['<div role="combobox" aria-label="Menu"></div>', "Menu", ["clickable"]],
+    ];
+
+    it("each predicate keeps exactly the refs of the elements it takes, in capture order", async () => {
+      const page = await lane.newPage();
+      await setBody(page, fixtures.map(([html]) => html).join(""));
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const { distilledText: text, accepted } = await inPageOf.capture({
+        accepts: PREDICATES,
+      });
+      // A named node prints its name in quotes, any other its text after a colon.
+      const refOfLabel = (label: string) =>
+        text.includes(`"${label}"`)
+          ? refOf(text, `"${label}"`)
+          : refOf(text, `: ${label}`);
+
+      for (const predicate of PREDICATES)
+        expect(accepted?.[predicate], predicate).toEqual(
+          fixtures
+            .filter(([, , kept]) => kept.includes(predicate))
+            .map(([, label]) => refOfLabel(label))
+        );
+    });
+
+    it("a capture carries only the predicates it was asked for", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<button>Save</button>");
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const some = await inPageOf.capture({ accepts: ["clickable"] });
+      const none = await inPageOf.capture();
+
+      expect(Object.keys(some.accepted ?? {})).toEqual(["clickable"]);
+      expect(none).not.toHaveProperty("accepted");
+    });
+
+    it("is() answers a predicate for the one element a Locator matches", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<button>Save</button><p>Text</p><input type="checkbox" aria-label="Done">'
+      );
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      expect(await inPageOf.is(page.getByRole("button"), "clickable")).toBe(
+        true
+      );
+      expect(await inPageOf.is(page.getByText("Text"), "clickable")).toBe(
+        false
+      );
+      expect(await inPageOf.is(page.getByLabel("Done"), "uncheckable")).toBe(
+        true
+      );
+      expect(await inPageOf.is(page.getByLabel("Done"), "fillable")).toBe(
+        false
+      );
+    });
+
+    it("is() throws unless the Locator matches exactly one element", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<button>One</button><button>Two</button>");
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      await expect(
+        inPageOf.is(page.getByRole("button"), "clickable")
+      ).rejects.toMatchObject({
+        name: "RefResolutionError",
+        message: "the locator matches 2 elements; it must match exactly one",
+      });
+      await expect(
+        inPageOf.is(page.getByRole("heading"), "clickable")
+      ).rejects.toMatchObject({
+        name: "RefResolutionError",
+        message: "the locator matches no element",
+      });
+    });
+
+    it("reachable() keeps the refs a click or a focus would reach, in order", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<button>Free</button><dialog aria-label="Modal"><button>Inside</button></dialog>'
+      );
+      await page.evaluate(`document.querySelector("dialog").showModal()`);
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { fullText } = await inPageOf.capture();
+      const [free, inside] = [
+        refOf(fullText, '"Free"'),
+        refOf(fullText, '"Inside"'),
+      ];
+
+      expect(await inPageOf.reachable([free, inside], "click")).toEqual([
+        inside,
+      ]);
+      expect(await inPageOf.reachable([inside, free], "focus")).toEqual([
+        inside,
+      ]);
+      expect(await inPageOf.reachable(["e999"], "click")).toEqual([]);
+      expect(await inPageOf.reachable([], "click")).toEqual([]);
+    });
+
+    it("mint() names each element a Locator matches, minting a ref for one no capture named", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<button>First</button><div id="plain">x</div>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { fullText } = await inPageOf.capture();
+
+      expect(await inPageOf.mint(page.getByRole("button"))).toEqual([
+        refOf(fullText, '"First"'),
+      ]);
+      const [minted] = await inPageOf.mint(page.locator("#plain"));
+      expect(await page.locator(`ayme-ref=${minted}`).getAttribute("id")).toBe(
+        "plain"
+      );
+      expect(await inPageOf.mint(page.locator("#none"))).toEqual([]);
+    });
+  });
+
+  describe("Locator Recommendation", () => {
+    const orders = `
+      <h1>Orders</h1>
+      <ul>
+        <li id="row-1" aria-label="Order 1"><span>Order 1</span><button>Delete</button></li>
+        <li id="row-2" aria-label="Order 2"><span>Order 2</span><button>Delete</button></li>
+      </ul>
+      <button id="settings" aria-label="Settings"><span id="icon">⚙</span></button>
+      <button data-testid="submit-order">Submit</button>
+      <button class="twin">Twin</button><button class="twin">Twin</button>`;
+
+    async function ordersPage() {
+      const page = await lane.newPage();
+      await setBody(page, orders);
+      return { page, inPageOf: lane.createHost(page).inPage(page) };
+    }
+
+    it("recommends the page-level locator Playwright's generator writes for one element", async () => {
+      const { page, inPageOf } = await ordersPage();
+
+      expect(await inPageOf.recommend(page.getByRole("heading"))).toBe(
+        "getByRole('heading', { name: 'Orders' })"
+      );
+      expect(await inPageOf.recommend(page.locator("#settings"))).toBe(
+        "getByRole('button', { name: 'Settings' })"
+      );
+      expect(await inPageOf.recommend(page.locator("#icon"))).toBe(
+        "getByRole('button', { name: 'Settings' })"
+      );
+      expect(await inPageOf.recommend(page.getByText("Submit"))).toBe(
+        "getByTestId('submit-order')"
+      );
+    });
+
+    it("recommends relative to a container, the same element reached by its own row", async () => {
+      const { page, inPageOf } = await ordersPage();
+
+      const inRow = await inPageOf.recommend(
+        page.locator("#row-2 button"),
+        page.locator("#row-2")
+      );
+      const inPage = await inPageOf.recommend(
+        page.locator("#row-2 button"),
+        undefined
+      );
+
+      expect(inRow).toBe("getByRole('button', { name: 'Delete' })");
+      expect(inPage).not.toBe(inRow);
+    });
+
+    it("a locator relative to its container finds exactly the element from the container", async () => {
+      const { page, inPageOf } = await ordersPage();
+      const container = page.locator("#row-2");
+
+      const recommended = await inPageOf.recommend(
+        page.locator("#row-2 button"),
+        container
+      );
+
+      const found = new Function("scope", `return scope.${recommended};`)(
+        container
+      );
+      expect(await found.count()).toBe(1);
+      expect(
+        await found.evaluate((element: Element) => element.closest("li")?.id)
+      ).toBe("row-2");
+    });
+
+    it("tells twins apart by position", async () => {
+      const { page, inPageOf } = await ordersPage();
+
+      expect(await inPageOf.recommend(page.locator(".twin").first())).toBe(
+        "getByRole('button', { name: 'Twin' }).first()"
+      );
+      expect(await inPageOf.recommend(page.locator(".twin").last())).toBe(
+        "getByRole('button', { name: 'Twin' }).nth(1)"
+      );
+    });
+
+    it("throws a RefResolutionError unless the target and the container each match exactly one element", async () => {
+      const { page, inPageOf } = await ordersPage();
+
+      await expect(
+        inPageOf.recommend(page.locator("li"))
+      ).rejects.toMatchObject({
+        name: "RefResolutionError",
+      });
+      await expect(
+        inPageOf.recommend(page.locator("#row-1 button"), page.locator("li"))
+      ).rejects.toThrow(/strict mode violation|matches 2 elements/);
     });
   });
 }

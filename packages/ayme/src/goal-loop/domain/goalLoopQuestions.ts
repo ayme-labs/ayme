@@ -24,7 +24,6 @@ import type {
   PageStateCapture,
   PomRootMarks,
 } from "../../page-state/domain";
-import { acceptedRefNodes } from "../../tools/application";
 import type {
   ArgumentSpec,
   ClosedSet,
@@ -248,11 +247,10 @@ export type ArgumentPlan =
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
 /** Every node of the capture a single-element tool with this closed set can take. */
-function refOptions(
-  { reach, filter }: Extract<ClosedSet, { kind: "ref" }>,
-  capture: PageStateCapture
-): ArgumentOption[] {
-  return acceptedRefNodes(reach, filter, capture).map((node) => ({
+function refOptions({
+  nodes,
+}: Extract<ClosedSet, { kind: "ref" }>): ArgumentOption[] {
+  return nodes.map((node) => ({
     key: node.ref,
     description: describeNode(node),
     value: node.ref,
@@ -598,7 +596,7 @@ export function planArguments(
 
     const offered: { options: ArgumentOption[]; leftOut?: LeftOutItem[] } =
       closedSet.kind === "ref"
-        ? { options: refOptions(closedSet, capture) }
+        ? { options: refOptions(closedSet) }
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture, tool)
           : { options: valueOptions(closedSet.values) };
@@ -626,9 +624,7 @@ export function planArguments(
       if (arg.optional) continue;
       // A ref gets here only with no element left to offer.
       if (closedSet.kind === "ref") {
-        const unreachable = closedSet.matches
-          ? acceptedRefNodes(closedSet.reach, closedSet.matches, capture).length
-          : 0;
+        const { unreachable } = closedSet;
         return unreachable > 0
           ? { kind: "needs_ref_choice", parameter: arg.name, unreachable }
           : { kind: "needs_ref_choice", parameter: arg.name };

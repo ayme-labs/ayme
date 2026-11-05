@@ -15,10 +15,12 @@ import {
 import { version as packageVersion } from "../../../package.json";
 import {
   AymeError,
+  RefResolutionError,
   RuntimeStateError,
   type ActionOutcome,
   type Capture,
   type DocumentToken,
+  type Predicate,
 } from "../../shared";
 import type { CallName, CallResult } from "../page/call";
 import type { CallOnName, CallOnResult } from "../page/callOn";
@@ -34,6 +36,8 @@ import type {
   ReachAnswer,
   ReachMeasurement,
   ReachRequest,
+  RecommendationAnswer,
+  RecommendRequest,
   RootState,
   Settled,
 } from "../page/install";
@@ -123,6 +127,30 @@ export type InPage = {
    */
   names(target: Locator, ref: string): Promise<boolean>;
   /**
+   * Of `refs`, those whose element `input` would reach now, measured in one
+   * batch in the page: a click reaches an element (ADR-0035) when nothing
+   * covers or blocks it; focus needs only that nothing blocks it. In the
+   * order given.
+   */
+  reachable(
+    refs: readonly string[],
+    input: "click" | "focus"
+  ): Promise<string[]>;
+  /**
+   * Whether `predicate` keeps the one element `target` matches. Throws a
+   * `RefResolutionError` unless it matches exactly one.
+   */
+  is(target: Locator, predicate: Predicate): Promise<boolean>;
+  /**
+   * The Locator Recommendation for the one element `target` matches,
+   * relative to the one element `within` matches when given: Playwright's
+   * own generator, run in the page against both in one task, which checks the
+   * locator addresses exactly the element, or the interactive ancestor it
+   * picked for it. Throws a `RefResolutionError` unless each matches exactly
+   * one, and an `Error` when no locator addresses the element.
+   */
+  recommend(target: Locator, within?: Locator): Promise<string>;
+  /**
    * Picks a Structural Ref by pointing at the document. The element under
    * the pointer that has a ref is boxed with the hover highlight, or the
    * unusable one when its ref is not in `accept`; a click picks an accepted
@@ -193,6 +221,8 @@ export type PickOptions = {
 };
 
 export type CaptureOptions = {
+  /** The predicates whose accepted refs the capture carries (`Capture.accepted`). */
+  accepts?: readonly Predicate[];
   /**
    * Transitional: the host's ignore predicate as a handle to a live value in
    * the page (`ElementInputs`), until `ignore` takes a selector (#1177).
@@ -433,9 +463,26 @@ export function createInPageHost(version = packageVersion): InPageHost {
         target.evaluateAll(callOnInPage, { version, host, name, inputs })
       );
 
+    /** The one element answer of `locator`, which must match exactly one element. */
+    async function onTheOne<T>(
+      locator: Locator,
+      name: CallOnName,
+      inputs?: unknown
+    ): Promise<T> {
+      const answers = await callOn<T[]>(locator, name, inputs);
+      if (answers.length !== 1)
+        throw new RefResolutionError(
+          answers.length === 0
+            ? "the locator matches no element"
+            : `the locator matches ${answers.length} elements; it must match exactly one`
+        );
+      return answers[0]!;
+    }
+
     const inPage: InPage = {
       bound,
-      capture: ({ elements } = {}) => call<Capture>("capture", [elements]),
+      capture: ({ elements, accepts } = {}) =>
+        call<Capture>("capture", [elements, accepts ? { accepts } : undefined]),
       async begin({ elements } = {}) {
         return action(await call<Begun>("begin", [elements]), elements);
       },
@@ -488,6 +535,34 @@ export function createInPageHost(version = packageVersion): InPageHost {
       },
       refresh: () => watcher.refresh(),
       probed: () => watcher.probed(),
+      async reachable(refs, input) {
+        if (refs.length === 0) return [];
+        return call<string[]>("reachable", [{ refs, input }]);
+      },
+      is: (target, predicate) => onTheOne<boolean>(target, "is", predicate),
+      async recommend(target, within) {
+        // Playwright Lite's Page knows its test ID attribute; Playwright's
+        // has no public reading of it, so its default stands there.
+        const { testIdAttribute } = page as { testIdAttribute?: string };
+        // A handle for this one call, disposed before it returns.
+        const container = within && (await within.elementHandle());
+        try {
+          const request: RecommendRequest = {
+            ...(testIdAttribute ? { testIdAttribute } : {}),
+            // The page receives the element the handle stands for.
+            ...(container ? { within: container as unknown as Element } : {}),
+          };
+          const answer = await onTheOne<RecommendationAnswer>(
+            target,
+            "recommend",
+            request
+          );
+          if ("error" in answer) throw new Error(answer.error);
+          return answer.locator;
+        } finally {
+          await container?.dispose();
+        }
+      },
       async pick(accept, { ignore, signal, styles } = {}) {
         const id = hostKey();
         const paint = highlighting(page, {

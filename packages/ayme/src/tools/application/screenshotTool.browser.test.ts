@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
 import { INSPECTOR_DOGFOOD_ATTRIBUTE, ToolInputError } from "../../shared";
-import { buildToolOptions } from "../../goal-loop/application";
+import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
 import {
   PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA,
   shapeOf,
@@ -11,7 +11,6 @@ import {
 } from "../test-utils/playwrightMcp.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 import type { ToolInput } from "../domain/toolTypes";
-import { geometryReach } from "../../page-state/infrastructure";
 
 const FIXTURE = `
   <style>
@@ -72,11 +71,9 @@ describe("screenshot in Chromium", () => {
     );
   });
 
-  it("is never offered to the Goal Loop", () => {
+  it("is never offered to the Goal Loop", async () => {
     expect(
-      buildToolOptions({ page, reach: geometryReach }).map(
-        (option) => option.key
-      )
+      (await toolOptionsOf(page)).map((option) => option.key)
     ).not.toContain("screenshot");
   });
 

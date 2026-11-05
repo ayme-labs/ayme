@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { DecisionEndpointError } from "../domain/decisionWire";
 import type { GoalLoopOperation } from "../domain/goalLoopOperations";
 import { NONE_OF_THESE_KEY } from "../domain/goalLoopQuestions";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   answering,
   archiveTool,
@@ -56,7 +55,7 @@ describe("a Step Decision", () => {
 
     expect(verdict).toMatchObject({
       kind: "act",
-      operation: clickTool,
+      operation: expect.objectContaining({ name: clickTool.name }),
       args: { ref: "e2" },
       chosen: { ref: { key: "e2", description: 'button "Item 2"' } },
       scores: { argumentChoices: { ref: "e2" } },
@@ -189,7 +188,7 @@ describe("a Step Decision", () => {
 
       expect(verdict).toMatchObject({
         kind: "act",
-        operation: clickTool,
+        operation: expect.objectContaining({ name: clickTool.name }),
         args: { ref: "e2" },
         scores: { goalMetScore: 0.8, goalRemainingScore: 0.1 },
       });
@@ -281,12 +280,7 @@ describe("a Step Decision", () => {
           args: [
             {
               ...clickTool.args[0]!,
-              closedSet: {
-                kind: "ref",
-                filter: () => false,
-                matches: () => true,
-                reach: alwaysReaches(),
-              },
+              closedSet: { kind: "ref", nodes: [], unreachable: count },
             },
           ],
         };

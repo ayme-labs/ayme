@@ -1,6 +1,11 @@
 export { pageOfDocument } from "./browserInPage";
 export { browserInPage } from "./browserInPage";
-export { assertReachable, inTheWayOf, reaches } from "./elementReach";
+export {
+  assertLocatorReachable,
+  assertReachable,
+  inTheWayOf,
+  refsOfLocator,
+} from "./elementReach";
 export type { ElementInput } from "./elementReach";
 export { startNavigation } from "./navigation";
 export {

@@ -3,7 +3,8 @@ export {
   subscribeToAgentImageRuns,
 } from "./agentImageRuns";
 export type { AgentImageRun } from "./agentImageRuns";
-export { acceptedRefNodes } from "./elementTools";
+export { elementToolTargets } from "./elementTools";
+export type { ElementToolTargets } from "./elementTools";
 export type {
   CustomTool,
   CustomToolContext,

@@ -17,6 +17,7 @@ import {
   type ActionOutcome,
   type Capture,
   type DocumentToken,
+  type Predicate,
 } from "../shared";
 
 /** Playwright's dual capture of `root`, as a test gives it. */
@@ -60,17 +61,22 @@ export function standInBrowserInPage(
   };
   const capture = async (
     currentDocument: Document,
-    inputs: ElementInputs
+    inputs: ElementInputs,
+    accepts?: readonly Predicate[]
   ): Promise<Capture> => {
     const { roots, absentElements } = await rootsOf();
     return {
       document: "standIn" as DocumentToken,
       url: currentDocument.URL,
-      ...worldOf(currentDocument).capture(currentDocument.body, {
-        ...inputs,
-        roots: roots.map(({ mark, element }) => ({ label: mark, element })),
-        absent: absentElements,
-      }),
+      ...worldOf(currentDocument).capture(
+        currentDocument.body,
+        {
+          ...inputs,
+          roots: roots.map(({ mark, element }) => ({ label: mark, element })),
+          absent: absentElements,
+        },
+        accepts ? { accepts } : {}
+      ),
     };
   };
   return {
@@ -78,8 +84,11 @@ export function standInBrowserInPage(
     browserInPage: () => {
       throw new Error("A jsdom test has no in-page module to reach.");
     },
-    captureDocument: (currentDocument: Document, inputs: ElementInputs) =>
-      capture(currentDocument, inputs),
+    captureDocument: (
+      currentDocument: Document,
+      inputs: ElementInputs,
+      accepts?: readonly Predicate[]
+    ) => capture(currentDocument, inputs, accepts),
     beginDocumentAction: async (
       currentDocument: Document,
       inputs: () => Promise<ElementInputs>

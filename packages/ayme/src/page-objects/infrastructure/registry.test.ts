@@ -106,7 +106,11 @@ function brandedLocator(
   overrides: Record<string, unknown> = {},
   element: Element = { isConnected: true } as Element
 ) {
-  const loc: Record<string | symbol, unknown> = { ...overrides };
+  // What the in-page module answers of a locator's elements: one ref.
+  const loc: Record<string | symbol, unknown> = {
+    evaluateAll: async () => ({ kind: "ok", value: ["e1"] }),
+    ...overrides,
+  };
   testLocators.add(loc);
   locatorElements.set(loc, [element]);
   return loc as unknown as Locator;

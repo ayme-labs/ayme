@@ -306,7 +306,7 @@ const refusals: [path: string, code: string, message: string][] = [
   // An allowlisted file may import the internal entry, but nothing else
   // there is let off.
   [
-    "src/tools/infrastructure/pressKey.ts",
+    "src/runs/infrastructure/pageInstrumentation.ts",
     'export const title = () => document.title;\nexport { cursors } from "../../page-state/infrastructure/pageState";',
     "Import another slice through its front door",
   ],
@@ -435,11 +435,6 @@ it(
         "export const title = () => document.title;",
       ],
       ["src/page-state/domain/misplaced.ts", "export type Target = Element;"],
-      // Until page-state resolves a selector target (#943).
-      [
-        "src/tools/application/elementTools.ts",
-        'export { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";',
-      ],
       [
         "src/runs/application/misplaced.ts",
         "export const last = (history: string[]) => history.at(-1);",

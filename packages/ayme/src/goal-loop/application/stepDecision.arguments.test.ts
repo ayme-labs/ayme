@@ -10,7 +10,6 @@ import {
 import type { GoalLoopStepRecord, GoalValues, JsonSchema } from "../../shared";
 import type { DecisionRequest } from "../domain/decisionWire";
 import type { PageCapture } from "../../page-state/domain";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -28,6 +27,7 @@ import {
   criteriaKeys,
   forceClickTool,
   noul,
+  nodesOf,
   optionOf,
   questionsOf,
   refArg,
@@ -1078,7 +1078,7 @@ describe("Goal Values asked speculatively in stage one", () => {
       expect(Object.keys(requests[1]!.questions)).toEqual(["ref"]);
       expect(verdict).toMatchObject({
         kind: "act",
-        operation: chosenTool,
+        operation: expect.objectContaining({ name: chosenTool.name }),
         chosen: { text: { key: "item name", description: "item name: Milk" } },
       });
       expect(argsOf(verdict)).toEqual({ ref: "e1", text: "Milk" });
@@ -1240,8 +1240,11 @@ describe("the state a request that only picks an element is sent", () => {
     ...refArg,
     closedSet: {
       kind: "ref",
-      filter: (element: Element) => element instanceof HTMLInputElement,
-      reach: alwaysReaches(),
+      nodes: nodesOf(
+        surveyCapture(),
+        (element) => element instanceof HTMLInputElement
+      ),
+      unreachable: 0,
     },
   } as const;
 

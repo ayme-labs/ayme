@@ -8,8 +8,6 @@ export { highlightStyles } from "./host/highlightStyles";
 export type { HighlightStyle } from "./host/highlightStyles";
 // Transitional (#1182): browser-only.
 export { elementEverNamed, elementOfRef } from "./host/elementLookup";
-// Browser-only: reach for the host in the document's own realm.
-export { reachInRealm } from "./host/reachInRealm";
 export type {
   ActionInputs,
   ActionOptions,

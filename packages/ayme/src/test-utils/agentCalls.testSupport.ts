@@ -18,6 +18,7 @@ import { type PageStateSession, type Reach } from "../page-state/application";
 import {
   listRegisteredPomTargets,
   getPomDefinitions,
+  createPage,
 } from "../page-objects/infrastructure";
 import { resolveTools, sessionReach } from "../runtime";
 import { callers } from "../shared";
@@ -26,8 +27,25 @@ import type { RunContext } from "../runs/application";
 /** The calling agent's cursor: a WebMCP agent's, as `webmcp` Runs read it. */
 export const agentCursor = (): Cursor => cursors.of(callers.webmcp);
 
-/** The page of a Run a test hands none: a tool acting on the page needs one. */
-const NO_PAGE = {} as Page;
+/**
+ * The page of a Run a test hands none: a tool acting on the page needs one,
+ * which in a browser is the document's own page. It is made on first use. A
+ * unit test has no browser to make one in, and its locators are stand-ins
+ * that answer for themselves: the page then only binds to nothing.
+ */
+const defaultPage = (): Page => {
+  let page: Page | undefined;
+  const made = () => {
+    try {
+      return (page ??= createPage() as Page);
+    } catch {
+      return (page ??= { exposeFunction: async () => {} } as unknown as Page);
+    }
+  };
+  return new Proxy({} as Page, {
+    get: (_, property) => Reflect.get(made(), property),
+  });
+};
 
 /**
  * The Run context for a tool a test executes itself, outside a runtime
@@ -40,7 +58,7 @@ const NO_PAGE = {} as Page;
  * would: a unit test, which has no layout, hands `alwaysReaches()`.
  */
 export function runContext(
-  page: Page = NO_PAGE,
+  page: Page = defaultPage(),
   cursor: Cursor = agentCursor(),
   pageStateSession?: PageStateSession,
   reach: Reach = sessionReach()

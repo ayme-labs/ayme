@@ -6,6 +6,7 @@ import {
   type ProjectedStructuralNodeForest,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
+import type { Predicate } from "../../shared";
 import { pomRootMarkProjection, type PomRootMarks } from "./pomRootMarks";
 
 export type { AriaRef };
@@ -41,6 +42,12 @@ export type PageState = {
 export type PageStateCapture = {
   readonly tree: StructuralTree;
   readonly elementsByRef: ReadonlyMap<AriaRef, Element>;
+  /**
+   * For each predicate the capture was asked, the refs of the elements it
+   * keeps, as the in-page module evaluated it: the closed sets the Goal
+   * Loop's options come from. Absent when the capture was asked for none.
+   */
+  readonly accepted?: Partial<Record<Predicate, ReadonlySet<string>>>;
 };
 
 /** One capture of the page: its tree, element map and Page Object Root Marks. */

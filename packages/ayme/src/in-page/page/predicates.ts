@@ -1,6 +1,9 @@
-// The Browser Tools' element filters: which elements click, hover, type,
-// fill, check, uncheck and select_option take. Rules over an element handed
-// in; the Goal Loop offers a tool only the elements its filter keeps.
+// Stryker disable all
+// The Browser Tools' element predicates, which run in the document (the
+// in-page module's page part): which elements click, hover, type, fill, check,
+// uncheck and select_option take. Rules over an element handed in; the Goal
+// Loop offers a tool only the elements its predicate keeps.
+import type { Predicate } from "../../shared";
 
 const INTERACTIVE_ROLE_SELECTOR = [
   "a[href]",
@@ -52,7 +55,7 @@ function isDisabled(element: Element): boolean {
 }
 
 /** The filter of click and hover: not disabled, interactive or pointer-cursored. */
-export function isClickableElement(element: Element): boolean {
+function isClickableElement(element: Element): boolean {
   if (isDisabled(element)) return false;
   return (
     element.matches(INTERACTIVE_ROLE_SELECTOR) ||
@@ -62,7 +65,7 @@ export function isClickableElement(element: Element): boolean {
 }
 
 /** The filter of type and fill: an element text can actually be entered into. */
-export function isFillableElement(element: Element): boolean {
+function isFillableElement(element: Element): boolean {
   if (isDisabled(element)) return false;
   if (
     element.matches(
@@ -80,7 +83,7 @@ const UNCHECKABLE_SELECTOR =
   "input[type=checkbox], [role=checkbox], [role=menuitemcheckbox], [role=switch]";
 
 /** The filter of check: a checkbox, radio button or switch that is not disabled. */
-export function isCheckableElement(element: Element): boolean {
+function isCheckableElement(element: Element): boolean {
   if (isDisabled(element)) return false;
   return element.matches(
     `${UNCHECKABLE_SELECTOR}, input[type=radio], [role=radio], [role=menuitemradio]`
@@ -88,11 +91,20 @@ export function isCheckableElement(element: Element): boolean {
 }
 
 /** The filter of uncheck: a checkbox or switch; a radio button cannot be unchecked. */
-export function isUncheckableElement(element: Element): boolean {
+function isUncheckableElement(element: Element): boolean {
   return !isDisabled(element) && element.matches(UNCHECKABLE_SELECTOR);
 }
 
 /** The filter of select_option: a select element that is not disabled. */
-export function isSelectElement(element: Element): boolean {
+function isSelectElement(element: Element): boolean {
   return element instanceof HTMLSelectElement && !isDisabled(element);
 }
+
+/** The five predicates, by name. */
+export const predicates: Record<Predicate, (element: Element) => boolean> = {
+  clickable: isClickableElement,
+  fillable: isFillableElement,
+  checkable: isCheckableElement,
+  uncheckable: isUncheckableElement,
+  select: isSelectElement,
+};

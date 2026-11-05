@@ -10,6 +10,7 @@ import type { HostKey, Slot } from "./install";
 export type CallName =
   | "capture"
   | "measure"
+  | "reachable"
   | "pick"
   | "cancelPick"
   | "begin"

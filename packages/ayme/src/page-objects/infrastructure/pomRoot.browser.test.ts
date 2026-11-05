@@ -15,7 +15,6 @@ import {
   registerCompiledPom,
 } from "./registry";
 import { createAyme, type Ayme } from "../../runtime";
-import { geometryReach } from "../../page-state/infrastructure";
 
 // Observation and publication seam (ADR-0042): a Page Object Model that
 // names its root on the decorator, observed on a real page, and what the
@@ -112,8 +111,9 @@ describe("Page Object Root by option", () => {
     const state = await agent.getPageState();
     const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
     const childRef = state.text.match(/(\w+) Child\b/)![1]!;
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const options = buildToolOptions({ page, reach: geometryReach });
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const options = await toolOptionsOf(page);
     for (const name of ["Shell.open", "Child.open"])
       expect(
         options.find(({ key }) => key === name)?.tool.args[0]?.closedSet
@@ -163,8 +163,9 @@ describe("Page Object Root by option", () => {
     expect(
       listed("Announcer.announce")?.inputSchema.properties
     ).not.toHaveProperty("ref");
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const offered = buildToolOptions({ page, reach: geometryReach }).find(
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "Announcer.announce"
     )!;
     expect(offered.tool.args).toMatchObject([
@@ -245,12 +246,12 @@ describe("Page Object Root by option", () => {
     });
     session.pom.register(RowsPage);
     await probeRegisteredPomMembers();
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const offered = () =>
-      buildToolOptions({ page, reach: geometryReach }).find(
-        ({ key }) => key === "Row.open"
-      )!.tool.args[0]!.closedSet;
-    expect(offered()).toMatchObject({
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const offered = async () =>
+      (await toolOptionsOf(page)).find(({ key }) => key === "Row.open")!.tool
+        .args[0]!.closedSet;
+    expect(await offered()).toMatchObject({
       kind: "instance",
       roots: [{}, {}],
     });
@@ -260,7 +261,7 @@ describe("Page Object Root by option", () => {
     expect(opened).toEqual(["second"]);
     document.getElementById("first")!.remove();
     // No probe follows the removal: the Goal Loop must leave out a stale root.
-    expect(offered()).toMatchObject({
+    expect(await offered()).toMatchObject({
       kind: "instance",
       roots: [{}],
     });

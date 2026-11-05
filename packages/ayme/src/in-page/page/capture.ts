@@ -2,7 +2,8 @@
 // The document's one ref world and Ayme's dual capture over it: Playwright's
 // pinned snapshot code, with marks, a ref counter and a ref map that only
 // this module has, one set per document.
-import type { Capture, CapturedRoot } from "../../shared";
+import type { Capture, CapturedRoot, Predicate } from "../../shared";
+import { predicates } from "./predicates";
 
 /** A mark: the ref an element got, kept while its role and name stay. */
 export type Mark = { role: string; name: string; ref: string };
@@ -41,6 +42,12 @@ export type CaptureRoots = {
   roots?: readonly { label: string; element: Element }[];
   /** The host's absent Page Object Roots, whose subtrees it leaves out. */
   absent?: readonly Element[];
+};
+
+/** What a host asks of a capture besides the roots and exclusions it hands in. */
+export type CaptureAsk = {
+  /** The predicates whose accepted refs the capture carries. */
+  accepts?: readonly Predicate[];
 };
 
 type CaptureBody = Omit<Capture, "document" | "url">;
@@ -94,7 +101,8 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
 
   function capture(
     root: Element,
-    inputs: ElementInputs & CaptureRoots = {}
+    inputs: ElementInputs & CaptureRoots = {},
+    ask: CaptureAsk = {}
   ): CaptureBody {
     const ignores = (element: Element) => inputs.ignores?.(element) ?? false;
     const present = (inputs.roots ?? []).filter(
@@ -130,18 +138,25 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
       if (ref !== undefined) referenced.push({ labels, ref });
       else omitted.push({ element, labels });
     }
+    // A root the snapshot left out is named by its synthetic ref, and a
+    // predicate keeps it like any element.
+    const named = new Map(snapshot.refsByElement);
     const roots = [
       ...referenced,
-      ...outerToInner(omitted).map(({ element, labels }): CapturedRoot => ({
-        labels,
-        syntheticRef: syntheticRefOf(element),
-        descendantRefs: [...snapshot.refsByElement]
-          .filter(
-            ([candidate]) =>
-              candidate !== element && element.contains(candidate)
-          )
-          .map(([, ref]) => ref),
-      })),
+      ...outerToInner(omitted).map(({ element, labels }): CapturedRoot => {
+        const syntheticRef = syntheticRefOf(element);
+        named.set(element, syntheticRef);
+        return {
+          labels,
+          syntheticRef,
+          descendantRefs: [...snapshot.refsByElement]
+            .filter(
+              ([candidate]) =>
+                candidate !== element && element.contains(candidate)
+            )
+            .map(([, ref]) => ref),
+        };
+      }),
     ];
 
     return {
@@ -149,6 +164,7 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
       fullText: snapshot.fullText,
       excludedRefs,
       roots,
+      ...(ask.accepts ? { accepted: acceptedBy(ask.accepts, named) } : {}),
     };
   }
 
@@ -175,6 +191,21 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
         : [];
     },
   };
+}
+
+/** For each predicate, the refs of the elements it keeps, in capture order. */
+function acceptedBy(
+  asked: readonly Predicate[],
+  refsByElement: ReadonlyMap<Element, string>
+): Partial<Record<Predicate, string[]>> {
+  const accepted: Partial<Record<Predicate, string[]>> = {};
+  for (const predicate of asked) {
+    const keeps = predicates[predicate];
+    accepted[predicate] = [...refsByElement]
+      .filter(([element]) => keeps(element))
+      .map(([, ref]) => ref);
+  }
+  return accepted;
 }
 
 /** `element` and its ancestors, across slots and shadow roots. */

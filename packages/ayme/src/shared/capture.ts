@@ -14,6 +14,23 @@ export type CapturedRoot =
   | { labels: string[]; ref: string }
   | { labels: string[]; syntheticRef: string; descendantRefs: string[] };
 
+/**
+ * An element predicate of the Browser Tools (ADR-0023), evaluated in the
+ * page: which elements click and hover, type and fill, check, uncheck and
+ * select_option take.
+ */
+export type Predicate =
+  "clickable" | "fillable" | "checkable" | "uncheckable" | "select";
+
+/** Every predicate, in the order the Browser Tools use them. */
+export const PREDICATES: readonly Predicate[] = [
+  "clickable",
+  "fillable",
+  "checkable",
+  "uncheckable",
+  "select",
+];
+
 /** One capture of one document: Ayme's dual capture, for one host. */
 export type Capture = {
   document: DocumentToken;
@@ -26,6 +43,12 @@ export type Capture = {
   excludedRefs: string[];
   /** This host's present roots: referenced first, then the others from outer to inner. */
   roots: CapturedRoot[];
+  /**
+   * For each predicate the host asked, the refs of the captured elements it
+   * keeps, in capture order: the closed sets the Goal Loop's options come
+   * from. Absent when the host asked for none.
+   */
+  accepted?: Partial<Record<Predicate, string[]>>;
 };
 
 /**

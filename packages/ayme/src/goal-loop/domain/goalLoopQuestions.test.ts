@@ -23,6 +23,7 @@ import {
   clickTool,
   noul,
   refArg,
+  toolWithNodes,
 } from "../test-utils/stepDecision.testSupport";
 
 /**
@@ -35,7 +36,7 @@ import {
 describe("readRunOffAnswer", () => {
   it("rejects a run-off answer outside the elements it offered", () => {
     const capture = captureOfButtons(600);
-    const plan = planArguments(clickTool, capture);
+    const plan = planArguments(toolWithNodes(clickTool, capture), capture);
     if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
     const named: Record<string, string> = {
       [chunkQuestionId("ref", 1, ["ref"])]: "e10",
@@ -98,7 +99,7 @@ describe("fitListsToTarget", () => {
    * medium and large with `scores`.
    */
   function chosenWith(capture: PageStateCapture, scores: readonly number[]) {
-    const plan = planArguments(selectTool, capture, {
+    const plan = planArguments(toolWithNodes(selectTool, capture), capture, {
       small: "S",
       medium: "M",
       large: "L",
