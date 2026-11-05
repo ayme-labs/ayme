@@ -10,7 +10,6 @@ export default {
   // a shard 1.5 GB from running out.
   maxTestRunnerReuse: 10,
   // Two workers rather than one per core keep a job's peak memory well clear
-  // of the runner's limit; the Analysis workflow gives the Inspector twice the
-  // shards to keep each job's run time.
+  // of the runner's limit.
   concurrency: 2,
 };

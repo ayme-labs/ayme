@@ -3,7 +3,6 @@
  * the package's fast-lane Vitest config. See docs/testing.md#change-analysis.
  */
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
 
@@ -21,11 +20,7 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
   return {
     packageManager: "pnpm",
     testRunner: "vitest",
-    plugins: [
-      "@stryker-mutator/vitest-runner",
-      // DIAGNOSTIC, temporary: see strykerTrace.js.
-      fileURLToPath(new URL("./strykerTrace.js", import.meta.url)),
-    ],
+    plugins: ["@stryker-mutator/vitest-runner"],
     vitest: { configFile: "vitest.fast.config.ts", related: true },
     ignoreStatic: !full,
     // Two workers keep a local run light; CI's full lane takes every core.
@@ -42,9 +37,7 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
       "..",
       `.stryker-tmp-${path.basename(process.cwd())}`
     ),
-    reporters: full
-      ? ["clear-text", "json", "html", "trace"]
-      : ["clear-text", "json"],
+    reporters: full ? ["clear-text", "json", "html"] : ["clear-text", "json"],
     htmlReporter: { fileName: `reports/mutation/mutation-full${suffix}.html` },
     jsonReporter: {
       fileName: full
