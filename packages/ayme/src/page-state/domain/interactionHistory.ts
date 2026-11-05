@@ -86,8 +86,9 @@ export class InteractionHistory {
   }
 
   /**
-   * Record a same-document navigation to `url`, which starts a new Visit,
-   * then tell the navigation listeners.
+   * Record a same-document navigation to `url`, which starts a new Visit
+   * unless only its query or hash changed, then tell the navigation
+   * listeners.
    */
   recordNavigation(url: string): void {
     this.observations.recordNavigation({
