@@ -14,6 +14,11 @@ export type {
   GoalLoopStepScore,
 } from "./goal-loop/application";
 export { DONE_BAR, LOWER_BAR } from "./goal-loop/application";
+// The in-page module's host side (ADR-0049), which tests drive over a
+// Playwright Lite or a real Playwright page until the `./playwright` entry
+// carries it (#1179).
+export { createInPageHost, inPage, InPageVersionError } from "./in-page";
+export type { Bound, InPage, InPageHost } from "./in-page";
 
 type WithStore = typeof globalThis & {
   [goalLoopRunResultKey]?: GoalLoopRunResultStore;

@@ -1,6 +1,8 @@
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig, type Plugin } from "vitest/config";
 
+import { inPageModule } from "./build/inPageModule.ts";
+
 // Pages a test can start a full load to without leaving the test document:
 // a 204 drops the load, and `/__redirect` redirects to it.
 const noContent: Plugin = {
@@ -22,7 +24,7 @@ export default defineConfig({
   test: {
     projects: [
       {
-        plugins: [noContent],
+        plugins: [noContent, inPageModule()],
         test: {
           name: "chromium",
           browser: {
