@@ -243,14 +243,11 @@ export class StructuralTimeline {
   /**
    * Resolved evidence per completed action. Any entry that lands anywhere but at the end of the
    * timeline can move an earlier action's boundaries, and so can an observation captured for a
-   * visit, which joins that visit wherever it lands, so such an insert forgets everything; a
-   * crossing action whose after is only a fallback is never kept, since its explicit capture may
-   * still arrive.
+   * visit, which joins that visit wherever it lands, so such an insert forgets everything by
+   * replacing the map: a reading under way keeps writing to the map it started with. A crossing
+   * action whose after is only a fallback is never kept, since its explicit capture may still arrive.
    */
-  private readonly _resolvedActions = new Map<
-    StructuralActionId,
-    ResolvedAction
-  >();
+  private _resolvedActions = new Map<StructuralActionId, ResolvedAction>();
 
   visits(): ReadonlyArray<StructuralVisitSnapshot> {
     return deriveVisitsFromEntries(this._entries);
@@ -470,7 +467,8 @@ export class StructuralTimeline {
         "Unable to resolve structural action evidence from observations."
       );
     }
-    const alreadyResolved = this._resolvedActions.get(actionId);
+    const resolvedActions = this._resolvedActions;
+    const alreadyResolved = resolvedActions.get(actionId);
     if (alreadyResolved) return alreadyResolved.evidence;
 
     // Resolve each selected observation's lazy tree at most once. Only the handful of observations
@@ -523,7 +521,7 @@ export class StructuralTimeline {
     let baselineTree: StructuralTree | null = null;
     let firstIndex = 0;
     for (let index = queriedIndex - 1; index >= 0; index -= 1) {
-      const earlier = this._resolvedActions.get(actions[index]!.actionId);
+      const earlier = resolvedActions.get(actions[index]!.actionId);
       if (!earlier) continue;
       const afterIndex = observations.indexOf(earlier.after);
       if (afterIndex < 0) continue;
@@ -653,7 +651,7 @@ export class StructuralTimeline {
         },
       };
       if (selectedAfter.settled)
-        this._resolvedActions.set(action.actionId, {
+        resolvedActions.set(action.actionId, {
           evidence,
           after,
           afterTree,
@@ -771,7 +769,7 @@ export class StructuralTimeline {
       (last && last.at === entry.at) ||
       (entry.kind === "observation" && entry.capturedForVisitId !== undefined)
     )
-      this._resolvedActions.clear();
+      this._resolvedActions = new Map();
     this._entries.splice(index, 0, entry);
   }
 
@@ -923,10 +921,12 @@ export class StructuralTimeline {
           index: observations.indexOf(explicit),
           settled: true,
         };
-      const destination = this._firstObservationFrom(
-        context.nextVisitBoundaryIndex,
-        context.pageId
-      );
+      const destination =
+        this._visitObservations(context.nextVisitBoundaryIndex)[0] ??
+        this._firstObservationFrom(
+          context.nextVisitBoundaryIndex,
+          context.pageId
+        );
       if (destination)
         return { observation: destination, index: -1, settled: false };
       return { ...at(observations.length - 1), settled: false };
@@ -962,21 +962,19 @@ export class StructuralTimeline {
   }
 
   /**
-   * The first observation of the page at or after the visit-opening entry `fromIndex`, skipping those
-   * captured for another visit, or null when none is recorded.
+   * The first observation of the page at or after entry `fromIndex` not captured for a visit, or null
+   * when none is recorded.
    */
   private _firstObservationFrom(
     fromIndex: number,
     pageId: PageId
   ): StructuralObservationEntry | null {
-    const visitId = (this._entries[fromIndex] as StructuralNavigationEntry)
-      .startedVisitId;
     for (let index = fromIndex; index < this._entries.length; index += 1) {
       const entry = this._entries[index]!;
       if (
         entry.kind === "observation" &&
         entry.pageId === pageId &&
-        (entry.capturedForVisitId ?? visitId) === visitId
+        entry.capturedForVisitId === undefined
       )
         return entry;
     }

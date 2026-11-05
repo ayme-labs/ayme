@@ -13,7 +13,7 @@ import {
   VisitWithoutObservationError,
   type StructuralObservationEntry,
 } from "./StructuralTimeline";
-import { VisitIdSchema } from "./Visit";
+import { VisitIdSchema, type VisitId } from "./Visit";
 
 const PAGE = PageIdSchema.parse("page@test");
 
@@ -620,8 +620,70 @@ describe("StructuralObservationSession visit-start capture that completes after 
     expect(headingOf(evidence.actionChange.structuralTree)).toBe("B");
   });
 
-  it("reads an action the same whether it was read before its visit's late capture arrived or not", async () => {
-    const read = async (readEarly: boolean) => {
+  it("takes a navigating action's after from its destination visit's capture even when that capture sorts before the visit's navigation", async () => {
+    let now = 100;
+    const session = new StructuralObservationSession({
+      clock: { now: () => now },
+    });
+    const observe = (at: number, yaml: string, visitId: VisitId) => {
+      const observedAt = MonotonicTimeMsSchema.parse(at);
+      const tree = StructuralTree.fromAriaSnapshotYaml(
+        yaml,
+        new SyntheticAriaRefFactory()
+      );
+      session.recordObservation({
+        kind: "observation",
+        at: observedAt,
+        pageId: PAGE,
+        tree: {
+          pageId: PAGE,
+          capturedAt: observedAt,
+          resolve: async () => tree,
+        },
+        capturedForVisitId: visitId,
+      });
+    };
+    const a = session.recordNavigation({
+      pageId: PAGE,
+      url: "https://app.test/",
+      cause: "initial",
+    });
+    if (a.kind !== "visit-started") throw new Error("Expected a visit.");
+    observe(150, '- heading "A" [ref=e1]', a.visit.id);
+    const actionId = StructuralActionIdSchema.parse("interaction_1");
+    session.recordActionStarted({
+      kind: "action-started",
+      at: MonotonicTimeMsSchema.parse(160),
+      pageId: PAGE,
+      actionId,
+    });
+    now = 200;
+    const b = session.prepareNavigation({
+      pageId: PAGE,
+      url: "https://app.test/b",
+      cause: "navigate",
+    });
+    if (b.registration.kind !== "visit-started")
+      throw new Error("Expected a visit.");
+    // Captured at the navigation's own timestamp, before the navigation is committed.
+    observe(200, '- heading "B" [ref=e2]', b.registration.visit.id);
+    b.commit();
+    session.recordActionCompleted({
+      kind: "action-completed",
+      at: MonotonicTimeMsSchema.parse(220),
+      pageId: PAGE,
+      actionId,
+    });
+
+    const evidence = await session.getActionEvidence(actionId);
+
+    expect(headingOf(evidence.actionChange.structuralTree)).toBe("B");
+  });
+
+  // B has an action with no post-action capture, so its after is B's last observation once C opens.
+  it.each(["never", "before", "while"] as const)(
+    "reads an action with its visit's late capture, whether it was also read %s that capture arrived",
+    async (earlierRead) => {
       const { session, b, observe } = racedSession({ tagged: true });
       observe(201, '- heading "B" [ref=e2]');
       const actionId = StructuralActionIdSchema.parse("interaction_1");
@@ -637,14 +699,25 @@ describe("StructuralObservationSession visit-start capture that completes after 
         pageId: PAGE,
         actionId,
       });
-      if (readEarly) await session.getActionEvidence(actionId);
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const earlier =
+        earlierRead === "never"
+          ? Promise.resolve()
+          : session.getActionEvidence(actionId, async (evidence) => {
+              if (earlierRead === "while") await gate;
+              return evidence.resolve();
+            });
+      if (earlierRead === "before") await earlier;
       observe(260, '- heading "B late" [ref=e8]', { capturedForVisitId: b });
-      const evidence = await session.getActionEvidence(actionId);
-      return headingOf(evidence.actionChange.structuralTree);
-    };
+      release();
+      await earlier;
 
-    expect(await read(true)).toBe(await read(false));
-  });
+      const evidence = await session.getActionEvidence(actionId);
+
+      expect(headingOf(evidence.actionChange.structuralTree)).toBe("B late");
+    }
+  );
 
   it("tells a visit with no observation apart from an unknown visit", async () => {
     const { session, b, c, lateB } = racedSession({ tagged: false });
