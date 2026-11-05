@@ -131,6 +131,110 @@ describe("waitForSettled", () => {
     });
   });
 
+  it("re-arms the quiet check on activity, whatever the clock reads when the old timer fires", async () => {
+    let now = 0;
+    const listeners = new Set<() => void>();
+    const clock = { now: () => MonotonicTimeMsSchema.parse(now) };
+    const activity: PageActivitySource = {
+      subscribe(onActivity) {
+        listeners.add(onActivity);
+        return () => listeners.delete(onActivity);
+      },
+    };
+    const result = waitForSettled({
+      activity,
+      clock,
+      quietMs: 250,
+      deadlineMs: 475,
+    });
+
+    await vi.advanceTimersByTimeAsync(200);
+    now = 200;
+    for (const listener of listeners) listener();
+    // The deadline timer and exactly one quiet timer.
+    expect(vi.getTimerCount()).toBe(2);
+
+    // The first quiet timer's time passes while the clock still reads 200.
+    await vi.advanceTimersByTimeAsync(50);
+    now = 450;
+    await vi.advanceTimersByTimeAsync(200);
+
+    await expect(result).resolves.toMatchObject({ reason: "quiet" });
+  });
+
+  it("resolves and clears every timer even when unsubscribing throws", async () => {
+    const clock = { now: () => MonotonicTimeMsSchema.parse(0) };
+
+    const result = waitForSettled({
+      activity: {
+        subscribe: () => () => {
+          throw new Error("cannot unsubscribe");
+        },
+      },
+      clock,
+      quietMs: 0,
+      deadlineMs: 2_000,
+    });
+
+    await expect(result).resolves.toMatchObject({ reason: "quiet" });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("reports how long the wait took on the clock, not the clock's own time", async () => {
+    const { clock, activity, advance } = createHarness(1_000);
+    const result = waitForSettled({
+      activity,
+      clock,
+      quietMs: 250,
+      deadlineMs: 2_000,
+    });
+
+    await advance(250);
+    await expect(result).resolves.toMatchObject({ settledAfterMs: 250 });
+  });
+
+  it("resolves quiet at once when quietMs is zero", async () => {
+    const { clock, activity } = createHarness();
+
+    const result = waitForSettled({
+      activity,
+      clock,
+      quietMs: 0,
+      deadlineMs: 2_000,
+    });
+
+    await expect(result).resolves.toEqual({
+      stable: true,
+      reason: "quiet",
+      settledAfterMs: 0,
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("ignores activity an activity source reports after it resolved", async () => {
+    let now = 0;
+    let report = () => {};
+    const clock = { now: () => MonotonicTimeMsSchema.parse(now) };
+    const result = waitForSettled({
+      activity: {
+        subscribe(onActivity) {
+          report = onActivity;
+          return () => {};
+        },
+      },
+      clock,
+      quietMs: 250,
+      deadlineMs: 2_000,
+    });
+
+    now = 250;
+    await vi.advanceTimersByTimeAsync(250);
+    await result;
+    report();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   describe("with an AbortSignal", () => {
     it("resolves aborted at once, unsubscribes and clears every timer", async () => {
       const { clock, activity, emit, advance, listenerCount } = createHarness();
@@ -244,6 +348,23 @@ describe("waitForSettled", () => {
       );
     });
 
+    it("keeps the first reason when unsubscribing aborts the signal", async () => {
+      const controller = new AbortController();
+      const unsubscribe = vi.fn(() => controller.abort());
+      const clock = { now: () => MonotonicTimeMsSchema.parse(0) };
+
+      const result = waitForSettled({
+        activity: { subscribe: () => unsubscribe },
+        clock,
+        quietMs: 0,
+        deadlineMs: 2_000,
+        signal: controller.signal,
+      });
+
+      await expect(result).resolves.toMatchObject({ reason: "quiet" });
+      expect(unsubscribe).toHaveBeenCalledOnce();
+    });
+
     it("stops listening to the signal once it resolved", async () => {
       const { clock, activity, advance } = createHarness();
       const signal = new AbortController().signal;
@@ -267,8 +388,8 @@ describe("waitForSettled", () => {
   });
 });
 
-function createHarness() {
-  let now = 0;
+function createHarness(startAt = 0) {
+  let now = startAt;
   const listeners = new Set<() => void>();
   const clock = {
     now: () => MonotonicTimeMsSchema.parse(now),

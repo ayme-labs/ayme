@@ -34,21 +34,25 @@ export function waitForSettled(options: {
     const onAbort = () => finish("aborted");
 
     const release = () => {
-      unsubscribe();
-      if (quietTimer !== undefined) clearTimeout(quietTimer);
-      clearTimeout(deadlineTimer);
-      signal?.removeEventListener("abort", onAbort);
+      try {
+        unsubscribe();
+      } finally {
+        clearTimeout(quietTimer);
+        clearTimeout(deadlineTimer);
+        signal?.removeEventListener("abort", onAbort);
+      }
     };
 
     const finish = (reason: "quiet" | "deadline" | "aborted") => {
       if (finished) return;
       finished = true;
-      release();
       resolve({
         stable: reason === "quiet",
         reason,
         settledAfterMs: clock.now() - startedAt,
       });
+      // After resolving, so an `unsubscribe` that throws cannot leave the wait pending.
+      release();
     };
 
     const deadlineTimer = setTimeout(() => finish("deadline"), deadlineMs);
@@ -57,20 +61,18 @@ export function waitForSettled(options: {
       finish("aborted");
       return;
     }
-    signal?.addEventListener("abort", onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort);
 
     const scheduleQuietCheck = () => {
       if (finished) return;
-      if (quietTimer !== undefined) clearTimeout(quietTimer);
+      clearTimeout(quietTimer);
       const remaining = quietMs - (clock.now() - lastActivityAt);
       if (remaining <= 0) {
         finish("quiet");
         return;
       }
-      quietTimer = setTimeout(() => {
-        if (clock.now() - lastActivityAt >= quietMs) finish("quiet");
-        else scheduleQuietCheck();
-      }, remaining);
+      // When it fires, activity may have moved the quiet window on: check again.
+      quietTimer = setTimeout(scheduleQuietCheck, remaining);
     };
 
     try {
