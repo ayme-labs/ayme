@@ -139,6 +139,9 @@ describe("StructuralObservationSession", () => {
     ["https://example.test/rick?a=1", "https://other.test/rick?a=1"],
     ["https://example.test/rick", "http://example.test/rick?a=1"],
     ["not a url", "not a url?a=1"],
+    // Opaque origins all serialize as "null": the host and scheme still tell them apart.
+    ["about:blank", "data:blank"],
+    ["file://one/a?x=1", "file://two/a?x=2"],
   ])("starts a new visit for %s -> %s", (from, to) => {
     const session = sessionWithClock([1, 2]);
     session.recordNavigation({ pageId: PAGE, url: from, cause: "initial" });

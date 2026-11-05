@@ -102,8 +102,11 @@ function isSameOriginAndPath(fromUrl: string, toUrl: string): boolean {
   try {
     const previous = new URL(fromUrl);
     const next = new URL(toUrl);
+    // Not `origin`: every opaque origin (`about:`, `data:`, `file:`) is "null".
     return (
-      previous.origin === next.origin && previous.pathname === next.pathname
+      previous.protocol === next.protocol &&
+      previous.host === next.host &&
+      previous.pathname === next.pathname
     );
   } catch {
     return false;
