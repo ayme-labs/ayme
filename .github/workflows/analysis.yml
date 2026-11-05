@@ -29,10 +29,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # A package's full lane runs in one job unless it is listed in `shards`:
-      # the inspector's and ayme's take over two hours each on one runner.
+      # the inspector's and ayme's take over two hours each on one runner. The
+      # inspector runs two Stryker workers rather than four to fit the runner's
+      # memory (see its stryker.config.mjs), so it takes twice the shards.
       - id: list
         run: |
-          jobs=$(jq -sc --argjson shards '{"@ayme-dev/inspector": 4, "@ayme-dev/ayme": 3}' '
+          jobs=$(jq -sc --argjson shards '{"@ayme-dev/inspector": 8, "@ayme-dev/ayme": 3}' '
             [.[] | select(.scripts["test:mutation"]) | .name as $package
               | ($shards[$package] // 1) as $count
               | range(1; $count + 1)
