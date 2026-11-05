@@ -270,6 +270,47 @@ describe("StructuralObservationSession identity ledger", () => {
     });
   });
 
+  it("attributes an observation stamped at an action's start to that action, and ignores other pages' actions", async () => {
+    const { session, navigate, ledger } = recordingSession();
+    navigate("https://example.test/", "initial");
+    const record = (at: number, yaml: string) => {
+      const observedAt = MonotonicTimeMsSchema.parse(at);
+      const tree = StructuralTree.fromAriaSnapshotYaml(
+        yaml,
+        new SyntheticAriaRefFactory()
+      );
+      session.recordObservation({
+        kind: "observation",
+        at: observedAt,
+        pageId: PAGE,
+        tree: {
+          pageId: PAGE,
+          capturedAt: observedAt,
+          resolve: async () => tree,
+        },
+      });
+    };
+    const start = (at: number, id: string, pageId = PAGE) => {
+      const actionId = StructuralActionIdSchema.parse(id);
+      session.recordActionStarted({
+        kind: "action-started",
+        at: MonotonicTimeMsSchema.parse(at),
+        pageId,
+        actionId,
+      });
+      return actionId;
+    };
+    record(10, '- button "Save" [ref=e1]');
+    const onPage = start(20, "interaction_1");
+    start(20, "interaction_2", PageIdSchema.parse("page@other"));
+    record(20, '- button "Save" [ref=e2]\n- status "Draft" [ref=e3]');
+
+    expect((await ledger()).lifecycle(ref("e3"))?.appeared).toEqual({
+      visitId: "visit_1",
+      afterActionId: onPage,
+    });
+  });
+
   it("hands `read` the observation it last reconciled", async () => {
     const { session, observe } = recordingSession();
     observe('- button "Save" [ref=e1]');
