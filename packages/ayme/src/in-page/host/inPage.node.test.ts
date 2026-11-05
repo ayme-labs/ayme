@@ -6,7 +6,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, selectors, type Browser, type Page } from "@playwright/test";
 import { Rolldown } from "tsdown";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -27,6 +27,7 @@ beforeAll(async () => {
   // eslint-disable-next-line no-restricted-syntax
   built = (await import(testing)) as typeof Testing;
   pageRuntime = await bundlePageRuntime();
+  await built.registerAymeRef(selectors);
   browser = await chromium.launch();
 }, 120_000);
 
@@ -68,9 +69,14 @@ async function bundlePageRuntime(): Promise<string> {
         load: (id) =>
           id === entry
             ? [
-                `import { createPage } from ${JSON.stringify(join(dist, "index.mjs"))};`,
+                `import { createAyme, createPage } from ${JSON.stringify(join(dist, "index.mjs"))};`,
                 `import { inPage } from ${JSON.stringify(join(dist, "testing.mjs"))};`,
-                "window.aymePageRuntime = { bound: () => inPage(createPage()).bound() };",
+                "let ayme;",
+                "window.aymePageRuntime = {",
+                "  bound: () => inPage(createPage()).bound(),",
+                "  start() { ayme = createAyme(); ayme.start(); },",
+                '  snapshot: async () => (await ayme.tools.run("snapshot", {})).structure,',
+                "};",
               ].join("\n")
             : undefined,
       },
@@ -80,12 +86,31 @@ async function bundlePageRuntime(): Promise<string> {
   return output[0].code;
 }
 
+type PageRuntime = {
+  bound(): Promise<Testing.Bound>;
+  start(): void;
+  snapshot(): Promise<string>;
+};
+
+const pageRuntimeOf = (page: Page) => ({
+  start: () =>
+    page.evaluate(() =>
+      (
+        window as unknown as { aymePageRuntime: PageRuntime }
+      ).aymePageRuntime.start()
+    ),
+  snapshot: () =>
+    page.evaluate(() =>
+      (
+        window as unknown as { aymePageRuntime: PageRuntime }
+      ).aymePageRuntime.snapshot()
+    ),
+});
+
 const pageRuntimeBound = (page: Page) =>
   page.evaluate(() =>
     (
-      window as unknown as {
-        aymePageRuntime: { bound(): Promise<Testing.Bound> };
-      }
+      window as unknown as { aymePageRuntime: PageRuntime }
     ).aymePageRuntime.bound()
   );
 
@@ -136,4 +161,66 @@ describe("the page's own runtime and a Node host on one document", () => {
     );
     expect((await built.inPage(page).bound()).installedBy).toBe(runtime.host);
   });
+
+  it("the page's own runtime and a Node host share one ref world over 100 additions, and the runtime never refuses a capture", async () => {
+    const page = await newPage();
+    await page.evaluate(() => {
+      document.body.innerHTML = '<ul aria-label="Items"></ul>';
+    });
+    const runtime = pageRuntimeOf(page);
+    await runtime.start();
+    const node = built.inPage(page);
+    // Elements only one side ever sees, which a ref counter per copy of the
+    // capture code would count on that side alone.
+    const seenBy = async (capture: () => Promise<unknown>) => {
+      await page.evaluate(() =>
+        document.body.insertAdjacentHTML(
+          "beforeend",
+          '<div id="passing"><button>Passing</button><button>By</button></div>'
+        )
+      );
+      await capture();
+      await page.evaluate(() => document.getElementById("passing")!.remove());
+    };
+    await seenBy(() => node.capture());
+
+    for (let item = 1; item <= 100; item += 1) {
+      await page.evaluate((item) => {
+        document
+          .querySelector("ul")!
+          .insertAdjacentHTML(
+            "afterbegin",
+            `<li><button>Item ${item}</button></li>`
+          );
+      }, item);
+      // Node sees each new element before the page's runtime does, as in
+      // tracer bullet 5, every other time.
+      const nodeFirst = item % 2 === 1;
+      if (item === 50) await seenBy(() => runtime.snapshot());
+      const pageText = nodeFirst ? undefined : await runtime.snapshot();
+      const { fullText } = await node.capture();
+      const text = pageText ?? (await runtime.snapshot());
+
+      const refs = [...fullText.matchAll(/\[ref=([^\]]+)\]/g)].map(
+        ([, ref]) => ref
+      );
+      expect(new Set(refs).size, fullText).toBe(refs.length);
+      const nodeRef = /- button "Item (\d+)" \[ref=(e\d+)\]/.exec(
+        fullText.split("\n").find((line) => line.includes(`"Item ${item}"`))!
+      )?.[2];
+      expect(text).toContain(`- ${nodeRef} button "Item ${item}"`);
+    }
+
+    for (const item of [1, 50, 100]) {
+      const { distilledText } = await node.capture();
+      const ref = /\[ref=(e\d+)\]/.exec(
+        distilledText
+          .split("\n")
+          .find((line) => line.includes(`"Item ${item}"`))!
+      )![1];
+      expect(await page.locator(`ayme-ref=${ref}`).textContent()).toBe(
+        `Item ${item}`
+      );
+    }
+  }, 120_000);
 });

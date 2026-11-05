@@ -4,9 +4,14 @@
 // `installInPage` (build/inPageModule.ts), which a host runs in the page:
 // Playwright Lite calls it, real Playwright sends its source. Nothing here may
 // rely on state outside that function.
+import { captureAriaSnapshot } from "virtual:ayme-aria-snapshot";
 
-/** One document's identity: a new token is a new document. */
-export type DocumentToken = string & { readonly __brand: "DocumentToken" };
+import type { Capture, DocumentToken } from "../../shared";
+import { createRefWorld, type ElementInputs } from "./capture";
+
+export type { Capture, DocumentToken };
+export type { ElementInputs } from "./capture";
+
 /** One host, a side that drives the page through Playwright's Page. */
 export type HostKey = string;
 
@@ -29,11 +34,21 @@ export type InstallResult =
   { kind: "bound"; bound: Bound } | { kind: "version"; found: string };
 
 /** The one module of a document, under a well-known symbol on its global. */
-type Slot = {
+export type Slot = {
   readonly version: string;
   readonly token: DocumentToken;
   readonly installedBy: HostKey;
   bind(host: HostKey, binding: string): Bound;
+  /** A capture of the document for `host`, with the roots it hands in. */
+  capture(host: HostKey, inputs?: ElementInputs): Capture;
+  /** The connected element under `root` that `ref` names: the `ayme-ref` engine's query. */
+  queryRef(ref: string, root?: Node): Element[];
+  /**
+   * Transitional (#1182): the element `ref` names, connected or not, for the
+   * browser runtime's lookups by ref until its consumers read the page
+   * through Locators.
+   */
+  elementOf(ref: string): Element | undefined;
 };
 
 const slotKey = Symbol.for("ayme.inPage");
@@ -63,6 +78,8 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   const token = mintToken();
   // Each bound host's binding, through which the module will call it.
   const bindings = new Map<HostKey, string>();
+  // The document's one ref world: its marks, counters and ref map.
+  const refs = createRefWorld(captureAriaSnapshot);
   return Object.freeze({
     version,
     token,
@@ -71,6 +88,13 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       bindings.set(host, binding);
       return { document: token, version, installedBy, host };
     },
+    capture: (_host: HostKey, inputs?: ElementInputs): Capture => ({
+      document: token,
+      url: location.href,
+      ...refs.capture(document.body, inputs),
+    }),
+    queryRef: refs.queryRef,
+    elementOf: refs.elementOf,
   });
 }
 

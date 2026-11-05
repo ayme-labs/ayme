@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
@@ -129,7 +129,7 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/page-state/application/misplaced.ts",
-    'export { capturePage } from "../infrastructure/pageCapture";',
+    'export { capturePageState } from "../infrastructure/pageState";',
     "application may only depend on the allowed horizontal layers",
   ],
   [
@@ -646,5 +646,31 @@ it(
         readFileSync(join(packageRoot, file), "utf8"),
         `${file} no longer imports @ayme-dev/playwright-lite/internal: remove it from eslint.config.js's allowlist`
       ).toContain('"@ayme-dev/playwright-lite/internal"');
+  }
+);
+
+it(
+  "every in-page host file allowed the browser's globals still reads the slot through them",
+  { timeout: 60_000 },
+  async () => {
+    const files = readdirSync(join(packageRoot, "src/in-page/host")).filter(
+      (file) => file.endsWith(".ts") && !/\.(test|testSupport)\.ts$/.test(file)
+    );
+    const allowed: string[] = [];
+    for (const file of files) {
+      const config = (await eslint.calculateConfigForFile(
+        join(packageRoot, "src/in-page/host", file)
+      )) as { rules?: Record<string, unknown[]> };
+      const refused = JSON.stringify(config.rules?.["no-restricted-globals"]);
+      if (!refused?.includes("Only the in-page module's page part"))
+        allowed.push(file);
+    }
+    // The transitional lookup, so a lookup that finds nothing cannot pass.
+    expect(allowed).toContain("elementLookup.ts");
+    for (const file of allowed)
+      expect(
+        readFileSync(join(packageRoot, "src/in-page/host", file), "utf8"),
+        `src/in-page/host/${file} no longer reads globalThis: remove it from eslint.config.js's allowlist`
+      ).toContain("globalThis");
   }
 );

@@ -167,7 +167,7 @@ it("excludes the Inspector UI from structural page-state capture", async () => {
   const inspector = mountInspector();
   await Promise.resolve();
 
-  const state = await capturePageState(document.body);
+  const state = await capturePageState();
 
   expect(state).toContain("Consumer application");
   // The panel is titled and labelled "ayme"; the host page never says it.

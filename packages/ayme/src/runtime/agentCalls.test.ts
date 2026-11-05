@@ -10,7 +10,11 @@ const { captureAriaSnapshot, pageObjectRoots, listRegisteredPoms } = vi.hoisted(
   })
 );
 
-vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
+vi.mock("../page-state/infrastructure/browserInPage", async () =>
+  (
+    await import("../test-utils/inPageCapture.testSupport")
+  ).standInBrowserInPage(captureAriaSnapshot)
+);
 vi.mock("../page-objects/infrastructure/registry", () => ({
   listRegisteredPoms,
 }));

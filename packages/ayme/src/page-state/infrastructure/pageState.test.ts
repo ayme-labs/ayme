@@ -7,7 +7,11 @@ const { captureAriaSnapshot, pageObjectRoots } = vi.hoisted(() => ({
   pageObjectRoots: vi.fn(),
 }));
 
-vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
+vi.mock("./browserInPage", async () =>
+  (
+    await import("../../test-utils/inPageCapture.testSupport")
+  ).standInBrowserInPage(captureAriaSnapshot)
+);
 
 import {
   AriaRefSchema,

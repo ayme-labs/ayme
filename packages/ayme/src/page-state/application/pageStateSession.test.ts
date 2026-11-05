@@ -3,15 +3,20 @@ import {
   AriaRefSchema,
   MonotonicTimeMsSchema,
   PageIdSchema,
-  StructuralTree,
-  SyntheticAriaRefFactory,
+  type AriaRef,
   type StructuralActionId,
 } from "@ayme-dev/core/structural-observation";
+import type { Capture, DocumentToken } from "../../shared";
 import { createCursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession, type ActionPage } from "./pageStateSession";
 import type { PomRootMarks } from "../domain/pomRootMarks";
-import type { PageCapture } from "../domain/structuralPageState";
+
+/** A capture as the module answers it, and the elements its refs name. */
+type PageCapture = {
+  capture: Capture;
+  elementsByRef: ReadonlyMap<AriaRef, Element>;
+};
 
 const ref = AriaRefSchema.parse;
 
@@ -34,12 +39,18 @@ function capture(
   pomRootMarks: PomRootMarks = new Map()
 ): PageCapture {
   return {
-    tree: StructuralTree.fromAriaSnapshotYaml(
-      yaml,
-      new SyntheticAriaRefFactory()
-    ),
+    capture: {
+      document: "document_1" as DocumentToken,
+      url: "https://app.test/",
+      distilledText: yaml,
+      fullText: yaml,
+      excludedRefs: [],
+      roots: [...pomRootMarks].map(([ref, labels]) => ({
+        labels: [...labels],
+        ref,
+      })),
+    },
     elementsByRef: new Map(elements.map(([key, value]) => [ref(key), value])),
-    pomRootMarks,
   };
 }
 
@@ -60,6 +71,7 @@ function sessionOver(...captures: (PageCapture | Error)[]) {
 /** `sessionOver` on `page`. */
 function sessionOn(page: ActionPage, ...captures: (PageCapture | Error)[]) {
   let taken = 0;
+  let elements: ReadonlyMap<AriaRef, Element> = new Map();
   const session = new PageStateSession(
     new InteractionHistory({
       pageId: PageIdSchema.parse("document_1"),
@@ -69,9 +81,17 @@ function sessionOn(page: ActionPage, ...captures: (PageCapture | Error)[]) {
     async () => {
       const next = captures[Math.min(taken++, captures.length - 1)]!;
       if (next instanceof Error) throw next;
-      return next;
+      elements = next.elementsByRef;
+      return next.capture;
     },
-    page
+    page,
+    (refs) =>
+      new Map(
+        refs.flatMap((key) => {
+          const found = elements.get(key);
+          return found ? [[key, found] as const] : [];
+        })
+      )
   );
   return { session, count: () => taken };
 }

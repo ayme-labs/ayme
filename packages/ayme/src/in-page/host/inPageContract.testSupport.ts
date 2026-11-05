@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, it } from "vitest";
 
-import type { InPageHost } from "./inPage";
+import type { ElementInputs, InPageHost } from "./inPage";
 
 /**
  * One runtime the in-page module's contract runs on: Playwright Lite in the
@@ -17,6 +17,24 @@ export type InPageLane = {
   /** Whether a host outlives a full load of its page, as a Node host does and the page's own runtime does not. */
   hostsOutliveLoads: boolean;
 };
+
+/** Replaces the page's body, in the page's own realm on either runtime. */
+async function setBody(page: Page, html: string) {
+  await page.evaluate(`document.body.innerHTML = ${JSON.stringify(html)}`);
+}
+
+/** Every Structural Ref a capture text prints, in order. */
+function refsIn(text: string): string[] {
+  return [...text.matchAll(/\[ref=([^\]]+)\]/g)].map(([, ref]) => ref!);
+}
+
+/** The ref `text` prints on the line naming `name`. */
+function refOf(text: string, name: string): string {
+  const line = text.split("\n").find((candidate) => candidate.includes(name));
+  const ref = line && refsIn(line)[0];
+  if (!ref) throw new Error(`No ref for ${name} in:\n${text}`);
+  return ref;
+}
 
 /** The in-page module's contract, as every host sees it through `inPage(page)`. */
 export function inPageContract(lane: InPageLane) {
@@ -137,4 +155,155 @@ export function inPageContract(lane: InPageLane) {
       expect(after.installedBy).toBe(before.host);
     }
   );
+
+  it("a capture gives the document's distilled and full text, a ref on every node", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      "<main><h1>Groceries</h1><p>Two items</p><button>Add item</button></main>"
+    );
+    const host = lane.createHost(page);
+
+    const capture = await host.inPage(page).capture();
+
+    expect(capture).toEqual({
+      document: (await host.inPage(page).bound()).document,
+      url: page.url(),
+      distilledText: [
+        "- main [ref=e2]:",
+        '  - heading "Groceries" [level=1] [ref=e3]',
+        "  - paragraph [ref=e4]: Two items",
+        '  - button "Add item" [ref=e5]',
+      ].join("\n"),
+      fullText: expect.stringContaining('- button "Add item" [ref=e5]'),
+      excludedRefs: [],
+      roots: [],
+    });
+  });
+
+  it("two hosts capturing one document over 100 additions never give two elements one ref", async () => {
+    const page = await lane.newPage();
+    await setBody(page, '<ul aria-label="Items"></ul>');
+    const [one, other] = [lane.createHost(page), lane.createHost(page)];
+    const refsByItem = new Map<string, string>();
+
+    for (let item = 1; item <= 100; item += 1) {
+      await page.evaluate(
+        `document.querySelector("ul").insertAdjacentHTML("afterbegin", "<li><button>Item ${item}</button></li>")`
+      );
+      // Whichever host sees an element first mints its ref.
+      const hosts = item % 2 ? [one, other] : [other, one];
+      for (const host of hosts) {
+        const { fullText } = await host.inPage(page).capture();
+        const refs = refsIn(fullText);
+        expect(new Set(refs).size, fullText).toBe(refs.length);
+        for (let seen = 1; seen <= item; seen += 1) {
+          const ref = refOf(fullText, `"Item ${seen}"`);
+          expect(refsByItem.get(`Item ${seen}`) ?? ref).toBe(ref);
+          refsByItem.set(`Item ${seen}`, ref);
+        }
+      }
+    }
+    expect(new Set(refsByItem.values()).size).toBe(100);
+  });
+
+  it("a root without a node of its own gets one synthetic ref per element, whichever host labels it", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      '<div role="none" id="a"><button>One</button></div><div role="none" id="b"><button>Two</button></div>'
+    );
+    const [one, other] = [lane.createHost(page), lane.createHost(page)];
+    const labelling = (labels: [string, string][]) =>
+      page.evaluateHandle<ElementInputs>(
+        `({ roots: ${JSON.stringify(labels)}.map(([label, id]) => ({ label, element: document.getElementById(id) })) })`
+      );
+
+    const first = await one
+      .inPage(page)
+      .capture({ elements: await labelling([["ListPage", "a"]]) });
+    const second = await other
+      .inPage(page)
+      .capture({ elements: await labelling([["CartPage", "b"]]) });
+    const both = await other.inPage(page).capture({
+      elements: await labelling([
+        ["CartPage", "b"],
+        ["ListPage", "a"],
+      ]),
+    });
+
+    const [listPage] = first.roots;
+    const [cartPage] = second.roots;
+    expect(listPage).toEqual({
+      labels: ["ListPage"],
+      syntheticRef: expect.stringMatching(/^s_/),
+      descendantRefs: [refOf(first.fullText, '"One"')],
+    });
+    expect(cartPage).toEqual({
+      labels: ["CartPage"],
+      syntheticRef: expect.stringMatching(/^s_/),
+      descendantRefs: [refOf(second.fullText, '"Two"')],
+    });
+    if (
+      !listPage ||
+      !cartPage ||
+      !("syntheticRef" in listPage) ||
+      !("syntheticRef" in cartPage)
+    )
+      throw new Error("Both roots are synthetic.");
+    expect(cartPage.syntheticRef).not.toBe(listPage.syntheticRef);
+    expect(
+      both.roots.map((root) => "syntheticRef" in root && root.syntheticRef)
+    ).toEqual([cartPage.syntheticRef, listPage.syntheticRef]);
+    expect(
+      await page.locator(`ayme-ref=${listPage.syntheticRef}`).getAttribute("id")
+    ).toBe("a");
+  });
+
+  it("a capture leaves out the refs under what the host ignores and under its absent roots", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      '<button>Kept</button><aside id="ignored"><button>Ignored</button></aside><section id="absent" aria-label="Absent part"><button>Absent</button></section>'
+    );
+    const host = lane.createHost(page);
+
+    const capture = await host.inPage(page).capture({
+      elements: await page.evaluateHandle<ElementInputs>(
+        '({ absent: [document.getElementById("absent")], ignores: (element) => element.id === "ignored" })'
+      ),
+    });
+
+    expect(capture.excludedRefs).toEqual([
+      refOf(capture.fullText, "complementary"),
+      refOf(capture.fullText, '"Ignored"'),
+      refOf(capture.fullText, 'region "Absent part"'),
+      refOf(capture.fullText, '"Absent"'),
+    ]);
+  });
+
+  it("ayme-ref resolves Ayme's refs, and Playwright's aria-ref only its own", async () => {
+    const page = await lane.newPage();
+    await setBody(page, "<button>First</button><button>Second</button>");
+    const host = lane.createHost(page);
+    const before = await host.inPage(page).capture();
+    // Playwright's own snapshot sees an element Ayme has not, first.
+    await page.evaluate(
+      `document.body.insertAdjacentHTML("afterbegin", "<button>Early</button>")`
+    );
+    const playwright = await page.ariaSnapshot({ mode: "ai" });
+    const after = await host.inPage(page).capture();
+
+    const ayme = refOf(after.distilledText, '"First"');
+    expect(ayme).toBe(refOf(before.distilledText, '"First"'));
+    expect(await page.locator(`ayme-ref=${ayme}`).textContent()).toBe("First");
+    const early = refOf(playwright, '"Early"');
+    expect(await page.locator(`aria-ref=${early}`).textContent()).toBe("Early");
+    // The same ref names another element in each world.
+    expect(await page.locator(`ayme-ref=${early}`).textContent()).not.toBe(
+      "Early"
+    );
+    expect(refOf(after.distilledText, '"Early"')).not.toBe(early);
+    expect(await page.ariaSnapshot({ mode: "ai" })).toBe(playwright);
+  });
 }

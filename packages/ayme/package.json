@@ -56,6 +56,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "sync:injected": "node scripts/syncInjectedScript.mjs",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "vitest run --config vitest.browser.config.ts",

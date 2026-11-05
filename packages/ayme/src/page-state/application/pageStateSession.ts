@@ -5,13 +5,14 @@ import {
   type StructuralIdentityLedger,
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
-import { isJsonValue, RuntimeStateError } from "../../shared";
+import { isJsonValue, RuntimeStateError, type Capture } from "../../shared";
 import {
   attachChangeRecord,
   readChangeRecord,
   type ActionResult,
   type ChangeRecordStarts,
 } from "../domain/actionResult";
+import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
 import type { Cursor } from "../domain/cursors";
 import type {
   InteractionHistory,
@@ -30,11 +31,21 @@ import {
 import { resolveRequestedRef } from "./refResolution";
 
 /**
- * The Page State Session's port: a capture of the page as it is now. Every
- * capture of one session comes from one port, so a Page Object Root keeps
- * its synthetic ref across them, recorded or not.
+ * The Page State Session's port: a capture of the page as it is now, as
+ * plain data from the document's in-page module, whose refs, synthetic ones
+ * included, are the document's own, whoever captures.
  */
-export type CapturePage = () => Promise<PageCapture>;
+export type CapturePage = () => Promise<Capture>;
+
+/**
+ * Transitional (#1182): the elements a capture's refs name, for the browser
+ * consumers that still look an element up by ref (Reach, the element tools,
+ * the Goal Loop's questions, the Inspector). A ref it does not answer has no
+ * element.
+ */
+export type ElementsOf = (
+  refs: readonly AriaRef[]
+) => ReadonlyMap<AriaRef, Element>;
 
 /** The Page State Session's port for the page signals an action waits on, besides its captures. */
 export type ActionPage = {
@@ -69,6 +80,8 @@ export class PageStateSession {
       }
     | undefined;
   private readonly recordedListeners = new Set<() => void>();
+  // The synthetic refs this session's trees mint for themselves.
+  private readonly refFactory = treeRefAllocator();
 
   /**
    * `history`: every capture is an observation in it; the observation a
@@ -78,9 +91,23 @@ export class PageStateSession {
    */
   constructor(
     readonly history: InteractionHistory,
-    private readonly capturePage: CapturePage,
-    private readonly actionPage: ActionPage
+    private readonly captureDocument: CapturePage,
+    private readonly actionPage: ActionPage,
+    private readonly elementsOf: ElementsOf = () => new Map()
   ) {}
+
+  /** A capture of the page as the session reads it: its tree, marks and elements. */
+  private async capturePage(): Promise<PageCapture> {
+    const { tree, pomRootMarks } = structureCapture(
+      await this.captureDocument(),
+      this.refFactory
+    );
+    return {
+      tree,
+      pomRootMarks,
+      elementsByRef: this.elementsOf(tree.getAllRefs()),
+    };
+  }
 
   async getPageState(cursor?: Cursor): Promise<PageState> {
     return this.pageStateFor(await this.capture(cursor));

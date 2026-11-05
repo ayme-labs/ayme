@@ -65,6 +65,13 @@ const sourceFiles = "src/**/*.ts";
 // into one self-contained install function; `host` drives it through
 // Playwright's Page and touches no browser global.
 const inPageHost = "src/in-page/host/**/*.ts";
+// Host files that still read the document's slot through the browser's
+// globals: each may, until the issue named with it is done.
+// src/layout.test.ts fails when one no longer needs to.
+const inPageHostGlobalsExceptions = [
+  // The transitional lookup of an element by ref for the browser runtime.
+  { file: "src/in-page/host/elementLookup.ts", issue: "#1182" },
+];
 // Test code may use any slice, so a test stays beside the module it is
 // about even when it starts a whole runtime.
 const testCode = [
@@ -282,7 +289,6 @@ const liteInternalExceptions = [
     file: "src/page-objects/infrastructure/pomRootObservation.ts",
     issue: "#1175",
   },
-  { file: "src/page-state/infrastructure/pageCapture.ts", issue: "#1171" },
   { file: "src/page-state/infrastructure/reachMeasurement.ts", issue: "#1172" },
   { file: "src/runs/infrastructure/pageInstrumentation.ts", issue: "#1173" },
   { file: "src/tools/application/elementTools.ts", issue: "#1176" },
@@ -299,7 +305,7 @@ const allowlistedEntries = liteInternalExceptions
 /** Packages the in-page module may use: core, and Playwright's types on its host side. */
 const inPageDependencies = {
   regex:
-    "^(?![./]|@ayme-dev/core(/.*)?$|@playwright/test$|virtual:ayme-in-page$)",
+    "^(?![./]|@ayme-dev/core(/.*)?$|@playwright/test$|virtual:ayme-(in-page|aria-snapshot)$)",
   message:
     "The in-page module uses only shared and @ayme-dev/core, and Playwright's types on its host side.",
 };
@@ -458,7 +464,10 @@ export default [
   // runs in the document, may use the browser's globals.
   {
     files: [inPageHost],
-    ignores: testCode,
+    ignores: [
+      ...testCode,
+      ...inPageHostGlobalsExceptions.map(({ file }) => file),
+    ],
     rules: {
       "no-restricted-globals": [
         "error",

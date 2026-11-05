@@ -2,12 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   AriaRefSchema,
   StructuralNode,
+  SyntheticAriaRefFactory,
 } from "@ayme-dev/core/structural-observation";
 import { parseCapturedTree } from "./capturedTree";
-import {
-  placeCapturedRoots,
-  SyntheticRootRefFactory,
-} from "./pomRootPlacement";
+import { placeCapturedRoots } from "./pomRootPlacement";
 const ref = AriaRefSchema.parse;
 describe("Playwright page-state construction", () => {
   it("promotes text and nodes in order without leaking wrapper names or properties", () => {
@@ -20,7 +18,7 @@ describe("Playwright page-state construction", () => {
         "    - generic: trailing\n" +
         '  - link "Docs" [ref=e3]:\n' +
         '    - /url: "https://example.com/[ref=e99]"',
-      new SyntheticRootRefFactory()
+      new SyntheticAriaRefFactory()
     );
     expect(tree.getAllRefs()).toEqual(["e1", "e2", "e3"]);
     expect(
@@ -37,14 +35,14 @@ describe("Playwright page-state construction", () => {
   it("keeps captured refs that resemble temporary parser refs", () => {
     const tree = parseCapturedTree(
       '- generic:\n  - button "Save" [ref=s_webmcp_parse_1]',
-      new SyntheticRootRefFactory()
+      new SyntheticAriaRefFactory()
     );
     expect(tree.getAllRefs()).toEqual(["s_webmcp_parse_1"]);
     expect(tree.root.name).toBe("Save");
   });
 
   it("adopts real refs while promoting ref-less wrappers and omitting ref-less leaves", () => {
-    const factory = new SyntheticRootRefFactory();
+    const factory = new SyntheticAriaRefFactory();
     const tree = parseCapturedTree(
       `
 - generic [ref=e1]:
@@ -60,7 +58,7 @@ describe("Playwright page-state construction", () => {
   });
 
   it("restores an omitted real root in captured sibling order", () => {
-    const factory = new SyntheticRootRefFactory();
+    const factory = new SyntheticAriaRefFactory();
     const retained = parseCapturedTree(
       `
 - generic [ref=e1]:
@@ -94,8 +92,8 @@ describe("Playwright page-state construction", () => {
     ).toEqual(["e2", "e3", "e4"]);
   });
 
-  it("mints one synthetic ref for an anchored omitted root with a retained descendant", () => {
-    const factory = new SyntheticRootRefFactory();
+  it("places an anchored omitted root under the synthetic ref its element got, over its retained descendant", () => {
+    const factory = new SyntheticAriaRefFactory();
     const retained = parseCapturedTree(
       `
 - generic [ref=e1]:
@@ -122,7 +120,7 @@ describe("Playwright page-state construction", () => {
       [
         {
           kind: "omitted",
-          element: {} as Element,
+          ref: ref("s_7"),
           ancestorRef: ref("e1"),
           descendantRefs: [ref("e3")],
           role: "generic",
@@ -132,15 +130,15 @@ describe("Playwright page-state construction", () => {
       factory
     );
 
-    expect(placed.refs).toEqual(["s_1"]);
-    expect(placed.tree.getNode(ref("s_1"))?.children).toEqual([
+    expect(placed.refs).toEqual(["s_7"]);
+    expect(placed.tree.getNode(ref("s_7"))?.children).toEqual([
       retained.getNode(ref("e3")),
     ]);
-    expect(placed.tree.getAllRefs()).toEqual(["e1", "e2", "s_1", "e3", "e4"]);
+    expect(placed.tree.getAllRefs()).toEqual(["e1", "e2", "s_7", "e3", "e4"]);
   });
 
-  it("does not mint a ref for an unsupported omitted leaf root", () => {
-    const factory = new SyntheticRootRefFactory();
+  it("does not place an unsupported omitted leaf root", () => {
+    const factory = new SyntheticAriaRefFactory();
     const tree = parseCapturedTree("- generic [ref=e1]", factory);
 
     const placed = placeCapturedRoots(
@@ -149,7 +147,7 @@ describe("Playwright page-state construction", () => {
       [
         {
           kind: "omitted",
-          element: {} as Element,
+          ref: ref("s_1"),
           ancestorRef: ref("e1"),
           descendantRefs: [],
           role: "generic",

@@ -14,21 +14,23 @@ import {
   waitForSettled,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import { browserMonotonicClock, ToolInputError } from "../../shared";
+import type { ElementInputs } from "../../in-page";
+import {
+  browserMonotonicClock,
+  INSPECTOR_HOST_SELECTOR,
+  ToolInputError,
+  type Capture,
+} from "../../shared";
+import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
 import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
 import { watchFullLoad, watchSameDocumentNavigations } from "./navigation";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
-  capturePage,
-  type PageCaptureSources,
-  type PageObjectStructure,
-} from "./pageCapture";
-import {
   PageStateSession,
   type ActionPage,
 } from "../application/pageStateSession";
-import { SyntheticRootRefFactory } from "../domain/pomRootPlacement";
+import { bindDocument, captureDocument, elementsOf } from "./browserInPage";
 import {
   renderPageState,
   type PageState,
@@ -36,6 +38,23 @@ import {
 } from "../domain/structuralPageState";
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
+
+/**
+ * The Page Object Roots a capture places: present roots are marked, and
+ * absent ones are left out of it.
+ */
+type PageObjectStructure = {
+  roots: readonly { mark: string; element: Element }[];
+  absentElements: readonly Element[];
+};
+
+/** What a capture reads besides the document, read afresh on each capture. */
+type PageCaptureSources = {
+  /** The Page Object Roots to place; undefined while none is registered. */
+  pageObjectStructure(): Promise<PageObjectStructure> | undefined;
+  /** Whether the app leaves `element`, and everything under it, out. */
+  ignores(element: Element): boolean;
+};
 
 /**
  * The document's cursors. Module state is the document's: a new document
@@ -80,6 +99,29 @@ const captureSources: PageCaptureSources = {
   pageObjectStructure: () => pageObjectStructure?.(),
   ignores: (element) => pageStateIgnoreStore.ignore?.(element) ?? false,
 };
+
+/**
+ * A capture of `currentDocument` through its in-page module, with the Page
+ * Object Roots and `ignore` this runtime places and leaves out. The
+ * Inspector's own DOM is always left out.
+ */
+async function captureWithSources(currentDocument: Document): Promise<Capture> {
+  const structure = (await captureSources.pageObjectStructure()) ?? {
+    roots: [],
+    absentElements: [],
+  };
+  const inputs: ElementInputs = {
+    roots: structure.roots.map(({ mark, element }) => ({
+      label: mark,
+      element,
+    })),
+    absent: structure.absentElements,
+    ignores: (element) =>
+      element.matches(INSPECTOR_HOST_SELECTOR) ||
+      captureSources.ignores(element),
+  };
+  return captureDocument(currentDocument, inputs);
+}
 
 let documentCount = 0;
 
@@ -202,9 +244,9 @@ export function getPageStateSession(
 
 /**
  * A session over `currentDocument`: its history starts with the document's
- * first Visit and records each same-document navigation after it, and its
- * captures share one synthetic ref factory, for recorded captures and
- * looks alike, so a root keeps one ref across them.
+ * first Visit and records each same-document navigation after it. Creating
+ * it installs the document's in-page module, or binds to the one there, so
+ * a runtime that starts first is the one that installs it.
  */
 function createPageStateSession(currentDocument: Document): PageStateSession {
   const history = new InteractionHistory({
@@ -217,11 +259,12 @@ function createPageStateSession(currentDocument: Document): PageStateSession {
     watchSameDocumentNavigations(view, () =>
       history.recordNavigation(currentDocument.URL)
     );
-  const refFactory = new SyntheticRootRefFactory();
+  bindDocument(currentDocument);
   return new PageStateSession(
     history,
-    () => capturePage(currentDocument.body, refFactory, captureSources),
-    documentActionPage(currentDocument)
+    () => captureWithSources(currentDocument),
+    documentActionPage(currentDocument),
+    elementsOf
   );
 }
 
@@ -242,10 +285,9 @@ function documentActionPage(currentDocument: Document): ActionPage {
   };
 }
 
-export async function capturePageState(
-  root: Element = document.body
-): Promise<string> {
+/** The document's page state text, from a capture nobody records. */
+export async function capturePageState(): Promise<string> {
   return renderPageState(
-    await capturePage(root, new SyntheticRootRefFactory(), captureSources)
+    structureCapture(await captureWithSources(document), treeRefAllocator())
   ).text;
 }

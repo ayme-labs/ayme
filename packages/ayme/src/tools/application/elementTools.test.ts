@@ -8,9 +8,11 @@ const { captureAriaSnapshot, pageObjectStructure } = vi.hoisted(() => ({
   pageObjectStructure: vi.fn(),
 }));
 
-vi.mock("@ayme-dev/playwright-lite/internal", () => ({
-  captureAriaSnapshot,
-}));
+vi.mock("../../page-state/infrastructure/browserInPage", async () =>
+  (
+    await import("../../test-utils/inPageCapture.testSupport")
+  ).standInBrowserInPage(captureAriaSnapshot)
+);
 
 const waitForSettled = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ stable: true })
