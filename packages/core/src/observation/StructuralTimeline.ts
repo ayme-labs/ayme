@@ -147,6 +147,12 @@ export type StructuralObservationEntry = {
    * The timeline stores it and reads it as a boundary; what it means to the host is the host's business.
    */
   readonly relation?: "before" | "after";
+  /**
+   * Set when this observation is a visit's start capture. It belongs to that visit whatever its `at`,
+   * and to no other visit's window: a capture whose read returns only after the page navigated again
+   * still starts the visit it was taken for.
+   */
+  readonly capturedForVisitId?: VisitId;
 };
 
 export type StructuralActionStartedEntry = {
@@ -176,6 +182,17 @@ export type StructuralVisitTimelineEvidence = {
   readonly cause: VisitStartedCause;
   readonly structuralTree: StructuralTree;
 };
+
+/** A recorded visit with no observation that could be its start: none recorded, or none resolvable. */
+export class VisitWithoutObservationError extends Error {
+  constructor(
+    readonly visitId: VisitId,
+    message: string
+  ) {
+    super(message);
+    this.name = "VisitWithoutObservationError";
+  }
+}
 
 export type StructuralResolvedChange = {
   readonly timestamp: MonotonicTimeMs;
@@ -225,7 +242,8 @@ export class StructuralTimeline {
   private readonly _entries: StructuralTimelineEntry[] = [];
   /**
    * Resolved evidence per completed action. Any entry that lands anywhere but at the end of the
-   * timeline can move an earlier action's boundaries, so such an insert forgets everything; a
+   * timeline can move an earlier action's boundaries, and so can an observation captured for a
+   * visit, which joins that visit wherever it lands, so such an insert forgets everything; a
    * crossing action whose after is only a fallback is never kept, since its explicit capture may
    * still arrive.
    */
@@ -301,7 +319,9 @@ export class StructuralTimeline {
    * Visit bootstrap evidence: the visit's metadata plus the first structural observation recorded
    * within the visit's window. Windows are scoped by entry position (from the visit-opening navigation
    * entry up to the next one for the same page) rather than by timestamp, so visits that share a timestamp
-   * do not borrow each other's observations.
+   * do not borrow each other's observations. An observation captured for a visit (`capturedForVisitId`)
+   * is that visit's wherever it sits. Throws {@link VisitWithoutObservationError} when the visit has no
+   * observation, or none that resolves.
    */
   async getVisitEvidence(
     visitId: VisitId,
@@ -319,16 +339,10 @@ export class StructuralTimeline {
     if (!visitIdResolved)
       throw new Error(`No recorded visit with id ${String(visitId)}.`);
 
-    const windowEntries = this._entries.slice(
-      startIndex + 1,
-      this._nextVisitBoundaryIndex(startIndex)
-    );
-    const observations = windowEntries.filter(
-      (entry): entry is StructuralObservationEntry =>
-        entry.kind === "observation" && entry.pageId === start.pageId
-    );
+    const observations = this._visitObservations(startIndex);
     if (observations.length === 0)
-      throw new Error(
+      throw new VisitWithoutObservationError(
+        visitIdResolved,
         `No structural observation recorded for visit ${String(visitId)}.`
       );
 
@@ -346,7 +360,8 @@ export class StructuralTimeline {
         structuralTree: tree,
       };
     }
-    throw new Error(
+    throw new VisitWithoutObservationError(
+      visitIdResolved,
       `No resolvable structural observation recorded for visit ${String(visitId)}.`
     );
   }
@@ -371,7 +386,8 @@ export class StructuralTimeline {
    * entry on the same page, and the window runs from that entry up to the page's next visit-opening
    * navigation. Scoping by entry position (not timestamp) keeps visits that share a timestamp from
    * borrowing each other's observations.
-   * Boundaries are selected only from observations inside the owning visit's window:
+   * Boundaries are selected only from the owning visit's observations (its window's, plus those
+   * captured for it wherever they sit, minus those captured for another visit):
    * - before: the observation the host recorded as this action's before (`capturedForActionId` with
    *   `relation: "before"`) when there is one, else the latest observation with `at < startedAt`
    * - after: the action's explicit post-action capture (the observation tagged with this action id),
@@ -431,10 +447,7 @@ export class StructuralTimeline {
     const windowEntries = this._entries
       .slice(owningVisitIndex + 1, nextVisitBoundaryIndex)
       .filter((entry) => entry.pageId === owningVisit.pageId);
-    const observations = windowEntries.filter(
-      (entry): entry is StructuralObservationEntry =>
-        entry.kind === "observation"
-    );
+    const observations = this._visitObservations(owningVisitIndex);
     const actions = this._windowActions(windowEntries, nextVisitBoundaryIndex);
     // Every action start in the window, including actions that have started but not yet completed. The
     // contamination guard keys off the next action's *start*, which is already on the timeline before
@@ -753,9 +766,32 @@ export class StructuralTimeline {
     let index = this._entries.length;
     while (index > 0 && this._entries[index - 1]!.at > entry.at) index -= 1;
     const last = this._entries[this._entries.length - 1];
-    if (index < this._entries.length || (last && last.at === entry.at))
+    if (
+      index < this._entries.length ||
+      (last && last.at === entry.at) ||
+      (entry.kind === "observation" && entry.capturedForVisitId !== undefined)
+    )
       this._resolvedActions.clear();
     this._entries.splice(index, 0, entry);
+  }
+
+  /**
+   * The observations of the visit opened at `openingIndex`, in timeline order: those in its window
+   * not captured for another visit, and those captured for it wherever they sit.
+   */
+  private _visitObservations(
+    openingIndex: number
+  ): StructuralObservationEntry[] {
+    const opening = this._entries[openingIndex] as StructuralNavigationEntry;
+    const endIndex = this._nextVisitBoundaryIndex(openingIndex);
+    return this._entries.filter(
+      (entry, index): entry is StructuralObservationEntry =>
+        entry.kind === "observation" &&
+        entry.pageId === opening.pageId &&
+        (entry.capturedForVisitId === undefined
+          ? index > openingIndex && index < endIndex
+          : entry.capturedForVisitId === opening.startedVisitId)
+    );
   }
 
   /** Index of the next same-page visit-opening navigation after `fromIndex`, or the entry count when none follows. */
@@ -925,14 +961,24 @@ export class StructuralTimeline {
     return at(guardedIndex ?? context.beforeIndex);
   }
 
-  /** The first observation of the page at or after entry `fromIndex`, or null when none is recorded. */
+  /**
+   * The first observation of the page at or after the visit-opening entry `fromIndex`, skipping those
+   * captured for another visit, or null when none is recorded.
+   */
   private _firstObservationFrom(
     fromIndex: number,
     pageId: PageId
   ): StructuralObservationEntry | null {
+    const visitId = (this._entries[fromIndex] as StructuralNavigationEntry)
+      .startedVisitId;
     for (let index = fromIndex; index < this._entries.length; index += 1) {
       const entry = this._entries[index]!;
-      if (entry.kind === "observation" && entry.pageId === pageId) return entry;
+      if (
+        entry.kind === "observation" &&
+        entry.pageId === pageId &&
+        (entry.capturedForVisitId ?? visitId) === visitId
+      )
+        return entry;
     }
     return null;
   }
