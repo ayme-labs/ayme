@@ -1,0 +1,88 @@
+[
+  {
+    "rows": 12,
+    "ms": 3.3,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 12,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 12,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 12,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 12
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 24,
+      "isVisible": 12
+    },
+    "qsaCalls": 255,
+    "candidates": 4915,
+    "dom": {
+      "document:*": {
+        "calls": 73,
+        "candidates": 2117
+      },
+      "BODY:li": {
+        "calls": 73,
+        "candidates": 876
+      },
+      "BODY:*": {
+        "calls": 73,
+        "candidates": 1898
+      },
+      "document::modal": {
+        "calls": 12,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 24,
+        "candidates": 24
+      }
+    },
+    "observedRows": 12
+  },
+  {
+    "rows": 24,
+    "ms": 7.8,
+    "observations": 1,
+    "resolutions": {
+      "all:internal:role=list[name=\"Projects\"i] >> :scope > li": 1,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 48,
+      "isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*": 24,
+      "directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24,
+      "count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button": 24
+    },
+    "locatorCalls": {
+      "all": 1,
+      "count": 48,
+      "isVisible": 24
+    },
+    "qsaCalls": 507,
+    "candidates": 18463,
+    "dom": {
+      "document:*": {
+        "calls": 145,
+        "candidates": 7685
+      },
+      "BODY:li": {
+        "calls": 145,
+        "candidates": 3480
+      },
+      "BODY:*": {
+        "calls": 145,
+        "candidates": 7250
+      },
+      "document::modal": {
+        "calls": 24,
+        "candidates": 0
+      },
+      "LI:*": {
+        "calls": 48,
+        "candidates": 48
+      }
+    },
+    "observedRows": 24
+  }
+]

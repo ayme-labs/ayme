@@ -1,0 +1,2 @@
+a55e9d15fed89156c80765bc72e729c47ce4fbc4 fix(ayme): show and keep Page Object Root Marks in the Goal Loop's page (#1062)
+f5ce4a057fa1ffdcdddf4f23b9b0cfec0a93ba15 feat: list each tool's Agent Description beside its author's (#1060)

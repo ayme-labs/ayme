@@ -1,0 +1,314 @@
+[
+  {
+    "lite": {
+      "rows": 12,
+      "kind": "role",
+      "ms": 11.9,
+      "dom": {
+        "document:*": {
+          "calls": 73,
+          "candidates": 2117
+        },
+        "BODY:li": {
+          "calls": 73,
+          "candidates": 876
+        },
+        "BODY:*": {
+          "calls": 73,
+          "candidates": 1898
+        },
+        "LI:*": {
+          "calls": 24,
+          "candidates": 24
+        }
+      }
+    },
+    "real": {
+      "rows": 12,
+      "kind": "role",
+      "ms": 61.37,
+      "dom": {
+        "document:*": {
+          "calls": 73,
+          "candidates": 2117
+        },
+        "BODY:li": {
+          "calls": 73,
+          "candidates": 876
+        },
+        "BODY:*": {
+          "calls": 73,
+          "candidates": 1898
+        },
+        "LI:*": {
+          "calls": 24,
+          "candidates": 24
+        }
+      },
+      "worlds": {
+        "utility": {
+          "document:*": {
+            "calls": 37,
+            "candidates": 1073
+          },
+          "BODY:li": {
+            "calls": 37,
+            "candidates": 444
+          },
+          "BODY:*": {
+            "calls": 37,
+            "candidates": 962
+          },
+          "LI:*": {
+            "calls": 12,
+            "candidates": 12
+          }
+        },
+        "main": {
+          "document:*": {
+            "calls": 36,
+            "candidates": 1044
+          },
+          "BODY:li": {
+            "calls": 36,
+            "candidates": 432
+          },
+          "BODY:*": {
+            "calls": 36,
+            "candidates": 936
+          },
+          "LI:*": {
+            "calls": 12,
+            "candidates": 12
+          }
+        }
+      }
+    }
+  },
+  {
+    "lite": {
+      "rows": 12,
+      "kind": "css",
+      "ms": 2.5,
+      "dom": {
+        "document:li": {
+          "calls": 73,
+          "candidates": 876
+        },
+        "document:*": {
+          "calls": 73,
+          "candidates": 2117
+        },
+        "LI:*": {
+          "calls": 24,
+          "candidates": 24
+        }
+      }
+    },
+    "real": {
+      "rows": 12,
+      "kind": "css",
+      "ms": 47.64,
+      "dom": {
+        "document:li": {
+          "calls": 73,
+          "candidates": 876
+        },
+        "document:*": {
+          "calls": 73,
+          "candidates": 2117
+        },
+        "LI:*": {
+          "calls": 24,
+          "candidates": 24
+        }
+      },
+      "worlds": {
+        "utility": {
+          "document:li": {
+            "calls": 37,
+            "candidates": 444
+          },
+          "document:*": {
+            "calls": 37,
+            "candidates": 1073
+          },
+          "LI:*": {
+            "calls": 12,
+            "candidates": 12
+          }
+        },
+        "main": {
+          "document:li": {
+            "calls": 36,
+            "candidates": 432
+          },
+          "document:*": {
+            "calls": 36,
+            "candidates": 1044
+          },
+          "LI:*": {
+            "calls": 12,
+            "candidates": 12
+          }
+        }
+      }
+    }
+  },
+  {
+    "lite": {
+      "rows": 24,
+      "kind": "role",
+      "ms": 9.2,
+      "dom": {
+        "document:*": {
+          "calls": 145,
+          "candidates": 7685
+        },
+        "BODY:li": {
+          "calls": 145,
+          "candidates": 3480
+        },
+        "BODY:*": {
+          "calls": 145,
+          "candidates": 7250
+        },
+        "LI:*": {
+          "calls": 48,
+          "candidates": 48
+        }
+      }
+    },
+    "real": {
+      "rows": 24,
+      "kind": "role",
+      "ms": 84.3,
+      "dom": {
+        "document:*": {
+          "calls": 145,
+          "candidates": 7685
+        },
+        "BODY:li": {
+          "calls": 145,
+          "candidates": 3480
+        },
+        "BODY:*": {
+          "calls": 145,
+          "candidates": 7250
+        },
+        "LI:*": {
+          "calls": 48,
+          "candidates": 48
+        }
+      },
+      "worlds": {
+        "utility": {
+          "document:*": {
+            "calls": 73,
+            "candidates": 3869
+          },
+          "BODY:li": {
+            "calls": 73,
+            "candidates": 1752
+          },
+          "BODY:*": {
+            "calls": 73,
+            "candidates": 3650
+          },
+          "LI:*": {
+            "calls": 24,
+            "candidates": 24
+          }
+        },
+        "main": {
+          "document:*": {
+            "calls": 72,
+            "candidates": 3816
+          },
+          "BODY:li": {
+            "calls": 72,
+            "candidates": 1728
+          },
+          "BODY:*": {
+            "calls": 72,
+            "candidates": 3600
+          },
+          "LI:*": {
+            "calls": 24,
+            "candidates": 24
+          }
+        }
+      }
+    }
+  },
+  {
+    "lite": {
+      "rows": 24,
+      "kind": "css",
+      "ms": 3.9,
+      "dom": {
+        "document:li": {
+          "calls": 145,
+          "candidates": 3480
+        },
+        "document:*": {
+          "calls": 145,
+          "candidates": 7685
+        },
+        "LI:*": {
+          "calls": 48,
+          "candidates": 48
+        }
+      }
+    },
+    "real": {
+      "rows": 24,
+      "kind": "css",
+      "ms": 74.25,
+      "dom": {
+        "document:li": {
+          "calls": 145,
+          "candidates": 3480
+        },
+        "document:*": {
+          "calls": 145,
+          "candidates": 7685
+        },
+        "LI:*": {
+          "calls": 48,
+          "candidates": 48
+        }
+      },
+      "worlds": {
+        "utility": {
+          "document:li": {
+            "calls": 73,
+            "candidates": 1752
+          },
+          "document:*": {
+            "calls": 73,
+            "candidates": 3869
+          },
+          "LI:*": {
+            "calls": 24,
+            "candidates": 24
+          }
+        },
+        "main": {
+          "document:li": {
+            "calls": 72,
+            "candidates": 1728
+          },
+          "document:*": {
+            "calls": 72,
+            "candidates": 3816
+          },
+          "LI:*": {
+            "calls": 24,
+            "candidates": 24
+          }
+        }
+      }
+    }
+  }
+]
