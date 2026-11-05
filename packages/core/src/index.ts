@@ -84,6 +84,7 @@ export type {
   NavigationSignal,
   PreparedNavigation,
 } from "./observation/StructuralObservationSession";
+export { VisitWithoutObservationError } from "./observation/StructuralTimeline";
 export type {
   StructuralActionStartedEntry,
   StructuralActionCompletedEntry,
