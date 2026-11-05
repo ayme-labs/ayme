@@ -35,7 +35,7 @@ jobs:
       - id: list
         run: |
           jobs=$(jq -sc --argjson shards '{"@ayme-dev/inspector": 8, "@ayme-dev/ayme": 3}' '
-            [.[] | select(.scripts["test:mutation"]) | .name as $package
+            [.[] | select(.scripts["test:mutation"]) | select(.name == "@ayme-dev/inspector") | .name as $package
               | ($shards[$package] // 1) as $count
               | range(1; $count + 1)
               | {package: $package, shard: "\(.)/\($count)", label: (if $count > 1 then " (\(.)/\($count))" else "" end)}]
@@ -78,7 +78,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - run: pnpm exec turbo run test:mutation --filter=${{ matrix.package }}
+      # DIAGNOSTIC, temporary: sample memory, disk and the biggest processes
+      # every 20 s beside a streamed Stryker run.
+      - run: |
+          (while true; do
+            echo "[sample $(date -u +%T)] $(awk '/^MemTotal|^MemAvailable|^SwapFree/ {printf "%s %d MB  ", $1, $2/1024}' /proc/meminfo) disk-avail: $(df -h --output=avail / /tmp | tail -n +2 | tr -s ' \n' ' ')"
+            for p in /proc/[0-9]*; do awk -v pid="${p#/proc/}" '/^Name:/ {n=$2} /^VmRSS:/ {r=$2} END {if (r) printf "%d %s(%s)\n", r/1024, n, pid}' "$p/status" 2>/dev/null; done | sort -rn | head -6 | sed 's/^/    MB /'
+            sleep 20
+          done) &
+          sampler=$!
+          status=0
+          pnpm exec turbo run test:mutation --filter=${{ matrix.package }} --log-order=stream || status=$?
+          kill "$sampler"
+          exit "$status"
       - name: Name the report after the package
         if: always()
         id: report
