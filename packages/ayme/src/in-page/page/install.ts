@@ -9,9 +9,15 @@ import { captureAriaSnapshot } from "virtual:ayme-aria-snapshot";
 import type { Capture, DocumentToken, ReachMeasurement } from "../../shared";
 import { createRefWorld, type ElementInputs } from "./capture";
 import { createReach } from "./reach";
+import { showCue } from "./cue";
+import { startPicking, type PickArguments, type PickNotice } from "./pick";
 
 export type { Capture, DocumentToken, ReachMeasurement };
 export type { ElementInputs } from "./capture";
+export type { PickArguments, PickNotice } from "./pick";
+
+/** What a host asks to pick a ref: `id` names this picking in the notices it gets back. */
+export type PickRequest = PickArguments & { id: string };
 
 /** One host, a side that drives the page through Playwright's Page. */
 export type HostKey = string;
@@ -78,6 +84,16 @@ export type Slot = {
    * through Locators.
    */
   elementOf(ref: string): Element | undefined;
+  /**
+   * Picks a ref by pointing at the document, for `host`: answers with the ref
+   * clicked, or none when Esc or `cancelPick` ends it. The host hears what the
+   * pointer is over, as `{ id, ...notice }`, through its binding.
+   */
+  pick(host: HostKey, request: PickRequest): Promise<string | undefined>;
+  /** Ends `host`'s picking `id`, if it is on, as Esc does. */
+  cancelPick(host: HostKey, id: string): void;
+  /** Shows Demo Mode's click cue on the one element `matched` holds, and answers when it has gone. */
+  cue(host: HostKey, matched: Element[]): Promise<void>;
 };
 
 const slotKey = Symbol.for("ayme.inPage");
@@ -110,6 +126,10 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   // The document's one ref world: its marks, counters and ref map.
   const refs = createRefWorld(captureAriaSnapshot);
   const reach = createReach(refs.nameOf);
+  // Each host's picking that is on, to end it.
+  const pickings = new Map<string, () => void>();
+  // Pickings cancelled before they started: the cancel can arrive first.
+  const cancelled = new Set<string>();
   return Object.freeze({
     version,
     token,
@@ -141,6 +161,33 @@ function createSlot(version: string, installedBy: HostKey): Slot {
     reach,
     queryRef: refs.queryRef,
     elementOf: refs.elementOf,
+    pick(host: HostKey, { id, ...request }: PickRequest) {
+      if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
+      const binding = bindings.get(host);
+      const picking = startPicking(
+        request,
+        refs.refOf,
+        (notice: PickNotice) => {
+          const call = (globalThis as { [name: string]: unknown })[
+            binding ?? ""
+          ];
+          if (typeof call === "function")
+            Promise.resolve(call({ id, ...notice })).catch(() => {});
+        }
+      );
+      const key = `${host}:${id}`;
+      pickings.set(key, picking.cancel);
+      return picking.result.finally(() => pickings.delete(key));
+    },
+    cancelPick(host: HostKey, id: string) {
+      const key = `${host}:${id}`;
+      const cancel = pickings.get(key);
+      if (cancel) cancel();
+      else cancelled.add(key);
+    },
+    async cue(_host: HostKey, matched: Element[]) {
+      if (matched.length === 1) await showCue(matched[0]!);
+    },
   });
 }
 

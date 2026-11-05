@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 
 import { AgentView } from "./agentView";
-import { expect, INSPECTOR, openFixture, test } from "./fixtures";
+import { expect, INSPECTOR, openFixture, outline, test } from "./fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
 // ListPage Page Object, the Ayme runtime and a recording WebMCP driver.
@@ -144,7 +144,7 @@ test("hovering a run's Interaction highlights its element on the page", async ({
   await run.interactionTarget(1).hover();
 
   // The dashed hover highlight.
-  await expect(listPage.addItemButton).toHaveAttribute("data-ayme-hover");
+  await expect.poll(outline(listPage.addItemButton)).toBe("dashed");
 });
 
 test("a tool that fails on the page shows its error", async ({

@@ -3,6 +3,7 @@
 declare module "virtual:ayme-in-page" {
   export const installInPage: typeof import("./page/install").install;
   export const callInPage: typeof import("./page/call").call;
+  export const callOnInPage: typeof import("./page/callOn").callOn;
   export const aymeRefEngine: typeof import("./page/refEngine").engine;
 }
 

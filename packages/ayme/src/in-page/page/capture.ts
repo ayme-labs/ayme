@@ -136,6 +136,8 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     capture,
     elementOf,
     nameOf,
+    /** The ref a capture gave `element`, if it has one. */
+    refOf: (element: Element): string | undefined => marks.get(element)?.ref,
     queryRef(ref: string, root?: Node): Element[] {
       const element = elementOf(ref);
       return element?.isConnected && (!root || holds(root, element))

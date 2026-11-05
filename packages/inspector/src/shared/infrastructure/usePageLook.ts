@@ -232,19 +232,10 @@ async function lookAtPage(): Promise<Look> {
 
 const INSPECTOR_HOST = "[data-ayme-inspector-host]";
 
-/** Attributes the Inspector itself puts on the page. */
-const ownAttributes = new Set([
-  "data-ayme-highlight",
-  "data-ayme-hover",
-  "data-ayme-pick-unusable",
-]);
-
-/** Whether a page change is only the Inspector's own: no reason to look again. */
+/** Whether a page change is only inside the Inspector's host: no reason to look again. */
 export function isInspectorOwnMutation(record: MutationRecord) {
   return (
-    (record.type === "attributes" &&
-      ownAttributes.has(record.attributeName ?? "")) ||
-    (record.target instanceof Element && record.target.matches(INSPECTOR_HOST))
+    record.target instanceof Element && record.target.matches(INSPECTOR_HOST)
   );
 }
 

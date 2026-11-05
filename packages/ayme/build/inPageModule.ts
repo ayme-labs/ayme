@@ -16,6 +16,7 @@ const pagePart = join(import.meta.dirname, "..", "src", "in-page", "page");
 const functions = [
   { name: "installInPage", file: "install.ts", call: "install" },
   { name: "callInPage", file: "call.ts", call: "call" },
+  { name: "callOnInPage", file: "callOn.ts", call: "callOn" },
   { name: "aymeRefEngine", file: "refEngine.ts", call: "engine" },
 ];
 
@@ -50,12 +51,12 @@ export function inPageModule() {
           for (const module of chunk.moduleIds)
             if (!module.startsWith("\0")) this.addWatchFile?.(module);
           return [
-            `export function ${name}(argument) {`,
+            `export function ${name}(argument, second) {`,
             '"use strict";',
             "const module = { exports: {} };",
             "const exports = module.exports;",
             chunk.code,
-            `return module.exports.${call}(argument);`,
+            `return module.exports.${call}(argument, second);`,
             "}",
           ].join("\n");
         })

@@ -1,4 +1,9 @@
-import { test as base, selectors, type Page } from "@playwright/test";
+import {
+  test as base,
+  selectors,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 import {
   Inspector,
@@ -8,6 +13,58 @@ import {
 import { ListPage } from "../pom/ListPage";
 
 export { expect } from "@playwright/test";
+
+/**
+ * Playwright draws the Inspector's highlights in an overlay under `<html>`
+ * whose shadow root is closed. Opens it, before the page's scripts run, so
+ * `highlightOf` can read the boxes.
+ */
+const openHighlightOverlay = () => {
+  const attachShadow = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function (init) {
+    return attachShadow.call(
+      this,
+      this.localName === "x-pw-glass" ? { ...init, mode: "open" } : init
+    );
+  };
+};
+
+/**
+ * The highlight Playwright draws over `element` now: its outline style
+ * ("dashed" for what is hovered, "solid" for the selection) and colour, or
+ * none. The page's own elements carry no mark for it.
+ */
+export function highlightOf(element: Locator) {
+  return () =>
+    element.evaluate((target) => {
+      const rect = target.getBoundingClientRect();
+      const boxes = [...document.querySelectorAll("x-pw-glass")].flatMap(
+        (glass) => [
+          ...(glass.shadowRoot?.querySelectorAll("x-pw-highlight") ?? []),
+        ]
+      ) as HTMLElement[];
+      const near = (a: number, b: number) => Math.abs(a - b) < 1;
+      const box = boxes.find((candidate) => {
+        const at = candidate.getBoundingClientRect();
+        return (
+          candidate.style.display === "block" &&
+          near(at.x, rect.x) &&
+          near(at.y, rect.y) &&
+          near(at.width, rect.width) &&
+          near(at.height, rect.height)
+        );
+      });
+      return box
+        ? { style: box.style.outlineStyle, color: box.style.outlineColor }
+        : { style: "none", color: "" };
+    });
+}
+
+/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
+export function outline(element: Locator) {
+  const read = highlightOf(element);
+  return async () => (await read()).style;
+}
 
 /** The Caller mark of a run made from the panel, as Runs shows it. */
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
@@ -40,6 +97,7 @@ export async function openFixture(
   path: FixturePage,
   { reload = false } = {}
 ) {
+  await page.addInitScript(openHighlightOverlay);
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);

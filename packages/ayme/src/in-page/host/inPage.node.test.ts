@@ -8,10 +8,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { chromium, selectors, type Browser, type Page } from "@playwright/test";
 import { Rolldown } from "tsdown";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type * as Testing from "../../testing";
 import { inPageContract } from "./inPageContract.testSupport";
+
+// Playwright's overlay keeps its shadow root closed unless it runs under its own
+// tests; the contract reads the highlight boxes it draws.
+vi.hoisted(() => {
+  process.env.PWTEST_UNDER_TEST = "1";
+});
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../../../dist");
 const origin = "http://ayme.test";

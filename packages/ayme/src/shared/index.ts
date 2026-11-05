@@ -48,7 +48,7 @@ export {
   INSPECTOR_DOGFOOD_ATTRIBUTE,
   INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
   INSPECTOR_HOST_SELECTOR,
-  onlyHitTestMarks,
+  onlyOwnMarks,
 } from "./inspectorMarks";
 export type { ReachMeasurement } from "./reach";
 export { checkedToolInput, refuseViolations } from "./schemaValidation";

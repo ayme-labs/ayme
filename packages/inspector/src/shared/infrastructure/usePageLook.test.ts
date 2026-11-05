@@ -12,13 +12,6 @@ const attributeChange = (attributeName: string) =>
     target: document.createElement("button"),
   }) as unknown as MutationRecord;
 
-it.each(["data-ayme-highlight", "data-ayme-hover", "data-ayme-pick-unusable"])(
-  "counts its own %s attribute as its own change",
-  (attribute) => {
-    expect(isInspectorOwnMutation(attributeChange(attribute))).toBe(true);
-  }
-);
-
 it("counts a change inside its host as its own", () => {
   const host = document.createElement("div");
   host.setAttribute("data-ayme-inspector-host", "");

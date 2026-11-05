@@ -1,5 +1,16 @@
-import type { JSHandle, Page, Selectors } from "@playwright/test";
-import { aymeRefEngine, callInPage, installInPage } from "virtual:ayme-in-page";
+import type {
+  Disposable,
+  JSHandle,
+  Locator,
+  Page,
+  Selectors,
+} from "@playwright/test";
+import {
+  aymeRefEngine,
+  callInPage,
+  callOnInPage,
+  installInPage,
+} from "virtual:ayme-in-page";
 
 import { version as packageVersion } from "../../../package.json";
 import { AymeError, RuntimeStateError, type Capture } from "../../shared";
@@ -7,10 +18,12 @@ import type {
   Bound,
   ElementInputs,
   HostKey,
+  PickNotice,
   ReachAnswer,
   ReachMeasurement,
   ReachRequest,
 } from "../page/install";
+import { highlightStyles, type HighlightStyle } from "./highlightStyles";
 
 export type {
   Bound,
@@ -55,6 +68,32 @@ export type InPage = {
    * focus: the last opened native modal it is not in, else its inert ancestor.
    */
   blockingAncestor(ref: string): Promise<string | undefined>;
+  /**
+   * Picks a Structural Ref by pointing at the document. The element under
+   * the pointer that has a ref is boxed with the hover highlight, or the
+   * unusable one when its ref is not in `accept`; a click picks an accepted
+   * one, Esc cancels, and the page itself handles none of these presses.
+   * Answers the ref picked, or nothing when Esc or `options.signal` ends it.
+   */
+  pick(
+    accept: readonly string[],
+    options?: PickOptions
+  ): Promise<string | undefined>;
+  /**
+   * Shows Demo Mode's click cue where `target` is, if it matches one element
+   * now, and answers when the cue has gone. Reads the element's geometry in
+   * the page and waits for nothing.
+   */
+  cue(target: Locator): Promise<void>;
+};
+
+export type PickOptions = {
+  /** A CSS selector for the subtrees picking leaves alone, such as the Inspector's host. */
+  ignore?: string;
+  /** Ends picking, as Esc does, when it aborts. */
+  signal?: AbortSignal;
+  /** The highlight styles of an element that can be picked and of one that cannot. */
+  styles?: { usable?: HighlightStyle; unusable?: HighlightStyle };
 };
 
 export type CaptureOptions = {
@@ -80,6 +119,8 @@ export function createInPageHost(version = packageVersion): InPageHost {
   const host = hostKey();
   const binding = `__ayme_${host}`;
   const pages = new WeakMap<Page, InPage>();
+  // The pickings that are on, to hear what the module tells through the binding.
+  const listeners = new Map<string, (notice: PickNotice) => void>();
 
   const versionError = (found: string) =>
     new InPageVersionError(
@@ -90,7 +131,12 @@ export function createInPageHost(version = packageVersion): InPageHost {
     let exposed: Promise<unknown> | undefined;
     const inPage: InPage = {
       async bound() {
-        exposed ??= page.exposeFunction(binding, () => undefined);
+        exposed ??= page.exposeFunction(
+          binding,
+          (notice?: PickNotice & { id?: string }) => {
+            if (notice?.id !== undefined) listeners.get(notice.id)?.(notice);
+          }
+        );
         await exposed;
         const result = await page.evaluate(installInPage, {
           version,
@@ -130,16 +176,55 @@ export function createInPageHost(version = packageVersion): InPageHost {
         })) as ReachAnswer;
         return answer.kind === "blocking" ? answer.blocker : undefined;
       },
-    };
-    /** A call of the document's module, which gets it installed, once, when it has none. */
-    async function callModule(name: "capture" | "measure", inputs: unknown) {
-      for (let installed = false; ; installed = true) {
-        const result = await page.evaluate(callInPage, {
-          version,
-          host,
-          name,
-          inputs,
+      async pick(accept, { ignore, signal, styles } = {}) {
+        const id = hostKey();
+        const paint = highlighting(page, {
+          usable: styles?.usable ?? highlightStyles.hover,
+          unusable: styles?.unusable ?? highlightStyles.unusable,
         });
+        listeners.set(id, paint.show);
+        const cancel = () => void callModule("cancelPick", id).catch(() => {});
+        signal?.addEventListener("abort", cancel, { once: true });
+        try {
+          if (signal?.aborted) return undefined;
+          return (await callModule("pick", { id, accept, ignore })) as
+            string | undefined;
+        } finally {
+          signal?.removeEventListener("abort", cancel);
+          listeners.delete(id);
+          await paint.clear();
+        }
+      },
+      async cue(target) {
+        await throughModule(() =>
+          target.evaluateAll(callOnInPage, {
+            version,
+            host,
+            name: "cue" as const,
+          })
+        );
+      },
+    };
+    /** A call of the document's module. */
+    const callModule = (
+      name: "capture" | "measure" | "pick" | "cancelPick",
+      inputs: unknown
+    ) =>
+      throughModule(() =>
+        page.evaluate(callInPage, { version, host, name, inputs })
+      );
+
+    /** Runs a call of the module, binding to the document's first when it has none. */
+    async function throughModule<T>(
+      send: () => Promise<
+        | { kind: "ok"; value?: T }
+        | { kind: "missing" }
+        | { kind: "version"; found: string }
+      >
+    ): Promise<T | undefined> {
+      // A document without the module gets it installed, once.
+      for (let installed = false; ; installed = true) {
+        const result = await send();
         if (result.kind === "ok") return result.value;
         if (result.kind === "version") throw versionError(result.found);
         if (installed)
@@ -158,6 +243,35 @@ export function createInPageHost(version = packageVersion): InPageHost {
       if (!found) pages.set(page, (found = forPage(page)));
       return found;
     },
+  };
+}
+
+/**
+ * Boxes the element a picking points at through Playwright's highlight, one
+ * at a time, in order: `show` for each notice, `clear` when picking ends.
+ */
+function highlighting(
+  page: Page,
+  styles: { usable: HighlightStyle; unusable: HighlightStyle }
+) {
+  let current: Disposable | undefined;
+  let queue: Promise<unknown> = Promise.resolve();
+  const then = (step: () => Promise<void>) =>
+    (queue = queue.then(step, step).catch(() => {}));
+  const dispose = async () => {
+    await current?.dispose();
+    current = undefined;
+  };
+  return {
+    show: (notice: PickNotice) =>
+      void then(async () => {
+        await dispose();
+        if (notice.ref === undefined) return;
+        current = await page.locator(`ayme-ref=${notice.ref}`).highlight({
+          style: notice.usable ? styles.usable : styles.unusable,
+        });
+      }),
+    clear: () => then(dispose),
   };
 }
 

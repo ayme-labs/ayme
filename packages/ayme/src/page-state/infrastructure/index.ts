@@ -1,3 +1,4 @@
+export { pageOfDocument } from "./browserInPage";
 export { assertReachable, inTheWayOf, reaches } from "./elementReach";
 export type { ElementInput } from "./elementReach";
 export { startNavigation } from "./navigation";

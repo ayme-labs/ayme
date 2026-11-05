@@ -30,8 +30,14 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
+    highlightStyles,
+    inPage,
+    pageOfDocument,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
+    highlightStyles,
+    inPage,
+    pageOfDocument,
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,

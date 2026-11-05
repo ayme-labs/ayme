@@ -23,6 +23,32 @@ async function setBody(page: Page, html: string) {
   await page.evaluate(`document.body.innerHTML = ${JSON.stringify(html)}`);
 }
 
+/** The boxes Playwright draws now, one per highlighted element, in the lane's open overlay. */
+async function highlightBoxes(page: Page) {
+  return page.locator("x-pw-highlight").evaluateAll((boxes) =>
+    boxes
+      .map((box) => ({
+        outlineStyle: (box as HTMLElement).style.outlineStyle,
+        outlineColor: (box as HTMLElement).style.outlineColor,
+        bounds: box.getBoundingClientRect().toJSON() as {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        },
+        shown: (box as HTMLElement).style.display === "block",
+      }))
+      .filter(({ shown }) => shown)
+  );
+}
+
+/** Every attribute of every element outside Playwright's overlay, to compare before and after. */
+function appAttributes(page: Page) {
+  return page.evaluate(`[...document.querySelectorAll("*")]
+    .filter((element) => element.localName !== "x-pw-glass")
+    .map((element) => [element.localName, ...[...element.attributes].map((a) => a.name + "=" + a.value)].join(" "))`);
+}
+
 /** Every Structural Ref a capture text prints, in order. */
 function refsIn(text: string): string[] {
   return [...text.matchAll(/\[ref=([^\]]+)\]/g)].map(([, ref]) => ref!);
@@ -419,5 +445,195 @@ export function inPageContract(lane: InPageLane) {
         await inPageOf.measureReach(ref('"Far"'), { atCall: true })
       ).toEqual({ present: true, available: false, hit: [ref("dialog")] });
     });
+  });
+  describe("highlights", () => {
+    const style = { outline: "2px dashed rgb(217, 164, 65)" };
+
+    it("a locator's highlight draws a box over its element and its disposable clears it", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<button>First</button><button>Second</button>");
+      const host = lane.createHost(page);
+      const { fullText } = await host.inPage(page).capture();
+
+      const highlight = await page
+        .locator(`ayme-ref=${refOf(fullText, '"Second"')}`)
+        .highlight({ style });
+
+      const second = await page
+        .getByRole("button", { name: "Second" })
+        .boundingBox();
+      await expect
+        .poll(() => highlightBoxes(page))
+        .toEqual([
+          {
+            outlineStyle: "dashed",
+            outlineColor: "rgb(217, 164, 65)",
+            bounds: expect.objectContaining({ x: second!.x, y: second!.y }),
+            shown: true,
+          },
+        ]);
+      await highlight.dispose();
+      await expect.poll(() => highlightBoxes(page)).toEqual([]);
+    });
+
+    it("the app's DOM gains no attribute while an element is highlighted, and page.hideHighlight clears it", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        "<main><button>Save</button><input aria-label='Title'></main>"
+      );
+      const host = lane.createHost(page);
+      const { fullText } = await host.inPage(page).capture();
+      const before = await appAttributes(page);
+
+      await page
+        .locator(`ayme-ref=${refOf(fullText, '"Save"')}`)
+        .highlight({ style });
+      await page
+        .locator(`ayme-ref=${refOf(fullText, '"Title"')}`)
+        .highlight({ style: { outline: "3px solid red" } });
+
+      await expect
+        .poll(async () => (await highlightBoxes(page)).length)
+        .toBe(2);
+      expect(await appAttributes(page)).toEqual(before);
+      await page.hideHighlight();
+      await expect.poll(() => highlightBoxes(page)).toEqual([]);
+      expect(await appAttributes(page)).toEqual(before);
+    });
+  });
+
+  describe("picking", () => {
+    const amber = "rgb(217, 164, 65)";
+    const grey = "rgb(156, 163, 175)";
+    const bodyOfPicking =
+      '<main id="app"><input aria-label="New item"><button><span>Add item</span></button></main><aside id="panel"><button>Panel</button></aside>';
+
+    /** A page with picking's fixture, its capture's refs by accessible name and the host. */
+    async function picking() {
+      const page = await lane.newPage();
+      await setBody(page, bodyOfPicking);
+      // What the page itself hears of the pointer.
+      await page.evaluate(`(() => {
+        window.presses = [];
+        for (const type of ["pointerdown", "mousedown", "mouseup", "click", "contextmenu"])
+          document.addEventListener(type, (event) => window.presses.push(type + ":" + event.target.textContent));
+      })()`);
+      const host = lane.createHost(page);
+      const { fullText } = await host.inPage(page).capture();
+      return {
+        page,
+        inPage: host.inPage(page),
+        refs: {
+          input: refOf(fullText, '"New item"'),
+          button: refOf(fullText, '"Add item"'),
+          panel: refOf(fullText, '"Panel"'),
+        },
+      };
+    }
+
+    it("returns the ref of the accepted element clicked, and the page never sees the press", async () => {
+      const { page, inPage, refs } = await picking();
+
+      const picked = inPage.pick([refs.input]);
+      await page.getByLabel("New item").click();
+
+      expect(await picked).toBe(refs.input);
+      expect(await page.evaluate("window.presses")).toEqual([]);
+    });
+
+    it("greys an element that is not accepted and does not pick it, and boxes an accepted one", async () => {
+      const { page, inPage, refs } = await picking();
+      const picked = inPage.pick([refs.input]);
+      let settled = false;
+      void picked.then(() => (settled = true));
+
+      // The pointer lands on the button's text; its button carries the ref.
+      await page.getByText("Add item").hover();
+      await expect
+        .poll(async () =>
+          (await highlightBoxes(page)).map((box) => box.outlineColor)
+        )
+        .toEqual([grey]);
+      await page.getByText("Add item").click();
+      await page.getByLabel("New item").hover();
+      await expect
+        .poll(async () =>
+          (await highlightBoxes(page)).map((box) => box.outlineColor)
+        )
+        .toEqual([amber]);
+
+      expect(settled).toBe(false);
+      expect(await page.evaluate("window.presses")).toEqual([]);
+      await page.getByLabel("New item").click();
+      expect(await picked).toBe(refs.input);
+    });
+
+    it("leaves what the host ignores alone, and Esc cancels, then presses reach the page again", async () => {
+      const { page, inPage, refs } = await picking();
+      const picked = inPage.pick([refs.input], { ignore: "#panel" });
+
+      await page.getByRole("button", { name: "Panel" }).click();
+      expect(await page.evaluate("window.presses")).toContain("click:Panel");
+      await page.keyboard.press("Escape");
+
+      expect(await picked).toBeUndefined();
+      await page.getByRole("button", { name: "Add item" }).click();
+      expect(await page.evaluate("window.presses")).toContain("click:Add item");
+      await expect.poll(() => highlightBoxes(page)).toEqual([]);
+    });
+
+    it("an abort right after pick is called still cancels it, and the page handles a click normally", async () => {
+      const { page, inPage, refs } = await picking();
+      const before = await page.evaluate("document.head.innerHTML");
+      const stop = new AbortController();
+
+      const picked = inPage.pick([refs.input], { signal: stop.signal });
+      stop.abort();
+
+      expect(await picked).toBeUndefined();
+      await page.getByRole("button", { name: "Add item" }).click();
+      expect(await page.evaluate("window.presses")).toContain("click:Add item");
+      expect(await page.evaluate("document.head.innerHTML")).toBe(before);
+    });
+
+    it("stops when its signal aborts, and leaves no style behind", async () => {
+      const { page, inPage, refs } = await picking();
+      const before = await page.evaluate("document.head.innerHTML");
+      const stop = new AbortController();
+      const picked = inPage.pick([refs.input], { signal: stop.signal });
+      await expect
+        .poll(() => page.evaluate("document.head.innerHTML"))
+        .not.toBe(before);
+
+      stop.abort();
+
+      expect(await picked).toBeUndefined();
+      expect(await page.evaluate("document.head.innerHTML")).toBe(before);
+    });
+  });
+
+  it("a click cue shows at the centre of the element a locator matches, then goes", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      '<button style="position:fixed;left:40px;top:60px;width:100px;height:30px">Go</button>'
+    );
+    const inPage = lane.createHost(page).inPage(page);
+
+    const cue = inPage.cue(page.getByRole("button", { name: "Go" }));
+
+    const where = page.locator("[data-demo-click-cue]");
+    await expect.poll(() => where.count()).toBe(1);
+    expect(
+      await where.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return [box.x + box.width / 2, box.y + box.height / 2].map(Math.round);
+      })
+    ).toEqual([90, 75]);
+    await cue;
+    expect(await where.count()).toBe(0);
+    // Nothing matches: no cue, and no wait.
+    await inPage.cue(page.getByRole("button", { name: "Missing" }));
   });
 }

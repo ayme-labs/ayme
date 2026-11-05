@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { isAymeLocator } from "@ayme-dev/ayme/internal";
+import { inPage, isAymeLocator, pageOfDocument } from "@ayme-dev/ayme/internal";
 import { passThroughWhileCovered } from "../../panel";
 import { describeCall, type CallSubject } from "../../shared";
 
@@ -91,62 +91,8 @@ export function withDemoFeedback(
 }
 
 async function showClickCue(locator: Locator) {
-  // Only an element that is there now gets a cue, so a click that will fail,
-  // or wait for its element, isn't held up by the cue's own wait.
-  if ((await locator.count()) !== 1) return;
-  // The callback is serialized into the page, where Stryker's
-  // instrumentation does not exist, so it is not mutated.
-  // Stryker disable all
-  await locator.evaluate(async (element) => {
-    const document = element.ownerDocument;
-    const window = document.defaultView;
-    const bounds = element.getBoundingClientRect();
-    if (!window || !bounds.width || !bounds.height) return;
-
-    const cue = document.createElement("div");
-    cue.dataset.demoClickCue = "";
-    cue.setAttribute("aria-hidden", "true");
-    Object.assign(cue.style, {
-      background: "rgb(77 126 219 / 18%)",
-      border: "2px solid rgb(77 126 219 / 80%)",
-      borderRadius: "999px",
-      height: "2rem",
-      left: `${bounds.left + bounds.width / 2}px`,
-      pointerEvents: "none",
-      position: "fixed",
-      top: `${bounds.top + bounds.height / 2}px`,
-      transform: "translate(-50%, -50%)",
-      width: "2rem",
-      zIndex: "2147483647",
-    });
-    document.body.append(cue);
-    try {
-      const reducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
-      cue.animate(
-        reducedMotion
-          ? [{ opacity: 0.9 }, { opacity: 0 }]
-          : [
-              {
-                opacity: 0.9,
-                transform: "translate(-50%, -50%) scale(0.95)",
-              },
-              {
-                opacity: 0,
-                transform: "translate(-50%, -50%) scale(1.35)",
-              },
-            ],
-        {
-          duration: 160,
-          easing: "cubic-bezier(0.23, 1, 0.32, 1)",
-          fill: "forwards",
-        }
-      );
-      await new Promise((resolve) => window.setTimeout(resolve, 160));
-    } finally {
-      cue.remove();
-    }
-  });
-  // Stryker restore all
+  // The runtime's in-page module reads the element's geometry and shows the
+  // cue, only for an element that is there now, so a click that will fail, or
+  // wait for its element, isn't held up by the cue's own wait.
+  await inPage(pageOfDocument(document)).cue(locator);
 }

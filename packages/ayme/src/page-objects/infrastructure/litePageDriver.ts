@@ -10,7 +10,7 @@ import {
   onPageStateRecorded,
 } from "../../page-state/infrastructure";
 import { type Reach } from "../../page-state/application";
-import { onlyHitTestMarks } from "../../shared";
+import { onlyOwnMarks } from "../../shared";
 import type { PageDriver } from "../application/pageDriver";
 import { observePomRoot } from "./pomRootObservation";
 
@@ -49,7 +49,7 @@ export const litePageDriver: PageDriver = {
   observeRoot: (locator) => observePomRoot(locator, installedReach),
   watch(onChange) {
     const mutations = new MutationObserver((records) => {
-      if (!onlyHitTestMarks(records)) onChange();
+      if (!onlyOwnMarks(records)) onChange();
     });
     mutations.observe(document.documentElement, {
       attributes: true,
@@ -69,7 +69,7 @@ export const litePageDriver: PageDriver = {
         // A change made in this task has not reached the observer's
         // callback yet.
         const records = mutations.takeRecords();
-        if (records.length && !onlyHitTestMarks(records)) onChange();
+        if (records.length && !onlyOwnMarks(records)) onChange();
       },
       stop() {
         for (const event of layoutEvents)

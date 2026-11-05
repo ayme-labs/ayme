@@ -1,6 +1,6 @@
 import type { PageActivitySource } from "@ayme-dev/core/structural-observation";
 
-import { onlyHitTestMarks } from "../../shared";
+import { onlyOwnMarks } from "../../shared";
 
 const PAGE_ACTIVITY_EVENTS = [
   "transitionrun",
@@ -22,7 +22,7 @@ export function getBrowserPageActivitySource(
   return {
     subscribe(onActivity) {
       const observer = new MutationObserver((records) => {
-        if (!onlyHitTestMarks(records)) onActivity();
+        if (!onlyOwnMarks(records)) onActivity();
       });
       observer.observe(currentDocument, {
         subtree: true,

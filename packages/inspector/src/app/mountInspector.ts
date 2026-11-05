@@ -9,40 +9,6 @@ import { renderInspector } from "./renderInspector";
 import { exposeInspectorShadowRoot } from "../shared";
 import { withDemoFeedback } from "../demo";
 
-// The page's two highlights: solid for the Inspector's selection, dashed
-// for what the pointer is over in the panel. An element that is both shows
-// the selection's.
-const highlightStyleText = `
-[data-ayme-highlight] {
-  animation: ayme-highlight-pulse 1.6s ease-in-out 2;
-  outline: 3px solid #d9a441;
-  outline-offset: 3px;
-  position: relative;
-  z-index: 1;
-}
-
-[data-ayme-hover]:not([data-ayme-highlight]) {
-  outline: 2px dashed #d9a441;
-  outline-offset: 3px;
-}
-
-@keyframes ayme-highlight-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(217 164 65 / 0%);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgb(217 164 65 / 18%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-ayme-highlight] {
-    animation: none;
-  }
-}
-`;
-
 /** How long demo mode pauses before each action. */
 const DEMO_PAUSE_MS = 500;
 
@@ -92,10 +58,6 @@ let mounted: MountedInspector | undefined;
 export function mountInspector(options: InspectorOptions = {}) {
   if (!mounted) {
     const disposeInstrumentation = installInspectorInstrumentation(options);
-    const highlightStyle = document.createElement("style");
-    highlightStyle.dataset.aymeInspectorHighlightStyle = "";
-    highlightStyle.textContent = highlightStyleText;
-    document.head.append(highlightStyle);
     // A custom element name, so the page's `div` rules and queries miss the
     // host. It needs no registration to host a shadow root.
     const host = document.createElement("ayme-inspector");
@@ -119,7 +81,6 @@ export function mountInspector(options: InspectorOptions = {}) {
         disallowPassThrough();
         unmountUi();
         host.remove();
-        highlightStyle.remove();
       },
     };
   }

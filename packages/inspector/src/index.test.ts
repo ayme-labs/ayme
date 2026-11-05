@@ -115,24 +115,6 @@ it("mounts one Inspector in a closed Shadow Root and supports disposal and remou
   remounted.dispose();
 });
 
-it("owns consumer highlight styling for the mounted Inspector", () => {
-  const first = mountInspector();
-  const duplicate = mountInspector();
-  const style = document.head.querySelector(
-    "style[data-ayme-inspector-highlight-style]"
-  );
-
-  expect(
-    document.head.querySelectorAll("style[data-ayme-inspector-highlight-style]")
-  ).toHaveLength(1);
-  expect(style?.textContent).toContain("[data-ayme-highlight]");
-
-  duplicate.dispose();
-  expect(style?.isConnected).toBe(true);
-  first.dispose();
-  expect(style?.isConnected).toBe(false);
-});
-
 it("renders the React Inspector and its stylesheet inside the Shadow Root only", () => {
   const headStylesBefore = document.head.querySelectorAll(
     "style, link[rel=stylesheet]"
@@ -153,10 +135,10 @@ it("renders the React Inspector and its stylesheet inside the Shadow Root only",
       "[data-ayme-inspector-root] [data-ayme-inspector-portal]"
     )
   ).not.toBeNull();
-  // Only the page highlight style reaches the host document.
+  // No style reaches the host document: highlights are Playwright's overlay.
   expect(
     document.head.querySelectorAll("style, link[rel=stylesheet]")
-  ).toHaveLength(headStylesBefore + 1);
+  ).toHaveLength(headStylesBefore);
 
   inspector.dispose();
   expect(shadowRoot?.childNodes).toHaveLength(0);

@@ -4,6 +4,8 @@ export {
   InPageVersionError,
   registerAymeRef,
 } from "./host/inPage";
+export { highlightStyles } from "./host/highlightStyles";
+export type { HighlightStyle } from "./host/highlightStyles";
 // Transitional (#1182): browser-only.
 export { elementOfRef } from "./host/elementLookup";
 // Browser-only: reach for the host in the document's own realm.
@@ -16,6 +18,7 @@ export type {
   InPage,
   InPageHost,
   ReachMeasurement,
+  PickOptions,
 } from "./host/inPage";
 // The page part's ref world, for tests that stand in Playwright's snapshot
 // where no browser lays the page out (jsdom).

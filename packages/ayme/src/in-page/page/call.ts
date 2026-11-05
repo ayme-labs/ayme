@@ -9,7 +9,7 @@ import type { Slot } from "./install";
 export type CallArgument = {
   version: string;
   host: string;
-  name: "capture" | "measure";
+  name: "capture" | "measure" | "pick" | "cancelPick";
   inputs?: unknown;
 };
 
@@ -18,16 +18,16 @@ export type CallResult<T> =
   | { kind: "missing" }
   | { kind: "version"; found: string };
 
-export function call({
+export async function call({
   version,
   host,
   name,
   inputs,
-}: CallArgument): CallResult<unknown> {
+}: CallArgument): Promise<CallResult<unknown>> {
   const slot = (globalThis as { [key: symbol]: Slot | undefined })[
     Symbol.for("ayme.inPage")
   ];
   if (!slot) return { kind: "missing" };
   if (slot.version !== version) return { kind: "version", found: slot.version };
-  return { kind: "ok", value: slot[name](host, inputs as never) };
+  return { kind: "ok", value: await slot[name](host, inputs as never) };
 }

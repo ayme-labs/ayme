@@ -18,6 +18,11 @@ import { Inspector } from "../testing";
 // selection. The runtime is replaced by a fixture host page whose elements
 // carry their refs in the page state it looks at, so the evidence covers the
 // panel and its runtime wiring only.
+// The page's highlights as the runtime's page is asked for them: each
+// `ayme-ref=` locator highlighted, with its style. Playwright's own drawing is
+// covered by the in-page module's contract and the e2e suite.
+const highlighted = vi.hoisted(() => new Map<string, string>());
+
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
@@ -31,8 +36,20 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
+    highlightStyles,
+    inPage,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
+    highlightStyles,
+    inPage,
+    pageOfDocument: () => ({
+      locator: (selector: string) => ({
+        highlight: async ({ style }: { style: { outline: string } }) => {
+          highlighted.set(selector, style.outline);
+          return { dispose: async () => void highlighted.delete(selector) };
+        },
+      }),
+    }),
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,
@@ -105,10 +122,6 @@ const editor: RegisteredPom = {
   tools: [],
 };
 
-function element(ref: string) {
-  return document.querySelector(`[data-ref="${ref}"]`)!;
-}
-
 beforeEach(() => {
   const host = document.createElement("div");
   host.innerHTML = hostPage;
@@ -148,6 +161,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
+  highlighted.clear();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -156,12 +170,15 @@ afterEach(() => {
 function highlights() {
   return Object.fromEntries(
     ["e1", "e2", "e3"].map((ref) => {
-      const target = element(ref);
-      const shown = [
-        target.hasAttribute("data-ayme-hover") && "hover",
-        target.hasAttribute("data-ayme-highlight") && "selection",
-      ].filter(Boolean);
-      return [ref, shown.join("+") || "none"];
+      const outline = highlighted.get(`ayme-ref=${ref}`);
+      return [
+        ref,
+        outline === undefined
+          ? "none"
+          : outline.includes("dashed")
+            ? "hover"
+            : "selection",
+      ];
     })
   );
 }

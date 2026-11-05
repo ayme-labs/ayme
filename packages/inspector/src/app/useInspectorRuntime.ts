@@ -133,11 +133,6 @@ export function useInspectorRuntime({
     [registeredPoms, tools.live, tools.appProcess]
   );
 
-  // Picking reads the latest look at the page as the pointer moves.
-  const refByElement = useRef(new Map<Element, string>());
-  useEffect(() => {
-    refByElement.current = uniqueRefs(elementsByRef);
-  }, [elementsByRef]);
   const { hover, pin } = highlight;
 
   return {
@@ -218,8 +213,7 @@ export function useInspectorRuntime({
         refreshPageState();
         return startRefPicking({
           ...handlers,
-          refOf: (element) => refByElement.current.get(element),
-          hover: (ref) => hover(ref === undefined ? undefined : { ref }),
+          refs: latestElementsByRef.current.keys(),
         });
       },
     },
@@ -227,15 +221,3 @@ export function useInspectorRuntime({
 }
 
 export type InspectorRuntime = ReturnType<typeof useInspectorRuntime>;
-
-/** Each element's ref, for the elements that have exactly one. */
-function uniqueRefs(elementsByRef: ReadonlyMap<string, Element>) {
-  const refs = new Map<Element, string | undefined>();
-  for (const [ref, element] of elementsByRef)
-    refs.set(element, refs.has(element) ? undefined : ref);
-  return new Map(
-    [...refs].filter(
-      (entry): entry is [Element, string] => entry[1] !== undefined
-    )
-  );
-}

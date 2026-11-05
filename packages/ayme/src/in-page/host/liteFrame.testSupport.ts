@@ -11,6 +11,16 @@ export type LiteFrame = {
   createHost: typeof createInPageHost;
 };
 
+// Playwright's overlay keeps its shadow root closed outside its own tests; the
+// contract reads the highlight boxes it draws, so this frame opens it.
+const attachShadow = Element.prototype.attachShadow;
+Element.prototype.attachShadow = function (init) {
+  return attachShadow.call(
+    this,
+    this.localName === "x-pw-glass" ? { ...init, mode: "open" } : init
+  );
+};
+
 // Before the page, as a Playwright Lite runtime registers its engines.
 await registerAymeRef(selectors);
 

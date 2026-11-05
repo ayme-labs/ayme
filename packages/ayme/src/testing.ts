@@ -30,6 +30,7 @@ export type {
   ElementInputs,
   InPage,
   InPageHost,
+  PickOptions,
 } from "./in-page";
 
 type WithStore = typeof globalThis & {

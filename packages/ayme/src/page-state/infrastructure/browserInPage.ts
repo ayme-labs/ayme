@@ -17,6 +17,15 @@ function browserPageOf(currentDocument: Document): Page {
 }
 
 /**
+ * The Playwright Lite page that hosts `currentDocument`'s module: the Page the
+ * Inspector highlights and picks through, until it reads the runtime through
+ * its contract (#1178).
+ */
+export function pageOfDocument(currentDocument: Document): Page {
+  return browserPageOf(currentDocument);
+}
+
+/**
  * Installs `currentDocument`'s in-page module, or binds to the one there.
  * Every capture binds too, and reports what fails here.
  */

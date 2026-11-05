@@ -1,7 +1,7 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 
-import { expect, openFixture, test } from "./fixtures";
+import { expect, openFixture, outline, test } from "./fixtures";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
 // Objects, a collection, and a child that is not on the page, with the Ayme
@@ -42,12 +42,6 @@ test("the model list shows every Page Object Model an agent is told about, inclu
     .toEqual(described);
 });
 
-/** How the page outlines an element: "dashed" hovered, "solid" selected. */
-function outline(element: Locator) {
-  return () =>
-    element.evaluate((target) => getComputedStyle(target).outlineStyle);
-}
-
 test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
   page,
   inspector,
@@ -55,8 +49,12 @@ test("hovering a Page Object highlights it dashed on the page, and selecting it 
   const secondItem = outline(page.locator("#todo-items > li").nth(1));
   const object = inspector.navigator.model.object("TodoPage.items[1]");
 
-  await object.hover();
-  await expect.poll(secondItem).toBe("dashed");
+  // The list can still be settling under a resting pointer, which then hovers
+  // another row: hover again until it is this one.
+  await expect(async () => {
+    await object.hover();
+    expect(await secondItem()).toBe("dashed");
+  }).toPass();
   await inspector.header.title.hover();
   await expect.poll(secondItem).toBe("none");
 

@@ -4,8 +4,13 @@ export {
   getPageStateForElements,
   latestPageStateCapture,
   lookAtPageStateForDocument,
+  pageOfDocument,
   resolvePageStateRef,
 } from "./page-state/infrastructure";
+// Highlighting and picking, which the inline Inspector calls through the
+// runtime's Page until it reads through the Inspector contract (#1178).
+export { highlightStyles, inPage } from "./in-page";
+export type { PickOptions } from "./in-page";
 export { pageStateNodeEntry } from "./page-state/domain";
 export type { PageStateCapture, PageStateLook } from "./page-state/domain";
 export type {
