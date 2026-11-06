@@ -1,6 +1,7 @@
 import {
   callTool,
   connectTool,
+  inspectTool,
   listToolsTool,
   type ServerToolFactory,
 } from "../tools";
@@ -10,4 +11,5 @@ export const serverTools: readonly ServerToolFactory[] = [
   connectTool,
   listToolsTool,
   callTool,
+  inspectTool,
 ];

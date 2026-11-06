@@ -17,7 +17,7 @@ export {
   parseStoredPairing,
   serializePairing,
 } from "./domain/pairingStorage";
-export { admit, isLocalProcess } from "./domain/admission";
+export { admit, isLocalOrigin, isLocalProcess } from "./domain/admission";
 export { autoPairing } from "./infrastructure/autoPairing";
 export {
   listenOnFirstFreePort,

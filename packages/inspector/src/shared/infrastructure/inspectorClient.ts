@@ -34,9 +34,16 @@ export const emptyInspectorState: InspectorState = Object.freeze({
  * newest state it has heard, tells its listeners when that changes, and
  * sends the Inspector's commands. The transport it is built on is the
  * contract itself: inline it is the runtime's own, called directly with no
- * serialization; a channel to `ayme mcp` is another (#1181).
+ * serialization; a channel to `ayme mcp` is another, for an Inspector in a
+ * window of its own. The lenses do not know which they have, but for how
+ * the page's changes reach them (`external`).
  */
 export type InspectorClient = {
+  /**
+   * Whether the Inspector runs outside the page it shows, in a window of its
+   * own: it hears no DOM events of that page, so it looks at it on a timer.
+   */
+  readonly external: boolean;
   /** The newest state held; the same object until it changes. */
   current(): InspectorState;
   /**
@@ -75,7 +82,8 @@ export type InspectorClient = {
 };
 
 export function createInspectorClient(
-  transport: InspectorContract
+  transport: InspectorContract,
+  { external = false }: { external?: boolean } = {}
 ): InspectorClient {
   let held = emptyInspectorState;
   const listeners = new Set<() => void>();
@@ -113,6 +121,7 @@ export function createInspectorClient(
   };
 
   return {
+    external,
     current: () => held,
     subscribe(listener) {
       listeners.add(listener);
@@ -171,8 +180,11 @@ export function inspectorClient(): InspectorClient {
  * Tests: serves the client from `transport` instead of the runtime's own
  * contract, which is how a test stands in a session.
  */
-export function replaceInspectorTransport(transport: InspectorContract) {
-  client = createInspectorClient(transport);
+export function replaceInspectorTransport(
+  transport: InspectorContract,
+  options?: { external?: boolean }
+) {
+  client = createInspectorClient(transport, options);
 }
 
 /** The newest state the document's client holds, kept current. */

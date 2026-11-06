@@ -57,6 +57,13 @@ export type PageStateView = {
 const STRUCTURE_POLL_MS = 2000;
 
 /**
+ * How often an Inspector in a window of its own looks at the page: it hears
+ * none of that page's DOM events, so it looks on a timer, and after each
+ * change to the Runs.
+ */
+const EXTERNAL_POLL_MS = 1500;
+
+/**
  * The Inspector's live view of the page. Each refresh takes one unrecorded
  * look at the page state through the Inspector contract (it never enters the
  * interaction history, so agents see exactly what they would without the
@@ -132,9 +139,24 @@ export function usePageLook({
   useEffect(() => {
     if (mounted.current) scheduler.request();
   }, [state.pageObjects, state.pomDefinitions, scheduler]);
+  // An agent's Run changes the page; an Inspector outside it does not hear
+  // the page change.
+  useEffect(() => {
+    if (client.external && mounted.current) scheduler.request();
+  }, [client.external, state.runs, scheduler]);
 
   useEffect(() => {
     mounted.current = true;
+    // The page is another document's: its changes are not this one's.
+    if (client.external) {
+      scheduler.request();
+      const poll = setInterval(() => scheduler.request(), EXTERNAL_POLL_MS);
+      return () => {
+        mounted.current = false;
+        clearInterval(poll);
+        scheduler.dispose();
+      };
+    }
 
     // Changes to the page, except the Inspector's own marks on it.
     const observer = new MutationObserver((records) => {
@@ -164,7 +186,7 @@ export function usePageLook({
         document.removeEventListener(type, onPageEvent, true);
       scheduler.dispose();
     };
-  }, [scheduler]);
+  }, [scheduler, client.external]);
 
   // Open shadow roots in the app and CSS-only state change nothing the
   // observer or the listeners see; look again now and then while it shows.

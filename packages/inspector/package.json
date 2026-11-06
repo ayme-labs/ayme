@@ -35,6 +35,10 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./external": {
+      "import": "./dist/external.mjs",
+      "default": "./dist/external.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",

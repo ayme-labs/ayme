@@ -6,7 +6,7 @@ import type { Look } from "../../shared";
 import {
   createHighlights,
   createInspectorContract,
-} from "@ayme-dev/ayme/inspector";
+} from "@ayme-dev/ayme/testing";
 
 import { createInspectorClient } from "../../shared";
 import { useHighlights } from "./useHighlights";

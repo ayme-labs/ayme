@@ -40,6 +40,7 @@ export type {
   AgentConnectionOptions,
   Ayme,
   AymeOptions,
+  InspectorOptions,
   AymePage,
   AymePom,
   AymeTools,

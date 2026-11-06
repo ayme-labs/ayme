@@ -6,7 +6,7 @@ import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
   createInspectorContract,
   type InspectorSession,
-} from "@ayme-dev/ayme/inspector";
+} from "@ayme-dev/ayme/testing";
 
 import { createInspectorClient } from "../../shared";
 import { useLiveTools, type LiveTools } from "./liveTools";

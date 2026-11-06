@@ -5,8 +5,16 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { version } from "../../package.json";
 import { AgentConnection, createPageChannelServer } from "../connection";
 import {
+  InspectorRelay,
+  externalInspectorServer,
+  inspectCommand,
+  inspectorUrl,
+  readExternalBuild,
+} from "../inspector";
+import {
   SERVER_HOST,
   SERVER_PORTS,
+  findServers,
   listenOnFirstFreePort,
   listenOnPort,
   type Pairing,
@@ -35,11 +43,17 @@ export async function startMcpServer({
   const token = randomUUID();
   // The MCP server starts after the page's: a page may say hello before it.
   let agentName = (): string | undefined => undefined;
+  // The external Inspector is served by this server and relayed over its
+  // page channel: no other server and no other port.
   const channel = createPageChannelServer({
     connection,
     token,
     imageFolder: screenshotFolder,
     agent: () => agentName(),
+    extension: externalInspectorServer({
+      relay: new InspectorRelay(connection),
+      readBuild: readExternalBuild,
+    }),
   });
   const port =
     pinnedPort === undefined
@@ -54,7 +68,15 @@ export async function startMcpServer({
     name: "ayme",
     version,
     serverTools,
-    context: { connection, pairing, saveImage: saveToScreenshotFolder },
+    context: {
+      connection,
+      pairing,
+      saveImage: saveToScreenshotFolder,
+      inspector: {
+        url: inspectorUrl(SERVER_HOST, port),
+        installed: async () => (await readExternalBuild()) !== undefined,
+      },
+    },
   });
   agentName = () => mcp.getClientVersion()?.name;
 
@@ -68,3 +90,23 @@ export async function startMcpServer({
   log(`Listening for pages on ${pairing.address}.`);
 }
 export { readCommand } from "./readCommand";
+
+/**
+ * Prints the URL of the external Inspector of the running Ayme MCP server
+ * (every one that answers, in port order) on stdout, or says why there is
+ * none on stderr. A server with a page paired answers a local process's
+ * probe too, so it counts. Returns the exit code.
+ */
+export async function printInspectorUrl({
+  port,
+}: { port?: number } = {}): Promise<number> {
+  const { ok, text } = await inspectCommand({
+    installed: async () => (await readExternalBuild()) !== undefined,
+    servers: () =>
+      findServers(
+        port === undefined ? SERVER_PORTS : { first: port, last: port }
+      ),
+  });
+  (ok ? process.stdout : process.stderr).write(text);
+  return ok ? 0 : 1;
+}

@@ -12,6 +12,13 @@ export type ServerToolContext = {
   pairing: Pairing;
   /** Where an image a page tool returns is saved. */
   saveImage: SaveImage;
+  /** The external Inspector this server serves. */
+  inspector: {
+    /** Its URL. */
+    url: string;
+    /** Whether the optional `@ayme-dev/inspector` package that holds it is installed. */
+    installed(): Promise<boolean>;
+  };
   /** Whether the connection ever offered a tool by that name, to tell a gone tool from an unknown one. */
   wasOffered(name: string): boolean;
 };

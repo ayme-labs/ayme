@@ -67,9 +67,13 @@
     "zod": "^4.5.4"
   },
   "peerDependencies": {
+    "@ayme-dev/inspector": "workspace:*",
     "@playwright/test": ">=1.29 <1.65"
   },
   "peerDependenciesMeta": {
+    "@ayme-dev/inspector": {
+      "optional": true
+    },
     "@playwright/test": {
       "optional": true
     }

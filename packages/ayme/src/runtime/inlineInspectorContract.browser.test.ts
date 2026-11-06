@@ -5,7 +5,7 @@ import { probeRegisteredPomMembers } from "../page-objects/infrastructure";
 import { demoModeOptions } from "../runs/infrastructure";
 import type { InspectorEvent } from "../shared";
 import { createAyme, type AymePage } from "../index";
-import { inlineInspectorContract } from "./inlineInspectorContract";
+import { runtimeInspectorContract as inlineInspectorContract } from "./runtime";
 
 // The contract the runtime serves inline, over a real started session in
 // Chromium: every command result and event is plain data, and survives a JSON

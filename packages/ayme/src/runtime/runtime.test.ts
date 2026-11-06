@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordAgentImageRun } from "../tools/application";
 import { ayme } from "../page-objects/domain";
 import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
@@ -221,6 +221,84 @@ it("mounts the Inspector in demo mode when inspector asks for it", async () => {
 
   expect(demoWhileStarted).toEqual([true, false]);
   expect(mountInspector.mock.calls).toEqual([[], []]);
+});
+
+describe("the Inspector's external placement", () => {
+  const connection = () => ({
+    dispose: vi.fn(),
+    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+    status: {
+      get: () => ({ state: "not-connected" as const }),
+      subscribe: () => () => {},
+    },
+  });
+  const startAgentConnection = vi.fn<
+    (options: unknown) => ReturnType<typeof connection>
+  >(() => connection());
+
+  it("mounts no panel, and serves the contract over the Agent Connection", async () => {
+    const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
+    vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
+    vi.mocked(loadAgentConnection).mockResolvedValue({
+      startAgentConnection: startAgentConnection as never,
+    });
+    const runtime = createAyme({
+      pageFactory: () => page,
+      inspector: { placement: "external" },
+    });
+    sessions.push(runtime);
+
+    start(runtime);
+    // The contract loads on demand, after the page client.
+    await vi.waitFor(() => expect(startAgentConnection).toHaveBeenCalled());
+
+    expect(loadInspector).not.toHaveBeenCalled();
+    expect(mountInspector).not.toHaveBeenCalled();
+    const [{ inspector }] = startAgentConnection.mock.lastCall as unknown as [
+      { inspector: { request: unknown; subscribe: unknown } },
+    ];
+    expect(inspector).toEqual({
+      request: expect.any(Function),
+      subscribe: expect.any(Function),
+    });
+  });
+
+  it("serves no contract for an inline session", async () => {
+    vi.mocked(loadAgentConnection).mockResolvedValue({
+      startAgentConnection: startAgentConnection as never,
+    });
+    const inline = createAyme({
+      pageFactory: () => page,
+      inspector: true,
+      agentConnection: true,
+    });
+    sessions.push(inline);
+    start(inline);
+    await flush();
+
+    expect(startAgentConnection.mock.lastCall).toEqual([
+      expect.objectContaining({ inspector: undefined }),
+    ]);
+  });
+
+  it("asks for Demo Mode through the session option, as an inline one does", async () => {
+    vi.mocked(loadAgentConnection).mockResolvedValue({
+      startAgentConnection: startAgentConnection as never,
+    });
+    const runtime = createAyme({
+      pageFactory: () => page,
+      inspector: { placement: "external", demo: true },
+    });
+    sessions.push(runtime);
+
+    const stop = start(runtime);
+    await flush();
+    const demoWhileStarted = demoModeOptions().beforeActionMs === DEMO_PAUSE_MS;
+    stop();
+
+    expect(demoWhileStarted).toBe(true);
+    expect(demoModeOptions()).toEqual({});
+  });
 });
 
 it("compares the inspector option by what it turns on", () => {

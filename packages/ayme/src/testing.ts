@@ -18,6 +18,16 @@ export { DONE_BAR, LOWER_BAR } from "./goal-loop/application";
 // own runtime runs in, which a Node host's `./playwright` entry cannot be
 // bundled for.
 export { inPage } from "./in-page";
+
+// The Inspector contract's runtime side, which the Inspector's tests stand a
+// session in with (ADR-0049): the product's `./inspector` entry has none of it.
+export { createHighlights, createInspectorContract } from "./runtime";
+export type {
+  Highlightable,
+  InspectorContractPorts,
+  InspectorSession,
+} from "./runtime";
+
 type WithStore = typeof globalThis & {
   [goalLoopRunResultKey]?: GoalLoopRunResultStore;
 };

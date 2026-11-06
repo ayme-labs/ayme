@@ -5,6 +5,7 @@ import { pageOfDocument } from "../page-state/infrastructure";
 import { subscribeToAgentImageRuns } from "../tools/application";
 import { getPomDefinitionText } from "../tools/infrastructure";
 import type { InspectorContract } from "../shared";
+import type { AppProcessTools, Ayme } from "./runtime";
 import { getAgentConnectionStatus } from "./agentConnectionStatus";
 import { createHighlights } from "./inspectorHighlights";
 import { createInspectorContract } from "./inspectorContract";
@@ -14,11 +15,6 @@ import {
   registeredPageObjects,
   registeredPomDefinitions,
 } from "./inspectorLook";
-import {
-  getAppProcessTools,
-  getStartedAyme,
-  subscribeToStartedAyme,
-} from "./runtime";
 
 /** The Inspector's own host on the page, which picking leaves alone. */
 const INSPECTOR_HOST = "[data-ayme-inspector-host]";
@@ -34,17 +30,27 @@ function askForDemoMode(on: boolean) {
   }
 }
 
-let served: InspectorContract | undefined;
+/** What the contract reads of the runtime's sessions. */
+export type DocumentRuntime = {
+  started(): Ayme | undefined;
+  subscribeToStarted(listener: () => void): () => void;
+  appProcessTools(session: Ayme): AppProcessTools;
+};
 
 /**
- * The Inspector contract of the runtime's started session, served directly:
- * what the inline Inspector calls, with no serialization. One per document.
+ * The Inspector contract of the document's started session, over the
+ * runtime's stores: what an Inspector in the page calls directly, and what
+ * the Agent Connection relays to one outside it.
  */
-export function inlineInspectorContract(): InspectorContract {
-  return (served ??= createInspectorContract({
-    started: getStartedAyme,
-    subscribeToStarted: (listener) => subscribeToStartedAyme(() => listener()),
-    appProcessTools: getAppProcessTools,
+export function createDocumentInspectorContract({
+  started,
+  subscribeToStarted,
+  appProcessTools,
+}: DocumentRuntime): InspectorContract {
+  return createInspectorContract({
+    started,
+    subscribeToStarted: (listener) => subscribeToStarted(() => listener()),
+    appProcessTools,
     connectionStatus: getAgentConnectionStatus,
     subscribeToAgentImageRuns,
     registry: {
@@ -64,5 +70,5 @@ export function inlineInspectorContract(): InspectorContract {
         ignore: INSPECTOR_HOST,
         signal,
       }),
-  }));
+  });
 }

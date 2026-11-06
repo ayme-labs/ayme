@@ -1,4 +1,10 @@
-import { createServer, type Server } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
+import type { Duplex } from "node:stream";
 
 import { getWSConnectionHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -21,19 +27,33 @@ import {
 } from "./pageChannelRouter";
 
 /**
+ * What else the server's HTTP server answers: each method returns whether it
+ * claimed the request or upgrade, and `close` ends what it holds.
+ */
+export type ServerExtension = {
+  request(request: IncomingMessage, response: ServerResponse): boolean;
+  upgrade(request: IncomingMessage, socket: Duplex, head: Buffer): boolean;
+  close(): void;
+};
+
+/**
  * The WebSocket server pages and App Processes connect to. It accepts a
  * connection on the path `/<token>`, or without a token from a page on
  * localhost or a local process (see `admit`), and each accepted connection
  * attaches to `connection` once it says hello: as the page, or as an App
  * Process beside it. A `/probe` connection is closed at once and never
- * attaches. Returns the HTTP server, not yet listening, and what
- * closes it with every page connection, answering the calls still waiting.
+ * attaches. `extension` lets something else answer the HTTP requests and
+ * WebSocket upgrades it claims, such as the external Inspector's page;
+ * everything else is the channel's. Returns the HTTP server, not yet
+ * listening, and what closes it with every page connection, answering the
+ * calls still waiting.
  */
 export function createPageChannelServer({
   connection,
   token,
   imageFolder,
   agent,
+  extension,
 }: {
   connection: AgentConnection;
   token: string;
@@ -44,8 +64,10 @@ export function createPageChannelServer({
    * read at each hello, which the page's welcome names.
    */
   agent: () => string | undefined;
+  extension?: ServerExtension;
 }): { server: Server; close(): void } {
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
+    if (extension?.request(request, response)) return;
     response.statusCode = 426;
     response.end("The Ayme MCP server accepts WebSocket connections only.");
   });
@@ -58,6 +80,7 @@ export function createPageChannelServer({
   });
 
   server.on("upgrade", (request, socket, head) => {
+    if (extension?.upgrade(request, socket, head)) return;
     const admission = admit({
       path: request.url ?? "",
       origin: request.headers.origin,
@@ -104,6 +127,7 @@ export function createPageChannelServer({
   return {
     server,
     close() {
+      extension?.close();
       connection.close();
       for (const ws of sockets.clients) ws.terminate();
       sockets.close();

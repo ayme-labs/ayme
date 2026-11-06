@@ -1,9 +1,20 @@
 import type { AymeOptions } from "./runtime";
 
-/** What the `inspector` option turns on: nothing, the Inspector, or its demo too. */
-export function inspectorMode({ inspector }: AymeOptions) {
-  if (!inspector) return "off";
-  return inspector !== true && inspector.demo ? "demo" : "on";
+/**
+ * What the `inspector` option turns on: where the Inspector runs (`off`,
+ * `inline` in the page, or `external` in a window of its own) and whether
+ * the session asks for Demo Mode. `true` and `{ demo }` are inline.
+ */
+export function inspectorSetting({ inspector }: AymeOptions): {
+  placement: "off" | "inline" | "external";
+  demo: boolean;
+} {
+  if (!inspector) return { placement: "off", demo: false };
+  if (inspector === true) return { placement: "inline", demo: false };
+  return {
+    placement: inspector.placement === "external" ? "external" : "inline",
+    demo: inspector.demo === true,
+  };
 }
 
 /**
@@ -27,7 +38,8 @@ export function snapshotRuntimeOptions(options: AymeOptions): AymeOptions {
 export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   return sameFields(a, b, (key) =>
     key === "inspector"
-      ? inspectorMode(a) === inspectorMode(b)
+      ? JSON.stringify(inspectorSetting(a)) ===
+        JSON.stringify(inspectorSetting(b))
       : sameValue(a[key], b[key])
   );
 }

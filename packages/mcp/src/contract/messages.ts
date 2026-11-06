@@ -94,6 +94,36 @@ export const ProcessToolCallSchema = z.object({
 export type ProcessToolCall = z.infer<typeof ProcessToolCallSchema>;
 
 /**
+ * The server asks the page's Inspector contract (ADR-0049) to do something,
+ * for an external Inspector window: a contract command or read by `method`,
+ * with its `params`, or `subscribe` / `unsubscribe` for the window's events.
+ * The server sends them in the order the window asked, and the page starts
+ * each in that order. The server does not read the contract: it relays
+ * plain data.
+ */
+export const InspectorRequestSchema = z.object({
+  id: z.string().check(z.minLength(1)),
+  method: z.string().check(z.minLength(1)),
+  params: z.optional(z.unknown()),
+});
+export type InspectorRequest = z.infer<typeof InspectorRequestSchema>;
+
+/** The page's answer to one Inspector request: the result, or why it failed. */
+export const InspectorResponseSchema = z.discriminatedUnion("ok", [
+  z.object({
+    id: z.string().check(z.minLength(1)),
+    ok: z.literal(true),
+    result: z.unknown(),
+  }),
+  z.object({
+    id: z.string().check(z.minLength(1)),
+    ok: z.literal(false),
+    error: z.string(),
+  }),
+]);
+export type InspectorResponse = z.infer<typeof InspectorResponseSchema>;
+
+/**
  * The page introduces itself when its channel opens: the id its tab keeps
  * for this pairing across reloads and navigation, and the document's URL.
  */

@@ -7,6 +7,7 @@ import type {
   ToolCallOutcome,
 } from "../../contract";
 import * as tabLifecycle from "../domain/tabLifecycle";
+import { InspectorLink } from "./inspectorLink";
 import {
   heldCallText,
   unansweredCallText,
@@ -115,6 +116,8 @@ export class ChannelSession {
 export class PageSession extends ChannelSession {
   /** Ends the page's channel and tells it another tab paired in its place. */
   readonly disconnect: () => void;
+  /** The requests and events of an external Inspector, relayed to this page. */
+  readonly inspector = new InspectorLink();
 
   constructor(
     disconnect: () => void,
@@ -202,6 +205,11 @@ export class AgentConnection {
     return this.#merged().hidden.map(({ name }) => name);
   }
 
+  /** The paired page's link for an external Inspector, if a page is paired. */
+  get inspectorLink(): InspectorLink | undefined {
+    return this.#page?.inspector;
+  }
+
   /** Whether a page is paired. */
   get paired(): boolean {
     return this.#page !== undefined;
@@ -245,6 +253,7 @@ export class AgentConnection {
     const previous = this.#page;
     if (previous) {
       this.#page = undefined;
+      previous.inspector.close();
       // The earlier page is gone, whether or not its channel has closed yet;
       // the lifecycle says how its calls are answered.
       for (const [callId, answer] of previous.takeUnanswered())
@@ -300,6 +309,7 @@ export class AgentConnection {
     if (session instanceof ProcessSession) return this.#detachProcess(session);
     if (this.#page !== session) return;
     this.#page = undefined;
+    session.inspector.close();
     this.#emit({ type: "unpaired" });
     for (const [callId, answer] of session.takeUnanswered())
       this.#leftCalls.set(callId, answer);
@@ -437,6 +447,7 @@ export class AgentConnection {
     const page = this.#page;
     if (page) {
       this.#page = undefined;
+      page.inspector.close();
       answerUnanswered(page.takeUnanswered(), { type: "stopped" });
       this.#emit({ type: "unpaired" });
     }

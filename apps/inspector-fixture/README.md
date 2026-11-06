@@ -34,6 +34,19 @@ The pages:
   state, since they render that state. `pnpm dev` serves it for a coding agent connected
   through `ayme mcp`.
 
+## Two placements
+
+The specs run as two Playwright projects. `inline` mounts the Inspector in the
+fixture page. `external` runs the specs about what the Inspector shows and
+does (the list is `externalSpecs` in `playwright.config.ts`) with the
+`external` placement: each test starts an `ayme mcp` on a port of its own,
+opens the fixture page with `?external` (its session has
+`inspector: { placement: "external" }`) through the server's connect link,
+and drives the Inspector in a second window, the one `ayme_inspect` names.
+`page` is still the app's page there, so highlights and picking are checked
+across the window boundary. The specs about the panel in the page (its
+layout, host CSS, stacking, mounting, motion and dogfooding) run inline only.
+
 ## Running
 
 Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`

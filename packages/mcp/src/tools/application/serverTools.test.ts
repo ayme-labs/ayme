@@ -8,6 +8,7 @@ import {
 } from "../domain/toolResult";
 import { callTool } from "./callTool";
 import { connectTool } from "./connectTool";
+import { inspectTool } from "./inspectTool";
 import { listToolsTool } from "./listToolsTool";
 
 const context = () => ({
@@ -15,6 +16,10 @@ const context = () => ({
   pairing: { address: "ws://127.0.0.1:9351", token: "f00d" },
   saveImage: async (filename: string) => `/tmp/${filename}`,
   wasOffered: () => false,
+  inspector: {
+    url: "http://127.0.0.1:9351/inspector",
+    installed: async () => true,
+  },
 });
 
 it("ayme_connect returns the connect link for the app's URL", async () => {
@@ -30,5 +35,27 @@ it("ayme_list_tools and ayme_call say no page is connected while nothing is pair
   expect(await listToolsTool(context()).call({})).toEqual(notConnectedResult());
   expect(await callTool(context()).call({ tool: "peek" })).toEqual(
     notConnectedResult()
+  );
+});
+
+it("ayme_inspect returns the URL of the Inspector the server serves", async () => {
+  expect(await inspectTool(context()).call({})).toEqual(
+    textResult("http://127.0.0.1:9351/inspector")
+  );
+});
+
+it("ayme_inspect says to install @ayme-dev/inspector when it is missing", async () => {
+  const missing = {
+    ...context(),
+    inspector: {
+      url: "http://127.0.0.1:9351/inspector",
+      installed: async () => false,
+    },
+  };
+
+  expect(await inspectTool(missing).call({})).toEqual(
+    errorResult(
+      expect.stringContaining("npm install --save-dev @ayme-dev/inspector")
+    )
   );
 });

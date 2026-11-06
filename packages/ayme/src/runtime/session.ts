@@ -54,6 +54,7 @@ import type {
   loadAgentConnection,
   loadProcessConnection,
 } from "./agentConnection";
+import type { InspectorPort } from "@ayme-dev/mcp/client";
 import type { loadInspector } from "./inspector";
 import {
   callerOf,
@@ -79,7 +80,7 @@ import {
   type NamedFilter,
 } from "../shared";
 import type { ToolInput, ToolResult } from "../tools/domain";
-import { inspectorMode } from "./runtimeOptions";
+import { inspectorSetting } from "./runtimeOptions";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
   state:
@@ -193,6 +194,17 @@ export type Ayme = {
   start(): () => void;
 };
 
+/** The object form of the `inspector` option. */
+export type InspectorOptions = {
+  /**
+   * Where the Inspector runs: in the page (`"inline"`, the default) or in a
+   * window outside it that `ayme mcp` serves (`"external"`).
+   */
+  placement?: "inline" | "external";
+  /** Asks for Demo Mode too, in either placement. Off by default. */
+  demo?: boolean;
+};
+
 export type AymeOptions = {
   /**
    * Builds the browser Page the session drives. Called at most once, lazily,
@@ -216,12 +228,16 @@ export type AymeOptions = {
   goalLoop?: GoalLoopDecisionFunction;
   webMCP?: AymeWebMcpOptions;
   /**
-   * Mounts the Inspector from the optional `@ayme-dev/inspector` package while
-   * the session is started in the browser. Off unless set. `true` mounts it
-   * with no demo; `{ demo: true }` also pauses before each action and shows a
-   * click cue, for every call, whoever makes it.
+   * Turns the Inspector on while the session is started in the browser. Off
+   * unless set. `true` mounts it in the page, from the optional
+   * `@ayme-dev/inspector` package, with no demo; `{ demo: true }` also
+   * pauses before each action and shows a click cue, for every call, whoever
+   * makes it. `{ placement: "external" }` mounts no panel: the page serves
+   * the Inspector's contract over its Agent Connection (which it turns on),
+   * and `ayme mcp` serves the Inspector in a window of its own; see
+   * `ayme_inspect` and `ayme inspect`.
    */
-  inspector?: boolean | { demo: boolean };
+  inspector?: boolean | InspectorOptions;
   /**
    * Connects the session to a coding agent's Ayme MCP server through the
    * optional `@ayme-dev/mcp` package while the session is started: in the
@@ -489,6 +505,13 @@ export type SessionTarget = {
     loadInspector: typeof loadInspector;
     loadAgentConnection: typeof loadAgentConnection;
     loadProcessConnection: typeof loadProcessConnection;
+    /**
+     * Publishes the runtime's Inspector contract in the document's slot, for
+     * an inline Inspector mounted by this session or by hand.
+     */
+    publishInspectorContract(): void;
+    /** The contract an Inspector in another window reads, as plain data. */
+    loadExternalInspectorPort(): Promise<InspectorPort | undefined>;
   };
 };
 
@@ -526,7 +549,7 @@ export function createAymeOn(
   // Connection turns them on.
   const peeks =
     Boolean(options.agentConnection) ||
-    (inspectorMode(options) !== "off" && !onServer());
+    (inspectorSetting(options).placement !== "off" && !onServer());
   const initialStatus: AymeWebMcpPublicationStatus = {
     state: enabled ? "waiting" : "disabled",
     message: enabled
@@ -930,35 +953,42 @@ export function createAymeOn(
         setStatus(initialStatus);
         if (target.kind === "browser") setStarted(ayme);
         if (enabled && surfaces) startPublication(controller.signal);
-        const inspector = inspectorMode(options);
-        target.feedback?.(inspector === "demo", controller.signal);
-        if (inspector !== "off" && surfaces)
+        const inspector = inspectorSetting(options);
+        target.feedback?.(inspector.demo, controller.signal);
+        // The inline Inspector, mounted by this session or by hand, reads the
+        // runtime's contract from the slot the session publishes it in.
+        surfaces?.publishInspectorContract();
+        if (inspector.placement === "inline" && surfaces)
           mountInspectorUntil(surfaces.loadInspector, controller.signal);
-        if (options.agentConnection && surfaces) {
+        // An Inspector outside the page reaches it over the Agent Connection.
+        const external = inspector.placement === "external";
+        if ((options.agentConnection || external) && surfaces) {
           const signal = controller.signal;
           startAgentConnectionUntil(
             signal,
             () =>
-              surfaces
-                .loadAgentConnection()
-                .then(({ startAgentConnection }) => () => {
-                  const connection = startAgentConnection({
-                    tools: aymeMcpTools,
-                    recordAgentImage: recordAgentImageRun,
-                  });
-                  // A page client from before App Processes hands over none.
-                  appProcessTools.follow(connection.processTools);
-                  agentConnectionStatus.follow(connection.status);
-                  signal.addEventListener(
-                    "abort",
-                    () => {
-                      appProcessTools.follow(undefined);
-                      agentConnectionStatus.follow(undefined);
-                    },
-                    { once: true }
-                  );
-                  return connection;
-                }),
+              Promise.all([
+                surfaces.loadAgentConnection(),
+                external ? surfaces.loadExternalInspectorPort() : undefined,
+              ]).then(([{ startAgentConnection }, inspectorPort]) => () => {
+                const connection = startAgentConnection({
+                  tools: aymeMcpTools,
+                  recordAgentImage: recordAgentImageRun,
+                  inspector: inspectorPort,
+                });
+                // A page client from before App Processes hands over none.
+                appProcessTools.follow(connection.processTools);
+                agentConnectionStatus.follow(connection.status);
+                signal.addEventListener(
+                  "abort",
+                  () => {
+                    appProcessTools.follow(undefined);
+                    agentConnectionStatus.follow(undefined);
+                  },
+                  { once: true }
+                );
+                return connection;
+              }),
             () => {
               agentConnectionStatus.failed();
               signal.addEventListener(

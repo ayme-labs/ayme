@@ -10,6 +10,7 @@ import {
   useDarkTheme,
   useHostReservation,
   usePreferences,
+  WindowShell,
 } from "../panel";
 import {
   type Lens,
@@ -28,9 +29,11 @@ import { decodeViewState, viewStateKey, withSelection } from "./viewState";
 /**
  * The Inspector: the runtime's data wired into the panel. It owns
  * the one selection the navigator, the detail pane and Runs share, and
- * keeps where the person was in it for the tab.
+ * keeps where the person was in it for the tab. `windowed` fills a window of
+ * the Inspector's own, outside the page it shows, in place of the dockable
+ * panel.
  */
-export function InspectorApp() {
+export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
   const [preferences, updatePreferences] = usePreferences();
   const reserveHost = useHostReservation();
   const [viewState, setViewState] = useTabState(viewStateKey, decodeViewState);
@@ -45,7 +48,8 @@ export function InspectorApp() {
   );
   const { copied, copy } = useCopy();
   const runtime = useInspectorRuntime({
-    structureVisible: activeLens === "structure" && !preferences.collapsed,
+    structureVisible:
+      activeLens === "structure" && (windowed || !preferences.collapsed),
   });
   const dark = useDarkTheme(preferences.theme);
   const { renderRun, runsRegion } = useRunning(runtime, selection, {
@@ -57,7 +61,9 @@ export function InspectorApp() {
 
   const lenses: Lens[] = [
     modelLens({
-      host: window.location.host,
+      // A window of its own is not on the page it shows, and does not know
+      // its host.
+      host: windowed ? "page" : window.location.host,
       pageModel: runtime.pageModel,
       pageTools: live
         .filter((tool) => tool.group === "agent")
@@ -127,39 +133,54 @@ export function InspectorApp() {
     <Empty>Nothing to show for this selection.</Empty>
   );
 
+  const status = (
+    <Connections
+      agent={runtime.tools.agentConnection}
+      webMCP={runtime.tools.publication}
+      tools={live}
+      onCopy={copy}
+      copied={copied}
+    />
+  );
+  const inspectorBody = (
+    <InspectorBody
+      layout={windowed ? "bottom" : preferences.layout}
+      navigator={
+        <Navigator
+          lenses={lenses}
+          activeLens={activeLens}
+          onLensChange={setActiveLens}
+          onSelect={setSelection}
+          onHover={runtime.highlight.hover}
+        />
+      }
+      detail={<DetailPane>{detail}</DetailPane>}
+      runs={runsRegion}
+      regions={preferences.regions}
+      onRegionsChange={(regions) => updatePreferences({ regions })}
+    />
+  );
+
   return (
     <InspectorRoot dark={dark}>
-      <InspectorShell
-        preferences={preferences}
-        onPreferencesChange={updatePreferences}
-        reserveHost={reserveHost}
-        status={
-          <Connections
-            agent={runtime.tools.agentConnection}
-            webMCP={runtime.tools.publication}
-            tools={live}
-            onCopy={copy}
-            copied={copied}
-          />
-        }
-      >
-        <InspectorBody
-          layout={preferences.layout}
-          navigator={
-            <Navigator
-              lenses={lenses}
-              activeLens={activeLens}
-              onLensChange={setActiveLens}
-              onSelect={setSelection}
-              onHover={runtime.highlight.hover}
-            />
-          }
-          detail={<DetailPane>{detail}</DetailPane>}
-          runs={runsRegion}
-          regions={preferences.regions}
-          onRegionsChange={(regions) => updatePreferences({ regions })}
-        />
-      </InspectorShell>
+      {windowed ? (
+        <WindowShell
+          theme={preferences.theme}
+          onThemeChange={(theme) => updatePreferences({ theme })}
+          status={status}
+        >
+          {inspectorBody}
+        </WindowShell>
+      ) : (
+        <InspectorShell
+          preferences={preferences}
+          onPreferencesChange={updatePreferences}
+          reserveHost={reserveHost}
+          status={status}
+        >
+          {inspectorBody}
+        </InspectorShell>
+      )}
     </InspectorRoot>
   );
 }

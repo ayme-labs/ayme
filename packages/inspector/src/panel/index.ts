@@ -8,6 +8,7 @@ export {
 export { useHostReservation } from "./infrastructure/useHostReservation";
 export { usePreferences } from "./infrastructure/usePreferences";
 export { InspectorShell } from "./presentation/InspectorShell";
+export { WindowShell } from "./presentation/WindowShell";
 export { useDarkTheme } from "./presentation/useTheme";
 export { InspectorBody } from "./presentation/InspectorBody";
 export { DetailPane, RunsRegion } from "./view/InspectorBody";

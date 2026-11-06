@@ -35,3 +35,4 @@ export {
   useInspectorState,
   type InspectorClient,
 } from "./infrastructure/inspectorClient";
+export { webSocketInspectorContract } from "./infrastructure/webSocketInspectorContract";

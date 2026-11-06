@@ -4,6 +4,8 @@ export {
   HelloSchema,
   HiddenToolListSchema,
   ImageResultSchema,
+  InspectorRequestSchema,
+  InspectorResponseSchema,
   PageNavigatingSchema,
   PageToolListSchema,
   PageToolSchema,
@@ -16,6 +18,8 @@ export {
 export type {
   Hello,
   ImageResult,
+  InspectorRequest,
+  InspectorResponse,
   PageHello,
   PageNavigating,
   PageTool,

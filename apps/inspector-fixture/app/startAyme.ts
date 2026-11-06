@@ -52,6 +52,14 @@ function clearTheList() {
   };
 }
 
+/**
+ * Whether the page was opened for the external placement (`?external`): its
+ * runtime mounts no panel and serves the Inspector over the Agent Connection,
+ * to the window `ayme mcp` serves. The end-to-end tests' second project opens
+ * every fixture page this way.
+ */
+const external = new URLSearchParams(location.search).has("external");
+
 const rendersThePage = `[${INSPECTOR_PAGE_RENDERING_ATTRIBUTE}]`;
 
 /**
@@ -61,7 +69,9 @@ const rendersThePage = `[${INSPECTOR_PAGE_RENDERING_ATTRIBUTE}]`;
  * `mount: "session"` leaves it to the session's `inspector` option. `demo`
  * mounts it in demo mode. `dogfood` mounts it for dogfooding, turns the
  * Agent Connection on and registers `alsoRegister`, the Inspector's own
- * Page Object compiled by the plugin. The page
+ * Page Object compiled by the plugin. With `?external` in its address, the page
+ * mounts no Inspector and its session has the external placement, in demo mode
+ * with `demo`. The page
  * reports its state on <html> so the e2e tests can tell a broken fixture or a
  * runtime that never published from a broken Inspector.
  */
@@ -83,12 +93,16 @@ export function startAyme({
   const root = document.documentElement.dataset;
   try {
     let inspector =
-      mount === "before" ? mountInspector({ demo, dogfood }) : undefined;
+      mount === "before" && !external
+        ? mountInspector({ demo, dogfood })
+        : undefined;
     const runtime = createAyme({
       customTools: [markElement],
       goalLoop: clearTheList(),
       webMCP: { enabled: publish },
-      inspector: mount === "session" && (demo ? { demo } : true),
+      inspector: external
+        ? { placement: "external", demo }
+        : mount === "session" && (demo ? { demo } : true),
       agentConnection: dogfood,
       // The Structure lens and the search results render the page state; in
       // page state they would render themselves, over and over.
@@ -103,7 +117,8 @@ export function startAyme({
     };
     const unsubscribe = runtime.webMCP.subscribe(reportRuntime);
     const stop = runtime.start();
-    if (mount === "after") inspector = mountInspector({ demo, dogfood });
+    if (mount === "after" && !external)
+      inspector = mountInspector({ demo, dogfood });
     reportRuntime();
     root.fixture = "ready";
     return () => {

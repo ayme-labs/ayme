@@ -14,7 +14,12 @@ import type { BrowserContext, Page } from "@playwright/test";
  * The server's own tools; every other MCP tool is a tool of the page or of
  * an App Process.
  */
-export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
+export const SERVER_TOOLS = [
+  "ayme_connect",
+  "ayme_list_tools",
+  "ayme_call",
+  "ayme_inspect",
+];
 
 /**
  * The file of the built `ayme` command beside this entry, as a consumer gets

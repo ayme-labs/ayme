@@ -29,10 +29,14 @@ import {
 import { runLogOf } from "../runs/application";
 import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
 import { loadInspector } from "./inspector";
+import { createDocumentInspectorContract } from "./documentInspectorContract";
 import { loadWebMcpPublication } from "./webMcp";
 import { browserToolSources } from "./publishedTools";
+import { publishInspectorContract, type InspectorContract } from "../shared";
 import {
   appProcessToolsBySession,
+  getStartedAyme,
+  subscribeToStartedAyme,
   createAppProcessTools,
   createAymeOn,
   serverKey,
@@ -110,6 +114,9 @@ function browserTarget(options: AymeOptions): SessionTarget {
       loadInspector,
       loadAgentConnection,
       loadProcessConnection,
+      publishInspectorContract: () =>
+        publishInspectorContract(runtimeInspectorContract()),
+      loadExternalInspectorPort,
     },
   };
 }
@@ -120,4 +127,29 @@ export function getAppProcessTools(ayme: Ayme): AppProcessTools {
     appProcessToolsBySession.get(ayme) ??
     createAppProcessTools(() => runLogOf(pageOfDocument(document))).tools
   );
+}
+
+let served: InspectorContract | undefined;
+
+/**
+ * The Inspector contract of the runtime's started session, served directly:
+ * what the inline Inspector calls, with no serialization. One per document.
+ */
+export function runtimeInspectorContract(): InspectorContract {
+  return (served ??= createDocumentInspectorContract({
+    started: getStartedAyme,
+    subscribeToStarted: subscribeToStartedAyme,
+    appProcessTools: getAppProcessTools,
+  }));
+}
+
+// The contract an Inspector outside the page reads, loaded on demand: only
+// a session with the external placement carries it.
+async function loadExternalInspectorPort() {
+  const { externalInspectorPort } = await import("./externalInspector");
+  return externalInspectorPort({
+    started: getStartedAyme,
+    subscribeToStarted: subscribeToStartedAyme,
+    appProcessTools: getAppProcessTools,
+  });
 }

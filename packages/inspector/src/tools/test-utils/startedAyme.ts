@@ -11,9 +11,14 @@ import type {
   ToolRunOptions,
 } from "@ayme-dev/ayme";
 
+// Test support, imported by tests only: it stands a session in (ADR-0026).
+// eslint-disable-next-line testing-entries/no-restricted-imports
 import {
   createHighlights,
   createInspectorContract,
+  type InspectorSession,
+} from "@ayme-dev/ayme/testing";
+import {
   type AgentConnectionStatus,
   type AgentConnectionStatusSource,
   type AppProcessTool,
@@ -22,7 +27,6 @@ import {
   type InspectorLook,
   type InspectorPageObject,
   type InspectorRecordedPageState,
-  type InspectorSession,
   type PomDefinition,
 } from "@ayme-dev/ayme/inspector";
 
