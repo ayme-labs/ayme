@@ -25,7 +25,7 @@ export default defineConfig(({ command }) => ({
 
 `include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
-Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
+Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows.
 
 ## Start Ayme at the root
 
@@ -84,7 +84,7 @@ In the browser, the standalone owner starts immediately in its Vue scope and pro
 
 ## Composables
 
-Register the app's pages once, in the owner's `pageObjects` option, as `:pageObjects` on the provider; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the owner's `pageObjects` option, as `:pageObjects` on the provider; each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";

@@ -1,185 +1,237 @@
 # Page object design
 
-## Model interaction scopes
+The examples follow one flow: on a projects page, the user opens a dialog,
+picks an owner in a combobox and creates a project.
 
-Give a distinct actionable surface a POM when it becomes the context for the
-user's next interaction. Pages, menus, dialogs, drawers, and meaningful pickers
-are candidates. Judge the interaction context rather than DOM keyboard focus or
-component boundaries.
+## Find the boundaries
 
-Example: opening Create returns a menu POM; choosing Project opens a
-creation-dialog POM. Revealing a button or expanding explanatory text stays
-within the current POM. An advanced-settings section needs a separate POM only
-when its independent behavior makes that useful.
+A page object stands for a boundary: a part of the UI the user's next
+interaction happens in. A page is the outermost boundary. Inside it, look for:
+
+- An element that appears and disappears as the user works, such as a menu, a
+  dialog, a drawer or a picker.
+- A repeated structure, such as rows or cards. Each repeated item is a boundary
+  of its own, and the controls inside an item belong to the item, never to the
+  page or the list.
+
+A boundary becomes a page component when it owns an action or holds parts to
+read, such as a project row with its name and owner. Revealing a button or expanding
+explanatory text stays within the current boundary.
 
 ## Write base classes for pages and components
 
-Pages and components declare when they are on the page through two inherited
-options of `@ayme`, `present` and `root`. Write each once, on a base class the
-project owns, so most POMs carry no Ayme code beyond `@ayme.action`:
-
-- A page base class whose `present` checks the URL against the page's `path`.
-  Every page extends it and sets `path`; an app with a typed router calls the
-  router's matcher in the predicate instead.
-- A component base class whose `root` names the container the constructor
-  takes. Every component extends it.
-
-Fit them to the repo: reuse an existing base class for pages or components
-when one exists and add the option there, and keep the project's names for the
-container and the page. The predicate's argument is `self`, the live POM, and
-is declared as a typed function (`const onPage = (self: AppPage) => ...`),
-since an inline predicate gets `self: unknown`. It runs with Ayme's observation
-of the page, never with a call, so it only reads.
-[Pages and components](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#pages-and-components)
-has both classes and the rules. A POM with neither option is present while it
-is registered; a subclass overrides one option and keeps the other.
-
-## Root a POM at what its actions touch
-
-A POM's root must contain every element its actions touch. Ayme lists a
-POM's tools while its
-[Page Object Root](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#the-page-object-root)
-is present on the page, and they are available while a click would reach the
-root. A root a click would not reach, covered or blocked by a modal, keeps its
-tools listed but unavailable, with a reason naming what is in the way, and a
-call is refused with that reason. Actions on elements outside the root are
-therefore refused exactly when they are needed, for example while a modal menu
-or dialog that blocks pointer events on the rest of the page is open.
-
-Portaled content, such as menus, dialogs, and popovers, gets its own POM rooted
-at that content, through the component base class or its own `root`. The trigger that opens it stays on the parent POM. Declare the
-content POM on the parent as a Page Object Child with `@ayme.child`, so its
-tools are published, and return it from the opening action.
+A page takes Playwright's `Page`. A component takes the `Locator` of its
+root, and its members are scoped to that root. Write each base
+once, so every page and component extends one.
 
 ```ts
-// Rooted at the portaled content, a page-level locator rather than a descendant of the trigger.
-@ayme({ root: (self: ProfileMenuContent) => self.root })
-class ProfileMenuContent {
-  readonly root: Locator;
+export abstract class AppPage {
+  constructor(readonly page: Page) {}
+}
 
-  constructor(page: Page) {
-    this.root = page.getByTestId("profile-menu");
+export abstract class AppComponent {
+  constructor(readonly root: Locator) {}
+}
+```
+
+## Root a component at what its actions touch
+
+A component's root contains every element its actions touch, and its members'
+locators are scoped to that root.
+
+Follow what the user sees as one part, not necessarily where it renders. A
+combobox's dropdown belongs to the combobox, even when the app renders the
+dropdown elsewhere in the page. Give that part its own component, rooted where
+it renders, and make it a child of the component it belongs to:
+
+```ts
+export class Combobox extends AppComponent {
+  readonly input = this.root.getByRole("combobox");
+  // Rendered at the end of the document, so located from the page.
+  readonly options = new ComboboxOptions(this.root.page().getByRole("listbox"));
+
+  async select(option: string) {
+    await this.input.click();
+    await this.options.choose(option);
+    return this;
   }
 }
 
-// On the parent POM, which keeps the trigger:
-@ayme.child
-readonly content = new ProfileMenuContent(this.page);
-
-@ayme.action
-async open() {
-  await this.menu.open();
-  return this.content;
+export class ComboboxOptions extends AppComponent {
+  async choose(option: string) {
+    await this.root.getByRole("option", { name: option, exact: true }).click();
+    return this;
+  }
 }
 ```
 
-## Declare the parts agents should see
+## Return repeated components from a method
 
-A POM's model holds only the members it declares as
-[Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children);
-the guide lists the members each decorator fits.
-
-- `@ayme.child` on a locator that matches one element, or on a member holding
-  one child POM.
-- `@ayme.collection` on a locator that matches any number of elements, such as
-  rows, or on a method without parameters returning child POMs, such as
-  `async items(): Promise<ListItem[]>`.
-- No decorator on a locator that only tests or helper code use: it stays out
-  of the model.
-
-Never leave a member holding a child POM undeclared: that POM drops out of the
-model, and its tools are not published unless something else reaches it. A
-console warning that a declared child matches several elements means the
-locator is too loose, or the member is a collection.
-
-Give a child a description only when its name and the page do not say what the
-part is for; agents read it in the POM's definition. It is a constant string,
-as an action's description is.
-
-## Keep controls as locators
-
-Declare individual buttons, links, and inputs as named locators. Introduce
-helper objects when they supply meaningful reusable behavior. Include
-collections when the flow or structural observation needs them. See the
-[root rules](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
-for classes reached through several members or collections.
+A repeated item becomes a component when it has actions or parts to read, as
+any boundary does; a list of plain items stays one locator matching all of
+them. Return repeated components one per element from a method without
+parameters, so a caller gets the items the page shows when it asks:
 
 ```ts
-@ayme.child
-readonly createButton = this.root.getByTestId("create-button");
+// On ProjectsPage:
+async projects(): Promise<ProjectRow[]> {
+  return (await this.page.getByRole("row").all()).map(
+    (row) => new ProjectRow(row)
+  );
+}
+
+// ✅ A component: each row has parts to read and an action of its own.
+export class ProjectRow extends AppComponent {
+  readonly name = this.root.getByTestId("project-name");
+  readonly owner = this.root.getByTestId("project-owner");
+  readonly archiveButton = this.root.getByRole("button", { name: "Archive" });
+
+  // ❌ Not components: each tag is plain text, with nothing to read inside it
+  // and nothing to do.
+  readonly tags = this.root.getByTestId("project-tag");
+
+  async archive() {
+    await this.archiveButton.click();
+    return this;
+  }
+}
 ```
 
-A picker with date-selection behavior can justify a helper; a single button does
-not need a Page Object wrapper merely to click it.
+## Place each action on the boundary of its trigger
 
-## Choose locators
+An action belongs to the closest boundary around the element that triggers it.
+When that boundary is not a component yet, make it one rather than lifting the
+action higher.
 
-Prefer, in order: a test id; a role or label locator; CSS or XPath when
-neither fits. Scope a member's locator to the POM's root. Visible text changes
-with copy and locale, so match with `getByText` only when nothing else tells
-members apart.
-
-## Name actions by user intent
-
-Use names that explain the action and scope. `openCreateMenu()` communicates the
-transition; `clickPlus()` describes an implementation detail.
-`openProjectCreation()` opens a form; `create()` completes creation.
-
-## Describe what the action means for the product
-
-An agent sees a tool's name, its input schema, its availability and, after a
-call, what changed on the page, for one user, in this view. A description says
-what the action means beyond that, as product docs would: who may do it, and
-what it commits that outlives the page or reaches other people. An action that
-only changes the UI, such as opening a menu or filling a field, needs none: a
-bare `@ayme.action` on `openCreateMenu()` says as much as "Open the create
-menu." would.
-
-The build reads a description from the source, so it must be a constant
-string; see
-[Mark a model and its actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#mark-a-model-and-its-actions)
-for the forms it reads.
-
-## Describe what a POM stands for in the product
-
-`@ayme({ description })` says the same for the surface as an action's
-description does for the action: whose data it shows, how far it reaches (one
-project or the whole workspace), and what it holds that outlives the page. An
-agent reads it in the POM's definition, which `snapshot` returns. A POM whose
-name and page say enough needs none. A subclass inherits it from the nearest
-base class that declares one, so describe a shared base class only with what
-holds for every subclass.
+A dialog has no `open()` of its own, since the button that opens it lives
+outside the dialog. The page owns that button, so the page owns the action:
 
 ```ts
-@ayme({
-  description:
-    "Members of the current workspace; changes here apply to everyone in it.",
-})
-export class MembersPage extends AppPage {}
+// On ProjectsPage:
+async openNewProjectDialog() {
+  await this.newProjectButton.click();
+  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
+  await dialog.root.waitFor();
+  return dialog;
+}
 ```
 
-## Make actions do something
+## What makes an action
 
-Mark a method with `@ayme.action` only when it does something a user does:
-clicking, filling, opening, submitting. Read-only methods, such as getting a
-heading's text, counting rows, or checking whether an error shows, are not
-actions. The snapshot already shows the agent what the page displays, so a read
-as a tool only repeats it. Keep such reads as plain methods or locators for
-tests and other code.
+A method is an action when it moves the user to another boundary, or groups
+the interactions of one goal, such as filling a form's fields. A single click
+or fill is not worth promoting to an action: the control stays a named
+locator.
 
 ```ts
-@ayme.action({
-  description:
-    "Archived projects disappear for every member until restored from Archived.",
-})
-async archive() {
-  await this.archiveButton.click();
+// On ProjectsPage:
+// ✅ An action: it moves the user to another boundary.
+async openNewProjectDialog() {
+  await this.newProjectButton.click();
+  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
+  await dialog.root.waitFor();
+  return dialog;
+}
+
+// On NewProjectDialog:
+// ✅ An action: one goal, several interactions.
+async fillProjectForm(name: string, owner: string) {
+  await this.nameInput.fill(name);
+  await this.owner.select(owner);
   return this;
 }
 
-// Not an action: the snapshot already shows the heading.
-async title() {
-  return this.heading.textContent();
+// ❌ Not an action: `nameInput` is already a locator a caller can fill.
+async fillNameInput(name: string) {
+  await this.nameInput.fill(name);
+}
+```
+
+## Locator Strategy
+
+Prefer, in order: a test id; a role or label locator; CSS or XPath when
+neither fits. Visible text changes with copy and locale, so match with
+`getByText` only when nothing else tells members apart. Replace a locator that
+is likely to break or match the wrong element:
+
+- Text that spans several elements, such as a container's whole text run
+  together.
+- A position, `nth()` or `first()`, among generic elements.
+- A locator that matches an ancestor of the element rather than the element.
+
+## Compute derived state in a query method
+
+Tests check state through the locators directly, with Playwright's web-first
+assertions. Add a method only when a test needs one value that several
+locators decide together, or a value parsed or normalized from one, and name
+it after that value. A method that wraps one locator call, such as
+`isBadgeVisible()`, adds nothing.
+
+```ts
+export class ProjectEditor extends AppComponent {
+  readonly errorBanner = this.root.getByRole("alert");
+  readonly spinner = this.root.getByRole("progressbar");
+  readonly savedBadge = this.root.getByText("Saved");
+  readonly taskCount = this.root.getByTestId("task-count"); // "12 tasks"
+
+  // Several locators decide one value.
+  async saveState() {
+    const [error, saving, saved] = await Promise.all([
+      this.errorBanner.isVisible(),
+      this.spinner.isVisible(),
+      this.savedBadge.isVisible(),
+    ]);
+    if (error) return "error";
+    if (saving) return "saving";
+    if (saved) return "saved";
+    return "idle";
+  }
+
+  // A value parsed from one locator.
+  async tasks() {
+    return Number.parseInt(await this.taskCount.innerText(), 10);
+  }
+}
+```
+
+A test checks them with `expect.poll`, which retries as web-first assertions
+do: `await expect.poll(() => editor.saveState()).toBe("saved")`.
+
+## Name actions between interaction and intent
+
+Name an action above the raw interaction and below the business goal: a UI
+verb, with a business noun when it helps. `openNewProjectDialog()` and
+`fillProjectForm()` say what happens; `clickPlus()` restates the interaction,
+and `launchProject()` hides which UI it drives.
+
+## Use generic components for generic UI
+
+A control with no business meaning, such as a combobox, a menu or a modal, is
+a generic component: named after the control, free of the app's terms, and
+reused across pages. It knows nothing about the app's flow, so its actions
+return only what is its own, such as itself. The page or component that uses
+it knows where the flow continues:
+
+```ts
+export class Modal extends AppComponent {
+  readonly closeButton = this.root.getByRole("button", { name: "Close" });
+
+  async close() {
+    await this.closeButton.click();
+    await this.root.waitFor({ state: "hidden" });
+    return this;
+  }
+}
+
+// The dialog is a Modal with app meaning: it knows the projects page is
+// behind it.
+export class NewProjectDialog extends AppComponent {
+  readonly modal = new Modal(this.root);
+
+  async cancel() {
+    await this.modal.close();
+    return new ProjectsPage(this.root.page());
+  }
 }
 ```
 
@@ -187,118 +239,58 @@ async title() {
 
 An action ensures a state and returns once that state holds, observed on its
 own root and children. `openSettings()` clicks only when the panel isn't
-already open; a dialog's `save()` returns once the dialog has closed, not when
-Save was clicked.
+already open; a dialog's `create()` returns once the dialog has closed or
+shown its error, not when Create was clicked.
 
-## Declare when an action can run
+## Return where the user continues
 
-An action that is possible only in some states, such as removing a dashboard
-that is not built in, keeps its natural POM and declares the condition with
-`available`, an availability predicate, instead of a root at the one control
-that comes and goes or a method that throws. The tool stays listed; while the
-predicate fails, it is flagged unavailable, with the string as its reason when
-it returned one, and a call is refused with that reason before anything runs.
-[Action availability](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#action-availability)
-has the signature, the example and the rules.
+An action promises the boundary the user's next interaction happens in, and
+promises only what always holds:
 
-The reason states the fact ("No item is selected"), so the description need not
-repeat the condition. The predicate runs
-with Ayme's observation of the page, not with the call, so it only reads:
-visibility, enabled state, text, counts. It never clicks, scrolls, focuses or
-changes the page. One predicate can guard several actions.
+- When it always leads to the same place, return that page or component.
+- When the page shows one of several outcomes, such as a created project or a
+  validation error, wait for whichever appears and return the matching one.
+  The return type is their union, and a test asserts which one it got.
+- Otherwise, such as when it closes back to whichever page opened it, return
+  `this`, and let the caller continue.
 
-## Separate helper returns from flow returns
-
-Generic UI helpers such as Menu and Modal return `this` for chaining and
-inspection, including after closing. Application POMs contain domain knowledge
-and return where interaction continues.
-
-| Application action outcome                      | Return                                     |
-| ----------------------------------------------- | ------------------------------------------ |
-| Interaction stays in the surface                | `this`                                     |
-| Another actionable surface opens                | Destination POM                            |
-| Close/cancel returns to the opener              | Owner POM                                  |
-| Submission succeeds and navigates               | Resulting page POM                         |
-| Expected validation failure keeps the form open | `this`                                     |
-| External or terminal action                     | Explicit outcome or `void`, as appropriate |
-
-Example: `Menu.close()` returns the hidden menu for inspection.
-`CreateMenu.close()` closes its composed Menu and returns the application
-surface where interaction resumes.
-
-Determine conditional returns from observed outcomes after the relevant
-transition. Propagate unexpected execution failures rather than treating all
-errors as validation failures.
-
-## Pass the owner explicitly
-
-Application POMs can accept their logical owner in the constructor. Owner is the
-continuing interaction surface, not DOM parent or selector host.
-
-Illustrative API sketch, with `modal` representing the composed generic Modal
-helper:
+When none of the outcomes appears, let the action fail rather than returning
+one of them anyway.
 
 ```ts
-class CreateProjectDialog<Owner> {
-  private readonly page: Page;
-  readonly owner?: Owner;
-
-  constructor(page: Page, owner?: Owner) {
-    this.page = page;
-    this.owner = owner;
-  }
-
-  async close() {
-    await this.modal.close();
-    return this.owner;
-  }
-
-  // create(): observed success -> ProjectPage
-  //           observed validation failure -> this
-}
-
-const creation = new CreateProjectDialog(this.page, this);
-```
-
-An optional owner makes the close result optional. Preserve that honestly;
-require an owner when the flow requires one. A generic owner type can retain a
-concrete caller type when needed. Use constructor-based ownership until actual
-differing flows require more machinery.
-
-If the opening menu disappears, identify where cancellation really resumes
-before assigning that menu as owner. Successful creation follows its actual
-destination even when cancellation returns to the opener.
-
-## Compose reusable behavior
-
-An application menu owns a generic Menu helper and defines its domain choices
-and return types. Inherit the project's base class for the surface, if it has
-one, and compose interaction helpers.
-
-```ts
-async close() {
-  await this.menu.close();
-  return this.owner;
+// On NewProjectDialog:
+async create(): Promise<ProjectPage | this> {
+  await this.createButton.click();
+  const projectPage = new ProjectPage(this.root.page());
+  await projectPage.heading.or(this.nameError).first().waitFor();
+  return (await this.nameError.isVisible()) ? this : projectPage;
 }
 ```
 
-Reuse destination POMs after checking their scope and runtime dependencies. An
-existing test POM is not automatically browser-compatible; see
-[Playwright in the browser](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/playwright-in-the-browser.md).
-
-## Illustrate a coherent journey
-
-Show a short usage example when it helps the user assess a new API. This is a
-design aid, not a required test or an approval gate for every change.
+A test asserts the outcome the flow should reach, rather than branching on it:
 
 ```ts
-const menu = await topBar.openCreateMenu();
-const creation = await menu.openProjectCreation();
-await creation.fillProjectName("Launch plan");
-const result = await creation.create();
-// Result is the observed destination or the form with validation errors.
+const created = await dialog.create();
+assert(created instanceof ProjectPage); // node:assert, which narrows the type
+await expect(created.heading).toBeVisible();
+
+// Or, when the test expects the dialog to remain open, with the validation error:
+const rejected = await dialog.create();
+assert(rejected === dialog);
+await expect(rejected.nameError).toBeVisible();
 ```
 
-Show alternate outcomes separately instead of continuing to choose items from an
-already-closed menu. During prototyping, label proposed versus implemented and
-observed behavior.
+## Compose actions
+
+An action can call the actions of its children and of the components it opens.
+A call that moves the user out of the action's boundary comes last, and the
+action returns what that call returns:
+
+```ts
+// On ProjectsPage:
+async createProject(name: string, owner: string) {
+  const dialog = await this.openNewProjectDialog();
+  await dialog.fillProjectForm(name, owner);
+  return dialog.create();
+}
+```

@@ -20,7 +20,8 @@ is unavailable, read [Page tools](references/page-tools.md).
 When `goal` is among your tools, read [Goal](references/goal.md).
 
 For designing or restructuring Page Object Models, read
-[Page object design](references/page-object-design.md). Where it conflicts with
+[Page object design](references/page-object-design.md) and
+[Page Object Models](references/ayme-page-objects.md). Where they conflict with
 the project's conventions, raise the conflict with the user.
 
 For mapping a user flow into a POM against the running app, read

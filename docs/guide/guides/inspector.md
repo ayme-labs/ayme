@@ -38,7 +38,7 @@ Demo mode pauses briefly before each action, though not before a scroll, and sho
 
 The navigator has three lenses:
 
-- **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](page-object-models.md#page-object-children), each with its description and its state on the page, such as `3 matches`.
+- **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](ayme-page-objects.md#aymechild), each with its description and its state on the page, such as `3 matches`.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `rows[1]`.
 - **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek) under Browser and, while the tab is paired with a coding agent's Ayme MCP server, those of the App Processes paired beside it under Node, which the panel runs through that server.
 
