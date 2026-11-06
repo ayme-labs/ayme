@@ -281,8 +281,12 @@ describe("runStartup", () => {
   });
 
   it("stores a setup turn that runs out of its timeout as a failed run", async () => {
-    // The fixture stops after the skill load, with its Read unanswered.
-    const { result } = await start("startup-hangs.jsonl", { timeoutMs: 300 });
+    // The fixture stops after the skill load, with its Read unanswered. The
+    // timeout must outlast the stand-in's Node startup, or the skill load is
+    // never seen: on a loaded CI runner that startup alone can pass 0.3 s.
+    const { result } = await start("startup-hangs.jsonl", {
+      timeoutMs: 3_000,
+    });
     expect(result.pass).toBe(false);
     expect(result.wallTimeMs).toBeNull();
     expect(result.tokens).toBeNull();
@@ -293,7 +297,7 @@ describe("runStartup", () => {
       },
       {
         condition: "within-setup-timeout",
-        detail: "the setup turn ran out of its 0.3 s timeout",
+        detail: "the setup turn ran out of its 3 s timeout",
       },
     ]);
   });
