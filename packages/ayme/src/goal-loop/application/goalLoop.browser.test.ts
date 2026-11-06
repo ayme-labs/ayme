@@ -2122,7 +2122,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async ({ ref, element }) => {
           highlighted.push({ ref, tagName: element.tagName });
         },
@@ -2155,7 +2155,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async ({ ref }) => ({ highlighted: ref }),
       },
     ]);
@@ -2193,7 +2193,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async () => ({ text: "x".repeat(MAX_STEP_RETURNED) }),
       },
     ]);
@@ -2227,7 +2227,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async () => state,
       },
     ]);

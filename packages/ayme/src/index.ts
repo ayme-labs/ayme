@@ -80,3 +80,4 @@ export type {
   PageState,
   RefResolution,
 } from "./page-state/domain";
+export type { ElementFilter, InPageFilter } from "./shared";

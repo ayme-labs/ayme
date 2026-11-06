@@ -10,6 +10,7 @@ export type { ElementInput } from "./elementReach";
 export { startNavigation } from "./navigation";
 export {
   capturePageState,
+  configurePageStateFilters,
   configurePageStateIgnore,
   cursors,
   getInteractionHistory,

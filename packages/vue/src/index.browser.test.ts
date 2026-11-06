@@ -808,7 +808,9 @@ describe("AymeProvider props", () => {
     "agentConnection",
     "navigate",
   ])("warns, naming the provider, when %s has the wrong type", (prop) => {
-    expect(warningsMounting({ [prop]: "wrong" })).toContainEqual(
+    // A string is a valid `ignore`, a CSS selector.
+    const wrong = prop === "ignore" ? 42 : "wrong";
+    expect(warningsMounting({ [prop]: wrong })).toContainEqual(
       expect.stringMatching(
         new RegExp(`type check failed for prop "${prop}"[^]*<AymeProvider`)
       )

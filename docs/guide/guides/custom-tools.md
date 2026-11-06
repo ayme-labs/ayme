@@ -22,7 +22,7 @@ import type { CustomTool } from "@ayme-dev/ayme";
 const highlight: CustomTool = {
   name: "highlight_element",
   description: "Outline one element on the page so the user can see it.",
-  filter: (element) => element.matches("[data-highlightable]"),
+  filter: "[data-highlightable]",
   async execute({ ref, element }) {
     element.classList.add("highlighted");
     return { highlighted: ref };
@@ -38,8 +38,28 @@ createAyme({ customTools: [highlight] });
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
+- `filter` is a CSS selector, or a function the page runs over each element. A function is sent to the page by its source, so it must be self-contained, as in [a function filter](#a-function-filter) below.
 - A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
+
+## A function filter
+
+A `filter` that a selector cannot express is a function, which the page runs over each element. It runs in the page on its own, so it may use its own arguments and the page's globals, but not a variable from the code around it:
+
+```ts
+const copyLink: CustomTool = {
+  name: "copy_link",
+  description: "Copy the link a row points to.",
+  filter: (element) =>
+    element instanceof HTMLAnchorElement && element.closest("tr") !== null,
+  async execute({ element }) {
+    await navigator.clipboard.writeText((element as HTMLAnchorElement).href);
+    return null;
+  },
+};
+```
+
+Ayme checks the function when the session starts. A function that reads a variable from the code around it, such as a selector held in a constant of the module, is rejected there with a `ToolInputError` that names the variable. Pass a CSS selector for that case, or move the value inside the function. A native or bound function cannot be sent to the page, so it is rejected too.
 
 ## Use other tools from a Custom Tool
 
@@ -49,7 +69,7 @@ createAyme({ customTools: [highlight] });
 const submitSample: CustomTool = {
   name: "submit_sample",
   description: "Fill a text field with sample text and submit its form.",
-  filter: (element) => element.matches("input[type=text], textarea"),
+  filter: "input[type=text], textarea",
   async execute({ ref }, { run }) {
     await run("fill", { target: ref, text: "Sample text" });
     await run("press_key", { key: "Enter" });

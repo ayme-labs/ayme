@@ -12,7 +12,7 @@ import {
   type InPage,
   type VisitSignal,
 } from "../../in-page";
-import type { Capture, Predicate } from "../../shared";
+import type { Capture, NamedFilter, Predicate } from "../../shared";
 import type { ElementsOf, PageAction } from "../application/pageStateSession";
 
 const browserPages = new WeakMap<Document, Page>();
@@ -60,16 +60,17 @@ export function bindDocument(
 export async function captureDocument(
   currentDocument: Document,
   inputs: ElementInputs,
-  accepts?: readonly Predicate[]
+  ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] } = {}
 ): Promise<Capture> {
   const page = browserPageOf(currentDocument);
-  // Playwright Lite calls the page function as it is, so the handle holds
-  // these live values (transitional: #1175, #1177).
+  // The inputs are plain data, which the module compiles in the page
+  // (ADR-0049); the handle carries them to Playwright Lite's page function.
   const elements = await page.evaluateHandle(() => inputs);
   try {
     return await inPage(page).capture({
       elements,
-      ...(accepts ? { accepts } : {}),
+      ...(ask.accepts ? { accepts: ask.accepts } : {}),
+      ...(ask.filters?.length ? { filters: ask.filters } : {}),
     });
   } finally {
     void elements.dispose();

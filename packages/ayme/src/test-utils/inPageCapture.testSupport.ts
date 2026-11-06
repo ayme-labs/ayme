@@ -17,6 +17,7 @@ import {
   type ActionOutcome,
   type Capture,
   type DocumentToken,
+  type NamedFilter,
   type Predicate,
 } from "../shared";
 
@@ -62,7 +63,10 @@ export function standInBrowserInPage(
   const capture = async (
     currentDocument: Document,
     inputs: ElementInputs,
-    accepts?: readonly Predicate[]
+    ask: {
+      accepts?: readonly Predicate[];
+      filters?: readonly NamedFilter[];
+    } = {}
   ): Promise<Capture> => {
     const { roots, absentElements } = await rootsOf();
     return {
@@ -75,7 +79,7 @@ export function standInBrowserInPage(
           roots: roots.map(({ mark, element }) => ({ label: mark, element })),
           absent: absentElements,
         },
-        accepts ? { accepts } : {}
+        ask
       ),
     };
   };
@@ -87,8 +91,8 @@ export function standInBrowserInPage(
     captureDocument: (
       currentDocument: Document,
       inputs: ElementInputs,
-      accepts?: readonly Predicate[]
-    ) => capture(currentDocument, inputs, accepts),
+      ask?: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] }
+    ) => capture(currentDocument, inputs, ask),
     beginDocumentAction: async (
       currentDocument: Document,
       inputs: () => Promise<ElementInputs>

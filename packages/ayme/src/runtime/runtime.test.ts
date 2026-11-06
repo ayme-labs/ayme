@@ -325,7 +325,9 @@ it("threads ignore to page state capture for the session lifetime", () => {
     const runtime = createAyme({ pageFactory: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureIgnore).toHaveBeenLastCalledWith(ignore);
+    expect(configureIgnore).toHaveBeenLastCalledWith({
+      source: expect.stringContaining(".assistant"),
+    });
     stop();
     expect(configureIgnore).toHaveBeenLastCalledWith(undefined);
   } finally {

@@ -598,7 +598,7 @@ describe("the page state", () => {
     if (!assistant || !panel || !panelAction || !main)
       throw new Error("Missing test roots.");
 
-    configurePageStateIgnore((element) => element.id === "assistant");
+    configurePageStateIgnore({ selector: "#assistant" });
     captureAriaSnapshot.mockReturnValue({
       distilledText: `
 - generic [ref=e1]:

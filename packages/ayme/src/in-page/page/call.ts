@@ -9,6 +9,7 @@ import type { HostKey, Slot } from "./install";
 /** The slot's methods a host calls through `callInPage`. */
 export type CallName =
   | "capture"
+  | "check"
   | "measure"
   | "reachable"
   | "pick"

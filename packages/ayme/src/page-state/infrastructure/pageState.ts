@@ -19,6 +19,8 @@ import {
   PREDICATES,
   ToolInputError,
   type Capture,
+  type FilterData,
+  type NamedFilter,
   type Predicate,
 } from "../../shared";
 import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
@@ -47,8 +49,10 @@ type PageCaptureSources = {
    * Page Object is registered.
    */
   pageObjectsProbed(): Promise<void> | undefined;
-  /** Whether the app leaves `element`, and everything under it, out. */
-  ignores(element: Element): boolean;
+  /** The filters of the elements the app leaves out, and everything under them. */
+  ignores(): readonly FilterData[];
+  /** The Custom Tools' filters, whose accepted refs every capture carries. */
+  filters(): readonly NamedFilter[];
 };
 
 /**
@@ -73,9 +77,7 @@ export function providePageObjectProbe(
   pageObjectProbe = probe;
 }
 
-type PageStateIgnorePredicate = (element: Element) => boolean;
-
-type PageStateIgnoreStore = { ignore?: PageStateIgnorePredicate };
+type PageStateIgnoreStore = { ignores?: readonly FilterData[] };
 
 const pageStateIgnoreStore: PageStateIgnoreStore = ((
   globalThis as typeof globalThis & {
@@ -83,40 +85,64 @@ const pageStateIgnoreStore: PageStateIgnoreStore = ((
   }
 ).__aymePageStateIgnoreStore ??= {});
 
-/** Package-internal: set while a runtime session is active. */
-export function configurePageStateIgnore(
-  ignore: PageStateIgnorePredicate | undefined
+type PageStateFilterStore = { filters?: readonly NamedFilter[] };
+
+const pageStateFilterStore: PageStateFilterStore = ((
+  globalThis as typeof globalThis & {
+    __aymePageStateFilterStore?: PageStateFilterStore;
+  }
+).__aymePageStateFilterStore ??= {});
+
+/** Package-internal: set while a runtime session is active, as checked filter data. */
+export function configurePageStateIgnore(ignore: FilterData | undefined): void {
+  pageStateIgnoreStore.ignores = ignore ? [ignore] : undefined;
+}
+
+/**
+ * Package-internal: the Custom Tools' filters, as checked, under each tool's
+ * name; every capture carries the refs each keeps.
+ */
+export function configurePageStateFilters(
+  filters: readonly NamedFilter[] | undefined
 ): void {
-  pageStateIgnoreStore.ignore = ignore;
+  pageStateFilterStore.filters = filters;
 }
 
 /** The stores a capture reads, read when it reads them. */
 const captureSources: PageCaptureSources = {
   pageObjectsProbed: () => pageObjectProbe?.(),
-  ignores: (element) => pageStateIgnoreStore.ignore?.(element) ?? false,
+  ignores: () => pageStateIgnoreStore.ignores ?? [],
+  filters: () => pageStateFilterStore.filters ?? [],
 };
 
 /**
  * What a capture leaves out: the `ignore` of this runtime, and the
- * Inspector's own DOM, always. The Page Object Roots it places are those the
- * module holds from the registry's probe runs, current once the probe it
- * waits for has resolved.
+ * Inspector's own DOM, always, as selectors. The Page Object Roots it places
+ * are those the module holds from the registry's probe runs, current once the
+ * probe it waits for has resolved.
  */
 async function elementInputs(): Promise<ElementInputs> {
   await captureSources.pageObjectsProbed();
   return {
-    ignores: (element) =>
-      element.matches(INSPECTOR_HOST_SELECTOR) ||
-      captureSources.ignores(element),
+    ignores: [
+      { selector: INSPECTOR_HOST_SELECTOR },
+      ...captureSources.ignores(),
+    ],
   };
 }
 
-/** A capture of `currentDocument` through its in-page module, with `elementInputs`. */
+/**
+ * A capture of `currentDocument` through its in-page module, with
+ * `elementInputs`, asking for the predicates and the Custom Tools' filters.
+ */
 async function captureWithSources(
   currentDocument: Document,
   accepts?: readonly Predicate[]
 ): Promise<Capture> {
-  return captureDocument(currentDocument, await elementInputs(), accepts);
+  return captureDocument(currentDocument, await elementInputs(), {
+    accepts,
+    filters: captureSources.filters(),
+  });
 }
 
 let documentCount = 0;

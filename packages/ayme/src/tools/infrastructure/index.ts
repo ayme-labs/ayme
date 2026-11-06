@@ -1,4 +1,5 @@
 export {
+  checkCustomToolFilters,
   configureCustomTools,
   listCustomTools,
   listElementTools,

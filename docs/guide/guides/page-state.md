@@ -27,13 +27,23 @@ In each case, take a `snapshot` and use the ref it prints for the node. When an 
 
 ## Keep parts of the page out
 
-Pass `ignore` where Ayme starts to drop elements, and everything inside them, from the page state:
+Pass `ignore` where Ayme starts to drop elements, and everything inside them, from the page state. Its value is a CSS selector:
 
 ```ts
 createAyme({
-  ignore: (element) => element.matches("[data-assistant-panel]"),
+  ignore: "[data-assistant-panel]",
 });
 ```
+
+A function works too, for a rule a selector cannot say. Ayme sends the function to the page and runs it there over each element, so it must be self-contained: it can use its own arguments and the page's globals, but not a variable from the code around it. Ayme checks this when the session starts, and throws a `ToolInputError` that names the variable the function reads:
+
+```ts
+createAyme({
+  ignore: (element) => element.matches("[data-panel]") && element.hidden,
+});
+```
+
+Where your environment forbids the page from running code it was not built with (a Content Security Policy without `unsafe-eval`), Ayme cannot check or serialize the function, so it runs the function as it was passed, in the browser only; a selector always works.
 
 `ignore` changes page state only; it does not change which tools are published.
 

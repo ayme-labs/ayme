@@ -13,6 +13,7 @@ import {
 import { requiredDescription } from "../page-objects/domain";
 import {
   addPeek,
+  checkCustomToolFilters,
   configureCustomTools,
   configureRouterNavigate,
   isPeekTool,
@@ -68,7 +69,9 @@ import {
   checkedToolInput,
   RuntimeStateError,
   type Caller,
+  type ElementFilter,
 } from "../shared";
+import { registerFilter } from "../in-page";
 import type { ToolInput, ToolResult } from "../tools/domain";
 import { inspectorMode } from "./runtimeOptions";
 
@@ -190,7 +193,13 @@ export type AymeOptions = {
    * on the session's first use in the browser; `createPage()` when absent.
    */
   pageFactory?: () => AymePage;
-  ignore?: (element: Element) => boolean;
+  /**
+   * The elements an agent does not see: a CSS selector, which excludes each
+   * matching element and everything under it, or a self-contained function
+   * the page runs over each element (it cannot read variables from the code
+   * around it: a function that does is rejected when the runtime starts).
+   */
+  ignore?: ElementFilter;
   customTools?: CustomTool[];
   /**
    * Page Objects registered for the session's lifetime, as one
@@ -813,13 +822,19 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           "The Ayme runtime already has an active owner.",
           { code: "active-owner" }
         );
+      // Checked before anything starts: a filter the page cannot run throws here.
+      const ignore =
+        options.ignore === undefined
+          ? undefined
+          : registerFilter("`ignore`", options.ignore);
+      const customFilters = checkCustomToolFilters(options.customTools);
       owner = createAymeRuntime(getPage());
       reach = sessionReach(ayme);
       configureStartedPage({ page: getPage(), reach });
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
-      configurePageStateIgnore(options.ignore);
-      configureCustomTools(options.customTools);
+      configurePageStateIgnore(ignore);
+      configureCustomTools(options.customTools, customFilters);
       configureGoalLoop(options.goalLoop);
       configureRouterNavigate(options.navigate);
       controller = new AbortController();

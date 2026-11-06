@@ -1,5 +1,5 @@
 export { browserMonotonicClock } from "./browserMonotonicClock";
-export { PREDICATES } from "./capture";
+export { PREDICATES, toolFilterKey } from "./capture";
 export type {
   ActionOutcome,
   Capture,
@@ -8,6 +8,13 @@ export type {
   Predicate,
 } from "./capture";
 export { callers } from "./callers";
+export { filterData } from "./filter";
+export type {
+  ElementFilter,
+  FilterData,
+  InPageFilter,
+  NamedFilter,
+} from "./filter";
 export type { BuiltInCaller, Caller } from "./callers";
 export { containsThroughShadow, parentElement } from "./composedTree";
 export { isJsonPrimitive, isJsonValue } from "./contracts";

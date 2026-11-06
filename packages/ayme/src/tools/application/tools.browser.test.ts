@@ -333,7 +333,7 @@ registerCompiledPom(InboxPage, {
 const highlight: CustomTool = {
   name: "highlight",
   description: "Highlight an element.",
-  filter: (element) => element.matches("[data-highlightable]"),
+  filter: "[data-highlightable]",
   execute: async () => undefined,
 };
 

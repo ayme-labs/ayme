@@ -2,7 +2,15 @@
 // The document's one ref world and Ayme's dual capture over it: Playwright's
 // pinned snapshot code, with marks, a ref counter and a ref map that only
 // this module has, one set per document.
-import type { Capture, CapturedRoot, Predicate } from "../../shared";
+import {
+  toolFilterKey,
+  type Capture,
+  type CapturedRoot,
+  type FilterData,
+  type NamedFilter,
+  type Predicate,
+} from "../../shared";
+import { compileFilter } from "./filter";
 import { predicates } from "./predicates";
 
 /** A mark: the ref an element got, kept while its role and name stay. */
@@ -25,12 +33,12 @@ export type CaptureAriaSnapshot = (
 };
 
 /**
- * What a host hands a capture as live values in the page. Transitional: the
- * `ignore` predicate is a function until it takes a selector (#1177).
+ * What a host hands a capture: plain data, the filters of the elements it
+ * leaves out, each a selector or a function's source.
  */
 export type ElementInputs = {
-  /** Whether the host leaves `element`, and everything under it, out. */
-  ignores?: (element: Element) => boolean;
+  /** Each filter keeps `element`, and everything under it, out when it matches. */
+  ignores?: readonly FilterData[];
 };
 
 /**
@@ -48,6 +56,8 @@ export type CaptureRoots = {
 export type CaptureAsk = {
   /** The predicates whose accepted refs the capture carries. */
   accepts?: readonly Predicate[];
+  /** The Custom Tools' filters whose accepted refs the capture carries, under each tool's name. */
+  filters?: readonly NamedFilter[];
 };
 
 type CaptureBody = Omit<Capture, "document" | "url">;
@@ -104,7 +114,9 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     inputs: ElementInputs & CaptureRoots = {},
     ask: CaptureAsk = {}
   ): CaptureBody {
-    const ignores = (element: Element) => inputs.ignores?.(element) ?? false;
+    const ignoreFilters = (inputs.ignores ?? []).map(compileFilter);
+    const ignores = (element: Element) =>
+      ignoreFilters.some((ignored) => ignored(element));
     const present = (inputs.roots ?? []).filter(
       ({ element }) =>
         element.ownerDocument === root.ownerDocument &&
@@ -164,7 +176,9 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
       fullText: snapshot.fullText,
       excludedRefs,
       roots,
-      ...(ask.accepts ? { accepted: acceptedBy(ask.accepts, named) } : {}),
+      ...(ask.accepts || ask.filters
+        ? { accepted: acceptedBy(ask, named) }
+        : {}),
     };
   }
 
@@ -193,15 +207,24 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
   };
 }
 
-/** For each predicate, the refs of the elements it keeps, in capture order. */
+/**
+ * For each predicate asked, and each named filter, the refs of the elements
+ * it keeps, in capture order.
+ */
 function acceptedBy(
-  asked: readonly Predicate[],
+  ask: CaptureAsk,
   refsByElement: ReadonlyMap<Element, string>
-): Partial<Record<Predicate, string[]>> {
-  const accepted: Partial<Record<Predicate, string[]>> = {};
-  for (const predicate of asked) {
+): Record<string, string[]> {
+  const accepted: Record<string, string[]> = {};
+  for (const predicate of ask.accepts ?? []) {
     const keeps = predicates[predicate];
     accepted[predicate] = [...refsByElement]
+      .filter(([element]) => keeps(element))
+      .map(([, ref]) => ref);
+  }
+  for (const { name, filter } of ask.filters ?? []) {
+    const keeps = compileFilter(filter);
+    accepted[toolFilterKey(name)] = [...refsByElement]
       .filter(([element]) => keeps(element))
       .map(([, ref]) => ref);
   }

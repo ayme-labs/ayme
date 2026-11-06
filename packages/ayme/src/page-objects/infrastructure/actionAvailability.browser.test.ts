@@ -701,7 +701,7 @@ describe("Action Availability", () => {
     // by the region around it.
     document.querySelector<HTMLDialogElement>("#modal")!.close();
     document.querySelector<HTMLDialogElement>("#quiet")!.showModal();
-    configurePageStateIgnore((element) => element.id === "quiet");
+    configurePageStateIgnore({ selector: "#quiet" });
     const { text: quiet } = await agent.getPageState();
     expect(quiet).toMatch(/e\d+ region "Dialogs"/);
     expect(quiet).not.toContain('dialog "Confirm"');

@@ -14,6 +14,7 @@ import {
 import type {
   Capture,
   DocumentToken,
+  FilterData,
   Predicate,
   ReachMeasurement,
 } from "../../shared";
@@ -32,6 +33,7 @@ import { createReach } from "./reach";
 import { showCue } from "./cue";
 import { startPicking, type PickArguments, type PickNotice } from "./pick";
 import { createRoots, type ProbeRequest, type RootState } from "./roots";
+import { checkFilter, type FilterCheck } from "./filter";
 import { createRecommender } from "./recommend";
 
 export type { Capture, DocumentToken, Predicate, ReachMeasurement };
@@ -39,6 +41,7 @@ export type { CaptureAsk, ElementInputs } from "./capture";
 export type { PickArguments, PickNotice } from "./pick";
 export type { ActionInputs, Begun, Settled } from "./actions";
 export type { ProbeRequest, RootState } from "./roots";
+export type { FilterCheck } from "./filter";
 
 /** What a host asks to pick a ref: `id` names this picking in the notices it gets back. */
 export type PickRequest = PickArguments & { id: string };
@@ -130,6 +133,8 @@ export type Slot = {
    * says what else it carries.
    */
   capture(host: HostKey, inputs?: ElementInputs, ask?: CaptureAsk): Capture;
+  /** Checks a filter as a registration does, before the page runs it. */
+  check(host: HostKey, filter: FilterData): FilterCheck;
   /**
    * Probes the Page Object Root the elements a Locator matched are, for
    * `host`, never scrolling or sending input. With a `round`, the probe
@@ -317,6 +322,7 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       return { document: token, version, installedBy, host };
     },
     capture,
+    check: (_host: HostKey, filter: FilterData) => checkFilter(filter),
     probe: (
       host: HostKey,
       elements: readonly Element[],

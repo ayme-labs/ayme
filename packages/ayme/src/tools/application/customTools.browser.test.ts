@@ -4,6 +4,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "../../page-objects/infrastructure";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
+import { getPageStateSession } from "../../page-state/infrastructure";
 import type { CustomTool } from "./elementTools";
 import { listCustomTools } from "../infrastructure/customToolStore";
 import { errorText } from "../../shared";
@@ -177,6 +178,55 @@ describe("Custom Tools in Chromium", () => {
     await call("highlight_element", { ref: saveRef });
 
     expect(targets).toHaveLength(1);
+  });
+
+  it("captures the refs a selector filter keeps, under the tool's name", async () => {
+    document.body.innerHTML =
+      '<button id="save" data-x>Save changes</button><button>Cancel</button>';
+    const { customTool } = recordingCustomTool({ filter: "[data-x]" });
+    start([customTool]);
+
+    expect(listCustomTools()[0]?.takes).toEqual({
+      filter: "highlight_element",
+    });
+    const look = await getPageStateSession(document).look({ accepts: [] });
+    const kept = [...(look.accepted?.["tool:highlight_element"] ?? [])];
+    expect(kept).toHaveLength(1);
+    expect(look.elementsByRef.get(kept[0] as never)?.id).toBe("save");
+  });
+
+  it("keeps a Custom Tool named like a predicate apart from the predicate's refs", async () => {
+    document.body.innerHTML =
+      '<select id="picker"><option>A</option></select><button id="marked" data-x>Marked</button>';
+    const { customTool } = recordingCustomTool({
+      name: "select",
+      filter: "[data-x]",
+    });
+    start([customTool]);
+
+    const look = await getPageStateSession(document).look({
+      accepts: ["select"],
+    });
+    const toolKept = [...(look.accepted?.["tool:select"] ?? [])];
+    expect(toolKept).toHaveLength(1);
+    expect(look.elementsByRef.get(toolKept[0] as never)?.id).toBe("marked");
+    const predicateKept = [...(look.accepted?.select ?? [])];
+    expect(
+      predicateKept.map((ref) => look.elementsByRef.get(ref as never)?.tagName)
+    ).toEqual(["SELECT"]);
+  });
+
+  it("refuses a filter function that closes over outer state when the runtime starts", () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const panelSelector = "#panel";
+    const { customTool } = recordingCustomTool({
+      filter: (element) => element.matches(panelSelector),
+    });
+
+    expect(() => start([customTool])).toThrow(
+      "The `filter` of the Custom Tool `highlight_element` function reads `panelSelector`, which does not exist in the page."
+    );
+    expect(listCustomTools()).toEqual([]);
   });
 
   // --- Ref resolution failures ---

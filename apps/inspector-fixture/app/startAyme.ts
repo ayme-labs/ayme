@@ -52,8 +52,7 @@ function clearTheList() {
   };
 }
 
-const rendersThePage = (element: Element) =>
-  element.hasAttribute(INSPECTOR_PAGE_RENDERING_ATTRIBUTE);
+const rendersThePage = `[${INSPECTOR_PAGE_RENDERING_ATTRIBUTE}]`;
 
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the

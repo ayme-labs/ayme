@@ -22,6 +22,14 @@ export type CapturedRoot =
 export type Predicate =
   "clickable" | "fillable" | "checkable" | "uncheckable" | "select";
 
+/**
+ * The key a Custom Tool's filter keeps its refs under in `Capture.accepted`,
+ * apart from the predicates' keys, so a tool named like a predicate keeps its own.
+ */
+export function toolFilterKey(name: string): string {
+  return `tool:${name}`;
+}
+
 /** Every predicate, in the order the Browser Tools use them. */
 export const PREDICATES: readonly Predicate[] = [
   "clickable",
@@ -44,11 +52,12 @@ export type Capture = {
   /** This host's present roots: referenced first, then the others from outer to inner. */
   roots: CapturedRoot[];
   /**
-   * For each predicate the host asked, the refs of the captured elements it
-   * keeps, in capture order: the closed sets the Goal Loop's options come
-   * from. Absent when the host asked for none.
+   * For each predicate the host asked, under its name, and each Custom Tool's
+   * filter it was given, under `tool:<name>`, the refs of the captured elements it keeps,
+   * in capture order: the closed sets the Goal Loop's options come from.
+   * Absent when the host asked for none.
    */
-  accepted?: Partial<Record<Predicate, string[]>>;
+  accepted?: Record<string, string[]>;
 };
 
 /**

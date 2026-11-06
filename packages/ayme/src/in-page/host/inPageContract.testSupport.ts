@@ -341,7 +341,7 @@ export function inPageContract(lane: InPageLane) {
 
     const capture = await host.inPage(page).capture({
       elements: await page.evaluateHandle<ElementInputs>(
-        '({ ignores: (element) => element.id === "ignored" })'
+        '({ ignores: [{ selector: "#ignored" }] })'
       ),
     });
 
@@ -351,6 +351,51 @@ export function inPageContract(lane: InPageLane) {
       refOf(capture.fullText, 'region "Absent part"'),
       refOf(capture.fullText, '"Absent"'),
     ]);
+  });
+
+  it("a selector and a self-contained function exclude the same subtree", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      '<button>Kept</button><aside id="ignored"><button>Ignored</button></aside>'
+    );
+    const host = lane.createHost(page);
+    const bySelector = await host.inPage(page).capture({
+      elements: await page.evaluateHandle<ElementInputs>(
+        '({ ignores: [{ selector: "#ignored" }] })'
+      ),
+    });
+    const byFunction = await host.inPage(page).capture({
+      elements: await page.evaluateHandle<ElementInputs>(
+        '({ ignores: [{ source: "(element) => element.id === \\"ignored\\"" }] })'
+      ),
+    });
+
+    expect(byFunction.excludedRefs).toEqual(bySelector.excludedRefs);
+    expect(bySelector.excludedRefs).toHaveLength(2);
+  });
+
+  it("checks a filter as a registration does: a function that reads outer state names it", async () => {
+    const page = await lane.newPage();
+    await setBody(page, "<button>Kept</button>");
+    const host = lane.createHost(page);
+
+    expect(
+      await host.inPage(page).checkFilter({
+        source: "(element) => element.matches(panelSelector)",
+      })
+    ).toEqual({ kind: "reads", identifier: "panelSelector" });
+    expect(
+      await host.inPage(page).checkFilter({
+        source: "(element) => element.matches('#ok')",
+      })
+    ).toEqual({ kind: "ok" });
+    expect(
+      await host.inPage(page).checkFilter({ source: "Math.max.toString()" })
+    ).toEqual({ kind: "not-a-function" });
+    expect(
+      await host.inPage(page).checkFilter({ selector: "[[not a selector" })
+    ).toMatchObject({ kind: "bad-selector" });
   });
 
   it("ayme-ref resolves Ayme's refs, and Playwright's aria-ref only its own", async () => {

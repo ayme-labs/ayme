@@ -5,6 +5,8 @@ export {
   registerAymeRef,
 } from "./host/inPage";
 export { highlightStyles } from "./host/highlightStyles";
+export { registerFilter } from "./host/filterRegistration";
+export type { FilterCheck } from "./page/filter";
 export type { HighlightStyle } from "./host/highlightStyles";
 // Transitional (#1182): browser-only.
 export { elementEverNamed, elementOfRef } from "./host/elementLookup";

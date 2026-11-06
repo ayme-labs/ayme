@@ -587,7 +587,7 @@ export class PageStateSession {
   }
 }
 
-/** The refs each predicate keeps, as sets. */
+/** The refs each predicate, or named filter, keeps, as sets. */
 function acceptedSets(
   accepted: NonNullable<Capture["accepted"]>
 ): NonNullable<PageCapture["accepted"]> {

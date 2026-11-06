@@ -12,7 +12,13 @@ import {
 } from "../../page-state/infrastructure";
 import { refHint, selectorFailure } from "../../page-state/domain";
 import { type PageStateSession } from "../../page-state/application";
-import type { JsonSchema, JsonValue, ToolDescriptor } from "../../shared";
+import {
+  toolFilterKey,
+  type ElementFilter,
+  type JsonSchema,
+  type JsonValue,
+  type ToolDescriptor,
+} from "../../shared";
 import type { RunContext } from "../../runs/application";
 import type { ToolInput, ToolResult } from "../domain/toolTypes";
 import type { AriaRef, PageStateCapture } from "../../page-state/domain";
@@ -32,8 +38,11 @@ export type CustomTool = {
   name: string;
   /** The only instruction the model gets about this operation. */
   description: string;
-  /** true = the Goal Loop may offer this element. Omitted = every node with a ref. */
-  filter?: (element: Element) => boolean;
+  /**
+   * The elements the Goal Loop may offer: a CSS selector, or a self-contained
+   * function the page runs (see `ElementFilter`). Omitted = every node with a ref.
+   */
+  filter?: ElementFilter;
   /**
    * Acts on `target`. To use other tools, start them through `run`: each is
    * a child Run of this one and runs within this Run's turn, after the
@@ -92,12 +101,12 @@ export type RegisteredElementTool = {
 /**
  * Which elements a tool takes: the elements a predicate keeps, evaluated in
  * the page with the capture; every element with a ref; or, for a Custom Tool
- * that gave one, its own function over the `Element` (until #1177 turns it
- * into a selector or a function the page evaluates).
+ * that gave one, the elements its filter keeps, which the capture carries
+ * under the tool's name.
  */
 export type ElementTake =
   | { readonly predicate: Predicate }
-  | { readonly filter: (element: Element) => boolean }
+  | { readonly filter: string }
   | { readonly every: true };
 
 /**
@@ -341,7 +350,7 @@ export function registerCustomTool(
         );
       },
     },
-    customTool.filter ? { filter: customTool.filter } : { every: true }
+    customTool.filter ? { filter: customTool.name } : { every: true }
   );
 }
 
@@ -384,18 +393,11 @@ function takenBy(
   capture: PageStateCapture
 ): (node: StructuralNode) => boolean {
   if ("every" in takes) return () => true;
-  if ("filter" in takes) {
-    const { filter } = takes;
-    return ({ ref }) => {
-      const element = capture.elementsByRef.get(ref);
-      return element !== undefined && filter(element);
-    };
-  }
-  const accepted = capture.accepted?.[takes.predicate];
+  const name =
+    "filter" in takes ? toolFilterKey(takes.filter) : takes.predicate;
+  const accepted = capture.accepted?.[name];
   if (!accepted)
-    throw new RuntimeStateError(
-      `The capture carries no refs for the predicate ${takes.predicate}.`
-    );
+    throw new RuntimeStateError(`The capture carries no refs for ${name}.`);
   return ({ ref }) => accepted.has(ref);
 }
 
