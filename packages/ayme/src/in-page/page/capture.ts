@@ -11,7 +11,7 @@ import {
   type NamedFilter,
   type Predicate,
 } from "../../shared";
-import { compileFilter } from "./filter";
+import { compileFilter, guarded } from "./filter";
 import { predicates } from "./predicates";
 
 /** A mark: the ref an element got, kept while its role and name stay. */
@@ -150,7 +150,9 @@ export function createRefWorld(
     inputs: ElementInputs & CaptureRoots = {},
     ask: CaptureAsk = {}
   ): CaptureBody {
-    const ignoreFilters = (inputs.ignores ?? []).map(compileFilter);
+    const ignoreFilters = (inputs.ignores ?? []).map((data) =>
+      guarded("`ignore`", compileFilter(data))
+    );
     // An excluded subtree is out of every capture, whoever asks.
     const ignores = (element: Element) =>
       element.matches(EXCLUDED_SUBTREE_SELECTOR) ||
@@ -285,7 +287,10 @@ function acceptedBy(
       .map(([, ref]) => ref);
   }
   for (const { name, filter } of ask.filters ?? []) {
-    const keeps = compileFilter(filter);
+    const keeps = guarded(
+      `\`filter\` of the Custom Tool \`${name}\``,
+      compileFilter(filter)
+    );
     accepted[toolFilterKey(name)] = [...refsByElement]
       .filter(([element]) => keeps(element))
       .map(([, ref]) => ref);

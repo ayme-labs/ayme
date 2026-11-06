@@ -64,6 +64,17 @@ const copyLink: CustomTool = {
 
 Ayme checks the function when the session starts. A function that reads a variable from the code around it, such as a selector held in a constant of the module, is rejected there with a `ToolInputError` that names the variable. Pass a CSS selector for that case, or move the value inside the function. A native or bound function cannot be sent to the page, so it is rejected too.
 
+That check runs the function once, on the page's root element, so it catches a read the function makes on that run and no more. A read behind a condition, such as `element.matches(".private") && privateEnabled`, passes when the condition is false for the root, and is reported the first time a capture reaches an element that takes that branch. That report is a `ToolInputError` too: it names the filter, here the `filter` of the Custom Tool, and the variable. Ayme does not analyse the function's source, so keep a function filter free of outside variables on every branch, or use a CSS selector.
+
+A function may be written as a method (`filter(element) { … }`) as well as an arrow function. Where the page forbids evaluating code (a Content Security Policy without `unsafe-eval`), a function filter works only when Ayme runs in the page; Ayme driving a page from Node through `@ayme-dev/ayme/playwright` rejects it with a `ToolInputError` that recommends a CSS selector.
+
+## Migrating from the earlier shape
+
+Two things changed for apps that registered a Custom Tool or a filter before:
+
+- A filter, here and in the `ignore` option, takes a CSS selector or a self-contained function over an element, as above. It no longer takes a function that closes over the code around it. Replace such a function with a selector, or move what it reads inside it.
+- `execute` receives `{ ref, locator }`, never an `element`. A Custom Tool written as `execute({ element })` finds `element` undefined: act through the Playwright `Locator`, as in `locator.evaluate((element) => …)`, which runs your code on the element in the page.
+
 ## Use other tools from a Custom Tool
 
 `execute` gets a second argument, `{ run }`. `run(name, input)` runs another available tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, never waiting on the page's queue, one after the other in the order it starts them, even when it starts them together, and `ayme.runs` lists them under its Run:

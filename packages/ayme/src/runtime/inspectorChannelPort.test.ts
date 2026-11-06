@@ -124,4 +124,46 @@ describe("inspectorChannelPort", () => {
       ["demo", { on: false }],
     ]);
   });
+
+  it("cancels a pick still outstanding when the last window's events stop", async () => {
+    const { contract, calls } = recordingContract();
+    let finishPick: (value: unknown) => void = () => {};
+    (contract as { pick: unknown }).pick = (request: unknown) => {
+      calls.push(["pick", request]);
+      return new Promise((resolve) => (finishPick = resolve));
+    };
+    const port = inspectorChannelPort(contract);
+    const stop = port.subscribe(() => {});
+    void port.request("pick", { id: "p1", refs: [] });
+    void port.request("pick", { id: "p2", refs: [] });
+    finishPick({});
+    await port.request("cancelPick", { id: "p2" });
+
+    stop();
+
+    await vi.waitFor(() =>
+      expect(calls.filter(([name]) => name === "cancelPick")).toEqual([
+        ["cancelPick", { id: "p2" }],
+        ["cancelPick", { id: "p1" }],
+      ])
+    );
+  });
+
+  it("leaves a pick alone while another window still listens", async () => {
+    const { contract, calls } = recordingContract();
+    (contract as { pick: unknown }).pick = () => new Promise(() => {});
+    const port = inspectorChannelPort(contract);
+    const stopFirst = port.subscribe(() => {});
+    const stopSecond = port.subscribe(() => {});
+    void port.request("pick", { id: "p1", refs: [] });
+
+    stopFirst();
+    await vi.waitFor(() => expect(calls.length).toBeGreaterThan(2));
+    expect(calls.some(([name]) => name === "cancelPick")).toBe(false);
+
+    stopSecond();
+    await vi.waitFor(() =>
+      expect(calls).toContainEqual(["cancelPick", { id: "p1" }])
+    );
+  });
 });

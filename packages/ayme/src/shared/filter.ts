@@ -30,7 +30,29 @@ export type NamedFilter = { name: string; filter: FilterData };
 export function filterData(filter: ElementFilter): FilterData {
   return typeof filter === "string"
     ? { selector: filter }
-    : { source: filter.toString() };
+    : { source: expressionOf(filter.toString()) };
+}
+
+/**
+ * A function's source as an expression the page can wrap in parentheses. A
+ * method (`filter(element) { … }`) prints as source that is no expression, so
+ * it is rewritten once, here, and the check and the run both receive the
+ * rewritten source. A page that forbids `new Function` keeps the source as it
+ * is, for the live function.
+ */
+function expressionOf(source: string): string {
+  try {
+    new Function(`return (${source});`);
+    return source;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) return source;
+  }
+  try {
+    new Function(`return ({ ${source} });`);
+  } catch {
+    return source;
+  }
+  return `Object.values({ ${source} })[0]`;
 }
 
 /** What checking a filter found: whether the registration may go on. */

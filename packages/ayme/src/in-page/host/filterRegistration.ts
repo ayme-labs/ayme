@@ -27,15 +27,15 @@ export function registerFilter(
   root: Element
 ): FilterData {
   const data = filterData(filter);
-  return checkedFilter(name, filter, data, checkFilter(data, root));
+  return checkedFilter(name, filter, data, checkFilter(data, root), true);
 }
 
 /**
  * Checks `filter` as a registration named `name`, as "`ignore`" or "`filter`
  * of the Custom Tool `x`", where the module runs it, asked through the slot's
  * `check`, and returns it as data for the module. Throws a `ToolInputError`
- * when the page cannot run it. A page that forbids `new Function` keeps the
- * function as it was passed, unchecked.
+ * when the page cannot run it, a function included when the page forbids
+ * `new Function`: the host's function cannot cross to the page.
  */
 export async function registerFilterThrough(
   check: (data: FilterData) => Promise<FilterCheck>,
@@ -43,20 +43,26 @@ export async function registerFilterThrough(
   filter: ElementFilter
 ): Promise<FilterData> {
   const data = filterData(filter);
-  return checkedFilter(name, filter, data, await check(data));
+  return checkedFilter(name, filter, data, await check(data), false);
 }
 
 function checkedFilter(
   name: string,
   filter: ElementFilter,
   data: FilterData,
-  check: FilterCheck
+  check: FilterCheck,
+  sameRealm: boolean
 ): FilterData {
   switch (check.kind) {
     case "ok":
       return data;
     case "no-eval":
-      return { live: filter as InPageFilter };
+      // The function itself reaches the module only in the page's own realm;
+      // a Node host's function cannot cross Playwright's argument boundary.
+      if (sameRealm) return { live: filter as InPageFilter };
+      throw new ToolInputError(
+        `The ${name} function cannot run in this page: the page forbids evaluating code, and a function from another process cannot be sent to it. Pass a CSS selector instead.`
+      );
     case "bad-selector":
       throw new ToolInputError(
         `The ${name} is not a valid CSS selector: ${check.message}`
@@ -73,15 +79,18 @@ function checkedFilter(
 }
 
 /**
- * A `ReferenceError` a filter throws while a capture runs, on a branch the
- * registration check did not take, as the same message; any other error as
- * it is.
+ * What a capture throws when a filter reads the code around it on a branch
+ * the registration's one check did not take (the check runs the function once,
+ * on the document's root, so a read behind a condition is reported the first
+ * time that branch runs), as a `ToolInputError` naming the registration and
+ * the identifier; any other error as it is. The page names them in the
+ * message it throws (`guarded`, in the page part).
  */
 export function filterFailure(error: unknown): unknown {
   const message = error instanceof Error ? error.message : String(error);
-  const identifier = /(?:^|: )(\S+) is not defined$/.exec(message)?.[1];
-  if (!identifier) return error;
+  const found = /ayme-filter-reads:(\S+?):([^\n]*)/.exec(message);
+  if (!found) return error;
   return new ToolInputError(
-    `A filter function reads \`${identifier}\`, which does not exist in the page. ${runsOnItsOwn}`
+    `The ${found[2]} function reads \`${found[1]}\`, which does not exist in the page. It ran on an element the registration check did not reach, which runs the function once. ${runsOnItsOwn}`
   );
 }

@@ -18,3 +18,27 @@ export function compileFilter(data: FilterData): InPageFilter {
   }
   return predicate;
 }
+
+/**
+ * `predicate` as a capture runs it for the registration `label`. A filter
+ * that reads a variable from the code around it, on a branch the
+ * registration's one check did not take, throws a ReferenceError here; it
+ * comes out naming the registration and the identifier, in the form the host
+ * reads (`filterFailure`). Any other error goes on as it is.
+ */
+export function guarded(label: string, predicate: InPageFilter): InPageFilter {
+  return (element) => {
+    try {
+      return predicate(element);
+    } catch (error) {
+      const identifier = /^(\S+) is not defined$/.exec(
+        (error as Error).message
+      )?.[1];
+      if (error instanceof ReferenceError && identifier)
+        throw new Error(`ayme-filter-reads:${identifier}:${label}`, {
+          cause: error,
+        });
+      throw error;
+    }
+  };
+}

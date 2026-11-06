@@ -43,7 +43,11 @@ createAyme({
 });
 ```
 
-Where your environment forbids the page from running code it was not built with (a Content Security Policy without `unsafe-eval`), Ayme cannot check or serialize the function, so it runs the function as it was passed, in the browser only; a selector always works.
+The check runs the function once, on the page's root element. A read behind a condition, such as `element.matches(".private") && privateEnabled`, passes it when the condition is false for the root, and is reported the first time the page state reaches an element that takes that branch, as a `ToolInputError` that names `ignore` and the variable. Ayme does not analyse the function's source, so keep it free of outside variables on every branch, or use a selector. A function written as a method (`ignore(element) { … }`) works like an arrow function.
+
+Where your environment forbids the page from running code it was not built with (a Content Security Policy without `unsafe-eval`), Ayme cannot check or serialize the function, so it runs the function as it was passed, when Ayme runs in the page. Ayme driving a page from Node through `@ayme-dev/ayme/playwright` rejects the function with a `ToolInputError` instead; a selector always works.
+
+To leave out an element your own code owns, such as a widget you mount beside the app, put the attribute `data-ayme-exclude` on it, or set it from code with the exported `EXCLUDE_ATTRIBUTE` (`import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme"`). The element and everything in it is out of every capture, picking and clicks pass through it, and screenshots hide it. The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
 
 `ignore` changes page state only; it does not change which tools are published.
 

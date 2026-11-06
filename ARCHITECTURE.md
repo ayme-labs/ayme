@@ -58,7 +58,9 @@ in-browser agents and the app's own code call on the running page.
 - Responsibility: the Ayme session in the host app's page: the Page Object registry,
   Structural Page State and interaction history, the Browser, Custom, Page Object and Peek
   tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication,
-  the Inspector panel and the page side of the Agent Connection
+  the Inspector panel and the page side of the Agent Connection, which with the external
+  Inspector hands the Inspector contract to the MCP server as plain data instead of
+  mounting the panel
 - Technology: TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`,
   `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package
   (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`; bundles Playwright
@@ -88,11 +90,14 @@ in-browser agents and the app's own code call on the running page.
 - Responsibility: one server per coding agent: speaks MCP over stdio to the agent, pairs
   with one page and with the app's App Processes over a loopback WebSocket, and exposes
   their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its
-  own tools
+  own tools, and serves the external Inspector: its page and script over the same loopback
+  HTTP server, and a WebSocket per window whose requests it relays to the paired page and
+  whose answers and events it relays back
 - Technology: Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over
   WebSocket on `127.0.0.1`, ports 9350 to 9365
 - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts),
-  [packages/mcp/src/pairing/domain/pairing.ts](packages/mcp/src/pairing/domain/pairing.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md)
+  [packages/mcp/src/pairing/domain/pairing.ts](packages/mcp/src/pairing/domain/pairing.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
+  [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md)
 
 ### App Process runtime
 
@@ -102,6 +107,17 @@ in-browser agents and the app's own code call on the running page.
 - Technology: `createAyme` from `@ayme-dev/ayme` in Node, loading `@ayme-dev/mcp/process`
 - Evidence: verified: [packages/ayme/src/runtime/agentConnection.ts](packages/ayme/src/runtime/agentConnection.ts), [packages/mcp/src/process/](packages/mcp/src/process/),
   [packages/mcp/README.md](packages/mcp/README.md)
+
+### Node host runtime
+
+- Responsibility: the Ayme session in a Node process that drives a browser `Page` it is
+  handed, such as a Playwright script or test: it runs the session code the browser runtime
+  shares over that Page, through the In-page Module installed in the document, and carries
+  no browser runtime of its own
+- Technology: `createAyme({ page })` from `@ayme-dev/ayme/playwright`, over a real
+  Playwright `Page` (`@playwright/test`)
+- Evidence: verified: [packages/ayme/src/playwright.ts](packages/ayme/src/playwright.ts), [packages/ayme/src/runtime/playwrightRuntime.ts](packages/ayme/src/runtime/playwrightRuntime.ts),
+  [docs/adr/0049-one-in-page-module-per-document.md](docs/adr/0049-one-in-page-module-per-document.md)
 
 ### Decision Endpoint
 
@@ -147,6 +163,13 @@ in-browser agents and the app's own code call on the running page.
       Custom Tool and Peek registrations
     - ← tool definitions, results and Change Records
   - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md), [packages/ayme/src/runtime/runtime.ts](packages/ayme/src/runtime/runtime.ts)
+- **App developers → Ayme MCP server**
+  - Flows:
+    - → opening the external Inspector at `/inspector`, then its window's requests over a
+      WebSocket at `/inspector/ws`
+    - ← the Inspector page and script, and the answers and events relayed from the paired page
+  - Evidence: verified: [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
+    [packages/inspector/README.md](packages/inspector/README.md)
 - **Playground visitors → Playground**
   - Flows:
     - → list edits and Inspector runs
@@ -168,8 +191,10 @@ in-browser agents and the app's own code call on the running page.
       tool results, navigation and reload notices
     - ← tool calls from the agent, the server's token, the App Processes' tools for the
       Inspector
+    - → with the external Inspector, the Inspector contract's answers and events, as plain data
+    - ← with the external Inspector, a window's requests, in the order they arrived
   - Evidence: verified: [packages/mcp/src/client/](packages/mcp/src/client/), [packages/mcp/src/connection/](packages/mcp/src/connection/),
-    [packages/mcp/README.md](packages/mcp/README.md)
+    [packages/mcp/README.md](packages/mcp/README.md), [packages/ayme/src/runtime/inspectorChannelPort.ts](packages/ayme/src/runtime/inspectorChannelPort.ts)
 - **Browser runtime → Decision Endpoint**
   - Flows:
     - → `POST { state, questions }` per Goal Loop step
@@ -184,6 +209,12 @@ in-browser agents and the app's own code call on the running page.
     - → DOM reads, clicks, fills and key presses
     - ← the page structure captured into Structural Page State
   - Evidence: verified: [packages/ayme/src/page-objects/infrastructure/browserPage.ts](packages/ayme/src/page-objects/infrastructure/browserPage.ts), [packages/core/src/capture/](packages/core/src/capture/)
+- **Node host runtime → Host application**
+  - Flows:
+    - → the In-page Module's install and calls, evaluated in the document through the `Page`,
+      and clicks, fills and key presses through Playwright
+    - ← the page structure captured into Structural Page State, and action results
+  - Evidence: verified: [packages/ayme/src/playwright.ts](packages/ayme/src/playwright.ts), [packages/ayme/src/in-page/host/](packages/ayme/src/in-page/host/)
 - **App Process runtime → Ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results
@@ -223,6 +254,10 @@ hosting its playground.
     server's or backend's entry point
     - Deployment node: the host app's dev server process
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md), [packages/mcp/README.md](packages/mcp/README.md)
+  - **Node host runtime**: a script or test the developer runs, calling `createAyme({ page })`
+    over the Playwright `Page` it launched; optional
+    - Deployment node: a Node process on the developer's machine
+    - Evidence: verified: [packages/ayme/src/playwright.ts](packages/ayme/src/playwright.ts)
   - **Decision Endpoint**: mounted in the dev server with the developer's own key, so the
     Goal Loop needs no backend while the app is developed
     - Deployment node: the host app's dev server process
@@ -257,6 +292,9 @@ hosting its playground.
   - **App Process runtime**: does not pair here; the docs gate `agentConnection` behind the
     development flag
     - Evidence: inferred: nothing prevents it, the docs only advise the gate
+  - **Node host runtime**: does not run here; a Node host drives a browser it launches, as a
+    development and test tool
+    - Evidence: inferred: nothing in the app's production build reaches `@ayme-dev/ayme/playwright`
   - **Decision Endpoint**: the handler mounted on a route of the app's backend, gated by the
     app's `authorize`
     - Deployment node: the host app's backend
@@ -296,6 +334,9 @@ hosting its playground.
     Nuxt example's Nitro plugin
     - Deployment node: the Next.js or Nuxt example's dev server process
     - Evidence: verified: [apps/example-next/instrumentation.ts](apps/example-next/instrumentation.ts), [apps/example-nuxt/server/plugins/ayme.ts](apps/example-nuxt/server/plugins/ayme.ts)
+  - **Node host runtime**: does not run here outside the unit tests; the playground and the
+    examples run the browser runtime
+    - Evidence: verified: [packages/ayme/src/playwright.node.test.ts](packages/ayme/src/playwright.node.test.ts)
   - **Decision Endpoint**: the playground's Vite plugin, mounted only when `.env.local` holds
     a TypeSafe or OpenRouter key
     - Deployment node: the playground's Vite dev server
@@ -335,6 +376,10 @@ hosting its playground.
   - **App Process runtime**: the example dev servers paired in the certification tests
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+  - **Node host runtime**: the unit lane drives real Playwright Chromium against the built
+    package: the in-page module's contract suite and the Playwright entry's tests
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [packages/ayme/src/playwright.node.test.ts](packages/ayme/src/playwright.node.test.ts), [packages/ayme/src/in-page/host/inPage.node.test.ts](packages/ayme/src/in-page/host/inPage.node.test.ts)
   - **Decision Endpoint**: the playground's dev-server mount, only in the live goal lane
     with a repository secret
     - Deployment node: a Playwright container on a GitHub Actions runner
@@ -371,6 +416,8 @@ hosting its playground.
     output
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
   - **App Process runtime**: does not run here; the site is static
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
+  - **Node host runtime**: does not run here; the site is static
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
   - **Decision Endpoint**: does not run here; the deployed build publishes no `goal`
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)

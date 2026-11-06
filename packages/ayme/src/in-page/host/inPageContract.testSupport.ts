@@ -490,6 +490,37 @@ export function inPageContract(lane: InPageLane) {
     expect(bySelector.excludedRefs).toHaveLength(2);
   });
 
+  it("a filter that reads outer state on a branch the check did not take fails the capture, naming its registration and the identifier", async () => {
+    const page = await lane.newPage();
+    await setBody(page, '<button class="private">Secret</button>');
+    const host = lane.createHost(page);
+    const guarded =
+      '(element) => element.matches(".private") && privateEnabled';
+
+    const byIgnore = await host
+      .inPage(page)
+      .capture({
+        elements: await page.evaluateHandle<ElementInputs>(
+          `({ ignores: [{ source: ${JSON.stringify(guarded)} }] })`
+        ),
+      })
+      .catch((error: unknown) => error);
+    const byTool = await host
+      .inPage(page)
+      .capture({ filters: [{ name: "reveal", filter: { source: guarded } }] })
+      .catch((error: unknown) => error);
+
+    // The built package has its own class: the error is told by its name.
+    expect(byIgnore).toMatchObject({ name: "ToolInputError" });
+    expect((byIgnore as Error).message).toContain("`ignore`");
+    expect((byIgnore as Error).message).toContain("`privateEnabled`");
+    expect(byTool).toMatchObject({ name: "ToolInputError" });
+    expect((byTool as Error).message).toContain(
+      "`filter` of the Custom Tool `reveal`"
+    );
+    expect((byTool as Error).message).toContain("`privateEnabled`");
+  });
+
   it("checks a filter as a registration does: a function that reads outer state names it", async () => {
     const page = await lane.newPage();
     await setBody(page, "<button>Kept</button>");
