@@ -5,7 +5,7 @@
  */
 export type Navigation = {
   /** The URL relative destinations resolve against. */
-  baseURI(): string;
+  baseURI(): Promise<string>;
   /** The origin a destination must share with the page. */
   origin(): string;
   /**

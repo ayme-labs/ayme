@@ -6,7 +6,13 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { chromium, selectors, type Browser, type Page } from "@playwright/test";
+import {
+  chromium,
+  selectors,
+  type Browser,
+  type JSHandle,
+  type Page,
+} from "@playwright/test";
 import { Rolldown } from "tsdown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -244,8 +250,9 @@ describe("an action in Node", () => {
   it("rejects a settle that fails for anything but a load", async () => {
     const page = await newPage();
     const node = built.createInPageHost().inPage(page);
-    const elements = (await page.evaluateHandle(() => ({}))) as NonNullable<
-      Playwright.ActionOptions["elements"]
+    const elements = (await page.evaluateHandle(() => ({}))) as Extract<
+      Playwright.ActionOptions["elements"],
+      JSHandle
     >;
     const action = await node.begin({ elements });
 

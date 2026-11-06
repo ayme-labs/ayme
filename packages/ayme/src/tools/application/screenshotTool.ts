@@ -13,6 +13,7 @@ import {
   type ImageType,
   type ScreenshotInput,
 } from "../domain/screenshotRequest";
+import { imageSizeOf } from "../domain/imageSize";
 import type { ToolResult } from "../domain/toolTypes";
 
 const inputSchema: JsonSchema = {
@@ -59,18 +60,6 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** The image's size in pixels, as the browser decodes it. */
-async function sizeOf(bytes: Uint8Array, mimeType: string) {
-  const bitmap = await createImageBitmap(
-    new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mimeType })
-  );
-  try {
-    return { width: bitmap.width, height: bitmap.height };
-  } finally {
-    bitmap.close();
-  }
-}
-
 /** Package-internal: the screenshot Browser Tool, published only. */
 export const screenshotTool: PublishedElementTool = {
   name: "screenshot",
@@ -110,7 +99,7 @@ export const screenshotTool: PublishedElementTool = {
       subject,
       filename: request.filename,
       mimeType,
-      ...(await sizeOf(bytes, mimeType)),
+      ...imageSizeOf(bytes, mimeType),
       data: base64(bytes),
     };
     return result;

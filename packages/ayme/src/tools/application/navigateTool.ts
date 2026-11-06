@@ -41,7 +41,7 @@ export const navigateTool: PublishedElementTool = {
     const { url } = input as { url: string };
     const destination = navigationDestination(
       url,
-      navigation.baseURI(),
+      await navigation.baseURI(),
       navigation.origin()
     );
     // The browser Page rejects an invalid URL with its own error before it

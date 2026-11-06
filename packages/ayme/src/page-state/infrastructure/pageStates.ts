@@ -20,6 +20,7 @@ import {
   browserMonotonicClock,
   PREDICATES,
   type Capture,
+  type DocumentToken,
   type FilterData,
   type NamedFilter,
   type Predicate,
@@ -49,7 +50,11 @@ export type PageStateHost = {
    * after each same-document navigation in it.
    */
   bind(
-    onVisit: (visit: { url: string; cause: "initial" | "navigate" }) => void
+    onVisit: (visit: {
+      document: DocumentToken;
+      url: string;
+      cause: "initial" | "navigate";
+    }) => void
   ): void;
   /** A capture of the page with these exclusions and asks. */
   capture(
@@ -174,19 +179,36 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
     return host.capture(inputs, { accepts, filters: read.filters ?? [] });
   };
 
-  const history = new InteractionHistory({
-    pageId: PageIdSchema.parse(`document_${++documentCount}`),
-    url: host.url(),
-    clock: browserMonotonicClock,
-  });
   let url = host.url();
+  // Each document has a history, identity ledger and cursors of its own, as
+  // the browser runtime's, which a full load replaces; the session starts a
+  // new one when a capture is of another document (cursors do too, for a
+  // history takes no position of another document's).
+  const newHistory = (at: string) =>
+    new InteractionHistory({
+      pageId: PageIdSchema.parse(`document_${++documentCount}`),
+      url: at,
+      clock: browserMonotonicClock,
+    });
+  const session = new PageStateSession(
+    newHistory(url),
+    captureWith,
+    { begin: () => host.begin(elementInputs) },
+    newHistory
+  );
+  let bound: DocumentToken | undefined;
   host.bind((visit) => {
+    const known = bound;
+    bound = visit.document;
+    // Another document than the one this session read: a full load, which
+    // the session's next capture starts over in.
+    if (known !== undefined && known !== visit.document) {
+      url = visit.url;
+      return;
+    }
     if (visit.cause === "initial" && visit.url === url) return;
     url = visit.url;
-    history.recordNavigation(visit.url);
-  });
-  const session = new PageStateSession(history, captureWith, {
-    begin: () => host.begin(elementInputs),
+    session.history.recordNavigation(visit.url);
   });
   return {
     session,

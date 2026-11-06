@@ -179,4 +179,91 @@ describe("Ayme over a Playwright Page", () => {
       "FirstModel.press"
     );
   });
+
+  /** A page at `http://app.test/` whose documents are what `serve` answers per URL. */
+  async function pageServing(
+    serve: (url: URL) => string,
+    first = "http://app.test/"
+  ): Promise<Page> {
+    const page = await browser.newPage();
+    await page.route("http://app.test/**", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: `<!doctype html><title>Ayme</title>${serve(new URL(route.request().url()))}`,
+      })
+    );
+    await page.goto(first);
+    return page;
+  }
+
+  it("starts over in a reloaded document, whose refs recycle the old document's", async () => {
+    let loads = 0;
+    const page = await pageServing(
+      () =>
+        `<button onclick="document.title = 'clicked'">${++loads === 1 ? "Old" : "New"}</button>`
+    );
+    const ayme = await startedOn(page);
+    const { structure } = (await ayme.tools.run("snapshot", {})) as {
+      structure: string;
+    };
+    const ref = /- (e\d+) button "Old"/.exec(structure)?.[1];
+    expect(ref, structure).toBeDefined();
+    await page.reload();
+
+    const result = (await ayme.tools.run("click", { target: ref! })) as object;
+
+    expect(await page.title()).toBe("clicked");
+    // Not the old document's button turning into the new one's, under one ref.
+    expect(result).not.toHaveProperty("changes_before");
+    expect(JSON.stringify(result)).not.toContain("Old");
+  });
+
+  it("answers an action that loads another document with that load alone", async () => {
+    const page = await pageServing((url) =>
+      url.pathname === "/two"
+        ? "<p>Second document</p>"
+        : '<a href="/two">Next</a><p>First document</p>'
+    );
+    const Next = pageObjectRootedAt("Next", "body");
+    const ayme = await startedOn(page, { pageObjects: [Next] });
+    const { structure } = (await ayme.tools.run("snapshot", {})) as {
+      structure: string;
+    };
+    const ref = /- (e\d+) link "Next"/.exec(structure)?.[1];
+    expect(ref, structure).toBeDefined();
+
+    const result = (await ayme.tools.run("click", { target: ref! })) as {
+      loading?: string;
+    };
+
+    expect(result.loading).toBe("http://app.test/two");
+    expect(JSON.stringify(result)).not.toContain("Second document");
+  });
+
+  it("takes a screenshot with its size", async () => {
+    const page = await pageShowing("<h1>Shot</h1>");
+    const ayme = await startedOn(page);
+
+    const result = (await ayme.tools.run("screenshot", {})) as {
+      width: number;
+      height: number;
+      mimeType: string;
+    };
+
+    expect(result).toMatchObject({ mimeType: "image/png" });
+    expect(result.width).toBe(page.viewportSize()!.width);
+    expect(result.height).toBe(page.viewportSize()!.height);
+  });
+
+  it("resolves a relative navigation against the document's base URL", async () => {
+    const page = await pageServing(
+      () => '<base href="/sub/"><p>Page</p>',
+      "http://app.test/a/page"
+    );
+    const ayme = await startedOn(page);
+
+    await ayme.tools.run("navigate", { url: "next" });
+
+    expect(page.url()).toBe("http://app.test/sub/next");
+  });
 });

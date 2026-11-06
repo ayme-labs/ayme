@@ -23,24 +23,15 @@ import { pageObjectsProbed, type PageStateHost } from "./pageStates";
 export function playwrightPageHost(page: Page): PageStateHost {
   const module = inPage(page);
 
-  /** `inputs` as a handle to the plain data the module reads in the page. */
-  const handleOf = (inputs: ElementInputs) =>
-    page.evaluateHandle((data) => data, inputs);
-
-  async function capture(
+  function capture(
     inputs: ElementInputs,
     ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] }
   ): Promise<Capture> {
-    const elements = await handleOf(inputs);
-    try {
-      return await module.capture({
-        elements,
-        ...(ask.accepts ? { accepts: ask.accepts } : {}),
-        ...(ask.filters?.length ? { filters: ask.filters } : {}),
-      });
-    } finally {
-      void elements.dispose();
-    }
+    return module.capture({
+      elements: inputs,
+      ...(ask.accepts ? { accepts: ask.accepts } : {}),
+      ...(ask.filters?.length ? { filters: ask.filters } : {}),
+    });
   }
 
   async function begin(
@@ -49,30 +40,21 @@ export function playwrightPageHost(page: Page): PageStateHost {
     // Read once, here: a function cannot go into the page, so the captures
     // of this action share these inputs, after the probe this read awaited.
     const resolved = await inputs();
-    const elements = await handleOf(resolved);
-    let action;
-    try {
-      action = await module.begin({ elements });
-    } catch (error) {
-      void elements.dispose();
-      throw error;
-    }
+    const action = await module.begin({ elements: resolved });
     return {
       before: action.before,
       async perform<T>(
         perform: () => T | Promise<T>
       ): Promise<ActionOutcome<T>> {
-        try {
-          const outcome = await action.perform(perform);
-          if (!("after" in outcome) || outcome.after === undefined)
-            return outcome;
-          // The module placed the roots of the latest probe run it holds. The
-          // action changed the page, so probe again and read it once more.
-          if (!pageObjectsProbed(page)) return outcome;
-          return { ...outcome, after: await capture(await inputs(), {}) };
-        } finally {
-          void elements.dispose();
-        }
+        const outcome = await action.perform(perform);
+        // A load answers as it is: the page is another document's by now, or
+        // going away, and what the module captured of the old one stands.
+        if (outcome.kind === "loading" || outcome.after === undefined)
+          return outcome;
+        // The module placed the roots of the latest probe run it holds. The
+        // action changed the page, so probe again and read it once more.
+        if (!pageObjectsProbed(page)) return outcome;
+        return { ...outcome, after: await capture(await inputs(), {}) };
       },
     };
   }

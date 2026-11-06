@@ -11,6 +11,7 @@ import {
   RuntimeStateError,
   type ActionOutcome,
   type Capture,
+  type DocumentToken,
   type Predicate,
 } from "../../shared";
 import {
@@ -87,25 +88,62 @@ export class PageStateSession {
     | undefined;
   private readonly recordedListeners = new Set<() => void>();
   // The synthetic refs this session's trees mint for themselves.
-  private readonly refFactory = treeRefAllocator();
+  private refFactory = treeRefAllocator();
+  private current: InteractionHistory;
+  // The document the session's captures are of, once it has taken one.
+  private document: DocumentToken | undefined;
 
   /**
    * `history`: every capture is an observation in it; the observation a
    * cursor stands at is the "before" of its next Change Record, and its
    * identity ledger keeps ref continuity. Captures Ayme makes for itself
    * move no cursor.
+   *
+   * `restart`: a host whose Page outlives its documents, which a full load
+   * replaces, hands the history a new document starts with, for the URL it
+   * loaded. Each document has its own history, identity ledger and refs, as
+   * the browser runtime's has by starting over at a full load. Without it,
+   * the session keeps one document's.
    */
   constructor(
-    readonly history: InteractionHistory,
+    history: InteractionHistory,
     private readonly captureDocument: CapturePage,
-    private readonly actionPage: ActionPage
-  ) {}
+    private readonly actionPage: ActionPage,
+    private readonly restart?: (url: string) => InteractionHistory
+  ) {
+    this.current = history;
+  }
+
+  /** The history of the document the session reads now. */
+  get history(): InteractionHistory {
+    return this.current;
+  }
+
+  /**
+   * Takes note of the document `capture` is of: the session's first, or one
+   * of the same document, goes on; one of another document, which a full
+   * load replaced it with, starts over there, so no ref, observation or
+   * cursor of the old document is read against the new one. Whether it
+   * started over.
+   */
+  private enter(capture: Capture): boolean {
+    const known = this.document;
+    this.document = capture.document;
+    if (known === undefined || known === capture.document || !this.restart)
+      return false;
+    this.current = this.restart(capture.url);
+    this.latestRecorded = undefined;
+    this.refFactory = treeRefAllocator();
+    return true;
+  }
 
   /** A capture of the page as the session reads it: its tree and marks. */
   private async capturePage({
     accepts,
   }: CaptureAsk = {}): Promise<PageCapture> {
-    return this.read(await this.captureDocument(accepts));
+    const capture = await this.captureDocument(accepts);
+    this.enter(capture);
+    return this.read(capture);
   }
 
   /** `capture` as the session reads it: its tree and marks. */
@@ -182,17 +220,25 @@ export class PageStateSession {
     call: ToolCall,
     perform: () => unknown
   ): Promise<ActionResult> {
-    const actionId = await this.startAction(call);
-    const history = this.history;
+    let actionId = await this.startAction(call);
+    let history = this.history;
     // The start of the Change Record: where the cursor stands as the action
     // starts; child Runs inside the action move the cursor on.
-    const received = history.received(cursor);
+    let received = history.received(cursor);
     // The page as last observed: the action's before unless the before
     // capture finds the page moved on since.
     let before = history.latestObservation;
     let outcome: ActionOutcome<unknown>;
     try {
       const action = await this.actionPage.begin();
+      // A full load since the session last read the page: the action runs in
+      // the new document, whose history it starts in.
+      if (this.enter(action.before)) {
+        actionId = await this.startAction(call);
+        history = this.history;
+        received = history.received(cursor);
+        before = history.latestObservation;
+      }
       before = (await this.recordBefore(actionId, action.before)) ?? before;
       outcome = await action.perform(perform);
     } catch (error) {
@@ -424,7 +470,9 @@ export class PageStateSession {
     cursor?: Cursor,
     ask?: CaptureAsk
   ): Promise<PageCapture> {
-    const capture = await this.captureTree(ask);
+    const taken = await this.captureDocument(ask?.accepts);
+    this.enter(taken);
+    const capture = this.checked(taken);
     // Stamped once the capture is taken, so it cannot share its time with an
     // action started right after it.
     const observation = this.history.observe(

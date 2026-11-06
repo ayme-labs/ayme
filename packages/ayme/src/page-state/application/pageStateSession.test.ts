@@ -22,11 +22,12 @@ const cursor = () => createCursors().of("app");
 
 function capture(
   yaml: string,
-  pomRootMarks: PomRootMarks = new Map()
+  pomRootMarks: PomRootMarks = new Map(),
+  document = "document_1"
 ): PageCapture {
   return {
     capture: {
-      document: "document_1" as DocumentToken,
+      document: document as DocumentToken,
       url: "https://app.test/",
       distilledText: yaml,
       fullText: yaml,
@@ -53,7 +54,10 @@ function sessionOver(...captures: (PageCapture | Error)[]) {
  * `loads` once it ran, when given.
  */
 function sessionOn(
-  { loads }: { loads?: string },
+  {
+    loads,
+    restart,
+  }: { loads?: string; restart?: (url: string) => InteractionHistory },
   ...captures: (PageCapture | Error)[]
 ) {
   let taken = 0;
@@ -102,10 +106,57 @@ function sessionOn(
       clock,
     }),
     next,
-    actionPage
+    actionPage,
+    restart
   );
   return { session, count: () => taken };
 }
+
+describe("a capture of another document than the session's", () => {
+  let documents = 1;
+  const restart = (url: string) =>
+    new InteractionHistory({
+      pageId: PageIdSchema.parse(`document_${++documents}`),
+      url,
+      clock,
+    });
+  const old = capture('- generic [ref=e1]:\n  - button "Old" [ref=e2]');
+  const next = capture(
+    '- generic [ref=e1]:\n  - button "New" [ref=e2]',
+    new Map(),
+    "document_next"
+  );
+
+  it("starts a fresh history, whose cursors start over", async () => {
+    const { session } = sessionOn({ restart }, old, next);
+    const reader = cursor();
+    await session.getPageState(reader);
+    const before = session.history;
+
+    await session.getPageState(reader);
+
+    expect(session.history).not.toBe(before);
+    expect(session.history.received(reader)).toBe(
+      session.history.firstObservation
+    );
+  });
+
+  it("is no change of an action that runs in it", async () => {
+    const { session } = sessionOn({ restart }, old, next, next);
+    const reader = cursor();
+    await session.getPageState(reader);
+
+    const result = await session.runAction(
+      reader,
+      { tool: "click", args: {} },
+      () => {}
+    );
+
+    // Not "Old" turning into "New" under the recycled refs e1 and e2.
+    expect(result).not.toHaveProperty("changes_before");
+    expect(result.page_changed).toBe(false);
+  });
+});
 
 describe("a capture in which two nodes share a ref", () => {
   const shared = capture(

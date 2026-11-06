@@ -194,6 +194,8 @@ export type Slot = {
    * document.
    */
   currentRefs(host: HostKey, refs: readonly string[]): (string | undefined)[];
+  /** The URL the document resolves relative URLs against: its `baseURI`. */
+  baseURI(host: HostKey): string;
   /** The state of each native form control `refs` name, by ref: inputs, textareas and selects. */
   controls(
     host: HostKey,
@@ -422,6 +424,7 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       }
       return Object.fromEntries(readControls(named));
     },
+    baseURI: () => document.baseURI,
     currentRefs: (_host: HostKey, asked: readonly string[]) =>
       asked.map(refs.currentRefOf),
     pick(host: HostKey, { id, ...request }: PickRequest) {

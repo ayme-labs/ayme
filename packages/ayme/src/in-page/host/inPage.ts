@@ -133,6 +133,8 @@ export type InPage = {
    * the capture's. Undefined for a ref whose element left the document.
    */
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /** The URL the document resolves relative URLs against: its `baseURI`. */
+  baseURI(): Promise<string>;
   /** The state of each native form control `refs` name (input, textarea, select), by ref. */
   controls(refs: readonly string[]): Promise<Record<string, ControlState>>;
   /**
@@ -253,18 +255,19 @@ export type CaptureOptions = {
   /** The Custom Tools' filters whose accepted refs the capture carries, under each name. */
   filters?: readonly NamedFilter[];
   /**
-   * Transitional: the host's ignore predicate as a handle to a live value in
-   * the page (`ElementInputs`), until `ignore` takes a selector (#1177).
+   * The host's inputs, plain data (`ElementInputs`). Transitional: the
+   * browser runtime gives a handle to them, for Playwright Lite's page
+   * function (#1177).
    */
-  elements?: JSHandle<ElementInputs>;
+  elements?: JSHandle<ElementInputs> | ElementInputs;
 };
 
 export type ActionOptions = {
   /**
-   * Transitional, as `CaptureOptions.elements`: given as a function, the
-   * module reads it again before each of the action's captures.
+   * As `CaptureOptions.elements`; a handle may hold a function, which the
+   * module reads again before each of the action's captures.
    */
-  elements?: JSHandle<ActionInputs>;
+  elements?: JSHandle<ActionInputs> | ElementInputs;
 };
 
 /** A host: one side that drives pages through Playwright's Page. */
@@ -561,6 +564,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
         if (refs.length === 0) return {};
         return call<Record<string, ControlState>>("controls", [refs]);
       },
+      baseURI: () => call<string>("baseURI", []),
       async currentRefs(refs) {
         if (refs.length === 0) return [];
         return call<(string | undefined)[]>("currentRefs", [refs]);

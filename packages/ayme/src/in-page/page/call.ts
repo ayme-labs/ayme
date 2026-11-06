@@ -22,6 +22,7 @@ export type CallName =
   | "excluded"
   | "passThrough"
   | "currentRefs"
+  | "baseURI"
   | "controls";
 
 /** What a host calls: one of the slot's methods, with its arguments. */

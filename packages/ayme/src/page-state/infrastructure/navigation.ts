@@ -2,6 +2,7 @@
 // whether a traversal moved. The document's in-page module watches the
 // navigations themselves.
 import type { Page } from "@playwright/test";
+import { inPage } from "../../in-page";
 import type { Navigation } from "../application/navigation";
 
 /**
@@ -46,7 +47,7 @@ export async function startNavigation(
 export function documentNavigation(currentDocument: Document): Navigation {
   const navigationOf = () => currentDocument.defaultView?.navigation;
   return {
-    baseURI: () => currentDocument.baseURI,
+    baseURI: () => Promise.resolve(currentDocument.baseURI),
     origin: () => currentDocument.location.origin,
     start: (navigate) => startNavigation(currentDocument, navigate),
     async traverse(move) {
@@ -96,7 +97,8 @@ export function documentNavigation(currentDocument: Document): Navigation {
  */
 export function pageNavigation(page: Page): Navigation {
   return {
-    baseURI: () => page.url(),
+    // The document's own, as the browser runtime reads it: a `<base>` moves it.
+    baseURI: () => inPage(page).baseURI(),
     origin: () => new URL(page.url()).origin,
     start(navigate) {
       return navigate().then(
