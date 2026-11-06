@@ -65,11 +65,20 @@ export function skillReferenceCopies(root) {
 export function skillReferenceText(root, source) {
   const text = fs.readFileSync(path.join(root, source), "utf8");
   if (!source.startsWith(`${GUIDE_DIR}/`)) return text;
-  return text.replace(/\]\(([^)\s]+)\)/g, (link, target) => {
-    if (!isRelative(target)) return link;
-    const resolved = path.posix.join(path.posix.dirname(source), target);
-    return `](https://github.com/ayme-labs/ayme/blob/main/${resolved})`;
-  });
+  const absolute = (target) =>
+    isRelative(target)
+      ? `https://github.com/ayme-labs/ayme/blob/main/${path.posix.join(path.posix.dirname(source), target)}`
+      : target;
+  // Inline links, titled or not, and reference definitions such as `[x]: page.md "Title"`.
+  return text
+    .replace(
+      /\]\(([^)\s]+)((?:\s+"[^"]*")?)\)/g,
+      (_, target, title) => `](${absolute(target)}${title})`
+    )
+    .replace(
+      /^( {0,3}\[[^\]]+\]:\s*)(\S+)/gm,
+      (_, label, target) => `${label}${absolute(target)}`
+    );
 }
 
 /** Each shared skill reference with the copy every skill under `skills/` ships. */
@@ -425,8 +434,16 @@ export function checkDocs(root) {
   }
 
   for (const { source, copy } of skillReferenceCopies(root)) {
-    if (!fs.existsSync(path.join(root, source))) continue;
     const copied = path.join(root, copy);
+    if (!fs.existsSync(path.join(root, source))) {
+      if (fs.existsSync(copied))
+        report(
+          copy,
+          1,
+          `copies ${source}, which does not exist; remove the copy or fix the source`
+        );
+      continue;
+    }
     if (
       !fs.existsSync(copied) ||
       fs.readFileSync(copied, "utf8") !== skillReferenceText(root, source)

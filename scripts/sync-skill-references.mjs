@@ -12,6 +12,7 @@ import { skillReferenceCopies, skillReferenceText } from "./check-docs.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 for (const { source, copy } of skillReferenceCopies(root)) {
+  if (!fs.existsSync(path.join(root, source))) continue;
   fs.mkdirSync(path.dirname(path.join(root, copy)), { recursive: true });
   fs.writeFileSync(path.join(root, copy), skillReferenceText(root, source));
   console.log(`${source} -> ${copy}`);

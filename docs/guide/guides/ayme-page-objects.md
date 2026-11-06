@@ -58,10 +58,10 @@ export class NewProjectDialog extends AppComponent {
 
 The root decides two things:
 
-- **Present:** while the root is on the page, the component's tools are listed.
+- **Present:** while its root matches exactly one element on the page, the component's tools are listed.
 - **Available:** while a click would reach the root, its tools can run. When something covers the root, such as an open dialog, the tools stay listed but are marked unavailable, with a reason that names what is in the way, and a call is refused with it.
 
-That is why a component's root should contain everything its actions touch. A model that declares neither `present` nor `root` is on the page while it is registered.
+That is why a component's root should contain everything its actions touch. A registered model that declares neither `present` nor `root` is on the page while it is registered; a child that declares neither, while the model holding it is.
 
 **`description`** says what the model stands for in the product, beyond what the page shows: whose data it holds, how far it reaches, such as one project or the whole workspace, and what it holds that outlives the page. A model whose name and page say enough needs none.
 
@@ -107,6 +107,7 @@ export class ProjectRow extends AppComponent {
   @ayme.action({ available: canRemove })
   async remove() {
     await this.removeButton.click();
+    return this;
   }
 }
 ```

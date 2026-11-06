@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 
-import { checkDocs } from "./check-docs.mjs";
+import { checkDocs, skillReferenceText } from "./check-docs.mjs";
 
 const roots = [];
 after(() => {
@@ -71,6 +71,25 @@ test("fails a skill whose copy of a shared reference is missing or differs", () 
     "skills/one/references/guide.md:1: differs from skills/shared/guide.md; run pnpm skills:sync and commit the copy",
     "skills/two/references/guide.md:1: differs from skills/shared/guide.md; run pnpm skills:sync and commit the copy",
   ]);
+});
+
+test("fails on a skill's copy of a guide page whose source is gone", () => {
+  assert.deepEqual(
+    checkDocs(fixture({ "skills/ayme/references/ayme-page-objects.md": PAGE })),
+    [
+      "skills/ayme/references/ayme-page-objects.md:1: copies docs/guide/guides/ayme-page-objects.md, which does not exist; remove the copy or fix the source",
+    ]
+  );
+});
+
+test("points a guide page's titled and reference-style links at GitHub in a skill's copy", () => {
+  const root = fixture({
+    "docs/guide/guides/ayme-page-objects.md": `${PAGE}\nSee [a page](../start/page.md "A page"), [npm](https://www.npmjs.com/) and [the index][index].\n\n[index]: ../README.md "Guide"\n`,
+  });
+  assert.equal(
+    skillReferenceText(root, "docs/guide/guides/ayme-page-objects.md"),
+    `${PAGE}\nSee [a page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/page.md "A page"), [npm](https://www.npmjs.com/) and [the index][index].\n\n[index]: https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md "Guide"\n`
+  );
 });
 
 test("checks a skill's copy of a guide page, with its relative links pointing at GitHub", () => {

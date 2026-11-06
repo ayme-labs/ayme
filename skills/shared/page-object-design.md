@@ -58,10 +58,8 @@ export class Combobox extends AppComponent {
 }
 
 export class ComboboxOptions extends AppComponent {
-  readonly items = this.root.getByRole("option");
-
   async choose(option: string) {
-    await this.items.filter({ hasText: option }).click();
+    await this.root.getByRole("option", { name: option, exact: true }).click();
     return this;
   }
 }
@@ -112,7 +110,9 @@ outside the dialog. The page owns that button, so the page owns the action:
 // On ProjectsPage:
 async openNewProjectDialog() {
   await this.newProjectButton.click();
-  return new NewProjectDialog(this.page.getByRole("dialog"));
+  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
+  await dialog.root.waitFor();
+  return dialog;
 }
 ```
 
@@ -128,7 +128,9 @@ locator.
 // ✅ An action: it moves the user to another boundary.
 async openNewProjectDialog() {
   await this.newProjectButton.click();
-  return new NewProjectDialog(this.page.getByRole("dialog"));
+  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
+  await dialog.root.waitFor();
+  return dialog;
 }
 
 // On NewProjectDialog:
@@ -260,7 +262,7 @@ one of them anyway.
 async create(): Promise<ProjectPage | this> {
   await this.createButton.click();
   const projectPage = new ProjectPage(this.root.page());
-  await projectPage.heading.or(this.nameError).waitFor();
+  await projectPage.heading.or(this.nameError).first().waitFor();
   return (await this.nameError.isVisible()) ? this : projectPage;
 }
 ```
@@ -268,13 +270,14 @@ async create(): Promise<ProjectPage | this> {
 A test asserts the outcome the flow should reach, rather than branching on it:
 
 ```ts
-const result = await dialog.create();
-expect(result).toBeInstanceOf(ProjectPage);
+const created = await dialog.create();
+assert(created instanceof ProjectPage); // node:assert, which narrows the type
+await expect(created.heading).toBeVisible();
 
-// Or, when the test expects the dialog to remain open, and the validation error:
-const result = await dialog.create();
-expect(result).toBeInstanceOf(NewProjectDialog);
-await expect(result.nameError).toBeVisible();
+// Or, when the test expects the dialog to remain open, with the validation error:
+const rejected = await dialog.create();
+assert(rejected === dialog);
+await expect(rejected.nameError).toBeVisible();
 ```
 
 ## Compose actions

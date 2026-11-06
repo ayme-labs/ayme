@@ -119,10 +119,10 @@ for a better one in the trace.
 ## Write the test
 
 One test replays the flow in recorded order, with no steps the user did not
-take and no branching. Every step goes through a page object action, and
+take and no branching. Every step goes through a page object action or one of its named locators, and
 every check through a page object locator or method. When an action returns one of
 several page objects, assert the one the recorded flow reached, such as
-`expect(page).toBeInstanceOf(ProjectPage)`, rather than branching on it.
+`assert(page instanceof ProjectPage)` from `node:assert`, rather than branching on it.
 
 Turn the timeline into assertions:
 
