@@ -101,6 +101,10 @@ export function createRoots(deps: {
         table.building?.round === round ? table.building.entries : [];
       table.building = undefined;
     },
+    /** `host` stopped watching: its roots, current and pending, are gone. */
+    forget(host: HostKey): void {
+      tables.delete(host);
+    },
     /** `host`'s roots as its latest completed run found them, still on the page. */
     labelled(host: HostKey): LabelledRoots {
       const roots: LabelledRoots["roots"] = [];

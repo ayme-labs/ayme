@@ -46,3 +46,33 @@ it("keeps naming an element a ref it was given while the element lives", () => {
   expect(world.trackedRefs()).toBe(1);
   expect(world.elementOf("e1")).toBe(document.body.querySelector("div"));
 });
+
+it("bounds the refs one renamed element keeps, retiring the oldest and keeping the recent ones resolvable", () => {
+  // A mark that follows the element's name, as Playwright's does: a new name, a new ref.
+  const snapshotOfNamedDivs: CaptureAriaSnapshot = (root, { aymeRefs }) => {
+    const refsByElement = new Map<Element, string>();
+    for (const element of root.querySelectorAll("div")) {
+      const name = element.getAttribute("aria-label") ?? "";
+      const mark = aymeRefs.marks.get(element);
+      const ref = mark?.name === name ? mark.ref : `e${aymeRefs.next()}`;
+      aymeRefs.marks.set(element, { role: "generic", name, ref });
+      refsByElement.set(element, ref);
+    }
+    return { distilledText: "", fullText: "", refsByElement };
+  };
+  const world = createRefWorld(snapshotOfNamedDivs);
+  document.body.innerHTML = "<div></div>";
+  const element = document.body.querySelector("div")!;
+
+  for (let count = 0; count < 100; count += 1) {
+    element.setAttribute("aria-label", `Name ${count}`);
+    world.capture(document.body);
+  }
+
+  expect(world.trackedRefs()).toBeLessThanOrEqual(16);
+  // The refs of the latest captures still name it, the first one no longer does.
+  expect(world.elementEverNamed("e100")).toBe(element);
+  expect(world.elementEverNamed("e99")).toBe(element);
+  expect(world.elementEverNamed("e90")).toBe(element);
+  expect(world.elementEverNamed("e1")).toBeUndefined();
+});

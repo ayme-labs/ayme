@@ -117,7 +117,11 @@ export type RecommendRequest = {
 };
 
 /** One element's Locator Recommendation, or why it has none. */
-export type RecommendationAnswer = { locator: string } | { error: string };
+export type RecommendationAnswer =
+  | { locator: string }
+  | { error: string }
+  /** The container the host resolved has left the document since: resolve it again. */
+  | { stale: true };
 
 /** What a host asks of the module about reach, for many elements in one batch. */
 export type ReachableRequest = {
@@ -360,6 +364,7 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       } else {
         watching.delete(host);
         told.delete(host);
+        roots.forget(host);
       }
       return stateOf();
     },
@@ -397,6 +402,8 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       request: RecommendRequest = {}
     ) =>
       elements.map((element): RecommendationAnswer => {
+        if (request.within && !request.within.isConnected)
+          return { stale: true };
         try {
           return {
             locator: recommendLocator(

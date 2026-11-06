@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
-import { describe, expect, it } from "vitest";
+import type { Locator, Page } from "@playwright/test";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 import { PREDICATES, type Predicate } from "../../shared";
 import type { ElementInputs, InPage, InPageHost, VisitSignal } from "./inPage";
@@ -76,27 +76,39 @@ function appAttributes(page: Page) {
     .map((element) => [element.localName, ...[...element.attributes].map((a) => a.name + "=" + a.value)].join(" "))`);
 }
 
+/** The roots each host's `labelling` watch probes. */
+const labellers = new WeakMap<
+  InPage,
+  { roots: readonly (readonly [label: string, selector: string])[] }
+>();
+
 /**
- * Runs one probe run of `inPageOf` that probes the roots `at` selects, each
- * with its label, so the host's later captures place them.
+ * Runs one probe run of `inPageOf` that probes `roots`, each with its label,
+ * so the host's later captures place them while its watch lasts.
  */
 async function labelling(
   inPageOf: InPage,
   page: Page,
   roots: readonly (readonly [label: string, selector: string])[]
 ) {
-  const stop = inPageOf.watch(async () => {
-    await Promise.all(
-      roots.map(([label, selector]) =>
-        inPageOf.probe(page.locator(selector), label)
-      )
-    );
-  });
-  try {
-    await inPageOf.probed();
-  } finally {
-    stop();
+  let labeller = labellers.get(inPageOf);
+  if (!labeller) {
+    const held = { roots };
+    labeller = held;
+    labellers.set(inPageOf, held);
+    // The host's labels last as long as its watch does: it ends with the test.
+    const stop = inPageOf.watch(async () => {
+      await Promise.all(
+        held.roots.map(([label, selector]) =>
+          inPageOf.probe(page.locator(selector), label)
+        )
+      );
+    });
+    onTestFinished(stop);
   }
+  labeller.roots = roots;
+  inPageOf.refresh();
+  await inPageOf.probed();
 }
 
 /** Every Structural Ref a capture text prints, in order. */
@@ -1341,6 +1353,28 @@ export function inPageContract(lane: InPageLane) {
         stop();
       }
     );
+
+    it.runIf(lane.hostsOutliveLoads)(
+      "a load during a probe run arms watching the next document, which then follows its changes",
+      async () => {
+        const page = await lane.newPage();
+        const inPageOf = lane.createHost(page).inPage(page);
+        let runs = 0;
+        let next: Page | undefined;
+        const stop = inPageOf.watch(async () => {
+          runs += 1;
+          // The first run is still going when the next document loads.
+          if (runs === 1) next = await lane.reload(page);
+        });
+        // A longer wait than the default: the reload is slow on a loaded machine.
+        await expect.poll(() => runs, { timeout: 10_000 }).toBe(2);
+
+        await setBody(next!, "<p>Changed in the next document</p>");
+
+        await expect.poll(() => runs, { timeout: 10_000 }).toBe(3);
+        stop();
+      }
+    );
   });
 
   describe("Page Objects registered against the page", () => {
@@ -1487,6 +1521,48 @@ export function inPageContract(lane: InPageLane) {
       await registry.probeRegisteredPomMembers();
       expect((await inPageOf.capture()).roots).toEqual([]);
       dispose();
+    });
+
+    it("unregistering the last Page Object takes its root labels off the surviving DOM", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<section id="settings" aria-label="Settings"><button>Save</button></section>'
+      );
+      const { inPageOf, registry, available, dispose } =
+        registerSettingsPage(page);
+      await expect.poll(available).toEqual([toolName]);
+      await registry.probeRegisteredPomMembers();
+      expect((await inPageOf.capture()).roots).toHaveLength(1);
+
+      dispose();
+
+      await expect
+        .poll(async () => (await inPageOf.capture()).roots)
+        .toEqual([]);
+    });
+
+    it("unregistering the last Page Object leaves an absent root's subtree in the captures once it shows", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<section id="settings" aria-label="Settings" style="display:none"><button>Save</button></section>'
+      );
+      const { inPageOf, registry, listed, dispose } =
+        registerSettingsPage(page);
+      await expect.poll(listed).toEqual([[toolName, false, false]]);
+      await registry.probeRegisteredPomMembers();
+      dispose();
+      // Shown now, nothing registers it.
+      await page.evaluate(
+        `document.getElementById("settings").style.display = ""`
+      );
+
+      const shown = await inPageOf.capture();
+      expect(shown.fullText).toContain("Save");
+      await expect
+        .poll(async () => (await inPageOf.capture()).excludedRefs)
+        .toEqual([]);
     });
   });
 
@@ -1712,6 +1788,34 @@ export function inPageContract(lane: InPageLane) {
 
       expect(inRow).toBe("getByRole('button', { name: 'Delete' })");
       expect(inPage).not.toBe(inRow);
+    });
+
+    it("a container the page replaces while it is being resolved gives way to the container now on the page", async () => {
+      const { page, inPageOf } = await ordersPage();
+      const row = page.locator("#row-2");
+      let replaced = false;
+      // The first time the container is resolved, the page renders it again
+      // before the target is read; the host holds the old element.
+      const rendering = {
+        elementHandle: async () => {
+          const handle = await row.elementHandle();
+          if (!replaced) {
+            replaced = true;
+            await page.evaluate(
+              `(() => { const row = document.getElementById("row-2"); row.replaceWith(row.cloneNode(true)); })()`
+            );
+          }
+          return handle;
+        },
+      } as unknown as Locator;
+
+      const recommended = await inPageOf.recommend(
+        page.locator("#row-2 button"),
+        rendering
+      );
+
+      expect(replaced).toBe(true);
+      expect(recommended).toBe("getByRole('button', { name: 'Delete' })");
     });
 
     it("a locator relative to its container finds exactly the element from the container", async () => {

@@ -161,10 +161,12 @@ export type InPage = {
   /**
    * The Locator Recommendation for the one element `target` matches,
    * relative to the one element `within` matches when given: Playwright's
-   * own generator, run in the page against both in one task, which checks the
-   * locator addresses exactly the element, or the interactive ancestor it
-   * picked for it. Throws a `RefResolutionError` unless each matches exactly
-   * one, and an `Error` when no locator addresses the element.
+   * own generator, run in the page against both, which checks the locator
+   * addresses exactly the element, or the interactive ancestor it picked for
+   * it. A container the page replaced before the page task read it is
+   * resolved again, so the generator never sees a detached one. Throws a
+   * `RefResolutionError` unless each matches exactly one, and an `Error` when
+   * no locator addresses the element.
    */
   recommend(target: Locator, within?: Locator): Promise<string>;
   /**
@@ -595,23 +597,32 @@ export function createInPageHost(version = packageVersion): InPageHost {
         // Playwright Lite's Page knows its test ID attribute; Playwright's
         // has no public reading of it, so its default stands there.
         const { testIdAttribute } = page as { testIdAttribute?: string };
-        // A handle for this one call, disposed before it returns.
-        const container = within && (await within.elementHandle());
-        try {
-          const request: RecommendRequest = {
-            ...(testIdAttribute ? { testIdAttribute } : {}),
-            // The page receives the element the handle stands for.
-            ...(container ? { within: container as unknown as Element } : {}),
-          };
-          const answer = await onTheOne<RecommendationAnswer>(
-            target,
-            "recommend",
-            request
-          );
-          if ("error" in answer) throw new Error(answer.error);
-          return answer.locator;
-        } finally {
-          await container?.dispose();
+        // The container is a handle, which can go stale between its
+        // resolution and the page task that reads the target: the page says
+        // so, and the container is resolved again.
+        for (let attempt = 1; ; attempt += 1) {
+          // A handle for this one call, disposed before it returns.
+          const container = within && (await within.elementHandle());
+          try {
+            const request: RecommendRequest = {
+              ...(testIdAttribute ? { testIdAttribute } : {}),
+              // The page receives the element the handle stands for.
+              ...(container ? { within: container as unknown as Element } : {}),
+            };
+            const answer = await onTheOne<RecommendationAnswer>(
+              target,
+              "recommend",
+              request
+            );
+            if ("error" in answer) throw new Error(answer.error);
+            if ("locator" in answer) return answer.locator;
+            if (attempt === RECOMMEND_ATTEMPTS)
+              throw new Error(
+                "the container was replaced as often as it was resolved"
+              );
+          } finally {
+            await container?.dispose();
+          }
         }
       },
       async pick(accept, { signal, styles } = {}) {
@@ -693,6 +704,9 @@ export function createInPageHost(version = packageVersion): InPageHost {
     },
   };
 }
+
+/** How often Locator Recommendation resolves a container the page keeps replacing. */
+const RECOMMEND_ATTEMPTS = 3;
 
 /** What a watcher needs of its Page. */
 type WatcherPage = {
@@ -792,7 +806,12 @@ function createWatcher() {
       };
       watch = run;
       // A full load ends the document the module was watching in.
-      const stopListening = page.loads(() => schedule(run));
+      // A load during a run leaves the new document unwatched until another
+      // run, so it makes one due.
+      const stopListening = page.loads(() => {
+        run.refreshed = true;
+        schedule(run);
+      });
       schedule(run);
       return () => {
         if (watch !== run) return;

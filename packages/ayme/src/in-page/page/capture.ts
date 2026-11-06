@@ -61,6 +61,13 @@ export type CaptureAsk = {
   filters?: readonly NamedFilter[];
 };
 
+/**
+ * How many refs one element keeps naming it: enough for the refs recent
+ * captures printed before its name changed, and a bound for an element that
+ * is renamed for as long as the page lives.
+ */
+const MAX_ALIASES = 16;
+
 type CaptureBody = Omit<Capture, "document" | "url">;
 
 /**
@@ -74,8 +81,11 @@ export function createRefWorld(
 ) {
   const marks = new WeakMap<Element, Mark>();
   const syntheticRefs = new WeakMap<Element, string>();
-  // Every ref ever minted in this document, to the element it names.
+  // Every ref minted in this document, to the element it names: the refs of
+  // an element whose name keeps changing are the latest `MAX_ALIASES`.
   const byRef = new Map<string, WeakRef<Element>>();
+  // The refs each element was given, oldest first.
+  const aliases = new WeakMap<Element, string[]>();
   let lastRef = 0;
   let lastSyntheticRef = 0;
   const aymeRefs = { marks, next: () => ++lastRef };
@@ -106,13 +116,31 @@ export function createRefWorld(
     return byRef.get(ref)?.deref();
   }
 
+  /** Records that `ref` names `element`, and retires its oldest superseded refs beyond the bound. */
+  function alias(element: Element, ref: string): void {
+    if (byRef.get(ref)?.deref() === element) return;
+    byRef.set(ref, weakRefOf(element));
+    const given = aliases.get(element) ?? [];
+    aliases.set(element, given);
+    given.push(ref);
+    const live = [marks.get(element)?.ref, syntheticRefs.get(element)];
+    for (let at = 0; given.length > MAX_ALIASES && at < given.length;) {
+      const old = given[at]!;
+      if (live.includes(old)) at += 1;
+      else {
+        given.splice(at, 1);
+        byRef.delete(old);
+      }
+    }
+  }
+
   /** The root's synthetic ref, minted once per element and counted per document. */
   function syntheticRefOf(element: Element): string {
     let ref = syntheticRefs.get(element);
     if (ref === undefined) {
       ref = `s_${++lastSyntheticRef}`;
       syntheticRefs.set(element, ref);
-      byRef.set(ref, weakRefOf(element));
+      alias(element, ref);
     }
     return ref;
   }
@@ -134,8 +162,7 @@ export function createRefWorld(
         !ancestry(element).some(ignores)
     );
     const snapshot = captureAriaSnapshot(root, { mode: "ai", aymeRefs });
-    for (const [element, ref] of snapshot.refsByElement)
-      byRef.set(ref, weakRefOf(element));
+    for (const [element, ref] of snapshot.refsByElement) alias(element, ref);
     // The map names every ref ever minted, so it drops the ones whose element
     // the page let go of, and a long session does not grow it without bound.
     const renamed: Record<string, string> = {};
