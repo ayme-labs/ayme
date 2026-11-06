@@ -64,6 +64,17 @@ const client = createInspectorClient(
     subscribeToAgentImageRuns: () => () => {},
     highlights: { set: async () => {} },
     pick: async () => undefined,
+    registry: {
+      pageObjects: () => [],
+      pomDefinitions: () => [],
+      subscribe: () => () => {},
+    },
+    look: async () => {
+      throw new Error("No look in this test.");
+    },
+    pomDefinitionText: () => "",
+    recordedPageState: async () => undefined,
+    demo: () => {},
   })
 );
 

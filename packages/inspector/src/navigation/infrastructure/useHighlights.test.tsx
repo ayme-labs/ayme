@@ -19,9 +19,22 @@ import { useHighlights } from "./useHighlights";
 
 /** A look at the page that shows each element under its ref. */
 function lookOf(elementsByRef: Record<string, Element>): Look {
+  const refs = Object.keys(elementsByRef);
   return {
-    state: { elementsByRef: new Map(Object.entries(elementsByRef)) },
-  } as unknown as Look;
+    state: {
+      projected: { roots: [] },
+      refs,
+      targets: [],
+      targetsByRef: {},
+      elementToolTargets: {},
+      controls: {},
+      rootedInstances: {},
+    },
+    refs: new Set(refs),
+    targets: [],
+    targetsByRef: new Map(),
+    elementToolTargets: new Map(),
+  };
 }
 
 /** The highlights on the page: each ref's `ayme-ref=` locator with its style. */
@@ -72,6 +85,17 @@ function mountHighlights(page = fakePage()) {
           subscribeToAgentImageRuns: () => () => {},
           highlights: createHighlights(page.locate),
           pick: async () => undefined,
+          registry: {
+            pageObjects: () => [],
+            pomDefinitions: () => [],
+            subscribe: () => () => {},
+          },
+          look: async () => {
+            throw new Error("No session.");
+          },
+          pomDefinitionText: () => "",
+          recordedPageState: async () => undefined,
+          demo: () => {},
         })
       ),
     });
@@ -165,6 +189,8 @@ it("only offers a highlight while its target is connected in the latest look", (
   expect(highlights.canHighlight({ ref: "e1" })).toBe(true);
   expect(highlights.canHighlight({ ref: "unknown" })).toBe(false);
   element.remove();
+  // The page state is the latest look's: a look that no longer holds e1 ends it.
+  highlights.onLook(lookOf({}));
   expect(highlights.canHighlight({ ref: "e1" })).toBe(false);
   unmount();
 });

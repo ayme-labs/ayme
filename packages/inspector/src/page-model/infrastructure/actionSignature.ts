@@ -1,8 +1,8 @@
-import type { JsonSchema } from "@ayme-dev/ayme";
+import type { JsonSchema } from "@ayme-dev/ayme/inspector";
 import {
   renderActionParameters,
   type ToolParameter,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 /**
  * An action's arguments the way the definition text agents read writes

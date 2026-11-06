@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 import type { Locator, Page } from "@playwright/test";
 
-import { describeCall, type CallDescription } from "./describeCall";
+import { describeCall, type CallDescription } from "./demoFeedback";
 
 const page = createPage() as unknown as Page;
 const button = page.locator("button");

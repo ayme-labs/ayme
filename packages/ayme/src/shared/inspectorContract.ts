@@ -1,7 +1,15 @@
+import type { ProjectedStructuralNodeForest } from "@ayme-dev/core/structural-observation";
 import type { NotConnectedReason } from "@ayme-dev/mcp/client";
 
 import type { Caller } from "./callers";
-import type { JsonSchema, JsonValue } from "./contracts";
+import type {
+  JsonSchema,
+  JsonValue,
+  PomDefinition,
+  PomManifest,
+  PomMemberObservation,
+  RegisteredPomTool,
+} from "./contracts";
 
 // The Inspector contract (ADR-0049): what the runtime tells the Inspector and
 // what the Inspector asks of it, as plain data only. Refs, paths, JSON trees,
@@ -107,6 +115,93 @@ export type InspectorRun = Readonly<
 >;
 
 /**
+ * A registered Page Object, as the Model and Structure lenses read it: its
+ * manifest, what its last observation found by path, and its tools as agents
+ * read them. Its instance never crosses the contract.
+ */
+export type InspectorPageObject = Readonly<{
+  id: string;
+  manifest: PomManifest;
+  memberObservations: readonly PomMemberObservation[];
+  /** The paths of the instances the last observation found on the page. */
+  presentPaths: readonly string[];
+  /** The paths of the locator members that are the root element of their Page Object. */
+  rootMemberPaths: readonly string[];
+  tools: readonly RegisteredPomTool[];
+}>;
+
+/**
+ * A control's state the page state leaves out or flattens: see the runtime's
+ * control reading. `value` is what `fill_form` takes it as.
+ */
+export type ControlState = {
+  /**
+   * Its value as `fill_form` takes it: the text, `"true"` or `"false"` for a
+   * checkbox or radio, the selected option's label for a select.
+   */
+  value: string;
+  /** Whether the text can hold line breaks: a textarea. */
+  multiline?: boolean;
+  /** A select's option labels. */
+  options?: string[];
+  /** A range input's bounds and step. */
+  range?: { min: number; max: number; step: number | "any" };
+  /** A radio's group: radios with the same name in the same form. */
+  group?: string;
+};
+
+/**
+ * A Page Object Root or member's locator, at its path, with the Structural Ref
+ * of its element in the look when the page state holds it.
+ */
+export type InspectorTarget = Readonly<{
+  path: string;
+  locator: string;
+  aliases?: readonly string[];
+  ref?: string;
+}>;
+
+/** A collection tool's item on the page, whether the tool would run on it and why not. */
+export type InspectorRootedInstance = Readonly<{
+  ref?: string;
+  available: boolean;
+  reason?: string;
+}>;
+
+/**
+ * What the Model and Structure lenses read of one unrecorded look at the
+ * page: the projected Structural Page State (its refs are the page's), the
+ * refs each Page Object member and tool can take, and the controls' state.
+ * Plain data by ref and path: no element crosses it.
+ */
+export type InspectorLook = Readonly<{
+  /** The projected page state the agent's text is rendered from. */
+  projected: ProjectedStructuralNodeForest;
+  /** Every Structural Ref of the page state, in tree order. */
+  refs: readonly string[];
+  /** Each registered Page Object member or root's locator, by path. */
+  targets: readonly InspectorTarget[];
+  /** The paths of the targets whose element each ref is, by ref. */
+  targetsByRef: Readonly<Record<string, readonly string[]>>;
+  /** The refs each single-element tool can take in this look, by tool name. */
+  elementToolTargets: Readonly<Record<string, readonly string[]>>;
+  /** The native form controls' states, by ref. */
+  controls: Readonly<Record<string, ControlState>>;
+  /** Each rooted tool's items on the page, by tool name. */
+  rootedInstances: Readonly<Record<string, readonly InspectorRootedInstance[]>>;
+}>;
+
+/**
+ * The page state the runtime last recorded (what an agent's last call saw), as
+ * plain data: the Runs lens names an Interaction's element from it, by ref.
+ */
+export type InspectorRecordedPageState = Readonly<{
+  projected: ProjectedStructuralNodeForest;
+  /** Every Structural Ref of the recorded page state, in tree order. */
+  refs: readonly string[];
+}>;
+
+/**
  * What the Runs and Tools lenses read, whole: the canonical state. Every
  * change makes a new state with a higher `revision`; a client never lets one
  * with a lower revision replace one it holds.
@@ -120,6 +215,10 @@ export type InspectorState = Readonly<{
   agentConnection: AgentConnectionStatus;
   /** The document's Run log, oldest first. */
   runs: readonly InspectorRun[];
+  /** The registered Page Objects, whether or not they are on the page. */
+  pageObjects: readonly InspectorPageObject[];
+  /** The Page Object Model definitions snapshot describes, in its order. */
+  pomDefinitions: readonly PomDefinition[];
 }>;
 
 /** An agent's call whose result is an image, once `ayme mcp` saved it. */
@@ -194,6 +293,27 @@ export type InspectorContract = Readonly<{
     refs: readonly string[];
   }): Promise<InspectorCommandResult>;
   cancelPick(request: { id: string }): Promise<InspectorCommandResult>;
+  /**
+   * One unrecorded look at the page: the Structural Page State and what the
+   * Model and Structure lenses map onto it. Records nothing.
+   */
+  look(): Promise<InspectorLook>;
+  /**
+   * The runtime's latest recorded page state, none until one is recorded.
+   * Reads it only: nothing is captured or recorded.
+   */
+  recordedPageState(): Promise<InspectorRecordedPageState | undefined>;
+  /**
+   * Turns Demo Mode on or off for the Inspector's own request of it (a panel
+   * mounted with `demo`), beside the session's `inspector` option: while
+   * either asks for it, the runtime paces and cues its Pages' actions.
+   */
+  demo(request: { on: boolean }): Promise<InspectorCommandResult>;
+  /**
+   * The Page Object Model definitions for `names` (every known one when none
+   * are given), as `snapshot` renders them. Captures no page state.
+   */
+  pomDefinitionText(request: { names?: readonly string[] }): Promise<string>;
 }>;
 
 /**

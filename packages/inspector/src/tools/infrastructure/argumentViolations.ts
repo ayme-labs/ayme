@@ -1,7 +1,7 @@
 import {
   patternViolations,
   toolInputViolations,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 import type { ToolArguments } from "../../runs";
 import type { RunnableTool } from "../domain/runnableTools";

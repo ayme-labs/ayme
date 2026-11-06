@@ -5,10 +5,6 @@ export {
   type ModelPanes,
   type RegionSizes,
 } from "./domain/preferences";
-export {
-  allowPassThrough,
-  passThroughWhileCovered,
-} from "./infrastructure/panelPassThrough";
 export { useHostReservation } from "./infrastructure/useHostReservation";
 export { usePreferences } from "./infrastructure/usePreferences";
 export { InspectorShell } from "./presentation/InspectorShell";

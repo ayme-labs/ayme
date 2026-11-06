@@ -6,8 +6,12 @@ import {
   type InspectorContract,
   type InspectorEvent,
   type InspectorHighlightLayer,
+  type InspectorLook,
+  type InspectorPageObject,
+  type InspectorRecordedPageState,
   type InspectorState,
   type JsonValue,
+  type PomDefinition,
   type ToolInfo,
 } from "../shared";
 import type { InspectorPublication, InspectorRun } from "../shared";
@@ -39,6 +43,21 @@ export type InspectorContractPorts = {
   highlights: {
     set(layer: InspectorHighlightLayer, refs: readonly string[]): Promise<void>;
   };
+  /** The registry's Page Objects and definitions, which change only when it does. */
+  registry: {
+    pageObjects(): readonly InspectorPageObject[];
+    pomDefinitions(): readonly PomDefinition[];
+    /** Calls `listener` when a Page Object is registered or unregistered. */
+    subscribe(listener: () => void): () => void;
+  };
+  /** One unrecorded look at the page, as plain data. */
+  look(): Promise<InspectorLook>;
+  /** The runtime's latest recorded page state, as plain data; none until one is recorded. */
+  recordedPageState(): Promise<InspectorRecordedPageState | undefined>;
+  /** Asks for Demo Mode (or no longer) for the Inspector: it pauses and cues the actions. */
+  demo(on: boolean): void;
+  /** The definition text of `names`, or of every known one when none are given. */
+  pomDefinitionText(names: readonly string[]): string;
   /** Picks a ref among `refs`; none when `signal` aborts first or Esc cancels. */
   pick(
     refs: readonly string[],
@@ -69,7 +88,19 @@ export function createInspectorContract(
   let lastState: InspectorState | undefined;
   const observers = new Set<Parameters<InspectorContract["subscribe"]>[0]>();
   const picks = new Map<string, AbortController>();
-
+  // The registry's read, kept until it changes so that its arrays keep their
+  // identity, which the revision reads.
+  let registry:
+    | {
+        pageObjects: readonly InspectorPageObject[];
+        pomDefinitions: readonly PomDefinition[];
+      }
+    | undefined;
+  const readRegistry = () =>
+    (registry ??= {
+      pageObjects: ports.registry.pageObjects(),
+      pomDefinitions: ports.registry.pomDefinitions(),
+    });
   /** The state now: the revision rises only when a part of it changed. */
   function read(): InspectorState {
     const session = ports.started();
@@ -82,6 +113,7 @@ export function createInspectorContract(
     const runs = session
       ? (session.runs.list() as readonly InspectorRun[])
       : NO_RUNS;
+    const pomsRead = readRegistry();
     const parts = [
       session,
       tools,
@@ -89,6 +121,7 @@ export function createInspectorContract(
       publication,
       agentConnection,
       runs,
+      pomsRead,
     ];
     if (
       !lastState ||
@@ -103,6 +136,8 @@ export function createInspectorContract(
         publication,
         agentConnection,
         runs,
+        pageObjects: pomsRead.pageObjects,
+        pomDefinitions: pomsRead.pomDefinitions,
       });
     }
     return lastState;
@@ -123,6 +158,12 @@ export function createInspectorContract(
     const state = read();
     if (state !== before) emit({ type: "state", state });
   };
+
+  // Followed from the start: the cache is dropped as soon as it is out of date.
+  ports.registry.subscribe(() => {
+    registry = undefined;
+    publish();
+  });
 
   // While anyone listens, follow the started session, across sessions.
   let unfollow = () => {};
@@ -225,6 +266,15 @@ export function createInspectorContract(
     async cancelPick({ id }) {
       picks.get(id)?.abort();
       return answer();
+    },
+    look: () => ports.look(),
+    recordedPageState: () => ports.recordedPageState(),
+    async demo({ on }) {
+      ports.demo(on);
+      return answer();
+    },
+    async pomDefinitionText({ names = [] }) {
+      return ports.pomDefinitionText(names);
     },
   };
 }

@@ -62,7 +62,13 @@ import {
   type StartChildRun,
   type ToolRunOptions,
 } from "../runs/application";
-import { instrumentedPage } from "../runs/infrastructure";
+import {
+  demoFeedback,
+  demoModeOptions,
+  installRuntimePageInstrumentation,
+  requestDemoMode,
+  instrumentedPage,
+} from "../runs/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import {
   callers,
@@ -845,10 +851,23 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         setStarted(ayme);
         if (enabled) startPublication(controller.signal);
         const inspector = inspectorMode(options);
-        if (inspector !== "off")
-          mountInspectorUntil(controller.signal, {
-            demo: inspector === "demo",
-          });
+        // Every session's Pages let pointer actions through the Inspector's
+        // host while it covers them, whoever mounted the panel, and pace and
+        // cue each call while anyone asks for Demo Mode: this session's
+        // `inspector` option, or a panel mounted with `demo`.
+        const stopFeedback = installRuntimePageInstrumentation((page) =>
+          demoFeedback(page, demoModeOptions)
+        );
+        const releaseDemo = inspector === "demo" ? requestDemoMode() : () => {};
+        controller.signal.addEventListener(
+          "abort",
+          () => {
+            stopFeedback();
+            releaseDemo();
+          },
+          { once: true }
+        );
+        if (inspector !== "off") mountInspectorUntil(controller.signal);
         if (options.agentConnection) {
           const signal = controller.signal;
           startAgentConnectionUntil(
@@ -954,11 +973,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 // A load failure while the session runs stays an unhandled rejection, so it
 // reaches the console. Once the session has stopped, nothing would mount,
 // so the failure is dropped, such as an import cut short by a teardown.
-function mountInspectorUntil(signal: AbortSignal, options: { demo: boolean }) {
+function mountInspectorUntil(signal: AbortSignal) {
   void loadInspector().then(
     ({ mountInspector }) => {
       if (signal.aborted) return;
-      const inspector = mountInspector(options);
+      const inspector = mountInspector();
       signal.addEventListener("abort", () => inspector.dispose(), {
         once: true,
       });

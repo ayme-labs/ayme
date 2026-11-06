@@ -26,6 +26,8 @@ const state = (revision: number, tool = "click"): InspectorState => ({
   publication: { state: "active", message: "" },
   agentConnection: { state: "off" },
   runs: [],
+  pageObjects: [],
+  pomDefinitions: [],
 });
 
 function transport(initial: InspectorState) {
@@ -41,6 +43,15 @@ function transport(initial: InspectorState) {
     highlight: async (request) => (calls.push(request), { state: initial }),
     pick: async (request) => ({ state: initial, ref: request.refs[0] }),
     cancelPick: async (request) => (calls.push(request), { state: initial }),
+    look: async () => {
+      throw new Error("No look in this test.");
+    },
+    pomDefinitionText: async () => "",
+    recordedPageState: async () => ({
+      projected: { roots: [] },
+      refs: ["e1"],
+    }),
+    demo: async (request) => (calls.push(request), { state: initial }),
   };
   return {
     contract,
@@ -130,4 +141,16 @@ it("picks a ref and cancels the pick when its signal aborts", async () => {
   expect(t.calls).toEqual([
     expect.objectContaining({ id: expect.any(String) }),
   ]);
+});
+
+it("reads the recorded page state and asks for Demo Mode through the transport", async () => {
+  const t = transport(state(2));
+  const client = createInspectorClient(t.contract);
+  expect(await client.recordedPageState()).toEqual({
+    projected: { roots: [] },
+    refs: ["e1"],
+  });
+  await client.demo(true);
+  expect(t.calls).toEqual([{ on: true }]);
+  expect(client.current().revision).toBe(2);
 });

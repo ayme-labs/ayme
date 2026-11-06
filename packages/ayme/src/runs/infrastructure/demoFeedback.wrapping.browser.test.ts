@@ -1,8 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
-import { isAymeLocator } from "@ayme-dev/ayme/internal";
-import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { withDemoFeedback } from "./withDemoFeedback";
+import {
+  isPlaywrightLiteLocator as isAymeLocator,
+  resolveLocatorElements,
+} from "@ayme-dev/playwright-lite/internal";
+import { demoFeedback as withDemoFeedback } from "./demoFeedback";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -75,7 +77,7 @@ it("paces a Page wrapped again by the latest options only", async () => {
   vi.spyOn(rawPage, "locator").mockReturnValue(rawLocator);
   const click = vi.spyOn(rawLocator, "click").mockResolvedValue();
   withDemoFeedback(rawPage, { beforeActionMs: 50 });
-  const page = withDemoFeedback(rawPage);
+  const page = withDemoFeedback(rawPage, {});
 
   await page.locator("button").click();
   expect(click).toHaveBeenCalledOnce();

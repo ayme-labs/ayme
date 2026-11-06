@@ -2,7 +2,7 @@ import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 import type { Locator, Page } from "@playwright/test";
 
-import { withDemoFeedback } from "./withDemoFeedback";
+import { demoFeedback as withDemoFeedback } from "./demoFeedback";
 
 // The click cue on a real page: each action that clicks its element shows
 // one, whether it runs on a locator or on the Page by selector.

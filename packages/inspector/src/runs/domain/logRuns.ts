@@ -1,4 +1,4 @@
-import type { Run as LogRun, callers } from "@ayme-dev/ayme";
+import type { Run as LogRun, callers } from "@ayme-dev/ayme/inspector";
 
 import { runImageOf } from "./runImage";
 import type {

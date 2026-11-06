@@ -1,6 +1,9 @@
 import { expect, it } from "vitest";
 
-import type { RegisteredPom, ToolParameter } from "@ayme-dev/ayme/internal";
+import type {
+  InspectorPageObject,
+  ToolParameter,
+} from "@ayme-dev/ayme/inspector";
 
 import { listRunnableTools } from "./runnableTools";
 
@@ -8,7 +11,7 @@ import { listRunnableTools } from "./runnableTools";
 // the runtime lists as live. The registration and the live list are
 // hand-written.
 
-const addItem: RegisteredPom["tools"][number] = {
+const addItem: InspectorPageObject["tools"][number] = {
   className: "ListPage",
   rooted: false,
   methodName: "addItem",
@@ -18,7 +21,7 @@ const addItem: RegisteredPom["tools"][number] = {
   inputSchema: { type: "object" },
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
-const rename: RegisteredPom["tools"][number] = {
+const rename: InspectorPageObject["tools"][number] = {
   className: "ListItem",
   rooted: true,
   methodName: "rename",
@@ -39,13 +42,12 @@ const rename: RegisteredPom["tools"][number] = {
     },
   ],
 };
-const listPage: RegisteredPom = {
+const listPage: InspectorPageObject = {
   id: "ListPage",
-  instance: {},
   manifest: { className: "ListPage", members: [], components: [], tools: [] },
   memberObservations: [],
-  presentPaths: new Set([""]),
-  rootMemberPaths: new Set(),
+  presentPaths: [""],
+  rootMemberPaths: [],
   tools: [addItem, rename],
 };
 const markElement = {
@@ -95,7 +97,7 @@ it("gives a Page Object action the parameters its manifest declares, a Child's t
       { name: "y", optional: false, schema: { type: "number" } },
     ],
   };
-  const loginPage: RegisteredPom = {
+  const loginPage: InspectorPageObject = {
     ...listPage,
     id: "LoginPage",
     manifest: {
@@ -156,7 +158,7 @@ it("can't run an action whose Page Object isn't on the page", () => {
 });
 
 it("describes a Page Object action the same on the page and off it", () => {
-  const openSettings: RegisteredPom["tools"][number] = {
+  const openSettings: InspectorPageObject["tools"][number] = {
     ...addItem,
     name: "ListPage.openSettings",
     methodName: "openSettings",

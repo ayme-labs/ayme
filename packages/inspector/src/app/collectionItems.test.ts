@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { rootTargetPath } from "@ayme-dev/ayme/internal";
+import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers } from "../page-model";
 import { collection, page } from "../page-model/test-utils/pageModel";
@@ -40,33 +40,24 @@ const structure = {
   refCount: 2,
 };
 
-const milk = document.createElement("li");
-const bread = document.createElement("li");
-const elementsByRef = new Map([
-  ["e1", milk],
-  ["e2", bread],
-]);
-
 it("carries each item's verdict and reason from the registry", () => {
   const verdicts = [
     {
       label: "ListPage.items[0]",
-      element: milk,
+      ref: "e1",
       present: true,
       available: true,
     },
     {
       label: "ListPage.items[1]",
-      element: bread,
+      ref: "e2",
       present: true,
       available: false,
       reason: "a click would not reach it; e9 is in the way",
     },
   ];
 
-  expect(
-    itemsOf("ListItem.archive", members, structure, verdicts, elementsByRef)
-  ).toEqual([
+  expect(itemsOf("ListItem.archive", members, structure, verdicts)).toEqual([
     {
       path: "ListPage.items[0]",
       name: "[0]",
@@ -93,27 +84,23 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
   const verdicts = [
     {
       label: "ListPage.items[0]",
-      element: bread,
+      ref: "e2",
       present: true,
       available: false,
       reason: "Bread is locked",
     },
     {
       label: "ListPage.items[1]",
-      element: milk,
+      ref: "e1",
       present: true,
       available: true,
     },
   ];
 
   expect(
-    itemsOf(
-      "ListItem.archive",
-      members,
-      structure,
-      verdicts,
-      elementsByRef
-    ).map(({ label, available, reason }) => ({ label, available, reason }))
+    itemsOf("ListItem.archive", members, structure, verdicts).map(
+      ({ label, available, reason }) => ({ label, available, reason })
+    )
   ).toEqual([
     { label: "Milk", available: true, reason: undefined },
     { label: "Bread", available: false, reason: "Bread is locked" },

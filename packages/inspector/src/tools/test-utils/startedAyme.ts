@@ -11,17 +11,19 @@ import type {
   ToolRunOptions,
 } from "@ayme-dev/ayme";
 
-import type {
-  AgentConnectionStatus,
-  AgentConnectionStatusSource,
-  AgentImageRun,
-  AppProcessTool,
-  AppProcessTools,
-} from "@ayme-dev/ayme/internal";
 import {
   createHighlights,
   createInspectorContract,
+  type AgentConnectionStatus,
+  type AgentConnectionStatusSource,
+  type AppProcessTool,
+  type AppProcessTools,
+  type InspectorAgentImageRun as AgentImageRun,
+  type InspectorLook,
+  type InspectorPageObject,
+  type InspectorRecordedPageState,
   type InspectorSession,
+  type PomDefinition,
 } from "@ayme-dev/ayme/inspector";
 
 // Not the slice's index: the tests mock the runtime's internal entry while
@@ -139,12 +141,129 @@ const runLog = fixtureRunLog();
 // The agent's image Runs `ayme mcp` reports, as the runtime hears of them.
 const imageRunListeners = new Set<(run: AgentImageRun) => void>();
 
+/** A page as a test stands it in: elements by ref, and the registry's targets on them. */
+export type PageFixture = {
+  projected: InspectorLook["projected"];
+  elementsByRef?: ReadonlyMap<string, Element>;
+  targets?: readonly {
+    path: string;
+    locator: string;
+    element: Element;
+    aliases?: readonly string[];
+  }[];
+  elementToolTargets?: Readonly<Record<string, readonly string[]>>;
+  rootedInstances?: Readonly<
+    Record<
+      string,
+      readonly { element: Element; available: boolean; reason?: string }[]
+    >
+  >;
+};
+
+/** The look a page fixture gives, with each element named by its ref. */
+export function lookOf({
+  projected,
+  elementsByRef = new Map(),
+  targets = [],
+  elementToolTargets = {},
+  rootedInstances = {},
+}: PageFixture): InspectorLook {
+  const refOf = (element: Element) => {
+    const refs = [...elementsByRef]
+      .filter(([, candidate]) => candidate === element)
+      .map(([ref]) => ref);
+    return refs.length === 1 ? refs[0] : undefined;
+  };
+  const plainTargets = targets.map(({ element, ...target }) => {
+    const ref = refOf(element);
+    return ref === undefined ? target : { ...target, ref };
+  });
+  const targetsByRef: Record<string, string[]> = {};
+  for (const target of plainTargets)
+    if ("ref" in target && target.ref !== undefined)
+      targetsByRef[target.ref] = [
+        ...(targetsByRef[target.ref] ?? []),
+        target.path,
+      ];
+  return {
+    projected,
+    refs: [...elementsByRef.keys()],
+    targets: plainTargets,
+    targetsByRef,
+    elementToolTargets,
+    controls: {},
+    rootedInstances: Object.fromEntries(
+      Object.entries(rootedInstances).map(([name, instances]) => [
+        name,
+        instances.map(({ element, available, reason }) => {
+          const ref = refOf(element);
+          return {
+            ...(ref === undefined ? {} : { ref }),
+            available,
+            ...(reason === undefined ? {} : { reason }),
+          };
+        }),
+      ])
+    ),
+  };
+}
+
+/** The look a fresh stand-in gives: the page state of nothing. */
+const EMPTY_LOOK: InspectorLook = Object.freeze({
+  projected: { roots: [] },
+  refs: [],
+  targets: [],
+  targetsByRef: {},
+  elementToolTargets: {},
+  controls: {},
+  rootedInstances: {},
+});
+
+const registryListeners = new Set<() => void>();
+
 /**
  * A stand-in for the started session, for tests that replace
  * `getStartedAyme` with it: they set its tools and publication status, mock
  * `tools.run`, and announce a change.
  */
 export const startedAyme = {
+  /** The registry's Page Objects and definitions, as the contract reads them. */
+  registry: {
+    pageObjects: [] as readonly InspectorPageObject[],
+    pomDefinitions: [] as readonly PomDefinition[],
+  },
+  /**
+   * What one unrecorded look at the page gives, as the contract's `look`
+   * does: tests set it to the page state they stand in.
+   */
+  look: (async () => EMPTY_LOOK) as () => Promise<InspectorLook>,
+  /**
+   * The page state the runtime last recorded, as the contract reads it: none
+   * until a test records one.
+   */
+  recordedPage: undefined as InspectorRecordedPageState | undefined,
+  /** Whether the Inspector asked the stand-in's runtime for Demo Mode. */
+  demo: false,
+  /**
+   * Stands in the page for one look: its projected state, and the elements
+   * each ref names, as the runtime's look sees them. The look gives each
+   * element's refs and targets as the contract states them, so tests write
+   * elements and the stand-in names them.
+   */
+  setPage(page: PageFixture) {
+    startedAyme.look = async () => lookOf(page);
+  },
+  /** Sets the registry, and tells the contract it changed. */
+  setRegistry(registry: {
+    pageObjects?: readonly InspectorPageObject[];
+    pomDefinitions?: readonly PomDefinition[];
+  }) {
+    startedAyme.registry = {
+      pageObjects: registry.pageObjects ?? [],
+      pomDefinitions: registry.pomDefinitions ?? [],
+    };
+    for (const listener of registryListeners) listener();
+  },
   tools: {
     list: vi.fn((): readonly ToolInfo[] => NO_TOOLS),
     subscribe: (listener: (tools: readonly ToolInfo[]) => void) => {
@@ -207,6 +326,10 @@ export const startedAyme = {
   },
   /** Back to no tools, an active publication and no listeners. */
   reset() {
+    startedAyme.registry = { pageObjects: [], pomDefinitions: [] };
+    startedAyme.look = async () => EMPTY_LOOK;
+    startedAyme.recordedPage = undefined;
+    startedAyme.demo = false;
     startedAyme.tools.list.mockReset().mockReturnValue(NO_TOOLS);
     startedAyme.tools.run.mockReset();
     startedAyme.appProcessTools.list
@@ -275,13 +398,25 @@ export const agentConnectionOf = (): AgentConnectionStatusSource =>
 // against the same state, revisions and commands as on a real session.
 replaceInspectorTransport(
   createInspectorContract({
+    registry: {
+      pageObjects: () => startedAyme.registry.pageObjects,
+      pomDefinitions: () => startedAyme.registry.pomDefinitions,
+      subscribe: (listener) => {
+        registryListeners.add(listener);
+        return () => void registryListeners.delete(listener);
+      },
+    },
+    look: () => startedAyme.look(),
+    recordedPageState: async () => startedAyme.recordedPage,
+    demo: (on) => void (startedAyme.demo = on),
+    pomDefinitionText: () => "",
     started: () => session as unknown as InspectorSession,
     subscribeToStarted: () => () => {},
     appProcessTools: () => sessionAppProcessTools,
     connectionStatus: () => sessionAgentConnection,
     subscribeToAgentImageRuns: (listener) => {
-      imageRunListeners.add(listener);
-      return () => void imageRunListeners.delete(listener);
+      imageRunListeners.add(listener as never);
+      return () => void imageRunListeners.delete(listener as never);
     },
     highlights: createHighlights((ref) => startedAyme.locate(ref)),
     pick: async () => undefined,

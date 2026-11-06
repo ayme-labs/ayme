@@ -5,7 +5,7 @@ export type { PomRootMarks } from "./pomRootMarks";
 export { forkCursor } from "./cursors";
 export type { Cursor } from "./cursors";
 export { refFailure, refHint, selectorFailure } from "./refFailures";
-export { pageStateNodeEntry } from "./structuralPageState";
+export { pageStateNodeEntry, renderPageState } from "./structuralPageState";
 export type {
   AriaRef,
   AymeNode,

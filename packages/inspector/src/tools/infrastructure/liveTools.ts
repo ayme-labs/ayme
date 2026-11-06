@@ -1,4 +1,7 @@
-import type { AymeWebMcpPublicationStatus, ToolInfo } from "@ayme-dev/ayme";
+import type {
+  AymeWebMcpPublicationStatus,
+  ToolInfo,
+} from "@ayme-dev/ayme/inspector";
 import type {
   AgentConnectionStatus,
   AppProcessTool,

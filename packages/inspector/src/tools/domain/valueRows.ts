@@ -1,4 +1,4 @@
-import type { JsonSchema, JsonValue } from "@ayme-dev/ayme";
+import type { JsonSchema, JsonValue } from "@ayme-dev/ayme/inspector";
 
 /**
  * A map of labelled values, such as `goal`'s `values`, edited as rows: a

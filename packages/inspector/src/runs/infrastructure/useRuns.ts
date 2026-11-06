@@ -5,10 +5,9 @@ import {
   type Run as LogRun,
   type Interaction,
   type JsonValue,
-} from "@ayme-dev/ayme";
-import { latestPageStateCapture } from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
-import { inspectorClient, nodeLabel, useTabState } from "../../shared";
+import { inspectorClient, useTabState } from "../../shared";
 import {
   rowIdOf,
   shownRuns,
@@ -20,6 +19,7 @@ import type {
   InteractionDescription,
   ToolArguments,
 } from "../domain/run";
+import { recordedTargetName } from "../domain/recordedTarget";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { interactionMembers } from "./interactionMembers";
 
@@ -107,6 +107,7 @@ export function useRuns({
       return item ? { item } : {};
     };
 
+    const client = inspectorClient();
     // The Runs seen so far, the ended Runs whose Interactions have been
     // named, and the agent's image Runs whose file has been noted, by row id.
     const seen = new Set<string>();
@@ -114,19 +115,40 @@ export function useRuns({
     const described = new Set<string>();
     const saved = new Set<string>();
     let listedRuns = NO_RUNS;
+    // The Interactions named a ref, not yet named from the recorded page
+    // state, by row id and place in the Run.
+    let unnamed: { rowId: string; index: number; ref: string }[] = [];
     const captureInputs = (run: LogRun, rowId: string) => {
       const captured = descriptions.get(rowId) ?? [];
       for (const interaction of run.interactions.slice(captured.length)) {
-        const node =
-          interaction.ref &&
-          latestPageStateCapture(document)?.tree.getNode(interaction.ref);
-        const target = node && nodeLabel(node);
-        captured.push({
-          ...describeInteraction(interaction),
-          ...(target && target !== "generic" ? { target } : {}),
-        });
+        if (interaction.ref)
+          unnamed.push({
+            rowId,
+            index: captured.length,
+            ref: interaction.ref,
+          });
+        captured.push(describeInteraction(interaction));
       }
       descriptions.set(rowId, captured);
+    };
+    // Names the new Interactions from the page state the runtime recorded
+    // for them, read as soon as they are seen: a target a Run added or
+    // removed is named before the Inspector's own look catches up.
+    const nameTargets = async () => {
+      const waiting = unnamed;
+      unnamed = [];
+      if (!waiting.length) return;
+      const recorded = await client.recordedPageState().catch(() => undefined);
+      for (const { rowId, index, ref } of waiting) {
+        const target = recordedTargetName(recorded, ref);
+        const captured = descriptions.get(rowId);
+        if (!target || !captured?.[index]) continue;
+        const named = captured.map((description, place) =>
+          place === index ? { ...description, target } : description
+        );
+        descriptions.set(rowId, named);
+        note(rowId, { descriptions: named });
+      }
     };
     const resolveMembers = async (run: LogRun, rowId: string) => {
       const members = await interactionMembers(run.interactions);
@@ -174,6 +196,7 @@ export function useRuns({
       });
       for (const rowId of descriptions.keys())
         if (!listed.has(rowId)) descriptions.delete(rowId);
+      void nameTargets();
       for (const run of runs) {
         const rowId = rowIdOf(run);
         if (run.status === "running" || described.has(rowId)) continue;
@@ -185,7 +208,6 @@ export function useRuns({
 
     // The Run log comes through the Inspector contract: its state lists the
     // Runs, and says again whenever anything else in it changed.
-    const client = inspectorClient();
     let followed: readonly LogRun[] | undefined;
     const follow = () => {
       const runs = client.current().runs as readonly LogRun[];

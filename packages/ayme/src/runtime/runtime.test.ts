@@ -9,6 +9,7 @@ import { cursors, getPageStateSession } from "../page-state/infrastructure";
 import { callers, RuntimeStateError } from "../shared";
 import * as goalLoopModule from "../goal-loop/infrastructure";
 import { loadInspector } from "./inspector";
+import { DEMO_PAUSE_MS, demoModeOptions } from "../runs/infrastructure";
 import * as navigateToolModule from "../tools/infrastructure";
 import * as pageState from "../page-state/infrastructure";
 import {
@@ -117,7 +118,7 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(mountInspector).toHaveBeenCalledExactlyOnceWith({ demo: false });
+  expect(mountInspector).toHaveBeenCalledExactlyOnceWith();
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 
@@ -193,6 +194,7 @@ it("mounts the Inspector in demo mode when inspector asks for it", async () => {
   const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
   vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
 
+  const demoWhileStarted: boolean[] = [];
   for (const demo of [true, false]) {
     const runtime = createAyme({
       pageFactory: () => page,
@@ -201,13 +203,15 @@ it("mounts the Inspector in demo mode when inspector asks for it", async () => {
     sessions.push(runtime);
     const stop = start(runtime);
     await flush();
+    // Demo Mode is the runtime's: it paces the session's own Pages while its
+    // `inspector` option asks, and the panel is mounted the same way.
+    demoWhileStarted.push(demoModeOptions().beforeActionMs === DEMO_PAUSE_MS);
     stop();
+    expect(demoModeOptions()).toEqual({});
   }
 
-  expect(mountInspector.mock.calls).toEqual([
-    [{ demo: true }],
-    [{ demo: false }],
-  ]);
+  expect(demoWhileStarted).toEqual([true, false]);
+  expect(mountInspector.mock.calls).toEqual([[], []]);
 });
 
 it("compares the inspector option by what it turns on", () => {

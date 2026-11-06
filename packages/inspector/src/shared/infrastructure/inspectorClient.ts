@@ -3,13 +3,16 @@ import { useSyncExternalStore } from "react";
 import {
   inlineInspectorContract,
   mergeInspectorState,
+  type Caller,
   type InspectorAgentImageRun,
   type InspectorCommandResult,
   type InspectorContract,
   type InspectorHighlightLayer,
+  type InspectorLook,
+  type InspectorRecordedPageState,
   type InspectorState,
+  type JsonValue,
 } from "@ayme-dev/ayme/inspector";
-import type { Caller, JsonValue } from "@ayme-dev/ayme";
 
 /** What the client holds before the transport has answered: nothing, at revision 0. */
 export const emptyInspectorState: InspectorState = Object.freeze({
@@ -22,6 +25,8 @@ export const emptyInspectorState: InspectorState = Object.freeze({
   }),
   agentConnection: Object.freeze({ state: "off" }),
   runs: Object.freeze([]),
+  pageObjects: Object.freeze([]),
+  pomDefinitions: Object.freeze([]),
 }) as InspectorState;
 
 /**
@@ -46,6 +51,14 @@ export type InspectorClient = {
     input?: JsonValue;
     by?: Caller;
   }): Promise<InspectorCommandResult>;
+  /** One unrecorded look at the page: the Structural Page State and what the lenses map onto it. */
+  look(): Promise<InspectorLook>;
+  /** The page state the runtime last recorded, none until one is. Records nothing. */
+  recordedPageState(): Promise<InspectorRecordedPageState | undefined>;
+  /** Asks the runtime for Demo Mode (or withdraws the ask): it paces and cues its actions. */
+  demo(on: boolean): Promise<void>;
+  /** The Page Object Model definitions for `names`, or every known one, as text. */
+  pomDefinitionText(names?: readonly string[]): Promise<string>;
   /** Makes `refs` the elements `layer` highlights on the page. */
   highlight(
     layer: InspectorHighlightLayer,
@@ -119,6 +132,12 @@ export function createInspectorClient(
       take(result.state);
       return result;
     },
+    look: () => transport.look(),
+    recordedPageState: () => transport.recordedPageState(),
+    async demo(on) {
+      take((await transport.demo({ on })).state);
+    },
+    pomDefinitionText: (names = []) => transport.pomDefinitionText({ names }),
     async highlight(layer, refs) {
       take((await transport.highlight({ layer, refs })).state);
     },

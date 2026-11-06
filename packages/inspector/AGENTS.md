@@ -4,14 +4,13 @@
 
 Slices, from the bottom up:
 
-- `shared`: the look at the page, what demo mode does with each Playwright call, rendering into the shadow root, shared UI bits.
+- `shared`: the contract client, the look at the page, rendering into the shadow root, shared UI bits.
 - `panel`: the dockable panel, its preferences and its body layout.
 - `navigation`: the selection, the lens contract, the run slot, the navigator and the page highlights.
 - `page-model`: the Page Object tree and the Model lens.
 - `structure`: the page state tree, member selection and the Structure lens.
 - `runs`: running a tool, and Runs: the page's Run log, child Runs nested under their parent, and each Run's Interactions named by member.
 - `tools`: the tool list, the run card and its fields, and ref picking.
-- `demo`: the wrapper on the runtime's Pages: demo mode's pause and click cue, and pointer actions passing through the panel.
 - `app`: the composition root: mounting, the stylesheet and the wiring of every slice.
 - `testing`: the Inspector POM; its `index.ts` is the `./testing` entry.
 
@@ -50,18 +49,11 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
   Interaction's member by matching its locator to the registry's member
   locators. It also says which runs belong to the selection: a tree does
   when its top-level Run or any Run in it does.
-- `shared`'s `inspectorClient` is the Inspector's client of the contract `@ayme-dev/ayme/inspector` defines: the newest state it has heard (an event with a lower revision never replaces it) and the commands, over the inline transport, which is the runtime's own contract called directly. The Runs and Tools lenses, and the highlight and pick calls, read and send through it; the other lenses still use `@ayme-dev/ayme/internal` until #1180.
-- `shared`'s `describeCall` says what a call on the runtime's Page does for
-  demo mode: whether it acts or clicks, and which elements it hit-tests. It
-  reads ayme's Playwright call table (`@ayme-dev/ayme/internal`), which
-  classifies every method of Playwright's Locator, Page, Keyboard and Mouse
-  and also says which calls are a Run's Interactions; a Playwright release
-  that adds a method fails typecheck there, in ayme. The `demo` wrapper only
-  applies the description: it lets hit-tested elements pass through the
-  panel, and in demo mode pauses before each action and cues each click.
+- `shared`'s `inspectorClient` is the Inspector's client of the contract `@ayme-dev/ayme/inspector` defines: the newest state it has heard (an event with a lower revision never replaces it), the look at the page, and the commands, over the inline transport, which is the runtime's own contract called directly. Every lens reads the page through it: the Page Objects and the Structural Page State come as plain data, with refs and member paths, never as elements. The look is unrecorded, so the Inspector never changes what agents see.
+- Demo mode is not in this package. The runtime paces each action and cues each click on its own Pages (`runs/infrastructure/demoFeedback.ts`) while its `inspector` option has `demo: true` or a panel mounted with `demo` has asked for it through the contract's `demo` command, and lets pointer actions pass through the panel's host while it covers their target. The Inspector only mounts the panel and sends that command.
+- The Runs lens names an Interaction's element from `recordedPageState`, the contract's read of the runtime's latest recorded page state, not from a look of its own.
 
-Only infrastructure code, and the mount that installs the Inspector's
-instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.
+The Inspector reads Ayme only through `@ayme-dev/ayme/inspector`. Lint enforces this for all source except `src/testing/`, test files and test-utils, which may use Ayme's public API and `@ayme-dev/ayme/testing`.
 
 ## Testing
 

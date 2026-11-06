@@ -1,13 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStateLook } from "@ayme-dev/ayme/internal";
-import {
-  listRegisteredPomTargets,
-  lookAtPageStateForDocument,
-  listRegisteredPoms,
-  type RegisteredPom,
-} from "@ayme-dev/ayme/internal";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { startedAyme } from "../tools/test-utils/startedAyme";
 import { forest, node } from "../structure/test-utils/projected";
@@ -23,47 +17,6 @@ import { Inspector } from "../testing";
 // `ayme-ref=` locator highlighted, with its style. Playwright's own drawing is
 // covered by the in-page module's contract and the e2e suite.
 const highlighted = vi.hoisted(() => new Map<string, string>());
-
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-    inPage,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  return {
-    inPage,
-    pageOfDocument: () => ({}),
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    listRegisteredPomTargets: vi.fn(),
-    listAvailablePomTools: vi.fn(() => []),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
 
 const page = createPage();
 // The panel renders into an open root this test owns.
@@ -87,9 +40,8 @@ const structure = forest(
   )
 );
 
-const editor: RegisteredPom = {
+const editor: InspectorPageObject = {
   id: "Editor",
-  instance: {},
   manifest: {
     className: "Editor",
     members: [
@@ -103,8 +55,8 @@ const editor: RegisteredPom = {
     { memberName: "titleInput", kind: "locator", count: 1 },
     { memberName: "saveButton", kind: "locator", count: 1 },
   ],
-  presentPaths: new Set([""]),
-  rootMemberPaths: new Set(),
+  presentPaths: [""],
+  rootMemberPaths: [],
   tools: [],
 };
 
@@ -121,26 +73,21 @@ beforeEach(() => {
   document.body.append(host);
   unmounts.push(() => host.remove());
 
-  vi.mocked(listRegisteredPoms).mockReturnValue([editor]);
-  vi.mocked(listRegisteredPomTargets).mockImplementation(async () =>
-    [...host.querySelectorAll("[data-path]")].map((target) => ({
+  startedAyme.setRegistry({ pageObjects: [editor] });
+  startedAyme.setPage({
+    projected: structure,
+    elementsByRef: new Map(
+      [...host.querySelectorAll("[data-ref]")].map((target) => [
+        target.getAttribute("data-ref")!,
+        target,
+      ])
+    ),
+    targets: [...host.querySelectorAll("[data-path]")].map((target) => ({
       path: target.getAttribute("data-path")!,
       element: target,
       locator: `locator('[data-path="${target.getAttribute("data-path")}"]')`,
-    }))
-  );
-  vi.mocked(lookAtPageStateForDocument).mockImplementation(
-    async () =>
-      ({
-        projected: structure,
-        elementsByRef: new Map(
-          [...host.querySelectorAll("[data-ref]")].map((target) => [
-            target.getAttribute("data-ref")!,
-            target,
-          ])
-        ),
-      }) as unknown as PageStateLook
-  );
+    })),
+  });
 
   const inspectorHost = document.createElement("div");
   document.body.append(inspectorHost);
@@ -154,6 +101,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
+  startedAyme.reset();
   highlighted.clear();
   localStorage.clear();
   sessionStorage.clear();

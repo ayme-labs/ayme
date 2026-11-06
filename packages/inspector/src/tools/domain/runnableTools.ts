@@ -1,9 +1,9 @@
-import type { JsonSchema, RegisteredPomTool } from "@ayme-dev/ayme";
+import type { JsonSchema, RegisteredPomTool } from "@ayme-dev/ayme/inspector";
 import type {
   PublishedToolGroup,
-  RegisteredPom,
+  InspectorPageObject,
   ToolParameter,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 /** A tool as the run card runs it. */
 export type RunnableTool = {
@@ -75,7 +75,7 @@ export type ToolSummary = {
  * is given, on the page or off it.
  */
 export function listRunnableTools(
-  registeredPoms: readonly RegisteredPom[],
+  registeredPoms: readonly InspectorPageObject[],
   otherTools: readonly ToolSummary[]
 ): ReadonlyMap<string, RunnableTool> {
   const live = new Map(otherTools.map((tool) => [tool.name, tool]));
@@ -118,7 +118,7 @@ export function listRunnableTools(
  * it, and then as available as the session says.
  */
 function pageObjectTools(
-  { manifest, tools }: RegisteredPom,
+  { manifest, tools }: InspectorPageObject,
   live: ReadonlyMap<string, ToolSummary>
 ): RunnableTool[] {
   const declared = new Map(

@@ -9,7 +9,7 @@ import {
   renderPomDefinitions,
   toolInputViolations,
   type ToolParameter,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
 import { describe, expect, it } from "vitest";
 

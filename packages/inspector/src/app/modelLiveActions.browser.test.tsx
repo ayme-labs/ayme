@@ -1,9 +1,13 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RegisteredPomTool, ToolInfo } from "@ayme-dev/ayme";
-import type { PomManifest, RegisteredPom } from "@ayme-dev/ayme/internal";
+import type {
+  InspectorPageObject,
+  PomManifest,
+} from "@ayme-dev/ayme/inspector";
 
+import { startedAyme } from "../tools/test-utils/startedAyme";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
@@ -59,10 +63,9 @@ const save: RegisteredPomTool = {
 };
 
 /** The editor, with its toolbar on the page or not. */
-function editor(toolbarOnPage: boolean): RegisteredPom {
+function editor(toolbarOnPage: boolean): InspectorPageObject {
   return {
     id: "Editor",
-    instance: {},
     manifest,
     memberObservations: [
       {
@@ -71,8 +74,8 @@ function editor(toolbarOnPage: boolean): RegisteredPom {
         count: toolbarOnPage ? 1 : 0,
       },
     ],
-    presentPaths: new Set(toolbarOnPage ? ["", "toolbar"] : [""]),
-    rootMemberPaths: new Set(),
+    presentPaths: toolbarOnPage ? ["", "toolbar"] : [""],
+    rootMemberPaths: [],
     tools: [save],
   };
 }
@@ -88,65 +91,6 @@ const saveTool = (available: boolean): ToolInfo[] => [
   },
 ];
 
-const runtime = vi.hoisted(() => ({
-  registrations: [] as unknown[],
-  liveTools: [] as unknown[],
-  // WebMCP publication is off throughout.
-  publication: {
-    state: "disabled" as const,
-    message: "WebMCP publication is disabled.",
-  },
-}));
-
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { startedAyme } = await import("../tools/test-utils/startedAyme");
-  startedAyme.tools.list.mockImplementation(
-    () => runtime.liveTools as ToolInfo[]
-  );
-  startedAyme.webMCP.publicationStatus = runtime.publication;
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-    inPage,
-    pageOfDocument,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  return {
-    inPage,
-    pageOfDocument,
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(async () => ({
-      projected: { roots: [] },
-      elementsByRef: new Map(),
-    })),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    listRegisteredPomTargets: vi.fn(async () => []),
-    listAvailablePomTools: vi.fn(() => []),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => runtime.registrations),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
 const page = createPage();
 const inspector = new Inspector(
   page,
@@ -161,10 +105,17 @@ function renderApp({
 }: {
   toolbarOnPage: boolean;
   live: ToolInfo[];
-  registrations?: RegisteredPom[];
+  registrations?: InspectorPageObject[];
 }) {
-  runtime.registrations = registrations ?? [editor(toolbarOnPage)];
-  runtime.liveTools = live;
+  // WebMCP publication is off throughout.
+  startedAyme.webMCP.publicationStatus = {
+    state: "disabled",
+    message: "WebMCP publication is disabled.",
+  };
+  startedAyme.tools.list.mockReturnValue(live);
+  startedAyme.setRegistry({
+    pageObjects: registrations ?? [editor(toolbarOnPage)],
+  });
   const host = document.createElement("div");
   document.body.append(host);
   const unmount = renderInspector(host.attachShadow({ mode: "open" }));
@@ -176,6 +127,7 @@ function renderApp({
 
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
+  startedAyme.reset();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -218,9 +170,8 @@ it.each([true, false])(
       name: "Node.open",
       methodName: "open",
     };
-    const registration: RegisteredPom = {
+    const registration: InspectorPageObject = {
       id: "Tree",
-      instance: {},
       manifest: {
         className: "Tree",
         tools: [],
@@ -248,13 +199,13 @@ it.each([true, false])(
           count: 1,
         },
       ],
-      presentPaths: new Set([
+      presentPaths: [
         "",
         "node",
         "node.child.child",
         ...(parentPresent ? ["node.child"] : []),
-      ]),
-      rootMemberPaths: new Set(),
+      ],
+      rootMemberPaths: [],
       tools: [tool],
     };
     renderApp({

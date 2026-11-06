@@ -635,7 +635,7 @@ it(
       from?.file?.path ? [from.file.path] : []
     );
     // The rule itself, so a lookup that finds nothing cannot pass.
-    expect(files).toContain("src/internal.ts");
+    expect(config.rules?.["lite-internal/dependencies"]).toBeDefined();
     for (const file of files)
       expect(
         readFileSync(join(packageRoot, file), "utf8"),

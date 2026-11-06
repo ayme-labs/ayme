@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import type { JsonValue } from "@ayme-dev/ayme";
+import type { JsonValue } from "@ayme-dev/ayme/inspector";
 
 import {
   otherType,

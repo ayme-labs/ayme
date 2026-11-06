@@ -1,4 +1,4 @@
-import type { RootedToolInstance } from "@ayme-dev/ayme/internal";
+import type { InspectorRootedInstance } from "@ayme-dev/ayme/inspector";
 
 import { type MemberIndex, pathBelowPage } from "../page-model";
 import {
@@ -10,18 +10,16 @@ import type { CollectionItem } from "../runs";
 
 /**
  * A rooted action's items on the page, by its tool's name, in page
- * order, labelled by what they show, each with the registry's `verdicts`
- * on whether the action would run on it. A verdict is matched by the
- * element its item's ref names in `elementsByRef`, the page state the
- * structure was built from, so an item that moved keeps its own. An item
- * with no ref in the page state is left out.
+ * order, labelled by what they show, each with the look's `verdicts` on
+ * whether the action would run on it. A verdict is matched by the ref of its
+ * element, the page state the structure was built from, so an item that
+ * moved keeps its own. An item with no ref in the page state is left out.
  */
 export function itemsOf(
   toolName: string,
   members: MemberIndex,
   structure: StructureTree,
-  verdicts: readonly RootedToolInstance[] = [],
-  elementsByRef: ReadonlyMap<string, Element> = new Map()
+  verdicts: readonly InspectorRootedInstance[] = []
 ): CollectionItem[] {
   const rows = [...structureRows(structure.roots)];
   const seen = new Set<string>();
@@ -31,8 +29,8 @@ export function itemsOf(
     )?.node;
     if (node?.ref === undefined || seen.has(node.ref)) return [];
     seen.add(node.ref);
-    const element = elementsByRef.get(node.ref);
-    const verdict = verdicts.find((candidate) => candidate.element === element);
+    const ref = node.ref;
+    const verdict = verdicts.find((candidate) => candidate.ref === ref);
     return [
       {
         path: item.path,

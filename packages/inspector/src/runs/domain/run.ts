@@ -1,4 +1,4 @@
-import type { Caller, Interaction, JsonValue } from "@ayme-dev/ayme";
+import type { Caller, Interaction, JsonValue } from "@ayme-dev/ayme/inspector";
 
 /** Captured identity of an Interaction's target. */
 export type InteractionDescription = {

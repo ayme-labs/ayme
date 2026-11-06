@@ -9,6 +9,8 @@ const state = (revision: number): InspectorState => ({
   publication: { state: "disabled", message: "off" },
   agentConnection: { state: "off" },
   runs: [],
+  pageObjects: [],
+  pomDefinitions: [],
 });
 
 describe("mergeInspectorState", () => {

@@ -269,10 +269,10 @@ const layerOrderExceptions = [
 ];
 
 // Playwright Lite's internal entry is browser-only and not Playwright's API,
-// so no production file imports it (ADR-0049). These files still do: each
-// may, until the issue named with it is done. src/layout.test.ts fails when
-// one no longer imports it, so it leaves the list then.
-const liteInternalExceptions = [{ file: "src/internal.ts", issue: "#1182" }];
+// so no production file imports it (ADR-0049). No file still does: the
+// Inspector's demo cue moved into the runtime (#1180). src/layout.test.ts
+// fails when a file listed here no longer imports it, so it leaves the list.
+const liteInternalExceptions = [];
 const liteInternal = "@ayme-dev/playwright-lite/internal";
 const liteInternalMessage = `No production file imports Playwright Lite's internal entry, ${liteInternal}: reach the page through Playwright's Page and Locator, or the in-page module (ADR-0049).`;
 const allowlistedEntries = liteInternalExceptions
@@ -471,7 +471,9 @@ export default [
       },
     ],
   }),
-  frontDoors(undefined, allowlistedEntries, { tests: false }),
+  ...(allowlistedEntries.length > 0
+    ? [frontDoors(undefined, allowlistedEntries, { tests: false })]
+    : []),
   frontDoors(undefined, ["src/*.test.ts", "src/test-utils/**/*.ts"], {
     tests: true,
   }),

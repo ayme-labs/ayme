@@ -1,101 +1,28 @@
-export { INSPECTOR_DOGFOOD_ATTRIBUTE } from "./shared";
+// The internal entry (ADR-0049) keeps only what the framework packages, the
+// build plugin's generated code and the inspector-fixture app use: the
+// compiled Page Object registration and manifest the build plugin writes and
+// the runtime reads (both ship together, so it is no public contract), the
+// render-session marker and runtime-options check the framework packages use,
+// and the registry read model the framework tests check. The Inspector does
+// not come through here: it reads ./inspector.
 export {
-  capturePageState,
-  getPageStateForElements,
-  latestPageStateCapture,
-  lookAtPageStateForDocument,
-  pageOfDocument,
-  resolvePageStateRef,
-} from "./page-state/infrastructure";
-// Demo Mode's click cue reads geometry through the in-page module until the
-// cue moves behind the Inspector contract.
-export { inPage } from "./in-page";
-export { pageStateNodeEntry } from "./page-state/domain";
-export type { PageStateCapture, PageStateLook } from "./page-state/domain";
-export type {
-  ProjectedStructuralNode,
-  ProjectedStructuralNodeForest,
-} from "@ayme-dev/core/structural-observation";
-export {
-  getPageContextForDocument,
-  getPageContextTool,
-  getPomDefinitionText,
-  subscribeToAgentImageRuns,
-} from "./tools/application";
-export {
-  createAymeRuntime,
-  getPomDefinitions,
-  listAvailablePomTools,
-  listRootedToolInstances,
-  listRegisteredPoms,
-  listRegisteredPomTargets,
-  probeRegisteredPomMembers,
-  subscribeToRegisteredPoms,
-} from "./page-objects/infrastructure";
-export {
-  inputSchemaFor,
-  patternViolations,
-  renderActionParameters,
-  renderPomDefinitions,
-  renderSchema,
-  rootTargetPath,
-  rootlessClassRefusals,
-} from "./page-objects/domain";
+  getStartedAyme,
+  markRenderSession,
+  sameRuntimeOptions,
+  snapshotRuntimeOptions,
+} from "./runtime";
+export { listRegisteredPoms } from "./page-objects/infrastructure";
 export { registerCompiledPom } from "./page-objects/application";
-// The compiled Page Object manifest the build plugin writes and the runtime
-// reads; both ship together, so it is no public contract.
+export type { PageObjectConstructor } from "./page-objects/application";
+// The compiled Page Object manifest's types, as the build plugin derives it.
 export type {
-  DestructuredToolParameter,
   NamedToolParameter,
   PomComponentManifest,
-  PomComponentMemberManifest,
-  PomLocatorMemberManifest,
   PomManifest,
   PomMemberAccess,
   PomMemberManifest,
   ToolManifest,
   ToolParameter,
 } from "./shared";
-// How a tool reads to agents, so the Inspector shows what Ayme MCP gives them.
-// The definition text's own rendering, so the Inspector shows an action's
-// signature and argument types the way agents read them.
-export {
-  getAgentConnectionStatus,
-  getAppProcessTools,
-  getStartedAyme,
-  listElementToolTargets,
-  markRenderSession,
-  sameRuntimeOptions,
-  snapshotRuntimeOptions,
-  subscribeToStartedAyme,
-} from "./runtime";
-export type {
-  AgentConnectionStatus,
-  AgentConnectionStatusSource,
-  AppProcessTool,
-  AppProcessTools,
-  PublishedToolGroup,
-  PublishedToolInfo,
-} from "./runtime";
-export type {
-  RootedToolInstance,
-  PageObjectConstructor,
-  RegisteredPom,
-} from "./page-objects/application";
-export type { RegisteredPomTarget } from "./page-objects/domain";
-// The runtime's own input validation, so the Inspector's run card reports
-// every violation before Run that the call would fail on.
-export { toolInputViolations } from "@ayme-dev/core/tool-input";
-export type { SchemaViolation } from "@ayme-dev/core/tool-input";
-export type { AgentImageRun } from "./tools/application";
-// The runtime session and its types are public (ADR-0031); this entry keeps
-// the plugin's registration, the framework packages' fixed-options check and
-// render-session marker, and the inspector's instrumentation, its way to the
-// started session and its registry read model.
-export { elementsOf, kindOf } from "./runs/domain";
-export { installRuntimePageInstrumentation } from "./runs/infrastructure";
-export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";
-// The Playwright call table: what every method of Locator, Page, Keyboard
-// and Mouse does, so the Inspector's demo feedback reads the classification
-// the runtime's Interaction recording reads.
-export type { CallSubject } from "./runs/domain";
+// The build plugin's rule for a class with no root.
+export { rootlessClassRefusals } from "./page-objects/domain";

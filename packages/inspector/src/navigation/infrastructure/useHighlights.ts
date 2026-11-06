@@ -88,13 +88,11 @@ export function useHighlights({
     };
   }, [show]);
 
-  /** Whether this target still has a connected element in the latest look. */
+  /** Whether this target still has an element in the latest look. */
   const canHighlight = useCallback(
     (target: HighlightTarget) =>
       latest.current !== undefined &&
-      targetElements(target, latest.current, resolve.current).some(
-        ([element]) => element.isConnected
-      ),
+      targetRefs(target, latest.current, resolve.current).length > 0,
     []
   );
 
@@ -108,44 +106,29 @@ function wantedRefs(
   targetsOf: (path: string) => ReadonlySet<string>
 ): Record<HighlightLayer, Set<string>> {
   const refsOf = (target: HighlightTarget | undefined) =>
-    new Set(
-      target && look
-        ? targetElements(target, look, targetsOf).map(([, ref]) => ref)
-        : []
-    );
+    new Set(target && look ? targetRefs(target, look, targetsOf) : []);
   return { hover: refsOf(targets.hover), pinned: refsOf(targets.pinned) };
 }
 
 /**
- * A target's elements in a look, each with its ref: a ref's element, or the
- * elements of the registry targets a path stands for, as far as the page
- * state shows them.
+ * A target's refs in a look: a ref the page state holds, or the refs of the
+ * registry targets a path stands for, each target's element named by its one
+ * ref in the page state.
  */
-function targetElements(
+function targetRefs(
   target: HighlightTarget,
   look: Look,
   targetsOf: (path: string) => ReadonlySet<string>
-): [Element, string][] {
-  const elements: ReadonlyMap<string, Element> = look.state.elementsByRef;
-  if ("ref" in target) {
-    const element = elements.get(target.ref);
-    return element ? [[element, target.ref]] : [];
-  }
-  const refs = new Map<Element, string>();
-  for (const [ref, element] of elements)
-    if (!refs.has(element)) refs.set(element, ref);
+): string[] {
+  if ("ref" in target) return look.refs.has(target.ref) ? [target.ref] : [];
   const paths = targetsOf(target.path);
   return [
     ...new Set(
       look.targets
-        .filter(({ path }) => paths.has(path))
-        .map(({ element }) => element)
-        .filter((element) => look.elementsInState.has(element))
+        .filter(({ path, ref }) => ref !== undefined && paths.has(path))
+        .map(({ ref }) => ref!)
     ),
-  ].flatMap((element) => {
-    const ref = refs.get(element);
-    return ref === undefined ? [] : [[element, ref] as [Element, string]];
-  });
+  ];
 }
 
 type HighlightLayer = InspectorHighlightLayer;

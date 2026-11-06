@@ -4,9 +4,13 @@ import type {
   AgentConnectionStatus,
   AppProcessTool,
   InspectorEvent,
+  InspectorLook,
+  InspectorPageObject,
+  InspectorRecordedPageState,
   InspectorRun,
   ToolInfo,
 } from "../shared";
+import type { PomDefinition } from "../shared";
 import {
   createInspectorContract,
   type InspectorContractPorts,
@@ -41,6 +45,34 @@ const run: InspectorRun = {
   by: "app",
 };
 
+const cartPom: InspectorPageObject = {
+  id: "cart-1",
+  manifest: { className: "Cart", members: [] } as never,
+  memberObservations: [],
+  presentPaths: ["Cart"],
+  rootMemberPaths: [],
+  tools: [],
+};
+const cartDefinition = {
+  className: "Cart",
+  members: [],
+  actions: [],
+} as unknown as PomDefinition;
+const look: InspectorLook = {
+  projected: { roots: [] },
+  refs: ["e3"],
+  targets: [{ path: "Cart.save", locator: "button", ref: "e3" }],
+  targetsByRef: { e3: ["Cart.save"] },
+  elementToolTargets: { click: ["e3"] },
+  controls: {},
+  rootedInstances: {},
+};
+
+const recorded: InspectorRecordedPageState = {
+  projected: { roots: [] },
+  refs: ["e1", "e2"],
+};
+
 /** A session and the ports around it, each change announced as the real ones do. */
 function setup() {
   const listeners = new Set<() => void>();
@@ -56,6 +88,7 @@ function setup() {
     connection: { state: "off" } as AgentConnectionStatus,
   };
   const calls: unknown[][] = [];
+  const demoRequests: boolean[] = [];
   const session: InspectorSession = {
     tools: {
       list: () => current.tools,
@@ -79,7 +112,24 @@ function setup() {
   };
   const imageListeners = new Set<(run: never) => void>();
   const highlighted: unknown[] = [];
+  const registry = {
+    poms: [cartPom] as readonly InspectorPageObject[],
+    definitions: [cartDefinition] as readonly PomDefinition[],
+  };
+  const registryListeners = new Set<() => void>();
   const ports: InspectorContractPorts = {
+    registry: {
+      pageObjects: () => registry.poms,
+      pomDefinitions: () => registry.definitions,
+      subscribe: (listener) => {
+        registryListeners.add(listener);
+        return () => void registryListeners.delete(listener);
+      },
+    },
+    look: async () => look,
+    recordedPageState: async () => recorded,
+    demo: (on) => void demoRequests.push(on),
+    pomDefinitionText: (names) => `text:${names.join(",")}`,
     started: () => session,
     subscribeToStarted: subscribe,
     appProcessTools: () => ({
@@ -106,8 +156,11 @@ function setup() {
   return {
     contract: createInspectorContract(ports),
     current,
+    registry,
+    announceRegistry: () => registryListeners.forEach((l) => l()),
     announce,
     calls,
+    demoRequests,
     highlighted,
     image: (value: unknown) => imageListeners.forEach((l) => l(value as never)),
   };
@@ -126,6 +179,45 @@ describe("the Inspector contract the runtime serves", () => {
     expect(state.publication.state).toBe("disabled");
     expect(state.agentConnection).toEqual({ state: "off" });
     expect(state.runs).toEqual([]);
+  });
+
+  it("answers the registry's Page Objects and definitions as plain state", async () => {
+    const { contract } = setup();
+    const state = await contract.getState();
+    expect(state.pageObjects).toEqual([cartPom]);
+    expect(state.pomDefinitions).toEqual([cartDefinition]);
+  });
+
+  it("raises the revision only when the registry changes", async () => {
+    const { contract, registry, announceRegistry } = setup();
+    const first = await contract.getState();
+    expect((await contract.getState()).revision).toBe(first.revision);
+    registry.poms = [];
+    announceRegistry();
+    const after = await contract.getState();
+    expect(after.pageObjects).toEqual([]);
+    expect(after.revision).toBeGreaterThan(first.revision);
+  });
+
+  it("answers one unrecorded look at the page, and the definition text", async () => {
+    const { contract } = setup();
+    expect(await contract.look()).toEqual(look);
+    expect(await contract.pomDefinitionText({ names: ["Cart", "Page"] })).toBe(
+      "text:Cart,Page"
+    );
+  });
+
+  it("answers the latest recorded page state, none until one is recorded", async () => {
+    const { contract } = setup();
+    expect(await contract.recordedPageState()).toEqual(recorded);
+  });
+
+  it("turns Demo Mode on and off as the Inspector asks, and answers the state", async () => {
+    const { contract, demoRequests } = setup();
+    const on = await contract.demo({ on: true });
+    await contract.demo({ on: false });
+    expect(demoRequests).toEqual([true, false]);
+    expect(on.state.revision).toBeGreaterThan(0);
   });
 
   it("keeps a revision until something changes, then raises it", async () => {
@@ -219,6 +311,10 @@ describe("the Inspector contract the runtime serves", () => {
       await contract.highlight({ layer: "hover", refs: ["e1"] }),
       await contract.pick({ id: "p", refs: ["e3"] }),
       await contract.cancelPick({ id: "p" }),
+      await contract.demo({ on: true }),
+      await contract.look(),
+      await contract.recordedPageState(),
+      await contract.pomDefinitionText({ names: ["Cart"] }),
     ];
     expect(events.map((event) => event.type)).toContain("agent-image-run");
     for (const value of [...results, ...events])
@@ -262,6 +358,17 @@ describe("the Inspector contract the runtime serves", () => {
       subscribeToAgentImageRuns: () => () => {},
       highlights: { set: async () => {} },
       pick: async () => undefined,
+      registry: {
+        pageObjects: () => [],
+        pomDefinitions: () => [],
+        subscribe: () => () => {},
+      },
+      look: async () => {
+        throw new Error("unused");
+      },
+      pomDefinitionText: () => "",
+      recordedPageState: async () => undefined,
+      demo: () => {},
     });
     expect((await none.getState()).tools).toEqual([]);
     expect((await none.runTool({ name: "click" })).error).toMatch(

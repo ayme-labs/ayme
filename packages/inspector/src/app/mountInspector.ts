@@ -1,21 +1,13 @@
-import type { Page } from "@playwright/test";
-import {
-  INSPECTOR_DOGFOOD_ATTRIBUTE,
-  installRuntimePageInstrumentation,
-} from "@ayme-dev/ayme/internal";
+import { INSPECTOR_DOGFOOD_ATTRIBUTE } from "@ayme-dev/ayme/inspector";
 
-import { allowPassThrough } from "../panel";
 import { renderInspector } from "./renderInspector";
-import { exposeInspectorShadowRoot } from "../shared";
-import { withDemoFeedback } from "../demo";
-
-/** How long demo mode pauses before each action. */
-const DEMO_PAUSE_MS = 500;
+import { exposeInspectorShadowRoot, inspectorClient } from "../shared";
 
 export type InspectorOptions = {
   /**
-   * Pauses before each action and shows a cue where a click lands, for every
-   * call, whoever makes it. Off by default: calls run at full speed.
+   * Asks the runtime for Demo Mode while the panel is mounted: it pauses
+   * before each action and shows a cue where a click lands, for every call,
+   * whoever makes it. Off by default: calls run at full speed.
    */
   demo?: boolean;
   /**
@@ -28,24 +20,8 @@ export type InspectorOptions = {
   dogfood?: boolean;
 };
 
-/**
- * Lets the pointer actions on the runtime's Pages reach elements under the
- * panel, and in demo mode paces every action and cues its clicks.
- */
-export function installInspectorInstrumentation({
-  demo = false,
-}: InspectorOptions = {}) {
-  return installRuntimePageInstrumentation((page) =>
-    withDemoFeedback(
-      page as Page,
-      demo ? { beforeActionMs: DEMO_PAUSE_MS, clickCue: true } : {}
-    )
-  );
-}
-
 type MountedInspector = {
   references: number;
-  disposeInstrumentation: () => void;
   disposeUi: () => void;
 };
 
@@ -53,11 +29,11 @@ let mounted: MountedInspector | undefined;
 
 /**
  * Mounts the Inspector once per document; each call returns its own dispose.
- * The first of overlapping mounts decides `demo` and `dogfood`.
+ * The first of overlapping mounts decides `demo` and `dogfood`. Demo Mode
+ * is the runtime's: the panel only asks for it.
  */
 export function mountInspector(options: InspectorOptions = {}) {
   if (!mounted) {
-    const disposeInstrumentation = installInspectorInstrumentation(options);
     // A custom element name, so the page's `div` rules and queries miss the
     // host. It needs no registration to host a shadow root.
     const host = document.createElement("ayme-inspector");
@@ -73,12 +49,15 @@ export function mountInspector(options: InspectorOptions = {}) {
     exposeInspectorShadowRoot(host, shadowRoot);
     document.body.append(host);
     const unmountUi = renderInspector(shadowRoot);
-    const disallowPassThrough = allowPassThrough(shadowRoot);
+    const askForDemo = (on: boolean) =>
+      void inspectorClient()
+        .demo(on)
+        .catch(() => {});
+    if (options.demo) askForDemo(true);
     mounted = {
       references: 0,
-      disposeInstrumentation,
       disposeUi() {
-        disallowPassThrough();
+        if (options.demo) askForDemo(false);
         unmountUi();
         host.remove();
       },
@@ -95,7 +74,6 @@ export function mountInspector(options: InspectorOptions = {}) {
       instance.references -= 1;
       if (instance.references !== 0 || mounted !== instance) return;
       instance.disposeUi();
-      instance.disposeInstrumentation();
       mounted = undefined;
     },
   };

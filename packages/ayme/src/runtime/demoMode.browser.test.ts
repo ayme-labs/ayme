@@ -1,15 +1,21 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createAyme, type AymePage } from "@ayme-dev/ayme";
-import {
-  probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "@ayme-dev/ayme/internal";
+import { createPage } from "@ayme-dev/playwright-lite";
 
-import { mountInspector } from "./mountInspector";
+import { probeRegisteredPomMembers } from "../page-objects/infrastructure";
+import { registerCompiledPom } from "../page-objects/application";
+import { createAyme, type AymePage } from "../index";
 
-// The Inspector's demo mode on a real page: an agent's call, run through the
-// session's tools, pauses only while demo is on, and shows a click cue then
-// for the actions that click.
+// The Inspector stays out of this test: its mount is replaced by a stand-in,
+// so the session's own `inspector` demo is all that runs.
+vi.mock("./inspector", () => ({
+  loadInspector: async () => ({
+    mountInspector: () => ({ dispose() {} }),
+  }),
+}));
+
+// Demo mode on a real page: an agent's call, run through the session's tools,
+// pauses only while demo is on, and shows a click cue then for the actions
+// that click.
 // setTimeout is fake, so the pause is measured in fake time, never
 // wall-clock; animation frames stay real for the click's stability check.
 
@@ -120,14 +126,12 @@ async function callTool(
   });
   observer.observe(document.body, { childList: true });
   registerCompiledPom(Toolbar, manifest);
-  const runtime = createAyme();
+  const runtime = createAyme(demo ? { inspector: { demo: true } } : {});
   runtime.pom.register(Toolbar);
-  const inspector = mountInspector({ demo });
   const stop = runtime.start();
   disposals.push(() => {
     stop();
     runtime.pom.unregister(Toolbar);
-    inspector.dispose();
     observer.disconnect();
   });
   // The Toolbar lists its tools once the first observation has run.
@@ -191,12 +195,10 @@ it("answers an agent's navigation once it settles when demo is on", async () => 
   const onHashChange = () =>
     document.querySelector("main")!.append(`Section ${location.hash}`);
   window.addEventListener("hashchange", onHashChange);
-  const inspector = mountInspector({ demo: true });
-  const runtime = createAyme();
+  const runtime = createAyme({ inspector: { demo: true } });
   const stop = runtime.start();
   disposals.push(() => {
     stop();
-    inspector.dispose();
     window.removeEventListener("hashchange", onHashChange);
     history.replaceState(null, "", start);
   });
@@ -211,4 +213,81 @@ it("answers an agent's navigation once it settles when demo is on", async () => 
     settled: true,
     changes: expect.stringContaining("Section #details"),
   });
+});
+
+/**
+ * Demo mode's pause before each action, less a margin for the timer firing
+ * early.
+ */
+const PAUSED = 450;
+
+/** How long a key press on `page` takes, which demo mode pauses before. */
+async function pressTime(page: AymePage) {
+  const started = performance.now();
+  await page.keyboard.press("Enter");
+  return performance.now() - started;
+}
+
+it("instruments a supplied Page before constructing the first Page Object", async () => {
+  class Model {
+    constructor(readonly page: AymePage) {}
+  }
+  registerCompiledPom(Model, {
+    className: "Model",
+    components: [],
+    members: [],
+    tools: [],
+  });
+  const suppliedPage = createPage() as unknown as AymePage;
+  const runtime = createAyme({
+    inspector: { demo: true },
+    pageFactory: () => suppliedPage,
+  });
+  disposals.push(runtime.start());
+  const instance = runtime.pom.get(Model);
+
+  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
+});
+
+it("instruments the default Page before constructing the first Page Object", async () => {
+  class DefaultModel {
+    constructor(readonly page: AymePage) {}
+  }
+  registerCompiledPom(DefaultModel, {
+    className: "DefaultModel",
+    components: [],
+    members: [],
+    tools: [],
+  });
+  const runtime = createAyme({ inspector: { demo: true } });
+  disposals.push(runtime.start());
+  const instance = runtime.pom.get(DefaultModel);
+
+  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
+});
+
+it("stops pacing when the session stops and resumes once after a restart", async () => {
+  class DisposableModel {
+    constructor(readonly page: AymePage) {}
+  }
+  registerCompiledPom(DisposableModel, {
+    className: "DisposableModel",
+    components: [],
+    members: [],
+    tools: [],
+  });
+  const runtime = createAyme({ inspector: { demo: true } });
+  let stop = runtime.start();
+  disposals.push(() => stop());
+  const instance = runtime.pom.get(DisposableModel);
+  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
+
+  stop();
+  expect(await pressTime(instance.page)).toBeLessThan(PAUSED);
+
+  stop = runtime.start();
+  const restarted = await pressTime(instance.page);
+  expect(restarted).toBeGreaterThanOrEqual(PAUSED);
+  // Once: a second wrapper would pause again.
+  expect(restarted).toBeLessThan(2 * PAUSED);
 });

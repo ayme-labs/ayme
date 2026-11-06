@@ -1,27 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { PomDefinition } from "@ayme-dev/ayme";
 import type {
-  RootedToolInstance,
-  PageStateLook,
+  ControlState,
+  InspectorLook,
+  InspectorPageObject,
+  InspectorRootedInstance,
+  InspectorTarget,
+  PomDefinition,
   ProjectedStructuralNodeForest,
-  RegisteredPom,
-  RegisteredPomTarget,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 import {
-  getPomDefinitions,
-  listRootedToolInstances,
-  listElementToolTargets,
-  listRegisteredPomTargets,
-  listRegisteredPoms,
-  lookAtPageStateForDocument,
-  subscribeToRegisteredPoms,
-} from "@ayme-dev/ayme/internal";
-
-import type { ControlState } from "../domain/controlState";
-import { mapTargetsToRefs } from "../domain/targetsByRef";
-import { readControls } from "./formControls";
+  inspectorClient,
+  type InspectorClient,
+  useInspectorState,
+} from "./inspectorClient";
 import { createRefreshScheduler } from "./refreshScheduler";
 
 export type RegistrySnapshot = {
@@ -29,14 +22,14 @@ export type RegistrySnapshot = {
    * The registered Page Objects, each tool described as agents read it,
    * on the page or off it.
    */
-  registeredPoms: readonly RegisteredPom[];
+  registeredPoms: readonly InspectorPageObject[];
   /** The Page Object Model definitions snapshot returns. */
   pomDefinitions: readonly PomDefinition[];
   /**
    * The items each collection tool acts on, by tool name, each with
    * whether the tool would run on it now and why not.
    */
-  toolInstances: ReadonlyMap<string, readonly RootedToolInstance[]>;
+  toolInstances: ReadonlyMap<string, readonly InspectorRootedInstance[]>;
 };
 
 export type PageStateView = {
@@ -49,10 +42,12 @@ export type PageStateView = {
    * name, in tree order: what an agent is offered for that tool's ref.
    */
   elementToolTargets: ReadonlyMap<string, readonly string[]>;
-  /** Each ref's element in this page state. */
-  elementsByRef: ReadonlyMap<string, Element>;
-  /** The native form controls' states, by ref, read with this look. */
+  /** Every Structural Ref of this page state, in tree order. */
+  refs: readonly string[];
+  /** The native form controls' states, by ref. */
   controls: ReadonlyMap<string, ControlState>;
+  /** Each rooted tool's items on the page, by tool name. */
+  rootedInstances: ReadonlyMap<string, readonly InspectorRootedInstance[]>;
   capturedAt?: string;
   error?: string;
   loading: boolean;
@@ -61,50 +56,35 @@ export type PageStateView = {
 /** While the Structure view shows, how often it looks at the page anyway. */
 const STRUCTURE_POLL_MS = 2000;
 
-function readRegistry(): RegistrySnapshot {
-  return {
-    registeredPoms: listRegisteredPoms(),
-    pomDefinitions: readPomDefinitions(),
-    toolInstances: listRootedToolInstances(),
-  };
-}
-
-function readPomDefinitions() {
-  try {
-    return getPomDefinitions().definitions;
-  } catch (error) {
-    // snapshot fails the same way, e.g. on an ambiguous definition.
-    console.warn(
-      `Could not read the page object models: ${errorMessage(error)}`
-    );
-    return [];
-  }
-}
-
 /**
  * The Inspector's live view of the page. Each refresh takes one unrecorded
- * look at the page state (it never enters the interaction history,
- * so agents see exactly what they would without the Inspector), and that one
- * look feeds the member mapping (the structure is built from it), the Ref
- * Tools' targets and, through `onLook`, the highlights. Page changes, input,
- * focus and registry changes schedule refreshes; while the Structure view
- * shows, a slow poll catches the rest.
+ * look at the page state through the Inspector contract (it never enters the
+ * interaction history, so agents see exactly what they would without the
+ * Inspector), and that one look feeds the member mapping (the structure is
+ * built from it), the Ref Tools' targets and, through `onLook`, the
+ * highlights. Page changes, input, focus and registry changes schedule
+ * refreshes; while the Structure view shows, a slow poll catches the rest.
  */
 export function usePageLook({
   structureVisible,
   onLook,
+  client = inspectorClient(),
 }: {
   /** Whether the Structure view shows, so the page is looked at often. */
   structureVisible: boolean;
   /** Called with each new look, before the page state it gives shows. */
   onLook: (look: Look) => void;
+  /** The Inspector's client of the contract; the document's own unless given. */
+  client?: InspectorClient;
 }) {
-  const [registry, setRegistry] = useState(readRegistry);
+  // The registry as the contract states it: it changes only with a Page Object.
+  const state = useInspectorState(client);
   const [pageState, setPageState] = useState<PageStateView>({
     targetsByRef: new Map(),
     elementToolTargets: new Map(),
-    elementsByRef: new Map(),
+    refs: [],
     controls: new Map(),
+    rootedInstances: new Map(),
     loading: false,
   });
 
@@ -117,15 +97,16 @@ export function usePageLook({
   const look = useCallback(async () => {
     setPageState((current) => ({ ...current, loading: true }));
     try {
-      const next = await lookAtPage();
+      const next = await lookAtPage(client);
       if (!mounted.current) return;
       lookListener.current(next);
       setPageState({
         projected: next.state.projected,
         targetsByRef: next.targetsByRef,
         elementToolTargets: next.elementToolTargets,
-        elementsByRef: next.state.elementsByRef,
-        controls: readControls(next.state.elementsByRef),
+        refs: next.state.refs,
+        controls: new Map(Object.entries(next.state.controls)),
+        rootedInstances: new Map(Object.entries(next.state.rootedInstances)),
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -141,10 +122,16 @@ export function usePageLook({
         loading: false,
       }));
     }
-  }, []);
+  }, [client]);
 
   const [scheduler] = useState(() => createRefreshScheduler(() => look()));
   const refreshPageState = useCallback(() => scheduler.request(), [scheduler]);
+
+  // The registry changes, and with it the look: a Page Object registered,
+  // unregistered or with new definitions. Also at mount, for the first look.
+  useEffect(() => {
+    if (mounted.current) scheduler.request();
+  }, [state.pageObjects, state.pomDefinitions, scheduler]);
 
   useEffect(() => {
     mounted.current = true;
@@ -168,12 +155,7 @@ export function usePageLook({
     for (const type of pageEvents)
       document.addEventListener(type, onPageEvent, true);
 
-    const updateRegistry = () => {
-      setRegistry(readRegistry());
-      scheduler.request();
-    };
-    updateRegistry();
-    const unsubscribe = subscribeToRegisteredPoms(updateRegistry);
+    scheduler.request();
 
     return () => {
       mounted.current = false;
@@ -181,7 +163,6 @@ export function usePageLook({
       for (const type of pageEvents)
         document.removeEventListener(type, onPageEvent, true);
       scheduler.dispose();
-      unsubscribe();
     };
   }, [scheduler]);
 
@@ -193,40 +174,44 @@ export function usePageLook({
     return () => clearInterval(poll);
   }, [scheduler, structureVisible]);
 
+  const registry: RegistrySnapshot = {
+    registeredPoms: state.pageObjects,
+    pomDefinitions: state.pomDefinitions,
+    toolInstances: pageState.rootedInstances,
+  };
   return { ...registry, pageState, refreshPageState };
 }
 
 /** One look at the page, and what the Inspector reads from it. */
 export type Look = {
-  state: PageStateLook;
-  targets: readonly RegisteredPomTarget[];
-  /** The page state's elements: only these can be highlighted. */
-  elementsInState: ReadonlySet<Element>;
+  state: InspectorLook;
+  /** The registry's targets, each with its ref when the page state holds its element. */
+  targets: readonly InspectorTarget[];
+  /** The refs of the page state: only these can be highlighted. */
+  refs: ReadonlySet<string>;
   targetsByRef: ReadonlyMap<string, readonly string[]>;
   elementToolTargets: ReadonlyMap<string, readonly string[]>;
 };
 
-/**
- * Looks at the page state and maps each ref to every registry target whose
- * element it is: an element's ref is its only ref in the look.
- */
-async function lookAtPage(): Promise<Look> {
-  const state = await lookAtPageStateForDocument(document);
-  const [targets, elementToolTargets] = await Promise.all([
-    listRegisteredPomTargets(),
-    listElementToolTargets(state),
-  ]);
-
-  // Several members can hold the same element (two collections over the
-  // same items, or a locator over a collection's items); none hides another.
-  const targetsByRef = mapTargetsToRefs(state.elementsByRef, targets);
-
+/** Looks at the page through the contract, and maps each ref to its registry targets. */
+async function lookAtPage(client: InspectorClient): Promise<Look> {
+  const state = await client.look();
   return {
     state,
-    targets,
-    elementsInState: new Set(state.elementsByRef.values()),
-    targetsByRef,
-    elementToolTargets,
+    targets: state.targets,
+    refs: new Set(state.refs),
+    targetsByRef: new Map(
+      Object.entries(state.targetsByRef).map(([ref, paths]) => [
+        ref,
+        [...paths],
+      ])
+    ),
+    elementToolTargets: new Map(
+      Object.entries(state.elementToolTargets).map(([name, refs]) => [
+        name,
+        [...refs],
+      ])
+    ),
   };
 }
 
