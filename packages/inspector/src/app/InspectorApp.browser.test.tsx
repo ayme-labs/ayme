@@ -24,8 +24,7 @@ import { Inspector } from "../testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
+  await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
     inputSchemaFor,
@@ -36,13 +35,11 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
-    highlightStyles,
     inPage,
     pageOfDocument,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
-    highlightStyles,
     inPage,
     pageOfDocument,
     // The Playwright call table, which demo feedback reads.
@@ -50,7 +47,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     kindOf,
     pageStateNodeEntry,
     rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -72,10 +68,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
     listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),

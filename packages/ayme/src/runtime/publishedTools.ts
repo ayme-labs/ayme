@@ -1,4 +1,14 @@
-import type { JsonSchema } from "../shared";
+import type {
+  PublishedToolGroup,
+  PublishedToolInfo,
+  ToolInfo,
+} from "../shared";
+
+export type {
+  PublishedToolGroup,
+  PublishedToolInfo,
+  ToolInfo,
+} from "../shared";
 import { getPursueGoalTool } from "../goal-loop/infrastructure";
 import { type GoalTool } from "../goal-loop/application";
 import {
@@ -31,48 +41,6 @@ export type PublishedTool =
   | PublishedElementTool
   | PeekTool
   | GoalTool;
-
-/**
- * Where a tool comes from: a Page Object (Page Object Tool), Ayme's
- * Browser Tools, the app's Custom Tools, the app's Peeks (Peek Tools), or the
- * agent's own tools (`snapshot`, `goal`).
- */
-export type PublishedToolGroup =
-  "pageObject" | "browser" | "custom" | "peek" | "agent";
-
-/**
- * A published tool, for reading only, with two descriptions: what its
- * author wrote, and its Agent Description, the text an agent reads. They
- * differ only on a Page Object Tool, whose Agent Description adds the Page
- * Objects the page shows afterwards. A Page Object Tool that says nothing
- * beyond its name and schema has neither.
- */
-export type PublishedToolInfo = Readonly<{
-  name: string;
-  authorDescription?: string;
-  agentDescription?: string;
-  /**
-   * For a Page Object Tool: the other Page Objects its action may return,
-   * which the page shows afterwards.
-   */
-  returnPoms?: readonly string[];
-  inputSchema: JsonSchema;
-  group: PublishedToolGroup;
-  /** The declaring class of a Page Object Tool. */
-  className?: string;
-}>;
-
-/**
- * A tool of the session, for reading only. `available` says whether a call
- * can run it now: a Page Object Tool is available while its Page Object (or
- * the component instance it acts on) is and its action's availability
- * predicate, if it has one, holds; every other tool always is. `reason`,
- * when the tool is unavailable and there is one, is its Availability Reason:
- * the runtime's, naming the Structural Ref of the element a click would
- * reach instead, or the predicate's string (ADR-0035).
- */
-export type ToolInfo = PublishedToolInfo &
-  Readonly<{ available: boolean; reason?: string }>;
 
 /** A tool, offered while `present`: a Page Object Tool's Page Object is. */
 type ResolvedTool = {

@@ -1,9 +1,5 @@
-import { inPage, pageOfDocument } from "@ayme-dev/ayme/internal";
-
+import { inspectorClient } from "../../shared";
 import type { StructureNode } from "../../structure";
-
-/** The Inspector's own host element on the page. */
-const inspectorHost = "[data-ayme-inspector-host]";
 
 /**
  * Which nodes of the structure a tool can use: the refs the tool can take
@@ -57,7 +53,7 @@ export type RefPickingHandlers = {
 };
 
 /**
- * Picks a ref by pointing at the page, in the runtime's in-page module: the
+ * Picks a ref by pointing at the page, through the Inspector contract: the
  * element under the pointer that carries a ref is boxed, or greyed when it
  * can't be picked; a click picks it and Esc cancels. The page doesn't act on
  * those presses, and the Inspector's own elements are left alone.
@@ -71,11 +67,8 @@ export function startRefPicking({
   refs,
 }: RefPickingHandlers & { refs: Iterable<string> }): () => void {
   const stop = new AbortController();
-  void inPage(pageOfDocument(document))
-    .pick([...refs].filter(accept), {
-      ignore: inspectorHost,
-      signal: stop.signal,
-    })
+  void inspectorClient()
+    .pick([...refs].filter(accept), stop.signal)
     .then((ref) => {
       if (!stop.signal.aborted) onEnd(ref);
     });

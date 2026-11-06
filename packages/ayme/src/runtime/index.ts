@@ -36,3 +36,11 @@ export type {
   AymeWebMcpPublicationStatus,
 } from "./runtime";
 export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtimeOptions";
+export { inlineInspectorContract } from "./inlineInspectorContract";
+export { createInspectorContract } from "./inspectorContract";
+export type {
+  InspectorContractPorts,
+  InspectorSession,
+} from "./inspectorContract";
+export { createHighlights } from "./inspectorHighlights";
+export type { Highlightable } from "./inspectorHighlights";

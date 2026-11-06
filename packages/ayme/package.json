@@ -38,6 +38,11 @@
       "import": "./dist/internal.mjs",
       "default": "./dist/internal.mjs"
     },
+    "./inspector": {
+      "types": "./dist/inspector.d.mts",
+      "import": "./dist/inspector.mjs",
+      "default": "./dist/inspector.mjs"
+    },
     "./absent": {
       "types": "./dist/absent.d.mts",
       "import": "./dist/absent.mjs",

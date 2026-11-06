@@ -26,6 +26,8 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/internal.ts",
+    // The Inspector contract and the runtime's inline serving of it.
+    "src/inspector.ts",
     // What a Build without Ayme resolves the two entries above to.
     "src/absent.ts",
     "src/server.ts",

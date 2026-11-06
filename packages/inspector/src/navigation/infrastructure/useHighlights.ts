@@ -1,94 +1,58 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { highlightStyles, pageOfDocument } from "@ayme-dev/ayme/internal";
+import type { InspectorHighlightLayer } from "@ayme-dev/ayme/inspector";
 
-import type { Look } from "../../shared";
+import { inspectorClient, type InspectorClient, type Look } from "../../shared";
 import type { HighlightTarget } from "../domain/highlight";
-
-/** What a highlight needs of a locator: Playwright's `highlight`, and what it hands back. */
-export type HighlightLocator = {
-  highlight(options: {
-    style: Record<string, string | number>;
-  }): Promise<{ dispose(): Promise<void> }>;
-};
-
-/** The `ayme-ref=` locator of a Structural Ref on the runtime's page. */
-const onRuntimePage = (ref: string): HighlightLocator =>
-  pageOfDocument(document).locator(`ayme-ref=${ref}`);
 
 /**
  * The page's two highlights: `hover` (dashed) for what the pointer is over
  * in the panel, `pin` (solid) for the selection. Each shows on its target's
- * elements in the latest look at the page, through Playwright's
- * `locator.highlight` on each one's `ayme-ref=` locator: nothing is set on the
- * app's elements. They follow every new look handed to `onLook`. Unmounting
+ * elements in the latest look at the page, through the Inspector contract, which
+ * has the runtime draw Playwright's highlight on each one's `ayme-ref=`
+ * locator: nothing is set on the app's elements. They follow every new look handed to `onLook`. Unmounting
  * removes them.
  */
 export function useHighlights({
   targetsOf,
-  locate = onRuntimePage,
+  client = inspectorClient(),
 }: {
   /**
    * The registry target paths a highlight's path stands for, read as each
    * highlight shows, e.g. the roots of a collection's items.
    */
   targetsOf: (path: string) => ReadonlySet<string>;
-  /** The locator of the element a Structural Ref names: on the runtime's page, unless given. */
-  locate?: (ref: string) => HighlightLocator;
+  /** The Inspector's client of the contract; the document's own unless given. */
+  client?: InspectorClient;
 }) {
   const latest = useRef<Look>(undefined);
   const targets = useRef<Partial<Record<HighlightLayer, HighlightTarget>>>({});
-  // What each layer shows now: its refs, each with the disposable of its highlight.
-  const shown = useRef<Record<HighlightLayer, Map<string, Disposable>>>({
-    hover: new Map(),
-    pinned: new Map(),
-  });
   const unmounted = useRef(false);
-  // Changes go through one chain, so each reads the latest wish when it runs.
-  const queue = useRef<Promise<void>>(Promise.resolve());
-
   const resolve = useRef(targetsOf);
-  const locator = useRef(locate);
+  const sendTo = useRef(client);
   useEffect(() => {
     resolve.current = targetsOf;
-    locator.current = locate;
-  }, [targetsOf, locate]);
+    sendTo.current = client;
+  }, [targetsOf, client]);
 
-  /** Makes what the page shows what the layers' targets are now. */
-  const apply = useCallback(async () => {
+  /**
+   * Tells the runtime what each layer's target shows on now. The runtime
+   * takes the commands in order, an element both layers want showing the
+   * selection's, and ends highlights before it starts others.
+   */
+  const apply = useCallback(() => {
     const wanted = wantedRefs(
       unmounted.current ? {} : targets.current,
       latest.current,
       resolve.current
     );
-    // An element both layers want shows the selection's.
-    for (const ref of wanted.pinned) wanted.hover.delete(ref);
-    // Highlights end before others start, so a ref moving from one layer to
-    // the other is never ended after it started.
     for (const layer of highlightLayers)
-      for (const [ref, disposable] of shown.current[layer])
-        if (!wanted[layer].has(ref)) {
-          shown.current[layer].delete(ref);
-          await disposable.dispose().catch(() => {});
-        }
-    for (const layer of highlightLayers)
-      for (const ref of wanted[layer])
-        if (!shown.current[layer].has(ref))
-          try {
-            shown.current[layer].set(
-              ref,
-              await locator.current(ref).highlight({
-                style: highlightStyles[layer],
-              })
-            );
-          } catch {
-            // The element went away: the next look shows what is there.
-          }
+      void sendTo.current.highlight(layer, [...wanted[layer]]).catch(() => {
+        // The element went away: the next look shows what is there.
+      });
   }, []);
 
-  const show = useCallback(() => {
-    queue.current = queue.current.then(apply, apply);
-  }, [apply]);
+  const show = apply;
 
   const onLook = useCallback(
     (look: Look) => {
@@ -137,8 +101,6 @@ export function useHighlights({
   return { onLook, hover, pin, canHighlight };
 }
 
-type Disposable = { dispose(): Promise<void> };
-
 /** The refs each layer's target shows on in a look. */
 function wantedRefs(
   targets: Partial<Record<HighlightLayer, HighlightTarget>>,
@@ -186,6 +148,6 @@ function targetElements(
   });
 }
 
-type HighlightLayer = "hover" | "pinned";
+type HighlightLayer = InspectorHighlightLayer;
 
 const highlightLayers: readonly HighlightLayer[] = ["hover", "pinned"];

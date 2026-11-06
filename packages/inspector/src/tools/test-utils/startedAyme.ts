@@ -14,9 +14,20 @@ import type {
 import type {
   AgentConnectionStatus,
   AgentConnectionStatusSource,
+  AgentImageRun,
   AppProcessTool,
   AppProcessTools,
 } from "@ayme-dev/ayme/internal";
+import {
+  createHighlights,
+  createInspectorContract,
+  type InspectorSession,
+} from "@ayme-dev/ayme/inspector";
+
+// Not the slice's index: the tests mock the runtime's internal entry while
+// they load this, and the index would wait on that mock.
+// eslint-disable-next-line no-restricted-imports
+import { replaceInspectorTransport } from "../../shared/infrastructure/inspectorClient";
 
 // One list until a test sets another, as the session keeps it until it changes.
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
@@ -125,6 +136,9 @@ function fixtureRunLog() {
 
 const runLog = fixtureRunLog();
 
+// The agent's image Runs `ayme mcp` reports, as the runtime hears of them.
+const imageRunListeners = new Set<(run: AgentImageRun) => void>();
+
 /**
  * A stand-in for the started session, for tests that replace
  * `getStartedAyme` with it: they set its tools and publication status, mock
@@ -171,6 +185,18 @@ export const startedAyme = {
    * the mocks see the tool's name and input.
    */
   runs: runLog,
+  /** Reports an agent's image Run, as the page client does. */
+  reportAgentImageRun(run: AgentImageRun) {
+    for (const listener of imageRunListeners) listener(run);
+  },
+  /** The locator a highlight of `ref` asks for. */
+  locate: (() => ({
+    highlight: async () => ({ dispose: async () => {} }),
+  })) as (ref: string) => {
+    highlight(options: {
+      style: Record<string, string | number>;
+    }): Promise<{ dispose(): Promise<void> }>;
+  },
   /** Tells subscribers the tools or the status changed. */
   announce() {
     for (const listener of listeners) listener(startedAyme.tools.list());
@@ -243,3 +269,21 @@ const sessionAgentConnection: AgentConnectionStatusSource = {
  */
 export const agentConnectionOf = (): AgentConnectionStatusSource =>
   sessionAgentConnection;
+
+// The Inspector reads the stand-in through the contract the runtime serves,
+// built over it with the runtime's own service: so the lenses are tested
+// against the same state, revisions and commands as on a real session.
+replaceInspectorTransport(
+  createInspectorContract({
+    started: () => session as unknown as InspectorSession,
+    subscribeToStarted: () => () => {},
+    appProcessTools: () => sessionAppProcessTools,
+    connectionStatus: () => sessionAgentConnection,
+    subscribeToAgentImageRuns: (listener) => {
+      imageRunListeners.add(listener);
+      return () => void imageRunListeners.delete(listener);
+    },
+    highlights: createHighlights((ref) => startedAyme.locate(ref)),
+    pick: async () => undefined,
+  })
+);

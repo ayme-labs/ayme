@@ -67,3 +67,21 @@ export {
 export type { ReachMeasurement } from "./reach";
 export type { RootState } from "./root";
 export { checkedToolInput, refuseViolations } from "./schemaValidation";
+export { mergeInspectorState } from "./inspectorContract";
+export type {
+  AgentConnectionStatus,
+  AppProcessTool,
+  InspectorAgentImageRun,
+  InspectorCommandResult,
+  InspectorContract,
+  InspectorEvent,
+  InspectorHighlightLayer,
+  InspectorInteraction,
+  InspectorObserver,
+  InspectorPublication,
+  InspectorRun,
+  InspectorState,
+  PublishedToolGroup,
+  PublishedToolInfo,
+  ToolInfo,
+} from "./inspectorContract";

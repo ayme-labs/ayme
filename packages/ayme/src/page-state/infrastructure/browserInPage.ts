@@ -31,8 +31,8 @@ export function browserInPage(currentDocument: Document = document): InPage {
 
 /**
  * The Playwright Lite page that hosts `currentDocument`'s module: the Page the
- * Inspector highlights and picks through, until it reads the runtime through
- * its contract (#1178).
+ * runtime highlights and picks through for the Inspector contract, and Demo
+ * Mode's click cue reads geometry through.
  */
 export function pageOfDocument(currentDocument: Document): Page {
   return browserPageOf(currentDocument);

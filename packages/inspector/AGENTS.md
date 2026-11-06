@@ -50,6 +50,7 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
   Interaction's member by matching its locator to the registry's member
   locators. It also says which runs belong to the selection: a tree does
   when its top-level Run or any Run in it does.
+- `shared`'s `inspectorClient` is the Inspector's client of the contract `@ayme-dev/ayme/inspector` defines: the newest state it has heard (an event with a lower revision never replaces it) and the commands, over the inline transport, which is the runtime's own contract called directly. The Runs and Tools lenses, and the highlight and pick calls, read and send through it; the other lenses still use `@ayme-dev/ayme/internal` until #1180.
 - `shared`'s `describeCall` says what a call on the runtime's Page does for
   demo mode: whether it acts or clicks, and which elements it hit-tests. It
   reads ayme's Playwright call table (`@ayme-dev/ayme/internal`), which

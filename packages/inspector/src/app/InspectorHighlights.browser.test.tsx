@@ -9,6 +9,7 @@ import {
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
 
+import { startedAyme } from "../tools/test-utils/startedAyme";
 import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
@@ -24,8 +25,7 @@ import { Inspector } from "../testing";
 const highlighted = vi.hoisted(() => new Map<string, string>());
 
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
+  await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
     inputSchemaFor,
@@ -36,26 +36,16 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
-    highlightStyles,
     inPage,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
-    highlightStyles,
     inPage,
-    pageOfDocument: () => ({
-      locator: (selector: string) => ({
-        highlight: async ({ style }: { style: { outline: string } }) => {
-          highlighted.set(selector, style.outline);
-          return { dispose: async () => void highlighted.delete(selector) };
-        },
-      }),
-    }),
+    pageOfDocument: () => ({}),
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,
     pageStateNodeEntry,
     rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -69,10 +59,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(),
     listAvailablePomTools: vi.fn(() => []),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
     listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
@@ -123,6 +109,13 @@ const editor: RegisteredPom = {
 };
 
 beforeEach(() => {
+  startedAyme.locate = (ref) => ({
+    highlight: async ({ style }) => {
+      const selector = `ayme-ref=${ref}`;
+      highlighted.set(selector, String(style.outline));
+      return { dispose: async () => void highlighted.delete(selector) };
+    },
+  });
   const host = document.createElement("div");
   host.innerHTML = hostPage;
   document.body.append(host);

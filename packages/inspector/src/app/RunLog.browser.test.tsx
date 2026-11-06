@@ -7,9 +7,7 @@ import {
   latestPageStateCapture,
   lookAtPageStateForDocument,
   listRegisteredPomTargets,
-  listAvailablePomTools,
   listRegisteredPoms,
-  subscribeToAgentImageRuns,
   type AgentImageRun,
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
@@ -23,8 +21,7 @@ import { Inspector } from "../testing";
 // runtime is replaced by a stand-in session whose Run log the test fills,
 // and which records the panel's own runs there for the Caller they name.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
+  await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
     inputSchemaFor,
@@ -35,13 +32,11 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
-    highlightStyles,
     inPage,
     pageOfDocument,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
-    highlightStyles,
     inPage,
     pageOfDocument,
     // The Playwright call table, which demo feedback reads.
@@ -69,12 +64,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     latestPageStateCapture: vi.fn(() => undefined),
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listAvailablePomTools: vi.fn(() => []),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    subscribeToAgentImageRuns: vi.fn(() => () => {}),
     listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
@@ -116,9 +105,6 @@ const editor: RegisteredPom = {
 /** The Editor Page Object on the page, with its available tool `Editor.save`. */
 function registerEditor() {
   vi.mocked(listRegisteredPoms).mockReturnValue([editor]);
-  vi.mocked(listAvailablePomTools).mockReturnValue([save] as ReturnType<
-    typeof listAvailablePomTools
-  >);
   startedAyme.tools.list.mockReturnValue([
     {
       name: save.name,
@@ -126,6 +112,7 @@ function registerEditor() {
       agentDescription: save.agentDescription,
       inputSchema: save.inputSchema,
       group: "pageObject",
+      className: save.className,
       available: true,
     },
   ]);
@@ -495,10 +482,7 @@ it("shows an image a Run returned as itself, with the file Ayme MCP saved it to"
   expect(await run.resultToggle.count()).toBe(0);
 
   // `ayme mcp` reports the file it saved the image to once the Run ended.
-  const reportImage = vi
-    .mocked(subscribeToAgentImageRuns)
-    .mock.calls.at(-1)![0];
-  reportImage({
+  startedAyme.reportAgentImageRun({
     name: "screenshot",
     input: {},
     result: image,
@@ -617,9 +601,16 @@ it("scopes every Caller's Runs to the selection", async () => {
 it("scopes root-less class runs to their own Page Object", async () => {
   registerEditor();
   const other = { ...save, name: "Other.save", className: "Other" };
-  vi.mocked(listAvailablePomTools).mockReturnValue([save, other] as ReturnType<
-    typeof listAvailablePomTools
-  >);
+  startedAyme.tools.list.mockReturnValue([
+    ...startedAyme.tools.list(),
+    {
+      name: other.name,
+      inputSchema: other.inputSchema,
+      group: "pageObject",
+      className: other.className,
+      available: true,
+    },
+  ]);
   vi.mocked(listRegisteredPoms).mockReturnValue([
     editor,
     {
@@ -652,7 +643,7 @@ it("keeps a root-less run's class when remounting after its tool disappeared", a
   await inspector.navigator.model.object("Editor").click();
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   unmountApp();
-  vi.mocked(listAvailablePomTools).mockReturnValue([]);
+  startedAyme.tools.list.mockReturnValue([]);
   renderApp();
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(

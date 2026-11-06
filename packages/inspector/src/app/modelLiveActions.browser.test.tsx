@@ -99,8 +99,7 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme, startedAyme } =
-    await import("../tools/test-utils/startedAyme");
+  const { startedAyme } = await import("../tools/test-utils/startedAyme");
   startedAyme.tools.list.mockImplementation(
     () => runtime.liveTools as ToolInfo[]
   );
@@ -115,12 +114,10 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
-    highlightStyles,
     inPage,
     pageOfDocument,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
-    highlightStyles,
     inPage,
     pageOfDocument,
     // The Playwright call table, which demo feedback reads.
@@ -128,7 +125,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     kindOf,
     pageStateNodeEntry,
     rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -147,10 +143,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listAvailablePomTools: vi.fn(() => []),
     listRootedToolInstances: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
 });

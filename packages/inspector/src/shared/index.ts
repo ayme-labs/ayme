@@ -32,3 +32,11 @@ export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./presentation/InspectorRoot";
 export { QualifiedName } from "./view/QualifiedName";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";
+export {
+  createInspectorClient,
+  emptyInspectorState,
+  inspectorClient,
+  replaceInspectorTransport,
+  useInspectorState,
+  type InspectorClient,
+} from "./infrastructure/inspectorClient";

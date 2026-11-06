@@ -7,10 +7,9 @@ export {
   pageOfDocument,
   resolvePageStateRef,
 } from "./page-state/infrastructure";
-// Highlighting and picking, which the inline Inspector calls through the
-// runtime's Page until it reads through the Inspector contract (#1178).
-export { highlightStyles, inPage } from "./in-page";
-export type { PickOptions } from "./in-page";
+// Demo Mode's click cue reads geometry through the in-page module until the
+// cue moves behind the Inspector contract.
+export { inPage } from "./in-page";
 export { pageStateNodeEntry } from "./page-state/domain";
 export type { PageStateCapture, PageStateLook } from "./page-state/domain";
 export type {

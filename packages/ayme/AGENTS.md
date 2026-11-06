@@ -13,7 +13,7 @@ Slices, from the bottom up:
 - `goal-loop`: the Goal Loop, the Step Decision and its questions, the operations it offers, the decision wire, and the Decision Endpoint's client and handler.
 - `runtime`: the composition root: `createAyme`, the runtime options, the published tools, WebMCP publication, the Inspector and the Agent Connection.
 
-The entries (`index.ts`, `internal.ts`, `absent.ts`, `server.ts`, `testing.ts`) stay at the top of `src/` and use the slices' front doors. No slice uses an entry. `server.ts`, the `./server` entry, only re-exports the Decision Endpoint's handler from `goal-loop`.
+The entries (`index.ts`, `internal.ts`, `inspector.ts`, `absent.ts`, `server.ts`, `testing.ts`) stay at the top of `src/` and use the slices' front doors. No slice uses an entry. `server.ts`, the `./server` entry, only re-exports the Decision Endpoint's handler from `goal-loop`. `inspector.ts`, the `./inspector` entry, is the Inspector contract (plain data in `shared`) and the runtime's inline serving of it.
 
 Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (the network, the DOM and Playwright Lite's page). `page-state`, `page-objects`, `goal-loop`, `runs` and `tools` are layered. `shared`, `in-page` and `runtime` stay unlayered.
 

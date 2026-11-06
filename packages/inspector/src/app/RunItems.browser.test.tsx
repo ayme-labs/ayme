@@ -18,8 +18,7 @@ import { Inspector } from "../testing";
 // their ref named, so an item's scope lists them. The runtime is replaced by
 // fixture targets, a look at the host page and a stand-in Run log.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
+  await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
     inputSchemaFor,
@@ -30,12 +29,10 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     rootTargetPath,
-    highlightStyles,
     inPage,
     pageOfDocument,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
-    highlightStyles,
     inPage,
     pageOfDocument,
     // The Playwright call table, which demo feedback reads.
@@ -54,11 +51,6 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPomDefinitionText: vi.fn(() => ""),
     latestPageStateCapture: vi.fn(() => undefined),
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    subscribeToAgentImageRuns: () => () => {},
     listRegisteredPomTargets: vi.fn(),
     listAvailablePomTools: vi.fn(() => []),
     listRootedToolInstances: vi.fn(() => new Map()),

@@ -3,6 +3,12 @@ import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 
 import type { Look } from "../../shared";
+import {
+  createHighlights,
+  createInspectorContract,
+} from "@ayme-dev/ayme/inspector";
+
+import { createInspectorClient } from "../../shared";
 import { useHighlights } from "./useHighlights";
 
 // Unit tests: the page's hover and pin highlights, over hand-made looks.
@@ -53,7 +59,21 @@ function mountHighlights(page = fakePage()) {
   function Probe() {
     highlights = useHighlights({
       targetsOf: () => new Set(),
-      locate: page.locate,
+      client: createInspectorClient(
+        createInspectorContract({
+          started: () => undefined,
+          subscribeToStarted: () => () => {},
+          appProcessTools: () => {
+            throw new Error("No session.");
+          },
+          connectionStatus: () => {
+            throw new Error("No session.");
+          },
+          subscribeToAgentImageRuns: () => () => {},
+          highlights: createHighlights(page.locate),
+          pick: async () => undefined,
+        })
+      ),
     });
     return null;
   }

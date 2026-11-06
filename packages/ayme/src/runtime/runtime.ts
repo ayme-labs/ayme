@@ -68,6 +68,7 @@ import {
   callers,
   checkedToolInput,
   RuntimeStateError,
+  type AppProcessTool,
   type Caller,
   type ElementFilter,
 } from "../shared";
@@ -319,11 +320,7 @@ function createServerPageObject<T extends object>(
 }
 
 /** A tool an App Process paired beside the page offers. */
-export type AppProcessTool = Readonly<{
-  name: string;
-  description?: string;
-  inputSchema: Readonly<Record<string, unknown>>;
-}>;
+export type { AppProcessTool };
 
 /**
  * The tools of the App Processes paired with the session's Agent
