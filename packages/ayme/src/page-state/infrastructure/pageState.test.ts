@@ -10,7 +10,10 @@ const { captureAriaSnapshot, pageObjectRoots } = vi.hoisted(() => ({
 vi.mock("./browserInPage", async () =>
   (
     await import("../../test-utils/inPageCapture.testSupport")
-  ).standInBrowserInPage(captureAriaSnapshot)
+  ).standInBrowserInPage(captureAriaSnapshot, async () => ({
+    roots: await pageObjectRoots(),
+    absentElements: [],
+  }))
 );
 
 import {
@@ -25,7 +28,6 @@ import {
   latestPageStateElement,
   latestPageStateCapture,
   lookAtPageStateForDocument,
-  providePageObjectStructure,
 } from "./pageState";
 import { createCursors } from "../domain/cursors";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
@@ -36,11 +38,6 @@ const ref = AriaRefSchema.parse;
 /** The page state of the current Document, as an agent reads it. */
 const pageStateText = async () =>
   (await getPageStateForDocument(document)).text;
-
-providePageObjectStructure(async () => ({
-  roots: await pageObjectRoots(),
-  absentElements: [],
-}));
 
 describe("the page state", () => {
   beforeEach(() => {

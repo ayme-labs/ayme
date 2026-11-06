@@ -287,11 +287,6 @@ const layerOrderExceptions = [
 // one no longer imports it, so it leaves the list then.
 const liteInternalExceptions = [
   { file: "src/internal.ts", issue: "#1182" },
-  { file: "src/page-objects/infrastructure/litePageDriver.ts", issue: "#1175" },
-  {
-    file: "src/page-objects/infrastructure/pomRootObservation.ts",
-    issue: "#1175",
-  },
   { file: "src/tools/application/elementTools.ts", issue: "#1176" },
   { file: "src/tools/infrastructure/generateLocator.ts", issue: "#1176" },
   { file: "src/tools/infrastructure/pressKey.ts", issue: "#1176" },

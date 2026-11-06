@@ -20,11 +20,13 @@ import { watchFullLoads, watchSameDocumentNavigations } from "./navigation";
 import { createReach } from "./reach";
 import { showCue } from "./cue";
 import { startPicking, type PickArguments, type PickNotice } from "./pick";
+import { createRoots, type ProbeRequest, type RootState } from "./roots";
 
 export type { Capture, DocumentToken, ReachMeasurement };
 export type { ElementInputs } from "./capture";
 export type { PickArguments, PickNotice } from "./pick";
 export type { ActionInputs, Begun, Settled } from "./actions";
+export type { ProbeRequest, RootState } from "./roots";
 
 /** What a host asks to pick a ref: `id` names this picking in the notices it gets back. */
 export type PickRequest = PickArguments & { id: string };
@@ -54,12 +56,17 @@ export type InstallResult =
 /**
  * What the module tells a bound host through its binding, with the
  * document's token: a same-document navigation, for its Visits, a full load
- * that ended one of its actions, or what the pointer is over in its picking.
+ * that ended one of its actions, what the pointer is over in its picking, or,
+ * to a host that watches, that the page may have changed, the `seq`th time.
  */
 export type HostMessage =
   | { kind: "visit"; url: string }
+  | { kind: "change"; seq: number }
   | LoadStarted
   | { kind: "pick"; id: string; notice: PickNotice };
+
+/** Where a document's changes stand: the document, and how many batches of them came. */
+export type ChangeState = { document: DocumentToken; seq: number };
 
 /** What a host asks of the module about the reach of the element a ref names. */
 export type ReachRequest = {
@@ -88,8 +95,34 @@ export type Slot = {
   readonly token: DocumentToken;
   readonly installedBy: HostKey;
   bind(host: HostKey, binding: string): Bound;
-  /** A capture of the document for `host`, with the roots it hands in. */
+  /**
+   * A capture of the document for `host`: its roots are the ones its latest
+   * completed probe run found, and `inputs` say what it leaves out.
+   */
   capture(host: HostKey, inputs?: ElementInputs): Capture;
+  /**
+   * Probes the Page Object Root the elements a Locator matched are, for
+   * `host`, never scrolling or sending input. With a `round`, the probe
+   * labels the root in `host`'s captures once the round ends.
+   */
+  probe(
+    host: HostKey,
+    elements: readonly Element[],
+    request: ProbeRequest
+  ): RootState;
+  /** The Structural Ref of each of the elements, named where it has none. */
+  mint(host: HostKey, elements: readonly Element[]): string[];
+  /** Whether `ref`, now or before, names the one element given. */
+  names(host: HostKey, elements: readonly Element[], ref: string): boolean;
+  /** `host`'s probe run `round` completed: its roots are the ones captures place now. */
+  endRound(host: HostKey, round: number): void;
+  /**
+   * Whether `host` hears of changes through its binding, from now on, and
+   * where the document's changes stand.
+   */
+  watch(host: HostKey, request: { binding: string; on: boolean }): ChangeState;
+  /** Where the document's changes stand. */
+  changes(host: HostKey): ChangeState;
   /** Reach (ADR-0041) of the element a ref names, for a host that sends refs. */
   measure(host: HostKey, request: ReachRequest): ReachAnswer;
   /**
@@ -109,6 +142,11 @@ export type Slot = {
   refs(host: HostKey, elements: readonly Element[]): (string | undefined)[];
   /** The connected element under `root` that `ref` names: the `ayme-ref` engine's query. */
   queryRef(ref: string, root?: Node): Element[];
+  /**
+   * Transitional (#1182): the element `ref`, now or before, named, connected
+   * or not.
+   */
+  elementEverNamed(ref: string): Element | undefined;
   /**
    * Transitional (#1182): the element `ref` names, connected or not, for the
    * browser runtime's lookups by ref until its consumers read the page
@@ -165,34 +203,55 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   const pickings = new Map<string, () => void>();
   // Pickings cancelled before they started: the cancel can arrive first.
   const cancelled = new Set<string>();
-  const capture = (_host: HostKey, inputs?: ElementInputs): Capture => ({
+  const roots = createRoots({ measure: reach.measure, nameOf: refs.nameOf });
+  const capture = (host: HostKey, inputs?: ElementInputs): Capture => ({
     document: token,
     url: location.href,
-    ...refs.capture(document.body, inputs),
+    ...refs.capture(document.body, { ...inputs, ...roots.labelled(host) }),
   });
 
-  /** Tells `host` of `message`, if it is still bound and listening. */
-  function tell(host: HostKey, message: HostMessage): void {
+  /** Tells `host` of `message`, if it is still bound and listening; answers when it has heard. */
+  async function tell(host: HostKey, message: HostMessage): Promise<void> {
     const binding = bindings.get(host);
     const listener =
       binding && (globalThis as Record<string, unknown>)[binding];
     if (typeof listener !== "function") return;
     try {
-      void Promise.resolve(listener(token, message)).catch(() => {});
+      await listener(token, message);
     } catch {
       // A host that is gone hears nothing.
     }
   }
 
+  // The hosts that hear of changes, and what each was last told.
+  const watching = new Set<HostKey>();
+  const told = new Map<HostKey, number>();
+  const telling = new Set<HostKey>();
+  // The batches of change so far: the page's activity, and its navigations.
+  let seq = 0;
+  let subscribed = false;
+  const changed = () => {
+    seq += 1;
+    for (const host of watching) void tellChange(host);
+  };
+  /** Tells `host` of the changes so far, one call at a time, and again if more came meanwhile. */
+  async function tellChange(host: HostKey): Promise<void> {
+    if (telling.has(host) || told.get(host) === seq) return;
+    told.set(host, seq);
+    telling.add(host);
+    await tell(host, { kind: "change", seq });
+    telling.delete(host);
+    if (watching.has(host)) void tellChange(host);
+  }
+  const stateOf = (): ChangeState => ({ document: token, seq });
+
   // The watchers are the document's own: a new document arms new ones.
-  const actions = createActions({
-    activity: watchActivity(document),
-    capture,
-    tell,
-  });
+  const activity = watchActivity(document);
+  const actions = createActions({ activity, capture, tell });
   watchSameDocumentNavigations(window, () => {
     for (const host of bindings.keys())
-      tell(host, { kind: "visit", url: location.href });
+      void tell(host, { kind: "visit", url: location.href });
+    changed();
   });
   watchFullLoads(window, actions.loadStarted);
 
@@ -205,6 +264,37 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       return { document: token, version, installedBy, host };
     },
     capture,
+    probe: (
+      host: HostKey,
+      elements: readonly Element[],
+      request: ProbeRequest
+    ) => roots.probe(host, elements, request),
+    mint: (_host: HostKey, elements: readonly Element[]) =>
+      elements.map(refs.nameOf),
+    names: (
+      _host: HostKey,
+      [element, ...others]: readonly Element[],
+      ref: string
+    ) =>
+      element !== undefined && !others.length && refs.everNamed(element, ref),
+    endRound: (host: HostKey, round: number) => roots.endRound(host, round),
+    watch(host: HostKey, { binding, on }: { binding: string; on: boolean }) {
+      if (on) {
+        bindings.set(host, binding);
+        watching.add(host);
+        if (!subscribed) {
+          subscribed = true;
+          // A same-document navigation changes no DOM by itself, but a
+          // presence predicate may read the URL: it counts above.
+          activity.subscribe(changed);
+        }
+      } else {
+        watching.delete(host);
+        told.delete(host);
+      }
+      return stateOf();
+    },
+    changes: stateOf,
     measure: (_host: HostKey, { ref, stage }: ReachRequest): ReachAnswer => {
       const element = refs.elementOf(ref);
       if (!element?.isConnected) return { kind: "gone" };
@@ -227,6 +317,7 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       elements.map(refs.lastRefOf),
     queryRef: refs.queryRef,
     elementOf: refs.elementOf,
+    elementEverNamed: refs.elementEverNamed,
     pick(host: HostKey, { id, ...request }: PickRequest) {
       if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
       const picking = startPicking(request, refs.refOf, (notice) =>

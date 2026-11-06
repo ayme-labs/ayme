@@ -6,7 +6,6 @@ import {
 import {
   createAymeRuntime,
   createPage,
-  installPageDriverReach,
   probeRegisteredPomMembers,
   registerPageObject,
   subscribeToRegisteredPoms,
@@ -585,7 +584,6 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     owner.dispose();
     owner = undefined;
     configureStartedPage(undefined);
-    installPageDriverReach(undefined);
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
@@ -818,7 +816,6 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       owner = createAymeRuntime(getPage());
       reach = sessionReach(ayme);
       configureStartedPage({ page: getPage(), reach });
-      installPageDriverReach(reach);
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
       configurePageStateIgnore(options.ignore);

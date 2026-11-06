@@ -19,5 +19,5 @@ export {
   renderSchema,
 } from "./pomDefinitionText";
 export { rootTargetPath } from "./pomTree";
-export type { RegisteredPomTarget } from "./pomTree";
+export type { RegisteredPomTarget, RegisteredPomTargetRef } from "./pomTree";
 export { rootlessClassRefusals } from "./pomClasses";

@@ -21,11 +21,12 @@ import {
   type DocumentToken,
 } from "../../shared";
 import type { CallName, CallResult } from "../page/call";
-import type { CallOnResult } from "../page/callOn";
+import type { CallOnName, CallOnResult } from "../page/callOn";
 import type {
   ActionInputs,
   Begun,
   Bound,
+  ChangeState,
   ElementInputs,
   HostKey,
   HostMessage,
@@ -33,6 +34,7 @@ import type {
   ReachAnswer,
   ReachMeasurement,
   ReachRequest,
+  RootState,
   Settled,
 } from "../page/install";
 import { highlightStyles, type HighlightStyle } from "./highlightStyles";
@@ -45,6 +47,7 @@ export type {
   ElementInputs,
   HostKey,
   ReachMeasurement,
+  RootState,
 } from "../page/install";
 
 const gone: ReachMeasurement = { present: false, available: false };
@@ -81,6 +84,44 @@ export type InPage = {
    * focus: the last opened native modal it is not in, else its inert ancestor.
    */
   blockingAncestor(ref: string): Promise<string | undefined>;
+  /**
+   * Page Object Root `root`: how many elements its Locator matches, and
+   * whether it is on the page (Page Object Presence) and a click would reach
+   * it (Page Object Availability), measured with the Locator resolved in one
+   * task in the page, never scrolling or sending input (ADR-0019). Called
+   * inside a probe run of `watch`, it also labels this host's roots with
+   * `label` in its later captures.
+   */
+  probe(root: Locator, label: string): Promise<RootState>;
+  /**
+   * Runs `probe` now and after every change of the page, one run at a time;
+   * changes during a run coalesce into one follow-up. The run follows the
+   * page across full loads. Its `signal` aborts when the returned function,
+   * which stops watching, is called. One watch per InPage: a second throws.
+   */
+  watch(probe: (signal: AbortSignal) => Promise<void>): () => void;
+  /**
+   * Makes a probe run due for a change the page did not make, such as a
+   * Page Object registered. Without a watch it does nothing.
+   */
+  refresh(): void;
+  /**
+   * Resolves once no probe run is due: the running one and at most one
+   * follow-up, so a page that never rests can still be read. Rejects with
+   * what a run it awaited failed with. Without a watch it resolves at once.
+   */
+  probed(): Promise<void>;
+  /**
+   * The Structural Ref of each element `target` matches, one the module has
+   * not named yet named now (unlike `elements.refs`, which names nothing).
+   */
+  mint(target: Locator): Promise<string[]>;
+  /**
+   * Whether `ref`, now or before, names the one element `target` matches:
+   * what tells that a root found earlier is still the root, although a
+   * capture since has marked it, or its name has changed.
+   */
+  names(target: Locator, ref: string): Promise<boolean>;
   /**
    * Picks a Structural Ref by pointing at the document. The element under
    * the pointer that has a ref is boxed with the hover highlight, or the
@@ -153,9 +194,8 @@ export type PickOptions = {
 
 export type CaptureOptions = {
   /**
-   * Transitional: the host's Page Object Roots and ignore predicate as a
-   * handle to live values in the page (`ElementInputs`), until the registry
-   * probes in the page (#1175) and `ignore` takes a selector (#1177).
+   * Transitional: the host's ignore predicate as a handle to a live value in
+   * the page (`ElementInputs`), until `ignore` takes a selector (#1177).
    */
   elements?: JSHandle<ElementInputs>;
 };
@@ -197,6 +237,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
     let exposed: Promise<unknown> | undefined;
     // The document this host last bound in the Page.
     let current: DocumentToken | undefined;
+    const watcher = createWatcher();
     const visitListeners = new Set<(visit: VisitSignal) => void>();
     let followsLoads = false;
     // Loads the module told of, by document and action, until the action's
@@ -219,6 +260,10 @@ export function createInPageHost(version = packageVersion): InPageHost {
     function hear(document: DocumentToken, message: HostMessage) {
       if (message.kind === "pick") {
         listeners.get(message.id)?.(message.notice);
+        return;
+      }
+      if (message.kind === "change") {
+        if (document === current) watcher.heard(document, message);
         return;
       }
       if (message.kind === "visit") {
@@ -382,6 +427,12 @@ export function createInPageHost(version = packageVersion): InPageHost {
       };
     }
 
+    /** The module's `name` on the elements `target` matches, installed first when it is missing. */
+    const callOn = <T>(target: Locator, name: CallOnName, inputs?: unknown) =>
+      throughModule<T>(() =>
+        target.evaluateAll(callOnInPage, { version, host, name, inputs })
+      );
+
     const inPage: InPage = {
       bound,
       capture: ({ elements } = {}) => call<Capture>("capture", [elements]),
@@ -414,6 +465,29 @@ export function createInPageHost(version = packageVersion): InPageHost {
         ]);
         return answer.kind === "blocking" ? answer.blocker : undefined;
       },
+      async probe(root, label) {
+        const round = watcher.round;
+        const request = { label, ...(round !== undefined && { round }) };
+        return callOn<RootState>(root, "probe", request);
+      },
+      mint: (target) => callOn<string[]>(target, "mint"),
+      names: (target, ref) => callOn<boolean>(target, "names", ref),
+      watch(probe) {
+        return watcher.start({
+          probe,
+          watching: (on) => call<ChangeState>("watch", [{ binding, on }]),
+          changes: () => call<ChangeState>("changes", []),
+          endRound: async (round) => {
+            await call("endRound", [round]);
+          },
+          loads: (listener) => {
+            page.on("domcontentloaded", listener);
+            return () => page.off("domcontentloaded", listener);
+          },
+        });
+      },
+      refresh: () => watcher.refresh(),
+      probed: () => watcher.probed(),
       async pick(accept, { ignore, signal, styles } = {}) {
         const id = hostKey();
         const paint = highlighting(page, {
@@ -480,6 +554,130 @@ export function createInPageHost(version = packageVersion): InPageHost {
       let found = pages.get(page);
       if (!found) pages.set(page, (found = forPage(page)));
       return found;
+    },
+  };
+}
+
+/** What a watcher needs of its Page. */
+type WatcherPage = {
+  probe(signal: AbortSignal): Promise<void>;
+  /** Whether the document tells this host of changes, and where they stand. */
+  watching(on: boolean): Promise<ChangeState>;
+  /** Where the document's changes stand. */
+  changes(): Promise<ChangeState>;
+  endRound(round: number): Promise<void>;
+  /** Calls `listener` when a document has loaded, until the returned function is called. */
+  loads(listener: () => void): () => void;
+};
+
+/**
+ * One InPage's watch: probe runs one at a time, a follow-up when the page
+ * changed during one, over every document the Page shows.
+ */
+function createWatcher() {
+  type Run = {
+    page: WatcherPage;
+    signal: AbortSignal;
+    /** What the watch heard of changes, and where the latest run began. */
+    known?: ChangeState;
+    began?: ChangeState;
+    /** Whether a change the page did not make is waiting for a run. */
+    refreshed?: boolean;
+    running?: Promise<void>;
+    timer?: ReturnType<typeof setTimeout>;
+  };
+  let watch: (Run & { controller: AbortController }) | undefined;
+  let round: number | undefined;
+  let rounds = 0;
+
+  const moved = (from: ChangeState | undefined, to: ChangeState | undefined) =>
+    to !== undefined &&
+    (from === undefined || from.document !== to.document || to.seq > from.seq);
+  const isDue = (run: Run) =>
+    run.refreshed === true || moved(run.began, run.known);
+
+  function note(run: Run, state: ChangeState): void {
+    if (!run.known || moved(run.known, state)) run.known = state;
+  }
+
+  function schedule(run: Run): void {
+    if (run.running || run.timer !== undefined || run.signal.aborted) return;
+    // Changes that come together are one run.
+    run.timer = setTimeout(() => {
+      run.timer = undefined;
+      void start(run).catch(() => {});
+    }, 0);
+  }
+
+  function start(run: Run): Promise<void> {
+    if (run.running) return run.running;
+    if (run.timer !== undefined) clearTimeout(run.timer);
+    run.timer = undefined;
+    run.refreshed = false;
+    const mine = (round = ++rounds);
+    run.running = (async () => {
+      try {
+        run.began = await run.page.watching(true);
+        note(run, run.began);
+        await run.page.probe(run.signal);
+        if (!run.signal.aborted) await run.page.endRound(mine);
+      } finally {
+        run.running = undefined;
+        if (round === mine) round = undefined;
+        if (!run.signal.aborted && isDue(run)) schedule(run);
+      }
+    })();
+    return run.running;
+  }
+
+  return {
+    /** The probe run in progress: what a `probe` belongs to. */
+    get round() {
+      return round;
+    },
+    /** What the module tells this host about a document. */
+    heard(document: DocumentToken, message: HostMessage): void {
+      if (!watch || message.kind !== "change") return;
+      note(watch, { document, seq: message.seq });
+      if (isDue(watch)) schedule(watch);
+    },
+    refresh(): void {
+      if (!watch) return;
+      watch.refreshed = true;
+      schedule(watch);
+    },
+    start(page: WatcherPage): () => void {
+      if (watch) throw new RuntimeStateError("This Page is watched already.");
+      const controller = new AbortController();
+      const run: Run & { controller: AbortController } = {
+        page,
+        signal: controller.signal,
+        controller,
+      };
+      watch = run;
+      // A full load ends the document the module was watching in.
+      const stopListening = page.loads(() => schedule(run));
+      schedule(run);
+      return () => {
+        if (watch !== run) return;
+        watch = undefined;
+        controller.abort();
+        stopListening();
+        if (run.timer !== undefined) clearTimeout(run.timer);
+        run.timer = undefined;
+        // Best effort: the document may be gone.
+        void page.watching(false).catch(() => {});
+      };
+    },
+    async probed(): Promise<void> {
+      const run = watch;
+      if (!run) return;
+      // Changes made in this very task have not been told yet.
+      note(run, await run.page.changes());
+      await run.running;
+      if (!run.began || isDue(run)) await start(run);
+      // At most one follow-up.
+      if (watch === run && isDue(run)) await start(run);
     },
   };
 }

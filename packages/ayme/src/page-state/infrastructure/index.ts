@@ -1,4 +1,5 @@
 export { pageOfDocument } from "./browserInPage";
+export { browserInPage } from "./browserInPage";
 export { assertReachable, inTheWayOf, reaches } from "./elementReach";
 export type { ElementInput } from "./elementReach";
 export { startNavigation } from "./navigation";
@@ -14,9 +15,10 @@ export {
   latestPageStateCapture,
   latestPageStateRef,
   latestPageStateRefOf,
+  latestPageStateRefNamed,
   lookAtPageStateForDocument,
   onPageStateRecorded,
-  providePageObjectStructure,
+  providePageObjectProbe,
   resolvePageStateRef,
 } from "./pageState";
 export { geometryReach } from "./reachMeasurement";

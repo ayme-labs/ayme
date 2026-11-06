@@ -1,5 +1,11 @@
-import { litePageDriver } from "./litePageDriver";
+import { elementEverNamed } from "../../in-page";
+import {
+  browserInPage,
+  latestPageStateRefNamed,
+  onPageStateRecorded,
+} from "../../page-state/infrastructure";
 import { createPomRegistry } from "../application/pomRegistry";
+import { inPageDriver } from "./inPageDriver";
 
 // The registry's interface includes registering the compiled manifests its
 // registrations read.
@@ -17,10 +23,9 @@ export type {
 
 /**
  * The browser runtime's Page Object registry, which reads the page through
- * Playwright Lite.
+ * the in-page module of its document, over Playwright Lite.
  */
 export const {
-  getRegisteredPomStructure,
   listAvailablePomTools,
   listRootedToolInstances,
   listRegisteredPomRoots,
@@ -31,4 +36,12 @@ export const {
   registerPageObject,
   resetRegisteredPoms,
   subscribeToRegisteredPoms,
-} = createPomRegistry(litePageDriver);
+} = createPomRegistry(
+  inPageDriver(() => browserInPage(), latestPageStateRefNamed),
+  {
+    // Transitional (#1182): this realm holds the document, so refs turn into
+    // its elements.
+    elementOf: elementEverNamed,
+    onPageStateRecorded: (listener) => onPageStateRecorded(document, listener),
+  }
+);

@@ -124,6 +124,20 @@ describe("the in-page module over real Playwright, as built", () => {
   inPageContract({
     newPage,
     createHost: (_page, version) => built.createInPageHost(version),
+    pageObjects: {
+      get ayme() {
+        return built.ayme;
+      },
+      get createPomRegistry() {
+        return built.createPomRegistry;
+      },
+      get inPageDriver() {
+        return built.inPageDriver;
+      },
+      get registerCompiledPom() {
+        return built.registerCompiledPom;
+      },
+    },
     async reload(page) {
       await page.reload();
       return page;

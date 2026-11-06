@@ -11,7 +11,7 @@ const { captureAriaSnapshot, pageObjectStructure } = vi.hoisted(() => ({
 vi.mock("../../page-state/infrastructure/browserInPage", async () =>
   (
     await import("../../test-utils/inPageCapture.testSupport")
-  ).standInBrowserInPage(captureAriaSnapshot)
+  ).standInBrowserInPage(captureAriaSnapshot, () => pageObjectStructure())
 );
 
 const waitForSettled = vi.hoisted(() =>
@@ -32,7 +32,6 @@ import { RefResolutionError } from "../../shared";
 import {
   getPageStateForDocument,
   latestPageStateElement,
-  providePageObjectStructure,
 } from "../../page-state/infrastructure";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
 import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
@@ -41,7 +40,6 @@ import type { AriaRef } from "../../page-state/domain";
 
 const ref = AriaRefSchema.parse;
 
-providePageObjectStructure(pageObjectStructure);
 // jsdom lays nothing out: every element these calls address is reached.
 const reach = alwaysReaches();
 const clickRef = (page: Page, target: AriaRef) =>

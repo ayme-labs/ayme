@@ -2,7 +2,6 @@ import type { Locator, Page } from "@playwright/test";
 import { reachInRealm } from "../../in-page";
 import type { Reach, ReachMeasurement } from "../application/reach";
 
-const absent: ReachMeasurement = { present: false, available: false };
 const reached: ReachMeasurement = { present: true, available: true };
 
 /**
@@ -12,14 +11,6 @@ const reached: ReachMeasurement = { present: true, available: true };
  * runtime picks it unless a unit test hands its session another.
  */
 export const geometryReach: Reach = {
-  async measurePomRoot(locator: Locator, element: Element) {
-    try {
-      if (!(await locator.isVisible())) return absent;
-    } catch {
-      return absent;
-    }
-    return reachInRealm().measure(element);
-  },
   measureReach: (_page: Page, element: Element) =>
     reachInRealm().measure(element),
   async measureReachAtCall(locator: Locator, element: Element) {

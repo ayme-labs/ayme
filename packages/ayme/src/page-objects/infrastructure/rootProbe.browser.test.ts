@@ -1,18 +1,23 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { geometryReach } from "../../page-state/infrastructure";
+import { elementOfRef, inPage } from "../../in-page";
 import { createPage } from "./browserPage";
-import { observePomRoot as observe } from "./pomRootObservation";
 
 import type { Locator } from "@playwright/test";
 
 const byId = (id: string) => document.getElementById(id)!;
 
-// What one observation found of the root, apart from its element.
+// What one probe found of the root, with what is in the way as the elements
+// its refs name.
 const observePomRoot = async (locator: Locator) => {
-  const { present, available, inTheWay } = (
-    await observe(locator, geometryReach)
-  ).root;
-  return { present, available, inTheWay };
+  const { present, available, inTheWay } = await inPage(createPage()).probe(
+    locator,
+    "Root"
+  );
+  return {
+    present,
+    available,
+    inTheWay: inTheWay.flatMap((ref) => elementOfRef(ref) ?? []),
+  };
 };
 
 // Preserve the original availability matrix while testing presence separately.

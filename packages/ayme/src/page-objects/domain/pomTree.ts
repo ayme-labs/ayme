@@ -26,6 +26,15 @@ export type RegisteredPomTarget = {
 };
 
 /**
+ * A target as the registry resolves it: the element named by its Structural
+ * Ref, which the browser runtime turns into the `RegisteredPomTarget`'s
+ * element.
+ */
+export type RegisteredPomTargetRef = Omit<RegisteredPomTarget, "element"> & {
+  ref: string;
+};
+
+/**
  * A locator a Page Object member or root holds, at the target path of that
  * member or root. Resolved when the targets are read, so they are the
  * elements it holds then.

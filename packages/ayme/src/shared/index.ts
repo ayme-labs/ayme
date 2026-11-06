@@ -56,4 +56,5 @@ export {
   onlyOwnMarks,
 } from "./inspectorMarks";
 export type { ReachMeasurement } from "./reach";
+export type { RootState } from "./root";
 export { checkedToolInput, refuseViolations } from "./schemaValidation";

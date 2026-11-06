@@ -27,10 +27,22 @@ export type DualCapture = (root: Element) => {
 };
 
 /**
+ * The Page Object Roots a test has its captures place and leave out, as the
+ * module would hold them from the registry's latest probe run.
+ */
+export type StandInRoots = () => Promise<{
+  roots: readonly { mark: string; element: Element }[];
+  absentElements: readonly Element[];
+}>;
+
+/**
  * The module `vi.mock` puts in place of browserInPage.ts: each document
  * gets a ref world of its own, and `snapshot`'s refs mark its elements.
  */
-export function standInBrowserInPage(snapshot: DualCapture) {
+export function standInBrowserInPage(
+  snapshot: DualCapture,
+  rootsOf: StandInRoots = async () => ({ roots: [], absentElements: [] })
+) {
   const worlds = new WeakMap<Document, ReturnType<typeof createRefWorld>>();
   let latest: ReturnType<typeof createRefWorld> | undefined;
   const worldOf = (currentDocument: Document) => {
@@ -46,23 +58,33 @@ export function standInBrowserInPage(snapshot: DualCapture) {
     }
     return (latest = world);
   };
-  const capture = (
+  const capture = async (
     currentDocument: Document,
     inputs: ElementInputs
-  ): Capture => ({
-    document: "standIn" as DocumentToken,
-    url: currentDocument.URL,
-    ...worldOf(currentDocument).capture(currentDocument.body, inputs),
-  });
+  ): Promise<Capture> => {
+    const { roots, absentElements } = await rootsOf();
+    return {
+      document: "standIn" as DocumentToken,
+      url: currentDocument.URL,
+      ...worldOf(currentDocument).capture(currentDocument.body, {
+        ...inputs,
+        roots: roots.map(({ mark, element }) => ({ label: mark, element })),
+        absent: absentElements,
+      }),
+    };
+  };
   return {
     bindDocument: () => {},
-    captureDocument: async (currentDocument: Document, inputs: ElementInputs) =>
+    browserInPage: () => {
+      throw new Error("A jsdom test has no in-page module to reach.");
+    },
+    captureDocument: (currentDocument: Document, inputs: ElementInputs) =>
       capture(currentDocument, inputs),
     beginDocumentAction: async (
       currentDocument: Document,
       inputs: () => Promise<ElementInputs>
     ) => ({
-      before: capture(currentDocument, await inputs()),
+      before: await capture(currentDocument, await inputs()),
       async perform<T>(
         perform: () => T | Promise<T>
       ): Promise<ActionOutcome<T>> {
@@ -82,7 +104,7 @@ export function standInBrowserInPage(snapshot: DualCapture) {
         return {
           ...done,
           stable,
-          after: capture(currentDocument, await inputs()),
+          after: await capture(currentDocument, await inputs()),
         };
       },
     }),

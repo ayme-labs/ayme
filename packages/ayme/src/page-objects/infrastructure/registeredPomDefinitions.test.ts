@@ -4,10 +4,11 @@ import type { PomManifest, ToolManifest } from "../../shared";
 import type { AymePage } from "../../runtime";
 import type { TestSession } from "../../test-utils/session.testSupport";
 
-class FakeMutationObserver {
-  observe() {}
-  disconnect() {}
-}
+vi.mock("./inPageDriver", async () =>
+  (
+    await import("../../test-utils/pageDriver.testSupport")
+  ).standInDriverModule()
+);
 
 const action = (
   methodName: string,
@@ -50,7 +51,6 @@ describe("POM definition catalog", () => {
   beforeEach(() => {
     vi.stubGlobal("window", {});
     vi.stubGlobal("document", { documentElement: {} });
-    vi.stubGlobal("MutationObserver", FakeMutationObserver);
   });
 
   afterEach(() => {

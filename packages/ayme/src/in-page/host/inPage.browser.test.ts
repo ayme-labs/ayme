@@ -3,6 +3,12 @@
 import type { Page } from "@playwright/test";
 import { afterEach, describe } from "vitest";
 
+import { ayme } from "../../page-objects/domain";
+import {
+  createPomRegistry,
+  registerCompiledPom,
+} from "../../page-objects/application";
+import { inPageDriver } from "../../page-objects/infrastructure";
 import { inPageContract } from "./inPageContract.testSupport";
 import type { LiteFrame } from "./liteFrame.testSupport";
 
@@ -48,6 +54,7 @@ describe("the in-page module over Playwright Lite", () => {
     },
     createHost: (page, version) =>
       frameOf(page).aymeLiteFrame.createHost(version),
+    pageObjects: { ayme, createPomRegistry, inPageDriver, registerCompiledPom },
     async reload(page) {
       const window = frameOf(page);
       const frame = frames.get(page)!;

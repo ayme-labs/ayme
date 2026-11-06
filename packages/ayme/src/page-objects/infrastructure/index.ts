@@ -12,4 +12,4 @@ export {
   subscribeToRegisteredPoms,
 } from "./registry";
 export { createAymeRuntime } from "./aymeRuntime";
-export { installPageDriverReach } from "./litePageDriver";
+export { inPageDriver } from "./inPageDriver";

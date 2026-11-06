@@ -65,7 +65,8 @@ const edits: Edit[] = [
  * pinned InjectedScript, as an ES module whose marks and ref counter come
  * from its caller: `captureAriaSnapshot(root, { mode: "ai", aymeRefs })`.
  * Playwright Lite's and stock Playwright's copies keep their own; this one
- * never reads or writes theirs.
+ * never reads or writes theirs. It also exports Playwright's `isElementVisible`,
+ * the visibility `locator.isVisible()` reads.
  */
 export function pinnedAriaSnapshotModule(): string {
   let source = readPinnedSource();
@@ -80,7 +81,7 @@ export function pinnedAriaSnapshotModule(): string {
   for (const left of ["_ariaRef", "lastRef", "injectedScript_exports"])
     if (source.includes(left))
       throw new Error(`The pinned InjectedScript still uses ${left}.`);
-  return `${source}\nexport { captureAriaSnapshot };\n`;
+  return `${source}\nexport { captureAriaSnapshot, isElementVisible };\n`;
 }
 
 function readPinnedSource(): string {

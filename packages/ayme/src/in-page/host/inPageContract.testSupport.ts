@@ -1,12 +1,31 @@
 import type { Page } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 
-import type { ElementInputs, InPageHost, VisitSignal } from "./inPage";
+import type { ElementInputs, InPage, InPageHost, VisitSignal } from "./inPage";
+import type {
+  PageObjectConstructor,
+  createPomRegistry,
+  registerCompiledPom,
+} from "../../page-objects/application";
+import type { inPageDriver } from "../../page-objects/infrastructure";
+import type { ayme } from "../../page-objects/domain";
+
+/**
+ * The Page Object registry, as one lane builds it: the built package's in
+ * Node, the source's in the browser. It runs unchanged over either.
+ */
+export type PageObjectsKit = {
+  ayme: typeof ayme;
+  createPomRegistry: typeof createPomRegistry;
+  inPageDriver: typeof inPageDriver;
+  registerCompiledPom: typeof registerCompiledPom;
+};
 
 /**
  * One runtime the in-page module's contract runs on: Playwright Lite in the
  * browser, or real Playwright in Node against the built package.
  */
+export type { PageObjectConstructor };
 export type InPageLane = {
   /** A page showing a fresh, empty document. */
   newPage(): Promise<Page>;
@@ -19,6 +38,8 @@ export type InPageLane = {
    * asked before the page starts the load itself.
    */
   nextDocument(page: Page): Promise<Page>;
+  /** The Page Object registry this lane runs over the module. */
+  pageObjects: PageObjectsKit;
   /** Whether a host outlives a full load of its page, as a Node host does and the page's own runtime does not. */
   hostsOutliveLoads: boolean;
 };
@@ -52,6 +73,29 @@ function appAttributes(page: Page) {
   return page.evaluate(`[...document.querySelectorAll("*")]
     .filter((element) => element.localName !== "x-pw-glass")
     .map((element) => [element.localName, ...[...element.attributes].map((a) => a.name + "=" + a.value)].join(" "))`);
+}
+
+/**
+ * Runs one probe run of `inPageOf` that probes the roots `at` selects, each
+ * with its label, so the host's later captures place them.
+ */
+async function labelling(
+  inPageOf: InPage,
+  page: Page,
+  roots: readonly (readonly [label: string, selector: string])[]
+) {
+  const stop = inPageOf.watch(async () => {
+    await Promise.all(
+      roots.map(([label, selector]) =>
+        inPageOf.probe(page.locator(selector), label)
+      )
+    );
+  });
+  try {
+    await inPageOf.probed();
+  } finally {
+    stop();
+  }
 }
 
 /** Every Structural Ref a capture text prints, in order. */
@@ -246,23 +290,16 @@ export function inPageContract(lane: InPageLane) {
       '<div role="none" id="a"><button>One</button></div><div role="none" id="b"><button>Two</button></div>'
     );
     const [one, other] = [lane.createHost(page), lane.createHost(page)];
-    const labelling = (labels: [string, string][]) =>
-      page.evaluateHandle<ElementInputs>(
-        `({ roots: ${JSON.stringify(labels)}.map(([label, id]) => ({ label, element: document.getElementById(id) })) })`
-      );
 
-    const first = await one
-      .inPage(page)
-      .capture({ elements: await labelling([["ListPage", "a"]]) });
-    const second = await other
-      .inPage(page)
-      .capture({ elements: await labelling([["CartPage", "b"]]) });
-    const both = await other.inPage(page).capture({
-      elements: await labelling([
-        ["CartPage", "b"],
-        ["ListPage", "a"],
-      ]),
-    });
+    await labelling(one.inPage(page), page, [["ListPage", "#a"]]);
+    const first = await one.inPage(page).capture();
+    await labelling(other.inPage(page), page, [["CartPage", "#b"]]);
+    const second = await other.inPage(page).capture();
+    await labelling(other.inPage(page), page, [
+      ["CartPage", "#b"],
+      ["ListPage", "#a"],
+    ]);
+    const both = await other.inPage(page).capture();
 
     const [listPage] = first.roots;
     const [cartPage] = second.roots;
@@ -296,13 +333,14 @@ export function inPageContract(lane: InPageLane) {
     const page = await lane.newPage();
     await setBody(
       page,
-      '<button>Kept</button><aside id="ignored"><button>Ignored</button></aside><section id="absent" aria-label="Absent part"><button>Absent</button></section>'
+      '<button>Kept</button><aside id="ignored"><button>Ignored</button></aside><section id="absent" aria-label="Absent part" style="height:0"><button>Absent</button></section>'
     );
     const host = lane.createHost(page);
+    await labelling(host.inPage(page), page, [["Absent", "#absent"]]);
 
     const capture = await host.inPage(page).capture({
       elements: await page.evaluateHandle<ElementInputs>(
-        '({ absent: [document.getElementById("absent")], ignores: (element) => element.id === "ignored" })'
+        '({ ignores: (element) => element.id === "ignored" })'
       ),
     });
 
@@ -790,4 +828,468 @@ export function inPageContract(lane: InPageLane) {
       expect(visits[1]!.url).toBe(page.url());
     }
   );
+
+  describe("probing a Page Object Root", () => {
+    it("a root that shows and nothing covers is one element, present and available, named by its ref", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<main><button id="save">Save</button></main>');
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const state = await inPageOf.probe(page.locator("#save"), "SavePage");
+
+      expect(state).toEqual({
+        count: 1,
+        present: true,
+        available: true,
+        ref: expect.any(String),
+        inTheWay: [],
+      });
+      expect(
+        await page.locator(`ayme-ref=${state.ref}`).getAttribute("id")
+      ).toBe("save");
+    });
+
+    it("a Locator that matches nothing, or several elements, has no root", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>Row</p><p>Row</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      expect(await inPageOf.probe(page.locator("#none"), "A")).toEqual({
+        count: 0,
+        present: false,
+        available: false,
+        inTheWay: [],
+      });
+      expect(await inPageOf.probe(page.locator("p"), "A")).toEqual({
+        count: 2,
+        present: false,
+        available: false,
+        inTheWay: [],
+      });
+    });
+
+    it("a root that does not show is absent, and still named by its ref", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<p id="hidden" style="display:none">Hidden</p>');
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const state = await inPageOf.probe(page.locator("#hidden"), "A");
+
+      expect(state).toMatchObject({
+        count: 1,
+        present: false,
+        available: false,
+        inTheWay: [],
+      });
+      expect(
+        await page.locator(`ayme-ref=${state.ref}`).getAttribute("id")
+      ).toBe("hidden");
+    });
+
+    it("a root a click would not reach is present and unavailable, and names what is in the way", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<button id="save">Save</button><div id="cover" role="dialog" aria-label="Cover" style="position:fixed;inset:0"></div>'
+      );
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const state = await inPageOf.probe(page.locator("#save"), "SavePage");
+
+      expect(state).toMatchObject({ present: true, available: false });
+      expect(state.inTheWay).toHaveLength(1);
+      expect(
+        await page.locator(`ayme-ref=${state.inTheWay[0]}`).getAttribute("id")
+      ).toBe("cover");
+    });
+
+    it("probing installs the module in a document that has none, and measures nothing it scrolls", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<div style="height:3000px"></div><button id="far">Far</button>'
+      );
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const state = await inPageOf.probe(page.locator("#far"), "FarPage");
+
+      expect(state).toMatchObject({ count: 1, present: true, available: true });
+      expect(await page.evaluate("window.scrollY")).toBe(0);
+    });
+
+    it("a probe outside a probe run labels nothing in the captures", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<div role="none" id="a"><button>One</button></div>');
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      await inPageOf.probe(page.locator("#a"), "ListPage");
+
+      expect((await inPageOf.capture()).roots).toEqual([]);
+    });
+
+    it("a root a click would not reach is still marked, and a root that does not show is left out of the captures", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<div id="a" role="region" aria-label="Shown"><button>One</button></div><div id="b" role="region" aria-label="Hidden" style="height:0"><button>Two</button></div>'
+      );
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      await labelling(inPageOf, page, [
+        ["ShownPage", "#a"],
+        ["HiddenPage", "#b"],
+      ]);
+      const capture = await inPageOf.capture();
+
+      expect(capture.roots).toEqual([
+        { labels: ["ShownPage"], ref: refOf(capture.fullText, "Shown") },
+      ]);
+      expect(capture.excludedRefs).toEqual([
+        refOf(capture.fullText, "Hidden"),
+        refOf(capture.fullText, '"Two"'),
+      ]);
+    });
+
+    it("the labels are the ones of the latest completed run, and a run that probes no root clears them", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<div role="none" id="a"><button>One</button></div>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      await labelling(inPageOf, page, [["ListPage", "#a"]]);
+      expect((await inPageOf.capture()).roots).toHaveLength(1);
+
+      await labelling(inPageOf, page, []);
+
+      expect((await inPageOf.capture()).roots).toEqual([]);
+    });
+
+    it("a root the capture marked after a probe named it keeps the ref the probe gave", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<button id="save">Save</button>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { ref } = await inPageOf.probe(page.locator("#save"), "SavePage");
+
+      await inPageOf.capture();
+
+      expect(await page.locator(`ayme-ref=${ref}`).getAttribute("id")).toBe(
+        "save"
+      );
+    });
+
+    it("mint names the elements a Locator matches, and the same element by the same ref", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p><p>Two</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      const refs = await inPageOf.mint(page.locator("p"));
+      const again = await inPageOf.mint(page.locator("p").last());
+
+      expect(refs).toHaveLength(2);
+      expect(again).toEqual([refs[1]]);
+      expect(await inPageOf.mint(page.locator("#none"))).toEqual([]);
+    });
+  });
+
+  describe("watching the page", () => {
+    it("names the element it matched by a ref it gave before, though the ref has changed since", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<button id="save">Save</button><p id="other">x</p>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { ref } = await inPageOf.probe(page.locator("#save"), "SavePage");
+      // A capture marks the button, which then has a ref of its own.
+      const { fullText } = await inPageOf.capture();
+
+      expect(refOf(fullText, '"Save"')).not.toBe(ref);
+      expect(await inPageOf.names(page.locator("#save"), ref!)).toBe(true);
+      expect(await inPageOf.names(page.locator("#other"), ref!)).toBe(false);
+      expect(await inPageOf.names(page.locator("button, p"), ref!)).toBe(false);
+    });
+
+    it("refresh makes a probe run due for a change the page did not make", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+      const log: string[] = [];
+      const stop = inPageOf.watch(async () => {
+        log.push("run");
+      });
+      await inPageOf.probed();
+      expect(log).toEqual(["run"]);
+
+      inPageOf.refresh();
+      await inPageOf.probed();
+
+      expect(log).toEqual(["run", "run"]);
+      stop();
+      inPageOf.refresh();
+      await inPageOf.probed();
+      expect(log).toEqual(["run", "run"]);
+    });
+
+    /** A watch whose runs a test records, each as the instants it began and ended. */
+    function recorder(
+      inPageOf: InPage,
+      during: () => Promise<void> = async () => {}
+    ) {
+      const log: string[] = [];
+      let running = 0;
+      let overlapped = false;
+      const stop = inPageOf.watch(async () => {
+        running += 1;
+        overlapped ||= running > 1;
+        log.push("begin");
+        await during();
+        log.push("end");
+        running -= 1;
+      });
+      return { log, stop, overlapped: () => overlapped };
+    }
+
+    it("probes now, and again after the page changes", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { log, stop } = recorder(inPageOf);
+
+      await inPageOf.probed();
+      expect(log).toEqual(["begin", "end"]);
+      await setBody(page, "<p>Two</p>");
+      await expect.poll(() => log.length).toBe(4);
+      await inPageOf.probed();
+
+      expect(log).toEqual(["begin", "end", "begin", "end"]);
+      stop();
+    });
+
+    it("follows layout and scroll as well as the DOM", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<div style="height:3000px"></div>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { log, stop } = recorder(inPageOf);
+      await inPageOf.probed();
+
+      await page.evaluate("window.scrollTo(0, 500)");
+
+      await expect.poll(() => log.length).toBe(4);
+      stop();
+    });
+
+    it("runs one at a time, and the changes made during a run are one follow-up", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+      let release = () => {};
+      let gate = new Promise<void>((resolve) => (release = resolve));
+      const { log, stop, overlapped } = recorder(inPageOf, () => gate);
+      await expect.poll(() => log.length).toBe(1);
+
+      for (const text of ["Two", "Three", "Four"]) {
+        await setBody(page, `<p>${text}</p>`);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      gate = Promise.resolve();
+      release();
+      await expect.poll(() => log.length).toBe(4);
+      await inPageOf.probed();
+
+      expect(log).toEqual(["begin", "end", "begin", "end"]);
+      expect(overlapped()).toBe(false);
+      stop();
+    });
+
+    it("probed settles a change made in the same task, awaiting at most one follow-up", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { log, stop } = recorder(inPageOf);
+      await inPageOf.probed();
+      log.length = 0;
+
+      await setBody(page, "<p>Two</p>");
+      await inPageOf.probed();
+
+      expect(log).toEqual(["begin", "end"]);
+      stop();
+    });
+
+    it("probed resolves at once when nothing watches, and rejects with what a run failed with", async () => {
+      const page = await lane.newPage();
+      const inPageOf = lane.createHost(page).inPage(page);
+      await inPageOf.probed();
+
+      const stop = inPageOf.watch(async () => {
+        throw new Error("unreadable");
+      });
+
+      await expect(inPageOf.probed()).rejects.toThrow("unreadable");
+      stop();
+    });
+
+    it("a second watch of one Page throws, and a watch can start again once stopped", async () => {
+      const page = await lane.newPage();
+      const inPageOf = lane.createHost(page).inPage(page);
+      const stop = inPageOf.watch(async () => {});
+
+      expect(() => inPageOf.watch(async () => {})).toThrow(/watched already/);
+      stop();
+      const again = inPageOf.watch(async () => {});
+      again();
+    });
+
+    it("stops: the signal aborts and no run begins after", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p>");
+      const inPageOf = lane.createHost(page).inPage(page);
+      let signal: AbortSignal | undefined;
+      const log: string[] = [];
+      const stop = inPageOf.watch(async (given) => {
+        signal = given;
+        log.push("run");
+      });
+      await inPageOf.probed();
+
+      stop();
+      await setBody(page, "<p>Two</p>");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(signal?.aborted).toBe(true);
+      expect(log).toEqual(["run"]);
+    });
+
+    it.runIf(lane.hostsOutliveLoads)(
+      "follows the page across a full load, probing the next document",
+      async () => {
+        const page = await lane.newPage();
+        const inPageOf = lane.createHost(page).inPage(page);
+        const documents: string[] = [];
+        const stop = inPageOf.watch(async () => {
+          documents.push((await inPageOf.bound()).document);
+        });
+        await inPageOf.probed();
+
+        await lane.reload(page);
+        await expect.poll(() => documents.length).toBe(2);
+
+        expect(documents[1]).not.toBe(documents[0]);
+        stop();
+      }
+    );
+  });
+
+  describe("Page Objects registered against the page", () => {
+    const toolName = "SettingsPage.open";
+    const settingsManifest = {
+      className: "SettingsPage",
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [
+        {
+          methodName: "open",
+          toolName,
+          description: "Open the settings",
+          parameters: [],
+        },
+      ],
+      components: [],
+    } as const;
+
+    /** A registry over `page`'s module holding a Page Object rooted at `#settings`. */
+    function registerSettingsPage(page: Page) {
+      const { ayme, createPomRegistry, inPageDriver, registerCompiledPom } =
+        lane.pageObjects;
+      const inPageOf = lane.createHost(page).inPage(page);
+      const registry = createPomRegistry(
+        inPageDriver(
+          () => inPageOf,
+          () => undefined
+        )
+      );
+      class SettingsPage {
+        readonly root = page.locator("#settings");
+        open() {}
+      }
+      ayme({ root: (self: SettingsPage) => self.root })(SettingsPage);
+      registerCompiledPom(SettingsPage, settingsManifest);
+      const registration = registry.registerPageObject(
+        SettingsPage,
+        new SettingsPage()
+      );
+      const listed = () =>
+        registry
+          .listRegisteredPomTools()
+          .map(({ tool, present, available }) => [
+            tool.name,
+            present,
+            available,
+          ]);
+      const available = () =>
+        registry.listAvailablePomTools().map((tool) => tool.name);
+      return {
+        inPageOf,
+        registry,
+        listed,
+        available,
+        dispose: () => {
+          registration.dispose();
+          registry.resetRegisteredPoms();
+        },
+      };
+    }
+
+    it("lists the tool only while its root is present and available, and follows the page as it changes", async () => {
+      const page = await lane.newPage();
+      const { listed, available, dispose } = registerSettingsPage(page);
+
+      // No root on the page yet: listed, but neither present nor available.
+      await expect.poll(listed).toEqual([[toolName, false, false]]);
+      expect(available()).toEqual([]);
+
+      await setBody(page, '<section id="settings">Settings</section>');
+      await expect.poll(available).toEqual([toolName]);
+      expect(listed()).toEqual([[toolName, true, true]]);
+
+      // An overlay now covers the root: present, but a click would not reach it.
+      await page.evaluate(
+        `document.body.insertAdjacentHTML("beforeend", '<div id="cover" style="position:fixed;inset:0"></div>')`
+      );
+      await expect.poll(listed).toEqual([[toolName, true, false]]);
+      expect(available()).toEqual([]);
+
+      await page.evaluate(`document.getElementById("cover").remove()`);
+      await expect.poll(available).toEqual([toolName]);
+
+      await page.evaluate(
+        `document.getElementById("settings").style.display = "none"`
+      );
+      await expect.poll(listed).toEqual([[toolName, false, false]]);
+      expect(available()).toEqual([]);
+      dispose();
+    });
+
+    it("tells its subscribers when the tools change, and marks the root in the host's captures while it is present", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<section id="settings" aria-label="Settings"><button>Save</button></section>'
+      );
+      const { inPageOf, registry, available, dispose } =
+        registerSettingsPage(page);
+      let heard = 0;
+      registry.subscribeToRegisteredPoms(() => (heard += 1));
+
+      await expect.poll(available).toEqual([toolName]);
+      await registry.probeRegisteredPomMembers();
+      const marked = await inPageOf.capture();
+      expect(heard).toBeGreaterThan(0);
+      expect(marked.roots).toEqual([
+        { labels: ["SettingsPage"], ref: refOf(marked.fullText, "Settings") },
+      ]);
+
+      await page.evaluate(
+        `document.getElementById("settings").style.display = "none"`
+      );
+      await expect.poll(available).toEqual([]);
+      await registry.probeRegisteredPomMembers();
+      expect((await inPageOf.capture()).roots).toEqual([]);
+      dispose();
+    });
+  });
 }

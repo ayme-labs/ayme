@@ -34,7 +34,19 @@ export type {
   InPageHost,
   PickOptions,
   VisitSignal,
+  RootState,
 } from "./in-page";
+
+// The Page Object registry over a Playwright page's in-page module, which
+// tests build for a page they drive from Node (until the `./playwright`
+// entry carries it, #1179).
+export { ayme } from "./page-objects/domain";
+export {
+  createPomRegistry,
+  registerCompiledPom,
+} from "./page-objects/application";
+export type { PageObjectConstructor } from "./page-objects/application";
+export { inPageDriver } from "./page-objects/infrastructure";
 
 type WithStore = typeof globalThis & {
   [goalLoopRunResultKey]?: GoalLoopRunResultStore;

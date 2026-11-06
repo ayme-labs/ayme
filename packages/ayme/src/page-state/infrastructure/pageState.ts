@@ -12,7 +12,7 @@ import {
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import type { Locator } from "@playwright/test";
-import { inPage, type ElementInputs } from "../../in-page";
+import { elementEverNamed, inPage, type ElementInputs } from "../../in-page";
 import {
   browserMonotonicClock,
   INSPECTOR_HOST_SELECTOR,
@@ -37,19 +37,14 @@ import {
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
-/**
- * The Page Object Roots a capture places: present roots are marked, and
- * absent ones are left out of it.
- */
-type PageObjectStructure = {
-  roots: readonly { mark: string; element: Element }[];
-  absentElements: readonly Element[];
-};
-
 /** What a capture reads besides the document, read afresh on each capture. */
 type PageCaptureSources = {
-  /** The Page Object Roots to place; undefined while none is registered. */
-  pageObjectStructure(): Promise<PageObjectStructure> | undefined;
+  /**
+   * Resolves once the Page Object Roots a capture places, which the module
+   * holds from the registry's probe runs, are current; undefined while no
+   * Page Object is registered.
+   */
+  pageObjectsProbed(): Promise<void> | undefined;
   /** Whether the app leaves `element`, and everything under it, out. */
   ignores(element: Element): boolean;
 };
@@ -60,19 +55,20 @@ type PageCaptureSources = {
  */
 export const cursors: Cursors = createCursors();
 
-type PageObjectStructureSource = () => Promise<PageObjectStructure>;
+type PageObjectProbe = () => Promise<void>;
 
-let pageObjectStructure: PageObjectStructureSource | undefined;
+let pageObjectProbe: PageObjectProbe | undefined;
 
 /**
- * Package-internal: where captures read the Page Object Roots from, set
- * while the registry observes the page. Unset, a capture places none, as
- * when no Page Object is registered.
+ * Package-internal: what captures wait for before they read the page, set
+ * while the registry observes it: the roots the module places are those of a
+ * completed probe run. Unset, a capture waits for none, as when no Page
+ * Object is registered.
  */
-export function providePageObjectStructure(
-  source: PageObjectStructureSource | undefined
+export function providePageObjectProbe(
+  probe: PageObjectProbe | undefined
 ): void {
-  pageObjectStructure = source;
+  pageObjectProbe = probe;
 }
 
 type PageStateIgnorePredicate = (element: Element) => boolean;
@@ -94,25 +90,19 @@ export function configurePageStateIgnore(
 
 /** The stores a capture reads, read when it reads them. */
 const captureSources: PageCaptureSources = {
-  pageObjectStructure: () => pageObjectStructure?.(),
+  pageObjectsProbed: () => pageObjectProbe?.(),
   ignores: (element) => pageStateIgnoreStore.ignore?.(element) ?? false,
 };
 
 /**
- * What a capture places and leaves out: the Page Object Roots and `ignore`
- * of this runtime, read afresh. The Inspector's own DOM is always left out.
+ * What a capture leaves out: the `ignore` of this runtime, and the
+ * Inspector's own DOM, always. The Page Object Roots it places are those the
+ * module holds from the registry's probe runs, current once the probe it
+ * waits for has resolved.
  */
 async function elementInputs(): Promise<ElementInputs> {
-  const structure = (await captureSources.pageObjectStructure()) ?? {
-    roots: [],
-    absentElements: [],
-  };
+  await captureSources.pageObjectsProbed();
   return {
-    roots: structure.roots.map(({ mark, element }) => ({
-      label: mark,
-      element,
-    })),
-    absent: structure.absentElements,
     ignores: (element) =>
       element.matches(INSPECTOR_HOST_SELECTOR) ||
       captureSources.ignores(element),
@@ -226,6 +216,15 @@ export async function latestPageStateRefOf(
     pageStateSessions.get(document)?.latestElementOf(ref)
     ? ref
     : undefined;
+}
+
+/**
+ * Package-internal: the Structural Ref the agent's latest recorded page
+ * state gave what the in-page ref `ref` names, when it gave it one.
+ */
+export function latestPageStateRefNamed(ref: string): AriaRef | undefined {
+  const element = elementEverNamed(ref);
+  return element && latestPageStateRef(element);
 }
 
 /** The last recorded tree and element map; reading it records and captures nothing. */

@@ -9,9 +9,15 @@ import { ayme } from "../domain/decorators";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 import { rootTargetPath } from "../domain/pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
-import { litePageDriver } from "../infrastructure/litePageDriver";
+import { elementOfRef, inPage } from "../../in-page";
+import { inPageDriver } from "../infrastructure/inPageDriver";
 
 const page = createPage();
+// The in-page module over Playwright Lite, in jsdom, which lays nothing out.
+const litePageDriver = inPageDriver(
+  () => inPage(page),
+  () => undefined
+);
 
 const locator = (memberName: string) =>
   ({ memberName, kind: "locator", access: "field" }) as const;
@@ -197,11 +203,9 @@ describe("one observation of a Page Object", () => {
       fileTree
     );
 
+    const targets = await resolveTargets(litePageDriver, targetSources);
     expect(
-      resolveTargets(litePageDriver, targetSources).map(({ path, element }) => [
-        path,
-        element.id,
-      ])
+      targets.map(({ path, ref }) => [path, elementOfRef(ref)?.id])
     ).toEqual([
       [rootTargetPath("FileTree.items[0]"), "src"],
       [rootTargetPath("FileTree.items[0].children[0]"), "lib"],

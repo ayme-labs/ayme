@@ -5,9 +5,23 @@
 // through Locators, #1182 removes this file and its lint exception.
 import type { Slot } from "../page/install";
 
-/** The element `ref` names in this realm's document, if its module minted the ref. */
+/**
+ * The element `ref` names in this realm's document, if its module minted the
+ * ref and it still names it.
+ */
 export function elementOfRef(ref: string): Element | undefined {
   return (globalThis as { [key: symbol]: Slot | undefined })[
     Symbol.for("ayme.inPage")
   ]?.elementOf(ref);
+}
+
+/**
+ * The element `ref` named in this realm's document at any time, if its
+ * module minted the ref: a root's ref from a probe outlives the capture that
+ * marks the root.
+ */
+export function elementEverNamed(ref: string): Element | undefined {
+  return (globalThis as { [key: symbol]: Slot | undefined })[
+    Symbol.for("ayme.inPage")
+  ]?.elementEverNamed(ref);
 }

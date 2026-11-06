@@ -9,6 +9,7 @@ import {
   inPage,
   type ActionInputs,
   type ElementInputs,
+  type InPage,
   type VisitSignal,
 } from "../../in-page";
 import type { Capture } from "../../shared";
@@ -21,6 +22,11 @@ function browserPageOf(currentDocument: Document): Page {
   let page = browserPages.get(currentDocument);
   if (!page) browserPages.set(currentDocument, (page = createPage()));
   return page;
+}
+
+/** The in-page module of `currentDocument`, as the browser runtime hosts it. */
+export function browserInPage(currentDocument: Document = document): InPage {
+  return inPage(browserPageOf(currentDocument));
 }
 
 /**

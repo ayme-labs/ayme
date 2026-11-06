@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { litePageDriver } from "./litePageDriver";
+import { inPage } from "../../in-page";
+import { inPageDriver } from "./inPageDriver";
 
 // Playwright's highlight adds an overlay host under <html>. That is no change
 // of the page: the registry must not probe again for it.
@@ -27,14 +28,21 @@ afterEach(async () => {
 const quiet = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 it("a highlight's overlay does not make the registry's page driver probe", async () => {
-  let changes = 0;
-  const watch = litePageDriver.watch(() => (changes += 1));
-  stop = () => watch.stop();
+  let runs = 0;
+  const driver = inPageDriver(
+    () => inPage(page),
+    () => undefined
+  );
+  stop = driver.watch(async () => {
+    runs += 1;
+  });
+  await driver.probed();
+  const started = runs;
 
   await button.highlight({ style: { outline: "2px dashed #d9a441" } });
   await quiet();
   await page.hideHighlight();
   await quiet();
 
-  expect(changes).toBe(0);
+  expect(runs).toBe(started);
 });

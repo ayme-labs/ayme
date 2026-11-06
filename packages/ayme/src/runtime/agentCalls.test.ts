@@ -13,7 +13,10 @@ const { captureAriaSnapshot, pageObjectRoots, listRegisteredPoms } = vi.hoisted(
 vi.mock("../page-state/infrastructure/browserInPage", async () =>
   (
     await import("../test-utils/inPageCapture.testSupport")
-  ).standInBrowserInPage(captureAriaSnapshot)
+  ).standInBrowserInPage(captureAriaSnapshot, async () => ({
+    roots: await pageObjectRoots(),
+    absentElements: [],
+  }))
 );
 vi.mock("../page-objects/infrastructure/registry", () => ({
   listRegisteredPoms,
@@ -21,14 +24,8 @@ vi.mock("../page-objects/infrastructure/registry", () => ({
 
 import { ayme } from "../test-utils/agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
-import { providePageObjectStructure } from "../page-state/infrastructure";
 
 const ref = AriaRefSchema.parse;
-
-providePageObjectStructure(async () => ({
-  roots: await pageObjectRoots(),
-  absentElements: [],
-}));
 
 describe("the Ayme page state helper", () => {
   beforeEach(() => {

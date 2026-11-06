@@ -104,7 +104,7 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/page-objects/application/misplaced.ts",
-    'export { litePageDriver } from "../infrastructure/litePageDriver";',
+    'export { inPageDriver } from "../infrastructure/inPageDriver";',
     "application may only depend on the allowed horizontal layers",
   ],
   [

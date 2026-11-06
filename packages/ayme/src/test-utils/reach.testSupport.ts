@@ -12,7 +12,6 @@ const reached: ReachMeasurement = { present: true, available: true };
  */
 export function alwaysReaches(overrides: Partial<Reach> = {}): Reach {
   return {
-    measurePomRoot: async () => reached,
     measureReach: () => reached,
     measureReachAtCall: async () => reached,
     blockingAncestor: () => undefined,

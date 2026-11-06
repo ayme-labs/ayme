@@ -11,15 +11,10 @@ export type { ReachMeasurement };
  * Package-internal: how reach is measured, handed in rather than imported.
  * The runtime picks the adapter: Chromium's geometry in
  * `infrastructure/reachMeasurement.ts`, the in-page module's; unit tests hand in their own layout.
- * A Run carries it, and the Lite page driver reads the one the runtime
- * installed.
+ * A Run carries it. A Page Object Root is probed in the page, where its
+ * reach is measured with the root's presence.
  */
 export type Reach = {
-  /**
-   * Measures `element`, the one element `locator` resolves to, as a Page
-   * Object Root: present only while the locator finds it visible.
-   */
-  measurePomRoot(locator: Locator, element: Element): Promise<ReachMeasurement>;
   /**
    * Measures `element` for offering it: the hit test is `page`'s own, at the
    * point a click of `page` would use. It takes the element as shown: a

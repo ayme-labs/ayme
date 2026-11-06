@@ -11,4 +11,5 @@ declare module "virtual:ayme-in-page" {
 // caller owns (build/pinnedAriaSnapshot.ts).
 declare module "virtual:ayme-aria-snapshot" {
   export const captureAriaSnapshot: import("./page/capture").CaptureAriaSnapshot;
+  export const isElementVisible: (element: Element) => boolean;
 }

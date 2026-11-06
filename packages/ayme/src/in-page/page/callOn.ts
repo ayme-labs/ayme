@@ -7,12 +7,14 @@
 import type { HostKey, Slot } from "./install";
 
 /** The slot's methods a host calls on the elements a Locator matches. */
-export type CallOnName = "refs" | "cue";
+export type CallOnName = "refs" | "cue" | "probe" | "mint" | "names";
 
 export type CallOnArgument = {
   version: string;
   host: HostKey;
   name: CallOnName;
+  /** What the call needs besides the elements, such as a probe's label. */
+  inputs?: unknown;
 };
 
 export type CallOnResult<T> =
@@ -22,12 +24,21 @@ export type CallOnResult<T> =
 
 export async function callOn(
   elements: Element[],
-  { version, host, name }: CallOnArgument
+  { version, host, name, inputs }: CallOnArgument
 ): Promise<CallOnResult<unknown>> {
   const slot = (globalThis as { [key: symbol]: Slot | undefined })[
     Symbol.for("ayme.inPage")
   ];
   if (!slot) return { kind: "missing", matched: elements.length };
   if (slot.version !== version) return { kind: "version", found: slot.version };
-  return { kind: "ok", value: await slot[name](host, elements) };
+  return {
+    kind: "ok",
+    value: await (
+      slot[name] as (
+        host: HostKey,
+        elements: Element[],
+        inputs?: unknown
+      ) => unknown
+    )(host, elements, inputs),
+  };
 }

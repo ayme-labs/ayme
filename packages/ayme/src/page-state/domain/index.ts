@@ -20,4 +20,8 @@ export {
   obstructionReason,
   unavailableError,
 } from "./toolAvailability";
-export type { LatestRefLookup, ToolAvailability } from "./toolAvailability";
+export type {
+  LatestRefByRef,
+  LatestRefLookup,
+  ToolAvailability,
+} from "./toolAvailability";

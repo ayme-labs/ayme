@@ -31,6 +31,9 @@ vi.mock("./agentConnection", () => ({
   loadAgentConnection: vi.fn(),
   loadProcessConnection: vi.fn(),
 }));
+vi.mock("../page-objects/infrastructure/inPageDriver", async () =>
+  (await import("../test-utils/pageDriver.testSupport")).standInDriverModule()
+);
 vi.mock("../page-objects/infrastructure/browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));

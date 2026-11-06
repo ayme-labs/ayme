@@ -25,17 +25,22 @@ export type CaptureAriaSnapshot = (
 
 /**
  * What a host hands a capture as live values in the page. Transitional: the
- * browser runtime's Page Object Roots and `ignore` predicate are elements and
- * a function until the registry probes in the page (#1175) and `ignore`
- * takes a selector (#1177).
+ * `ignore` predicate is a function until it takes a selector (#1177).
  */
 export type ElementInputs = {
+  /** Whether the host leaves `element`, and everything under it, out. */
+  ignores?: (element: Element) => boolean;
+};
+
+/**
+ * What a capture places besides the host's inputs: the host's Page Object
+ * Roots as its latest completed probe run found them.
+ */
+export type CaptureRoots = {
   /** The host's present Page Object Roots, each with its label. */
   roots?: readonly { label: string; element: Element }[];
   /** The host's absent Page Object Roots, whose subtrees it leaves out. */
   absent?: readonly Element[];
-  /** Whether the host leaves `element`, and everything under it, out. */
-  ignores?: (element: Element) => boolean;
 };
 
 type CaptureBody = Omit<Capture, "document" | "url">;
@@ -50,13 +55,30 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
   let lastSyntheticRef = 0;
   const aymeRefs = { marks, next: () => ++lastRef };
 
+  // An element a capture marked after a probe named it keeps both refs.
   function names(element: Element, ref: string): boolean {
-    return (marks.get(element)?.ref ?? syntheticRefs.get(element)) === ref;
+    return (
+      marks.get(element)?.ref === ref || syntheticRefs.get(element) === ref
+    );
   }
 
   function elementOf(ref: string): Element | undefined {
     const element = byRef.get(ref)?.deref();
     return element && names(element, ref) ? element : undefined;
+  }
+
+  /**
+   * Whether `ref` is one the module ever gave `element`: an element's ref
+   * changes with its role and name, and a root's synthetic ref gives way to
+   * its mark once a capture marks it.
+   */
+  function everNamed(element: Element, ref: string): boolean {
+    return elementEverNamed(ref) === element;
+  }
+
+  /** The element `ref` named at any time, if it is still there. */
+  function elementEverNamed(ref: string): Element | undefined {
+    return byRef.get(ref)?.deref();
   }
 
   /** The root's synthetic ref, minted once per element and counted per document. */
@@ -70,7 +92,10 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     return ref;
   }
 
-  function capture(root: Element, inputs: ElementInputs = {}): CaptureBody {
+  function capture(
+    root: Element,
+    inputs: ElementInputs & CaptureRoots = {}
+  ): CaptureBody {
     const ignores = (element: Element) => inputs.ignores?.(element) ?? false;
     const present = (inputs.roots ?? []).filter(
       ({ element }) =>
@@ -135,6 +160,8 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
   return {
     capture,
     elementOf,
+    elementEverNamed,
+    everNamed,
     nameOf,
     /** The ref a capture gave `element`, if it has one. */
     refOf: (element: Element): string | undefined => marks.get(element)?.ref,
