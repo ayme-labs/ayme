@@ -58,7 +58,7 @@ explains the two. A tool's own return value is in `result`.
   the load can name another element on the new page.
 - The page state marks each Page Object Root with its class. Call a nested
   item marked `e9 ListItem` through its class's tool: `ListItem.archive({ ref: "e9" })`.
-  [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#page-object-children)
+  [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-page-objects.md#aymechild)
   has the example.
 - When a tool answers that it is unavailable, read the reason. A runtime
   reason, `a click would not reach it; e42 is in the way`, names the element

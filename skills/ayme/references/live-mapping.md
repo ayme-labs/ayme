@@ -9,7 +9,8 @@ Map a user flow into a POM against the running app, in this order:
    content, which states change what's possible, and each step's visible
    outcome.
 3. **Write the POM** from what you observed, following
-   [Page object design](page-object-design.md). Get each locator from
+   [Page object design](page-object-design.md) and
+   [Page Object Models](ayme-page-objects.md). Get each locator from
    `generate_locator`: pass `groups`, one `{ within: <root ref>, targets: [...] }`
    per root, plus a group without `within` for page-level members. A ref
    belongs to one snapshot and does not belong in code.

@@ -41,7 +41,7 @@ export const appConfig: ApplicationConfig = {
 
 Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
-Register the app's pages once, in the `pageObjects` option of `provideAyme`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the `pageObjects` option of `provideAyme`; each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
 
 ```ts
 provideAyme({
@@ -115,7 +115,7 @@ Put `provideAyme` in the application config, not in route providers. The router 
 
 ## Page Object Models
 
-Page Object Models are marked with `@ayme` and `@ayme.action`, as [Page Object Models](../guides/page-object-models.md) shows. Keep each in its own `.ts` file; new Angular workspaces already enable `experimentalDecorators`. Import them with relative paths or through tsconfig `paths` aliases, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser.
+Page Object Models are marked with `@ayme` and `@ayme.action`, as [Page Object Models](../guides/ayme-page-objects.md) shows. Keep each in its own `.ts` file; new Angular workspaces already enable `experimentalDecorators`. Import them with relative paths or through tsconfig `paths` aliases, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser.
 
 During `ng serve`, editing a type a Page Object Model imports updates its tool schema after a reload, without restarting the server.
 

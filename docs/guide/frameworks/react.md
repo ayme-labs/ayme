@@ -25,7 +25,7 @@ export default defineConfig(({ command }) => ({
 
 `include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
-On Next.js, use the Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
+On Next.js, use the Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows.
 
 ## Start Ayme at the root
 
@@ -59,7 +59,7 @@ Wrap the application root, not a route component or a layout that unmounts on na
 
 ## Hooks
 
-Register the app's pages once, in the provider's `pageObjects` prop; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the provider's `pageObjects` prop; each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
 
 ```tsx
 <AymeProvider

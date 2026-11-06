@@ -1,6 +1,6 @@
 /**
- * Checks the consumer docs in `docs/guide/`, every README and the Markdown
- * files at the repository root.
+ * Checks the consumer docs in `docs/guide/`, the consumer skills in `skills/`,
+ * every README and the Markdown files at the repository root.
  *
  *   node scripts/check-docs.mjs    check the repository, print each problem
  *
@@ -24,6 +24,12 @@
  *   that opens with a code span, by its last name, in each package the item
  *   names in a later code span: ``- `ayme.peek(...)` in `@ayme-dev/ayme` ``
  *   lists `peek` in `@ayme-dev/ayme`. An item that names no package fails.
+ * - a skill under `skills/` lacks a copy of a shared reference in
+ *   `skills/shared/` in its `references/`, or a skill's copy of a guide page
+ *   in `GUIDE_COPIES` is missing, or a copy differs from its source. A skill is
+ *   installed as its own folder, so it ships its own copies. A guide page's
+ *   copy has its relative links rewritten to `github.com/ayme-labs/ayme/blob/main/`
+ *   links. `pnpm skills:sync` writes the copies.
  *
  * Code spans and fenced code blocks are ignored. Uses only `node:` modules.
  */
@@ -32,6 +38,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const GUIDE_DIR = "docs/guide";
+const SHARED_SKILL_DIR = "skills/shared";
+/** Guide pages a skill ships a copy of. */
+const GUIDE_COPIES = [
+  {
+    source: `${GUIDE_DIR}/guides/ayme-page-objects.md`,
+    copy: "skills/ayme/references/ayme-page-objects.md",
+  },
+];
 const EXPERIMENTAL_PAGE = `${GUIDE_DIR}/reference/experimental-apis.md`;
 const SKIPPED_DIRS = new Set(["node_modules", "dist", "build", "build-spa"]);
 const REPOSITORY_URL =
@@ -41,6 +55,45 @@ const BANNED_PHRASES = [
   "prototype does not certify",
   "supplied tarballs",
 ];
+
+/** Each file a skill ships a copy of, with that copy's path, both relative to `root`. */
+export function skillReferenceCopies(root) {
+  return [...sharedSkillReferences(root), ...GUIDE_COPIES];
+}
+
+/** The text a skill's copy of `source` holds: a guide page's relative links point at the repository on GitHub. */
+export function skillReferenceText(root, source) {
+  const text = fs.readFileSync(path.join(root, source), "utf8");
+  if (!source.startsWith(`${GUIDE_DIR}/`)) return text;
+  return text.replace(/\]\(([^)\s]+)\)/g, (link, target) => {
+    if (!isRelative(target)) return link;
+    const resolved = path.posix.join(path.posix.dirname(source), target);
+    return `](https://github.com/ayme-labs/ayme/blob/main/${resolved})`;
+  });
+}
+
+/** Each shared skill reference with the copy every skill under `skills/` ships. */
+function sharedSkillReferences(root) {
+  const shared = path.join(root, SHARED_SKILL_DIR);
+  if (!fs.existsSync(shared)) return [];
+  const skills = fs
+    .readdirSync(path.join(root, "skills"), { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        fs.existsSync(path.join(root, "skills", entry.name, "SKILL.md"))
+    )
+    .map((entry) => entry.name);
+  return fs
+    .readdirSync(shared)
+    .filter((name) => name.endsWith(".md"))
+    .flatMap((name) =>
+      skills.map((skill) => ({
+        source: `${SHARED_SKILL_DIR}/${name}`,
+        copy: `skills/${skill}/references/${name}`,
+      }))
+    );
+}
 
 /** Markdown files under `dir`, as paths relative to `root`. */
 function markdownFiles(root, dir = "") {
@@ -260,6 +313,7 @@ export function checkDocs(root) {
     (file) =>
       path.posix.basename(file) === "README.md" ||
       !file.includes("/") ||
+      file.startsWith("skills/") ||
       pages.includes(file)
   );
   const indexed = new Set();
@@ -368,6 +422,20 @@ export function checkDocs(root) {
           line,
           `lists \`${name}\` in ${pkg}, which does not mark it @experimental`
         );
+  }
+
+  for (const { source, copy } of skillReferenceCopies(root)) {
+    if (!fs.existsSync(path.join(root, source))) continue;
+    const copied = path.join(root, copy);
+    if (
+      !fs.existsSync(copied) ||
+      fs.readFileSync(copied, "utf8") !== skillReferenceText(root, source)
+    )
+      report(
+        copy,
+        1,
+        `differs from ${source}; run pnpm skills:sync and commit the copy`
+      );
   }
 
   return problems;

@@ -127,6 +127,6 @@ To call it from your coding agent, register Ayme's MCP server in the agent and c
 ## Next
 
 - [React](../frameworks/react.md): the provider, root ownership, hooks and Next.js.
-- [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
+- [Page Object Models](../guides/ayme-page-objects.md): tool names, inputs and Page Object Children.
 - [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.
 - [Publish tools](../guides/publish-tools.md): publish the same tools through WebMCP for agents that run in the browser.

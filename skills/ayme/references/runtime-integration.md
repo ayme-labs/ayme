@@ -1,11 +1,12 @@
 # Runtime integration
 
-[Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md)
+[Page Object Models](ayme-page-objects.md)
 covers marking, tool names, and Page Object Children; the page for the project's
 framework, linked from the
 [documentation index](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md),
 covers starting Ayme and registering Page Objects. Follow
-[Page object design](page-object-design.md) for members, roots, and action
+[Page object design](page-object-design.md) and
+[Page Object Models](ayme-page-objects.md) for members, roots, and action
 returns.
 
 ## Register top-level POMs at setup
@@ -14,7 +15,7 @@ Register every page POM once, at app setup: list it in the `pageObjects`
 option where Ayme starts (`createAyme`, `AymeProvider`, `useAyme` or
 `provideAyme`). A page is
 present by its URL through the page base class of
-[Page object design](page-object-design.md#write-base-classes-for-pages-and-components),
+[Page Object Models](ayme-page-objects.md#ayme),
 so its tools come and go with the browser's location.
 [Register Page Objects](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md#register-page-objects)
 is the rule; the framework page shows the call in its idiom.

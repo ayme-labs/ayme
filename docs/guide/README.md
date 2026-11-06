@@ -13,7 +13,7 @@ How to turn your app's Page Object Models into tools that coding agents and your
 
 ## Guides
 
-- [Page Object Models](guides/page-object-models.md): mark a model and its actions, how tools are named, and how children and collections work.
+- [Page Object Models](guides/ayme-page-objects.md): mark a model and its actions, how tools are named, and how children and collections work.
 - [Publish tools](guides/publish-tools.md): start Ayme and turn WebMCP publication on for agents that run in the browser.
 - [Connect an agent](guides/connect-an-agent.md): let Claude Code, Codex, Cursor or another coding agent call your tools through Ayme's MCP server.
 - [Page state](guides/page-state.md): the Structural Page State, Structural Refs and interaction history an agent works with.

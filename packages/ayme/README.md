@@ -117,7 +117,7 @@ The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference
 
 ## Documentation
 
-- [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md): marking models and actions, tool names, children and collections.
+- [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-page-objects.md): marking models and actions, tool names, children and collections.
 - [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting Ayme and turning WebMCP publication on.
 - [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
 - [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.

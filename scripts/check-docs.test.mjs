@@ -45,6 +45,68 @@ test("passes a repository that follows the rules", () => {
   assert.deepEqual(checkDocs(fixture()), []);
 });
 
+test("passes skills that ship identical copies of the shared references", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "skills/shared/guide.md": "# Guide\n",
+        "skills/one/SKILL.md": "---\nname: one\n---\n",
+        "skills/one/references/guide.md": "# Guide\n",
+      })
+    ),
+    []
+  );
+});
+
+test("fails a skill whose copy of a shared reference is missing or differs", () => {
+  const problems = checkDocs(
+    fixture({
+      "skills/shared/guide.md": "# Guide\n",
+      "skills/one/SKILL.md": "---\nname: one\n---\n",
+      "skills/one/references/guide.md": "# Old guide\n",
+      "skills/two/SKILL.md": "---\nname: two\n---\n",
+    })
+  );
+  assert.deepEqual(problems, [
+    "skills/one/references/guide.md:1: differs from skills/shared/guide.md; run pnpm skills:sync and commit the copy",
+    "skills/two/references/guide.md:1: differs from skills/shared/guide.md; run pnpm skills:sync and commit the copy",
+  ]);
+});
+
+test("checks a skill's copy of a guide page, with its relative links pointing at GitHub", () => {
+  const guide = {
+    "docs/guide/README.md": `# Guide\n\nEvery page, in sidebar order.\n\n- [A page](start/page.md)\n- [Models](guides/ayme-page-objects.md)\n`,
+    "docs/guide/guides/ayme-page-objects.md": `${PAGE}\nSee [a page](../start/page.md#a-page) and [below](#a-page).\n`,
+  };
+  const copy = `${PAGE}\nSee [a page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/page.md#a-page) and [below](#a-page).\n`;
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        ...guide,
+        "skills/ayme/references/ayme-page-objects.md": copy,
+      })
+    ),
+    []
+  );
+  assert.deepEqual(checkDocs(fixture(guide)), [
+    "skills/ayme/references/ayme-page-objects.md:1: differs from docs/guide/guides/ayme-page-objects.md; run pnpm skills:sync and commit the copy",
+  ]);
+});
+
+test("fails on a link in a skill that does not resolve or names no heading", () => {
+  const problems = checkDocs(
+    fixture({
+      "skills/one/SKILL.md":
+        "---\nname: one\n---\n\nRead [the guide](references/guide.md#gone) and [more](references/more.md).\n",
+      "skills/one/references/guide.md": "# Guide\n",
+    })
+  );
+  assert.deepEqual(problems, [
+    "skills/one/SKILL.md:5: link names no heading in its target: references/guide.md#gone",
+    "skills/one/SKILL.md:5: link does not resolve: references/more.md",
+  ]);
+});
+
 test("skips a submodule's own docs", () => {
   assert.deepEqual(
     checkDocs(
