@@ -2,10 +2,8 @@ import { subscribeToRegisteredPoms } from "../page-objects/infrastructure";
 import { inPage } from "../in-page";
 import { requestDemoMode } from "../runs/infrastructure";
 import { pageOfDocument } from "../page-state/infrastructure";
-import {
-  getPomDefinitionText,
-  subscribeToAgentImageRuns,
-} from "../tools/application";
+import { subscribeToAgentImageRuns } from "../tools/application";
+import { getPomDefinitionText } from "../tools/infrastructure";
 import type { InspectorContract } from "../shared";
 import { getAgentConnectionStatus } from "./agentConnectionStatus";
 import { createHighlights } from "./inspectorHighlights";

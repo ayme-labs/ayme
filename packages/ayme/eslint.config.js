@@ -212,26 +212,6 @@ const layerOrderExceptions = [
     issues: ["follow-up: reach checks read the per-document Page State store"],
   },
   {
-    file: "src/tools/application/historyTools.ts",
-    door: "page-state/infrastructure",
-    issues: ["follow-up: startNavigation"],
-  },
-  {
-    file: "src/tools/application/navigateTool.ts",
-    door: "page-state/infrastructure",
-    issues: ["follow-up: startNavigation"],
-  },
-  {
-    file: "src/tools/application/pageContext.ts",
-    door: "page-state/infrastructure",
-    issues: ["follow-up: page context reads a document's Page State Session"],
-  },
-  {
-    file: "src/tools/application/pageContext.ts",
-    door: "page-objects/infrastructure",
-    issues: ["follow-up: Page Object registry reads"],
-  },
-  {
     file: "src/goal-loop/application/goalLoop.ts",
     door: "page-objects/infrastructure",
     issues: ["follow-up: Page Object registry reads"],

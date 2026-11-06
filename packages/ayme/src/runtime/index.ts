@@ -44,3 +44,8 @@ export type {
 } from "./inspectorContract";
 export { createHighlights } from "./inspectorHighlights";
 export type { Highlightable } from "./inspectorHighlights";
+export { createPlaywrightAyme } from "./playwrightRuntime";
+export type {
+  PlaywrightAyme,
+  PlaywrightAymeOptions,
+} from "./playwrightRuntime";

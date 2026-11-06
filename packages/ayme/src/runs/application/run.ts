@@ -1,6 +1,11 @@
 import type { Page } from "@playwright/test";
 import type { Cursor } from "../../page-state/domain";
-import type { PageStateSession, Reach } from "../../page-state/application";
+import type {
+  Navigation,
+  PageStateSession,
+  Reach,
+} from "../../page-state/application";
+import type { PomDefinitionsResult } from "../../shared";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
 /** How `ayme.tools.run` starts a Run. */
@@ -20,9 +25,17 @@ export type RunContext = {
   readonly run: StartChildRun;
   /** The browser Page the Run acts on: its runtime session's, child Runs included. */
   readonly page: Page;
-  /** The browser Document the Run acts on: the one its page shows. */
-  readonly document: Document;
-  /** The Page State Session of the Run's Document: its actions, captures and refs go through it. */
+  /** How the Run moves its page and tells where it is: the page's URL and history. */
+  readonly navigation: Navigation;
+  /**
+   * The application's router navigation, when the runtime session was given
+   * one: the `navigate` tool hands it the resolved URL instead of loading a
+   * new document.
+   */
+  readonly routerNavigate?: (url: string) => unknown;
+  /** The definitions of the Page Object classes the Run's page registered, for `names` or all. */
+  pomDefinitions(...names: readonly string[]): PomDefinitionsResult;
+  /** The Page State Session of the Run's page: its actions, captures and refs go through it. */
   readonly pageStateSession: PageStateSession;
   /** How the Run measures whether its input would reach an element: the runtime's Reach. */
   readonly reach: Reach;

@@ -1,12 +1,11 @@
 import type { Locator, Page } from "@playwright/test";
-import { elementOfRef, inPage } from "../../in-page";
+import { inPage } from "../../in-page";
 import { RefResolutionError } from "../../shared";
-import { latestPageStateRef } from "./pageState";
 import {
   assertAvailable,
   obstructionReason,
   unfocusableReason,
-  type LatestRefLookup,
+  type LatestRefByRef,
 } from "../domain/toolAvailability";
 import type { Reach, ReachInput, ReachMeasurement } from "../application/reach";
 
@@ -27,13 +26,8 @@ export type ElementInput = ReachInput;
  * `element`, since what holds it is not in its way. Empty when nothing was
  * found.
  */
-export function inTheWayOf({ blocker, hit }: ReachMeasurement): Element[] {
-  return elementsOf(blocker ? [blocker] : (hit ?? []));
-}
-
-/** The elements the in-page module named by ref, as far as they are still there. */
-function elementsOf(refs: readonly string[]): Element[] {
-  return refs.flatMap((ref) => elementOfRef(ref) ?? []);
+export function inTheWayOf({ blocker, hit }: ReachMeasurement): string[] {
+  return blocker ? [blocker] : [...(hit ?? [])];
 }
 
 /**
@@ -61,15 +55,10 @@ export async function assertReachable(
   page: Page,
   toolName: string,
   ref: string,
-  input: ElementInput
+  input: ElementInput,
+  latestRefOf: LatestRefByRef
 ): Promise<void> {
-  const reason = await unreachableReason(
-    reach,
-    page,
-    ref,
-    latestPageStateRef,
-    input
-  );
+  const reason = await unreachableReason(reach, page, ref, latestRefOf, input);
   if (reason !== undefined)
     assertAvailable(toolName, { present: true, available: false, reason });
 }
@@ -84,7 +73,8 @@ export async function assertLocatorReachable(
   page: Page,
   toolName: string,
   locator: Locator,
-  input: ElementInput
+  input: ElementInput,
+  latestRefOf: LatestRefByRef
 ): Promise<void> {
   // The element a root observation reads: the first the locator matches.
   const [ref] = await inPage(page).mint(locator);
@@ -92,19 +82,18 @@ export async function assertLocatorReachable(
     throw new RefResolutionError(
       `${toolName} is unavailable: its locator matches no element.`
     );
-  await assertReachable(reach, page, toolName, ref, input);
+  await assertReachable(reach, page, toolName, ref, input, latestRefOf);
 }
 
 async function unreachableReason(
   reach: Reach,
   page: Page,
   ref: string,
-  latestRefOf: LatestRefLookup,
+  latestRefOf: LatestRefByRef,
   input: ElementInput
 ): Promise<string | undefined> {
   if (input === "focus") {
-    const blockerRef = await reach.blockingAncestor(page, ref);
-    const blocker = blockerRef && elementOfRef(blockerRef);
+    const blocker = await reach.blockingAncestor(page, ref);
     return blocker ? unfocusableReason(blocker, latestRefOf) : undefined;
   }
   const measurement = await reach.measureReachAtCall(page, ref);

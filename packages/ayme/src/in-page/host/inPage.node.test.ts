@@ -10,7 +10,7 @@ import { chromium, selectors, type Browser, type Page } from "@playwright/test";
 import { Rolldown } from "tsdown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import type * as Testing from "../../testing";
+import type * as Playwright from "../../playwright";
 import { inPageContract } from "./inPageContract.testSupport";
 
 // Playwright's overlay keeps its shadow root closed unless it runs under its own
@@ -22,16 +22,16 @@ vi.hoisted(() => {
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../../../dist");
 const origin = "http://ayme.test";
 
-let built: typeof Testing;
+let built: typeof Playwright;
 let browser: Browser;
 // The page's own runtime: the built package in the page, over Playwright Lite.
 let pageRuntime: string;
 
 beforeAll(async () => {
-  const testing = pathToFileURL(join(dist, "testing.mjs")).href;
+  const entry = pathToFileURL(join(dist, "playwright.mjs")).href;
   // The Node lane loads what ships, by path, as builtEntries.test.ts reads it.
   // eslint-disable-next-line no-restricted-syntax
-  built = (await import(testing)) as typeof Testing;
+  built = (await import(entry)) as typeof Playwright;
   pageRuntime = await bundlePageRuntime();
   await built.registerAymeRef(selectors);
   browser = await chromium.launch();
@@ -93,7 +93,7 @@ async function bundlePageRuntime(): Promise<string> {
 }
 
 type PageRuntime = {
-  bound(): Promise<Testing.Bound>;
+  bound(): Promise<Playwright.Bound>;
   start(): void;
   snapshot(): Promise<string>;
 };
@@ -245,7 +245,7 @@ describe("an action in Node", () => {
     const page = await newPage();
     const node = built.createInPageHost().inPage(page);
     const elements = (await page.evaluateHandle(() => ({}))) as NonNullable<
-      Testing.ActionOptions["elements"]
+      Playwright.ActionOptions["elements"]
     >;
     const action = await node.begin({ elements });
 

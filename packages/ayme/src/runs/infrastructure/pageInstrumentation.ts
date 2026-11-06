@@ -1,8 +1,6 @@
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 
-import { latestPageStateRefOf } from "../../page-state/infrastructure";
-
 import {
   interactionOf,
   type CallSubject,
@@ -41,11 +39,13 @@ export function installRuntimePageInstrumentation(
  *
  * `onInteraction` hears each call that is an Interaction, before it runs:
  * once the ref of the element it acts on is read in the page, when its
- * locator names none.
+ * locator names none. `latestRefOf` reads that ref: the latest recorded page
+ * state's of the document in the browser, of the session's Page in Node.
  */
 export function instrumentedPage(
   page: Page,
-  onInteraction?: (interaction: Interaction) => void
+  onInteraction: ((interaction: Interaction) => void) | undefined,
+  latestRefOf: (locator: Locator) => Promise<AriaRef | undefined>
 ): Page {
   const derivePage = () => {
     let instrumented = page;
@@ -135,7 +135,7 @@ export function instrumentedPage(
           }
           // Every Interaction on an element is asynchronous, so its ref is
           // read in the page before the input reaches the element.
-          return refOfLocator(locator).then((ref) => {
+          return refOfLocator(locator, latestRefOf).then((ref) => {
             onInteraction!(ref ? { ...interaction, ref } : interaction);
             return run();
           });
@@ -152,8 +152,11 @@ export function instrumentedPage(
 }
 
 /** Diagnostic resolution must never wait for an element or prevent the actual call. */
-function refOfLocator(locator: Locator): Promise<AriaRef | undefined> {
-  return latestPageStateRefOf(locator).catch(() => undefined);
+function refOfLocator(
+  locator: Locator,
+  latestRefOf: (locator: Locator) => Promise<AriaRef | undefined>
+): Promise<AriaRef | undefined> {
+  return latestRefOf(locator).catch(() => undefined);
 }
 
 /**

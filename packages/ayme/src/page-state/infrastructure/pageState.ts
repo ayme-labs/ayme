@@ -3,99 +3,95 @@
 // tool schema rendering, anything touching `document.modelContext`); the
 // publication side calls in, never the reverse.
 //
-// The slice's composition: every module-level store of page-state lives
-// here, and the functions other slices reach a document's Page State
-// Session through take the document.
+// The browser runtime's door to its document's page-state stores, which
+// `pageStates.ts` keys by Page: the browser's Page is its own Playwright Lite
+// page of the document (`browserInPage.ts`). The functions other slices reach
+// a document's Page State Session through take the document.
 
-import {
-  PageIdSchema,
-  type AriaRef,
-} from "@ayme-dev/core/structural-observation";
+import { type AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator } from "@playwright/test";
-import { elementEverNamed, inPage, type ElementInputs } from "../../in-page";
+import { elementEverNamed, elementOfRef, inPage } from "../../in-page";
 import {
-  browserMonotonicClock,
-  INSPECTOR_HOST_SELECTOR,
-  PREDICATES,
   ToolInputError,
-  type Capture,
   type FilterData,
   type NamedFilter,
-  type Predicate,
 } from "../../shared";
-import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
-import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
-import { InteractionHistory } from "../domain/interactionHistory";
-import { PageStateSession } from "../application/pageStateSession";
+import type { InteractionHistory } from "../domain/interactionHistory";
+import type { Cursor, Cursors } from "../domain/cursors";
+import type { PageStateSession } from "../application/pageStateSession";
 import {
-  beginDocumentAction,
   bindDocument,
+  beginDocumentAction,
   captureDocument,
   elementsOf,
+  pageOfDocument,
 } from "./browserInPage";
+import type { PageState, PageStateLook } from "../domain/structuralPageState";
 import {
-  renderPageState,
-  type PageState,
-  type PageStateLook,
-} from "../domain/structuralPageState";
+  configurePageStateFiltersOf,
+  configurePageStateIgnoreOf,
+  cursorsOf,
+  existingPageState,
+  latestRefOfLocator,
+  pageStateOf,
+  providePageObjectProbeOf,
+  type PageStateHost,
+} from "./pageStates";
 
-const pageStateSessions = new WeakMap<Document, PageStateSession>();
+const browserHosts = new WeakMap<Document, PageStateHost>();
 
-/** What a capture reads besides the document, read afresh on each capture. */
-type PageCaptureSources = {
-  /**
-   * Resolves once the Page Object Roots a capture places, which the module
-   * holds from the registry's probe runs, are current; undefined while no
-   * Page Object is registered.
-   */
-  pageObjectsProbed(): Promise<void> | undefined;
-  /** The filters of the elements the app leaves out, and everything under them. */
-  ignores(): readonly FilterData[];
-  /** The Custom Tools' filters, whose accepted refs every capture carries. */
-  filters(): readonly NamedFilter[];
-};
+/** The browser runtime's host of `currentDocument`: its module, over its Playwright Lite page. */
+function browserHost(currentDocument: Document): PageStateHost {
+  let host = browserHosts.get(currentDocument);
+  if (!host)
+    browserHosts.set(
+      currentDocument,
+      (host = {
+        url: () => currentDocument.URL,
+        bind: (onVisit) => bindDocument(currentDocument, onVisit),
+        capture: (inputs, ask) => captureDocument(currentDocument, inputs, ask),
+        begin: (inputs) => beginDocumentAction(currentDocument, inputs),
+        elementsOf,
+        elementNamed: elementOfRef,
+      })
+    );
+  return host;
+}
+
+/** The page-state store of `currentDocument`, keyed by its Playwright Lite page. */
+function storeOf(currentDocument: Document) {
+  return pageStateOf(
+    pageOfDocument(currentDocument),
+    browserHost(currentDocument)
+  );
+}
+
+/** The browser runtime's Page State Session and captures of its document. */
+export function browserPageState() {
+  return storeOf(document);
+}
 
 /**
  * The document's cursors. Module state is the document's: a new document
  * starts with none, as it starts with an empty Run log.
  */
-export const cursors: Cursors = createCursors();
-
-type PageObjectProbe = () => Promise<void>;
-
-let pageObjectProbe: PageObjectProbe | undefined;
+export const cursors: Cursors = {
+  of: (by) => cursorsOf(pageOfDocument(document)).of(by),
+};
 
 /**
  * Package-internal: what captures wait for before they read the page, set
- * while the registry observes it: the roots the module places are those of a
- * completed probe run. Unset, a capture waits for none, as when no Page
- * Object is registered.
+ * while the registry observes it. Unset, a capture waits for none.
  */
 export function providePageObjectProbe(
-  probe: PageObjectProbe | undefined
+  probe: (() => Promise<void>) | undefined
 ): void {
-  pageObjectProbe = probe;
+  providePageObjectProbeOf(pageOfDocument(document), probe);
 }
-
-type PageStateIgnoreStore = { ignores?: readonly FilterData[] };
-
-const pageStateIgnoreStore: PageStateIgnoreStore = ((
-  globalThis as typeof globalThis & {
-    __aymePageStateIgnoreStore?: PageStateIgnoreStore;
-  }
-).__aymePageStateIgnoreStore ??= {});
-
-type PageStateFilterStore = { filters?: readonly NamedFilter[] };
-
-const pageStateFilterStore: PageStateFilterStore = ((
-  globalThis as typeof globalThis & {
-    __aymePageStateFilterStore?: PageStateFilterStore;
-  }
-).__aymePageStateFilterStore ??= {});
 
 /** Package-internal: set while a runtime session is active, as checked filter data. */
 export function configurePageStateIgnore(ignore: FilterData | undefined): void {
-  pageStateIgnoreStore.ignores = ignore ? [ignore] : undefined;
+  configurePageStateIgnoreOf(pageOfDocument(document), ignore);
 }
 
 /**
@@ -105,47 +101,8 @@ export function configurePageStateIgnore(ignore: FilterData | undefined): void {
 export function configurePageStateFilters(
   filters: readonly NamedFilter[] | undefined
 ): void {
-  pageStateFilterStore.filters = filters;
+  configurePageStateFiltersOf(pageOfDocument(document), filters);
 }
-
-/** The stores a capture reads, read when it reads them. */
-const captureSources: PageCaptureSources = {
-  pageObjectsProbed: () => pageObjectProbe?.(),
-  ignores: () => pageStateIgnoreStore.ignores ?? [],
-  filters: () => pageStateFilterStore.filters ?? [],
-};
-
-/**
- * What a capture leaves out: the `ignore` of this runtime, and the
- * Inspector's own DOM, always, as selectors. The Page Object Roots it places
- * are those the module holds from the registry's probe runs, current once the
- * probe it waits for has resolved.
- */
-async function elementInputs(): Promise<ElementInputs> {
-  await captureSources.pageObjectsProbed();
-  return {
-    ignores: [
-      { selector: INSPECTOR_HOST_SELECTOR },
-      ...captureSources.ignores(),
-    ],
-  };
-}
-
-/**
- * A capture of `currentDocument` through its in-page module, with
- * `elementInputs`, asking for the predicates and the Custom Tools' filters.
- */
-async function captureWithSources(
-  currentDocument: Document,
-  accepts?: readonly Predicate[]
-): Promise<Capture> {
-  return captureDocument(currentDocument, await elementInputs(), {
-    accepts,
-    filters: captureSources.filters(),
-  });
-}
-
-let documentCount = 0;
 
 /**
  * Capture the page state. `cursor` is the reader that receives it, whose
@@ -166,8 +123,7 @@ export async function getPageStateForDocument(
 export async function lookAtPageStateForDocument(
   currentDocument: Document
 ): Promise<PageStateLook> {
-  // The Inspector offers each tool the refs it takes, so a look carries them.
-  return getPageStateSession(currentDocument).look({ accepts: PREDICATES });
+  return storeOf(currentDocument).look();
 }
 
 /**
@@ -230,7 +186,9 @@ export function onPageStateRecorded(
  * state gave `element`, when it gave it exactly one; undefined until then.
  */
 export function latestPageStateRef(element: Element): AriaRef | undefined {
-  return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
+  return existingPageState(
+    pageOfDocument(element.ownerDocument)
+  )?.session.latestRefOf(element);
 }
 
 /**
@@ -242,12 +200,11 @@ export function latestPageStateRef(element: Element): AriaRef | undefined {
 export async function latestPageStateRefOf(
   locator: Locator
 ): Promise<AriaRef | undefined> {
-  const refs = await inPage(locator.page()).elements.refs(locator);
-  const ref = refs.length === 1 ? (refs[0] as AriaRef | undefined) : undefined;
-  return ref !== undefined &&
-    pageStateSessions.get(document)?.latestElementOf(ref)
-    ? ref
-    : undefined;
+  return latestRefOfLocator(
+    pageOfDocument(document),
+    inPage(locator.page()),
+    locator
+  );
 }
 
 /**
@@ -261,7 +218,9 @@ export function latestPageStateRefNamed(ref: string): AriaRef | undefined {
 
 /** The last recorded tree and element map; reading it records and captures nothing. */
 export function latestPageStateCapture(currentDocument: Document) {
-  return pageStateSessions.get(currentDocument)?.latestCapture();
+  return existingPageState(
+    pageOfDocument(currentDocument)
+  )?.session.latestCapture();
 }
 
 /**
@@ -273,7 +232,9 @@ export function latestPageStateElement(
   currentDocument: Document,
   ref: AriaRef
 ): Element | undefined {
-  return pageStateSessions.get(currentDocument)?.latestElementOf(ref);
+  return existingPageState(
+    pageOfDocument(currentDocument)
+  )?.session.latestElementOf(ref);
 }
 
 /**
@@ -283,46 +244,10 @@ export function latestPageStateElement(
 export function getPageStateSession(
   currentDocument: Document
 ): PageStateSession {
-  let session = pageStateSessions.get(currentDocument);
-  if (!session) {
-    session = createPageStateSession(currentDocument);
-    pageStateSessions.set(currentDocument, session);
-  }
-  return session;
-}
-
-/**
- * A session over `currentDocument`: its history starts with the document's
- * first Visit and records each same-document navigation its in-page module
- * reports after it. Creating it installs the document's in-page module, or
- * binds to the one there, so a runtime that starts first is the one that
- * installs it; a navigation before then is recorded once it is bound. Its
- * actions run through the module: the before capture, the Settled Page wait
- * and the after capture, or the full load that ends them.
- */
-function createPageStateSession(currentDocument: Document): PageStateSession {
-  const history = new InteractionHistory({
-    pageId: PageIdSchema.parse(`document_${++documentCount}`),
-    url: currentDocument.URL,
-    clock: browserMonotonicClock,
-  });
-  let url = currentDocument.URL;
-  bindDocument(currentDocument, (visit) => {
-    if (visit.cause === "initial" && visit.url === url) return;
-    url = visit.url;
-    history.recordNavigation(visit.url);
-  });
-  return new PageStateSession(
-    history,
-    (accepts) => captureWithSources(currentDocument, accepts),
-    { begin: () => beginDocumentAction(currentDocument, elementInputs) },
-    elementsOf
-  );
+  return storeOf(currentDocument).session;
 }
 
 /** The document's page state text, from a capture nobody records. */
 export async function capturePageState(): Promise<string> {
-  return renderPageState(
-    structureCapture(await captureWithSources(document), treeRefAllocator())
-  ).text;
+  return storeOf(document).capturePageState();
 }

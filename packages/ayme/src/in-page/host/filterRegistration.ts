@@ -9,7 +9,7 @@ import {
   type FilterData,
   type InPageFilter,
 } from "../../shared";
-import { checkFilter } from "../page/filter";
+import { checkFilter, type FilterCheck } from "../page/filter";
 
 /** The advice every rejected function filter carries. */
 const runsOnItsOwn =
@@ -26,7 +26,28 @@ export function registerFilter(
   filter: ElementFilter
 ): FilterData {
   const data = filterData(filter);
-  const check = checkFilter(data);
+  return checkedFilter(name, filter, data, checkFilter(data));
+}
+
+/**
+ * Checks `filter` as a registration named `name` where the module runs it,
+ * asked through the slot's `check`, for a host in another realm than the page.
+ */
+export async function registerFilterThrough(
+  check: (data: FilterData) => Promise<FilterCheck>,
+  name: string,
+  filter: ElementFilter
+): Promise<FilterData> {
+  const data = filterData(filter);
+  return checkedFilter(name, filter, data, await check(data));
+}
+
+function checkedFilter(
+  name: string,
+  filter: ElementFilter,
+  data: FilterData,
+  check: FilterCheck
+): FilterData {
   switch (check.kind) {
     case "ok":
       return data;

@@ -14,40 +14,10 @@ export type {
   GoalLoopStepScore,
 } from "./goal-loop/application";
 export { DONE_BAR, LOWER_BAR } from "./goal-loop/application";
-// The in-page module's host side (ADR-0049), which tests drive over a
-// Playwright Lite or a real Playwright page until the `./playwright` entry
-// carries it (#1179).
-export {
-  createInPageHost,
-  inPage,
-  InPageVersionError,
-  registerAymeRef,
-} from "./in-page";
-export type {
-  ActionOptions,
-  Bound,
-  Capture,
-  CaptureOptions,
-  ElementInputs,
-  InPage,
-  InPageAction,
-  InPageHost,
-  PickOptions,
-  VisitSignal,
-  RootState,
-} from "./in-page";
-
-// The Page Object registry over a Playwright page's in-page module, which
-// tests build for a page they drive from Node (until the `./playwright`
-// entry carries it, #1179).
-export { ayme } from "./page-objects/domain";
-export {
-  createPomRegistry,
-  registerCompiledPom,
-} from "./page-objects/application";
-export type { PageObjectConstructor } from "./page-objects/application";
-export { inPageDriver } from "./page-objects/infrastructure";
-
+// The in-page module over the Playwright Lite page of the document a test's
+// own runtime runs in, which a Node host's `./playwright` entry cannot be
+// bundled for.
+export { inPage } from "./in-page";
 type WithStore = typeof globalThis & {
   [goalLoopRunResultKey]?: GoalLoopRunResultStore;
 };

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
   parseStructuralRef,
   selectorForRef,
@@ -51,6 +51,22 @@ export type CustomTool = {
    */
   execute(
     target: { ref: AriaRef; element: Element },
+    context: CustomToolContext
+  ): Promise<unknown>;
+};
+
+/**
+ * A Custom Tool of a Node host (`@ayme-dev/ayme/playwright`): the same tool,
+ * acting on the element through a Playwright Locator, since Node holds no
+ * DOM element.
+ */
+export type PageCustomTool = Omit<CustomTool, "execute"> & {
+  /**
+   * Acts on the element `target.locator` matches, which `target.ref` names.
+   * To use other tools, start them through `run`, as a Custom Tool does.
+   */
+  execute(
+    target: { ref: AriaRef; locator: Locator },
     context: CustomToolContext
   ): Promise<unknown>;
 };
@@ -195,7 +211,8 @@ function elementToolExecution(
         context.page,
         definition.name,
         target.elementRef,
-        definition.needsReach
+        definition.needsReach,
+        (ref) => context.pageStateSession.latestRefOfNamed(ref)
       );
     return context.pageStateSession.runAction(
       context.cursor,
@@ -349,6 +366,33 @@ export function registerCustomTool(
           }
         );
       },
+    },
+    customTool.filter ? { filter: customTool.name } : { every: true }
+  );
+}
+
+/**
+ * Package-internal: register a Custom Tool of a Node host, which acts on its
+ * element through a Locator. Otherwise as `registerCustomTool`.
+ */
+export function registerPageCustomTool(
+  customTool: PageCustomTool
+): RegisteredElementTool {
+  return registerElementTool(
+    {
+      name: customTool.name,
+      description: customTool.description,
+      label: `run "${customTool.name}" on`,
+      inputSchema: REF_INPUT_SCHEMA,
+      targetField: "ref",
+      perform: ({ ref }, _input, { run, page }) =>
+        customTool.execute(
+          { ref: ref!, locator: page.locator(selectorForRef(ref!)) },
+          {
+            run: ((name, input) =>
+              run(name, input)) as CustomToolContext["run"],
+          }
+        ),
     },
     customTool.filter ? { filter: customTool.name } : { every: true }
   );

@@ -1,22 +1,19 @@
-// The Custom Tools of the current runtime session, and the element tools
-// they join.
-import { configurePageStateFilters } from "../../page-state/infrastructure";
+// The Custom Tools of a runtime session, and the element tools they join,
+// kept per Page (ADR-0049): the browser runtime's are those of its own
+// Playwright Lite page, a Node host's those of the Page it was handed.
+import { pageOfDocument } from "../../page-state/infrastructure";
+import {
+  configureCustomToolsOf,
+  listCustomToolsOf,
+  listElementToolsOf,
+} from "./customToolStores";
 import { registerFilter } from "../../in-page";
 import type { NamedFilter } from "../../shared";
-import { SINGLE_ELEMENT_TOOLS } from "../application/browserTools";
 import {
   registerCustomTool,
   type CustomTool,
   type RegisteredElementTool,
 } from "../application/elementTools";
-
-type CustomToolStore = { registered?: readonly RegisteredElementTool[] };
-
-// On globalThis, so every bundle that loads Ayme in one process shares one
-// session's Custom Tools.
-const customToolStore: CustomToolStore = ((
-  globalThis as typeof globalThis & { __aymeCustomToolStore?: CustomToolStore }
-).__aymeCustomToolStore ??= {});
 
 /**
  * Package-internal: each Custom Tool's filter, checked as the page runs it,
@@ -39,25 +36,24 @@ export function checkCustomToolFilters(
   return filters;
 }
 
-/** Package-internal: set while a runtime session is active. */
+/** Package-internal: set while a runtime session is active in the browser. */
 export function configureCustomTools(
   customTools: readonly CustomTool[] | undefined,
   filters: readonly NamedFilter[] = checkCustomToolFilters(customTools)
 ): void {
-  customToolStore.registered = customTools?.map(registerCustomTool);
-  configurePageStateFilters(filters);
+  configureCustomToolsOf(
+    pageOfDocument(document),
+    customTools?.map(registerCustomTool),
+    filters
+  );
 }
 
 /** Package-internal: the Custom Tools of the active session, in registration order. */
 export function listCustomTools(): readonly RegisteredElementTool[] {
-  return customToolStore.registered ?? [];
+  return listCustomToolsOf(pageOfDocument(document));
 }
 
-/**
- * Package-internal: the single-element Browser Tools and the session's Custom
- * Tools, in publication order. Each is published and the Goal Loop may choose
- * it (ADR-0023).
- */
+/** Package-internal: the browser session's element tools, in publication order. */
 export function listElementTools(): readonly RegisteredElementTool[] {
-  return [...SINGLE_ELEMENT_TOOLS, ...listCustomTools()];
+  return listElementToolsOf(pageOfDocument(document));
 }

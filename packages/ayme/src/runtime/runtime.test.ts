@@ -26,6 +26,15 @@ import * as registryModule from "../page-objects/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import { listElementToolTargets } from "./publishedTools";
 
+vi.mock(
+  "../page-state/infrastructure/browserInPage",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    ...(
+      await import("../test-utils/pageOfDocument.testSupport")
+    ).standInPageOfDocument(),
+  })
+);
 vi.mock("./webMcp", () => ({ loadWebMcpPublication: vi.fn() }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
 vi.mock("./agentConnection", () => ({
@@ -323,32 +332,41 @@ it("starts the Agent Connection while a session with agentConnection is started"
 });
 
 it("threads ignore to page state capture for the session lifetime", () => {
-  const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
+  const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnoreOf");
   try {
     const ignore = (element: Element) => element.matches(".assistant");
     const runtime = createAyme({ pageFactory: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureIgnore).toHaveBeenLastCalledWith({
+    expect(configureIgnore).toHaveBeenLastCalledWith(expect.anything(), {
       source: expect.stringContaining(".assistant"),
     });
     stop();
-    expect(configureIgnore).toHaveBeenLastCalledWith(undefined);
+    expect(configureIgnore).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined
+    );
   } finally {
     configureIgnore.mockRestore();
   }
 });
 
 it("threads goalLoop to the goal loop configuration for the session lifetime", () => {
-  const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoop");
+  const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoopOf");
   try {
     const goalLoop = vi.fn();
     const runtime = createAyme({ pageFactory: () => page, goalLoop });
     expect(configureGoalLoop).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureGoalLoop).toHaveBeenLastCalledWith(goalLoop);
+    expect(configureGoalLoop).toHaveBeenLastCalledWith(
+      expect.anything(),
+      goalLoop
+    );
     stop();
-    expect(configureGoalLoop).toHaveBeenLastCalledWith(undefined);
+    expect(configureGoalLoop).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined
+    );
   } finally {
     configureGoalLoop.mockRestore();
   }
@@ -357,16 +375,22 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
 it("threads navigate to the navigate tool for the session lifetime", () => {
   const configureRouterNavigate = vi.spyOn(
     navigateToolModule,
-    "configureRouterNavigate"
+    "configureRouterNavigateOf"
   );
   try {
     const navigate = vi.fn();
     const runtime = createAyme({ pageFactory: () => page, navigate });
     expect(configureRouterNavigate).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureRouterNavigate).toHaveBeenLastCalledWith(navigate);
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(
+      expect.anything(),
+      navigate
+    );
     stop();
-    expect(configureRouterNavigate).toHaveBeenLastCalledWith(undefined);
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined
+    );
   } finally {
     configureRouterNavigate.mockRestore();
   }
@@ -559,7 +583,8 @@ it("runs goal as the application while publication is unavailable", async () => 
       cursor: cursors.of(callers.app),
       run: expect.any(Function),
       page: expect.any(Object),
-      document,
+      navigation: expect.any(Object),
+      pomDefinitions: expect.any(Function),
       pageStateSession: getPageStateSession(document),
       // A session handed no Reach measures Chromium's geometry.
       reach: pageState.geometryReach,

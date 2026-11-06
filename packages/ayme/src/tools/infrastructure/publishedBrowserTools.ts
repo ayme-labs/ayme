@@ -11,7 +11,7 @@ import type { PublishedElementTool } from "../application/elementTools";
 import { pressKeyTool } from "../application/pressKeyTool";
 import { screenshotTool } from "../application/screenshotTool";
 import { generateLocatorTool } from "./generateLocator";
-import { NAVIGATION_TOOLS } from "./routerStore";
+import { NAVIGATION_TOOLS } from "./navigationTools";
 
 /**
  * A Browser Tool that acts on the page, as published: its description ends

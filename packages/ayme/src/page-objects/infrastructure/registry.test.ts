@@ -38,6 +38,15 @@ vi.mock("../../in-page", async (importOriginal) => ({
   elementEverNamed: (await import("../../test-utils/pageDriver.testSupport"))
     .elementOfRef,
 }));
+vi.mock(
+  "../../page-state/infrastructure/browserInPage",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    ...(
+      await import("../../test-utils/pageOfDocument.testSupport")
+    ).standInPageOfDocument(),
+  })
+);
 vi.mock("./inPageDriver", async () => {
   const { standInPageDriver } =
     await import("../../test-utils/pageDriver.testSupport");
@@ -283,7 +292,7 @@ describe("live Page Object registry", () => {
     registry.registerCompiledPom(FirstPage, emptyManifest("FirstPage"));
 
     session.register(FirstPage);
-    expect(pageObjectProbe.source).toBe(registry.probeRegisteredPomMembers);
+    expect(pageObjectProbe.source).toBeTypeOf("function");
 
     session.unregister(FirstPage);
     expect(pageObjectProbe.source).toBeUndefined();

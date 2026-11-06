@@ -79,9 +79,9 @@ export function obstructionReason<InTheWay extends Element | string>(
  * Ref of `blocker`, the open modal or inert ancestor in the way, when the
  * agent's latest page state gave it one.
  */
-export function unfocusableReason(
-  blocker: Element,
-  latestRefOf: LatestRefLookup
+export function unfocusableReason<InTheWay extends Element | string>(
+  blocker: InTheWay,
+  latestRefOf: (inTheWay: InTheWay) => AriaRef | undefined
 ) {
   const ref = latestRefOf(blocker);
   return ref === undefined

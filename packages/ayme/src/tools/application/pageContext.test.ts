@@ -22,7 +22,8 @@ vi.mock("../../page-objects/infrastructure/registeredPomDefinitions", () => ({
   getPomDefinitions,
 }));
 
-import { getPageContextForDocument, getPageContextTool } from "./pageContext";
+import { getPageContextForDocument } from "../infrastructure/documentPageContext";
+import { getPageContextTool } from "./pageContext";
 import {
   agentCursor,
   runContext,

@@ -15,10 +15,7 @@ import {
   type ActionResult,
   type ToolAvailability,
 } from "../../page-state/domain";
-import {
-  assertLocatorReachable,
-  providePageObjectProbe,
-} from "../../page-state/infrastructure";
+import { assertLocatorReachable } from "../../page-state/infrastructure";
 import {
   RefResolutionError,
   refuseViolations,
@@ -106,11 +103,13 @@ type ObservedRegisteredPom = Omit<RegisteredPom, "tools"> & {
 export type RootedToolInstance = { element: Element } & ToolAvailability;
 
 /**
- * Transitional (#1182): what the browser runtime adds to the registry, which
- * reads the page by Structural Ref alone. Reach, the element tools, the Goal
- * Loop's questions and the Inspector still hold elements, which a runtime
- * that shares its document with the page turns refs into; one that does not,
- * such as Node's, gives none, and the registry then lists no element.
+ * What a runtime session adds to the registry of its page, which reads the
+ * page by Structural Ref alone: how it hears of the session's page states
+ * and tells its captures to wait for the probe. Transitional (#1182): Reach,
+ * the element tools, the Goal Loop's questions and the Inspector still hold
+ * elements, which a runtime that shares its document with the page turns
+ * refs into; one that does not, such as Node's, gives none, and the registry
+ * then lists no element.
  */
 export type PomElements = {
   /** The element `ref` names in this realm's document, if any. */
@@ -120,11 +119,17 @@ export type PomElements = {
    * function is called.
    */
   onPageStateRecorded(listener: () => void): () => void;
+  /**
+   * What the page's captures wait for before they read it, set while the
+   * registry observes the page; cleared when it stops.
+   */
+  providePageObjectProbe(probe: (() => Promise<void>) | undefined): void;
 };
 
 const noElements: PomElements = {
   elementOf: () => undefined,
   onPageStateRecorded: () => () => {},
+  providePageObjectProbe: () => {},
 };
 
 /**
@@ -251,7 +256,7 @@ export function createPomRegistry(
       announceObstructedRoots
     );
     // A capture waits for the roots of a completed probe run.
-    providePageObjectProbe(probeRegisteredPomMembers);
+    elements.providePageObjectProbe(probeRegisteredPomMembers);
   }
 
   function stopObservingPage() {
@@ -259,7 +264,7 @@ export function createPomRegistry(
     stopWatchingPage = undefined;
     stopWatchingPageStates?.();
     stopWatchingPageStates = undefined;
-    providePageObjectProbe(undefined);
+    elements.providePageObjectProbe(undefined);
   }
 
   /**
@@ -507,7 +512,31 @@ export function createPomRegistry(
     if (obstructed) notifySubscribers();
   }
 
+  // The one runtime session that owns this registry.
+  let owner: object | undefined;
+
+  /**
+   * Package-internal: makes the caller the registry's owner, with no Page
+   * Object registered; the function it returns releases it. Throws while
+   * another session owns it.
+   */
+  function claim(): () => void {
+    if (owner)
+      throw new RuntimeStateError(
+        "The Ayme runtime already has an active owner.",
+        { code: "active-owner" }
+      );
+    resetRegisteredPoms();
+    const mine = (owner = {});
+    return () => {
+      if (owner !== mine) return;
+      resetRegisteredPoms();
+      owner = undefined;
+    };
+  }
+
   return {
+    claim,
     listAvailablePomTools,
     listRootedToolInstances,
     listRegisteredPomRoots,
@@ -520,6 +549,9 @@ export function createPomRegistry(
     subscribeToRegisteredPoms,
   };
 }
+
+/** A Page's Page Object registry. */
+export type PomRegistry = ReturnType<typeof createPomRegistry>;
 
 /**
  * `instance`'s availability for `methodName` now. An observation whose root
@@ -735,7 +767,8 @@ async function performPageObjectAction(
       page,
       targetName,
       root.locator,
-      "click"
+      "click",
+      (ref) => pageStateSession.latestRefOfNamed(ref)
     );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.

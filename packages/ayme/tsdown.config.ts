@@ -33,6 +33,8 @@ export default defineConfig({
     "src/server.ts",
     // The last Goal Loop run's result, for tests only (ADR-0026).
     "src/testing.ts",
+    // Ayme over a real Playwright Page, for a Node host (ADR-0049).
+    "src/playwright.ts",
   ],
   format: ["esm"],
   // The in-page module's page part, as one self-contained function.

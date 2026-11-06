@@ -14,7 +14,7 @@ import type { CustomTool } from "./elementTools";
 import { AymeError, ToolInputError } from "../../shared";
 import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
 import { planArguments } from "../../goal-loop/domain";
-import { getPomDefinitionText } from "./pageContext";
+import { getPomDefinitionText } from "../infrastructure/documentPageContext";
 import { type AriaRef } from "../../page-state/domain";
 import {
   getInteractionHistory,

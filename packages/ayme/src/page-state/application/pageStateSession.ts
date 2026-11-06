@@ -108,7 +108,9 @@ export class PageStateSession {
     readonly history: InteractionHistory,
     private readonly captureDocument: CapturePage,
     private readonly actionPage: ActionPage,
-    private readonly elementsOf: ElementsOf = () => new Map()
+    private readonly elementsOf: ElementsOf = () => new Map(),
+    private readonly elementNamed: (ref: string) => Element | undefined = () =>
+      undefined
   ) {}
 
   /** A capture of the page as the session reads it: its tree, marks and elements. */
@@ -506,6 +508,15 @@ export class PageStateSession {
       this.latestRefsByElement = refs;
     }
     return this.latestRefsByElement.get(element);
+  }
+
+  /**
+   * The ref the agent's latest page state gave what the in-page ref `ref`
+   * names, when it gave it exactly one and it is still there.
+   */
+  latestRefOfNamed(ref: string): AriaRef | undefined {
+    const element = this.elementNamed(ref);
+    return element && this.latestRefOf(element);
   }
 
   /** The element the latest recorded page state maps `ref` to, if any. */

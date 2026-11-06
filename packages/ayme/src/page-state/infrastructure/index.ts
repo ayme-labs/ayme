@@ -7,8 +7,13 @@ export {
   refsOfLocator,
 } from "./elementReach";
 export type { ElementInput } from "./elementReach";
-export { startNavigation } from "./navigation";
 export {
+  documentNavigation,
+  pageNavigation,
+  startNavigation,
+} from "./navigation";
+export {
+  browserPageState,
   capturePageState,
   configurePageStateFilters,
   configurePageStateIgnore,
@@ -27,5 +32,17 @@ export {
   providePageObjectProbe,
   resolvePageStateRef,
 } from "./pageState";
+export {
+  configurePageStateFiltersOf,
+  configurePageStateIgnoreOf,
+  cursorsOf,
+  existingPageState,
+  latestRefOfLocator,
+  pageObjectsProbed,
+  pageStateOf,
+  providePageObjectProbeOf,
+} from "./pageStates";
+export type { PageStateHost, PageStateStore } from "./pageStates";
+export { playwrightPageHost } from "./playwrightHost";
 export { geometryReach } from "./reachMeasurement";
 export { registerRefSelectorEngine } from "./refSelectorEngine";

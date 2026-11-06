@@ -83,7 +83,17 @@ export function standInBrowserInPage(
       ),
     };
   };
+  // The key of a document's stores in place of its Playwright Lite page: one
+  // object per document, which nothing drives.
+  const serverDocument = {} as Document;
+  const pages = new WeakMap<Document, object>();
   return {
+    pageOfDocument: (document: Document | undefined) => {
+      const currentDocument = document ?? serverDocument;
+      let page = pages.get(currentDocument);
+      if (!page) pages.set(currentDocument, (page = {}));
+      return page;
+    },
     bindDocument: () => {},
     browserInPage: () => {
       throw new Error("A jsdom test has no in-page module to reach.");

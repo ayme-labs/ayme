@@ -1,172 +1,61 @@
-import type {
-  PublishedToolGroup,
-  PublishedToolInfo,
-  ToolInfo,
-} from "../shared";
-
-export type {
-  PublishedToolGroup,
-  PublishedToolInfo,
-  ToolInfo,
-} from "../shared";
+// The browser runtime's door to its tools: the sources of its document, and
+// what reads the started session outside any Run. The resolution of the
+// tools, which a Node host shares, is `toolResolution.ts`.
 import { getPursueGoalTool } from "../goal-loop/infrastructure";
-import { type GoalTool } from "../goal-loop/application";
-import {
-  elementToolTargets,
-  getPageContextTool,
-  type PeekTool,
-  type PublishedElementTool,
-  type ReachOn,
-} from "../tools/application";
+import { elementToolTargets } from "../tools/application";
 import {
   listCustomTools,
   listElementTools,
   listPeekTools,
-  listPublishedBrowserTools,
 } from "../tools/infrastructure";
-import { lookAtPageStateForDocument } from "../page-state/infrastructure";
+import {
+  lookAtPageStateForDocument,
+  pageOfDocument,
+} from "../page-state/infrastructure";
 import { type AriaRef, type PageStateCapture } from "../page-state/domain";
 import { listRegisteredPomTools } from "../page-objects/infrastructure";
-import { type CallerAwarePomTool } from "../page-objects/application";
-import type { ToolAvailability } from "../page-state/domain";
 import { RuntimeStateError } from "../shared";
+import {
+  listPeekToolInfo as listPeekToolInfoFrom,
+  listTools as listToolsFrom,
+  resolveTools as resolveToolsFrom,
+  startedPageOf,
+  type ToolSources,
+} from "./toolResolution";
 
-/**
- * A tool of the session: `execute` runs it for a Run, whose context carries
- * the cursor its Change Record reads from and moves.
- */
-export type PublishedTool =
-  | CallerAwarePomTool
-  | typeof getPageContextTool
-  | PublishedElementTool
-  | PeekTool
-  | GoalTool;
+export {
+  configureStartedPageOf,
+  type PublishedTool,
+  type PublishedToolGroup,
+  type PublishedToolInfo,
+  type ToolInfo,
+  type ToolSources,
+} from "./toolResolution";
 
-/** A tool, offered while `present`: a Page Object Tool's Page Object is. */
-type ResolvedTool = {
-  tool: PublishedTool;
-  group: PublishedToolGroup;
-} & ToolAvailability;
+/** The browser runtime's tool sources: its document's. */
+export const browserToolSources: ToolSources = {
+  goalTool: () => getPursueGoalTool(),
+  pomTools: () => listRegisteredPomTools(),
+  customTools: () => listCustomTools(),
+  peekTools: () => listPeekTools(),
+};
 
-/** What every tool but a Page Object Tool is: on the page, and callable. */
-const always = (): Pick<ResolvedTool, "present" | "available"> => ({
-  present: true,
-  available: true,
-});
+/** Package-internal: the tools of the session, by name, from `sources` (the document's by default). */
+export const resolveTools = (
+  options: Parameters<typeof resolveToolsFrom>[0],
+  sources: ToolSources = browserToolSources
+) => resolveToolsFrom(options, sources);
 
-/**
- * Every registered tool but the Peek Tools, by name, in publication order.
- * Throws when two of them would share a name.
- */
-function resolveRegisteredTools(): Map<string, ResolvedTool> {
-  const pursueGoal = getPursueGoalTool();
-  const pomTools = listRegisteredPomTools();
-  const tools = new Map<string, ResolvedTool>([
-    [
-      getPageContextTool.name,
-      { tool: getPageContextTool, group: "agent", ...always() },
-    ],
-  ]);
-  const takenElsewhere = new Set([
-    ...pomTools.map(({ tool }) => tool.name),
-    ...(pursueGoal ? [pursueGoal.name] : []),
-  ]);
-  const ownTools = [
-    ...listPublishedBrowserTools().map((tool) => ({
-      tool,
-      group: "browser" as const,
-    })),
-    ...listCustomTools().map(({ tool }) => ({
-      tool,
-      group: "custom" as const,
-    })),
-  ];
-  for (const { tool, group } of ownTools) {
-    if (tools.has(tool.name) || takenElsewhere.has(tool.name))
-      throw new RuntimeStateError(
-        `Cannot publish the tool "${tool.name}": another published tool already uses that name.`
-      );
-    tools.set(tool.name, { tool, group, ...always() });
-  }
-  for (const { tool, ...availability } of pomTools)
-    tools.set(tool.name, { tool, group: "pageObject", ...availability });
-  if (pursueGoal)
-    tools.set(pursueGoal.name, {
-      tool: pursueGoal,
-      group: "agent",
-      ...always(),
-    });
-  return tools;
-}
+/** Package-internal: the tools offered, with their availability, from `sources` (the document's by default). */
+export const listTools = (
+  options: Parameters<typeof listToolsFrom>[0],
+  sources: ToolSources = browserToolSources
+) => listToolsFrom(options, sources);
 
-// The Peek Tools already warned about, so a clash is logged once.
-const warnedClashes = new WeakSet<PeekTool>();
-
-/**
- * Package-internal: every tool of the session by name, available or not:
- * the registered tools and, when `peeks` is on, the Peek Tools after them.
- * A Peek Tool whose name a tool that came after it uses is left out with a
- * console warning, so a Peek never hides one of the app's tools;
- * `ayme.peek` refuses a clash that exists when it is called. Throws when two
- * registered tools would share a name.
- */
-export function resolveTools({
-  peeks,
-}: {
-  peeks: boolean;
-}): Map<string, ResolvedTool> {
-  const tools = resolveRegisteredTools();
-  if (peeks)
-    for (const tool of listPeekTools())
-      if (!tools.has(tool.name))
-        tools.set(tool.name, { tool, group: "peek", ...always() });
-      else if (!warnedClashes.has(tool)) {
-        warnedClashes.add(tool);
-        console.warn(
-          `[ayme] ${tool.name} is hidden: another tool uses that name.`
-        );
-      }
-  return tools;
-}
-
-/**
- * Package-internal: every tool of the session that is offered, with its
- * availability, in publication order: a Page Object Tool while its Page
- * Object is present, available or not (ADR-0035); empty when a tool name
- * clash leaves the set unresolvable.
- */
-export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
-  try {
-    return toInfo(
-      [...resolveTools(options).values()].filter(({ present }) => present)
-    );
-  } catch {
-    return Object.freeze([]);
-  }
-}
-
-/**
- * Package-internal: the Peek Tools alone, the tools of a Node process of the
- * app, which has no page.
- */
-export function listPeekToolInfo(): readonly ToolInfo[] {
-  return toInfo(
-    listPeekTools().map((tool) => ({ tool, group: "peek", ...always() }))
-  );
-}
-
-// The started session's page and the Reach it picked, for what reads them
-// outside any Run: the Inspector's element tool targets. A Run is handed
-// its own instead.
-let startedPage: ReachOn | undefined;
-
-/**
- * Package-internal: store or clear the started session's page and Reach.
- * Called by `start()` and `stop()`.
- */
-export function configureStartedPage(started: ReachOn | undefined): void {
-  startedPage = started;
-}
+/** Package-internal: the Peek Tools alone, from `sources` (the document's by default). */
+export const listPeekToolInfo = (
+  sources: Pick<ToolSources, "peekTools"> = browserToolSources
+) => listPeekToolInfoFrom(sources);
 
 /**
  * The refs each available single-element tool can take in `capture` (a look at the current
@@ -178,7 +67,7 @@ export function configureStartedPage(started: ReachOn | undefined): void {
 export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
-  const started = startedPage;
+  const started = startedPageOf(pageOfDocument(document));
   if (!started)
     throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   const elementTools = listElementTools();
@@ -192,47 +81,6 @@ export async function listElementToolTargets(
           current
         );
         return [registered.tool.name, nodes.map(({ ref }) => ref)] as const;
-      })
-    )
-  );
-}
-
-/** A tool's two descriptions: a tool that is not a Page Object Tool's are its own. */
-function descriptionsOf(
-  tool: PublishedTool
-): Pick<PublishedToolInfo, "authorDescription" | "agentDescription"> {
-  if ("className" in tool)
-    return {
-      ...(tool.authorDescription === undefined
-        ? {}
-        : { authorDescription: tool.authorDescription }),
-      ...(tool.agentDescription === undefined
-        ? {}
-        : { agentDescription: tool.agentDescription }),
-    };
-  return {
-    authorDescription: tool.description,
-    agentDescription: tool.description,
-  };
-}
-
-/** Each tool's reading. */
-function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
-  return Object.freeze(
-    tools.map(({ tool, group, available, reason }) =>
-      Object.freeze({
-        name: tool.name,
-        ...("className" in tool ? { className: tool.className } : {}),
-        ...descriptionsOf(tool),
-        ...("returnPoms" in tool && tool.returnPoms
-          ? {
-              returnPoms: tool.returnPoms,
-            }
-          : {}),
-        inputSchema: tool.inputSchema,
-        group,
-        available,
-        ...(reason === undefined ? {} : { reason }),
       })
     )
   );

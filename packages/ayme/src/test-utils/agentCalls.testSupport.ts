@@ -5,10 +5,11 @@
  */
 import type { Page } from "@playwright/test";
 import type { ActionResult } from "../page-state/domain";
-import { getPageContextForDocument } from "../tools/application";
-import { listElementTools } from "../tools/infrastructure";
+import { getPageContextForDocument } from "../tools/infrastructure";
+import { listElementTools, routerNavigate } from "../tools/infrastructure";
 import {
   cursors,
+  documentNavigation,
   getPageStateForDocument,
   getPageStateSession,
   lookAtPageStateForDocument,
@@ -66,7 +67,9 @@ export function runContext(
   return {
     cursor,
     page,
-    document: globalThis.document,
+    navigation: documentNavigation(globalThis.document),
+    ...(routerNavigate() ? { routerNavigate: routerNavigate() } : {}),
+    pomDefinitions: getPomDefinitions,
     get pageStateSession() {
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },

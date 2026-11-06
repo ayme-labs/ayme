@@ -1310,6 +1310,35 @@ export function inPageContract(lane: InPageLane) {
       dispose();
     });
 
+    it("keeps the registries of two pages apart", async () => {
+      const first = await lane.newPage();
+      const second = await lane.newPage();
+      await setBody(first, '<section id="settings">Settings</section>');
+      await setBody(second, '<section id="settings">Settings</section>');
+      const registeredOnFirst = registerSettingsPage(first);
+      const registeredOnSecond = registerSettingsPage(second);
+
+      await expect.poll(registeredOnFirst.available).toEqual([toolName]);
+      await expect.poll(registeredOnSecond.available).toEqual([toolName]);
+      // Hiding the root on the first page changes nothing on the second.
+      await first.evaluate(
+        `document.getElementById("settings").style.display = "none"`
+      );
+      await expect.poll(registeredOnFirst.available).toEqual([]);
+      expect(registeredOnSecond.available()).toEqual([toolName]);
+      // Each page's module marks the roots of its own registry alone.
+      await registeredOnFirst.registry.probeRegisteredPomMembers();
+      await registeredOnSecond.registry.probeRegisteredPomMembers();
+      expect((await registeredOnFirst.inPageOf.capture()).roots).toEqual([]);
+      expect(
+        (await registeredOnSecond.inPageOf.capture()).roots.map(
+          ({ labels }) => labels
+        )
+      ).toEqual([["SettingsPage"]]);
+      registeredOnFirst.dispose();
+      registeredOnSecond.dispose();
+    });
+
     it("tells its subscribers when the tools change, and marks the root in the host's captures while it is present", async () => {
       const page = await lane.newPage();
       await setBody(

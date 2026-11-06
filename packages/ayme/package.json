@@ -53,6 +53,11 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./playwright": {
+      "types": "./dist/playwright.d.mts",
+      "import": "./dist/playwright.mjs",
+      "default": "./dist/playwright.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",

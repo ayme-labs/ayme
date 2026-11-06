@@ -3,7 +3,6 @@
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
 import type { JsonSchema } from "../../shared";
-import { startNavigation } from "../../page-state/infrastructure";
 import type { PublishedElementTool } from "./elementTools";
 
 const noInputSchema: JsonSchema = {
@@ -30,48 +29,14 @@ function traversalTool(
     description,
     inputSchema: noInputSchema,
     execute: async (input, context) => {
-      const { cursor, page, document: currentDocument } = context;
+      const { cursor, page, navigation } = context;
       const traverse = () =>
         direction === "back" ? page.goBack() : page.goForward();
-      const navigation = currentDocument.defaultView?.navigation;
       return context.pageStateSession.runAction(
         cursor,
         { tool: name, args: input },
         async () => {
-          // The browser Page moves through history with the Navigation API
-          // and refuses with its own error without it.
-          if (!navigation) return traverse();
-          // A traversal happens in a later task. One within the document
-          // commits a new current entry, or fails if it is cancelled; one to
-          // another document starts a full load, which the action answers.
-          // With no entry to move to, the browser Page resolves at once with
-          // no navigation started and the current entry unchanged. Its
-          // rejection is the answer only while no navigation has started;
-          // after that, the navigation answers.
-          const start = navigation.currentEntry?.key;
-          let navigated = false;
-          const watching = new AbortController();
-          const { signal } = watching;
-          const traversed = new Promise<boolean>((resolve, reject) => {
-            navigation.addEventListener("navigate", () => (navigated = true), {
-              signal,
-            });
-            for (const type of ["currententrychange", "navigateerror"])
-              navigation.addEventListener(type, () => resolve(true), {
-                signal,
-              });
-            void traverse().then(
-              () => {
-                if (!navigated && navigation.currentEntry?.key === start)
-                  resolve(false);
-              },
-              (error: unknown) => {
-                if (!navigated && navigation.currentEntry?.key === start)
-                  reject(error);
-              }
-            );
-          }).finally(() => watching.abort());
-          if (!(await traversed))
+          if (!(await navigation.traverse(traverse)))
             return `There is no history entry to go ${direction} to; the page did not move.`;
         }
       );
@@ -102,11 +67,11 @@ export const reloadTool: PublishedElementTool = {
   description: "Reload the current page.",
   inputSchema: noInputSchema,
   execute: async (input, context) => {
-    const { cursor, page, document: currentDocument } = context;
+    const { cursor, page, navigation } = context;
     return context.pageStateSession.runAction(
       cursor,
       { tool: "reload", args: input },
-      () => startNavigation(currentDocument, () => page.reload())
+      () => navigation.start(() => page.reload())
     );
   },
 };

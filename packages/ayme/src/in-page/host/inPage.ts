@@ -846,5 +846,17 @@ const registered = new WeakSet<Selectors>();
 export async function registerAymeRef(selectors: Selectors): Promise<void> {
   if (registered.has(selectors)) return;
   registered.add(selectors);
-  await selectors.register("ayme-ref", aymeRefEngine);
+  try {
+    await selectors.register("ayme-ref", aymeRefEngine);
+  } catch (error) {
+    // Another copy of this module, such as a test's reloaded one, registered
+    // it on the same registry, which keeps one engine under a name.
+    if (
+      !(error instanceof Error) ||
+      !error.message.includes("selector engine has been already registered")
+    ) {
+      registered.delete(selectors);
+      throw error;
+    }
+  }
 }

@@ -1,8 +1,6 @@
 import type { JsonValue, PomDefinition, ToolDescriptor } from "../../shared";
-import { getPageStateSession } from "../../page-state/infrastructure";
 import { type AriaRef, type PageState } from "../../page-state/domain";
 import { type PageStateSession } from "../../page-state/application";
-import { getPomDefinitions } from "../../page-objects/infrastructure";
 import { renderPomDefinitions } from "../../page-objects/domain";
 import type { Cursor } from "../../page-state/domain";
 import type { RunContext } from "../../runs/application";
@@ -40,12 +38,13 @@ export const getPageContextTool = {
 
 async function snapshotFor(
   input: unknown,
-  { pageStateSession, cursor }: RunContext
+  { pageStateSession, cursor, pomDefinitions }: RunContext
 ): Promise<JsonValue> {
   const context = await pageContextFor(
     pageStateSession,
     cursor,
-    (input as { names?: string[] }).names ?? []
+    (input as { names?: string[] }).names ?? [],
+    pomDefinitions
   );
   const payload: PageContextPayload = {
     structure: context.structure,
@@ -54,32 +53,17 @@ async function snapshotFor(
   return JSON.parse(JSON.stringify(payload)) as JsonValue;
 }
 
-/** The page context `cursor`'s reader receives; its cursor moves to the capture. */
-export async function getPageContextForDocument(
-  currentDocument: Document,
-  cursor: Cursor,
-  ...names: readonly string[]
-): Promise<PageContext> {
-  return pageContextFor(getPageStateSession(currentDocument), cursor, names);
-}
-
-async function pageContextFor(
+/** The page context `cursor`'s reader receives from `pageStateSession`; its cursor moves to the capture. */
+export async function pageContextFor(
   pageStateSession: PageStateSession,
   cursor: Cursor,
-  names: readonly string[]
+  names: readonly string[],
+  definitionsOf: RunContext["pomDefinitions"]
 ): Promise<PageContext> {
   const pageState = await pageStateSession.getPageState(cursor);
   return Object.freeze({
     structure: pageState.text,
-    pomDefinitions: getPomDefinitions(...names).definitions,
+    pomDefinitions: definitionsOf(...names).definitions,
     resolve: pageState.resolve,
   });
-}
-
-/**
- * The POM definitions for `names` (every known one when empty), as the text
- * `snapshot` returns in `pomDefinitions`. Captures no page state.
- */
-export function getPomDefinitionText(...names: readonly string[]): string {
-  return renderPomDefinitions(getPomDefinitions(...names).definitions);
 }

@@ -1,3 +1,5 @@
+import type { AriaRef } from "@ayme-dev/core/structural-observation";
+import type { Locator } from "@playwright/test";
 import { afterEach, expect, it, vi } from "vitest";
 
 import {
@@ -6,18 +8,11 @@ import {
 } from "./pageInstrumentation";
 import type { AymePage } from "../../runtime";
 
-const { latestPageStateRefOf } = vi.hoisted(() => ({
-  latestPageStateRefOf: vi.fn(
-    async (): Promise<string | undefined> => undefined
-  ),
-}));
-vi.mock(
-  "../../page-state/infrastructure/pageState",
-  async (importOriginal) => ({
-    ...(await importOriginal<object>()),
-    latestPageStateRefOf,
-  })
-);
+/** What the page state gave the element a locator matches: no ref until a test says. */
+const latestPageStateRefOf = vi.fn<
+  (locator: Locator) => Promise<AriaRef | undefined>
+>(async () => undefined);
+const noRef = latestPageStateRefOf;
 
 type FakeLocator = {
   selector: string;
@@ -56,7 +51,9 @@ function fakePage(by: string): FakePage {
 const page = fakePage("raw") as unknown as AymePage;
 const traced = fakePage("traced") as unknown as AymePage;
 const lateButton = () =>
-  instrumentedPage(page).locator("button") as unknown as FakeLocator;
+  instrumentedPage(page, undefined, noRef).locator(
+    "button"
+  ) as unknown as FakeLocator;
 let uninstall = () => {};
 const installTracing = () => {
   uninstall = installRuntimePageInstrumentation(() => traced);
@@ -69,10 +66,10 @@ afterEach(() => {
 });
 
 it("reads the ref of a locator's element in the page before its click reaches it", async () => {
-  latestPageStateRefOf.mockResolvedValueOnce("e7");
+  latestPageStateRefOf.mockResolvedValueOnce("e7" as AriaRef);
   const heard = vi.fn(() => expect(clicks).toEqual([]));
 
-  await instrumentedPage(page, heard).locator("button").click();
+  await instrumentedPage(page, heard, noRef).locator("button").click();
 
   expect(heard).toHaveBeenCalledWith(
     expect.objectContaining({ operation: "click", ref: "e7" })
@@ -85,7 +82,7 @@ it("reads the ref of a locator's element in the page before its click reaches it
 
 it("records no ref, and still makes the input, when the page names none or reading it fails", async () => {
   const heard = vi.fn();
-  const button = instrumentedPage(page, heard).locator("button");
+  const button = instrumentedPage(page, heard, noRef).locator("button");
 
   latestPageStateRefOf.mockResolvedValueOnce(undefined);
   await button.click();
@@ -101,7 +98,7 @@ it("records no ref, and still makes the input, when the page names none or readi
 it("makes a call that is no Interaction at once, reading nothing", () => {
   const heard = vi.fn();
 
-  (instrumentedPage(page, heard) as unknown as FakePage)
+  (instrumentedPage(page, heard, noRef) as unknown as FakePage)
     .locator("button")
     .evaluateAll();
 
@@ -138,7 +135,11 @@ it("routes all()'s items and a locator's page through a later instrumentation", 
 });
 
 it("routes a keyboard and a mouse saved before an instrumentation was installed through it", () => {
-  const { keyboard, mouse } = instrumentedPage(page) as unknown as FakePage;
+  const { keyboard, mouse } = instrumentedPage(
+    page,
+    undefined,
+    noRef
+  ) as unknown as FakePage;
   keyboard.press("a");
   installTracing();
   keyboard.press("b");

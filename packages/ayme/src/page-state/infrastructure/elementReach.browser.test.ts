@@ -691,7 +691,8 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
       page,
       "Row.open",
       await rowRef(page),
-      "click"
+      "click",
+      () => undefined
     ).then(() => "no error", errorText);
 
     expect(error).toBe(
@@ -710,7 +711,8 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
       page,
       "Row.open",
       await rowRef(page),
-      "click"
+      "click",
+      () => undefined
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });
@@ -725,7 +727,8 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
       page,
       "Row.open",
       await rowRef(page),
-      "click"
+      "click",
+      () => undefined
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });
