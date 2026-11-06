@@ -1,11 +1,9 @@
 // The browser runtime as a host of its document's in-page module: the
 // Playwright Lite page through which it installs the module, captures, runs
-// its actions and hears of its Visits, and the transitional lookup of
-// elements by ref (#1182).
+// its actions and hears of its Visits.
 import { createPage } from "@ayme-dev/playwright-lite";
 import type { Page } from "@playwright/test";
 import {
-  elementOfRef,
   inPage,
   type ActionInputs,
   type ElementInputs,
@@ -13,7 +11,7 @@ import {
   type VisitSignal,
 } from "../../in-page";
 import type { Capture, NamedFilter, Predicate } from "../../shared";
-import type { ElementsOf, PageAction } from "../application/pageStateSession";
+import type { PageAction } from "../application/pageStateSession";
 
 const browserPages = new WeakMap<Document, Page>();
 
@@ -102,12 +100,3 @@ export async function beginDocumentAction(
     throw error;
   }
 }
-
-/** Transitional (#1182): the elements refs name, through the document's module. */
-export const elementsOf: ElementsOf = (refs) =>
-  new Map(
-    refs.flatMap((ref) => {
-      const element = elementOfRef(ref);
-      return element ? [[ref, element] as const] : [];
-    })
-  );

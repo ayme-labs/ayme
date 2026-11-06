@@ -20,7 +20,7 @@ export type {
 // What the Inspector reads of its own side, with no runtime state: the types
 // of the plain data it shows and the pure rules over it. The Inspector takes
 // these from here, not from the runtime's root or internal entries (ADR-0049).
-export { INSPECTOR_DOGFOOD_ATTRIBUTE } from "./shared";
+export { EXCLUDE_ATTRIBUTE } from "./shared";
 export type {
   AgentConnectionStatusSource,
   AppProcessTools,

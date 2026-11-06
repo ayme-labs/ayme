@@ -22,7 +22,7 @@ import {
   rootTargetPath,
   type PageObjectObservation,
   type PomTargetSource,
-  type RegisteredPomTargetRef,
+  type RegisteredPomTarget,
 } from "../domain/pomTree";
 
 /**
@@ -36,7 +36,7 @@ import {
 export async function resolveTargets(
   driver: PageDriver,
   sources: readonly PomTargetSource[]
-): Promise<RegisteredPomTargetRef[]> {
+): Promise<RegisteredPomTarget[]> {
   // Each locator once: a member's root is also a source of its own.
   const resolved = new Map<Locator, Promise<string[]>>();
   const refsOf = (locator: Locator) => {

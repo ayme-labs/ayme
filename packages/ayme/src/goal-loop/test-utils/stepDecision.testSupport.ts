@@ -4,10 +4,8 @@
  * `decideStep` sends it and keeps the requests.
  */
 import {
-  AriaRefSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
-  type AriaRef,
   type StructuralNode,
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
@@ -41,13 +39,7 @@ export function captureOfButtons(count: number): PageCapture {
     yaml,
     new SyntheticAriaRefFactory()
   );
-  const elementsByRef = new Map<AriaRef, Element>();
-  for (let index = 1; index <= count; index++)
-    elementsByRef.set(
-      AriaRefSchema.parse(`e${index}`),
-      document.createElement("button")
-    );
-  return { tree, elementsByRef, pomRootMarks: new Map() };
+  return { tree, pomRootMarks: new Map() };
 }
 
 /**
@@ -56,17 +48,16 @@ export function captureOfButtons(count: number): PageCapture {
  */
 export const everyNode: readonly StructuralNode[] = [];
 
-/** The nodes of `capture`, in tree order, whose element `keep` keeps. */
+/** The nodes of `capture`, in tree order, that `keep` keeps. */
 export function nodesOf(
   capture: PageStateCapture,
-  keep: (element: Element) => boolean = () => true
+  keep: (node: StructuralNode) => boolean = () => true
 ): StructuralNode[] {
   const nodes: StructuralNode[] = [];
   const pending = [...capture.tree.getRootNodes()].reverse();
   while (pending.length > 0) {
     const node = pending.pop()!;
-    const element = capture.elementsByRef.get(node.ref);
-    if (element && keep(element)) nodes.push(node);
+    if (keep(node)) nodes.push(node);
     for (const child of [...node.children].reverse())
       if (typeof child !== "string") pending.push(child);
   }
@@ -181,7 +172,7 @@ export const lookalikeClickTool: GoalLoopOperation = {
 
 /** A collection item the tool is unavailable on, so never offered. */
 export const archivedItem: RootedToolInstance = {
-  element: document.createElement("li"),
+  ref: "e99",
   present: true,
   available: false,
   reason: "already archived",
@@ -196,8 +187,8 @@ export const collectionTool = (
   unavailable: RootedToolInstance[] = []
 ): GoalLoopOperation =>
   archiveTool([
-    ...[...capture.elementsByRef.values()].map((element) => ({
-      element,
+    ...capture.tree.getAllRefs().map((ref) => ({
+      ref,
       present: true,
       available: true,
     })),

@@ -11,7 +11,7 @@ import {
 import { registerAymeRef } from "./in-page";
 
 export type { PlaywrightAyme, PlaywrightAymeOptions };
-export type { PageCustomTool } from "./tools/application";
+export type { CustomTool } from "./tools/application";
 
 /**
  * A runtime session over the Playwright `Page` `options.page`, inert until

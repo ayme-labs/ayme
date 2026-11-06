@@ -3,13 +3,14 @@ import type { PomManifest, PomMemberObservation } from "../../shared";
 import type { PomInstanceObservation } from "./pomInstance";
 
 /**
- * An element a Page Object member holds, at the member's concrete path, e.g.
- * "ListPage.items[0].nameButton", or at `rootTargetPath` of a Page Object's
- * path for its root.
+ * An element a Page Object member holds, named by its Structural Ref, at the
+ * member's concrete path, e.g. "ListPage.items[0].nameButton", or at
+ * `rootTargetPath` of a Page Object's path for its root.
  */
 export type RegisteredPomTarget = {
   path: string;
-  element: Element;
+  /** The Structural Ref the element has now. */
+  ref: string;
   /**
    * The member's locator, as its `toString()` reads, e.g.
    * "getByRole('button', { name: 'Add item' })": the locator an Interaction
@@ -23,15 +24,6 @@ export type RegisteredPomTarget = {
    * one.
    */
   aliases?: readonly string[];
-};
-
-/**
- * A target as the registry resolves it: the element named by its Structural
- * Ref, which the browser runtime turns into the `RegisteredPomTarget`'s
- * element.
- */
-export type RegisteredPomTargetRef = Omit<RegisteredPomTarget, "element"> & {
-  ref: string;
 };
 
 /**

@@ -11,7 +11,7 @@ import {
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 
-import { createRefWorld, type ElementInputs } from "../in-page";
+import { createRefWorld, type ElementInputs } from "./page/capture";
 import {
   browserMonotonicClock,
   type ActionOutcome,

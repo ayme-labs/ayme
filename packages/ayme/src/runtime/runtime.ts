@@ -7,11 +7,7 @@ import {
   createPage,
   probeRegisteredPomMembers,
 } from "../page-objects/infrastructure";
-import {
-  checkCustomToolFilters,
-  peeksOf,
-  processPeeks,
-} from "../tools/infrastructure";
+import { peeksOf, processPeeks } from "../tools/infrastructure";
 import { registerCustomTool } from "../tools/application";
 import {
   browserPageState,
@@ -81,13 +77,32 @@ function browserTarget(options: AymeOptions): SessionTarget {
       typeof window === "undefined" ? processPeeks : peeksOf(key()),
     toolSources: browserToolSources,
     claim: (page) => createAymeRuntime(page),
+    // A filter the page cannot run is refused here, by this synchronous
+    // start: the browser's realm is the page, so checking is checking where
+    // the module runs it.
     prepare: (options) => ({
-      // Checked before anything starts: a filter the page cannot run throws here.
       ignore:
         options.ignore === undefined
           ? undefined
-          : registerFilter("`ignore`", options.ignore),
-      customFilters: checkCustomToolFilters(options.customTools),
+          : registerFilter(
+              "`ignore`",
+              options.ignore,
+              document.documentElement
+            ),
+      customFilters: (options.customTools ?? []).flatMap(({ name, filter }) =>
+        filter === undefined
+          ? []
+          : [
+              {
+                name,
+                filter: registerFilter(
+                  `\`filter\` of the Custom Tool \`${name}\``,
+                  filter,
+                  document.documentElement
+                ),
+              },
+            ]
+      ),
       customTools: options.customTools?.map(registerCustomTool),
     }),
     latestRefOf: latestPageStateRefOf,

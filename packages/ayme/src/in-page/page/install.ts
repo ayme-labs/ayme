@@ -11,8 +11,11 @@ import {
   InjectedScript,
 } from "virtual:ayme-aria-snapshot";
 
+import { checkFilter } from "../../shared";
 import type {
   Capture,
+  ControlState,
+  FilterCheck,
   DocumentToken,
   FilterData,
   Predicate,
@@ -26,6 +29,7 @@ import {
   type Settled,
 } from "./actions";
 import { watchActivity } from "./activity";
+import { readControls } from "./controls";
 import { createRefWorld, type CaptureAsk, type ElementInputs } from "./capture";
 import { watchFullLoads, watchSameDocumentNavigations } from "./navigation";
 import { predicates } from "./predicates";
@@ -33,15 +37,19 @@ import { createReach } from "./reach";
 import { showCue } from "./cue";
 import { startPicking, type PickArguments, type PickNotice } from "./pick";
 import { createRoots, type ProbeRequest, type RootState } from "./roots";
-import { checkFilter, type FilterCheck } from "./filter";
+
 import { createRecommender } from "./recommend";
+import {
+  coveredByExcluded,
+  hasExcludedSubtree,
+  passThroughExcluded,
+} from "./excluded";
 
 export type { Capture, DocumentToken, Predicate, ReachMeasurement };
 export type { CaptureAsk, ElementInputs } from "./capture";
 export type { PickArguments, PickNotice } from "./pick";
 export type { ActionInputs, Begun, Settled } from "./actions";
 export type { ProbeRequest, RootState } from "./roots";
-export type { FilterCheck } from "./filter";
 
 /** What a host asks to pick a ref: `id` names this picking in the notices it gets back. */
 export type PickRequest = PickArguments & { id: string };
@@ -118,9 +126,6 @@ export type ReachableRequest = {
   input: "click" | "focus";
 };
 
-/** The reach of this document's elements, for a host in the document's own realm. */
-export type Reach = ReturnType<typeof createReach>;
-
 /** The one module of a document, under a well-known symbol on its global. */
 export type Slot = {
   readonly version: string;
@@ -174,11 +179,6 @@ export type Slot = {
     elements: Element[],
     request?: RecommendRequest
   ): RecommendationAnswer[];
-  /**
-   * Reach of elements, for a host in the document's own realm, such as the
-   * browser runtime's, which holds them. Names what it finds by ref.
-   */
-  readonly reach: Reach;
   /** The before capture of an action of `host`, whose full-load watch it arms. */
   begin(host: HostKey, inputs?: ActionInputs): Promise<Begun>;
   /** The Settled Page after `host`'s `action` and its capture, or the load that ended it. */
@@ -187,21 +187,22 @@ export type Slot = {
     action: number,
     inputs?: ActionInputs
   ): Promise<Settled>;
+  /**
+   * The ref each of `refs` names its element by now, in the order given: a
+   * ref a probe or a reach gave before a capture marked the element gives way
+   * to the capture's. None for a ref whose element is no longer in the
+   * document.
+   */
+  currentRefs(host: HostKey, refs: readonly string[]): (string | undefined)[];
+  /** The state of each native form control `refs` name, by ref: inputs, textareas and selects. */
+  controls(
+    host: HostKey,
+    refs: readonly string[]
+  ): Record<string, ControlState>;
   /** The Structural Ref each element has in the document, if it was ever captured. */
   refs(host: HostKey, elements: readonly Element[]): (string | undefined)[];
   /** The connected element under `root` that `ref` names: the `ayme-ref` engine's query. */
   queryRef(ref: string, root?: Node): Element[];
-  /**
-   * Transitional (#1182): the element `ref`, now or before, named, connected
-   * or not.
-   */
-  elementEverNamed(ref: string): Element | undefined;
-  /**
-   * Transitional (#1182): the element `ref` names, connected or not, for the
-   * browser runtime's lookups by ref until its consumers read the page
-   * through Locators.
-   */
-  elementOf(ref: string): Element | undefined;
   /**
    * Picks a ref by pointing at the document, for `host`: answers with the ref
    * clicked, or none when Esc or `cancelPick` ends it. The host hears what the
@@ -212,6 +213,12 @@ export type Slot = {
   cancelPick(host: HostKey, id: string): void;
   /** Shows Demo Mode's click cue on the one element `matched` holds, and answers when it has gone. */
   cue(host: HostKey, matched: Element[]): Promise<void>;
+  /** Whether the document holds a subtree that carries the excluded-subtree mark. */
+  excluded(host: HostKey): boolean;
+  /** Whether an excluded subtree covers where a pointer action on one of `elements` lands. */
+  covered(host: HostKey, elements: Element[]): boolean;
+  /** Sets or clears the hit-test mark on the roots of the excluded subtrees. */
+  passThrough(host: HostKey, on: boolean): void;
 };
 
 const slotKey = Symbol.for("ayme.inPage");
@@ -322,7 +329,8 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       return { document: token, version, installedBy, host };
     },
     capture,
-    check: (_host: HostKey, filter: FilterData) => checkFilter(filter),
+    check: (_host: HostKey, filter: FilterData) =>
+      checkFilter(filter, document.documentElement),
     probe: (
       host: HostKey,
       elements: readonly Element[],
@@ -401,14 +409,21 @@ function createSlot(version: string, installedBy: HostKey): Slot {
           };
         }
       }),
-    reach,
     begin: actions.begin,
     settle: actions.settle,
     refs: (_host: HostKey, elements: readonly Element[]) =>
       elements.map(refs.lastRefOf),
     queryRef: refs.queryRef,
-    elementOf: refs.elementOf,
-    elementEverNamed: refs.elementEverNamed,
+    controls: (_host: HostKey, asked: readonly string[]) => {
+      const named = new Map<string, Element>();
+      for (const ref of asked) {
+        const element = refs.elementOf(ref);
+        if (element) named.set(ref, element);
+      }
+      return Object.fromEntries(readControls(named));
+    },
+    currentRefs: (_host: HostKey, asked: readonly string[]) =>
+      asked.map(refs.currentRefOf),
     pick(host: HostKey, { id, ...request }: PickRequest) {
       if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
       const picking = startPicking(request, refs.refOf, (notice) =>
@@ -427,6 +442,10 @@ function createSlot(version: string, installedBy: HostKey): Slot {
     async cue(_host: HostKey, matched: Element[]) {
       if (matched.length === 1) await showCue(matched[0]!);
     },
+    excluded: () => hasExcludedSubtree(),
+    covered: (_host: HostKey, elements: Element[]) =>
+      coveredByExcluded(elements),
+    passThrough: (_host: HostKey, on: boolean) => passThroughExcluded(on),
   });
 }
 

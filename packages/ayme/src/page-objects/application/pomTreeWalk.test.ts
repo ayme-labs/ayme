@@ -9,7 +9,7 @@ import { ayme } from "../domain/decorators";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 import { rootTargetPath } from "../domain/pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
-import { elementOfRef, inPage } from "../../in-page";
+import { inPage } from "../../in-page";
 import { inPageDriver } from "../infrastructure/inPageDriver";
 
 const page = createPage();
@@ -204,11 +204,17 @@ describe("one observation of a Page Object", () => {
     );
 
     const targets = await resolveTargets(litePageDriver, targetSources);
-    expect(
-      targets.map(({ path, ref }) => [path, elementOfRef(ref)?.id])
-    ).toEqual([
-      [rootTargetPath("FileTree.items[0]"), "src"],
-      [rootTargetPath("FileTree.items[0].children[0]"), "lib"],
+    expect(targets.map(({ path }) => path)).toEqual([
+      rootTargetPath("FileTree.items[0]"),
+      rootTargetPath("FileTree.items[0].children[0]"),
     ]);
+    // Each target's ref names the element the member holds.
+    expect(
+      await Promise.all(
+        targets.map(({ ref }, index) =>
+          litePageDriver.names(page.locator(index === 0 ? "#src" : "#lib"), ref)
+        )
+      )
+    ).toEqual([true, true]);
   });
 });

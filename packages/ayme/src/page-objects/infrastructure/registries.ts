@@ -8,7 +8,7 @@ import { inPage } from "../../in-page";
 import type { LatestRefByRef } from "../../page-state/domain";
 import {
   createPomRegistry,
-  type PomElements,
+  type PomPageStates,
   type PomRegistry,
 } from "../application/pomRegistry";
 import { inPageDriver } from "./inPageDriver";
@@ -17,7 +17,7 @@ import { inPageDriver } from "./inPageDriver";
 export type PomRegistryHost = {
   /** The Structural Ref the agent's latest page state gave what the in-page ref names. */
   latestPageStateRef: LatestRefByRef;
-  elements: PomElements;
+  pageStates: PomPageStates;
 };
 
 const registries = new WeakMap<Page, PomRegistry>();
@@ -30,7 +30,7 @@ export function pomRegistryOf(page: Page, host: PomRegistryHost): PomRegistry {
       page,
       (found = createPomRegistry(
         inPageDriver(() => inPage(page), host.latestPageStateRef),
-        host.elements
+        host.pageStates
       ))
     );
   return found;

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { readControls } from "./inspectorLook";
+import { readControls } from "./controls";
 
 it("reads each native control's value, options, range and radio group", () => {
   document.body.innerHTML = `

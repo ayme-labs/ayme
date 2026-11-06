@@ -16,8 +16,10 @@ import { ListPage } from "../pom/ListPage";
 const markElement: CustomTool = {
   name: "mark_element",
   description: "Mark one element on the page.",
-  async execute({ element }) {
-    element.setAttribute("data-marked", "");
+  async execute({ locator }) {
+    await locator.evaluate((element) =>
+      element.setAttribute("data-marked", "")
+    );
     return null;
   },
 };

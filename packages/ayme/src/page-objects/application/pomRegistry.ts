@@ -24,7 +24,6 @@ import {
 import {
   availabilityOf,
   combinedAvailability,
-  type ObservedPomRoot,
   type PomInstanceObservation,
 } from "../domain/pomInstance";
 import {
@@ -83,7 +82,8 @@ export type RegisteredPom = {
 
 export type RegisteredPomRoot = {
   mark: string;
-  element: Element;
+  /** The Structural Ref the root's element has now. */
+  ref: string;
 };
 
 type ObservedRegisteredPom = Omit<RegisteredPom, "tools"> & {
@@ -99,21 +99,18 @@ type ObservedRegisteredPom = Omit<RegisteredPom, "tools"> & {
   tools: readonly CallerAwarePomTool[];
 };
 
-/** A rooted tool's instance, whether the tool would run on it and why not. */
-export type RootedToolInstance = { element: Element } & ToolAvailability;
+/**
+ * A rooted tool's instance, whether the tool would run on it and why not:
+ * `ref` is the Structural Ref its root's element has now.
+ */
+export type RootedToolInstance = { ref: string } & ToolAvailability;
 
 /**
  * What a runtime session adds to the registry of its page, which reads the
- * page by Structural Ref alone: how it hears of the session's page states
- * and tells its captures to wait for the probe. Transitional (#1182): Reach,
- * the element tools, the Goal Loop's questions and the Inspector still hold
- * elements, which a runtime that shares its document with the page turns
- * refs into; one that does not, such as Node's, gives none, and the registry
- * then lists no element.
+ * page by Structural Ref and Locator alone: how it hears of the session's
+ * page states and tells its captures to wait for the probe.
  */
-export type PomElements = {
-  /** The element `ref` names in this realm's document, if any. */
-  elementOf(ref: string): Element | undefined;
+export type PomPageStates = {
   /**
    * Calls `listener` each time a page state is recorded, until the returned
    * function is called.
@@ -121,13 +118,12 @@ export type PomElements = {
   onPageStateRecorded(listener: () => void): () => void;
   /**
    * What the page's captures wait for before they read it, set while the
-   * registry observes the page; cleared when it stops.
+   * registry observes it; cleared when it stops.
    */
   providePageObjectProbe(probe: (() => Promise<void>) | undefined): void;
 };
 
-const noElements: PomElements = {
-  elementOf: () => undefined,
+const noPageStates: PomPageStates = {
   onPageStateRecorded: () => () => {},
   providePageObjectProbe: () => {},
 };
@@ -138,7 +134,7 @@ const noElements: PomElements = {
  */
 export function createPomRegistry(
   driver: PageDriver,
-  elements: PomElements = noElements
+  pageStates: PomPageStates = noPageStates
 ) {
   const registeredPoms = new Set<ObservedRegisteredPom>();
   // Registrations refused for a same-named class, in the order they were
@@ -252,11 +248,11 @@ export function createPomRegistry(
     stopWatchingPage = driver.watch(probeRegistrations);
     // An Availability Reason names the ref a recorded page state may have
     // just given the element in the way, so the tools are read again.
-    stopWatchingPageStates = elements.onPageStateRecorded(
+    stopWatchingPageStates = pageStates.onPageStateRecorded(
       announceObstructedRoots
     );
     // A capture waits for the roots of a completed probe run.
-    elements.providePageObjectProbe(probeRegisteredPomMembers);
+    pageStates.providePageObjectProbe(probeRegisteredPomMembers);
   }
 
   function stopObservingPage() {
@@ -264,7 +260,7 @@ export function createPomRegistry(
     stopWatchingPage = undefined;
     stopWatchingPageStates?.();
     stopWatchingPageStates = undefined;
-    elements.providePageObjectProbe(undefined);
+    pageStates.providePageObjectProbe(undefined);
   }
 
   /**
@@ -365,7 +361,6 @@ export function createPomRegistry(
         [...actions.values()].map((action) =>
           createTool(
             driver,
-            elements,
             pomToolFacts(component.className, rooted, action),
             action,
             instancesOf
@@ -381,29 +376,28 @@ export function createPomRegistry(
 
   /**
    * Each present Page Object Root the registered Page Objects found, with
-   * the mark its Page Object gives it. A root that is not on the page has
-   * none.
+   * the mark its Page Object gives it and the Structural Ref its element has
+   * now. A root that is not on the page has none.
    */
   async function listRegisteredPomRoots(): Promise<RegisteredPomRoot[]> {
     await probeRegisteredPomMembers();
-    return [...registeredPoms].flatMap((registration) =>
-      (registration.instances ?? []).flatMap(({ className, root, present }) => {
-        const element = present && root ? connectedElementOf(root) : undefined;
-        return element ? [{ mark: className, element }] : [];
-      })
+    const found = [...registeredPoms].flatMap((registration) =>
+      (registration.instances ?? []).flatMap(({ className, root, present }) =>
+        present && root?.present && root.ref
+          ? [{ mark: className, ref: root.ref }]
+          : []
+      )
     );
-  }
-
-  /** The element a present root's ref names, while it is on the page. */
-  function connectedElementOf(root: ObservedPomRoot): Element | undefined {
-    const element =
-      root.present && root.ref ? elements.elementOf(root.ref) : undefined;
-    return element?.isConnected ? element : undefined;
+    const current = await driver.currentRefs(found.map(({ ref }) => ref));
+    return found.flatMap(({ mark }, index) =>
+      current[index] ? [{ mark, ref: current[index]! }] : []
+    );
   }
 
   /**
    * Package-internal: every element the registered Page Objects' members
-   * hold now, one target per element and concrete member path, in
+   * hold now, as its Structural Ref, one target per element and concrete
+   * member path, in
    * registration and declaration order. The latest observation says which
    * locators those are, and each read resolves them again, so a change no
    * observation follows, such as a checked box or a focus move, shows too.
@@ -413,14 +407,10 @@ export function createPomRegistry(
    */
   async function listRegisteredPomTargets(): Promise<RegisteredPomTarget[]> {
     await driver.probed();
-    const targets = await resolveTargets(
+    return resolveTargets(
       driver,
       [...registeredPoms].flatMap((registration) => registration.targetSources)
     );
-    return targets.flatMap(({ ref, ...target }) => {
-      const element = elements.elementOf(ref);
-      return element ? [{ ...target, element }] : [];
-    });
   }
 
   /** Each distinct root of the tool's class, across all registrations. */
@@ -459,7 +449,7 @@ export function createPomRegistry(
         tool,
         ...combinedAvailability(
           instancesOf(tool).map((instance) =>
-            availabilityNow(driver, elements, instance, tool.methodName)
+            availabilityNow(driver, instance, tool.methodName)
           )
         ),
       }));
@@ -479,16 +469,36 @@ export function createPomRegistry(
    * Package-internal: the present instances each rooted tool acts on, by
    * tool name, marked as the page state marks them, each with whether
    * the tool would run on it now and why not. Root-less tools have no items.
+   * Reads the page once the probe the page's changes made due has run, and
+   * names each root by the ref its element has now.
    */
-  function listRootedToolInstances(): Map<string, RootedToolInstance[]> {
-    const itemsByTool = new Map<string, RootedToolInstance[]>();
-    for (const { tool } of listRegisteredPomTools())
-      if (tool.rooted)
-        itemsByTool.set(
-          tool.name,
-          rootedInstancesOf(driver, elements, instancesOf(tool), tool)
-        );
-    return itemsByTool;
+  async function listRootedToolInstances(): Promise<
+    Map<string, RootedToolInstance[]>
+  > {
+    await driver.probed();
+    const rooted = listRegisteredPomTools().flatMap(({ tool }) =>
+      tool.rooted
+        ? [
+            {
+              tool,
+              instances: rootedInstancesOf(driver, instancesOf(tool), tool),
+            },
+          ]
+        : []
+    );
+    const current = await driver.currentRefs(
+      rooted.flatMap(({ instances }) => instances.map(({ ref }) => ref))
+    );
+    let next = 0;
+    return new Map(
+      rooted.map(({ tool, instances }) => [
+        tool.name,
+        instances.flatMap((instance) => {
+          const ref = current[next++];
+          return ref ? [{ ...instance, ref }] : [];
+        }),
+      ])
+    );
   }
 
   function subscribeToRegisteredPoms(subscriber: () => void) {
@@ -553,45 +563,33 @@ export function createPomRegistry(
 /** A Page's Page Object registry. */
 export type PomRegistry = ReturnType<typeof createPomRegistry>;
 
-/**
- * `instance`'s availability for `methodName` now. An observation whose root
- * element has since left the page is stale: the instance reads as absent
- * until the next probe observes it again, so no call runs on it.
- */
+/** `instance`'s availability for `methodName`, as the last observation read it. */
 function availabilityNow(
   driver: PageDriver,
-  elements: PomElements,
   instance: PomInstanceObservation,
   methodName: string
 ): ToolAvailability {
-  const ref = instance.root?.ref;
-  if (ref && elements.elementOf(ref)?.isConnected === false)
-    return { present: false, available: false };
   return availabilityOf(instance, methodName, driver.latestPageStateRef);
 }
 
 /**
  * The present items `tool` of `registration` goes through, as last observed,
- * each with the tool's verdict on it: what the Goal Loop offers and what a
- * call on an item is refused by.
+ * each with the tool's verdict on it and the ref its root had in that
+ * observation: what the Goal Loop offers and what a call on an item is
+ * refused by.
  */
 function rootedInstancesOf(
   driver: PageDriver,
-  elements: PomElements,
   instances: readonly PomInstanceObservation[],
   tool: RegisteredPomTool
 ): RootedToolInstance[] {
   return instances.flatMap((instance) => {
     const { root } = instance;
-    const element =
-      instance.present && root?.present && root.ref
-        ? elements.elementOf(root.ref)
-        : undefined;
-    return element?.isConnected
+    return instance.present && root?.present && root.ref
       ? [
           {
-            element,
-            ...availabilityNow(driver, elements, instance, tool.methodName),
+            ref: root.ref,
+            ...availabilityNow(driver, instance, tool.methodName),
           },
         ]
       : [];
@@ -621,7 +619,6 @@ function reachableClasses(manifest: PomManifest) {
 /** Runs a rooted instance by ref, or the sole root-less instance directly. */
 function createTool(
   driver: PageDriver,
-  elements: PomElements,
   facts: RegisteredPomTool,
   action: ToolManifest,
   instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[]
@@ -653,20 +650,12 @@ function createTool(
         };
         args = actionArgs;
         const label = `call ${tool.name} on`;
-        const { element } = await context.pageStateSession.resolveRef(
+        const { ref: resolved } = await context.pageStateSession.resolveRef(
           ref,
           label
         );
-        const rootOf = (instance: PomInstanceObservation) =>
-          instance.root?.ref
-            ? elements.elementOf(instance.root.ref)
-            : undefined;
-        const previous = instances.find(
-          (instance) => rootOf(instance) === element
-        );
-        observed = instancesOf(tool).find(
-          (instance) => rootOf(instance) === element
-        );
+        const previous = await rootedAt(driver, instances, resolved);
+        observed = await rootedAt(driver, instancesOf(tool), resolved);
         // Ref resolution captures the page and may observe a replacement
         // model. Keep the pre-call verdict only for the same live instance.
         if (previous && (!observed || previous.instance === observed.instance))
@@ -678,10 +667,10 @@ function createTool(
         targetName = `${tool.className} on ref "${ref}"`;
         assertAvailable(
           targetName,
-          availabilityNow(driver, elements, observed, tool.methodName)
+          availabilityNow(driver, observed, tool.methodName)
         );
       }
-      const target = await callTarget(driver, elements, targetName, observed);
+      const target = await callTarget(driver, targetName, observed);
       return performPageObjectAction(target, action, args, context, targetName);
     },
   };
@@ -689,13 +678,33 @@ function createTool(
 }
 
 /**
+ * The instance whose root's Locator resolves to the one element the Structural
+ * Ref `ref` names, as the page driver checks now: what tells a ref from
+ * another instance's, or from the root a Locator has moved on to.
+ */
+async function rootedAt(
+  driver: PageDriver,
+  instances: readonly PomInstanceObservation[],
+  ref: string
+): Promise<PomInstanceObservation | undefined> {
+  for (const instance of instances)
+    if (
+      instance.rootLocator !== undefined &&
+      instance.root?.ref &&
+      (await driver.names(instance.rootLocator, ref))
+    )
+      return instance;
+  return undefined;
+}
+
+/**
  * What a call of a Page Object Tool acts on: the live instance and, for a
- * rooted one, its root as the page driver resolves the root's locator now,
- * one element, which the browser runtime's document holds.
+ * rooted one, the Locator of its root, which the page driver resolves to one
+ * element now.
  */
 type CallTarget = {
   instance: object;
-  root: { locator: Locator; element: Element } | undefined;
+  root: { locator: Locator } | undefined;
 };
 
 /**
@@ -706,11 +715,10 @@ type CallTarget = {
  */
 async function callTarget(
   driver: PageDriver,
-  elements: PomElements,
   toolName: string,
   observed: PomInstanceObservation | undefined
 ): Promise<CallTarget> {
-  const root = observed && (await heldRoot(driver, elements, observed));
+  const root = observed && (await heldRoot(driver, observed));
   if (!observed || root === false)
     throw unavailableError(toolName, { present: false });
   return { instance: observed.instance, root };
@@ -724,16 +732,14 @@ async function callTarget(
  */
 async function heldRoot(
   driver: PageDriver,
-  elements: PomElements,
   observed: PomInstanceObservation
 ): Promise<CallTarget["root"] | false> {
   if (observed.rootLocator === undefined)
     return observed.root === undefined ? undefined : false;
   const ref = observed.root?.ref;
-  const element = ref ? elements.elementOf(ref) : undefined;
-  if (!ref || !element?.isConnected) return false;
+  if (!ref) return false;
   return (await driver.names(observed.rootLocator, ref))
-    ? { locator: observed.rootLocator, element }
+    ? { locator: observed.rootLocator }
     : false;
 }
 

@@ -23,8 +23,8 @@ const highlight: CustomTool = {
   name: "highlight_element",
   description: "Outline one element on the page so the user can see it.",
   filter: "[data-highlightable]",
-  async execute({ ref, element }) {
-    element.classList.add("highlighted");
+  async execute({ ref, locator }) {
+    await locator.evaluate((element) => element.classList.add("highlighted"));
     return { highlighted: ref };
   },
 };
@@ -34,7 +34,7 @@ createAyme({ customTools: [highlight] });
 
 ## How it runs
 
-- The published tool takes `{ ref }`. Ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and its element. An unknown, removed or ambiguous ref fails before `execute` runs.
+- The published tool takes `{ ref }`. Ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and a Playwright `Locator` of its element: act on the element through the Locator, as `locator.click()` or `locator.evaluate(…)` does. An unknown, removed or ambiguous ref fails before `execute` runs.
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
@@ -52,8 +52,11 @@ const copyLink: CustomTool = {
   description: "Copy the link a row points to.",
   filter: (element) =>
     element instanceof HTMLAnchorElement && element.closest("tr") !== null,
-  async execute({ element }) {
-    await navigator.clipboard.writeText((element as HTMLAnchorElement).href);
+  async execute({ locator }) {
+    const href = await locator.evaluate(
+      (element) => (element as HTMLAnchorElement).href
+    );
+    await navigator.clipboard.writeText(href);
     return null;
   },
 };

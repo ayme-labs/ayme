@@ -12,7 +12,7 @@ import {
 import { registerCompiledPom } from "../../page-objects/application";
 import { configureGoalLoop } from "../../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../../goal-loop/application";
-import { getPageStateForElements } from "../infrastructure/pageState";
+import { refsOfSelectors } from "../../test-utils/elementRefs.testSupport";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import {
   agentTools,
@@ -168,7 +168,7 @@ describe("Change Record baseline in Chromium", () => {
 
     const actRef = refFor(await readStructure(), "Act");
     document.body.insertAdjacentHTML("beforeend", TOAST);
-    await getPageStateForElements([document.querySelector("#act")!]);
+    await refsOfSelectors("#act");
 
     const result = await act("click", { target: actRef });
 

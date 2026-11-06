@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { elementOfRef, inPage } from "../../in-page";
+import { inPage } from "../../in-page";
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { createPage } from "./browserPage";
 
 import type { Locator } from "@playwright/test";
@@ -16,7 +17,9 @@ const observePomRoot = async (locator: Locator) => {
   return {
     present,
     available,
-    inTheWay: inTheWay.flatMap((ref) => elementOfRef(ref) ?? []),
+    inTheWay: (await Promise.all(inTheWay.map(elementOfRef))).flatMap(
+      (element) => element ?? []
+    ),
   };
 };
 

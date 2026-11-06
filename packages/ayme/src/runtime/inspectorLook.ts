@@ -4,13 +4,14 @@ import {
   listRegisteredPoms,
   listRootedToolInstances,
 } from "../page-objects/infrastructure";
+import { inPage } from "../in-page";
 import { renderPageState } from "../page-state/domain";
 import {
   latestPageStateCapture,
+  pageOfDocument,
   lookAtPageStateForDocument,
 } from "../page-state/infrastructure";
 import type {
-  ControlState,
   InspectorLook,
   InspectorPageObject,
   InspectorRecordedPageState,
@@ -28,27 +29,25 @@ import { listElementToolTargets } from "./publishedTools";
  */
 export async function lookAtInspectorState(): Promise<InspectorLook> {
   const state = await lookAtPageStateForDocument(document);
-  const [targets, elementToolTargets] = await Promise.all([
+  const [targets, elementToolTargets, rooted] = await Promise.all([
     listRegisteredPomTargets(),
     listElementToolTargets(state),
+    listRootedToolInstances(),
   ]);
-  // An element's ref is its only ref in the look; an element with several has none.
-  const refsByElement = new Map<Element, string[]>();
-  for (const [ref, element] of state.elementsByRef)
-    refsByElement.set(element, [...(refsByElement.get(element) ?? []), ref]);
-  const refOf = (element: Element): string | undefined => {
-    const refs = refsByElement.get(element);
-    return refs?.length === 1 ? refs[0] : undefined;
-  };
+  const refs = [...state.tree.getAllRefs()];
+  // A target or instance names its element by a ref of the look, or by none.
+  const inLook = new Set<string>(refs);
+  const refOf = (ref: string): string | undefined =>
+    inLook.has(ref) ? ref : undefined;
 
   const plainTargets: InspectorTarget[] = targets.map(
-    ({ element, path, locator, aliases }) => {
-      const ref = refOf(element);
+    ({ ref, path, locator, aliases }) => {
+      const named = refOf(ref);
       return {
         path,
         locator,
         ...(aliases === undefined ? {} : { aliases: [...aliases] }),
-        ...(ref === undefined ? {} : { ref }),
+        ...(named === undefined ? {} : { ref: named }),
       };
     }
   );
@@ -61,11 +60,11 @@ export async function lookAtInspectorState(): Promise<InspectorLook> {
       ];
 
   const rootedInstances: Record<string, InspectorRootedInstance[]> = {};
-  for (const [name, instances] of listRootedToolInstances())
-    rootedInstances[name] = instances.map(({ element, available, reason }) => {
-      const ref = refOf(element);
+  for (const [name, instances] of rooted)
+    rootedInstances[name] = instances.map(({ ref, available, reason }) => {
+      const named = refOf(ref);
       return {
-        ...(ref === undefined ? {} : { ref }),
+        ...(named === undefined ? {} : { ref: named }),
         available,
         ...(reason === undefined ? {} : { reason }),
       };
@@ -73,13 +72,13 @@ export async function lookAtInspectorState(): Promise<InspectorLook> {
 
   return {
     projected: JSON.parse(JSON.stringify(state.projected)),
-    refs: [...state.elementsByRef.keys()],
+    refs,
     targets: plainTargets,
     targetsByRef,
     elementToolTargets: Object.fromEntries(
       [...elementToolTargets].map(([name, refs]) => [name, [...refs]])
     ),
-    controls: Object.fromEntries(readControls(state.elementsByRef)),
+    controls: await inPage(pageOfDocument(document)).controls(refs),
     rootedInstances,
   };
 }
@@ -97,7 +96,7 @@ export function recordedInspectorPageState():
     projected: plain(
       renderPageState({ tree: capture.tree, pomRootMarks: new Map() }).projected
     ),
-    refs: [...capture.elementsByRef.keys()],
+    refs: [...capture.tree.getAllRefs()],
   };
 }
 
@@ -134,64 +133,4 @@ export function registeredPomDefinitions(): PomDefinition[] {
  */
 function plain<T>(value: unknown): T {
   return JSON.parse(JSON.stringify(value)) as T;
-}
-
-/** The controls' state of each native form control, by ref: inputs, textareas and selects. */
-export function readControls(
-  elementsByRef: ReadonlyMap<string, Element>
-): Map<string, ControlState> {
-  const controls = new Map<string, ControlState>();
-  const forms = new Map<HTMLFormElement | null, number>();
-  for (const [ref, element] of elementsByRef) {
-    const control = controlOf(element, (form) => {
-      if (!forms.has(form)) forms.set(form, forms.size);
-      return forms.get(form)!;
-    });
-    if (control) controls.set(ref, control);
-  }
-  return controls;
-}
-
-function controlOf(
-  element: Element,
-  formIndex: (form: HTMLFormElement | null) => number
-): ControlState | undefined {
-  if (element instanceof HTMLTextAreaElement)
-    return { value: element.value, multiline: true };
-  if (element instanceof HTMLSelectElement)
-    return {
-      value: element.selectedOptions[0]?.label ?? "",
-      options: [...element.options].map((option) => option.label),
-    };
-  if (!(element instanceof HTMLInputElement)) return undefined;
-  switch (element.type) {
-    case "checkbox":
-      return { value: String(element.checked) };
-    case "radio":
-      return {
-        value: String(element.checked),
-        ...(element.name
-          ? { group: `${formIndex(element.form)}:${element.name}` }
-          : {}),
-      };
-    case "range":
-      return {
-        value: element.value,
-        range: {
-          min: numberOr(element.min, 0),
-          max: numberOr(element.max, 100),
-          step:
-            element.step.toLowerCase() === "any"
-              ? "any"
-              : numberOr(element.step, 1),
-        },
-      };
-    default:
-      return { value: element.value };
-  }
-}
-
-function numberOr(text: string, fallback: number) {
-  const value = Number.parseFloat(text);
-  return Number.isFinite(value) ? value : fallback;
 }

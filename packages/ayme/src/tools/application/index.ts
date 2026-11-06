@@ -3,16 +3,11 @@ export {
   subscribeToAgentImageRuns,
 } from "./agentImageRuns";
 export type { AgentImageRun } from "./agentImageRuns";
-export {
-  elementToolTargets,
-  registerCustomTool,
-  registerPageCustomTool,
-} from "./elementTools";
+export { elementToolTargets, registerCustomTool } from "./elementTools";
 export type { ElementToolTargets } from "./elementTools";
 export type {
   CustomTool,
   CustomToolContext,
-  PageCustomTool,
   PublishedElementTool,
   RegisteredElementTool,
   ReachOn,

@@ -10,12 +10,8 @@
 
 import { type AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator } from "@playwright/test";
-import { elementEverNamed, elementOfRef, inPage } from "../../in-page";
-import {
-  ToolInputError,
-  type FilterData,
-  type NamedFilter,
-} from "../../shared";
+import { inPage } from "../../in-page";
+import type { FilterData, NamedFilter } from "../../shared";
 import type { InteractionHistory } from "../domain/interactionHistory";
 import type { Cursor, Cursors } from "../domain/cursors";
 import type { PageStateSession } from "../application/pageStateSession";
@@ -23,7 +19,6 @@ import {
   bindDocument,
   beginDocumentAction,
   captureDocument,
-  elementsOf,
   pageOfDocument,
 } from "./browserInPage";
 import type { PageState, PageStateLook } from "../domain/structuralPageState";
@@ -51,8 +46,6 @@ function browserHost(currentDocument: Document): PageStateHost {
         bind: (onVisit) => bindDocument(currentDocument, onVisit),
         capture: (inputs, ask) => captureDocument(currentDocument, inputs, ask),
         begin: (inputs) => beginDocumentAction(currentDocument, inputs),
-        elementsOf,
-        elementNamed: elementOfRef,
       })
     );
   return host;
@@ -136,40 +129,6 @@ export function getInteractionHistory(
   return getPageStateSession(currentDocument).history;
 }
 
-export async function resolvePageStateRef(
-  element: Element
-): Promise<AriaRef | undefined> {
-  const { refs } = await getPageStateSession(
-    element.ownerDocument
-  ).getPageStateForElements([element]);
-  return connectedRefs([element], refs)[0];
-}
-
-export async function getPageStateForElements(
-  elements: readonly Element[]
-): Promise<{ state: PageState; refs: (AriaRef | undefined)[] }> {
-  const currentDocument = elements[0]?.ownerDocument ?? document;
-  if (elements.some((element) => element.ownerDocument !== currentDocument))
-    throw new ToolInputError(
-      "Page State elements must belong to one Document."
-    );
-  const { state, refs } =
-    await getPageStateSession(currentDocument).getPageStateForElements(
-      elements
-    );
-  return { state, refs: connectedRefs(elements, refs) };
-}
-
-/** An element no longer in its document has no ref. */
-function connectedRefs(
-  elements: readonly Element[],
-  refs: readonly (AriaRef | undefined)[]
-): (AriaRef | undefined)[] {
-  return elements.map((element, index) =>
-    element.isConnected ? refs[index] : undefined
-  );
-}
-
 /**
  * Package-internal: calls `listener` each time a page state of
  * `currentDocument` is recorded, until the returned function is called.
@@ -179,16 +138,6 @@ export function onPageStateRecorded(
   listener: () => void
 ): () => void {
   return getPageStateSession(currentDocument).onRecorded(listener);
-}
-
-/**
- * Package-internal: the Structural Ref the agent's latest recorded page
- * state gave `element`, when it gave it exactly one; undefined until then.
- */
-export function latestPageStateRef(element: Element): AriaRef | undefined {
-  return existingPageState(
-    pageOfDocument(element.ownerDocument)
-  )?.session.latestRefOf(element);
 }
 
 /**
@@ -212,29 +161,16 @@ export async function latestPageStateRefOf(
  * state gave what the in-page ref `ref` names, when it gave it one.
  */
 export function latestPageStateRefNamed(ref: string): AriaRef | undefined {
-  const element = elementEverNamed(ref);
-  return element && latestPageStateRef(element);
+  return existingPageState(pageOfDocument(document))?.session.latestRefOfNamed(
+    ref
+  );
 }
 
-/** The last recorded tree and element map; reading it records and captures nothing. */
+/** The last recorded tree; reading it records and captures nothing. */
 export function latestPageStateCapture(currentDocument: Document) {
   return existingPageState(
     pageOfDocument(currentDocument)
   )?.session.latestCapture();
-}
-
-/**
- * Package-internal: the element the latest recorded page state of
- * `currentDocument` maps `ref` to; undefined until one is recorded, or when
- * that page state printed no such ref.
- */
-export function latestPageStateElement(
-  currentDocument: Document,
-  ref: AriaRef
-): Element | undefined {
-  return existingPageState(
-    pageOfDocument(currentDocument)
-  )?.session.latestElementOf(ref);
 }
 
 /**

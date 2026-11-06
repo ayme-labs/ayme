@@ -84,7 +84,7 @@ it("answers one look at the page and the registry as plain JSON, with refs for t
 it("leaves the Inspector's own host out of the look, so the page never shows it", async () => {
   document.body.innerHTML = `
     <main><h1>Consumer application</h1></main>
-    <div data-ayme-inspector-host><p>Inspector panel text</p></div>`;
+    <div data-ayme-exclude><p>Inspector panel text</p></div>`;
   const contract = inlineInspectorContract();
   const ayme = createAyme();
   stop = ayme.start();

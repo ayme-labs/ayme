@@ -9,10 +9,8 @@ export {
   registerFilter,
   registerFilterThrough,
 } from "./host/filterRegistration";
-export type { FilterCheck } from "./page/filter";
+export type { FilterCheck } from "../shared";
 export type { HighlightStyle } from "./host/highlightStyles";
-// Transitional (#1182): browser-only.
-export { elementEverNamed, elementOfRef } from "./host/elementLookup";
 export type {
   ActionInputs,
   ActionOptions,
@@ -29,7 +27,4 @@ export type {
   VisitSignal,
   RootState,
 } from "./host/inPage";
-// The page part's ref world, for tests that stand in Playwright's snapshot
-// where no browser lays the page out (jsdom).
-export { createRefWorld } from "./page/capture";
 export type { CaptureAriaSnapshot } from "./page/capture";

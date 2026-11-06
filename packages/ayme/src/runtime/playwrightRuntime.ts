@@ -5,11 +5,11 @@
 // document's globals and the Inspector's loaders stay with the browser
 // runtime.
 import type { Locator, Page } from "@playwright/test";
-import { inPage, registerFilterThrough } from "../in-page";
+import { inPage } from "../in-page";
 import { listCustomToolsOf } from "../tools/infrastructure";
 import {
-  registerPageCustomTool,
-  type PageCustomTool,
+  registerCustomTool,
+  type CustomTool,
   type RegisteredElementTool,
 } from "../tools/application";
 import {
@@ -21,7 +21,7 @@ import {
 } from "../page-state/infrastructure";
 import { pomRegistryOf } from "../page-objects/infrastructure";
 import type { PageObjectConstructor } from "../page-objects/application";
-import type { ElementFilter, FilterData, NamedFilter } from "../shared";
+import type { ElementFilter } from "../shared";
 import {
   createAymeOn,
   type Ayme,
@@ -29,6 +29,7 @@ import {
   type SessionTarget,
 } from "./session";
 import type { ToolSources } from "./publishedTools";
+import { checkedFilters } from "./checkedFilters";
 
 export type { Ayme } from "./session";
 
@@ -45,7 +46,7 @@ export type PlaywrightAymeOptions = {
    */
   ignore?: ElementFilter;
   /** Custom Tools, acting on the element they are given through a Locator. */
-  customTools?: PageCustomTool[];
+  customTools?: CustomTool[];
   /** Page Objects registered for the session's lifetime. */
   pageObjects?: readonly PageObjectConstructor[];
   /** The application's router navigation, called with a same-origin URL. */
@@ -92,26 +93,14 @@ async function prepare(
   page: Page,
   options: PlaywrightAymeOptions
 ): Promise<PreparedOptions> {
-  const check = (data: FilterData) => inPage(page).checkFilter(data);
-  const ignore =
-    options.ignore === undefined
-      ? undefined
-      : await registerFilterThrough(check, "`ignore`", options.ignore);
-  const customFilters: NamedFilter[] = [];
-  for (const tool of options.customTools ?? [])
-    if (tool.filter !== undefined)
-      customFilters.push({
-        name: tool.name,
-        filter: await registerFilterThrough(
-          check,
-          `\`filter\` of the Custom Tool \`${tool.name}\``,
-          tool.filter
-        ),
-      });
+  const { ignore, customFilters } = await checkedFilters(
+    (data) => inPage(page).checkFilter(data),
+    options
+  );
   return {
     ignore,
     customFilters,
-    customTools: options.customTools?.map(registerPageCustomTool),
+    customTools: options.customTools?.map(registerCustomTool),
   };
 }
 
@@ -123,11 +112,8 @@ function playwrightTarget(
   const pageState = () => pageStateOf(page, host);
   const registry = () =>
     pomRegistryOf(page, {
-      latestPageStateRef: (ref) =>
-        pageState().session.latestRefOf(host.elementNamed(ref)),
-      elements: {
-        // Node holds no element: a ref stands in for it.
-        elementOf: host.elementNamed,
+      latestPageStateRef: (ref) => pageState().session.latestRefOfNamed(ref),
+      pageStates: {
         onPageStateRecorded: (listener) =>
           pageState().session.onRecorded(listener),
         providePageObjectProbe: (probe) =>

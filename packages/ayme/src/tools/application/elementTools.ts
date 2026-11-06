@@ -44,26 +44,12 @@ export type CustomTool = {
    */
   filter?: ElementFilter;
   /**
-   * Acts on `target`. To use other tools, start them through `run`: each is
-   * a child Run of this one and runs within this Run's turn, after the
-   * child Runs started before it. Never call `ayme.tools.run` from here:
-   * that Run waits for this one to end, so neither ever finishes.
-   */
-  execute(
-    target: { ref: AriaRef; element: Element },
-    context: CustomToolContext
-  ): Promise<unknown>;
-};
-
-/**
- * A Custom Tool of a Node host (`@ayme-dev/ayme/playwright`): the same tool,
- * acting on the element through a Playwright Locator, since Node holds no
- * DOM element.
- */
-export type PageCustomTool = Omit<CustomTool, "execute"> & {
-  /**
-   * Acts on the element `target.locator` matches, which `target.ref` names.
-   * To use other tools, start them through `run`, as a Custom Tool does.
+   * Acts on the element `target.locator` matches, which `target.ref` names,
+   * in the browser and in Node alike: no code outside the page holds an
+   * element. To use other tools, start them through `run`: each is a child
+   * Run of this one and runs within this Run's turn, after the child Runs
+   * started before it. Never call `ayme.tools.run` from here: that Run waits
+   * for this one to end, so neither ever finishes.
    */
   execute(
     target: { ref: AriaRef; locator: Locator },
@@ -337,46 +323,12 @@ export async function resolveElementTarget(
 
 /**
  * Package-internal: register a Custom Tool. It takes a Structural Ref as
- * `ref`, and the Goal Loop may offer it the elements its filter keeps, or
- * every node with a ref when it has no filter.
+ * `ref`, acts on its element through a Locator on the Run's page, and the
+ * Goal Loop may offer it the elements its filter keeps, or every node with a
+ * ref when it has no filter.
  */
 export function registerCustomTool(
   customTool: CustomTool
-): RegisteredElementTool {
-  return registerElementTool(
-    {
-      name: customTool.name,
-      description: customTool.description,
-      label: `run "${customTool.name}" on`,
-      inputSchema: REF_INPUT_SCHEMA,
-      targetField: "ref",
-      perform: ({ ref }, _input, { run, pageStateSession }) => {
-        // The element the capture the ref resolved against maps it to, for
-        // the Custom Tool's `execute` until #1177 gives it a locator.
-        const element = pageStateSession.latestElementOf(ref!);
-        if (!element)
-          throw new RuntimeStateError(
-            `The latest page state holds no element for the ref ${ref}.`
-          );
-        return customTool.execute(
-          { ref: ref!, element },
-          {
-            run: ((name, input) =>
-              run(name, input)) as CustomToolContext["run"],
-          }
-        );
-      },
-    },
-    customTool.filter ? { filter: customTool.name } : { every: true }
-  );
-}
-
-/**
- * Package-internal: register a Custom Tool of a Node host, which acts on its
- * element through a Locator. Otherwise as `registerCustomTool`.
- */
-export function registerPageCustomTool(
-  customTool: PageCustomTool
 ): RegisteredElementTool {
   return registerElementTool(
     {

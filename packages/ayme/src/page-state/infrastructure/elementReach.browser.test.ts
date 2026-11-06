@@ -1,3 +1,4 @@
+import { readRef } from "../../test-utils/elementRefs.testSupport";
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -424,7 +425,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
   it("does not count the Inspector host as in the way", async () => {
     document.body.innerHTML = `
       <button id="save" type="button" style="position: fixed; left: 0; top: 0">Save</button>
-      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
+      <ayme-inspector data-ayme-exclude style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
     `;
     const host = document.querySelector("ayme-inspector")!;
     host.attachShadow({ mode: "closed" }).innerHTML =
@@ -445,7 +446,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     document.body.innerHTML = `
       <button id="save" type="button" style="position: fixed; left: 0; top: 0">Save</button>
       <div id="overlay" role="dialog" aria-label="Saving" style="position: fixed; inset: 0"></div>
-      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
+      <ayme-inspector data-ayme-exclude style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
     `;
     const host = document.querySelector("ayme-inspector")!;
     // The Inspector's stylesheet lets the runtime's hit test through its
@@ -618,27 +619,33 @@ describe("Element reach timing in Chromium", () => {
       const listing = await medianMs(() => listElementToolTargets(capture));
       const planning = await medianMs(() => planArguments(targetOnly, capture));
       const measuring = await medianMs(() =>
-        geometryReach.reachable(
-          page,
-          [...capture.elementsByRef.keys()],
-          "click"
-        )
+        geometryReach.reachable(page, capture.tree.getAllRefs(), "click")
       );
       const offered = (await listElementToolTargets(capture)).get("click")!;
 
       console.log(
         `${BUTTONS} buttons ${kind}: listElementToolTargets ${listing.toFixed(1)}ms, ` +
           `planArguments(click) ${planning.toFixed(1)}ms, ` +
-          `reaches over all ${capture.elementsByRef.size} refs ${measuring.toFixed(1)}ms, ` +
+          `reaches over all ${capture.tree.getAllRefs().length} refs ${measuring.toFixed(1)}ms, ` +
           `median of 5; ${offered.length} click targets`
       );
-      const belowTheFold = [...capture.elementsByRef]
-        .filter(([ref]) => capture.accepted!.clickable!.has(ref))
-        .filter(
-          ([, element]) =>
-            element.getBoundingClientRect().top >=
-            document.documentElement.clientHeight
-        );
+      const belowTheFold = (
+        await Promise.all(
+          capture.tree
+            .getAllRefs()
+            .filter((ref) => capture.accepted!.clickable!.has(ref))
+            .map(async (ref) =>
+              (await readRef(
+                ref,
+                (element) =>
+                  element.getBoundingClientRect().top >=
+                  document.documentElement.clientHeight
+              ))
+                ? ref
+                : undefined
+            )
+        )
+      ).filter((ref) => ref !== undefined);
       expect(belowTheFold.length).toBeGreaterThan(0);
       expect(offered.length).toBe(
         cover === "none"

@@ -1,7 +1,9 @@
 // Stryker disable all
 // Picking a Structural Ref by pointing at the document: the pointer hovers
 // elements that carry a ref, a click picks one, Esc cancels. Part of the page
-// part, so it is built into the install function with the rest.
+// part, so it is built into the install function with the rest. Excluded
+// subtrees (the mark in `shared`) are left alone.
+import { EXCLUDED_SUBTREE_SELECTOR } from "../../shared";
 
 /** What picking tells its host as the pointer moves: the ref hovered and whether it can be picked. */
 export type PickNotice = { ref: string; usable: boolean } | { ref?: undefined };
@@ -9,8 +11,6 @@ export type PickNotice = { ref: string; usable: boolean } | { ref?: undefined };
 export type PickArguments = {
   /** The refs that can be picked; the element of any other ref shows greyed. */
   accept: readonly string[];
-  /** A CSS selector for the subtrees picking leaves alone: no hover, no blocked press. */
-  ignore?: string;
 };
 
 /**
@@ -21,7 +21,7 @@ export type PickArguments = {
  * @param notify tells the host what the pointer is over.
  */
 export function startPicking(
-  { accept, ignore }: PickArguments,
+  { accept }: PickArguments,
   refOf: (element: Element) => string | undefined,
   notify: (notice: PickNotice) => void
 ): { result: Promise<string | undefined>; cancel(): void } {
@@ -33,15 +33,17 @@ export function startPicking(
   style.dataset.aymePicking = "";
   style.textContent = [
     "html, html * { cursor: crosshair !important; }",
-    ...(ignore ? [`${ignore}, ${ignore} * { cursor: auto !important; }`] : []),
+    `${EXCLUDED_SUBTREE_SELECTOR}, ${EXCLUDED_SUBTREE_SELECTOR} * { cursor: auto !important; }`,
   ].join("\n");
   document.head.append(style);
 
   const inIgnored = (event: Event) =>
-    ignore !== undefined &&
     event
       .composedPath()
-      .some((node) => node instanceof Element && node.matches(ignore));
+      .some(
+        (node) =>
+          node instanceof Element && node.matches(EXCLUDED_SUBTREE_SELECTOR)
+      );
 
   /** The element with a ref at an event's target, climbing out of shadow roots. */
   const pointedAt = (target: EventTarget | undefined) => {

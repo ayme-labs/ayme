@@ -16,9 +16,6 @@ import {
   registeredPomDefinitions,
 } from "./inspectorLook";
 
-/** The Inspector's own host on the page, which picking leaves alone. */
-const INSPECTOR_HOST = "[data-ayme-inspector-host]";
-
 let releaseDemo: (() => void) | undefined;
 
 /** The Inspector's own request for Demo Mode, held until it withdraws it. */
@@ -66,9 +63,6 @@ export function createDocumentInspectorContract({
       pageOfDocument(document).locator(`ayme-ref=${ref}`)
     ),
     pick: (refs, signal) =>
-      inPage(pageOfDocument(document)).pick(refs, {
-        ignore: INSPECTOR_HOST,
-        signal,
-      }),
+      inPage(pageOfDocument(document)).pick(refs, { signal }),
   });
 }

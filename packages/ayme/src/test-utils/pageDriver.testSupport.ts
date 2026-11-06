@@ -9,7 +9,6 @@ import type { Locator } from "@playwright/test";
 import type { PageDriver } from "../page-objects/application";
 import type { RootState } from "../shared";
 
-const elementsByRef = new Map<string, Element>();
 const refsByElement = new WeakMap<object, string>();
 let minted = 0;
 
@@ -19,14 +18,14 @@ export function refOf(element: Element): string {
   if (ref === undefined) {
     ref = `t_${++minted}`;
     refsByElement.set(element, ref);
-    elementsByRef.set(ref, element);
   }
   return ref;
 }
 
-/** The element a stand-in ref names: the browser runtime's lookup, in a unit test. */
-export const elementOfRef = (ref: string): Element | undefined =>
-  elementsByRef.get(ref);
+/** Names `element` by `ref`, as a page that marked it in a capture does. */
+export function nameElement(element: Element, ref: string): void {
+  refsByElement.set(element, ref);
+}
 
 /** What a root measures as: present and reached unless a test says otherwise. */
 export type StandInMeasure = (element: Element) => {
@@ -110,6 +109,8 @@ export function standInPageDriver(deps: {
       };
     },
     refs: refsOf,
+    // A stand-in ref never changes name: a capture has marked nothing.
+    currentRefs: async (refs) => [...refs],
     async names(locator, ref) {
       const refs = await refsOf(locator);
       return refs.length === 1 && refs[0] === ref;

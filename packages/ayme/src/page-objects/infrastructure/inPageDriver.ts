@@ -28,6 +28,7 @@ export function inPageDriver(
     },
     probe: (root, label) => inPageOf().probe(root, label),
     refs: (locator) => inPageOf().mint(locator),
+    currentRefs: (refs) => inPageOf().currentRefs(refs),
     names: (locator, ref) => inPageOf().names(locator, ref),
     watch: (probe) => inPageOf().watch(probe),
     refresh: () => inPageOf().refresh(),

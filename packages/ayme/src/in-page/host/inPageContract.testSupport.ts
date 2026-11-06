@@ -353,6 +353,109 @@ export function inPageContract(lane: InPageLane) {
     ]);
   });
 
+  describe("the excluded-subtree mark", () => {
+    const marked =
+      '<button>Kept</button><aside id="panel" data-ayme-exclude><button>Panel</button></aside>';
+
+    it("a capture leaves out the refs under a subtree that carries the mark, whoever captures", async () => {
+      const page = await lane.newPage();
+      await setBody(page, marked);
+      const host = lane.createHost(page);
+
+      const capture = await host.inPage(page).capture();
+
+      expect(capture.excludedRefs).toEqual([
+        refOf(capture.fullText, "complementary"),
+        refOf(capture.fullText, '"Panel"'),
+      ]);
+    });
+
+    it("reach sees through a marked subtree that covers an element, and leaves the page as it was", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        `<button>Save</button><div data-ayme-exclude style="position:fixed;inset:0"><style>[data-ayme-hit-test-through], [data-ayme-hit-test-through] * { pointer-events: none !important }</style></div>`
+      );
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { fullText } = await inPageOf.capture();
+
+      expect(await inPageOf.measureReach(refOf(fullText, '"Save"'))).toEqual({
+        present: true,
+        available: true,
+      });
+      expect(
+        await page.evaluate(
+          'document.querySelector("[data-ayme-exclude]").hasAttribute("data-ayme-hit-test-through")'
+        )
+      ).toBe(false);
+    });
+
+    it("picking leaves a marked subtree alone, Esc cancels, then presses reach the page again", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<main><input aria-label="New item"><button>Add item</button></main><aside data-ayme-exclude><button>Panel</button></aside>'
+      );
+      await page.evaluate(`(() => {
+        window.presses = [];
+        for (const type of ["pointerdown", "mousedown", "mouseup", "click", "contextmenu"])
+          document.addEventListener(type, (event) => window.presses.push(type + ":" + event.target.textContent));
+      })()`);
+      const inPageOf = lane.createHost(page).inPage(page);
+      const { fullText } = await inPageOf.capture();
+
+      const picked = inPageOf.pick([refOf(fullText, '"New item"')]);
+      await page.getByRole("button", { name: "Panel" }).click();
+      expect(await page.evaluate("window.presses")).toContain("click:Panel");
+      await page.keyboard.press("Escape");
+
+      expect(await picked).toBeUndefined();
+      await page.getByRole("button", { name: "Add item" }).click();
+      expect(await page.evaluate("window.presses")).toContain("click:Add item");
+    });
+
+    it("says whether the document has a marked subtree, and whether one covers an element's action point", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<button>Under</button><button>Free</button>");
+      const inPageOf = lane.createHost(page).inPage(page);
+
+      expect(await inPageOf.hasExcludedSubtree()).toBe(false);
+
+      await page.evaluate(`(() => {
+        const cover = document.createElement("div");
+        cover.setAttribute("data-ayme-exclude", "");
+        cover.style.cssText = "position:fixed;left:0;top:0;width:100%;height:20px";
+        document.body.append(cover);
+        const buttons = document.querySelectorAll("button");
+        buttons[0].style.cssText = "position:fixed;left:0;top:0";
+        buttons[1].style.cssText = "position:fixed;left:0;top:100px";
+      })()`);
+
+      expect(await inPageOf.hasExcludedSubtree()).toBe(true);
+      expect(await inPageOf.coveredByExcluded(page.getByText("Under"))).toBe(
+        true
+      );
+      expect(await inPageOf.coveredByExcluded(page.getByText("Free"))).toBe(
+        false
+      );
+    });
+
+    it("lets pointer events through marked subtrees while asked to, then marks nothing", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<aside id="one" data-ayme-exclude></aside>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const through = () =>
+        page.evaluate(
+          'document.querySelector("#one").hasAttribute("data-ayme-hit-test-through")'
+        );
+
+      await inPageOf.passThroughExcluded(true);
+      expect(await through()).toBe(true);
+      await inPageOf.passThroughExcluded(false);
+      expect(await through()).toBe(false);
+    });
+  });
+
   it("a selector and a self-contained function exclude the same subtree", async () => {
     const page = await lane.newPage();
     await setBody(
@@ -657,20 +760,6 @@ export function inPageContract(lane: InPageLane) {
       expect(await page.evaluate("window.presses")).toEqual([]);
       await page.getByLabel("New item").click();
       expect(await picked).toBe(refs.input);
-    });
-
-    it("leaves what the host ignores alone, and Esc cancels, then presses reach the page again", async () => {
-      const { page, inPage, refs } = await picking();
-      const picked = inPage.pick([refs.input], { ignore: "#panel" });
-
-      await page.getByRole("button", { name: "Panel" }).click();
-      expect(await page.evaluate("window.presses")).toContain("click:Panel");
-      await page.keyboard.press("Escape");
-
-      expect(await picked).toBeUndefined();
-      await page.getByRole("button", { name: "Add item" }).click();
-      expect(await page.evaluate("window.presses")).toContain("click:Add item");
-      await expect.poll(() => highlightBoxes(page)).toEqual([]);
     });
 
     it("an abort right after pick is called still cancels it, and the page handles a click normally", async () => {
@@ -1032,6 +1121,39 @@ export function inPageContract(lane: InPageLane) {
       expect(refs).toHaveLength(2);
       expect(again).toEqual([refs[1]]);
       expect(await inPageOf.mint(page.locator("#none"))).toEqual([]);
+    });
+
+    it("currentRefs() names each ref's element by the ref it has now: the capture's mark after a probe named it first, and nothing for an element that left", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<button id="b">Save</button><div id="plain">x</div>'
+      );
+      const inPageOf = lane.createHost(page).inPage(page);
+      // Named before any capture marked it: a synthetic ref.
+      const [first] = await inPageOf.mint(page.locator("#b"));
+      const [plain] = await inPageOf.mint(page.locator("#plain"));
+      const { fullText, renamed } = await inPageOf.capture();
+      const marked = refOf(fullText, '"Save"');
+
+      expect(marked).not.toBe(first);
+      // The capture says which mark replaced the ref the probe gave.
+      expect(renamed).toMatchObject({ [first!]: marked });
+      const now = await inPageOf.currentRefs([first!, marked, plain!, "e999"]);
+      // The capture marked the other element too: its mark replaces the probe's.
+      expect(now).toEqual([
+        marked,
+        marked,
+        expect.stringMatching(/^e\d+$/),
+        undefined,
+      ]);
+      expect(now[2]).not.toBe(plain);
+
+      await page.evaluate('document.querySelector("#b").remove()');
+      expect(await inPageOf.currentRefs([first!, plain!])).toEqual([
+        undefined,
+        now[2],
+      ]);
     });
   });
 

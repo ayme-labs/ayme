@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
-import { INSPECTOR_DOGFOOD_ATTRIBUTE, ToolInputError } from "../../shared";
+import { EXCLUDE_ATTRIBUTE, ToolInputError } from "../../shared";
 import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
 import {
   PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA,
@@ -58,8 +58,7 @@ describe("screenshot in Chromium", () => {
   function mountInspector({ dogfood }: { dogfood: boolean }) {
     const host = document.createElement("div");
     host.id = "inspector";
-    host.setAttribute("data-ayme-inspector-host", "");
-    if (dogfood) host.setAttribute(INSPECTOR_DOGFOOD_ATTRIBUTE, "");
+    if (!dogfood) host.setAttribute(EXCLUDE_ATTRIBUTE, "");
     document.body.append(host);
   }
 

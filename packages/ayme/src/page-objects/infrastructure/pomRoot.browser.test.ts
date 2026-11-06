@@ -289,7 +289,9 @@ describe("Page Object Root by option", () => {
     document.getElementById("other")!.id = "panel";
     await expect(
       session.tools.run("MovingPanel.open", { ref }, { by: "webmcp" })
-    ).rejects.toThrow(`MovingPanel on ref "${ref}" is unavailable`);
+    ).rejects.toThrow(
+      `Cannot call MovingPanel.open on ref "${ref}": it is not a root of MovingPanel`
+    );
     expect(open).not.toHaveBeenCalled();
   });
 

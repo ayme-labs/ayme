@@ -8,9 +8,10 @@ export type {
   Predicate,
 } from "./capture";
 export { callers } from "./callers";
-export { filterData } from "./filter";
+export { checkFilter, filterData } from "./filter";
 export type {
   ElementFilter,
+  FilterCheck,
   FilterData,
   InPageFilter,
   NamedFilter,
@@ -59,11 +60,11 @@ export type {
   HandoverReason,
 } from "./handover";
 export {
-  INSPECTOR_DOGFOOD_ATTRIBUTE,
-  INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
-  INSPECTOR_HOST_SELECTOR,
+  EXCLUDE_ATTRIBUTE,
+  EXCLUDED_SUBTREE_SELECTOR,
+  HIT_TEST_THROUGH_ATTRIBUTE,
   onlyOwnMarks,
-} from "./inspectorMarks";
+} from "./excludedSubtree";
 export type { ReachMeasurement } from "./reach";
 export type { RootState } from "./root";
 export { checkedToolInput, refuseViolations } from "./schemaValidation";

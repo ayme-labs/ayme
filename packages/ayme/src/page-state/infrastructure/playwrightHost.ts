@@ -2,7 +2,6 @@
 // (ADR-0049): the same session code as the browser runtime's, over the
 // document's in-page module, with the inputs a capture reads handed as plain
 // data, since no function or live value crosses from Node into the page.
-import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
 import { inPage, type ElementInputs } from "../../in-page";
 import type {
@@ -15,45 +14,14 @@ import type { PageAction } from "../application/pageStateSession";
 import { pageObjectsProbed, type PageStateHost } from "./pageStates";
 
 /**
- * Transitional (#1182): the session still maps each ref to an element, which
- * Node, in another realm than the page, cannot hold. A ref's stand-in is one
- * object per ref that answers for it, so the session resolves refs as it
- * does in the browser; it is no DOM node, and nothing reads it as one.
- */
-type RefStandIn = { readonly ref: string; readonly isConnected: true };
-
-function createStandIns() {
-  const standIns = new Map<string, RefStandIn>();
-  const standIn = (ref: string): RefStandIn => {
-    let found = standIns.get(ref);
-    if (!found) standIns.set(ref, (found = { ref, isConnected: true }));
-    return found;
-  };
-  return {
-    standIn,
-    elementsOf: (refs: readonly AriaRef[]) =>
-      new Map(
-        refs.map((ref) => [ref, standIn(ref) as unknown as Element] as const)
-      ),
-  };
-}
-
-/**
  * The host of a Node process over `page`: captures and actions go through
  * `inPage(page)`. The Page Object Roots the module places are those of a
  * completed probe run, which the host awaits before each capture it makes,
  * and once more after an action settles, since it cannot be asked from
  * inside the page.
  */
-export function playwrightPageHost(page: Page): Omit<
-  PageStateHost,
-  "elementNamed"
-> & {
-  /** The stand-in of what the in-page ref `ref` names, for the session to find. */
-  elementNamed(ref: string): Element;
-} {
+export function playwrightPageHost(page: Page): PageStateHost {
   const module = inPage(page);
-  const { standIn, elementsOf } = createStandIns();
 
   /** `inputs` as a handle to the plain data the module reads in the page. */
   const handleOf = (inputs: ElementInputs) =>
@@ -117,7 +85,5 @@ export function playwrightPageHost(page: Page): Omit<
     },
     capture,
     begin,
-    elementsOf,
-    elementNamed: (ref) => standIn(ref) as unknown as Element,
   };
 }

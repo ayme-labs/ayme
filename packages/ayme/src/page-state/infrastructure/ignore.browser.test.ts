@@ -1,3 +1,4 @@
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { ayme as model } from "../../page-objects/domain";
@@ -72,9 +73,10 @@ describe("ignore predicate in page state capture", () => {
       {
         status: "resolved",
         requestedRef: saveRef,
-        node: { ref: saveRef, element: document.querySelector("#save") },
+        node: { ref: saveRef },
       },
     ]);
+    expect(await elementOfRef(saveRef)).toBe(document.querySelector("#save"));
   });
 
   it("drops a nested present Page Object Root inside an ignored element", async () => {
@@ -128,14 +130,12 @@ describe("ignore predicate in page state capture", () => {
     expect(pageStateText).not.toContain("Panel action");
   });
 
-  it("excludes the inspector host without mutating capture styles", async () => {
+  it("excludes a marked subtree without mutating capture styles", async () => {
     document.body.innerHTML = `
       <main><h1>Consumer application</h1></main>
-      <div data-ayme-inspector-host><span>POM inspector controls</span></div>
+      <div data-ayme-exclude><span>POM inspector controls</span></div>
     `;
-    const host = document.querySelector(
-      "[data-ayme-inspector-host]"
-    ) as HTMLElement;
+    const host = document.querySelector("[data-ayme-exclude]") as HTMLElement;
     host.style.display = "block";
 
     startRuntime();

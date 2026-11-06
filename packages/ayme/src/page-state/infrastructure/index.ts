@@ -20,17 +20,13 @@ export {
   cursors,
   getInteractionHistory,
   getPageStateForDocument,
-  getPageStateForElements,
   getPageStateSession,
-  latestPageStateElement,
   latestPageStateCapture,
-  latestPageStateRef,
   latestPageStateRefOf,
   latestPageStateRefNamed,
   lookAtPageStateForDocument,
   onPageStateRecorded,
   providePageObjectProbe,
-  resolvePageStateRef,
 } from "./pageState";
 export {
   configurePageStateFiltersOf,

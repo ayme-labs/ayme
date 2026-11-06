@@ -1,3 +1,4 @@
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
@@ -71,11 +72,10 @@ describe("registered Page Object roots", () => {
     });
     session.register(ExamplePage);
 
-    await expect(listRegisteredPomRoots()).resolves.toEqual([
-      {
-        mark: "Root",
-        element: document.querySelector(".one"),
-      },
-    ]);
+    const roots = await listRegisteredPomRoots();
+    expect(roots.map(({ mark }) => mark)).toEqual(["Root"]);
+    expect(await elementOfRef(roots[0]!.ref)).toBe(
+      document.querySelector(".one")
+    );
   });
 });

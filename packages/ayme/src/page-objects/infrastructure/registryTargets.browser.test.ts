@@ -1,3 +1,4 @@
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
@@ -63,11 +64,13 @@ describe("registered Locator children's targets in Chromium", () => {
     const targets = await listRegisteredPomTargets();
 
     expect(
-      targets.map(({ path, element, locator }) => ({
-        path,
-        text: element.textContent,
-        locator,
-      }))
+      await Promise.all(
+        targets.map(async ({ path, ref, locator }) => ({
+          path,
+          text: (await elementOfRef(ref))?.textContent,
+          locator,
+        }))
+      )
     ).toEqual([
       { path: "RunsTable.heading", text: "Runs", locator: "locator('h1')" },
       {

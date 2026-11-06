@@ -19,6 +19,12 @@ export type PageDriver = {
   probe(root: Locator, label: string): Promise<RootState>;
   /** The Structural Ref of each element `locator` resolves to now. */
   refs(locator: Locator): Promise<string[]>;
+  /**
+   * The Structural Ref each of `refs` names its element by now, in the order
+   * given: a ref a probe gave before a capture marked the element gives way
+   * to the capture's. Undefined for one whose element left the page.
+   */
+  currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
   /** Whether `ref`, now or before, names the one element `locator` resolves to. */
   names(locator: Locator, ref: string): Promise<boolean>;
   /**

@@ -1,5 +1,4 @@
 import type { Page } from "@playwright/test";
-import { elementEverNamed } from "../../in-page";
 import {
   latestPageStateRefNamed,
   onPageStateRecorded,
@@ -37,10 +36,7 @@ export function browserRegistry(): PomRegistry {
     typeof document === "undefined" ? serverPage : pageOfDocument(document),
     {
       latestPageStateRef: latestPageStateRefNamed,
-      elements: {
-        // Transitional (#1182): this realm holds the document, so refs turn into
-        // its elements.
-        elementOf: elementEverNamed,
+      pageStates: {
         onPageStateRecorded: (listener) =>
           onPageStateRecorded(document, listener),
         providePageObjectProbe,

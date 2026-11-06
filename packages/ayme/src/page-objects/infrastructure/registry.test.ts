@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "../../test-utils/agentCalls.testSupport";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
-import { latestStandIn } from "../../test-utils/pageDriver.testSupport";
+import {
+  latestStandIn,
+  nameElement,
+} from "../../test-utils/pageDriver.testSupport";
 import { checkedToolInput } from "../../shared";
 import type { PageStateSession, Reach } from "../../page-state/application";
 
@@ -26,18 +29,10 @@ const {
   locatorElements: new WeakMap<object, Element[]>(),
   testLocators: new WeakSet<object>(),
   pageStateRecordedListeners: new Set<() => void>(),
-  pageStateResolutions: new Map<
-    string,
-    { node: { ref: string; element: Element } }
-  >(),
+  pageStateResolutions: new Map<string, { node: { ref: string } }>(),
 }));
 // A jsdom test has no in-page module: it stands in a page driver whose refs
-// name the elements its locators hold, and the lookup of them by ref.
-vi.mock("../../in-page", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  elementEverNamed: (await import("../../test-utils/pageDriver.testSupport"))
-    .elementOfRef,
-}));
+// name the elements its locators hold.
 vi.mock(
   "../../page-state/infrastructure/browserInPage",
   async (importOriginal) => ({
@@ -123,6 +118,12 @@ function brandedLocator(
   testLocators.add(loc);
   locatorElements.set(loc, [element]);
   return loc as unknown as Locator;
+}
+
+/** A ref the Run's page state resolves to `ref` itself, which the page names `element` by. */
+function resolvesTo(ref: string, element: Element) {
+  nameElement(element, ref);
+  pageStateResolutions.set(ref, { node: { ref } });
 }
 
 /** Tells the registry's watch the page changed. */
@@ -1172,15 +1173,13 @@ describe("live Page Object registry", () => {
     ).toEqual([["save", false]]);
   });
 
-  it("lists a root's tools absent once its element left the page, before the next probe", async () => {
+  it("lists a root's tools absent once the probe that follows a change finds its element left the page", async () => {
     const { registry, session, ayme, rootOf } = await setup();
-    const element = { isConnected: true } as { isConnected: boolean };
+    const element = { isConnected: true } as Element;
+    let count = 1;
 
     class RootedPage {
-      readonly root = brandedLocator(
-        { count: async () => 1 },
-        element as Element
-      );
+      readonly root = brandedLocator({ count: async () => count }, element);
       save() {}
     }
     ayme({ root: rootOf })(RootedPage);
@@ -1193,7 +1192,9 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools()).toHaveLength(1);
 
-    element.isConnected = false;
+    count = 0;
+    pageChanges();
+    await vi.runOnlyPendingTimersAsync();
     expect(registry.listRegisteredPomTools()).toEqual([
       expect.objectContaining({ present: false, available: false }),
     ]);
@@ -1319,12 +1320,8 @@ describe("live Page Object registry", () => {
     let panelRootCount = 0;
     const dialogElement = { isConnected: true } as Element;
     const panelElement = { isConnected: true } as Element;
-    pageStateResolutions.set("e21", {
-      node: { ref: "e21", element: dialogElement },
-    });
-    pageStateResolutions.set("e22", {
-      node: { ref: "e22", element: panelElement },
-    });
+    resolvesTo("e21", dialogElement);
+    resolvesTo("e22", panelElement);
     const confirm = vi.fn();
     const save = vi.fn();
     class NestedPage {
@@ -1512,12 +1509,8 @@ describe("live Page Object registry", () => {
       brandedLocator({ count: async () => 1 }, replacementElement),
       { archive: replacementArchive }
     );
-    pageStateResolutions.set("e2", {
-      node: { ref: "e2", element: secondElement },
-    });
-    pageStateResolutions.set("e3", {
-      node: { ref: "e3", element: replacementElement },
-    });
+    resolvesTo("e2", secondElement);
+    resolvesTo("e3", replacementElement);
     let currentItems = [first, second];
     const getItems = vi.fn(async () => currentItems.slice());
     class ItemsPage {
@@ -1586,9 +1579,7 @@ describe("live Page Object registry", () => {
     const items = [
       rooted(brandedLocator({ count: async () => 1 }, knownElement), {}),
     ];
-    pageStateResolutions.set("e2", {
-      node: { ref: "e2", element: addedElement },
-    });
+    resolvesTo("e2", addedElement);
     class ItemsPage {
       readonly items = items;
     }
@@ -1657,9 +1648,7 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected the Page Object Tool.");
-    pageStateResolutions.set("e5", {
-      node: { ref: "e5", element: rootElement },
-    });
+    resolvesTo("e5", rootElement);
     // A second element now matches the root's locator, after the first.
     matches = 2;
     locatorElements.set(page.root, [
@@ -1669,7 +1658,9 @@ describe("live Page Object registry", () => {
 
     await expect(
       tool.execute({ ref: "e5", args: {} }, pomRunContext())
-    ).rejects.toThrow('RootedPage on ref "e5" is unavailable');
+    ).rejects.toThrow(
+      'Cannot call save on ref "e5": it is not a root of RootedPage'
+    );
     expect(save).not.toHaveBeenCalled();
 
     pageStateResolutions.clear();
@@ -1686,7 +1677,7 @@ describe("live Page Object registry", () => {
       pin: vi.fn(),
       rename,
     });
-    pageStateResolutions.set("e2", { node: { ref: "e2", element } });
+    resolvesTo("e2", element);
     class ItemsPage {
       readonly items = [item];
     }

@@ -61,7 +61,7 @@ export async function buildToolOptions(
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
-  const rootedInstances = listRootedToolInstances();
+  const rootedInstances = await listRootedToolInstances();
   const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
     const roots = rootedInstances.get(t.name);
     const args = roots

@@ -1,4 +1,5 @@
 import {
+  parseStructuralRef,
   projectStructuralNodeForest,
   renderJsonStructuralNodeForest,
   renderTree,
@@ -263,10 +264,10 @@ function describeNode(node: StructuralNode): string {
 }
 
 /**
- * One option per present rooted instance, keyed by the ref the same
- * capture gave that root's element. A root the tool is unavailable on would be
- * refused, and a root the capture holds no ref for cannot be targeted; both are
- * left out, each with why.
+ * One option per present rooted instance, keyed by the ref the registry
+ * observed for that root. A root the tool is unavailable on would be refused,
+ * and a root the capture holds no node for cannot be targeted; both are left
+ * out, each with why.
  */
 function instanceOptions(
   roots: readonly RootedToolInstance[],
@@ -274,14 +275,16 @@ function instanceOptions(
   tool: Pick<GoalLoopOperation, "className" | "name">
 ): { options: ArgumentOption[]; leftOut: LeftOutItem[] } {
   const className = tool.className ?? tool.name;
-  const refsByElement = new Map<Element, AriaRef>();
-  for (const [ref, element] of capture.elementsByRef)
-    refsByElement.set(element, ref);
 
   const options: ArgumentOption[] = [];
   const leftOut: LeftOutItem[] = [];
   for (const root of roots) {
-    const ref = refsByElement.get(root.element);
+    // Only a ref the capture holds is one the Goal Loop can target.
+    const rootRef = parseStructuralRef(root.ref);
+    const ref =
+      rootRef !== undefined && capture.tree.hasNode(rootRef)
+        ? rootRef
+        : undefined;
     const label =
       ref === undefined ? className : `${className} on ref "${ref}"`;
     if (!root.available) {
@@ -1637,10 +1640,11 @@ export function readRunOffAnswer(
 }
 
 /**
- * A select element that holds one option at a time is sent one value: of a
- * list sent to it, only the Goal Value scored highest is kept, the first of
- * them on a tie. Applied once the element the operation acts on is chosen.
- * `select_option` is the Browser Tool this is for.
+ * A select element that holds one option at a time, which the page state
+ * shows as a combobox (a `select` that allows several is a listbox), is sent
+ * one value: of a list sent to it, only the Goal Value scored highest is
+ * kept, the first of them on a tie. Applied once the element the operation
+ * acts on is chosen. `select_option` is the Browser Tool this is for.
  */
 export function fitListsToTarget(
   tool: GoalLoopOperation,
@@ -1649,9 +1653,8 @@ export function fitListsToTarget(
 ): void {
   const target = tool.args.find((arg) => arg.closedSet?.kind === "ref");
   const ref = target && chosen.args[target.name];
-  const element =
-    ref === undefined ? undefined : capture.elementsByRef.get(ref as AriaRef);
-  if (!(element instanceof HTMLSelectElement) || element.multiple) return;
+  const node = ref === undefined ? null : capture.tree.getNode(ref as AriaRef);
+  if (node?.role !== "combobox") return;
   for (const [parameter, picks] of Object.entries(chosen.lists)) {
     const top = picks.reduce((best, pick) =>
       pick.score > best.score ? pick : best

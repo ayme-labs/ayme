@@ -1,3 +1,4 @@
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { rootRef } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
@@ -436,7 +437,7 @@ describe("Action Availability", () => {
     ).rejects.toThrow(`Row on ref "${covered}" is unavailable: ${reason}.`);
     expect(archived).not.toHaveBeenCalled();
     expect(
-      listRootedToolInstances()
+      (await listRootedToolInstances())
         .get("Row.archive")
         ?.map(({ available, reason }) => ({ available, reason }))
     ).toEqual([
@@ -501,7 +502,7 @@ describe("Action Availability", () => {
     expect(asked).toContain("open");
     expect(asked).not.toContain("covered");
     expect(
-      listRootedToolInstances()
+      (await listRootedToolInstances())
         .get("Row.archive")
         ?.map(({ available, reason }) => ({ available, reason }))
     ).toEqual([
@@ -662,37 +663,39 @@ describe("Action Availability", () => {
     expect(overlay).toBeDefined();
     expect(frozen).toBeDefined();
 
-    const instance = (id: string) =>
-      listRootedToolInstances()
-        .get("Panel.close")
-        ?.find(({ element }) => element.id === id);
+    const instance = async (id: string) => {
+      const instances = (await listRootedToolInstances()).get("Panel.close");
+      for (const found of instances ?? [])
+        if ((await elementOfRef(found.ref))?.id === id) return found;
+      return undefined;
+    };
     expect(published("Panel.close")).toMatchObject({ available: true });
-    expect(instance("covered")).toMatchObject({
+    expect(await instance("covered")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${overlay} is in the way`,
     });
-    expect(instance("frozen")).toMatchObject({
+    expect(await instance("frozen")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${frozen} is in the way`,
     });
-    expect(instance("held")).toMatchObject({
+    expect(await instance("held")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
-    expect(instance("blocked")).toMatchObject({ available: true });
+    expect(await instance("blocked")).toMatchObject({ available: true });
 
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
     // Until the agent's page state shows the modal, nothing names it: the
     // reason never falls back to an element around it.
     await probeRegisteredPomMembers();
-    expect(instance("blocked")).toMatchObject({
+    expect(await instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
     const after = await agent.getPageState();
     const modal = after.text.match(/(e\d+) dialog "Archive item"/)?.[1];
     expect(modal).toBeDefined();
-    expect(instance("blocked")).toMatchObject({
+    expect(await instance("blocked")).toMatchObject({
       available: false,
       reason: `a click would not reach it; ${modal} is in the way`,
     });
@@ -705,7 +708,7 @@ describe("Action Availability", () => {
     const { text: quiet } = await agent.getPageState();
     expect(quiet).toMatch(/e\d+ region "Dialogs"/);
     expect(quiet).not.toContain('dialog "Confirm"');
-    expect(instance("blocked")).toMatchObject({
+    expect(await instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
@@ -1032,7 +1035,7 @@ describe("Action Availability", () => {
   it("probes a root under the Inspector without the hit-test mark starting another probe", async () => {
     document.body.innerHTML = `
       <section id="panel" style="position:fixed;left:0;top:0;width:200px;height:40px"><button>Act</button></section>
-      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>`;
+      <ayme-inspector data-ayme-exclude style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>`;
     const host = document.querySelector("ayme-inspector")!;
     host.attachShadow({ mode: "closed" }).innerHTML =
       `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>

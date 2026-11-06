@@ -3,7 +3,6 @@ import {
   AriaRefSchema,
   MonotonicTimeMsSchema,
   PageIdSchema,
-  type AriaRef,
   type StructuralActionId,
 } from "@ayme-dev/core/structural-observation";
 import type { Capture, DocumentToken } from "../../shared";
@@ -12,11 +11,8 @@ import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession, type ActionPage } from "./pageStateSession";
 import type { PomRootMarks } from "../domain/pomRootMarks";
 
-/** A capture as the module answers it, and the elements its refs name. */
-type PageCapture = {
-  capture: Capture;
-  elementsByRef: ReadonlyMap<AriaRef, Element>;
-};
+/** A capture as the module answers it. */
+type PageCapture = { capture: Capture };
 
 const ref = AriaRefSchema.parse;
 
@@ -24,12 +20,8 @@ let now = 0;
 const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };
 const cursor = () => createCursors().of("app");
 
-/** An element as the session sees one: something its captures map refs to. */
-const element = (name: string) => ({ name }) as unknown as Element;
-
 function capture(
   yaml: string,
-  elements: [ref: string, element: Element][] = [],
   pomRootMarks: PomRootMarks = new Map()
 ): PageCapture {
   return {
@@ -44,7 +36,6 @@ function capture(
         ref,
       })),
     },
-    elementsByRef: new Map(elements.map(([key, value]) => [ref(key), value])),
   };
 }
 
@@ -66,11 +57,9 @@ function sessionOn(
   ...captures: (PageCapture | Error)[]
 ) {
   let taken = 0;
-  let elements: ReadonlyMap<AriaRef, Element> = new Map();
   const next = async () => {
     const found = captures[Math.min(taken++, captures.length - 1)]!;
     if (found instanceof Error) throw found;
-    elements = found.elementsByRef;
     return found.capture;
   };
   // As the in-page module answers an action: the page before it, then the
@@ -113,31 +102,16 @@ function sessionOn(
       clock,
     }),
     next,
-    actionPage,
-    (refs) =>
-      new Map(
-        refs.flatMap((key) => {
-          const found = elements.get(key);
-          return found ? [[key, found] as const] : [];
-        })
-      )
+    actionPage
   );
   return { session, count: () => taken };
 }
 
 describe("a capture in which two nodes share a ref", () => {
-  const a = element("A");
-  const b = element("B");
   const shared = capture(
-    '- generic [ref=e1]:\n  - button "A" [ref=e2]\n  - button "B" [ref=e2]',
-    [
-      ["e2", a],
-      ["e2", b],
-    ]
+    '- generic [ref=e1]:\n  - button "A" [ref=e2]\n  - button "B" [ref=e2]'
   );
-  const valid = capture('- generic [ref=e1]:\n  - button "A" [ref=e2]', [
-    ["e2", a],
-  ]);
+  const valid = capture('- generic [ref=e1]:\n  - button "A" [ref=e2]');
 
   it("is rejected, and the next valid capture resolves the ref", async () => {
     const { session } = sessionOver(shared, valid);
@@ -151,7 +125,7 @@ describe("a capture in which two nodes share a ref", () => {
       {
         status: "resolved",
         requestedRef: ref("e2"),
-        node: { ref: ref("e2"), element: a },
+        node: { ref: ref("e2") },
       },
     ]);
   });
@@ -168,7 +142,7 @@ describe("a capture in which two nodes share a ref", () => {
       {
         status: "resolved",
         requestedRef: ref("e2"),
-        node: { ref: ref("e2"), element: a },
+        node: { ref: ref("e2") },
       },
     ]);
   });
@@ -184,17 +158,14 @@ describe("a capture in which two nodes share a ref", () => {
 });
 
 it("resolves a ref against the capture the identity ledger last reconciled when another capture interleaves", async () => {
-  const original = element("original");
-  const replacement = element("replacement");
-  const snapshot = (body: string, button: string, target: Element) =>
+  const snapshot = (body: string, button: string) =>
     capture(
-      `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
-      [[button, target]]
+      `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`
     );
   const { session } = sessionOver(
-    snapshot("e1", "e2", original),
-    snapshot("e1", "e2", original),
-    snapshot("e3", "e4", replacement)
+    snapshot("e1", "e2"),
+    snapshot("e1", "e2"),
+    snapshot("e3", "e4")
   );
   await session.getPageStateCapture();
 
@@ -209,62 +180,55 @@ it("resolves a ref against the capture the identity ledger last reconciled when 
     {
       status: "resolved",
       requestedRef: ref("e2"),
-      node: { ref: ref("e4"), element: replacement },
+      node: { ref: ref("e4") },
     },
   ]);
 });
 
-describe("the ref the latest page state gave an element", () => {
-  const overlay = element("overlay");
-  const holder = element("holder");
-  const pane = element("pane");
-
+describe("the ref the latest page state gave an in-page ref", () => {
   it("is nothing before the session has recorded a page state", async () => {
     const { session } = sessionOver(capture("- generic [ref=e1]"));
 
     await session.look();
 
-    expect(session.latestRefOf(overlay)).toBeUndefined();
+    expect(session.latestRefOfNamed("e1")).toBeUndefined();
     expect(session.latestCapture()).toBeUndefined();
   });
 
-  it("is the ref the latest page state gave the element itself", async () => {
+  it("is the ref itself when the latest page state holds it", async () => {
     const { session } = sessionOver(
-      capture(
-        "- generic [ref=e1]:\n  - generic [ref=e2]\n  - generic [ref=e3]",
-        [
-          ["e2", overlay],
-          ["e3", holder],
-        ]
-      )
+      capture("- generic [ref=e1]:\n  - generic [ref=e2]")
     );
 
     await session.getPageState();
 
-    expect(session.latestRefOf(overlay)).toBe(ref("e2"));
-    expect(session.latestRefOf(holder)).toBe(ref("e3"));
-    expect(session.latestRefOf(pane)).toBeUndefined();
+    expect(session.latestRefOfNamed("e2")).toBe(ref("e2"));
     expect(session.latestCapture()?.tree.getNode(ref("e2"))?.role).toBe(
       "generic"
     );
-    expect(session.latestCapture()?.elementsByRef.get(ref("e2"))).toBe(overlay);
   });
 
-  it("is nothing for an element the page state gave two refs", async () => {
+  it("is the mark the capture gave the element a probe named by another ref", async () => {
+    const renamed = capture("- generic [ref=e1]:\n  - generic [ref=e2]");
+    renamed.capture.renamed = { s_7: "e2", s_8: "e9" };
+    const { session } = sessionOver(renamed);
+
+    await session.getPageState();
+
+    expect(session.latestRefOfNamed("s_7")).toBe(ref("e2"));
+    // A mark the page state does not hold names nothing in it.
+    expect(session.latestRefOfNamed("s_8")).toBeUndefined();
+  });
+
+  it("is nothing for a ref the latest page state does not hold", async () => {
     const { session } = sessionOver(
-      capture(
-        "- generic [ref=e1]:\n  - generic [ref=e2]\n  - generic [ref=e3]",
-        [
-          ["e2", overlay],
-          ["e3", overlay],
-        ]
-      )
+      capture("- generic [ref=e1]:\n  - generic [ref=e2]")
     );
 
     await session.getPageState();
 
-    expect(session.latestRefOf(overlay)).toBeUndefined();
-    expect(session.latestElementOf(ref("e3"))).toBe(overlay);
+    expect(session.latestRefOfNamed("e9")).toBeUndefined();
+    expect(session.latestRefOfNamed("not a ref")).toBeUndefined();
   });
 });
 
@@ -291,7 +255,7 @@ describe("an action's before capture", () => {
   it("records a before when only a Page Object Root Mark changed", async () => {
     const { session } = sessionOver(
       capture(page),
-      capture(page, [], new Map([[ref("e2"), ["SaveButton"]]]))
+      capture(page, new Map([[ref("e2"), ["SaveButton"]]]))
     );
 
     const before = await latestAsPerformed(session);

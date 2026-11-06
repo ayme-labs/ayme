@@ -1,11 +1,7 @@
-// @vitest-environment jsdom
-
 import { describe, expect, it } from "vitest";
 import {
-  AriaRefSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
-  type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import type { PageStateCapture } from "../../page-state/domain";
 import {
@@ -82,16 +78,16 @@ describe("fitListsToTarget", () => {
     ],
   };
 
-  /** A page whose one element, e1, is `element`. */
-  function captureOf(element: Element): PageStateCapture {
+  /**
+   * A page whose one node, e1, has `role`: a select is a combobox, a multiple
+   * select a listbox, as the browser's accessibility tree names them.
+   */
+  function captureOf(role: string): PageStateCapture {
     const tree = StructuralTree.fromAriaSnapshotYaml(
-      '- combobox "Size" [ref=e1]',
+      `- ${role} "Size" [ref=e1]`,
       new SyntheticAriaRefFactory()
     );
-    const elementsByRef = new Map<AriaRef, Element>([
-      [AriaRefSchema.parse("e1"), element],
-    ]);
-    return { tree, elementsByRef };
+    return { tree };
   }
 
   /**
@@ -120,7 +116,7 @@ describe("fitListsToTarget", () => {
   }
 
   it("sends a select element only the Goal Value scored highest", () => {
-    const capture = captureOf(document.createElement("select"));
+    const capture = captureOf("combobox");
     const chosen = chosenWith(capture, [0.6, 0.9, 0.7]);
 
     fitListsToTarget(selectTool, chosen, capture);
@@ -133,7 +129,7 @@ describe("fitListsToTarget", () => {
   });
 
   it("keeps the first of the Goal Values scored highest on a tie", () => {
-    const capture = captureOf(document.createElement("select"));
+    const capture = captureOf("combobox");
     const chosen = chosenWith(capture, [0.9, 0.6, 0.9]);
 
     fitListsToTarget(selectTool, chosen, capture);
@@ -142,9 +138,7 @@ describe("fitListsToTarget", () => {
   });
 
   it("sends a multiple select every Goal Value included", () => {
-    const select = document.createElement("select");
-    select.multiple = true;
-    const capture = captureOf(select);
+    const capture = captureOf("listbox");
     const chosen = chosenWith(capture, [0.6, 0.9, 0.7]);
 
     fitListsToTarget(selectTool, chosen, capture);
@@ -157,7 +151,7 @@ describe("fitListsToTarget", () => {
   });
 
   it("leaves the list alone for an element that is not a select", () => {
-    const capture = captureOf(document.createElement("button"));
+    const capture = captureOf("button");
     const chosen = chosenWith(capture, [0.6, 0.9, 0.7]);
 
     fitListsToTarget(selectTool, chosen, capture);

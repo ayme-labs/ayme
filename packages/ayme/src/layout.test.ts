@@ -660,12 +660,9 @@ it(
       if (!refused?.includes("Only the in-page module's page part"))
         allowed.push(file);
     }
-    // The transitional lookup, so a lookup that finds nothing cannot pass.
-    expect(allowed).toContain("elementLookup.ts");
-    for (const file of allowed)
-      expect(
-        readFileSync(join(packageRoot, "src/in-page/host", file), "utf8"),
-        `src/in-page/host/${file} no longer reads globalThis: remove it from eslint.config.js's allowlist`
-      ).toContain("globalThis");
+    // Every host file is refused the browser's globals, and the allowlist the
+    // migration used is empty.
+    expect(files.length).toBeGreaterThan(0);
+    expect(allowed).toEqual([]);
   }
 );

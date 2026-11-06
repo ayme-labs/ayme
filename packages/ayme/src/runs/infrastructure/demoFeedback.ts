@@ -1,10 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { inPage } from "../../in-page";
-import {
-  INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
-  INSPECTOR_HOST_SELECTOR,
-} from "../../shared";
+import { inPage, type InPage } from "../../in-page";
 import {
   elementsOf,
   kindOf,
@@ -17,8 +13,8 @@ export const DEMO_PAUSE_MS = 500;
 /**
  * Demo mode's feedback on the runtime's Pages (the `inspector` option's
  * `demo`): each call that acts pauses before it, each click shows a cue where
- * it lands, and each pointer action reaches the elements under the Inspector's
- * panel, which it lets through while it covers one. Reads, waits and
+ * it lands, and each pointer action reaches the elements under an excluded
+ * subtree, which it lets through while it covers one. Reads, waits and
  * configuration run as they are (`kindOf` says which calls act).
  */
 export function demoFeedback(
@@ -63,7 +59,7 @@ export type DemoFeedbackOptions = {
 export type CallDescription = {
   /** The element demo mode cues, for a call that clicks one. */
   cue?: Locator;
-  /** The elements it hit-tests, which the panel lets pointer events reach. */
+  /** The elements it hit-tests, which an excluded subtree lets pointer events reach. */
   hitTargets: Locator[];
 };
 
@@ -137,13 +133,13 @@ function wrapPage(page: Page, options: () => DemoFeedbackOptions): Page {
         return (...args: unknown[]) => {
           const call = describeCall(subject, target, property, args);
           if (!call) return wrapResult(member.apply(target, args));
-          // Nothing to pace, cue or let through: the call runs as it is, and
-          // costs a lookup of the Inspector's host at most.
+          // Nothing to pace or cue, and no pointer to let through: the call
+          // runs as it is.
           const { beforeActionMs, clickCue } = context.options();
           if (
             !beforeActionMs &&
             !(call.cue && clickCue) &&
-            !(call.hitTargets.length > 0 && inspectorHostPresent())
+            call.hitTargets.length === 0
           )
             return wrapResult(member.apply(target, args));
 
@@ -181,40 +177,39 @@ function isLocator(value: unknown): value is Locator {
   );
 }
 
-// Lets a pointer action reach the elements under the Inspector's panel: while
-// one of its targets comes under the panel, the panel's host lets pointer
-// events through until the action ends, with the runtime's hit-test mark.
-// Playwright Lite retries a failed hit-target check after 0, 20, 100, 100,
-// then 500ms; polling at 25ms keeps detection ahead of the early retries.
+// Lets a pointer action reach the elements under an excluded subtree, such as
+// the Inspector's panel: while one of its targets comes under one, the
+// subtree's root lets pointer events through until the action ends, with the
+// runtime's hit-test mark. The in-page module does the looking and the
+// marking. Playwright Lite retries a failed hit-target check after 0, 20, 100,
+// 100, then 500ms; polling at 25ms keeps detection ahead of the early retries.
 const COVER_POLL_MS = 25;
 
-/** Whether a panel is mounted: the only thing a pointer action asks of the page when none is. */
-function inspectorHostPresent() {
-  return (
-    typeof document !== "undefined" &&
-    document.querySelector(INSPECTOR_HOST_SELECTOR) !== null
-  );
-}
-let holds = 0;
+/** The pointer actions now letting events through, per page's module. */
+const holds = new WeakMap<InPage, number>();
 
 export async function passThroughWhileCovered<T>(
   targets: readonly Locator[],
   action: () => T
 ): Promise<Awaited<T>> {
-  if (targets.length === 0 || !inspectorHostPresent()) return await action();
+  if (targets.length === 0) return await action();
+  const module = inPage(targets[0]!.page());
+  // The only thing a pointer action asks of the page when nothing is excluded.
+  if (!(await module.hasExcludedSubtree().catch(() => false)))
+    return await action();
 
   let done = false;
   let held = false;
   void (async () => {
     while (!done) {
       for (const target of targets) {
-        const covered = await target
-          .evaluateAll(isUnderInspector, INSPECTOR_HOST_SELECTOR)
+        const covered = await module
+          .coveredByExcluded(target)
           .catch(() => false);
         if (done) return;
         if (covered) {
-          hold();
           held = true;
+          hold(module);
           return;
         }
       }
@@ -225,52 +220,18 @@ export async function passThroughWhileCovered<T>(
     return await action();
   } finally {
     done = true;
-    if (held) release();
+    if (held) await release(module);
   }
 }
 
-// Whether the Inspector host is what the pointer meets at an element's action
-// point: the centre of its first client rect inside the viewport, as Playwright
-// Lite picks it. An element of the panel itself is never under it: a page that
-// dogfoods the Inspector drives the panel through these actions.
-// Stryker disable all: evaluateAll serializes this function into the page, where Stryker's instrumented copy can't run.
-function isUnderInspector(elements: Element[], hostSelector: string) {
-  return elements.some((element) => {
-    const rootNode = element.getRootNode() as Partial<ShadowRoot>;
-    if (rootNode.host?.matches(hostSelector)) return false;
-    const document = element.ownerDocument;
-    const width = document.documentElement.clientWidth;
-    const height = document.documentElement.clientHeight;
-    for (const rect of element.getClientRects()) {
-      const left = Math.max(0, rect.left);
-      const right = Math.min(width, rect.right);
-      const top = Math.max(0, rect.top);
-      const bottom = Math.min(height, rect.bottom);
-      if (right <= left || bottom <= top) continue;
-      if ((right - left) * (bottom - top) <= 0.99) continue;
-      const hit = document.elementFromPoint(
-        (left + right) / 2,
-        (top + bottom) / 2
-      );
-      return hit?.matches(hostSelector) ?? false;
-    }
-    return false;
-  });
-}
-// Stryker restore all
-
-function hold() {
-  holds += 1;
-  if (holds === 1) setPassThrough(true);
+function hold(module: InPage) {
+  const count = (holds.get(module) ?? 0) + 1;
+  holds.set(module, count);
+  if (count === 1) void module.passThroughExcluded(true).catch(() => {});
 }
 
-function release() {
-  holds -= 1;
-  if (holds === 0) setPassThrough(false);
-}
-
-function setPassThrough(on: boolean) {
-  document
-    .querySelector(INSPECTOR_HOST_SELECTOR)
-    ?.toggleAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE, on);
+async function release(module: InPage) {
+  const count = (holds.get(module) ?? 1) - 1;
+  holds.set(module, count);
+  if (count === 0) await module.passThroughExcluded(false).catch(() => {});
 }

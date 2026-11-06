@@ -10,9 +10,9 @@ import { pomRootMarkProjection, type PomRootMarks } from "./pomRootMarks";
 
 export type { AriaRef };
 
+/** The node a Structural Ref addresses now: no code outside the page holds its element. */
 export type AymeNode = {
   ref: AriaRef;
-  element: Element;
 };
 
 export type RefResolution =
@@ -24,12 +24,8 @@ export type RefResolution =
   | {
       status: "unresolved";
       requestedRef: AriaRef;
-      /**
-       * `unknown-ref`, `removed` and `ambiguous` come from the identity ledger
-       * (see `StructuralIdentityResolution`). `no-element`: the ref resolved to a
-       * current ref, but the latest capture holds no live element for it.
-       */
-      reason: "unknown-ref" | "removed" | "ambiguous" | "no-element";
+      /** The identity ledger's reasons (see `StructuralIdentityResolution`). */
+      reason: "unknown-ref" | "removed" | "ambiguous";
     };
 
 export type PageState = {
@@ -40,7 +36,6 @@ export type PageState = {
 /** Package-internal: typed data from the latest Page State Session capture. */
 export type PageStateCapture = {
   readonly tree: StructuralTree;
-  readonly elementsByRef: ReadonlyMap<AriaRef, Element>;
   /**
    * For each predicate the capture was asked, and each Custom Tool's filter
    * under its name, the refs of the elements it keeps, as the in-page module
@@ -48,9 +43,14 @@ export type PageStateCapture = {
    * when the capture was asked for none.
    */
   readonly accepted?: Readonly<Record<string, ReadonlySet<string>>>;
+  /**
+   * The ref the tree shows, under the synthetic ref a probe or a reach named
+   * the same element by before the capture marked it.
+   */
+  readonly renamed?: ReadonlyMap<string, string>;
 };
 
-/** One capture of the page: its tree, element map and Page Object Root Marks. */
+/** One capture of the page: its tree and Page Object Root Marks. */
 export type PageCapture = PageStateCapture & {
   /** The Page Object Root Marks of the tree's Page Object Roots, by ref. */
   readonly pomRootMarks: PomRootMarks;
@@ -64,8 +64,8 @@ export type RenderedPageState = {
 };
 
 /**
- * A capture that recorded nothing: its tree, element map, rendered text and
- * the projected forest the text is rendered from.
+ * A capture that recorded nothing: its tree, rendered text and the projected
+ * forest the text is rendered from.
  */
 export type PageStateLook = PageStateCapture & RenderedPageState;
 

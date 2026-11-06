@@ -3,6 +3,7 @@
 // pinned snapshot code, with marks, a ref counter and a ref map that only
 // this module has, one set per document.
 import {
+  EXCLUDED_SUBTREE_SELECTOR,
   toolFilterKey,
   type Capture,
   type CapturedRoot,
@@ -62,8 +63,15 @@ export type CaptureAsk = {
 
 type CaptureBody = Omit<Capture, "document" | "url">;
 
-/** One document's ref world, capturing with `captureAriaSnapshot`. */
-export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
+/**
+ * One document's ref world, capturing with `captureAriaSnapshot`. `weakRefOf`
+ * holds an element weakly: a test stands in for the collector with its own.
+ */
+export function createRefWorld(
+  captureAriaSnapshot: CaptureAriaSnapshot,
+  weakRefOf: <T extends object>(target: T) => WeakRef<T> = (target) =>
+    new WeakRef(target)
+) {
   const marks = new WeakMap<Element, Mark>();
   const syntheticRefs = new WeakMap<Element, string>();
   // Every ref ever minted in this document, to the element it names.
@@ -104,7 +112,7 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     if (ref === undefined) {
       ref = `s_${++lastSyntheticRef}`;
       syntheticRefs.set(element, ref);
-      byRef.set(ref, new WeakRef(element));
+      byRef.set(ref, weakRefOf(element));
     }
     return ref;
   }
@@ -115,7 +123,9 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     ask: CaptureAsk = {}
   ): CaptureBody {
     const ignoreFilters = (inputs.ignores ?? []).map(compileFilter);
+    // An excluded subtree is out of every capture, whoever asks.
     const ignores = (element: Element) =>
+      element.matches(EXCLUDED_SUBTREE_SELECTOR) ||
       ignoreFilters.some((ignored) => ignored(element));
     const present = (inputs.roots ?? []).filter(
       ({ element }) =>
@@ -125,7 +135,18 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
     );
     const snapshot = captureAriaSnapshot(root, { mode: "ai", aymeRefs });
     for (const [element, ref] of snapshot.refsByElement)
-      byRef.set(ref, new WeakRef(element));
+      byRef.set(ref, weakRefOf(element));
+    // The map names every ref ever minted, so it drops the ones whose element
+    // the page let go of, and a long session does not grow it without bound.
+    const renamed: Record<string, string> = {};
+    for (const [ref, held] of byRef) {
+      const element = held.deref();
+      if (element === undefined) byRef.delete(ref);
+      else if (syntheticRefs.get(element) === ref) {
+        const mark = marks.get(element)?.ref;
+        if (mark !== undefined) renamed[ref] = mark;
+      }
+    }
 
     const presentElements = new Set(present.map(({ element }) => element));
     const absentElements = new Set(inputs.absent ?? []);
@@ -179,6 +200,7 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
       ...(ask.accepts || ask.filters
         ? { accepted: acceptedBy(ask, named) }
         : {}),
+      ...(Object.keys(renamed).length > 0 ? { renamed } : {}),
     };
   }
 
@@ -189,12 +211,25 @@ export function createRefWorld(captureAriaSnapshot: CaptureAriaSnapshot) {
 
   return {
     capture,
+    /** How many refs the world still holds an element for. */
+    trackedRefs: () => byRef.size,
     elementOf,
     elementEverNamed,
     everNamed,
     nameOf,
     /** The ref a capture gave `element`, if it has one. */
     refOf: (element: Element): string | undefined => marks.get(element)?.ref,
+    /**
+     * The ref a ref ever given now names, if its element is still in the
+     * document: the one its element has now, a capture's mark or its
+     * synthetic ref.
+     */
+    currentRefOf(ref: string): string | undefined {
+      const element = elementEverNamed(ref);
+      return element?.isConnected
+        ? (marks.get(element)?.ref ?? syntheticRefs.get(element))
+        : undefined;
+    },
     /** The ref `element` was last captured with, its own or its synthetic one. */
     lastRefOf: (element: Element): string | undefined =>
       marks.get(element)?.ref ?? syntheticRefs.get(element),

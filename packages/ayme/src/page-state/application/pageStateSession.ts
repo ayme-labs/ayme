@@ -1,4 +1,5 @@
 import {
+  parseStructuralRef,
   StructuralTree,
   type AriaRef,
   type StructuralActionId,
@@ -50,16 +51,6 @@ export type CaptureAsk = {
 };
 
 /**
- * Transitional (#1182): the elements a capture's refs name, for the browser
- * consumers that still look an element up by ref (Reach, the element tools,
- * the Goal Loop's questions, the Inspector). A ref it does not answer has no
- * element.
- */
-export type ElementsOf = (
-  refs: readonly AriaRef[]
-) => ReadonlyMap<AriaRef, Element>;
-
-/**
  * The Page State Session's port for its actions: `begin` captures the page
  * right before an action, and its `perform` runs the action, waits for a
  * Settled Page, bounded by a deadline, and captures it, or answers at once
@@ -83,15 +74,15 @@ export type PageAction = {
  */
 export class PageStateSession {
   /**
-   * The element map of the latest recorded observation. The identity ledger
-   * stands at that observation when it is read, so its current refs are
-   * looked up here; only this one map is kept, never one per observation.
+   * The tree of the latest recorded observation. The identity ledger stands
+   * at that observation when it is read, so its current refs are checked
+   * against it; only this one is kept, never one per observation.
    */
-  private latestElements:
+  private latestRecorded:
     | {
         observation: StructuralObservationEntry;
-        elementsByRef: ReadonlyMap<AriaRef, Element>;
         tree: StructuralTree;
+        renamed?: ReadonlyMap<string, string>;
       }
     | undefined;
   private readonly recordedListeners = new Set<() => void>();
@@ -107,27 +98,26 @@ export class PageStateSession {
   constructor(
     readonly history: InteractionHistory,
     private readonly captureDocument: CapturePage,
-    private readonly actionPage: ActionPage,
-    private readonly elementsOf: ElementsOf = () => new Map(),
-    private readonly elementNamed: (ref: string) => Element | undefined = () =>
-      undefined
+    private readonly actionPage: ActionPage
   ) {}
 
-  /** A capture of the page as the session reads it: its tree, marks and elements. */
+  /** A capture of the page as the session reads it: its tree and marks. */
   private async capturePage({
     accepts,
   }: CaptureAsk = {}): Promise<PageCapture> {
     return this.read(await this.captureDocument(accepts));
   }
 
-  /** `capture` as the session reads it: its tree, marks and elements. */
+  /** `capture` as the session reads it: its tree and marks. */
   private read(capture: Capture): PageCapture {
     const { tree, pomRootMarks } = structureCapture(capture, this.refFactory);
     return {
       tree,
       pomRootMarks,
-      elementsByRef: this.elementsOf(tree.getAllRefs()),
       ...(capture.accepted ? { accepted: acceptedSets(capture.accepted) } : {}),
+      ...(capture.renamed
+        ? { renamed: new Map(Object.entries(capture.renamed)) }
+        : {}),
     };
   }
 
@@ -144,7 +134,7 @@ export class PageStateSession {
 
   /**
    * Capture the page without recording it: no observation, no cursor, no
-   * element map. What callers see next is the same as if it never ran. Its
+   * tree kept. What callers see next is the same as if it never ran. Its
    * refs, `e` and `s_` alike, are the ones the page's next recorded capture
    * gives the same elements, so a tool run on a ref the look printed acts on
    * the element it showed.
@@ -360,7 +350,7 @@ export class PageStateSession {
       this.history.now(),
       capture.pomRootMarks
     );
-    this.rememberElements(capture);
+    this.rememberTree(capture);
     return before;
   }
 
@@ -387,7 +377,7 @@ export class PageStateSession {
       this.history.now(),
       capture.pomRootMarks
     );
-    this.rememberElements(capture);
+    this.rememberTree(capture);
     return after;
   }
 
@@ -407,7 +397,7 @@ export class PageStateSession {
       this.history.now(),
       capture.pomRootMarks
     );
-    this.rememberElements(capture);
+    this.rememberTree(capture);
     return after;
   }
 
@@ -416,8 +406,8 @@ export class PageStateSession {
     actionId: StructuralActionId
   ): Promise<StructuralObservationEntry> {
     // Set since the action started: every recorded observation remembers its
-    // elements. Read before awaiting, so the tree and its elements match.
-    const latest = this.latestElements!;
+    // tree. Read before awaiting, so the observation and its tree match.
+    const latest = this.latestRecorded!;
     const tree = await latest.observation.tree.resolve();
     const after = this.history.failAction(
       actionId,
@@ -425,24 +415,8 @@ export class PageStateSession {
       this.history.now(),
       this.history.pomRootMarks(latest.observation)
     );
-    this.rememberElements(latest);
+    this.rememberTree(latest);
     return after;
-  }
-
-  /**
-   * Capture and record the page, and give each of `elements` its one ref
-   * in that capture; an element the capture gave no ref, or several, gets
-   * none.
-   */
-  async getPageStateForElements(
-    elements: readonly Element[]
-  ): Promise<{ state: PageState; refs: (AriaRef | undefined)[] }> {
-    const capture = await this.capture();
-
-    return {
-      state: this.pageStateFor(capture),
-      refs: elementRefs(capture, elements),
-    };
   }
 
   /** Capture and record an observation; `cursor`, the reader receiving it, moves there. */
@@ -459,21 +433,20 @@ export class PageStateSession {
       capture.pomRootMarks
     );
     cursor?.move(observation);
-    this.rememberElements(capture);
+    this.rememberTree(capture);
     return capture;
   }
 
-  /** Call in the same step as the observation of these elements is recorded. */
-  private rememberElements({
-    elementsByRef,
+  /** Call in the same step as the observation of this tree is recorded. */
+  private rememberTree({
     tree,
-  }: Pick<PageCapture, "elementsByRef" | "tree">): void {
-    this.latestElements = {
+    renamed,
+  }: Pick<PageCapture, "tree" | "renamed">): void {
+    this.latestRecorded = {
       observation: this.history.latestObservation!,
-      elementsByRef,
       tree,
+      ...(renamed ? { renamed } : {}),
     };
-    this.latestRefsByElement = undefined;
     for (const listener of this.recordedListeners) listener();
   }
 
@@ -489,44 +462,25 @@ export class PageStateSession {
   }
 
   /**
-   * Each element's one ref in the latest recorded observation, built on
-   * first use; an element the page state gave several refs maps to undefined.
-   */
-  private latestRefsByElement:
-    ReadonlyMap<Element, AriaRef | undefined> | undefined;
-
-  /**
-   * The ref the agent's latest page state gave `element`, when it gave it
-   * exactly one; undefined before any page state was recorded.
-   */
-  latestRefOf(element: Element): AriaRef | undefined {
-    if (!this.latestElements) return undefined;
-    if (!this.latestRefsByElement) {
-      const refs = new Map<Element, AriaRef | undefined>();
-      for (const [ref, candidate] of this.latestElements.elementsByRef)
-        refs.set(candidate, refs.has(candidate) ? undefined : ref);
-      this.latestRefsByElement = refs;
-    }
-    return this.latestRefsByElement.get(element);
-  }
-
-  /**
-   * The ref the agent's latest page state gave what the in-page ref `ref`
-   * names, when it gave it exactly one and it is still there.
+   * The ref the latest recorded page state gave what the in-page ref `ref`
+   * names: `ref` itself while that page state holds it, as every host reads
+   * the refs of one document, or the mark the capture gave the element a
+   * probe named by `ref` first.
    */
   latestRefOfNamed(ref: string): AriaRef | undefined {
-    const element = this.elementNamed(ref);
-    return element && this.latestRefOf(element);
+    const latest = this.latestRecorded;
+    if (!latest) return undefined;
+    for (const candidate of [ref, latest.renamed?.get(ref)]) {
+      const parsed =
+        candidate === undefined ? undefined : parseStructuralRef(candidate);
+      if (parsed !== undefined && latest.tree.hasNode(parsed)) return parsed;
+    }
+    return undefined;
   }
 
-  /** The element the latest recorded page state maps `ref` to, if any. */
-  latestElementOf(ref: AriaRef): Element | undefined {
-    return this.latestElements?.elementsByRef.get(ref);
-  }
-
-  /** Read the recorded tree and its elements together, without another capture. */
-  latestCapture(): PageStateCapture | undefined {
-    return this.latestElements;
+  /** Read the recorded tree without another capture. */
+  latestCapture(): Pick<PageStateCapture, "tree"> | undefined {
+    return this.latestRecorded;
   }
 
   /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */
@@ -579,20 +533,18 @@ export class PageStateSession {
     // ledger carries ref identities forward through it without it becoming
     // the state a caller received.
     // The ledger is read at the latest recorded observation, which may be a
-    // capture that interleaved after this one; refs and elements are taken
-    // from that same observation.
+    // capture that interleaved after this one; refs and tree are taken from
+    // that same observation.
     await this.capture();
     return this.history.observations.readIdentityLedger(
       this.history.pageId,
       (ledger, through) => {
-        const latest = this.latestElements;
+        const latest = this.latestRecorded;
         if (!latest || latest.observation !== through)
           throw new RuntimeStateError(
-            "The identity ledger stands at an observation without an element map."
+            "The identity ledger stands at an observation without a recorded tree."
           );
-        return refs.map((requestedRef) =>
-          resolveOne(ledger, latest.elementsByRef, requestedRef)
-        );
+        return refs.map((requestedRef) => resolveOne(ledger, requestedRef));
       }
     );
   }
@@ -612,34 +564,13 @@ function acceptedSets(
 
 function resolveOne(
   ledger: StructuralIdentityLedger,
-  elementsByRef: ReadonlyMap<AriaRef, Element>,
   requestedRef: AriaRef
 ): RefResolution {
   const identity = ledger.resolve(requestedRef);
   if (identity.status === "unresolved") return identity;
-  const element = elementsByRef.get(identity.currentRef);
-  if (element === undefined)
-    return { status: "unresolved", requestedRef, reason: "no-element" };
   return {
     status: "resolved",
     requestedRef,
-    node: { ref: identity.currentRef, element },
+    node: { ref: identity.currentRef },
   };
-}
-
-function elementRefs(
-  capture: PageCapture,
-  elements: readonly Element[]
-): (AriaRef | undefined)[] {
-  const refsByElement = new Map<Element, AriaRef[]>();
-  for (const [ref, element] of capture.elementsByRef) {
-    const refs = refsByElement.get(element) ?? [];
-    refs.push(ref);
-    refsByElement.set(element, refs);
-  }
-
-  return elements.map((element) => {
-    const refs = refsByElement.get(element) ?? [];
-    return refs.length === 1 ? refs[0] : undefined;
-  });
 }

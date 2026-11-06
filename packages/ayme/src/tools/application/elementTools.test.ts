@@ -10,7 +10,7 @@ const { captureAriaSnapshot, pageObjectStructure } = vi.hoisted(() => ({
 
 vi.mock("../../page-state/infrastructure/browserInPage", async () =>
   (
-    await import("../../test-utils/inPageCapture.testSupport")
+    await import("../../in-page/inPageStandIn.testSupport")
   ).standInBrowserInPage(captureAriaSnapshot, () => pageObjectStructure())
 );
 
@@ -31,7 +31,7 @@ import {
 import { RefResolutionError } from "../../shared";
 import {
   getPageStateForDocument,
-  latestPageStateElement,
+  latestPageStateRefNamed,
 } from "../../page-state/infrastructure";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
 import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
@@ -163,17 +163,6 @@ describe("Structural Ref interactions", () => {
     expect(page.click).not.toHaveBeenCalled();
   });
 
-  it("rejects refs without an associated element", async () => {
-    mockCapture(undefined, "e2");
-    await getPageStateForDocument(document);
-
-    const page = fakePage();
-    await expect(clickRef(page, ref("e2"))).rejects.toThrow(
-      'Cannot click ref "e2": it has no element on the page now.'
-    );
-    expect(page.click).not.toHaveBeenCalled();
-  });
-
   it("clicks a Page Object Root's synthetic ref like any other", async () => {
     const root = document.createElement("div");
     const button = document.querySelector("#save");
@@ -190,20 +179,17 @@ describe("Structural Ref interactions", () => {
     if (!rootRef) throw new Error("Expected a synthetic ref for the root.");
     // At click time the selector names the root's current ref, the one the
     // engine resolves in the latest capture.
-    const clicked: { selector?: string; element?: Element } = {};
+    const clicked: { selector?: string; named?: AriaRef } = {};
     const click = vi.fn(async (selector: string) => {
       clicked.selector = selector;
-      clicked.element = latestPageStateElement(
-        document,
-        refFromSelector(selector)!
-      );
+      clicked.named = latestPageStateRefNamed(refFromSelector(selector)!);
     });
     const page = fakePage({ click });
 
     await clickRef(page, ref(rootRef));
 
     expect(clicked.selector).toMatch(/^ayme-ref=s_\w+$/);
-    expect(clicked.element).toBe(root);
+    expect(clicked.named).toBe(ref(rootRef));
   });
 
   it("reports page_changed and settled after act, wait, capture and reconcile", async () => {

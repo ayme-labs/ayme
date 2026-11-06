@@ -1,3 +1,5 @@
+import { readRef } from "../../test-utils/elementRefs.testSupport";
+import type { Locator } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
@@ -50,7 +52,7 @@ describe("Custom Tools in Chromium", () => {
 
   /** A Custom Tool that records the targets it received. */
   function recordingCustomTool(overrides: Partial<CustomTool> = {}) {
-    const targets: { ref: string; element: Element }[] = [];
+    const targets: { ref: string; locator: Locator }[] = [];
     const customTool: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
@@ -99,7 +101,7 @@ describe("Custom Tools in Chromium", () => {
 
   // --- Execution ---
 
-  it("passes the current Structural Ref and its element to execute", async () => {
+  it("passes the current Structural Ref and a Locator of its element to execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool();
     start([customTool]);
@@ -107,9 +109,10 @@ describe("Custom Tools in Chromium", () => {
 
     await call("highlight_element", { ref: saveRef });
 
-    expect(targets).toEqual([
-      { ref: saveRef, element: document.querySelector("#save") },
-    ]);
+    expect(targets.map((target) => target.ref)).toEqual([saveRef]);
+    expect(await targets[0]!.locator.evaluate((element) => element.id)).toBe(
+      "save"
+    );
   });
 
   it("retargets a historical ref to the element that replaced it", async () => {
@@ -121,12 +124,17 @@ describe("Custom Tools in Chromium", () => {
     const replacement = document.createElement("button");
     replacement.id = "save";
     replacement.textContent = "Save changes";
+    replacement.dataset.replacement = "yes";
     document.querySelector("#save")!.replaceWith(replacement);
 
     await call("highlight_element", { ref: saveRef });
 
     expect(targets).toHaveLength(1);
-    expect(targets[0]!.element).toBe(replacement);
+    expect(
+      await targets[0]!.locator.evaluate(
+        (element) => (element as HTMLElement).dataset.replacement
+      )
+    ).toBe("yes");
   });
 
   it("returns the action result shape with a JSON value under result", async () => {
@@ -151,8 +159,10 @@ describe("Custom Tools in Chromium", () => {
   it("reports what the Custom Tool changed on the page", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool({
-      execute: async ({ element }) => {
-        element.insertAdjacentHTML("afterend", "<p>Highlighted</p>");
+      execute: async ({ locator }) => {
+        await locator.evaluate((element) =>
+          element.insertAdjacentHTML("afterend", "<p>Highlighted</p>")
+        );
         return null;
       },
     });
@@ -192,7 +202,9 @@ describe("Custom Tools in Chromium", () => {
     const look = await getPageStateSession(document).look({ accepts: [] });
     const kept = [...(look.accepted?.["tool:highlight_element"] ?? [])];
     expect(kept).toHaveLength(1);
-    expect(look.elementsByRef.get(kept[0] as never)?.id).toBe("save");
+    expect(await readRef(kept[0] as string, (element) => element.id)).toBe(
+      "save"
+    );
   });
 
   it("keeps a Custom Tool named like a predicate apart from the predicate's refs", async () => {
@@ -209,10 +221,16 @@ describe("Custom Tools in Chromium", () => {
     });
     const toolKept = [...(look.accepted?.["tool:select"] ?? [])];
     expect(toolKept).toHaveLength(1);
-    expect(look.elementsByRef.get(toolKept[0] as never)?.id).toBe("marked");
+    expect(await readRef(toolKept[0] as string, (element) => element.id)).toBe(
+      "marked"
+    );
     const predicateKept = [...(look.accepted?.select ?? [])];
     expect(
-      predicateKept.map((ref) => look.elementsByRef.get(ref as never)?.tagName)
+      await Promise.all(
+        predicateKept.map((ref) =>
+          readRef(ref as string, (element) => element.tagName)
+        )
+      )
     ).toEqual(["SELECT"]);
   });
 

@@ -1,37 +1,41 @@
-// Registering an element filter: the browser runtime checks a filter in its
-// own document, where the module runs it, before anything runs it. A filter
-// that reads the code around it is refused here, with the identifier it
-// reads named.
+// Registering an element filter: a host checks a filter where the module runs
+// it before anything runs it: the browser runtime, whose realm is the page,
+// runs the check itself; a Node host asks through the slot's `check`. A filter that reads
+// the code around it is refused here, with the identifier it reads named.
 import {
+  checkFilter,
   filterData,
   ToolInputError,
   type ElementFilter,
+  type FilterCheck,
   type FilterData,
   type InPageFilter,
 } from "../../shared";
-import { checkFilter, type FilterCheck } from "../page/filter";
 
 /** The advice every rejected function filter carries. */
 const runsOnItsOwn =
   "A filter function runs in the page on its own, so it cannot use variables from the code around it: pass a CSS selector, or move what it needs inside the function.";
 
 /**
- * Checks `filter` for a registration named `name`, as "`ignore`" or "`filter`
- * of the Custom Tool `x`", and returns it as data for the module.
- * Throws a `ToolInputError` when the page cannot run it. A page that forbids
- * `new Function` keeps the function as it was passed, unchecked.
+ * Checks `filter` for a registration named `name`, in the realm of the page
+ * whose root element is `root`, and returns it as data for the module. Throws a
+ * `ToolInputError` when the page cannot run it.
  */
 export function registerFilter(
   name: string,
-  filter: ElementFilter
+  filter: ElementFilter,
+  root: Element
 ): FilterData {
   const data = filterData(filter);
-  return checkedFilter(name, filter, data, checkFilter(data));
+  return checkedFilter(name, filter, data, checkFilter(data, root));
 }
 
 /**
- * Checks `filter` as a registration named `name` where the module runs it,
- * asked through the slot's `check`, for a host in another realm than the page.
+ * Checks `filter` as a registration named `name`, as "`ignore`" or "`filter`
+ * of the Custom Tool `x`", where the module runs it, asked through the slot's
+ * `check`, and returns it as data for the module. Throws a `ToolInputError`
+ * when the page cannot run it. A page that forbids `new Function` keeps the
+ * function as it was passed, unchecked.
  */
 export async function registerFilterThrough(
   check: (data: FilterData) => Promise<FilterCheck>,

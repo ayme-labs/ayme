@@ -1,3 +1,4 @@
+import { readRef } from "../../test-utils/elementRefs.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -576,16 +577,26 @@ describe("the session's tools in Chromium", () => {
     await startSession();
     const capture = await lookAtPageStateForDocument(document);
     const described = (refs: readonly AriaRef[] = []) =>
-      refs.map((ref) => {
-        const element = capture.elementsByRef.get(ref)!;
-        return `${element.localName} ${element.textContent?.trim() || (element as HTMLInputElement).value}`;
-      });
+      Promise.all(
+        refs.map((ref) =>
+          readRef(
+            ref,
+            (element) =>
+              `${element.localName} ${element.textContent?.trim() || (element as HTMLInputElement).value}`
+          )
+        )
+      );
 
     const targets = await listElementToolTargets(capture);
 
     expect(
       Object.fromEntries(
-        [...targets].map(([name, refs]) => [name, described(refs)])
+        await Promise.all(
+          [...targets].map(async ([name, refs]) => [
+            name,
+            await described(refs),
+          ])
+        )
       )
     ).toEqual({
       // Interactive and enabled; the disabled button is left out.

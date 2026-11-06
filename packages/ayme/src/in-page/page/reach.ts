@@ -5,8 +5,8 @@
 // Runs in the document, with nothing outside this file and what it imports.
 import {
   containsThroughShadow as contains,
-  INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
-  INSPECTOR_HOST_SELECTOR,
+  EXCLUDED_SUBTREE_SELECTOR,
+  HIT_TEST_THROUGH_ATTRIBUTE,
   parentElement,
   type ReachMeasurement,
 } from "../../shared";
@@ -272,13 +272,13 @@ function clickTarget(
 
 /**
  * The measurement `target`, the hit test on `element`, makes of a present
- * element: in the way is what the click would hit instead. Ayme's own
- * Inspector lets a runtime action through its panel, so a hit on it is what
- * the same test finds with the Inspector's host out of hit testing.
+ * element: in the way is what the click would hit instead. A runtime action
+ * goes through an excluded subtree, so a hit on one is what the same test
+ * finds with that subtree out of hit testing.
  */
 function inTheWay(element: Element, target: HitTarget | undefined): Measured {
   let hit = target?.hit;
-  const host = hit && inspectorHostOf(hit);
+  const host = hit && excludedSubtreeOf(hit);
   if (host) hit = withoutHitTesting(host, () => hitTargetOf(element))?.hit;
   return hit ? { present: true, available: false, hit } : reached;
 }
@@ -308,24 +308,25 @@ function isModal(element: Element): boolean {
   }
 }
 
-function inspectorHostOf(element: Element): Element | undefined {
+function excludedSubtreeOf(element: Element): Element | undefined {
   for (let node: Element | null = element; node; node = parentElement(node))
-    if (node.matches(INSPECTOR_HOST_SELECTOR)) return node;
+    if (node.matches(EXCLUDED_SUBTREE_SELECTOR)) return node;
   return undefined;
 }
 
 /**
- * `measure()` while `host` carries the mark on which the Inspector's own
- * stylesheet takes everything in it out of hit testing, then as it was. The
- * mark is an attribute because the host's styles outrank the page's.
+ * `measure()` while `host`, the root of an excluded subtree, carries the mark
+ * on which its client's own stylesheet takes everything in it out of hit
+ * testing, then as it was. The mark is an attribute because the host's styles
+ * outrank the page's.
  */
 function withoutHitTesting<R>(host: Element, measure: () => R): R {
-  const marked = host.hasAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE);
-  host.setAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE, "");
+  const marked = host.hasAttribute(HIT_TEST_THROUGH_ATTRIBUTE);
+  host.setAttribute(HIT_TEST_THROUGH_ATTRIBUTE, "");
   try {
     return measure();
   } finally {
-    if (!marked) host.removeAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE);
+    if (!marked) host.removeAttribute(HIT_TEST_THROUGH_ATTRIBUTE);
   }
 }
 

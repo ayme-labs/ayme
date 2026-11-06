@@ -13,7 +13,9 @@ import {
   getPageStateForDocument,
   getPageStateSession,
   lookAtPageStateForDocument,
+  pageOfDocument,
 } from "../page-state/infrastructure";
+import { inPage } from "../in-page";
 import { type AriaRef, type Cursor } from "../page-state/domain";
 import { type PageStateSession, type Reach } from "../page-state/application";
 import {
@@ -112,13 +114,14 @@ export const ayme = {
 
 /** A rooted test caller reads its instance's ref without moving its cursor. */
 export async function rootRef(label: string): Promise<string> {
-  const look = await lookAtPageStateForDocument(document);
+  // A look names the root as a capture would, which the probe may not have.
+  await lookAtPageStateForDocument(document);
   const root = (await listRegisteredPomTargets()).find(
     (target) => target.path === `${label}.@root`
   );
-  const ref = [...look.elementsByRef].find(
-    ([, element]) => element === root?.element
-  )?.[0];
+  const [ref] = root
+    ? await inPage(pageOfDocument(document)).currentRefs([root.ref])
+    : [];
   if (!ref) throw new Error(`No root ref for ${label}.`);
   return ref;
 }

@@ -3,7 +3,7 @@ export type { PageObjectConstructor } from "./compiledPoms";
 export { createPomRegistry } from "./pomRegistry";
 export type {
   CallerAwarePomTool,
-  PomElements,
+  PomPageStates,
   PomRegistry,
   RootedToolInstance,
   RegisteredPom,

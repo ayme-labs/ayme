@@ -18,7 +18,11 @@ export type CallName =
   | "settle"
   | "watch"
   | "changes"
-  | "endRound";
+  | "endRound"
+  | "excluded"
+  | "passThrough"
+  | "currentRefs"
+  | "controls";
 
 /** What a host calls: one of the slot's methods, with its arguments. */
 export type CallArgument = {

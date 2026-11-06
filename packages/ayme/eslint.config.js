@@ -66,12 +66,9 @@ const sourceFiles = "src/**/*.ts";
 // Playwright's Page and touches no browser global.
 const inPageHost = "src/in-page/host/**/*.ts";
 // Host files that still read the document's slot through the browser's
-// globals: each may, until the issue named with it is done.
-// src/layout.test.ts fails when one no longer needs to.
-const inPageHostGlobalsExceptions = [
-  // The transitional lookup of an element by ref for the browser runtime.
-  { file: "src/in-page/host/elementLookup.ts", issue: "#1182" },
-];
+// globals: none does, so none is listed. A file listed here needs the issue
+// that lets it go. src/layout.test.ts fails while the list is not empty.
+const inPageHostGlobalsExceptions = [];
 // Test code may use any slice, so a test stays beside the module it is
 // about even when it starts a whole runtime.
 const testCode = [
@@ -86,13 +83,17 @@ const testCode = [
 const layers = ["domain", "application", "infrastructure"];
 const index = String.raw`index(\.[jt]s)?`;
 
-/** Relative imports beneath another slice, past its front doors. */
+/**
+ * Relative imports beneath another slice, past its front doors. A slice's
+ * root `*.testSupport.ts` is its test front door: test code may import it, and
+ * testCodeImport keeps production code from it.
+ */
 function deepImport(slice) {
   const others = (list) => list.filter((other) => other !== slice).join("|");
   const unlayered = others(slices.filter((s) => !layeredSlices.includes(s)));
   const layered = others(layeredSlices);
   return [
-    String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$)`,
+    String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$|[^/]+\.testSupport(\.[jt]s)?$)`,
     String.raw`^\.\.?/(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
   ].join("|");
 }
@@ -434,6 +435,27 @@ export default [
           message:
             "Only the in-page module's page part may use the browser's globals.",
         })),
+      ],
+    },
+  },
+  // The page part is built into the document's module and reached only through
+  // `installInPage`: everything else imports its types and nothing else.
+  {
+    files: [sourceFiles],
+    ignores: ["src/in-page/page/**", ...testCode],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`(^|/)in-page/page(/|$)`,
+              allowTypeImports: true,
+              message:
+                "Only the in-page module's page part may use its values: import its types, and reach the page through the built installInPage (ADR-0049).",
+            },
+          ],
+        },
       ],
     },
   },

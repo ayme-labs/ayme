@@ -18,7 +18,6 @@ import type { inPage } from "../../in-page";
 import type { ElementInputs } from "../../in-page";
 import {
   browserMonotonicClock,
-  INSPECTOR_HOST_SELECTOR,
   PREDICATES,
   type Capture,
   type FilterData,
@@ -34,7 +33,6 @@ import {
 } from "../domain/structuralPageState";
 import {
   PageStateSession,
-  type ElementsOf,
   type PageAction,
 } from "../application/pageStateSession";
 
@@ -64,14 +62,6 @@ export type PageStateHost = {
    * capture.
    */
   begin(inputs: () => Promise<ElementInputs>): Promise<PageAction>;
-  /**
-   * Transitional (#1182): the elements a capture's refs name, for the
-   * consumers that still look an element up by ref. A host that shares no
-   * realm with the page stands in refs for them.
-   */
-  elementsOf: ElementsOf;
-  /** Transitional (#1182): the element the in-page ref names, while it is there. */
-  elementNamed(ref: string): Element | undefined;
 };
 
 /** What a capture reads besides the page, set by the session that owns it. */
@@ -171,21 +161,18 @@ export function pageStateOf(page: Page, host: PageStateHost): PageStateStore {
 
 function createStore(page: Page, host: PageStateHost): PageStateStore {
   const read = sourcesOf(page);
-  // What a capture leaves out: the `ignore` of this runtime, and the
-  // Inspector's own DOM, always, as selectors. The Page Object Roots it
+  // What a capture leaves out besides the excluded subtrees, which the
+  // module always does: the `ignore` of this runtime. The Page Object Roots it
   // places are those the module holds from the registry's probe runs,
   // current once the probe it waits for has resolved.
   async function elementInputs(): Promise<ElementInputs> {
     await read.probe?.();
-    return {
-      ignores: [{ selector: INSPECTOR_HOST_SELECTOR }, ...(read.ignores ?? [])],
-    };
+    return { ignores: [...(read.ignores ?? [])] };
   }
-  const captureWith = async (accepts?: readonly Predicate[]) =>
-    host.capture(await elementInputs(), {
-      accepts,
-      filters: read.filters ?? [],
-    });
+  const captureWith = async (accepts?: readonly Predicate[]) => {
+    const inputs = await elementInputs();
+    return host.capture(inputs, { accepts, filters: read.filters ?? [] });
+  };
 
   const history = new InteractionHistory({
     pageId: PageIdSchema.parse(`document_${++documentCount}`),
@@ -198,13 +185,9 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
     url = visit.url;
     history.recordNavigation(visit.url);
   });
-  const session = new PageStateSession(
-    history,
-    captureWith,
-    { begin: () => host.begin(elementInputs) },
-    host.elementsOf,
-    host.elementNamed
-  );
+  const session = new PageStateSession(history, captureWith, {
+    begin: () => host.begin(elementInputs),
+  });
   return {
     session,
     // The Inspector offers each tool the refs it takes, so a look carries them.
@@ -231,7 +214,7 @@ export async function latestRefOfLocator(
   const refs = await module.elements.refs(locator);
   const ref = refs.length === 1 ? (refs[0] as AriaRef | undefined) : undefined;
   return ref !== undefined &&
-    existingPageState(page)?.session.latestElementOf(ref)
+    existingPageState(page)?.session.latestRefOfNamed(ref)
     ? ref
     : undefined;
 }

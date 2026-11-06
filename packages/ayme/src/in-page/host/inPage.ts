@@ -19,13 +19,14 @@ import {
   RuntimeStateError,
   type ActionOutcome,
   type Capture,
+  type ControlState,
   type DocumentToken,
   type FilterData,
   type NamedFilter,
   type Predicate,
 } from "../../shared";
 import type { CallName, CallResult } from "../page/call";
-import type { FilterCheck } from "../page/filter";
+import type { FilterCheck } from "../../shared";
 import { filterFailure } from "./filterRegistration";
 import type { CallOnName, CallOnResult } from "../page/callOn";
 import type {
@@ -127,6 +128,14 @@ export type InPage = {
    */
   mint(target: Locator): Promise<string[]>;
   /**
+   * The ref each of `refs` names its element by now, in the order given: one
+   * a probe or a reach gave before a capture marked the element gives way to
+   * the capture's. Undefined for a ref whose element left the document.
+   */
+  currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /** The state of each native form control `refs` name (input, textarea, select), by ref. */
+  controls(refs: readonly string[]): Promise<Record<string, ControlState>>;
+  /**
    * Whether `ref`, now or before, names the one element `target` matches:
    * what tells that a root found earlier is still the root, although a
    * capture since has marked it, or its name has changed.
@@ -173,6 +182,20 @@ export type InPage = {
    * the page and waits for nothing.
    */
   cue(target: Locator): Promise<void>;
+  /** Whether the document holds a subtree that carries the excluded-subtree mark. */
+  hasExcludedSubtree(): Promise<boolean>;
+  /**
+   * Whether an excluded subtree is what a pointer action on an element
+   * `target` matches would meet: the first of them that one covers makes it
+   * so.
+   */
+  coveredByExcluded(target: Locator): Promise<boolean>;
+  /**
+   * Sets or clears the hit-test mark on the roots of the excluded subtrees,
+   * with which their client lets pointer events through while an action
+   * reaches the elements under them.
+   */
+  passThroughExcluded(on: boolean): Promise<void>;
   /**
    * An action's before capture, which also arms the watch for a full load
    * the action starts: one call into the page.
@@ -218,8 +241,6 @@ export type VisitSignal = {
 };
 
 export type PickOptions = {
-  /** A CSS selector for the subtrees picking leaves alone, such as the Inspector's host. */
-  ignore?: string;
   /** Ends picking, as Esc does, when it aborts. */
   signal?: AbortSignal;
   /** The highlight styles of an element that can be picked and of one that cannot. */
@@ -536,6 +557,14 @@ export function createInPageHost(version = packageVersion): InPageHost {
         return callOn<RootState>(root, "probe", request);
       },
       mint: (target) => callOn<string[]>(target, "mint"),
+      async controls(refs) {
+        if (refs.length === 0) return {};
+        return call<Record<string, ControlState>>("controls", [refs]);
+      },
+      async currentRefs(refs) {
+        if (refs.length === 0) return [];
+        return call<(string | undefined)[]>("currentRefs", [refs]);
+      },
       names: (target, ref) => callOn<boolean>(target, "names", ref),
       watch(probe) {
         return watcher.start({
@@ -581,7 +610,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
           await container?.dispose();
         }
       },
-      async pick(accept, { ignore, signal, styles } = {}) {
+      async pick(accept, { signal, styles } = {}) {
         const id = hostKey();
         const paint = highlighting(page, {
           usable: styles?.usable ?? highlightStyles.hover,
@@ -592,9 +621,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
         signal?.addEventListener("abort", cancel, { once: true });
         try {
           if (signal?.aborted) return undefined;
-          return await call<string | undefined>("pick", [
-            { id, accept, ignore },
-          ]);
+          return await call<string | undefined>("pick", [{ id, accept }]);
         } finally {
           signal?.removeEventListener("abort", cancel);
           listeners.delete(id);
@@ -609,6 +636,18 @@ export function createInPageHost(version = packageVersion): InPageHost {
             name: "cue" as const,
           })
         );
+      },
+      hasExcludedSubtree: () => call<boolean>("excluded", []),
+      async coveredByExcluded(target) {
+        const answer = await target.evaluateAll(callOnInPage, {
+          version,
+          host,
+          name: "covered" as const,
+        });
+        return answer.kind === "ok" && answer.value === true;
+      },
+      async passThroughExcluded(on) {
+        await call<void>("passThrough", [on]);
       },
       onVisit(listener) {
         const subscribed = (signal: VisitSignal) => listener(signal);

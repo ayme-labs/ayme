@@ -1,7 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 
 import { createPage } from "@ayme-dev/playwright-lite";
-import { createAyme, type AymePage, type AymeOptions } from "@ayme-dev/ayme";
+import {
+  createAyme,
+  EXCLUDE_ATTRIBUTE,
+  type AymePage,
+  type AymeOptions,
+} from "@ayme-dev/ayme";
 
 import { mountInspector } from "./index";
 import { inspectorShadowRoot } from "./shared";
@@ -38,6 +43,19 @@ it("mounts one Inspector in a closed Shadow Root and supports disposal and remou
     document.body.querySelectorAll("[data-ayme-inspector-host]")
   ).toHaveLength(1);
   remounted.dispose();
+});
+
+it("marks its host as an excluded subtree, unless it is mounted for dogfooding", () => {
+  const hostOf = () =>
+    document.body.querySelector("[data-ayme-inspector-host]")!;
+
+  const panel = mountInspector();
+  expect(hostOf().hasAttribute(EXCLUDE_ATTRIBUTE)).toBe(true);
+  panel.dispose();
+
+  const dogfooded = mountInspector({ dogfood: true });
+  expect(hostOf().hasAttribute(EXCLUDE_ATTRIBUTE)).toBe(false);
+  dogfooded.dispose();
 });
 
 it("renders the React Inspector and its stylesheet inside the Shadow Root only", () => {

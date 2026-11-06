@@ -2123,8 +2123,11 @@ describe("Goal Loop goal in Chromium", () => {
         name: "highlight_element",
         description: "Highlight one element on the page.",
         filter: "h1",
-        execute: async ({ ref, element }) => {
-          highlighted.push({ ref, tagName: element.tagName });
+        execute: async ({ ref, locator }) => {
+          highlighted.push({
+            ref,
+            tagName: await locator.evaluate((element) => element.tagName),
+          });
         },
       },
     ]);
@@ -2346,13 +2349,6 @@ describe("Goal Loop goal in Chromium", () => {
     expect(resolutions.map((resolution) => resolution.status)).toEqual(
       Object.keys(offered).map(() => "resolved")
     );
-    expect(
-      resolutions.map(
-        (resolution) =>
-          resolution.status === "resolved" &&
-          resolution.node.element instanceof Element
-      )
-    ).not.toContain(false);
   });
 
   it("keeps an offered instance's ref-only root in the page it sends, with its Page Object Root Mark, and prunes the other wrappers", async () => {
@@ -3424,10 +3420,10 @@ describe("Goal Loop goal in Chromium", () => {
 
   it("names the items it could not offer when none has a ref in the page state", async () => {
     // The item is available, but inside a subtree the page state ignores,
-    // here the Inspector's host, so the capture holds no ref for it.
+    // here an excluded subtree, so the capture holds no ref for it.
     document.body.innerHTML = `
       <main>
-        <ul data-ayme-inspector-host>
+        <ul data-ayme-exclude>
           <li id="item-0">Item 0</li>
         </ul>
       </main>

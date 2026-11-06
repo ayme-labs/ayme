@@ -7,7 +7,7 @@ import {
   resolveElementTarget,
   type PublishedElementTool,
 } from "./elementTools";
-import { INSPECTOR_HOST_SELECTOR } from "../../shared";
+import { EXCLUDED_SUBTREE_SELECTOR } from "../../shared";
 import {
   screenshotRequest,
   type ImageType,
@@ -42,9 +42,9 @@ const inputSchema: JsonSchema = {
   additionalProperties: false,
 };
 
-// The Inspector is not part of the page: it is hidden from the capture,
-// unless the page dogfoods it.
-const HIDE_INSPECTOR = `${INSPECTOR_HOST_SELECTOR}{visibility:hidden}`;
+// An excluded subtree, such as the Inspector's panel, is not part of the page:
+// it is hidden from the capture.
+const HIDE_EXCLUDED = `${EXCLUDED_SUBTREE_SELECTOR}{visibility:hidden}`;
 
 const MIME_TYPES = {
   png: "image/png",
@@ -84,7 +84,7 @@ export const screenshotTool: PublishedElementTool = {
       // As Playwright MCP captures: CSS pixels, and jpeg at quality 90.
       scale: "css" as const,
       ...(request.type === "jpeg" ? { quality: 90 } : {}),
-      style: HIDE_INSPECTOR,
+      style: HIDE_EXCLUDED,
     };
     let bytes: Uint8Array;
     let subject: string;

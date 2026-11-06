@@ -1,6 +1,7 @@
 export {
   AymeError,
   callers,
+  EXCLUDE_ATTRIBUTE,
   isJsonPrimitive,
   isJsonValue,
   RefResolutionError,

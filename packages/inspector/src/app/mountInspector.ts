@@ -1,4 +1,4 @@
-import { INSPECTOR_DOGFOOD_ATTRIBUTE } from "@ayme-dev/ayme/inspector";
+import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
 import { exposeInspectorShadowRoot, inspectorClient } from "../shared";
@@ -39,10 +39,12 @@ export function mountInspector(options: InspectorOptions = {}) {
     const host = document.createElement("ayme-inspector");
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
-    // Closed, so the host page's locators and page-state capture never match
-    // the Inspector's own text. Tests reach the root through the hook. Open
-    // when dogfooding, and marked so the runtime's page state keeps it.
-    if (options.dogfood) host.setAttribute(INSPECTOR_DOGFOOD_ATTRIBUTE, "");
+    // Closed, so the host page's locators never match the Inspector's own
+    // text, and marked as an excluded subtree, so the runtime's capture,
+    // Reach and screenshots leave it out. Tests reach the root through the
+    // hook. Open and unmarked when dogfooding: the runtime's page state keeps
+    // it then.
+    if (!options.dogfood) host.setAttribute(EXCLUDE_ATTRIBUTE, "");
     const shadowRoot = host.attachShadow({
       mode: options.dogfood ? "open" : "closed",
     });
