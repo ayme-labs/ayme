@@ -143,6 +143,28 @@ it("picks a ref and cancels the pick when its signal aborts", async () => {
   ]);
 });
 
+it("numbers picks apart from every other client's, so windows on one server never share a pick id", async () => {
+  const ids: string[] = [];
+  const open = () => {
+    const contract: InspectorContract = {
+      ...transport(state(1)).contract,
+      pick: async (request) => (
+        ids.push(request.id),
+        { state: state(1), ref: request.refs[0] }
+      ),
+    };
+    return createInspectorClient(contract);
+  };
+  const [first, second] = [open(), open()];
+  const signal = new AbortController().signal;
+
+  await first.pick(["e1"], signal);
+  await first.pick(["e1"], signal);
+  await second.pick(["e1"], signal);
+
+  expect(new Set(ids).size).toBe(3);
+});
+
 it("reads the recorded page state and asks for Demo Mode through the transport", async () => {
   const t = transport(state(2));
   const client = createInspectorClient(t.contract);

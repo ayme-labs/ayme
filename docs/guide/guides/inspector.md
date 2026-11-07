@@ -38,6 +38,7 @@ useAyme({ inspector: { placement: "external" } });
 - With several servers running, `ayme inspect` prints a URL for each; `ayme inspect --port <port>` looks on one port only.
 - The page keeps no Inspector code for it; the window loads the Inspector from the server.
 - The window shows the page's host as "page", since it does not know the page's address.
+- A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.
 
 ## Demo mode
 

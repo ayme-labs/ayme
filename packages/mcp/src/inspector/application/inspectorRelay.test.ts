@@ -115,6 +115,38 @@ describe("InspectorRelay", () => {
     expect(started).toEqual(["subscribe", "unsubscribe"]);
   });
 
+  it("gives the page each window's pick as sent, and unsubscribes once when both windows close", async () => {
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    const params: unknown[] = [];
+    const started: string[] = [];
+    void (async () => {
+      for await (const { id, method, params: p } of page.inspector.requests(
+        undefined
+      )) {
+        started.push(method);
+        if (method === "pick") params.push(p);
+        page.inspector.respond({ id, ok: true, result: null });
+      }
+    })();
+    const relay = new InspectorRelay(connection);
+    const first = openWindow(relay);
+    const second = openWindow(relay);
+    first.receive({ id: 1, method: "subscribe" });
+    second.receive({ id: 1, method: "subscribe" });
+
+    first.receive({ id: 2, method: "pick", params: { id: "pick-a-1" } });
+    second.receive({ id: 2, method: "pick", params: { id: "pick-b-1" } });
+    first.close();
+    await settle();
+    expect(started).toEqual(["subscribe", "pick", "pick"]);
+    second.close();
+    await settle();
+
+    expect(params).toEqual([{ id: "pick-a-1" }, { id: "pick-b-1" }]);
+    expect(started).toEqual(["subscribe", "pick", "pick", "unsubscribe"]);
+  });
+
   it("resets the windows and subscribes the new page when the tab's page is replaced", async () => {
     const connection = new AgentConnection();
     const first = connection.attach(hello("a"), () => {})!;

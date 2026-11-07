@@ -166,4 +166,26 @@ describe("inspectorChannelPort", () => {
       expect(calls).toContainEqual(["cancelPick", { id: "p1" }])
     );
   });
+
+  it("cancels every window's pick when the last window leaves, and none before", async () => {
+    const { contract, calls } = recordingContract();
+    (contract as { pick: unknown }).pick = () => new Promise(() => {});
+    const port = inspectorChannelPort(contract);
+    const stopFirst = port.subscribe(() => {});
+    const stopSecond = port.subscribe(() => {});
+    void port.request("pick", { id: "pick-a-1", refs: [] });
+    void port.request("pick", { id: "pick-b-1", refs: [] });
+
+    stopFirst();
+    await vi.waitFor(() => expect(calls.length).toBeGreaterThan(2));
+    expect(calls.some(([name]) => name === "cancelPick")).toBe(false);
+    stopSecond();
+
+    await vi.waitFor(() =>
+      expect(calls.filter(([name]) => name === "cancelPick")).toEqual([
+        ["cancelPick", { id: "pick-a-1" }],
+        ["cancelPick", { id: "pick-b-1" }],
+      ])
+    );
+  });
 });

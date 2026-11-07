@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
-import { Empty, InspectorRoot, useCopy, useTabState } from "../shared";
+import {
+  Empty,
+  inspectorClient,
+  InspectorRoot,
+  useCopy,
+  useInspectorState,
+  useTabState,
+} from "../shared";
 import {
   Connections,
   DetailPane,
@@ -47,6 +54,11 @@ export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
     () => new Set()
   );
   const { copied, copy } = useCopy();
+  // A window that has heard nothing from a page has no page serving the
+  // contract: none is paired, or its session is inline.
+  const client = inspectorClient();
+  const heardNothing = useInspectorState(client).revision === 0;
+  const unserved = windowed && client.external && heardNothing;
   const runtime = useInspectorRuntime({
     structureVisible:
       activeLens === "structure" && (windowed || !preferences.collapsed),
@@ -129,8 +141,19 @@ export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
     if (stale && pageStateRead)
       setViewState((current) => ({ ...current, selection: pageSelection }));
   }, [stale, pageStateRead, setViewState]);
-  const detail = (stale ? viewOf(pageSelection) : view) ?? (
-    <Empty>Nothing to show for this selection.</Empty>
+  const detail = unserved ? (
+    <Empty>
+      No page is serving the Inspector. Pair a page with this ayme mcp, and
+      start that page&apos;s Ayme session with{" "}
+      <code>
+        inspector: {"{"} placement: &quot;external&quot; {"}"}
+      </code>
+      .
+    </Empty>
+  ) : (
+    ((stale ? viewOf(pageSelection) : view) ?? (
+      <Empty>Nothing to show for this selection.</Empty>
+    ))
   );
 
   const status = (

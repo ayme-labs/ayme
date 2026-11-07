@@ -89,6 +89,8 @@ export function createInspectorClient(
   const listeners = new Set<() => void>();
   const imageListeners = new Set<(run: InspectorAgentImageRun) => void>();
   let stopTransport: (() => void) | undefined;
+  // Windows on one `ayme mcp` share the page's pick ids, so each client's own.
+  const pickPrefix = Math.random().toString(36).slice(2, 10);
   let picks = 0;
 
   const take = (incoming: InspectorState) => {
@@ -152,7 +154,7 @@ export function createInspectorClient(
     },
     async pick(refs, signal) {
       if (signal.aborted) return undefined;
-      const id = `pick-${++picks}`;
+      const id = `pick-${pickPrefix}-${++picks}`;
       const cancel = () => void transport.cancelPick({ id }).catch(() => {});
       signal.addEventListener("abort", cancel, { once: true });
       try {
