@@ -8,7 +8,8 @@ Slices, from the bottom up:
 
 - `contract`: the messages between the server and the page client or App Process, as zod schemas both sides validate.
 - `pairing`: the connect link, the token, the server's port range and its scan, the tab's stored pairing and the ways the page learns a pairing.
-- `connection`: the server's one paired page, the App Processes beside it and calls to them; the tRPC channel over WebSocket on both ends; and the behaviour types the composition roots run.
+- `connection`: the server's one paired page, the App Processes beside it and calls to them; the paired page's link for an external Inspector's requests and events; the tRPC channel over WebSocket on both ends, which the server's HTTP server shares with an extension; and the behaviour types the composition roots run.
+- `inspector`: the external Inspector (ADR-0049). It serves `@ayme-dev/inspector`'s `./external` build and its WebSocket on the server's own HTTP server (`externalInspectorServer`, passed to the channel server as its extension), relays an Inspector window's requests in order to the paired page over the page channel (`InspectorRelay`, on the connection's `InspectorLink`) and the page's events back, serves the page's contract on the page client side (`serveInspector`, over the `InspectorPort` the runtime hands the client), and holds what `ayme inspect` prints. It reads none of the contract's data but a pick's id, with which the relay cancels the picks of a window that leaves.
 - `tools`: the page's tools as MCP tools, the server's own tools, and the page client's and App Process's work with `ayme.tools`.
 - `server`: the composition root of `ayme mcp`. Its index is what `src/cli.ts` starts.
 - `client`: the composition root of the `./client` entry.
@@ -23,7 +24,7 @@ Layers: `domain` (pure rules and types), `application` (the flows and the ports 
 
 To add behaviour, add a file and one line in a composition root's list:
 
-- A server tool: a `ServerToolFactory` in `tools/`, listed in `server/serverTools.ts`.
+- A server tool: a `ServerToolFactory` in `tools/`, listed in `server/serverTools.ts` (`ayme_inspect` is one).
 - Something the server does with its Agent Connection: a `ConnectionBehaviour`, listed in `server/connectionBehaviours.ts`.
 - Something the page client does while its channel is open: a `ClientBehaviour`, listed in `client/clientBehaviours.ts`; for an App Process, in `process/processBehaviours.ts`.
 - A way the page learns which server to pair with: a `PairingSource` in `pairing/`, listed in `client/pairingSources.ts`.

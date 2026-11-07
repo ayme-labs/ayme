@@ -5,7 +5,7 @@ export type { PomRootMarks } from "./pomRootMarks";
 export { forkCursor } from "./cursors";
 export type { Cursor } from "./cursors";
 export { refFailure, refHint, selectorFailure } from "./refFailures";
-export { pageStateNodeEntry } from "./structuralPageState";
+export { pageStateNodeEntry, renderPageState } from "./structuralPageState";
 export type {
   AriaRef,
   AymeNode,
@@ -20,4 +20,8 @@ export {
   obstructionReason,
   unavailableError,
 } from "./toolAvailability";
-export type { LatestRefLookup, ToolAvailability } from "./toolAvailability";
+export type {
+  LatestRefByRef,
+  LatestRefLookup,
+  ToolAvailability,
+} from "./toolAvailability";

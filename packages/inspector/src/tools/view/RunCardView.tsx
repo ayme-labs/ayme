@@ -9,7 +9,7 @@ import {
   ZapIcon,
 } from "lucide-react";
 
-import type { SchemaViolation } from "@ayme-dev/ayme/internal";
+import type { SchemaViolation } from "@ayme-dev/ayme/inspector";
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 

@@ -1,7 +1,7 @@
 import type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 import type { ControlState } from "../../shared";
 import {

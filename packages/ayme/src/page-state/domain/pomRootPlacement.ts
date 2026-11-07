@@ -2,10 +2,10 @@ import {
   isSyntheticRef,
   StructuralNode,
   StructuralTree,
-  SyntheticAriaRefFactory,
   type AriaRef,
   type StructuralRole,
 } from "@ayme-dev/core/structural-observation";
+import type { SyntheticAriaRefAllocator } from "./capturedTree";
 type StructuralChild = StructuralNode | string;
 export type ReferencedCapturedRoot = {
   kind: "referenced";
@@ -14,8 +14,12 @@ export type ReferencedCapturedRoot = {
 
 export type OmittedCapturedRoot = {
   kind: "omitted";
-  /** The root's element, which its synthetic ref stays with. */
-  element: Element;
+  /**
+   * The synthetic ref the in-page module minted for the root's element, once
+   * per element and document, so every capture and every host gives the root
+   * the same ref.
+   */
+  ref: AriaRef;
   ancestorRef: AriaRef | undefined;
   descendantRefs: readonly AriaRef[];
   role: StructuralRole;
@@ -30,31 +34,12 @@ export type CapturedStructuralRootPlacement = {
   refs: readonly (AriaRef | null)[];
 };
 
-/**
- * Mints a Page Object Root's synthetic ref once per element, as Playwright
- * keeps a real ref with its element, so a ref one capture printed names the
- * same root in every later capture of the same page, and the ref-to-element
- * map of the latest capture still holds it.
- */
-export class SyntheticRootRefFactory extends SyntheticAriaRefFactory {
-  private readonly refs = new WeakMap<Element, AriaRef>();
-
-  createFor(element: Element): AriaRef {
-    let ref = this.refs.get(element);
-    if (ref === undefined) {
-      ref = this.create();
-      this.refs.set(element, ref);
-    }
-    return ref;
-  }
-}
-
 /** Places captured roots using full-tree ancestry and retained-tree order. */
 export function placeCapturedRoots(
   retainedTree: StructuralTree,
   fullTree: StructuralTree,
   roots: readonly CapturedStructuralRoot[],
-  refFactory: SyntheticRootRefFactory
+  refFactory: SyntheticAriaRefAllocator
 ): CapturedStructuralRootPlacement {
   let tree = retainedTree;
   const placedRefs: Array<AriaRef | null> = [];
@@ -124,7 +109,7 @@ export function placeCapturedRoots(
       continue;
     }
 
-    const syntheticRef = refFactory.createFor(root.element);
+    const syntheticRef = root.ref;
     const boundary = new StructuralNode({
       ref: syntheticRef,
       role: root.role,
@@ -189,7 +174,7 @@ function insertBoundary(
   movedRefs: ReadonlySet<AriaRef>,
   boundaryOrder: number,
   fullOrder: ReadonlyMap<AriaRef, number>,
-  refFactory: SyntheticAriaRefFactory
+  refFactory: SyntheticAriaRefAllocator
 ): StructuralTree {
   let inserted = false;
   const rebuild = (node: StructuralNode): StructuralNode => {
@@ -234,23 +219,4 @@ function fullTreeOrder(
   return descendantOrders.length > 0
     ? Math.min(...descendantOrders)
     : Number.MAX_SAFE_INTEGER;
-}
-
-/**
- * The Page Object Roots a capture places, one entry per element: an element
- * several Page Objects root on carries each of their marks once.
- */
-export function coalesceByElement(
-  roots: readonly { mark: string; element: Element }[]
-): { element: Element; marks: string[] }[] {
-  const seen = new Map<Element, { element: Element; marks: string[] }>();
-  for (const root of roots) {
-    const existing = seen.get(root.element);
-    if (existing) {
-      if (!existing.marks.includes(root.mark)) existing.marks.push(root.mark);
-    } else {
-      seen.set(root.element, { element: root.element, marks: [root.mark] });
-    }
-  }
-  return [...seen.values()];
 }

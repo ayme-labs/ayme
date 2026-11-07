@@ -763,8 +763,8 @@ it.each([undefined, "child"])(
       tools: [tool],
       manifest: { className: "Shell", tools: [], members: [], components: [] },
       memberObservations: [],
-      presentPaths: new Set([""]),
-      rootMemberPaths: new Set<string>(),
+      presentPaths: [""],
+      rootMemberPaths: [],
     };
     const runnable = listRunnableTools(
       [registration],

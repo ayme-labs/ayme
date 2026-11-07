@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rootTargetPath } from "@ayme-dev/ayme/internal";
+import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers, pathBelowPage } from "./memberIndex";
 import { collection, component, model, page } from "../test-utils/pageModel";

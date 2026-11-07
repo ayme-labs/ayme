@@ -5,7 +5,10 @@ import type {
   PomMemberObservation,
   RegisteredPomTool,
 } from "@ayme-dev/ayme";
-import type { PomManifest, RegisteredPom } from "@ayme-dev/ayme/internal";
+import type {
+  PomManifest,
+  InspectorPageObject,
+} from "@ayme-dev/ayme/inspector";
 
 import {
   buildPageModel,
@@ -156,14 +159,13 @@ function registration(
   rootMemberPaths: readonly string[] = memberObservations.length
     ? rootMembers
     : []
-): RegisteredPom {
+): InspectorPageObject {
   return {
     id: "TodoPage",
-    instance: {},
     manifest,
     memberObservations,
-    presentPaths: new Set(presentPaths),
-    rootMemberPaths: new Set(rootMemberPaths),
+    presentPaths,
+    rootMemberPaths,
     tools,
   };
 }
@@ -563,7 +565,7 @@ describe("the page model", () => {
         { className: "ArchiveDialog", path: "archiveDialog" },
         "Shows SettingsPage."
       );
-      const registered: RegisteredPom = {
+      const registered: InspectorPageObject = {
         ...registration(
           probed,
           onPage ? [...present, "archiveDialog"] : present

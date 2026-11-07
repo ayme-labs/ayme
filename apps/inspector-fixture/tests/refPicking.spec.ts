@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, highlightOf, outline, test } from "./fixtures";
 
 // E2E: picking a ref by pointing at the fixture page, with the real ListPage
 // Page Object, the Ayme runtime and Chromium's own WebMCP. The run card is
@@ -30,7 +30,7 @@ test("while picking, the element under the pointer is highlighted", async ({
   await listPage.addItemButton.hover();
 
   // The dashed hover highlight.
-  await expect(listPage.addItemButton).toHaveAttribute("data-ayme-hover");
+  await expect.poll(outline(listPage.addItemButton)).toBe("dashed");
 });
 
 test("Esc cancels picking, and clicks reach the page again", async ({
@@ -68,9 +68,9 @@ test("picking a button for fill greys it and doesn't pick it", async ({
   await ref.pickOnPage();
 
   await listPage.addItemButton.hover();
-  await expect(listPage.addItemButton).toHaveAttribute(
-    "data-ayme-pick-unusable"
-  );
+  await expect
+    .poll(highlightOf(listPage.addItemButton))
+    .toEqual({ style: "dashed", color: "rgb(156, 163, 175)" });
   await listPage.addItemButton.click();
 
   expect(await ref.isPicking()).toBe(true);

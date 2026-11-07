@@ -22,9 +22,9 @@ import type { CustomTool } from "@ayme-dev/ayme";
 const highlight: CustomTool = {
   name: "highlight_element",
   description: "Outline one element on the page so the user can see it.",
-  filter: (element) => element.matches("[data-highlightable]"),
-  async execute({ ref, element }) {
-    element.classList.add("highlighted");
+  filter: "[data-highlightable]",
+  async execute({ ref, locator }) {
+    await locator.evaluate((element) => element.classList.add("highlighted"));
     return { highlighted: ref };
   },
 };
@@ -34,12 +34,46 @@ createAyme({ customTools: [highlight] });
 
 ## How it runs
 
-- The published tool takes `{ ref }`. Ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and its element. An unknown, removed or ambiguous ref fails before `execute` runs.
+- The published tool takes `{ ref }`. Ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and a Playwright `Locator` of its element: act on the element through the Locator, as `locator.click()` or `locator.evaluate(…)` does. An unknown, removed or ambiguous ref fails before `execute` runs.
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
+- `filter` is a CSS selector, or a function that takes the session's Playwright `Page` and returns a `Locator`, as in [a Locator filter](#a-locator-filter) below.
 - A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
+
+## A Locator filter
+
+A `filter` that a selector cannot express is a function that takes the session's Playwright `Page` and returns a `Locator` of the elements the Goal Loop may offer. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+
+```ts
+const linksTable = "Shared links";
+
+const copyLink: CustomTool = {
+  name: "copy_link",
+  description: "Copy the link a row points to.",
+  filter: (page) =>
+    page.getByRole("table", { name: linksTable }).getByRole("link"),
+  async execute({ locator }) {
+    const href = await locator.evaluate(
+      (element) => (element as HTMLAnchorElement).href
+    );
+    await navigator.clipboard.writeText(href);
+    return null;
+  },
+};
+```
+
+In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names the `filter` of the Custom Tool.
+
+Ayme resolves the Locator again each time, right before it reads the page, so the elements it offers follow the page. One that appears after the Locator resolved and before the page was read is offered from the next page state on.
+
+## Migrating from the earlier shape
+
+Two things changed for apps that registered a Custom Tool or a filter before:
+
+- A filter, here and in the `ignore` option, takes a CSS selector or a function from the session's `Page` to a `Locator`, as above. It no longer takes a function over an `Element`: replace `(element) => element.matches("[data-x]")` with the selector `"[data-x]"`, and a rule a selector cannot say with a Locator, such as `(page) => page.getByRole("row").getByRole("link")`.
+- `execute` receives `{ ref, locator }`, never an `element`. A Custom Tool written as `execute({ element })` finds `element` undefined: act through the Playwright `Locator`, as in `locator.evaluate((element) => …)`, which runs your code on the element in the page.
 
 ## Use other tools from a Custom Tool
 
@@ -49,7 +83,7 @@ createAyme({ customTools: [highlight] });
 const submitSample: CustomTool = {
   name: "submit_sample",
   description: "Fill a text field with sample text and submit its form.",
-  filter: (element) => element.matches("input[type=text], textarea"),
+  filter: "input[type=text], textarea",
   async execute({ ref }, { run }) {
     await run("fill", { target: ref, text: "Sample text" });
     await run("press_key", { key: "Enter" });

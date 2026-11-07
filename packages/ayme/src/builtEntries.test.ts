@@ -45,3 +45,15 @@ it("the built ./absent entry carries no browser runtime", () => {
   expect(code).toContain("absentPageObject");
   expect(runtimeMarkersIn(code)).toEqual([]);
 });
+
+it("the built ./playwright entry carries no browser runtime", () => {
+  const code = codeOf("playwright.mjs");
+  expect(code).toContain("createInPageHost");
+  expect(runtimeMarkersIn(code)).toEqual([]);
+});
+
+it("the built ./inspector entry carries no browser runtime", () => {
+  const code = codeOf("inspector.mjs");
+  expect(code).toContain("mergeInspectorState");
+  expect(runtimeMarkersIn(code)).toEqual([]);
+});

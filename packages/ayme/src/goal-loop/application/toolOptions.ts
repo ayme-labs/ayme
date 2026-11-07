@@ -4,7 +4,8 @@ import {
   listRootedToolInstances,
 } from "../../page-objects/infrastructure";
 import { listElementTools, NAVIGATION_TOOLS } from "../../tools/infrastructure";
-import { type ReachOn } from "../../tools/application";
+import { elementToolTargets, type ReachOn } from "../../tools/application";
+import type { PageStateCapture } from "../../page-state/domain";
 import {
   requiredParamsOf,
   specsOfRootedTool,
@@ -22,27 +23,36 @@ import type { StartChildRun } from "../../runs/application";
  * Build the flat list of tool options offered to the model each step: every
  * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), every
  * Browser Tool that moves the page, and every registered POM tool. Read from
- * the runtime at the step, so the Step Decision takes it as a value. Reach
- * is measured on the goal Run's page, with its Reach.
+ * the runtime at the step, so the Step Decision takes it as a value. The
+ * elements each single-element tool takes come from the step's `capture`,
+ * which carries the refs each predicate keeps (the in-page module evaluated
+ * them); reach is measured on the goal Run's page, with its Reach.
  */
-export function buildToolOptions(on: ReachOn): ToolOption[] {
-  const elementTools: GoalLoopOperation[] = listElementTools().map(
-    ({ tool, targetField, loopInputSchema, filter, matches }) => {
-      const offered = (element: Element) => filter(element, on);
+export async function buildToolOptions(
+  on: ReachOn,
+  capture: PageStateCapture
+): Promise<ToolOption[]> {
+  const elementTools: GoalLoopOperation[] = await Promise.all(
+    listElementTools().map(async (registered) => {
+      const { tool, targetField, loopInputSchema, needsReach } = registered;
+      const { matched, nodes } = await elementToolTargets(
+        registered,
+        on,
+        capture
+      );
       return {
         name: tool.name,
         description: tool.description,
         execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
         requiredParams: [...(loopInputSchema.required ?? [])],
-        args: specsOfElementToolSchema(
-          loopInputSchema,
-          targetField,
-          matches
-            ? { kind: "ref", filter: offered, matches, reach: on.reach }
-            : { kind: "ref", filter: offered, reach: on.reach }
-        ),
+        args: specsOfElementToolSchema(loopInputSchema, targetField, {
+          kind: "ref",
+          nodes,
+          // What it takes but a click would not reach.
+          unreachable: needsReach ? matched.length : 0,
+        }),
       };
-    }
+    })
   );
   const navigationTools: GoalLoopOperation[] = NAVIGATION_TOOLS.map((tool) => ({
     name: tool.name,
@@ -51,7 +61,7 @@ export function buildToolOptions(on: ReachOn): ToolOption[] {
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
-  const rootedInstances = listRootedToolInstances();
+  const rootedInstances = await listRootedToolInstances();
   const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
     const roots = rootedInstances.get(t.name);
     const args = roots

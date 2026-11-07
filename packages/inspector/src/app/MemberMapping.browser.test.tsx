@@ -1,14 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStateLook, RegisteredPom } from "@ayme-dev/ayme/internal";
-import {
-  listRegisteredPomTargets,
-  listRegisteredPoms,
-  lookAtPageStateForDocument,
-} from "@ayme-dev/ayme/internal";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { forest, node } from "../structure/test-utils/projected";
+import { startedAyme } from "../tools/test-utils/startedAyme";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
@@ -16,50 +12,6 @@ import { Inspector } from "../testing";
 // over them too. Each member's items are there to find, whichever the
 // registry lists first. The runtime is replaced by fixture targets and a
 // look at the host page, so the evidence covers the panel and its runtime wiring.
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  return {
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    listRegisteredPomTargets: vi.fn(),
-    listAvailablePomTools: vi.fn(() => []),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => []),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
 const collectionOfItems = (memberName: string) =>
   ({
     memberName,
@@ -68,9 +20,8 @@ const collectionOfItems = (memberName: string) =>
     componentClassName: "ListItem",
     collection: true,
   }) as const;
-const listPage: RegisteredPom = {
+const listPage: InspectorPageObject = {
   id: "ListPage",
-  instance: {},
   manifest: {
     className: "ListPage",
     members: [
@@ -102,14 +53,8 @@ const listPage: RegisteredPom = {
       })),
     ]),
   ],
-  presentPaths: new Set([
-    "",
-    "items[0]",
-    "items[1]",
-    "entries[0]",
-    "entries[1]",
-  ]),
-  rootMemberPaths: new Set(),
+  presentPaths: ["", "items[0]", "items[1]", "entries[0]", "entries[1]"],
+  rootMemberPaths: [],
   tools: [],
 };
 
@@ -127,49 +72,46 @@ beforeEach(() => {
   unmounts.push(() => host.remove());
   const [milk, eggs] = host.querySelectorAll("li");
 
-  vi.mocked(lookAtPageStateForDocument).mockImplementation(
-    async () =>
-      ({
-        projected: forest(
-          node(
-            { ref: "e1", role: "list", name: "Items" },
-            node({ ref: "e2", role: "listitem" }, "Milk"),
-            node({ ref: "e3", role: "listitem" }, "Eggs")
-          )
-        ),
-        elementsByRef: new Map<string, Element>([
-          ["e1", host],
-          ["e2", milk!],
-          ["e3", eggs!],
-        ]),
-      }) as unknown as PageStateLook
-  );
-  vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
+  startedAyme.setRegistry({ pageObjects: [listPage] });
   // Two collections hold the same items; search finds the later one's too.
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
-    { path: "ListPage.rows", element: milk!, locator: "locator('li')" },
-    { path: "ListPage.rows", element: eggs!, locator: "locator('li')" },
-    {
-      path: "ListPage.items[0].@root",
-      element: milk!,
-      locator: "locator('li').first()",
-    },
-    {
-      path: "ListPage.items[1].@root",
-      element: eggs!,
-      locator: "locator('li').nth(1)",
-    },
-    {
-      path: "ListPage.entries[0].@root",
-      element: milk!,
-      locator: "locator('.entry').first()",
-    },
-    {
-      path: "ListPage.entries[1].@root",
-      element: eggs!,
-      locator: "locator('.entry').nth(1)",
-    },
-  ]);
+  startedAyme.setPage({
+    projected: forest(
+      node(
+        { ref: "e1", role: "list", name: "Items" },
+        node({ ref: "e2", role: "listitem" }, "Milk"),
+        node({ ref: "e3", role: "listitem" }, "Eggs")
+      )
+    ),
+    elementsByRef: new Map<string, Element>([
+      ["e1", host],
+      ["e2", milk!],
+      ["e3", eggs!],
+    ]),
+    targets: [
+      { path: "ListPage.rows", element: milk!, locator: "locator('li')" },
+      { path: "ListPage.rows", element: eggs!, locator: "locator('li')" },
+      {
+        path: "ListPage.items[0].@root",
+        element: milk!,
+        locator: "locator('li').first()",
+      },
+      {
+        path: "ListPage.items[1].@root",
+        element: eggs!,
+        locator: "locator('li').nth(1)",
+      },
+      {
+        path: "ListPage.entries[0].@root",
+        element: milk!,
+        locator: "locator('.entry').first()",
+      },
+      {
+        path: "ListPage.entries[1].@root",
+        element: eggs!,
+        locator: "locator('.entry').nth(1)",
+      },
+    ],
+  });
 
   const inspectorHost = document.createElement("div");
   document.body.append(inspectorHost);
@@ -183,6 +125,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
+  startedAyme.reset();
   localStorage.clear();
   sessionStorage.clear();
 });

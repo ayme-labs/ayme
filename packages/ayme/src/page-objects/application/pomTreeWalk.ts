@@ -26,49 +26,48 @@ import {
 } from "../domain/pomTree";
 
 /**
- * Package-internal: the elements `sources` hold now, in their order. A
- * locator that cannot be resolved holds none; its observation says why. Each
- * element of a Locator collection is at its index and named by its `nth`
- * locator, as an Interaction on that element names it; the last element is
- * also named by its `last()` locator, and the one element of a collection
- * that holds one by the collection's locator.
+ * Package-internal: the elements `sources` hold now, named by Structural
+ * Ref, in their order. A locator that cannot be resolved holds none; its
+ * observation says why. Each element of a Locator collection is at its index
+ * and named by its `nth` locator, as an Interaction on that element names it;
+ * the last element is also named by its `last()` locator, and the one element
+ * of a collection that holds one by the collection's locator.
  */
-export function resolveTargets(
+export async function resolveTargets(
   driver: PageDriver,
   sources: readonly PomTargetSource[]
-): RegisteredPomTarget[] {
+): Promise<RegisteredPomTarget[]> {
   // Each locator once: a member's root is also a source of its own.
-  const resolved = new Map<Locator, Element[]>();
-  const elementsOf = (locator: Locator) => {
-    let elements = resolved.get(locator);
-    if (!elements) {
-      try {
-        elements = driver.elementsOf(locator);
-      } catch {
-        elements = [];
-      }
-      resolved.set(locator, elements);
+  const resolved = new Map<Locator, Promise<string[]>>();
+  const refsOf = (locator: Locator) => {
+    let refs = resolved.get(locator);
+    if (!refs) {
+      refs = driver.refs(locator).catch(() => []);
+      resolved.set(locator, refs);
     }
-    return elements;
+    return refs;
   };
-  return sources.flatMap(({ path, locator, root, collection }) => {
-    const elements = elementsOf(locator);
-    if (root && isRootElement(elements, elementsOf(root))) return [];
-    if (collection) {
-      const last = elements.length - 1;
-      return elements.map((element, index) => ({
-        path: `${path}[${index}]`,
-        element,
-        locator: locator.nth(index).toString(),
-        aliases: [
-          ...(last === 0 ? [locator.toString()] : []),
-          ...(index === last ? [locator.last().toString()] : []),
-        ],
-      }));
-    }
-    const name = locator.toString();
-    return elements.map((element) => ({ path, element, locator: name }));
-  });
+  const found = await Promise.all(
+    sources.map(async ({ path, locator, root, collection }) => {
+      const refs = await refsOf(locator);
+      if (root && isRootRef(refs, await refsOf(root))) return [];
+      if (collection) {
+        const last = refs.length - 1;
+        return refs.map((ref, index) => ({
+          path: `${path}[${index}]`,
+          ref,
+          locator: locator.nth(index).toString(),
+          aliases: [
+            ...(last === 0 ? [locator.toString()] : []),
+            ...(index === last ? [locator.last().toString()] : []),
+          ],
+        }));
+      }
+      const name = locator.toString();
+      return refs.map((ref) => ({ path, ref, locator: name }));
+    })
+  );
+  return found.flat();
 }
 
 /**
@@ -108,7 +107,7 @@ export async function observePageObject(
       {
         ...place,
         present: page.observed.present,
-        rootElement: page.observed.root?.element,
+        rootRef: page.observed.root?.ref,
         rootLocator: page.observed.rootLocator,
       },
       new Set()
@@ -137,10 +136,11 @@ type Place = Pick<PomInstanceObservation, "path" | "className"> & {
    */
   present: boolean;
   /**
-   * The one element the instance's root locator resolved to, when it did: a
-   * locator member resolving to that element alone is the root, not a child.
+   * The ref of the one element the instance's root locator resolved to, when
+   * it did: a locator member resolving to that element alone is the root, not
+   * a child.
    */
-  rootElement?: Element;
+  rootRef?: string;
   /** The instance's root locator, which its member targets are read against. */
   rootLocator?: Locator;
 };
@@ -150,7 +150,7 @@ type Place = Pick<PomInstanceObservation, "path" | "className"> & {
  * single child, or a collection item. `present` is the presence a root-less
  * one with no predicate takes.
  */
-type InstancePlace = Omit<Place, "rootElement" | "rootLocator"> & {
+type InstancePlace = Omit<Place, "rootRef" | "rootLocator"> & {
   page: boolean;
 };
 
@@ -192,7 +192,7 @@ async function observeInstance(
     walk.instances.push(observed);
     return { observed, walk: false };
   }
-  const root = await observeRoot(walk.driver, instance);
+  const root = await observeRoot(walk.driver, instance, place.className);
   if (root) {
     observed.root = root.root;
     observed.rootLocator = root.locator;
@@ -279,11 +279,12 @@ async function walkMembers(
           root: place.rootLocator,
           ...(member.collection === true && { collection: true }),
         });
-        if (resolvesToRoot(walk.driver, value, place.rootElement)) {
+        const refs = await walk.driver.refs(value);
+        if (place.rootRef !== undefined && isRootRef(refs, [place.rootRef])) {
           walk.rootMemberPaths.add(memberPath);
           continue;
         }
-        const count = await value.count();
+        const count = refs.length;
         walk.memberObservations.push({
           memberName: memberPath,
           kind: "locator",
@@ -312,31 +313,11 @@ async function walkMembers(
 }
 
 /**
- * Whether `locator` resolves to `rootElement` alone, so the member holding
- * it is the Page Object Root. By element, not by Locator identity: a getter
- * may build a fresh Locator on each read.
+ * Whether `refs` is the one element a root holds, `rootRefs`. By element, not
+ * by Locator identity: a getter may build a fresh Locator on each read.
  */
-function resolvesToRoot(
-  driver: PageDriver,
-  locator: Locator,
-  rootElement: Element | undefined
-) {
-  return (
-    rootElement !== undefined &&
-    isRootElement(driver.elementsOf(locator), [rootElement])
-  );
-}
-
-/** Whether `elements` is the one element a root holds, `rootElements`. */
-function isRootElement(
-  elements: readonly Element[],
-  rootElements: readonly Element[]
-) {
-  return (
-    rootElements.length === 1 &&
-    elements.length === 1 &&
-    elements[0] === rootElements[0]
-  );
+function isRootRef(refs: readonly string[], rootRefs: readonly string[]) {
+  return rootRefs.length === 1 && refs.length === 1 && refs[0] === rootRefs[0];
 }
 
 /**
@@ -391,7 +372,7 @@ async function walkComponentMember(
         path,
         className: observed.className,
         present: observed.present,
-        rootElement: observed.root?.element,
+        rootRef: observed.root?.ref,
         rootLocator: observed.rootLocator,
       },
       ancestors
@@ -441,7 +422,8 @@ type RootObservation = {
  */
 async function observeRoot(
   driver: PageDriver,
-  instance: object
+  instance: object,
+  label: string
 ): Promise<RootObservation | undefined> {
   // A rootless Page Object with no predicate is on every page.
   if (!modelOption(instance.constructor, "root")) return undefined;
@@ -452,7 +434,17 @@ async function observeRoot(
     return { root: absentPomRoot, count: 0, error: errorText(error) };
   }
   if (!locator) return { root: absentPomRoot, count: 0 };
-  return { ...(await driver.observeRoot(locator)), locator };
+  const { count, present, available, ref, inTheWay } = await driver.probe(
+    locator,
+    label
+  );
+  const root: ObservedPomRoot = {
+    ref,
+    present,
+    available,
+    inTheWay,
+  };
+  return { root, count, locator };
 }
 
 /**

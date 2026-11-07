@@ -3,85 +3,105 @@
 // tool schema rendering, anything touching `document.modelContext`); the
 // publication side calls in, never the reverse.
 //
-// The slice's composition: every module-level store of page-state lives
-// here, and the functions other slices reach a document's Page State
-// Session through take the document.
+// The browser runtime's door to its document's page-state stores, which
+// `pageStates.ts` keys by Page: the browser's Page is its own Playwright Lite
+// page of the document (`browserInPage.ts`). The functions other slices reach
+// a document's Page State Session through take the document.
 
+import { type AriaRef } from "@ayme-dev/core/structural-observation";
+import type { Locator } from "@playwright/test";
+import { inPage } from "../../in-page";
+import type { NamedFilter, SessionFilter } from "../../shared";
+import type { InteractionHistory } from "../domain/interactionHistory";
+import type { Cursor, Cursors } from "../domain/cursors";
+import type { PageStateSession } from "../application/pageStateSession";
 import {
-  PageIdSchema,
-  SETTLED_PAGE_DEADLINE_MS,
-  SETTLED_PAGE_QUIET_MS,
-  waitForSettled,
-  type AriaRef,
-} from "@ayme-dev/core/structural-observation";
-import { browserMonotonicClock, ToolInputError } from "../../shared";
-import { createCursors, type Cursor, type Cursors } from "../domain/cursors";
-import { InteractionHistory } from "../domain/interactionHistory";
-import { watchFullLoad, watchSameDocumentNavigations } from "./navigation";
-import { getBrowserPageActivitySource } from "./pageActivitySource";
+  bindDocument,
+  beginDocumentAction,
+  captureDocument,
+  forgetInDocument,
+  matchInDocument,
+  pageOfDocument,
+} from "./browserInPage";
+import type { PageState, PageStateLook } from "../domain/structuralPageState";
 import {
-  capturePage,
-  type PageCaptureSources,
-  type PageObjectStructure,
-} from "./pageCapture";
-import {
-  PageStateSession,
-  type ActionPage,
-} from "../application/pageStateSession";
-import { SyntheticRootRefFactory } from "../domain/pomRootPlacement";
-import {
-  renderPageState,
-  type PageState,
-  type PageStateLook,
-} from "../domain/structuralPageState";
+  configurePageStateFiltersOf,
+  configurePageStateIgnoreOf,
+  cursorsOf,
+  existingPageState,
+  latestRefOfLocator,
+  pageStateOf,
+  providePageObjectProbeOf,
+  type PageStateHost,
+} from "./pageStates";
 
-const pageStateSessions = new WeakMap<Document, PageStateSession>();
+const browserHosts = new WeakMap<Document, PageStateHost>();
+
+/** The browser runtime's host of `currentDocument`: its module, over its Playwright Lite page. */
+function browserHost(currentDocument: Document): PageStateHost {
+  let host = browserHosts.get(currentDocument);
+  if (!host)
+    browserHosts.set(
+      currentDocument,
+      (host = {
+        url: () => currentDocument.URL,
+        bind: (onVisit) => bindDocument(currentDocument, onVisit),
+        capture: (inputs, ask) => captureDocument(currentDocument, inputs, ask),
+        begin: (inputs) => beginDocumentAction(currentDocument, inputs),
+        match: (locator, key) => matchInDocument(currentDocument, locator, key),
+        forget: (keys) => forgetInDocument(currentDocument, keys),
+      })
+    );
+  return host;
+}
+
+/** The page-state store of `currentDocument`, keyed by its Playwright Lite page. */
+function storeOf(currentDocument: Document) {
+  return pageStateOf(
+    pageOfDocument(currentDocument),
+    browserHost(currentDocument)
+  );
+}
+
+/** The browser runtime's Page State Session and captures of its document. */
+export function browserPageState() {
+  return storeOf(document);
+}
 
 /**
  * The document's cursors. Module state is the document's: a new document
  * starts with none, as it starts with an empty Run log.
  */
-export const cursors: Cursors = createCursors();
-
-type PageObjectStructureSource = () => Promise<PageObjectStructure>;
-
-let pageObjectStructure: PageObjectStructureSource | undefined;
-
-/**
- * Package-internal: where captures read the Page Object Roots from, set
- * while the registry observes the page. Unset, a capture places none, as
- * when no Page Object is registered.
- */
-export function providePageObjectStructure(
-  source: PageObjectStructureSource | undefined
-): void {
-  pageObjectStructure = source;
-}
-
-type PageStateIgnorePredicate = (element: Element) => boolean;
-
-type PageStateIgnoreStore = { ignore?: PageStateIgnorePredicate };
-
-const pageStateIgnoreStore: PageStateIgnoreStore = ((
-  globalThis as typeof globalThis & {
-    __aymePageStateIgnoreStore?: PageStateIgnoreStore;
-  }
-).__aymePageStateIgnoreStore ??= {});
-
-/** Package-internal: set while a runtime session is active. */
-export function configurePageStateIgnore(
-  ignore: PageStateIgnorePredicate | undefined
-): void {
-  pageStateIgnoreStore.ignore = ignore;
-}
-
-/** The stores a capture reads, read when it reads them. */
-const captureSources: PageCaptureSources = {
-  pageObjectStructure: () => pageObjectStructure?.(),
-  ignores: (element) => pageStateIgnoreStore.ignore?.(element) ?? false,
+export const cursors: Cursors = {
+  of: (by) => cursorsOf(pageOfDocument(document)).of(by),
 };
 
-let documentCount = 0;
+/**
+ * Package-internal: what captures wait for before they read the page, set
+ * while the registry observes it. Unset, a capture waits for none.
+ */
+export function providePageObjectProbe(
+  probe: (() => Promise<void>) | undefined
+): void {
+  providePageObjectProbeOf(pageOfDocument(document), probe);
+}
+
+/** Package-internal: set while a runtime session is active, as the session registered it. */
+export function configurePageStateIgnore(
+  ignore: SessionFilter | undefined
+): void {
+  configurePageStateIgnoreOf(pageOfDocument(document), ignore);
+}
+
+/**
+ * Package-internal: the Custom Tools' filters, as the session registered
+ * them, under each tool's name; every capture carries the refs each keeps.
+ */
+export function configurePageStateFilters(
+  filters: readonly NamedFilter<SessionFilter>[] | undefined
+): void {
+  configurePageStateFiltersOf(pageOfDocument(document), filters);
+}
 
 /**
  * Capture the page state. `cursor` is the reader that receives it, whose
@@ -102,7 +122,7 @@ export async function getPageStateForDocument(
 export async function lookAtPageStateForDocument(
   currentDocument: Document
 ): Promise<PageStateLook> {
-  return getPageStateSession(currentDocument).look();
+  return storeOf(currentDocument).look();
 }
 
 /**
@@ -113,40 +133,6 @@ export function getInteractionHistory(
   currentDocument: Document
 ): InteractionHistory {
   return getPageStateSession(currentDocument).history;
-}
-
-export async function resolvePageStateRef(
-  element: Element
-): Promise<AriaRef | undefined> {
-  const { refs } = await getPageStateSession(
-    element.ownerDocument
-  ).getPageStateForElements([element]);
-  return connectedRefs([element], refs)[0];
-}
-
-export async function getPageStateForElements(
-  elements: readonly Element[]
-): Promise<{ state: PageState; refs: (AriaRef | undefined)[] }> {
-  const currentDocument = elements[0]?.ownerDocument ?? document;
-  if (elements.some((element) => element.ownerDocument !== currentDocument))
-    throw new ToolInputError(
-      "Page State elements must belong to one Document."
-    );
-  const { state, refs } =
-    await getPageStateSession(currentDocument).getPageStateForElements(
-      elements
-    );
-  return { state, refs: connectedRefs(elements, refs) };
-}
-
-/** An element no longer in its document has no ref. */
-function connectedRefs(
-  elements: readonly Element[],
-  refs: readonly (AriaRef | undefined)[]
-): (AriaRef | undefined)[] {
-  return elements.map((element, index) =>
-    element.isConnected ? refs[index] : undefined
-  );
 }
 
 /**
@@ -162,27 +148,35 @@ export function onPageStateRecorded(
 
 /**
  * Package-internal: the Structural Ref the agent's latest recorded page
- * state gave `element`, when it gave it exactly one; undefined until then.
+ * state of this document gave the one element `locator` matches, read in
+ * the page through its in-page module; undefined for none or several, or
+ * until a page state gave it one. Waits for no element.
  */
-export function latestPageStateRef(element: Element): AriaRef | undefined {
-  return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
-}
-
-/** The last recorded tree and element map; reading it records and captures nothing. */
-export function latestPageStateCapture(currentDocument: Document) {
-  return pageStateSessions.get(currentDocument)?.latestCapture();
+export async function latestPageStateRefOf(
+  locator: Locator
+): Promise<AriaRef | undefined> {
+  return latestRefOfLocator(
+    pageOfDocument(document),
+    inPage(locator.page()),
+    locator
+  );
 }
 
 /**
- * Package-internal: the element the latest recorded page state of
- * `currentDocument` maps `ref` to; undefined until one is recorded, or when
- * that page state printed no such ref.
+ * Package-internal: the Structural Ref the agent's latest recorded page
+ * state gave what the in-page ref `ref` names, when it gave it one.
  */
-export function latestPageStateElement(
-  currentDocument: Document,
-  ref: AriaRef
-): Element | undefined {
-  return pageStateSessions.get(currentDocument)?.latestElementOf(ref);
+export function latestPageStateRefNamed(ref: string): AriaRef | undefined {
+  return existingPageState(pageOfDocument(document))?.session.latestRefOfNamed(
+    ref
+  );
+}
+
+/** The last recorded tree; reading it records and captures nothing. */
+export function latestPageStateCapture(currentDocument: Document) {
+  return existingPageState(
+    pageOfDocument(currentDocument)
+  )?.session.latestCapture();
 }
 
 /**
@@ -192,60 +186,10 @@ export function latestPageStateElement(
 export function getPageStateSession(
   currentDocument: Document
 ): PageStateSession {
-  let session = pageStateSessions.get(currentDocument);
-  if (!session) {
-    session = createPageStateSession(currentDocument);
-    pageStateSessions.set(currentDocument, session);
-  }
-  return session;
+  return storeOf(currentDocument).session;
 }
 
-/**
- * A session over `currentDocument`: its history starts with the document's
- * first Visit and records each same-document navigation after it, and its
- * captures share one synthetic ref factory, for recorded captures and
- * looks alike, so a root keeps one ref across them.
- */
-function createPageStateSession(currentDocument: Document): PageStateSession {
-  const history = new InteractionHistory({
-    pageId: PageIdSchema.parse(`document_${++documentCount}`),
-    url: currentDocument.URL,
-    clock: browserMonotonicClock,
-  });
-  const view = currentDocument.defaultView;
-  if (view)
-    watchSameDocumentNavigations(view, () =>
-      history.recordNavigation(currentDocument.URL)
-    );
-  const refFactory = new SyntheticRootRefFactory();
-  return new PageStateSession(
-    history,
-    () => capturePage(currentDocument.body, refFactory, captureSources),
-    documentActionPage(currentDocument)
-  );
-}
-
-/**
- * The action signals of `currentDocument`: a Settled Page is one with no
- * DOM, transition, animation, scroll or resize activity for a quiet window.
- */
-function documentActionPage(currentDocument: Document): ActionPage {
-  return {
-    settle: () =>
-      waitForSettled({
-        activity: getBrowserPageActivitySource(currentDocument),
-        clock: browserMonotonicClock,
-        quietMs: SETTLED_PAGE_QUIET_MS,
-        deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-      }),
-    watchFullLoad: () => watchFullLoad(currentDocument),
-  };
-}
-
-export async function capturePageState(
-  root: Element = document.body
-): Promise<string> {
-  return renderPageState(
-    await capturePage(root, new SyntheticRootRefFactory(), captureSources)
-  ).text;
+/** The document's page state text, from a capture nobody records. */
+export async function capturePageState(): Promise<string> {
+  return storeOf(document).capturePageState();
 }

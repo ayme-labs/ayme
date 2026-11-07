@@ -1,6 +1,7 @@
 export {
   AymeError,
   callers,
+  EXCLUDE_ATTRIBUTE,
   isJsonPrimitive,
   isJsonValue,
   RefResolutionError,
@@ -40,6 +41,7 @@ export type {
   AgentConnectionOptions,
   Ayme,
   AymeOptions,
+  InspectorOptions,
   AymePage,
   AymePom,
   AymeTools,
@@ -80,3 +82,4 @@ export type {
   PageState,
   RefResolution,
 } from "./page-state/domain";
+export type { ElementFilter } from "./shared";

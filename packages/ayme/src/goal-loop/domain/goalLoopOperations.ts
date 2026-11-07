@@ -6,7 +6,7 @@ import type {
 import type { TargetField } from "../../tools/application";
 import type { RootedToolInstance } from "../../page-objects/application";
 import type { StartChildRun } from "../../runs/application";
-import type { Reach } from "../../page-state/application";
+import type { StructuralNode } from "@ayme-dev/core/structural-observation";
 
 /**
  * The operations the Goal Loop offers the model each step, and how each
@@ -17,11 +17,13 @@ import type { Reach } from "../../page-state/application";
 export type ClosedSet =
   | {
       kind: "ref";
-      filter: (element: Element) => boolean;
-      /** The filter before reach, for a tool that needs reach. */
-      matches?: (element: Element) => boolean;
-      /** The Reach the filter measures with, which batches a pass over the page. */
-      reach: Reach;
+      /** The nodes of the capture the tool takes and its input would reach, in tree order. */
+      nodes: readonly StructuralNode[];
+      /**
+       * For a tool that needs reach, how many nodes it takes before reach: the
+       * ones a click would not reach are counted when none is left to offer.
+       */
+      unreachable: number;
     }
   /**
    * The present items of one collection path, each with the tool's verdict on

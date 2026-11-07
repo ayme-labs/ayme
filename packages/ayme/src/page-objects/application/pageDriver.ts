@@ -1,43 +1,45 @@
 import type { Locator } from "@playwright/test";
-import type { LatestRefLookup } from "../../page-state/domain";
-import type { ObservedPomRoot } from "../domain/pomInstance";
+import type { LatestRefByRef } from "../../page-state/domain";
+import type { RootState } from "../../shared";
 
 /**
  * Package-internal: what reading Page Objects needs of the page they are
- * read on. The browser runtime's is the Playwright Lite page driver.
+ * read on. One driver over the in-page module serves the browser runtime,
+ * over Playwright Lite, and Node, over Playwright; no element crosses it.
  */
 export type PageDriver = {
   /** Whether `value`, a member or a root predicate answered, is a locator. */
   isLocator(value: unknown): value is Locator;
-  /** The elements `locator` resolves to now. Throws when it cannot resolve. */
-  elementsOf(locator: Locator): Element[];
   /**
-   * Observes one Page Object Root without scrolling or sending input, with
-   * how many elements its locator matched. The root is present only while
-   * the locator resolved to one visible element throughout.
+   * Probes one Page Object Root without scrolling or sending input, in one
+   * task in the page: how many elements its locator matched and, for one
+   * element, whether it is present and available (ADR-0035) and its ref.
+   * Inside a probe run of `watch`, it also labels the root in later captures.
    */
-  observeRoot(
-    locator: Locator
-  ): Promise<{ count: number; root: ObservedPomRoot }>;
+  probe(root: Locator, label: string): Promise<RootState>;
+  /** The Structural Ref of each element `locator` resolves to now. */
+  refs(locator: Locator): Promise<string[]>;
   /**
-   * Calls `onChange` whenever the page may have changed what a Page Object
-   * reads, until the watch is stopped.
+   * The Structural Ref each of `refs` names its element by now, in the order
+   * given: a ref a probe gave before a capture marked the element gives way
+   * to the capture's. Undefined for one whose element left the page.
    */
-  watch(onChange: () => void): PageWatch;
+  currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /** Whether `ref`, now or before, names the one element `locator` resolves to. */
+  names(locator: Locator, ref: string): Promise<boolean>;
   /**
-   * Calls `onRecorded` after each page state recorded for the page, until
-   * the returned function is called.
+   * Runs `probe` now and after every change of the page, one run at a time,
+   * until the returned function stops the watch. A change during a run is
+   * one follow-up.
    */
-  onPageStateRecorded(onRecorded: () => void): () => void;
+  watch(probe: (signal: AbortSignal) => Promise<void>): () => void;
+  /** Makes a probe run due, as when a Page Object is registered. */
+  refresh(): void;
+  /** Resolves once no probe run is due, as a capture needs the roots. */
+  probed(): Promise<void>;
   /**
-   * The Structural Ref the agent's latest recorded page state gave an
-   * element, when it gave it exactly one: what names an element in the way.
+   * The Structural Ref the agent's latest recorded page state gave what
+   * `ref` names, when it gave it one: what names an element in the way.
    */
-  latestPageStateRef: LatestRefLookup;
-};
-
-export type PageWatch = {
-  /** Calls `onChange` now for a change the watch has not reported yet. */
-  flush(): void;
-  stop(): void;
+  latestPageStateRef: LatestRefByRef;
 };

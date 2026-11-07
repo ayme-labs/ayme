@@ -1,37 +1,9 @@
-// The Navigation API and the History API: when a navigation starts, and
-// whether it stays in the document.
-
-/**
- * Call `onNavigate` after every same-document navigation: through the
- * Navigation API where the browser has one, otherwise through `popstate`,
- * `hashchange` (a fragment navigation such as assigning `location.hash`) and
- * wrapped `history.pushState` / `replaceState`, which fire no event. A URL
- * reported twice is recorded once.
- */
-export function watchSameDocumentNavigations(
-  view: Window,
-  onNavigate: () => void
-) {
-  const navigation = (
-    view as Window & {
-      navigation?: Pick<EventTarget, "addEventListener">;
-    }
-  ).navigation;
-  if (navigation) {
-    navigation.addEventListener("currententrychange", onNavigate);
-    return;
-  }
-  view.addEventListener("popstate", onNavigate);
-  view.addEventListener("hashchange", onNavigate);
-  const history = view.history;
-  for (const method of ["pushState", "replaceState"] as const) {
-    const original = history[method];
-    history[method] = function (this: History, ...args) {
-      original.apply(this, args);
-      onNavigate();
-    };
-  }
-}
+// The Navigation API: when a navigation a Browser Tool calls for starts, and
+// whether a traversal moved. The document's in-page module watches the
+// navigations themselves.
+import type { Page } from "@playwright/test";
+import { inPage } from "../../in-page";
+import type { Navigation } from "../application/navigation";
 
 /**
  * Calls the browser Page's `navigate`, such as `goto` or `reload`, without
@@ -67,44 +39,85 @@ export async function startNavigation(
 }
 
 /**
- * Watch `currentDocument`'s navigations until `stop`: `started` resolves with
- * the destination URL once one starts a full load. A navigation that stays in
- * the document leaves it pending: a fragment change, a same-document
- * traversal, or one a listener intercepted, such as a router. So does one a
- * listener cancelled, and a download.
- *
- * Whether a listener intercepted it is known only after every listener ran.
- * An action starts its navigations from script, so the event is dispatched
- * on that script's stack and a microtask reads the outcome as soon as
- * dispatch has ended; the answer follows as fast as the capture allows. A
- * cross-document traversal cannot be intercepted, so for one the listeners'
- * order does not matter.
+ * The browser runtime's navigation of `currentDocument`, through the
+ * Navigation API, which tells when a navigation starts. A page without it
+ * waits for the call to end; such a browser cannot answer a full load at
+ * once anyway.
  */
-export function watchFullLoad(currentDocument: Document): {
-  started: Promise<string>;
-  stop(): void;
-} {
-  let resolveStarted!: (url: string) => void;
-  const started = new Promise<string>((resolve) => {
-    resolveStarted = resolve;
-  });
-  const navigation = currentDocument.defaultView?.navigation;
-  if (!navigation) return { started, stop: () => {} };
-  const watching = new AbortController();
-  const { signal } = watching;
-  navigation.addEventListener(
-    "navigate",
-    (event) => {
-      if (event.destination.sameDocument || event.downloadRequest !== null)
-        return;
-      queueMicrotask(() => {
-        // An intercepted navigation is in transition until its handlers end.
-        const intercepted = navigation.transition !== null;
-        if (!signal.aborted && !intercepted && !event.defaultPrevented)
-          resolveStarted(event.destination.url);
-      });
+export function documentNavigation(currentDocument: Document): Navigation {
+  const navigationOf = () => currentDocument.defaultView?.navigation;
+  return {
+    baseURI: () => Promise.resolve(currentDocument.baseURI),
+    origin: () => currentDocument.location.origin,
+    start: (navigate) => startNavigation(currentDocument, navigate),
+    async traverse(move) {
+      const navigation = navigationOf();
+      // The browser Page moves through history with the Navigation API and
+      // refuses with its own error without it.
+      if (!navigation) {
+        await move();
+        return true;
+      }
+      // A traversal happens in a later task. One within the document commits
+      // a new current entry, or fails if it is cancelled; one to another
+      // document starts a full load, which the action answers. With no entry
+      // to move to, the browser Page resolves at once with no navigation
+      // started and the current entry unchanged. Its rejection is the answer
+      // only while no navigation has started; after that, the navigation
+      // answers.
+      const start = navigation.currentEntry?.key;
+      let navigated = false;
+      const watching = new AbortController();
+      const { signal } = watching;
+      return new Promise<boolean>((resolve, reject) => {
+        navigation.addEventListener("navigate", () => (navigated = true), {
+          signal,
+        });
+        for (const type of ["currententrychange", "navigateerror"])
+          navigation.addEventListener(type, () => resolve(true), { signal });
+        void move().then(
+          () => {
+            if (!navigated && navigation.currentEntry?.key === start)
+              resolve(false);
+          },
+          (error: unknown) => {
+            if (!navigated && navigation.currentEntry?.key === start)
+              reject(error);
+          }
+        );
+      }).finally(() => watching.abort());
     },
-    { signal }
-  );
-  return { started, stop: () => watching.abort() };
+  };
+}
+
+/**
+ * A Node host's navigation of `page`. Playwright's own calls tell where the
+ * page is; a navigation's start is told by the in-page module, whose load
+ * report ends the action, so `start` has nothing to wait for but the call.
+ */
+export function pageNavigation(page: Page): Navigation {
+  return {
+    // The document's own, as the browser runtime reads it: a `<base>` moves it.
+    baseURI: () => inPage(page).baseURI(),
+    origin: () => new URL(page.url()).origin,
+    start(navigate) {
+      return navigate().then(
+        () => {},
+        () => {}
+      );
+    },
+    async traverse(move) {
+      const from = page.url();
+      const entry = await inPage(page).historyEntry();
+      // Playwright answers null for an entry that is not there, and for one
+      // within the document; the URL tells a move to another entry of a
+      // different URL, and the Navigation API's current entry one that kept
+      // it, as the browser runtime reads it.
+      const response = await move();
+      if (response !== null || page.url() !== from) return true;
+      return (
+        entry !== undefined && (await inPage(page).historyEntry()) !== entry
+      );
+    },
+  };
 }

@@ -2,15 +2,20 @@ import {
   StructuralNode,
   StructuralTree,
   SYNTHETIC_ROOT_REF,
-  SyntheticAriaRefFactory,
   syntheticRefsAbsentFrom,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 
+/**
+ * Mints the synthetic refs a tree needs for nodes without a ref of its own,
+ * none of which a capture's refs can use.
+ */
+export type SyntheticAriaRefAllocator = { create(): AriaRef };
+
 /** WebMCP retains captured refs and promotes the children of ref-less wrappers. */
 export function parseCapturedTree(
   yaml: string,
-  refFactory: SyntheticAriaRefFactory,
+  refFactory: SyntheticAriaRefAllocator,
   excludedRefs: ReadonlySet<AriaRef> = new Set()
 ): StructuralTree {
   const temporaryRefs = new Set<AriaRef>();

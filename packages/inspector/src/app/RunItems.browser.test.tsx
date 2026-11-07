@@ -1,67 +1,17 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStateLook, RegisteredPom } from "@ayme-dev/ayme/internal";
-import {
-  listRegisteredPomTargets,
-  listAvailablePomTools,
-  listRegisteredPoms,
-  lookAtPageStateForDocument,
-} from "@ayme-dev/ayme/internal";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
-import { startedAyme } from "../tools/test-utils/startedAyme";
+import { startedAyme, type PageFixture } from "../tools/test-utils/startedAyme";
 import { Inspector } from "../testing";
 
 // Component tests: a rooted action's Runs by any Caller are on the item
 // their ref named, so an item's scope lists them. The runtime is replaced by
 // fixture targets, a look at the host page and a stand-in Run log.
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  return {
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    subscribeToAgentImageRuns: () => () => {},
-    listRegisteredPomTargets: vi.fn(),
-    listAvailablePomTools: vi.fn(() => []),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => []),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
-const archive: RegisteredPom["tools"][number] = {
+const archive: InspectorPageObject["tools"][number] = {
   className: "ListItem",
   methodName: "archive",
   name: "ListItem.archive",
@@ -71,9 +21,8 @@ const archive: RegisteredPom["tools"][number] = {
   parameters: [],
   rooted: true,
 };
-const listPage: RegisteredPom = {
+const listPage: InspectorPageObject = {
   id: "ListPage",
-  instance: {},
   manifest: {
     className: "ListPage",
     members: [
@@ -109,8 +58,8 @@ const listPage: RegisteredPom = {
       count: 1,
     })),
   ],
-  presentPaths: new Set(["", "items[0]", "items[1]"]),
-  rootMemberPaths: new Set(),
+  presentPaths: ["", "items[0]", "items[1]"],
+  rootMemberPaths: [],
   tools: [archive],
 };
 
@@ -120,6 +69,10 @@ const inspector = new Inspector(
   page.locator("[data-ayme-inspector-root]")
 );
 const unmounts: (() => void)[] = [];
+// The page as the look gives it, which a test may change.
+let fixture: PageFixture;
+const setTargets = (targets: PageFixture["targets"]) =>
+  startedAyme.setPage({ ...fixture, targets });
 
 beforeEach(() => {
   const host = document.createElement("ul");
@@ -128,39 +81,34 @@ beforeEach(() => {
   unmounts.push(() => host.remove());
   const [milk, eggs] = host.querySelectorAll("li");
 
-  vi.mocked(lookAtPageStateForDocument).mockImplementation(
-    async () =>
-      ({
-        projected: forest(
-          node(
-            { ref: "e1", role: "list", name: "Items" },
-            node({ ref: "e2", role: "listitem" }, "Milk"),
-            node({ ref: "e3", role: "listitem" }, "Eggs")
-          )
-        ),
-        elementsByRef: new Map<string, Element>([
-          ["e1", host],
-          ["e2", milk!],
-          ["e3", eggs!],
-        ]),
-      }) as unknown as PageStateLook
-  );
-  vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
-  vi.mocked(listAvailablePomTools).mockReturnValue([archive] as ReturnType<
-    typeof listAvailablePomTools
-  >);
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
-    {
-      path: "ListPage.items[0].@root",
-      element: milk!,
-      locator: "locator('li').first()",
-    },
-    {
-      path: "ListPage.items[1].@root",
-      element: eggs!,
-      locator: "locator('li').nth(1)",
-    },
-  ]);
+  fixture = {
+    projected: forest(
+      node(
+        { ref: "e1", role: "list", name: "Items" },
+        node({ ref: "e2", role: "listitem" }, "Milk"),
+        node({ ref: "e3", role: "listitem" }, "Eggs")
+      )
+    ),
+    elementsByRef: new Map<string, Element>([
+      ["e1", host],
+      ["e2", milk!],
+      ["e3", eggs!],
+    ]),
+    targets: [
+      {
+        path: "ListPage.items[0].@root",
+        element: milk!,
+        locator: "locator('li').first()",
+      },
+      {
+        path: "ListPage.items[1].@root",
+        element: eggs!,
+        locator: "locator('li').nth(1)",
+      },
+    ],
+  };
+  startedAyme.setPage(fixture);
+  startedAyme.setRegistry({ pageObjects: [listPage] });
   startedAyme.tools.list.mockReturnValue([
     {
       name: archive.name,
@@ -210,7 +158,7 @@ it("scopes an agent's collection Run to the item its ref named when it started",
 
 it("offers one instance when two class members resolve to the same root", async () => {
   const milk = document.querySelector("li")!;
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue(
+  setTargets(
     [0, 1].map((index) => ({
       path: `ListPage.items[${index}].@root`,
       element: milk,
@@ -239,17 +187,18 @@ it("does not assign a class instance to a custom tool sharing its namespace", as
 
 it("shows a refused class run after its last instance has disappeared", async () => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
-  vi.mocked(listRegisteredPoms).mockReturnValue([
-    {
-      ...listPage,
-      memberObservations: [
-        { memberName: "items", kind: "component-collection", count: 0 },
-      ],
-      presentPaths: new Set([""]),
-    },
-  ]);
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue([]);
-  vi.mocked(listAvailablePomTools).mockReturnValue([]);
+  startedAyme.setRegistry({
+    pageObjects: [
+      {
+        ...listPage,
+        memberObservations: [
+          { memberName: "items", kind: "component-collection", count: 0 },
+        ],
+        presentPaths: [""],
+      },
+    ],
+  });
+  setTargets([]);
   startedAyme.tools.list.mockReturnValue([]);
   const host = document.createElement("div");
   document.body.append(host);

@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import type { BuiltInCaller, Caller } from "@ayme-dev/ayme";
+import type { BuiltInCaller, Caller } from "@ayme-dev/ayme/inspector";
 import {
   AppWindowIcon,
   BotIcon,

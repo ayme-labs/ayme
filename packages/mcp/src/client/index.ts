@@ -1,6 +1,7 @@
 import {
   openPageChannel,
   type AgentImageRun,
+  type InspectorPort,
   type PageChannel,
   type PageTools,
 } from "../connection";
@@ -16,7 +17,7 @@ import {
 import { clientBehaviours } from "./clientBehaviours";
 import { pairingSources } from "./pairingSources";
 
-export type { AgentImageRun } from "../connection";
+export type { AgentImageRun, InspectorPort } from "../connection";
 export type { NotConnectedReason } from "../pairing";
 
 /**
@@ -26,6 +27,11 @@ export type { NotConnectedReason } from "../pairing";
 export type AgentConnectionRuntime = {
   readonly tools: PageTools;
   readonly recordAgentImage?: (run: AgentImageRun) => void;
+  /**
+   * The page's Inspector contract, in plain data, when the session serves an
+   * external Inspector: `ayme mcp` relays it to Inspector windows.
+   */
+  readonly inspector?: InspectorPort;
 };
 
 /**
@@ -210,6 +216,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         tools: ayme.tools,
         channel,
         recordAgentImage: ayme.recordAgentImage,
+        inspector: ayme.inspector,
       })
     );
     // Not a ClientBehaviour: it feeds `processTools`, which this function

@@ -13,17 +13,28 @@ const packageRoot = import.meta.dirname;
 // it here. runtime is the composition root: only the entries use it.
 const allowedSlices = {
   shared: [],
-  "page-state": ["shared"],
-  runs: ["page-state", "shared"],
-  "page-objects": ["runs", "page-state", "shared"],
-  tools: ["page-objects", "runs", "page-state", "shared"],
-  "goal-loop": ["tools", "page-objects", "runs", "page-state", "shared"],
+  // The in-page module (ADR-0049). Only a slice's infrastructure and runtime
+  // may use it, which the layered slices' block below enforces.
+  "in-page": ["shared"],
+  "page-state": ["in-page", "shared"],
+  runs: ["page-state", "in-page", "shared"],
+  "page-objects": ["runs", "page-state", "in-page", "shared"],
+  tools: ["page-objects", "runs", "page-state", "in-page", "shared"],
+  "goal-loop": [
+    "tools",
+    "page-objects",
+    "runs",
+    "page-state",
+    "in-page",
+    "shared",
+  ],
   runtime: [
     "goal-loop",
     "tools",
     "page-objects",
     "runs",
     "page-state",
+    "in-page",
     "shared",
   ],
 };
@@ -49,6 +60,15 @@ const browserGlobals = [
   "sessionStorage",
 ];
 const sourceFiles = "src/**/*.ts";
+// The in-page module's host part. Its page part runs in the document and
+// is built
+// into one self-contained install function; `host` drives it through
+// Playwright's Page and touches no browser global.
+const inPageHost = "src/in-page/host/**/*.ts";
+// Host files that still read the document's slot through the browser's
+// globals: none does, so none is listed. A file listed here needs the issue
+// that lets it go. src/layout.test.ts fails while the list is not empty.
+const inPageHostGlobalsExceptions = [];
 // Test code may use any slice, so a test stays beside the module it is
 // about even when it starts a whole runtime.
 const testCode = [
@@ -63,13 +83,17 @@ const testCode = [
 const layers = ["domain", "application", "infrastructure"];
 const index = String.raw`index(\.[jt]s)?`;
 
-/** Relative imports beneath another slice, past its front doors. */
+/**
+ * Relative imports beneath another slice, past its front doors. A slice's
+ * root `*.testSupport.ts` is its test front door: test code may import it, and
+ * testCodeImport keeps production code from it.
+ */
 function deepImport(slice) {
   const others = (list) => list.filter((other) => other !== slice).join("|");
   const unlayered = others(slices.filter((s) => !layeredSlices.includes(s)));
   const layered = others(layeredSlices);
   return [
-    String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$)`,
+    String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$|[^/]+\.testSupport(\.[jt]s)?$)`,
     String.raw`^\.\.?/(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
   ].join("|");
 }
@@ -189,26 +213,6 @@ const layerOrderExceptions = [
     issues: ["follow-up: reach checks read the per-document Page State store"],
   },
   {
-    file: "src/tools/application/historyTools.ts",
-    door: "page-state/infrastructure",
-    issues: ["follow-up: startNavigation"],
-  },
-  {
-    file: "src/tools/application/navigateTool.ts",
-    door: "page-state/infrastructure",
-    issues: ["follow-up: startNavigation"],
-  },
-  {
-    file: "src/tools/application/pageContext.ts",
-    door: "page-state/infrastructure",
-    issues: ["follow-up: page context reads a document's Page State Session"],
-  },
-  {
-    file: "src/tools/application/pageContext.ts",
-    door: "page-objects/infrastructure",
-    issues: ["follow-up: Page Object registry reads"],
-  },
-  {
     file: "src/goal-loop/application/goalLoop.ts",
     door: "page-objects/infrastructure",
     issues: ["follow-up: Page Object registry reads"],
@@ -222,11 +226,6 @@ const layerOrderExceptions = [
     file: "src/goal-loop/application/toolOptions.ts",
     door: "tools/infrastructure",
     issues: ["follow-up: Custom Tool and router store reads"],
-  },
-  {
-    file: "src/goal-loop/domain/goalLoopOperations.ts",
-    door: "page-state/application",
-    issues: ["follow-up: goal-loop domain uses other slices' application"],
   },
   {
     file: "src/goal-loop/domain/goalLoopOperations.ts",
@@ -248,12 +247,33 @@ const layerOrderExceptions = [
     door: "page-objects/application",
     issues: ["follow-up: goal-loop domain uses other slices' application"],
   },
-  {
-    file: "src/goal-loop/domain/goalLoopQuestions.ts",
-    door: "tools/application",
-    issues: ["follow-up: goal-loop domain uses other slices' application"],
-  },
 ];
+
+// Playwright Lite's internal entry is browser-only and not Playwright's API,
+// so no production file imports it (ADR-0049). No file still does: the
+// Inspector's demo cue moved into the runtime (#1180). src/layout.test.ts
+// fails when a file listed here no longer imports it, so it leaves the list.
+const liteInternalExceptions = [];
+const liteInternal = "@ayme-dev/playwright-lite/internal";
+const liteInternalMessage = `No production file imports Playwright Lite's internal entry, ${liteInternal}: reach the page through Playwright's Page and Locator, or the in-page module (ADR-0049).`;
+const allowlistedEntries = liteInternalExceptions
+  .map(({ file }) => file)
+  .filter((file) => /^src\/[^/]+\.ts$/.test(file));
+
+/** Relative imports of the in-page module, which domain and application may not use. */
+/** Packages the in-page module may use: core, and Playwright's types on its host side. */
+const inPageDependencies = {
+  regex:
+    "^(?![./]|@ayme-dev/core(/.*)?$|@playwright/test$|virtual:ayme-(in-page|aria-snapshot)$)",
+  message:
+    "The in-page module uses only shared and @ayme-dev/core, and Playwright's types on its host side.",
+};
+
+const inPageImport = {
+  regex: String.raw`^\.\.?/(.*/)?in-page(/.*)?$`,
+  message:
+    "Only a slice's infrastructure and runtime may use the in-page module.",
+};
 
 export default [
   ...config,
@@ -321,10 +341,40 @@ export default [
       ],
     },
   },
+  // Playwright Lite's internal entry, refused in production code but for the
+  // allowlist above. The last policy that matches decides.
+  {
+    files: [sourceFiles],
+    ignores: testCode,
+    plugins: { "lite-internal": boundariesPlugin },
+    rules: {
+      "lite-internal/dependencies": [
+        "error",
+        {
+          default: "allow",
+          checkAllOrigins: true,
+          checkUnknownLocals: true,
+          policies: [
+            {
+              disallow: { dependency: { source: liteInternal } },
+              message: liteInternalMessage,
+            },
+            ...liteInternalExceptions.map(({ file }) => ({
+              from: { file: { path: file } },
+              allow: { dependency: { source: liteInternal } },
+            })),
+          ],
+        },
+      ],
+    },
+  },
   // Every file under src/, in a slice or not; the blocks below add their own.
   restrictedImports([sourceFiles], []),
   ...slices.flatMap((slice) => [
-    frontDoors(slice, [`src/${slice}/**/*.ts`], { tests: false }),
+    frontDoors(slice, [`src/${slice}/**/*.ts`], {
+      tests: false,
+      restricted: slice === "in-page" ? [inPageDependencies] : [],
+    }),
     frontDoors(
       slice,
       [
@@ -350,6 +400,7 @@ export default [
             regex: "^@ayme-dev/playwright-lite(/.*)?$",
             message: "Only a slice's infrastructure may use Playwright Lite.",
           },
+          inPageImport,
         ],
       }
     );
@@ -366,10 +417,65 @@ export default [
   // page-state does (#943).
   frontDoors("tools", ["src/tools/application/elementTools.ts"], {
     tests: false,
+    restricted: [inPageImport],
   }),
+  // The in-page module's host side is DOM-free: only its page part, which
+  // runs in the document, may use the browser's globals.
+  {
+    files: [inPageHost],
+    ignores: [
+      ...testCode,
+      ...inPageHostGlobalsExceptions.map(({ file }) => file),
+    ],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...browserGlobals.map((name) => ({
+          name,
+          message:
+            "Only the in-page module's page part may use the browser's globals.",
+        })),
+      ],
+    },
+  },
+  // The page part is built into the document's module and reached only through
+  // `installInPage`: everything else imports its types and nothing else.
+  {
+    files: [sourceFiles],
+    ignores: ["src/in-page/page/**", ...testCode],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`(^|/)in-page/page(/|$)`,
+              allowTypeImports: true,
+              message:
+                "Only the in-page module's page part may use its values: import its types, and reach the page through the built installInPage (ADR-0049).",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // The entries, the package's own tests and the shared test harnesses,
-  // which use the slices' front doors.
-  frontDoors(undefined, ["src/*.ts"], { tests: false }),
+  // which use the slices' front doors. The entries belong to no slice, which
+  // the rule against Playwright Lite's internal entry above reads, so they
+  // refuse it here, but for the allowlisted ones.
+  frontDoors(undefined, ["src/*.ts"], {
+    tests: false,
+    ignores: allowlistedEntries,
+    restricted: [
+      {
+        regex: `^${liteInternal}$`,
+        message: liteInternalMessage,
+      },
+    ],
+  }),
+  ...(allowlistedEntries.length > 0
+    ? [frontDoors(undefined, allowlistedEntries, { tests: false })]
+    : []),
   frontDoors(undefined, ["src/*.test.ts", "src/test-utils/**/*.ts"], {
     tests: true,
   }),

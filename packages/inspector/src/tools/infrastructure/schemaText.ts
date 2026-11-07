@@ -1,4 +1,4 @@
-import { renderSchema } from "@ayme-dev/ayme/internal";
+import { renderSchema } from "@ayme-dev/ayme/inspector";
 
 import { actionSignature } from "../../page-model";
 import type { SchemaText } from "../domain/fields";

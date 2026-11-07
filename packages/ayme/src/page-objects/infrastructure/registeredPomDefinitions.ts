@@ -14,3 +14,5 @@ export function getPomDefinitions(
     names
   );
 }
+
+export { getPomDefinitionsOf } from "./pomDefinitionsOf";

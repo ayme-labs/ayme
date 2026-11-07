@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStateLook } from "@ayme-dev/ayme/internal";
-
+import { forest, node } from "../structure/test-utils/projected";
+import { startedAyme } from "../tools/test-utils/startedAyme";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
@@ -10,21 +10,14 @@ import { Inspector } from "../testing";
 // runtime is replaced by a look at the host page, live single-element tools that are
 // not published, and the refs each can take, so the evidence covers the
 // panel and its runtime wiring.
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme, startedAyme } =
-    await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  const { forest, node } = await import("../structure/test-utils/projected");
+const page = createPage();
+const inspector = new Inspector(
+  page,
+  page.locator("[data-ayme-inspector-root]")
+);
+const unmounts: (() => void)[] = [];
+
+beforeEach(() => {
   const browserTool = (name: string) => ({
     name,
     description: `${name} by ref.`,
@@ -40,62 +33,16 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     state: "disabled",
     message: "WebMCP publication is disabled.",
   };
-  return {
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(
-      async () =>
-        ({
-          projected: forest(
-            node(
-              { ref: "e1", role: "main" },
-              node({ ref: "e2", role: "textbox", name: "Name" }),
-              node({ ref: "e3", role: "button", name: "Save" })
-            )
-          ),
-          elementsByRef: new Map(),
-        }) as unknown as PageStateLook
+  startedAyme.setPage({
+    projected: forest(
+      node(
+        { ref: "e1", role: "main" },
+        node({ ref: "e2", role: "textbox", name: "Name" }),
+        node({ ref: "e3", role: "button", name: "Save" })
+      )
     ),
-    listElementToolTargets: vi.fn(
-      async () =>
-        new Map([
-          ["click", ["e2", "e3"]],
-          ["fill", ["e2"]],
-        ])
-    ),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    listRegisteredPomTargets: vi.fn(async () => []),
-    listAvailablePomTools: vi.fn(() => []),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => []),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
-const page = createPage();
-const inspector = new Inspector(
-  page,
-  page.locator("[data-ayme-inspector-root]")
-);
-const unmounts: (() => void)[] = [];
-
-beforeEach(() => {
+    elementToolTargets: { click: ["e2", "e3"], fill: ["e2"] },
+  });
   const host = document.createElement("div");
   document.body.append(host);
   const unmount = renderInspector(host.attachShadow({ mode: "open" }));

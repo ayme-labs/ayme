@@ -1,3 +1,4 @@
+import { readRef } from "../../test-utils/elementRefs.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -12,12 +13,11 @@ import {
 import type { PomManifest } from "../../shared";
 import type { CustomTool } from "./elementTools";
 import { AymeError, ToolInputError } from "../../shared";
-import { buildToolOptions } from "../../goal-loop/application";
+import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
 import { planArguments } from "../../goal-loop/domain";
-import { getPomDefinitionText } from "./pageContext";
+import { getPomDefinitionText } from "../infrastructure/documentPageContext";
 import { type AriaRef } from "../../page-state/domain";
 import {
-  geometryReach,
   getInteractionHistory,
   lookAtPageStateForDocument,
 } from "../../page-state/infrastructure";
@@ -334,7 +334,7 @@ registerCompiledPom(InboxPage, {
 const highlight: CustomTool = {
   name: "highlight",
   description: "Highlight an element.",
-  filter: (element) => element.matches("[data-highlightable]"),
+  filter: "[data-highlightable]",
   execute: async () => undefined,
 };
 
@@ -577,16 +577,26 @@ describe("the session's tools in Chromium", () => {
     await startSession();
     const capture = await lookAtPageStateForDocument(document);
     const described = (refs: readonly AriaRef[] = []) =>
-      refs.map((ref) => {
-        const element = capture.elementsByRef.get(ref)!;
-        return `${element.localName} ${element.textContent?.trim() || (element as HTMLInputElement).value}`;
-      });
+      Promise.all(
+        refs.map((ref) =>
+          readRef(
+            ref,
+            (element) =>
+              `${element.localName} ${element.textContent?.trim() || (element as HTMLInputElement).value}`
+          )
+        )
+      );
 
     const targets = await listElementToolTargets(capture);
 
     expect(
       Object.fromEntries(
-        [...targets].map(([name, refs]) => [name, described(refs)])
+        await Promise.all(
+          [...targets].map(async ([name, refs]) => [
+            name,
+            await described(refs),
+          ])
+        )
       )
     ).toEqual({
       // Interactive and enabled; the disabled button is left out.
@@ -599,10 +609,7 @@ describe("the session's tools in Chromium", () => {
       select_option: [],
       highlight: ["p Draft"],
     });
-    for (const { key, tool } of buildToolOptions({
-      page,
-      reach: geometryReach,
-    })) {
+    for (const { key, tool } of await toolOptionsOf(page)) {
       if (!targets.has(key)) continue;
       // The element question alone: fill's free `text` would otherwise stop
       // the plan before the element is asked.
@@ -709,10 +716,8 @@ describe("the session's tools in Chromium", () => {
     await probeRegisteredPomMembers();
     const listed = (name: string) =>
       ayme.tools.list().find((tool) => tool.name === name);
-    const label = (name: string) =>
-      buildToolOptions({ page, reach: geometryReach }).find(
-        ({ key }) => key === name
-      )?.label;
+    const label = async (name: string) =>
+      (await toolOptionsOf(page)).find(({ key }) => key === name)?.label;
 
     expect(listed("BarePage.open")).toMatchObject({
       returnPoms: ["SettingsPage"],
@@ -721,8 +726,8 @@ describe("the session's tools in Chromium", () => {
     expect(listed("BarePage.open")).not.toHaveProperty("authorDescription");
     expect(listed("BarePage.close")).not.toHaveProperty("returnPoms");
     expect(listed("BarePage.close")).not.toHaveProperty("agentDescription");
-    expect(label("BarePage.open")).toBe("Shows SettingsPage.");
-    expect(label("BarePage.close")).toBe("Run close.");
+    expect(await label("BarePage.open")).toBe("Shows SettingsPage.");
+    expect(await label("BarePage.close")).toBe("Run close.");
   });
 
   it("names returned classes in the tool options", async () => {
@@ -732,7 +737,7 @@ describe("the session's tools in Chromium", () => {
     const listed = ayme.tools
       .list()
       .find((tool) => tool.name === "ResponsesPage.openFilter");
-    const label = buildToolOptions({ page, reach: geometryReach }).find(
+    const label = (await toolOptionsOf(page)).find(
       ({ key }) => key === "ResponsesPage.openFilter"
     )?.label;
 

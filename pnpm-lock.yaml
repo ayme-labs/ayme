@@ -1018,6 +1018,9 @@ importers:
 
   packages/mcp:
     dependencies:
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../inspector
       "@modelcontextprotocol/sdk":
         specifier: ^1.32.0
         version: 1.32.0(supports-color@10.2.2)(zod@4.6.5)

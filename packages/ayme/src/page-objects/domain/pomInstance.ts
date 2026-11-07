@@ -1,7 +1,7 @@
 import type { Locator } from "@playwright/test";
 import {
   obstructionReason,
-  type LatestRefLookup,
+  type LatestRefByRef,
   type ToolAvailability,
 } from "../../page-state/domain";
 
@@ -15,20 +15,24 @@ export type PredicateAnswer = { available: boolean; reason?: string };
  * runtime reports the measurement, never a kind of widget.
  */
 export type ObservedPomRoot = {
-  /** Its element, while the locator resolved to that one element throughout. */
-  element: Element | undefined;
+  /**
+   * The Structural Ref of its element, while the locator resolved to that
+   * one element throughout.
+   */
+  ref: string | undefined;
   present: boolean;
   available: boolean;
   /**
    * What an Availability Reason may name as in the way of a present root a
-   * click would not reach (see `inTheWayOf`); empty for every other root.
+   * click would not reach, by Structural Ref, nearest first; empty for every
+   * other root.
    */
-  inTheWay: readonly Element[];
+  inTheWay: readonly string[];
 };
 
 /** Package-internal: a Page Object Root that is not on the page. */
 export const absentPomRoot: ObservedPomRoot = {
-  element: undefined,
+  ref: undefined,
   present: false,
   available: false,
   inTheWay: [],
@@ -84,7 +88,7 @@ export type PomInstanceObservation = {
 export function availabilityOf(
   instance: PomInstanceObservation,
   methodName: string,
-  latestRefOf: LatestRefLookup
+  latestRefOf: LatestRefByRef
 ): ToolAvailability {
   const { root } = instance;
   if (!instance.present) return { present: false, available: false };
@@ -145,10 +149,10 @@ function sameRoot(
 ) {
   if (left === undefined || right === undefined) return left === right;
   return (
-    left.element === right.element &&
+    left.ref === right.ref &&
     left.present === right.present &&
     left.available === right.available &&
     left.inTheWay.length === right.inTheWay.length &&
-    left.inTheWay.every((element, index) => element === right.inTheWay[index])
+    left.inTheWay.every((ref, index) => ref === right.inTheWay[index])
   );
 }

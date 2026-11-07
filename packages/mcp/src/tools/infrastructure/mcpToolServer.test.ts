@@ -52,6 +52,7 @@ async function connectAgent() {
       connection,
       pairing: { address: "ws://x", token: "t" },
       saveImage: async () => "/x",
+      inspector: { url: "http://x/inspector", installed: async () => true },
     },
   });
   const [clientTransport, serverTransport] =

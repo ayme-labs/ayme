@@ -1,16 +1,12 @@
+import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
-import {
-  isPlaywrightLiteLocator,
-  resolveLocatorElements,
-} from "@ayme-dev/playwright-lite/internal";
-
-import { latestPageStateRef } from "../../page-state/infrastructure";
 
 import {
   interactionOf,
   type CallSubject,
   type Interaction,
 } from "../domain/interactions";
+import { elementsOf } from "../domain/playwrightCalls";
 
 type PageInstrumentation = (page: Page) => Page;
 
@@ -41,11 +37,15 @@ export function installRuntimePageInstrumentation(
  * locator resolves its target when it is called, so a saved method does too,
  * and so does a saved keyboard or mouse.
  *
- * `onInteraction` hears each call that is an Interaction, before it runs.
+ * `onInteraction` hears each call that is an Interaction, before it runs:
+ * once the ref of the element it acts on is read in the page, when its
+ * locator names none. `latestRefOf` reads that ref: the latest recorded page
+ * state's of the document in the browser, of the session's Page in Node.
  */
 export function instrumentedPage(
   page: Page,
-  onInteraction?: (interaction: Interaction) => void
+  onInteraction: ((interaction: Interaction) => void) | undefined,
+  latestRefOf: (locator: Locator) => Promise<AriaRef | undefined>
 ): Page {
   const derivePage = () => {
     let instrumented = page;
@@ -91,7 +91,7 @@ export function instrumentedPage(
       args: unknown[]
     ): unknown => {
       if (isPage(result)) return proxyPage;
-      if (isPlaywrightLiteLocator(result))
+      if (isLocator(result))
         return bindLocator(
           result as object,
           () => call(resolve(), property, args) as object
@@ -123,11 +123,22 @@ export function instrumentedPage(
         if (typeof member !== "function") return member;
         return (...args: unknown[]) => {
           const target = resolve();
+          const run = () =>
+            bindResult(call(target, property, args), property, args);
           const interaction =
-            onInteraction &&
-            interactionOf(subject, target, property, args, refOfLocator);
-          if (interaction) onInteraction(interaction);
-          return bindResult(call(target, property, args), property, args);
+            onInteraction && interactionOf(subject, target, property, args);
+          if (!interaction) return run();
+          const [locator] = elementsOf(subject, target, String(property), args);
+          if (interaction.ref !== undefined || !locator) {
+            onInteraction!(interaction);
+            return run();
+          }
+          // Every Interaction on an element is asynchronous, so its ref is
+          // read in the page before the input reaches the element.
+          return refOfLocator(locator, latestRefOf).then((ref) => {
+            onInteraction!(ref ? { ...interaction, ref } : interaction);
+            return run();
+          });
         };
       },
     });
@@ -141,11 +152,23 @@ export function instrumentedPage(
 }
 
 /** Diagnostic resolution must never wait for an element or prevent the actual call. */
-function refOfLocator(locator: Locator) {
-  try {
-    const elements = resolveLocatorElements(locator);
-    return elements.length === 1 ? latestPageStateRef(elements[0]!) : undefined;
-  } catch {
-    return undefined;
-  }
+function refOfLocator(
+  locator: Locator,
+  latestRefOf: (locator: Locator) => Promise<AriaRef | undefined>
+): Promise<AriaRef | undefined> {
+  return latestRefOf(locator).catch(() => undefined);
+}
+
+/**
+ * Whether a call answered a Locator, which its Page must wrap: Playwright's
+ * public API has no brand to test, so its shape tells, as only a Locator
+ * both evaluates on all it matches and picks one of them.
+ */
+function isLocator(value: unknown): value is Locator {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Locator).evaluateAll === "function" &&
+    typeof (value as Locator).nth === "function"
+  );
 }

@@ -1,69 +1,49 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+import type { ReachMeasurement } from "../../shared";
+
+// Package-internal: what the layout shows of one element (ADR-0035,
+// ADR-0041), measured in the page by the in-page module: it names what is
+// in the way by Structural Ref and carries no `Element`.
+export type { ReachMeasurement };
 
 /**
- * Package-internal: what the layout shows of one element (ADR-0035,
- * ADR-0041), measured without scrolling or sending input: `present` while
- * some part of it shows, or would once its scroll containers and the
- * viewport scrolled to it; `available` while a click would reach it; and,
- * for a present element a click would not reach, what stopped it:
- * `blocker`, the open native modal the element is not in or the element's
- * inert ancestor, which blocks every click; else `hit`, the element
- * playwright-lite's own hit test found at the point it would click, when
- * that point is in a part of the element shown now. Otherwise the element is
- * not hit-tested: the call scrolls it into view first and tests it there,
- * as it does every element, since that scroll also moves one partly shown;
- * unless a modal layer opened over the rest of the page hid it, whose hidden
- * ancestor is then the `blocker`, and nothing is scrolled.
- * Presence
- * describes the current layout, not content a scroll handler might create.
- * It names no kind of widget: a Page Object Root and an element a Browser
- * Tool addresses are measured alike.
+ * Package-internal: what a tool sends its element, which must reach it
+ * (ADR-0035): a click needs the element reached; keyboard input needs only
+ * that it can take focus, which an open modal it is not in or an inert
+ * ancestor prevents.
  */
-export type ReachMeasurement = {
-  present: boolean;
-  available: boolean;
-  blocker?: Element;
-  hit?: Element;
-};
+export type ReachInput = "click" | "focus";
 
 /**
  * Package-internal: how reach is measured, handed in rather than imported.
- * The runtime picks the adapter: Chromium's geometry in
- * `infrastructure/reachMeasurement.ts`; unit tests hand in their own layout.
- * A Run carries it, and the Lite page driver reads the one the runtime
- * installed.
+ * The runtime picks the adapter: the in-page module's, which measures the
+ * layout in the document; unit tests hand in their own layout. A Run
+ * carries it. Elements are named by Structural Ref, so the same port serves
+ * a page in Node. A Page Object Root is probed in the page, where its reach
+ * is measured with the root's presence.
  */
 export type Reach = {
   /**
-   * Measures `element`, the one element `locator` resolves to, as a Page
-   * Object Root: present only while the locator finds it visible.
+   * Of `refs`, those whose element `input` would reach on `page` now, in one
+   * batch measured in the page, in the order given. The hit test is the
+   * page's own, at the point a click of `page` would use. It takes the
+   * elements as shown: a caller that needs them visible checks that first.
    */
-  measurePomRoot(locator: Locator, element: Element): Promise<ReachMeasurement>;
+  reachable(
+    page: Page,
+    refs: readonly string[],
+    input: ReachInput
+  ): Promise<string[]>;
   /**
-   * Measures `element` for offering it: the hit test is `page`'s own, at the
-   * point a click of `page` would use. It takes the element as shown: a
-   * caller that needs it visible checks that first.
+   * Measures the element `ref` names for a call that clicks it: the call's
+   * own scroll is run first, so the hit test is where the click will land.
    */
-  measureReach(page: Page, element: Element): ReachMeasurement;
+  measureReachAtCall(page: Page, ref: string): Promise<ReachMeasurement>;
   /**
-   * Measures `element`, the one element `locator` resolves to, for a call
-   * that clicks it: the call's own scroll is run first, so the hit test is
-   * where the click will land.
+   * What blocks both every click on the element `ref` names, whatever
+   * covers it, and its focus: the last opened native modal when the element
+   * is not in one, else its inert ancestor, by its Structural Ref.
    */
-  measureReachAtCall(
-    locator: Locator,
-    element: Element
-  ): Promise<ReachMeasurement>;
-  /**
-   * What blocks both every click on `element`, whatever covers it, and its
-   * focus: the last opened native modal when the element is not in one,
-   * else its inert ancestor.
-   */
-  blockingAncestor(element: Element): Element | undefined;
-  /**
-   * Runs `measureAll`, a synchronous pass that measures a batch of elements
-   * (every candidate of every tool) without changing the page; the adapter
-   * may share work across the pass, and outside one measures afresh.
-   */
-  inReachBatch<T>(measureAll: () => T): T;
+  blockingAncestor(page: Page, ref: string): Promise<string | undefined>;
 };

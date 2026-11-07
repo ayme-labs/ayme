@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
@@ -34,7 +34,7 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/tools/application/misplaced.ts",
-    'export { generateLocator } from "@ayme-dev/playwright-lite/internal";',
+    'export { createPage } from "@ayme-dev/playwright-lite";',
     "Only a slice's infrastructure may use Playwright Lite.",
   ],
   [
@@ -104,23 +104,23 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/page-objects/application/misplaced.ts",
-    'export { litePageDriver } from "../infrastructure/litePageDriver";',
+    'export { inPageDriver } from "../infrastructure/inPageDriver";',
     "application may only depend on the allowed horizontal layers",
   ],
   [
     "src/page-state/misplaced.ts",
     'export { createPage } from "../page-objects/infrastructure";',
-    "page-state may only use shared",
+    "page-state may only use in-page, shared, itself",
   ],
   [
     "src/page-state/misplaced.ts",
     'export type { ToolRunOptions } from "../runs/application";',
-    "page-state may only use shared",
+    "page-state may only use in-page, shared, itself",
   ],
   [
     "src/page-state/misplaced.ts",
     'export type Runtime = import("../runtime").Ayme;',
-    "page-state may only use shared",
+    "page-state may only use in-page, shared, itself",
   ],
   [
     "src/page-state/domain/misplaced.ts",
@@ -129,7 +129,7 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/page-state/application/misplaced.ts",
-    'export { capturePage } from "../infrastructure/pageCapture";',
+    'export { capturePageState } from "../infrastructure/pageState";',
     "application may only depend on the allowed horizontal layers",
   ],
   [
@@ -238,6 +238,77 @@ const refusals: [path: string, code: string, message: string][] = [
     "src/goal-loop/application/misplaced.ts",
     'export { planArguments } from "../domain/index";',
     "Inside a slice, import the module itself, not the slice's front doors.",
+  ],
+  // The in-page module: below every slice but shared, used only by a slice's
+  // infrastructure and runtime, and the only code with DOM globals.
+  [
+    "src/page-state/domain/misplaced.ts",
+    'export { inPage } from "../../in-page";',
+    "Only a slice's infrastructure and runtime may use the in-page module.",
+  ],
+  [
+    "src/tools/application/misplaced.ts",
+    'export type InPage = import("../../in-page").InPage;',
+    "Only a slice's infrastructure and runtime may use the in-page module.",
+  ],
+  [
+    "src/runtime/misplaced.ts",
+    'export { inPage } from "../in-page/host/inPage";',
+    "Import another slice through its front door",
+  ],
+  [
+    "src/shared/misplaced.ts",
+    'export { inPage } from "../in-page";',
+    "shared may only use itself",
+  ],
+  [
+    "src/in-page/misplaced.ts",
+    'export { cursors } from "../page-state/infrastructure";',
+    "in-page may only use shared, itself",
+  ],
+  [
+    "src/in-page/page/misplaced.ts",
+    'export { createPage } from "@ayme-dev/playwright-lite";',
+    "The in-page module uses only shared and @ayme-dev/core",
+  ],
+  [
+    "src/in-page/host/misplaced.ts",
+    "export const title = () => document.title;",
+    "Only the in-page module's page part may use the browser's globals.",
+  ],
+  [
+    "src/in-page/host/misplaced.ts",
+    "export const store = globalThis as object;",
+    "Only the in-page module's page part may use the browser's globals.",
+  ],
+  // Playwright Lite's internal entry, from any production file but the
+  // allowlisted ones.
+  [
+    "src/tools/infrastructure/misplaced.ts",
+    'export { generateLocator } from "@ayme-dev/playwright-lite/internal";',
+    "Playwright Lite's internal entry",
+  ],
+  [
+    "src/page-state/infrastructure/misplaced.ts",
+    'export const load = () => import("@ayme-dev/playwright-lite/internal");',
+    "Playwright Lite's internal entry",
+  ],
+  [
+    "src/runtime/misplaced.ts",
+    'export type Snapshot = import("@ayme-dev/playwright-lite/internal").AriaSnapshot;',
+    "Playwright Lite's internal entry",
+  ],
+  [
+    "src/misplaced.ts",
+    'export { isPlaywrightLiteLocator } from "@ayme-dev/playwright-lite/internal";',
+    "Playwright Lite's internal entry",
+  ],
+  // An allowlisted file may import the internal entry, but nothing else
+  // there is let off.
+  [
+    "src/runs/infrastructure/pageInstrumentation.ts",
+    'export const title = () => document.title;\nexport { cursors } from "../../page-state/infrastructure/pageState";',
+    "Import another slice through its front door",
   ],
   // Ayme by its package name, which would pass every rule above.
   [
@@ -364,14 +435,18 @@ it(
         "export const title = () => document.title;",
       ],
       ["src/page-state/domain/misplaced.ts", "export type Target = Element;"],
-      // Until page-state resolves a selector target (#943).
-      [
-        "src/tools/application/elementTools.ts",
-        'export { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";',
-      ],
       [
         "src/runs/application/misplaced.ts",
         "export const last = (history: string[]) => history.at(-1);",
+      ],
+      // The in-page module's page part runs in the document.
+      [
+        "src/in-page/page/misplaced.ts",
+        'export const title = () => document.title;\nexport const store = globalThis as object;\nexport { waitForSettled } from "@ayme-dev/core/structural-observation";',
+      ],
+      [
+        "src/in-page/host/misplaced.ts",
+        'export type { Page } from "@playwright/test";\nexport { AymeError } from "../../shared";',
       ],
     ];
     for (const [path, code] of allowed)
@@ -407,6 +482,18 @@ it(
       [
         "src/goal-loop/domain/misplaced.test.ts",
         'export { listRegisteredPoms } from "../../page-objects/infrastructure";',
+      ],
+      [
+        "src/page-state/infrastructure/misplaced.ts",
+        'export { inPage } from "../../in-page";',
+      ],
+      [
+        "src/runtime/misplaced.ts",
+        'export type InPage = import("../in-page").InPage;',
+      ],
+      [
+        "src/page-state/domain/misplaced.test.ts",
+        'export { inPage } from "../../in-page";',
       ],
     ];
     for (const [path, code] of allowed)
@@ -530,5 +617,52 @@ it(
         'export { listRegisteredPoms } from "../../page-objects/infrastructure";\nexport { addPeek } from "../infrastructure/peekRegistry";\n'
       )
     ).toBe(false);
+  }
+);
+
+it(
+  "every file allowed Playwright Lite's internal entry still imports it",
+  { timeout: 60_000 },
+  async () => {
+    const config = (await eslint.calculateConfigForFile(
+      join(packageRoot, "src/runs/domain/file.ts")
+    )) as {
+      rules?: Record<string, [unknown, { policies: LayerPolicy[] }?]>;
+    };
+    const allowed = (config.rules?.["lite-internal/dependencies"]?.[1]
+      ?.policies ?? []) as { from?: { file?: { path?: string } } }[];
+    const files = allowed.flatMap(({ from }) =>
+      from?.file?.path ? [from.file.path] : []
+    );
+    // The rule itself, so a lookup that finds nothing cannot pass.
+    expect(config.rules?.["lite-internal/dependencies"]).toBeDefined();
+    for (const file of files)
+      expect(
+        readFileSync(join(packageRoot, file), "utf8"),
+        `${file} no longer imports @ayme-dev/playwright-lite/internal: remove it from eslint.config.js's allowlist`
+      ).toContain('"@ayme-dev/playwright-lite/internal"');
+  }
+);
+
+it(
+  "every in-page host file allowed the browser's globals still reads the slot through them",
+  { timeout: 60_000 },
+  async () => {
+    const files = readdirSync(join(packageRoot, "src/in-page/host")).filter(
+      (file) => file.endsWith(".ts") && !/\.(test|testSupport)\.ts$/.test(file)
+    );
+    const allowed: string[] = [];
+    for (const file of files) {
+      const config = (await eslint.calculateConfigForFile(
+        join(packageRoot, "src/in-page/host", file)
+      )) as { rules?: Record<string, unknown[]> };
+      const refused = JSON.stringify(config.rules?.["no-restricted-globals"]);
+      if (!refused?.includes("Only the in-page module's page part"))
+        allowed.push(file);
+    }
+    // Every host file is refused the browser's globals, and the allowlist the
+    // migration used is empty.
+    expect(files.length).toBeGreaterThan(0);
+    expect(allowed).toEqual([]);
   }
 );

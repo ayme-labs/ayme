@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { DecisionEndpointError } from "../domain/decisionWire";
 import type { GoalLoopOperation } from "../domain/goalLoopOperations";
 import { NONE_OF_THESE_KEY } from "../domain/goalLoopQuestions";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   answering,
   archiveTool,
@@ -56,7 +55,7 @@ describe("a Step Decision", () => {
 
     expect(verdict).toMatchObject({
       kind: "act",
-      operation: clickTool,
+      operation: expect.objectContaining({ name: clickTool.name }),
       args: { ref: "e2" },
       chosen: { ref: { key: "e2", description: 'button "Item 2"' } },
       scores: { argumentChoices: { ref: "e2" } },
@@ -189,7 +188,7 @@ describe("a Step Decision", () => {
 
       expect(verdict).toMatchObject({
         kind: "act",
-        operation: clickTool,
+        operation: expect.objectContaining({ name: clickTool.name }),
         args: { ref: "e2" },
         scores: { goalMetScore: 0.8, goalRemainingScore: 0.1 },
       });
@@ -281,12 +280,7 @@ describe("a Step Decision", () => {
           args: [
             {
               ...clickTool.args[0]!,
-              closedSet: {
-                kind: "ref",
-                filter: () => false,
-                matches: () => true,
-                reach: alwaysReaches(),
-              },
+              closedSet: { kind: "ref", nodes: [], unreachable: count },
             },
           ],
         };
@@ -342,12 +336,12 @@ describe("a Step Decision", () => {
       const tool = archiveTool([
         // An available item the capture holds no ref for.
         {
-          element: document.createElement("li"),
+          ref: "e99",
           present: true,
           available: true,
         },
         {
-          element: [...capture.elementsByRef.values()][0]!,
+          ref: "e1",
           present: true,
           available: false,
           reason: "already archived",
@@ -369,7 +363,7 @@ describe("a Step Decision", () => {
     it("with needs_value naming every item it left out, however many", async () => {
       const capture = captureOfButtons(0);
       const items = Array.from({ length: 12 }, () => ({
-        element: document.createElement("li"),
+        ref: "e99",
         present: true,
         available: false,
         reason: "it is archived",
@@ -454,24 +448,23 @@ describe("a Step Decision", () => {
 
     it("with no_fitting_option when a collection item answers none of these, having offered only the items it could, and naming the others with why", async () => {
       const capture = captureOfButtons(2);
-      const [first, second] = [...capture.elementsByRef.values()];
       const tool = archiveTool([
         {
-          element: first!,
+          ref: "e1",
           present: true,
           available: false,
           reason: "already archived",
         },
-        { element: second!, present: true, available: true },
+        { ref: "e2", present: true, available: true },
         // An available item the capture holds no ref for.
         {
-          element: document.createElement("li"),
+          ref: "e99",
           present: true,
           available: true,
         },
         // Unavailable without an Availability Reason.
         {
-          element: document.createElement("li"),
+          ref: "e98",
           present: true,
           available: false,
         },

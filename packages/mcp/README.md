@@ -134,6 +134,17 @@ another App Process offers a tool with the same name.`
 
 The server logs each App Process that connects and disconnects on stderr.
 
+## The Inspector in a window
+
+With the optional `@ayme-dev/inspector` package installed, the server also
+serves the Inspector's external build at `/inspector` on its own port, and
+relays the Inspector contract to the paired tab over the connection it
+already holds. The server tool `ayme_inspect` returns the URL, and
+`ayme inspect` prints it from a terminal (`--port` looks on one port only; it
+prints a URL for each server that runs). Open it in a browser window beside
+the app, and give the app `inspector: { placement: "external" }` so its tab
+serves the contract. Without `@ayme-dev/inspector`, both say to install it.
+
 ## Ports
 
 The server listens on the first free port from 9350 to 9365, the range a page
@@ -194,4 +205,7 @@ A connection that sends no `Origin` is accepted without a token too: browsers
 always send one, so it comes from a local program, which can already act as
 you (ADR-0033). Only such a connection may pair as an App Process. Any local
 program can therefore offer tools to the agent. The page and App Processes
-pair only with a loopback address.
+pair only with a loopback address. The Inspector's page and script are served
+to a request whose `Host` is `127.0.0.1` or `localhost`, and its WebSocket
+accepts only the page the server served (or a local program), so a website
+cannot read them or drive the page through the window's channel.

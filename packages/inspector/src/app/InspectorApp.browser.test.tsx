@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cdp } from "vitest/browser";
 // The Playwright provider gives `cdp()` its calls.
 import type {} from "@vitest/browser-playwright";
@@ -9,13 +9,10 @@ import {
   ToolInputError,
   type RegisteredPomTool,
 } from "@ayme-dev/ayme";
-import {
-  listAvailablePomTools,
-  listRegisteredPoms,
-  type RegisteredPom,
-} from "@ayme-dev/ayme/internal";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
+import { forest, node } from "../structure/test-utils/projected";
 import { startedAyme } from "../tools/test-utils/startedAyme";
 import { Inspector } from "../testing";
 
@@ -23,59 +20,6 @@ import { Inspector } from "../testing";
 // playwright-lite. The runtime's
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its runtime wiring only.
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  const { forest, node } = await import("../structure/test-utils/projected");
-  return {
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(async () => ({
-      projected: forest(
-        node(
-          { ref: "e1", role: "main" },
-          node({ ref: "e2", role: "button", name: "Save" })
-        )
-      ),
-      elementsByRef: new Map(),
-    })),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    listRegisteredPomTargets: vi.fn(async () => []),
-    listAvailablePomTools: vi.fn(() => []),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => []),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
 function saveTool(pomId: string): RegisteredPomTool {
   return {
     className: pomId,
@@ -99,10 +43,12 @@ function saveTool(pomId: string): RegisteredPomTool {
   };
 }
 
-function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
+function editor(
+  id: string,
+  ...tools: RegisteredPomTool[]
+): InspectorPageObject {
   return {
     id,
-    instance: {},
     manifest: {
       className: "Editor",
       members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
@@ -117,8 +63,8 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
     memberObservations: [
       { memberName: "saveButton", kind: "locator", count: 1 },
     ],
-    presentPaths: new Set([""]),
-    rootMemberPaths: new Set(),
+    presentPaths: [""],
+    rootMemberPaths: [],
     tools,
   };
 }
@@ -138,11 +84,11 @@ function peekTool(name: string) {
   };
 }
 
-function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
-  vi.mocked(listRegisteredPoms).mockReturnValue(poms);
-  vi.mocked(listAvailablePomTools).mockReturnValue(
-    activeTools as ReturnType<typeof listAvailablePomTools>
-  );
+function mockRegistry(
+  poms: InspectorPageObject[],
+  activeTools: RegisteredPomTool[]
+) {
+  startedAyme.setRegistry({ pageObjects: poms });
   startedAyme.tools.list.mockReturnValue(
     activeTools.map(
       ({ name, authorDescription, agentDescription, inputSchema }) => ({
@@ -165,6 +111,17 @@ const inspector = new Inspector(
   page.locator("[data-ayme-inspector-root]")
 );
 const unmounts: (() => void)[] = [];
+
+beforeEach(() => {
+  startedAyme.setPage({
+    projected: forest(
+      node(
+        { ref: "e1", role: "main" },
+        node({ ref: "e2", role: "button", name: "Save" })
+      )
+    ),
+  });
+});
 
 function renderApp() {
   const host = document.createElement("div");

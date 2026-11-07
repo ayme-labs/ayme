@@ -7,21 +7,28 @@ const { captureAriaSnapshot, pageObjectRoots } = vi.hoisted(() => ({
   pageObjectRoots: vi.fn(),
 }));
 
-vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
+vi.mock("./browserInPage", async () =>
+  (
+    await import("../../in-page/inPageStandIn.testSupport")
+  ).standInBrowserInPage(captureAriaSnapshot, async () => ({
+    roots: await pageObjectRoots(),
+    absentElements: [],
+  }))
+);
 
 import {
   AriaRefSchema,
   renderCompactStructuralNodeForest,
+  type AriaRef,
   type ProjectedStructuralNode,
 } from "@ayme-dev/core/structural-observation";
 import {
   configurePageStateIgnore,
   getPageStateForDocument,
   getPageStateSession,
-  latestPageStateElement,
+  latestPageStateRefNamed,
   latestPageStateCapture,
   lookAtPageStateForDocument,
-  providePageObjectStructure,
 } from "./pageState";
 import { createCursors } from "../domain/cursors";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
@@ -32,11 +39,6 @@ const ref = AriaRefSchema.parse;
 /** The page state of the current Document, as an agent reads it. */
 const pageStateText = async () =>
   (await getPageStateForDocument(document)).text;
-
-providePageObjectStructure(async () => ({
-  roots: await pageObjectRoots(),
-  absentElements: [],
-}));
 
 describe("the page state", () => {
   beforeEach(() => {
@@ -70,7 +72,6 @@ describe("the page state", () => {
     await pageStateText();
     const capture = latestPageStateCapture(document);
     expect(capture?.tree.getNode(ref("e2"))?.name).toBe("Captured");
-    expect(capture?.elementsByRef.get(ref("e2"))).toBe(button);
     expect(latestPageStateCapture(document)).toBe(capture);
     expect(captureAriaSnapshot).toHaveBeenCalledTimes(1);
   });
@@ -484,17 +485,17 @@ describe("the page state", () => {
     expect(await pageStateText()).toContain("s_1 Root");
 
     // The page changed since, so the action's before capture is recorded
-    // and the element map the action performs on is the new capture's.
-    let element: Element | undefined;
+    // and the refs the action performs on are the new capture's.
+    let named: AriaRef | undefined;
     await getPageStateSession(document).runAction(
       createCursors().of("app"),
       { tool: "click", args: {} },
       () => {
-        element = latestPageStateElement(document, ref("s_1"));
+        named = latestPageStateRefNamed("s_1");
       }
     );
 
-    expect(element).toBe(root);
+    expect(named).toBe(ref("s_1"));
   });
 
   it("resolves root candidates before capture and correlates only those candidates", async () => {
@@ -579,7 +580,7 @@ describe("the page state", () => {
       {
         status: "resolved",
         requestedRef: ref("e2"),
-        node: { ref: ref("e4"), element: replacement },
+        node: { ref: ref("e4") },
       },
     ]);
   });
@@ -597,7 +598,7 @@ describe("the page state", () => {
     if (!assistant || !panel || !panelAction || !main)
       throw new Error("Missing test roots.");
 
-    configurePageStateIgnore((element) => element.id === "assistant");
+    configurePageStateIgnore({ selector: "#assistant" });
     captureAriaSnapshot.mockReturnValue({
       distilledText: `
 - generic [ref=e1]:
@@ -627,13 +628,13 @@ describe("the page state", () => {
     `);
   });
 
-  it("excludes the inspector host through the built-in ignore predicate", async () => {
+  it("excludes a subtree that carries the exclude mark through the built-in ignore", async () => {
     document.body.innerHTML = `
       <main><h1 id="app">Consumer application</h1></main>
-      <div data-ayme-inspector-host><span id="inspector">POM inspector controls</span></div>
+      <div data-ayme-exclude><span id="inspector">POM inspector controls</span></div>
     `;
     const app = document.querySelector("#app");
-    const host = document.querySelector("[data-ayme-inspector-host]");
+    const host = document.querySelector("[data-ayme-exclude]");
     const inspector = document.querySelector("#inspector");
     if (!app || !host || !inspector) throw new Error("Missing test roots.");
 
@@ -684,7 +685,6 @@ describe("the page state", () => {
     const first = await getPageStateSession(document).getPageStateCapture();
     expect(first.tree.getNode(ref("e2"))?.role).toBe("button");
     expect(first.tree.getNode(ref("e2"))?.name).toBe("Captured omitted");
-    expect(first.elementsByRef.get(ref("e2"))).toBe(original);
 
     original.outerHTML = '<button id="captured">Captured omitted</button>';
     const replacement = document.querySelector("#captured");
@@ -702,14 +702,13 @@ describe("the page state", () => {
 
     const second = await getPageStateSession(document).getPageStateCapture();
     expect(second.tree.getNode(ref("e4"))?.name).toBe("Captured omitted");
-    expect(second.elementsByRef.get(ref("e4"))).toBe(replacement);
     await expect(
       getPageStateSession(document).resolveRefs([ref("e2")])
     ).resolves.toEqual([
       {
         status: "resolved",
         requestedRef: ref("e2"),
-        node: { ref: ref("e4"), element: replacement },
+        node: { ref: ref("e4") },
       },
     ]);
   });

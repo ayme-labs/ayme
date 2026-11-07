@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Locator } from "@playwright/test";
 import { recordAgentImageRun } from "../tools/application";
 import { ayme } from "../page-objects/domain";
 import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
@@ -9,6 +10,7 @@ import { cursors, getPageStateSession } from "../page-state/infrastructure";
 import { callers, RuntimeStateError } from "../shared";
 import * as goalLoopModule from "../goal-loop/infrastructure";
 import { loadInspector } from "./inspector";
+import { DEMO_PAUSE_MS, demoModeOptions } from "../runs/infrastructure";
 import * as navigateToolModule from "../tools/infrastructure";
 import * as pageState from "../page-state/infrastructure";
 import {
@@ -25,12 +27,24 @@ import * as registryModule from "../page-objects/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import { listElementToolTargets } from "./publishedTools";
 
+vi.mock(
+  "../page-state/infrastructure/browserInPage",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    ...(
+      await import("../test-utils/pageOfDocument.testSupport")
+    ).standInPageOfDocument(),
+  })
+);
 vi.mock("./webMcp", () => ({ loadWebMcpPublication: vi.fn() }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
 vi.mock("./agentConnection", () => ({
   loadAgentConnection: vi.fn(),
   loadProcessConnection: vi.fn(),
 }));
+vi.mock("../page-objects/infrastructure/inPageDriver", async () =>
+  (await import("../test-utils/pageDriver.testSupport")).standInDriverModule()
+);
 vi.mock("../page-objects/infrastructure/browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
@@ -114,7 +128,7 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(mountInspector).toHaveBeenCalledExactlyOnceWith({ demo: false });
+  expect(mountInspector).toHaveBeenCalledExactlyOnceWith();
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 
@@ -190,6 +204,7 @@ it("mounts the Inspector in demo mode when inspector asks for it", async () => {
   const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
   vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
 
+  const demoWhileStarted: boolean[] = [];
   for (const demo of [true, false]) {
     const runtime = createAyme({
       pageFactory: () => page,
@@ -198,13 +213,93 @@ it("mounts the Inspector in demo mode when inspector asks for it", async () => {
     sessions.push(runtime);
     const stop = start(runtime);
     await flush();
+    // Demo Mode is the runtime's: it paces the session's own Pages while its
+    // `inspector` option asks, and the panel is mounted the same way.
+    demoWhileStarted.push(demoModeOptions().beforeActionMs === DEMO_PAUSE_MS);
     stop();
+    expect(demoModeOptions()).toEqual({});
   }
 
-  expect(mountInspector.mock.calls).toEqual([
-    [{ demo: true }],
-    [{ demo: false }],
-  ]);
+  expect(demoWhileStarted).toEqual([true, false]);
+  expect(mountInspector.mock.calls).toEqual([[], []]);
+});
+
+describe("the Inspector's external placement", () => {
+  const connection = () => ({
+    dispose: vi.fn(),
+    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+    status: {
+      get: () => ({ state: "not-connected" as const }),
+      subscribe: () => () => {},
+    },
+  });
+  const startAgentConnection = vi.fn<
+    (options: unknown) => ReturnType<typeof connection>
+  >(() => connection());
+
+  it("mounts no panel, and serves the contract over the Agent Connection", async () => {
+    const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
+    vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
+    vi.mocked(loadAgentConnection).mockResolvedValue({
+      startAgentConnection: startAgentConnection as never,
+    });
+    const runtime = createAyme({
+      pageFactory: () => page,
+      inspector: { placement: "external" },
+    });
+    sessions.push(runtime);
+
+    start(runtime);
+    // The contract loads on demand, after the page client.
+    await vi.waitFor(() => expect(startAgentConnection).toHaveBeenCalled());
+
+    expect(loadInspector).not.toHaveBeenCalled();
+    expect(mountInspector).not.toHaveBeenCalled();
+    const [{ inspector }] = startAgentConnection.mock.lastCall as unknown as [
+      { inspector: { request: unknown; subscribe: unknown } },
+    ];
+    expect(inspector).toEqual({
+      request: expect.any(Function),
+      subscribe: expect.any(Function),
+    });
+  });
+
+  it("serves no contract for an inline session", async () => {
+    vi.mocked(loadAgentConnection).mockResolvedValue({
+      startAgentConnection: startAgentConnection as never,
+    });
+    const inline = createAyme({
+      pageFactory: () => page,
+      inspector: true,
+      agentConnection: true,
+    });
+    sessions.push(inline);
+    start(inline);
+    await flush();
+
+    expect(startAgentConnection.mock.lastCall).toEqual([
+      expect.objectContaining({ inspector: undefined }),
+    ]);
+  });
+
+  it("asks for Demo Mode through the session option, as an inline one does", async () => {
+    vi.mocked(loadAgentConnection).mockResolvedValue({
+      startAgentConnection: startAgentConnection as never,
+    });
+    const runtime = createAyme({
+      pageFactory: () => page,
+      inspector: { placement: "external", demo: true },
+    });
+    sessions.push(runtime);
+
+    const stop = start(runtime);
+    await flush();
+    const demoWhileStarted = demoModeOptions().beforeActionMs === DEMO_PAUSE_MS;
+    stop();
+
+    expect(demoWhileStarted).toBe(true);
+    expect(demoModeOptions()).toEqual({});
+  });
 });
 
 it("compares the inspector option by what it turns on", () => {
@@ -316,30 +411,50 @@ it("starts the Agent Connection while a session with agentConnection is started"
 });
 
 it("threads ignore to page state capture for the session lifetime", () => {
-  const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
+  const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnoreOf");
   try {
-    const ignore = (element: Element) => element.matches(".assistant");
+    // What a Locator can do, as the session tells one: nothing here runs it.
+    const locator = Object.fromEntries(
+      ["evaluateAll", "count", "nth", "last", "locator"].map((method) => [
+        method,
+        () => {},
+      ])
+    ) as unknown as Locator;
+    const ignore = vi.fn(() => locator);
     const runtime = createAyme({ pageFactory: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
+    expect(ignore).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureIgnore).toHaveBeenLastCalledWith(ignore);
+    expect(ignore).toHaveBeenCalledOnce();
+    expect(configureIgnore).toHaveBeenLastCalledWith(expect.anything(), {
+      locator,
+    });
     stop();
-    expect(configureIgnore).toHaveBeenLastCalledWith(undefined);
+    expect(configureIgnore).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined
+    );
   } finally {
     configureIgnore.mockRestore();
   }
 });
 
 it("threads goalLoop to the goal loop configuration for the session lifetime", () => {
-  const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoop");
+  const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoopOf");
   try {
     const goalLoop = vi.fn();
     const runtime = createAyme({ pageFactory: () => page, goalLoop });
     expect(configureGoalLoop).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureGoalLoop).toHaveBeenLastCalledWith(goalLoop);
+    expect(configureGoalLoop).toHaveBeenLastCalledWith(
+      expect.anything(),
+      goalLoop
+    );
     stop();
-    expect(configureGoalLoop).toHaveBeenLastCalledWith(undefined);
+    expect(configureGoalLoop).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined
+    );
   } finally {
     configureGoalLoop.mockRestore();
   }
@@ -348,16 +463,22 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
 it("threads navigate to the navigate tool for the session lifetime", () => {
   const configureRouterNavigate = vi.spyOn(
     navigateToolModule,
-    "configureRouterNavigate"
+    "configureRouterNavigateOf"
   );
   try {
     const navigate = vi.fn();
     const runtime = createAyme({ pageFactory: () => page, navigate });
     expect(configureRouterNavigate).not.toHaveBeenCalled();
     const stop = start(runtime);
-    expect(configureRouterNavigate).toHaveBeenLastCalledWith(navigate);
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(
+      expect.anything(),
+      navigate
+    );
     stop();
-    expect(configureRouterNavigate).toHaveBeenLastCalledWith(undefined);
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined
+    );
   } finally {
     configureRouterNavigate.mockRestore();
   }
@@ -550,7 +671,8 @@ it("runs goal as the application while publication is unavailable", async () => 
       cursor: cursors.of(callers.app),
       run: expect.any(Function),
       page: expect.any(Object),
-      document,
+      navigation: expect.any(Object),
+      pomDefinitions: expect.any(Function),
       pageStateSession: getPageStateSession(document),
       // A session handed no Reach measures Chromium's geometry.
       reach: pageState.geometryReach,

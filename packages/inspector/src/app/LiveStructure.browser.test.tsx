@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStateLook } from "@ayme-dev/ayme/internal";
-import { lookAtPageStateForDocument } from "@ayme-dev/ayme/internal";
-
 import { forest, node } from "../structure/test-utils/projected";
+import { lookOf, startedAyme } from "../tools/test-utils/startedAyme";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
@@ -12,50 +10,6 @@ import { Inspector } from "../testing";
 // with no registry change to prompt it: the mocked registry never reports
 // one. The runtime is replaced by a look that reads the fixture host page,
 // so the evidence covers the panel and its refresh triggers only.
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  return {
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    subscribeToAgentImageRuns: () => () => {},
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    patternViolations,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    latestPageStateCapture: vi.fn(() => undefined),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    listRegisteredPomTargets: vi.fn(async () => []),
-    listAvailablePomTools: vi.fn(() => []),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => []),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
 const page = createPage();
 const inspector = new Inspector(
   page,
@@ -91,12 +45,8 @@ beforeEach(() => {
     <p>Draft</p>`;
   document.body.append(host);
   unmounts.push(() => host.remove());
-  vi.mocked(lookAtPageStateForDocument).mockImplementation(
-    async () =>
-      ({
-        projected: projectedPageState(host),
-        elementsByRef: new Map(),
-      }) as unknown as PageStateLook
+  startedAyme.look = vi.fn(async () =>
+    lookOf({ projected: projectedPageState(host) })
   );
 
   const inspectorHost = document.createElement("div");
@@ -111,6 +61,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
+  startedAyme.reset();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -139,7 +90,7 @@ it("looks at the page again when a checkbox is checked", async () => {
   // state it read has the checkbox checked.
   await expect
     .poll(async () => {
-      const looks = vi.mocked(lookAtPageStateForDocument).mock.results;
+      const looks = vi.mocked(startedAyme.look).mock.results;
       const checkbox = (await looks.at(-1)?.value)?.projected.roots[1];
       return typeof checkbox === "string" ? undefined : checkbox?.state;
     })

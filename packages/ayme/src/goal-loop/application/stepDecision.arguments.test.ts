@@ -2,15 +2,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  AriaRefSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
-  type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import type { GoalLoopStepRecord, GoalValues, JsonSchema } from "../../shared";
 import type { DecisionRequest } from "../domain/decisionWire";
 import type { PageCapture } from "../../page-state/domain";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -28,6 +25,7 @@ import {
   criteriaKeys,
   forceClickTool,
   noul,
+  nodesOf,
   optionOf,
   questionsOf,
   refArg,
@@ -102,15 +100,9 @@ describe("rooted instance choices", () => {
     - button "Archive" [ref=e6]`,
       new SyntheticAriaRefFactory()
     );
-    const elementsByRef = new Map<AriaRef, Element>(
-      ["e1", "e4"].map((ref) => [
-        AriaRefSchema.parse(ref),
-        document.createElement("li"),
-      ])
-    );
     const tool = archiveTool(
-      [...elementsByRef.values()].map((element) => ({
-        element,
+      ["e1", "e4"].map((ref) => ({
+        ref,
         present: true,
         available: true,
       }))
@@ -121,7 +113,7 @@ describe("rooted instance choices", () => {
 
     const verdict = await step(decide, {
       goal: "Archive the second item in the list",
-      capture: { tree, elementsByRef, pomRootMarks: new Map() },
+      capture: { tree, pomRootMarks: new Map() },
       toolOptions: [optionOf(tool)],
     });
 
@@ -1078,7 +1070,7 @@ describe("Goal Values asked speculatively in stage one", () => {
       expect(Object.keys(requests[1]!.questions)).toEqual(["ref"]);
       expect(verdict).toMatchObject({
         kind: "act",
-        operation: chosenTool,
+        operation: expect.objectContaining({ name: chosenTool.name }),
         chosen: { text: { key: "item name", description: "item name: Milk" } },
       });
       expect(argsOf(verdict)).toEqual({ ref: "e1", text: "Milk" });
@@ -1212,17 +1204,7 @@ describe("the state a request that only picks an element is sent", () => {
       yaml,
       new SyntheticAriaRefFactory()
     );
-    const elementsByRef = new Map<AriaRef, Element>();
-    for (const ref of ["e4", "e5", "e8"])
-      elementsByRef.set(
-        AriaRefSchema.parse(ref),
-        document.createElement("input")
-      );
-    elementsByRef.set(
-      AriaRefSchema.parse("e9"),
-      document.createElement("button")
-    );
-    return { tree, elementsByRef, pomRootMarks: new Map() };
+    return { tree, pomRootMarks: new Map() };
   }
 
   // A step that changed the page: its history entry carries what it changed.
@@ -1240,8 +1222,8 @@ describe("the state a request that only picks an element is sent", () => {
     ...refArg,
     closedSet: {
       kind: "ref",
-      filter: (element: Element) => element instanceof HTMLInputElement,
-      reach: alwaysReaches(),
+      nodes: nodesOf(surveyCapture(), (node) => node.role === "textbox"),
+      unreachable: 0,
     },
   } as const;
 
@@ -1318,18 +1300,12 @@ describe("the state a request that only picks an element is sent", () => {
       yaml,
       new SyntheticAriaRefFactory()
     );
-    const elementsByRef = new Map<AriaRef, Element>();
-    for (const ref of ["e3", "e7", "e9", "e10"])
-      elementsByRef.set(
-        AriaRefSchema.parse(ref),
-        document.createElement("button")
-      );
     const { decide, requests } = scripted(stageOne("click"), {
       answers: { ref: choice("e7") },
     });
 
     await step(decide, {
-      capture: { tree, elementsByRef, pomRootMarks: new Map() },
+      capture: { tree, pomRootMarks: new Map() },
     });
 
     const elements = (

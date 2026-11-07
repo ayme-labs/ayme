@@ -24,6 +24,22 @@ useAyme({ inspector: import.meta.env.DEV });
 - It works whether WebMCP publication is on or off.
 - It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, as `agentConnection` does.
 
+## In a window of its own
+
+The panel can run outside the page instead of in it. Pass `inspector: { placement: "external" }`; `"inline"` is the default placement and what `true` and `{ demo }` give. The page then mounts no panel and serves the Inspector over its [Agent Connection](connect-an-agent.md), which the option turns on, so a coding agent's `ayme mcp` has to be running and paired with the tab:
+
+```ts
+useAyme({ inspector: { placement: "external" } });
+```
+
+`ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`, or run `ayme inspect` in a terminal; both give the same URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting an element and picking one by pointing at the page, which a tool's ref field does, work across the two windows: the highlights and the pick happen in the app's tab.
+
+- Install `@ayme-dev/inspector` where `ayme` runs, as in the first section. Without it, `ayme inspect` and `ayme_inspect` say to install it.
+- With several servers running, `ayme inspect` prints a URL for each; `ayme inspect --port <port>` looks on one port only.
+- The page keeps no Inspector code for it; the window loads the Inspector from the server.
+- The window shows the page's host as "page", since it does not know the page's address.
+- A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.
+
 ## Demo mode
 
 To show people what an agent does, pass `inspector: { demo: true }`:
@@ -32,7 +48,7 @@ To show people what an agent does, pass `inspector: { demo: true }`:
 useAyme({ inspector: { demo: true } });
 ```
 
-Demo mode pauses briefly before each action, though not before a scroll, and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
+Demo mode works in either placement. It pauses briefly before each action, though not before a scroll, and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
 
 ## The three lenses
 

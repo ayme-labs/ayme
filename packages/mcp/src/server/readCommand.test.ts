@@ -28,6 +28,14 @@ describe("readCommand", () => {
     });
   });
 
+  it("prints the Inspector's URL for `inspect`, on the given port if any", () => {
+    expect(readCommand(["inspect"])).toEqual({ kind: "inspect" });
+    expect(readCommand(["inspect", "--port", "9400"])).toEqual({
+      kind: "inspect",
+      port: 9400,
+    });
+  });
+
   it.each([[1], [65_535]])("accepts the edge port %i", (port) => {
     expect(readCommand(["mcp", "--port", String(port)])).toEqual({
       kind: "start",

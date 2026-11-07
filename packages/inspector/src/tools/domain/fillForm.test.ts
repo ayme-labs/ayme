@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
+import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/inspector";
 
 import type { ControlState } from "../../shared";
 import { forest, node } from "../../structure/test-utils/projected";

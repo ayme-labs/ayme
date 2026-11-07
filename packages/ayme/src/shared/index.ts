@@ -1,5 +1,21 @@
 export { browserMonotonicClock } from "./browserMonotonicClock";
+export { PREDICATES, toolFilterKey } from "./capture";
+export type {
+  ActionOutcome,
+  Capture,
+  CapturedRoot,
+  DocumentToken,
+  Predicate,
+} from "./capture";
 export { callers } from "./callers";
+export { checkFilter } from "./filter";
+export type {
+  ElementFilter,
+  FilterCheck,
+  FilterData,
+  NamedFilter,
+  SessionFilter,
+} from "./filter";
 export type { BuiltInCaller, Caller } from "./callers";
 export { containsThroughShadow, parentElement } from "./composedTree";
 export { isJsonPrimitive, isJsonValue } from "./contracts";
@@ -44,9 +60,39 @@ export type {
   HandoverReason,
 } from "./handover";
 export {
-  INSPECTOR_DOGFOOD_ATTRIBUTE,
-  INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
-  INSPECTOR_HOST_SELECTOR,
-  onlyHitTestMarks,
-} from "./inspectorMarks";
+  EXCLUDE_ATTRIBUTE,
+  EXCLUDED_SUBTREE_SELECTOR,
+  HIT_TEST_THROUGH_ATTRIBUTE,
+  onlyOwnMarks,
+} from "./excludedSubtree";
+export type { ReachMeasurement } from "./reach";
+export type { RootState } from "./root";
 export { checkedToolInput, refuseViolations } from "./schemaValidation";
+export { mergeInspectorState } from "./inspectorContract";
+export {
+  inlineInspectorContract,
+  publishInspectorContract,
+} from "./inspectorSlot";
+export type {
+  AgentConnectionStatus,
+  AppProcessTool,
+  InspectorAgentImageRun,
+  InspectorCommandResult,
+  InspectorContract,
+  InspectorEvent,
+  InspectorHighlightLayer,
+  InspectorInteraction,
+  ControlState,
+  InspectorLook,
+  InspectorObserver,
+  InspectorPageObject,
+  InspectorPublication,
+  InspectorRecordedPageState,
+  InspectorRootedInstance,
+  InspectorRun,
+  InspectorState,
+  InspectorTarget,
+  PublishedToolGroup,
+  PublishedToolInfo,
+  ToolInfo,
+} from "./inspectorContract";

@@ -3,15 +3,16 @@ import {
   AriaRefSchema,
   MonotonicTimeMsSchema,
   PageIdSchema,
-  StructuralTree,
-  SyntheticAriaRefFactory,
   type StructuralActionId,
 } from "@ayme-dev/core/structural-observation";
+import type { Capture, DocumentToken } from "../../shared";
 import { createCursors } from "../domain/cursors";
 import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession, type ActionPage } from "./pageStateSession";
 import type { PomRootMarks } from "../domain/pomRootMarks";
-import type { PageCapture } from "../domain/structuralPageState";
+
+/** A capture as the module answers it. */
+type PageCapture = { capture: Capture };
 
 const ref = AriaRefSchema.parse;
 
@@ -19,76 +20,149 @@ let now = 0;
 const clock = { now: () => MonotonicTimeMsSchema.parse(++now) };
 const cursor = () => createCursors().of("app");
 
-/** A page that settles at once and never starts a full load. */
-const settledPage: ActionPage = {
-  settle: async () => ({ stable: true }),
-  watchFullLoad: () => ({ started: new Promise(() => {}), stop: () => {} }),
-};
-
-/** An element as the session sees one: something its captures map refs to. */
-const element = (name: string) => ({ name }) as unknown as Element;
-
 function capture(
   yaml: string,
-  elements: [ref: string, element: Element][] = [],
-  pomRootMarks: PomRootMarks = new Map()
+  pomRootMarks: PomRootMarks = new Map(),
+  document = "document_1"
 ): PageCapture {
   return {
-    tree: StructuralTree.fromAriaSnapshotYaml(
-      yaml,
-      new SyntheticAriaRefFactory()
-    ),
-    elementsByRef: new Map(elements.map(([key, value]) => [ref(key), value])),
-    pomRootMarks,
+    capture: {
+      document: document as DocumentToken,
+      url: "https://app.test/",
+      distilledText: yaml,
+      fullText: yaml,
+      excludedRefs: [],
+      roots: [...pomRootMarks].map(([ref, labels]) => ({
+        labels: [...labels],
+        ref,
+      })),
+    },
   };
 }
 
-/** A page on which every action starts a full load of `url` at once. */
-const loadingPage = (url: string): ActionPage => ({
-  settle: async () => ({ stable: true }),
-  watchFullLoad: () => ({ started: Promise.resolve(url), stop: () => {} }),
-});
-
 /**
  * A session whose captures are `captures`, in order, the last one repeated;
- * an error is a capture that throws it. `count()` is how many it took.
+ * an error is a capture that throws it. Its page settles at once after each
+ * action. `count()` is how many captures it took.
  */
 function sessionOver(...captures: (PageCapture | Error)[]) {
-  return sessionOn(settledPage, ...captures);
+  return sessionOn({}, ...captures);
 }
 
-/** `sessionOver` on `page`. */
-function sessionOn(page: ActionPage, ...captures: (PageCapture | Error)[]) {
+/**
+ * `sessionOver` on a page on which every action starts a full load of
+ * `loads` once it ran, when given.
+ */
+function sessionOn(
+  {
+    loads,
+    restart,
+  }: { loads?: string; restart?: (url: string) => InteractionHistory },
+  ...captures: (PageCapture | Error)[]
+) {
   let taken = 0;
+  const next = async () => {
+    const found = captures[Math.min(taken++, captures.length - 1)]!;
+    if (found instanceof Error) throw found;
+    return found.capture;
+  };
+  // As the in-page module answers an action: the page before it, then the
+  // page after it, or the load it started.
+  const actionPage: ActionPage = {
+    async begin() {
+      const before = await next();
+      return {
+        before,
+        async perform<T>(perform: () => T | Promise<T>) {
+          let done:
+            { kind: "settled"; result: T } | { kind: "threw"; error: unknown };
+          try {
+            done = { kind: "settled", result: await perform() };
+          } catch (error) {
+            done = { kind: "threw", error };
+          }
+          const after = await next().catch((error: unknown) => error as Error);
+          if (loads)
+            return {
+              kind: "loading" as const,
+              url: loads,
+              ...(after instanceof Error ? {} : { after }),
+            };
+          if (after instanceof Error)
+            return {
+              kind: "threw" as const,
+              error: done.kind === "threw" ? done.error : after,
+              stable: true,
+            };
+          return { ...done, stable: true, after };
+        },
+      };
+    },
+  };
   const session = new PageStateSession(
     new InteractionHistory({
       pageId: PageIdSchema.parse("document_1"),
       url: "https://app.test/",
       clock,
     }),
-    async () => {
-      const next = captures[Math.min(taken++, captures.length - 1)]!;
-      if (next instanceof Error) throw next;
-      return next;
-    },
-    page
+    next,
+    actionPage,
+    restart
   );
   return { session, count: () => taken };
 }
 
-describe("a capture in which two nodes share a ref", () => {
-  const a = element("A");
-  const b = element("B");
-  const shared = capture(
-    '- generic [ref=e1]:\n  - button "A" [ref=e2]\n  - button "B" [ref=e2]',
-    [
-      ["e2", a],
-      ["e2", b],
-    ]
+describe("a capture of another document than the session's", () => {
+  let documents = 1;
+  const restart = (url: string) =>
+    new InteractionHistory({
+      pageId: PageIdSchema.parse(`document_${++documents}`),
+      url,
+      clock,
+    });
+  const old = capture('- generic [ref=e1]:\n  - button "Old" [ref=e2]');
+  const next = capture(
+    '- generic [ref=e1]:\n  - button "New" [ref=e2]',
+    new Map(),
+    "document_next"
   );
-  const valid = capture('- generic [ref=e1]:\n  - button "A" [ref=e2]', [
-    ["e2", a],
-  ]);
+
+  it("starts a fresh history, whose cursors start over", async () => {
+    const { session } = sessionOn({ restart }, old, next);
+    const reader = cursor();
+    await session.getPageState(reader);
+    const before = session.history;
+
+    await session.getPageState(reader);
+
+    expect(session.history).not.toBe(before);
+    expect(session.history.received(reader)).toBe(
+      session.history.firstObservation
+    );
+  });
+
+  it("is no change of an action that runs in it", async () => {
+    const { session } = sessionOn({ restart }, old, next, next);
+    const reader = cursor();
+    await session.getPageState(reader);
+
+    const result = await session.runAction(
+      reader,
+      { tool: "click", args: {} },
+      () => {}
+    );
+
+    // Not "Old" turning into "New" under the recycled refs e1 and e2.
+    expect(result).not.toHaveProperty("changes_before");
+    expect(result.page_changed).toBe(false);
+  });
+});
+
+describe("a capture in which two nodes share a ref", () => {
+  const shared = capture(
+    '- generic [ref=e1]:\n  - button "A" [ref=e2]\n  - button "B" [ref=e2]'
+  );
+  const valid = capture('- generic [ref=e1]:\n  - button "A" [ref=e2]');
 
   it("is rejected, and the next valid capture resolves the ref", async () => {
     const { session } = sessionOver(shared, valid);
@@ -102,7 +176,7 @@ describe("a capture in which two nodes share a ref", () => {
       {
         status: "resolved",
         requestedRef: ref("e2"),
-        node: { ref: ref("e2"), element: a },
+        node: { ref: ref("e2") },
       },
     ]);
   });
@@ -119,7 +193,7 @@ describe("a capture in which two nodes share a ref", () => {
       {
         status: "resolved",
         requestedRef: ref("e2"),
-        node: { ref: ref("e2"), element: a },
+        node: { ref: ref("e2") },
       },
     ]);
   });
@@ -135,17 +209,14 @@ describe("a capture in which two nodes share a ref", () => {
 });
 
 it("resolves a ref against the capture the identity ledger last reconciled when another capture interleaves", async () => {
-  const original = element("original");
-  const replacement = element("replacement");
-  const snapshot = (body: string, button: string, target: Element) =>
+  const snapshot = (body: string, button: string) =>
     capture(
-      `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
-      [[button, target]]
+      `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`
     );
   const { session } = sessionOver(
-    snapshot("e1", "e2", original),
-    snapshot("e1", "e2", original),
-    snapshot("e3", "e4", replacement)
+    snapshot("e1", "e2"),
+    snapshot("e1", "e2"),
+    snapshot("e3", "e4")
   );
   await session.getPageStateCapture();
 
@@ -160,62 +231,55 @@ it("resolves a ref against the capture the identity ledger last reconciled when 
     {
       status: "resolved",
       requestedRef: ref("e2"),
-      node: { ref: ref("e4"), element: replacement },
+      node: { ref: ref("e4") },
     },
   ]);
 });
 
-describe("the ref the latest page state gave an element", () => {
-  const overlay = element("overlay");
-  const holder = element("holder");
-  const pane = element("pane");
-
+describe("the ref the latest page state gave an in-page ref", () => {
   it("is nothing before the session has recorded a page state", async () => {
     const { session } = sessionOver(capture("- generic [ref=e1]"));
 
     await session.look();
 
-    expect(session.latestRefOf(overlay)).toBeUndefined();
+    expect(session.latestRefOfNamed("e1")).toBeUndefined();
     expect(session.latestCapture()).toBeUndefined();
   });
 
-  it("is the ref the latest page state gave the element itself", async () => {
+  it("is the ref itself when the latest page state holds it", async () => {
     const { session } = sessionOver(
-      capture(
-        "- generic [ref=e1]:\n  - generic [ref=e2]\n  - generic [ref=e3]",
-        [
-          ["e2", overlay],
-          ["e3", holder],
-        ]
-      )
+      capture("- generic [ref=e1]:\n  - generic [ref=e2]")
     );
 
     await session.getPageState();
 
-    expect(session.latestRefOf(overlay)).toBe(ref("e2"));
-    expect(session.latestRefOf(holder)).toBe(ref("e3"));
-    expect(session.latestRefOf(pane)).toBeUndefined();
+    expect(session.latestRefOfNamed("e2")).toBe(ref("e2"));
     expect(session.latestCapture()?.tree.getNode(ref("e2"))?.role).toBe(
       "generic"
     );
-    expect(session.latestCapture()?.elementsByRef.get(ref("e2"))).toBe(overlay);
   });
 
-  it("is nothing for an element the page state gave two refs", async () => {
+  it("is the mark the capture gave the element a probe named by another ref", async () => {
+    const renamed = capture("- generic [ref=e1]:\n  - generic [ref=e2]");
+    renamed.capture.renamed = { s_7: "e2", s_8: "e9" };
+    const { session } = sessionOver(renamed);
+
+    await session.getPageState();
+
+    expect(session.latestRefOfNamed("s_7")).toBe(ref("e2"));
+    // A mark the page state does not hold names nothing in it.
+    expect(session.latestRefOfNamed("s_8")).toBeUndefined();
+  });
+
+  it("is nothing for a ref the latest page state does not hold", async () => {
     const { session } = sessionOver(
-      capture(
-        "- generic [ref=e1]:\n  - generic [ref=e2]\n  - generic [ref=e3]",
-        [
-          ["e2", overlay],
-          ["e3", overlay],
-        ]
-      )
+      capture("- generic [ref=e1]:\n  - generic [ref=e2]")
     );
 
     await session.getPageState();
 
-    expect(session.latestRefOf(overlay)).toBeUndefined();
-    expect(session.latestElementOf(ref("e3"))).toBe(overlay);
+    expect(session.latestRefOfNamed("e9")).toBeUndefined();
+    expect(session.latestRefOfNamed("not a ref")).toBeUndefined();
   });
 });
 
@@ -242,7 +306,7 @@ describe("an action's before capture", () => {
   it("records a before when only a Page Object Root Mark changed", async () => {
     const { session } = sessionOver(
       capture(page),
-      capture(page, [], new Map([[ref("e2"), ["SaveButton"]]]))
+      capture(page, new Map([[ref("e2"), ["SaveButton"]]]))
     );
 
     const before = await latestAsPerformed(session);
@@ -349,10 +413,7 @@ describe("runAction", () => {
   });
 
   it("answers at once when the action starts a full load, and moves the cursor to the page as it was then", async () => {
-    const { session } = sessionOn(
-      loadingPage("https://app.test/next"),
-      savePage
-    );
+    const { session } = sessionOn({ loads: "https://app.test/next" }, savePage);
     const reader = cursor();
 
     await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
@@ -366,7 +427,7 @@ describe("runAction", () => {
 
   it("still answers a full load when capturing the page as it goes away throws", async () => {
     const { session } = sessionOn(
-      loadingPage("https://app.test/next"),
+      { loads: "https://app.test/next" },
       savePage,
       savePage,
       new Error("The document is gone.")

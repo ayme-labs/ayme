@@ -23,6 +23,12 @@ export type ToolAvailability = {
 export type LatestRefLookup = (element: Element) => AriaRef | undefined;
 
 /**
+ * Package-internal: the same lookup for what is named by its in-page
+ * Structural Ref, as the Page Object registry reads it.
+ */
+export type LatestRefByRef = (ref: string) => AriaRef | undefined;
+
+/**
  * Package-internal: refuses a call of the tool `toolName` that `availability`
  * says would not run, the tool's own or the one on the instance the call
  * names: `<tool> is unavailable: <reason>.`, or without the reason when there
@@ -57,9 +63,9 @@ export function unavailableError(
  * click would not reach: it names the Structural Ref of the first element in
  * the way the agent's latest page state gave one.
  */
-export function obstructionReason(
-  inTheWay: readonly Element[],
-  latestRefOf: LatestRefLookup
+export function obstructionReason<InTheWay extends Element | string>(
+  inTheWay: readonly InTheWay[],
+  latestRefOf: (inTheWay: InTheWay) => AriaRef | undefined
 ) {
   const ref = inTheWay.map(latestRefOf).find((ref) => ref !== undefined);
   return ref === undefined
@@ -73,9 +79,9 @@ export function obstructionReason(
  * Ref of `blocker`, the open modal or inert ancestor in the way, when the
  * agent's latest page state gave it one.
  */
-export function unfocusableReason(
-  blocker: Element,
-  latestRefOf: LatestRefLookup
+export function unfocusableReason<InTheWay extends Element | string>(
+  blocker: InTheWay,
+  latestRefOf: (inTheWay: InTheWay) => AriaRef | undefined
 ) {
   const ref = latestRefOf(blocker);
   return ref === undefined

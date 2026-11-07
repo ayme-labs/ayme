@@ -6,8 +6,8 @@ import { Basket } from "./Basket";
 const readText: CustomTool = {
   name: "read_text",
   description: "Read the text of one element on the page.",
-  async execute({ element }) {
-    return element.textContent;
+  async execute({ locator }) {
+    return locator.textContent();
   },
 };
 
@@ -15,8 +15,8 @@ const readText: CustomTool = {
 const readOther: CustomTool = {
   name: "read_other",
   description: "Read the text of one element on the other page.",
-  async execute({ element }) {
-    return element.textContent;
+  async execute({ locator }) {
+    return locator.textContent();
   },
 };
 

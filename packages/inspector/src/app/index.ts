@@ -1,5 +1,2 @@
-export {
-  installInspectorInstrumentation,
-  mountInspector,
-  type InspectorOptions,
-} from "./mountInspector";
+export { mountInspector, type InspectorOptions } from "./mountInspector";
+export { mountExternalInspector } from "./mountExternalInspector";

@@ -27,9 +27,11 @@ const highlightPageStateRef: CustomTool = {
   name: "highlight_page_state_ref",
   description:
     "Highlight one element on the page for the user by drawing an outline around it. The highlight is not visible in the page structure.",
-  async execute({ ref, element }) {
-    (element as HTMLElement).dataset.highlighted = "true";
-    (element as HTMLElement).style.outline = "3px solid orange";
+  async execute({ ref, locator }) {
+    await locator.evaluate((element) => {
+      (element as HTMLElement).dataset.highlighted = "true";
+      (element as HTMLElement).style.outline = "3px solid orange";
+    });
     return { highlighted: ref };
   },
 };

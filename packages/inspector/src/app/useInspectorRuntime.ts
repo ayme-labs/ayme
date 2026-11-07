@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   listRunnableTools,
   pickPromptOf,
-  pomDefinitionText,
   refFilterOf,
   type RefPickingHandlers,
   startRefPicking,
@@ -16,6 +15,7 @@ import {
   type MemberIndex,
   rootTargetPath,
 } from "../page-model";
+import { renderPomDefinitions } from "@ayme-dev/ayme/inspector";
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
 import { usePageLook } from "../shared";
@@ -53,7 +53,7 @@ export function useInspectorRuntime({
   );
   // A Run's item is the one its ref names in the latest look at the page.
   const latestStructure = useRef(emptyStructure);
-  const latestElementsByRef = useRef<ReadonlyMap<string, Element>>(new Map());
+  const latestRefs = useRef<readonly string[]>([]);
   const latestCollectionItems = useRef(toolInstances);
   useEffect(() => {
     latestCollectionItems.current = toolInstances;
@@ -65,8 +65,7 @@ export function useInspectorRuntime({
         toolName,
         latestMembers.current,
         latestStructure.current,
-        latestCollectionItems.current.get(toolName),
-        latestElementsByRef.current
+        latestCollectionItems.current.get(toolName)
       ).find((item) => item.ref === ref),
     []
   );
@@ -83,7 +82,7 @@ export function useInspectorRuntime({
 
   const { projected, targetsByRef, controls, ...pageState } =
     inspector.pageState;
-  const { elementsByRef, elementToolTargets } = pageState;
+  const { refs, elementToolTargets } = pageState;
   // The Model lens calls an action live when a call would run it.
   const pageModel = useMemo(
     () =>
@@ -113,8 +112,8 @@ export function useInspectorRuntime({
   );
   useEffect(() => {
     latestStructure.current = structure;
-    latestElementsByRef.current = elementsByRef;
-  }, [structure, elementsByRef]);
+    latestRefs.current = refs;
+  }, [structure, refs]);
   const elementTools = useMemo(
     () =>
       tools.live
@@ -133,11 +132,6 @@ export function useInspectorRuntime({
     [registeredPoms, tools.live, tools.appProcess]
   );
 
-  // Picking reads the latest look at the page as the pointer moves.
-  const refByElement = useRef(new Map<Element, string>());
-  useEffect(() => {
-    refByElement.current = uniqueRefs(elementsByRef);
-  }, [elementsByRef]);
   const { hover, pin } = highlight;
 
   return {
@@ -164,7 +158,10 @@ export function useInspectorRuntime({
      * The POM definitions for `names` (every known one when none are given),
      * as `snapshot` renders them. Captures no page state.
      */
-    definitionText: pomDefinitionText,
+    definitionText: (className: string) =>
+      renderPomDefinitions(
+        pomDefinitions.filter((definition) => definition.name === className)
+      ),
     /**
      * The page state as an agent would receive it, kept live without ever
      * being recorded: the structure tree model, and the refs each
@@ -192,13 +189,7 @@ export function useInspectorRuntime({
      * whether the action would run on it.
      */
     itemsOf: (toolName: string) =>
-      itemsOf(
-        toolName,
-        members,
-        structure,
-        toolInstances.get(toolName),
-        elementsByRef
-      ),
+      itemsOf(toolName, members, structure, toolInstances.get(toolName)),
     /** The runs made from the panel, newest first. */
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
@@ -218,8 +209,7 @@ export function useInspectorRuntime({
         refreshPageState();
         return startRefPicking({
           ...handlers,
-          refOf: (element) => refByElement.current.get(element),
-          hover: (ref) => hover(ref === undefined ? undefined : { ref }),
+          refs: latestRefs.current,
         });
       },
     },
@@ -227,15 +217,3 @@ export function useInspectorRuntime({
 }
 
 export type InspectorRuntime = ReturnType<typeof useInspectorRuntime>;
-
-/** Each element's ref, for the elements that have exactly one. */
-function uniqueRefs(elementsByRef: ReadonlyMap<string, Element>) {
-  const refs = new Map<Element, string | undefined>();
-  for (const [ref, element] of elementsByRef)
-    refs.set(element, refs.has(element) ? undefined : ref);
-  return new Map(
-    [...refs].filter(
-      (entry): entry is [Element, string] => entry[1] !== undefined
-    )
-  );
-}

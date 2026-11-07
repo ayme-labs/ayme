@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
   parseStructuralRef,
   selectorForRef,
@@ -7,20 +7,27 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import {
   assertReachable,
-  reaches,
+  refsOfLocator,
   type ElementInput,
 } from "../../page-state/infrastructure";
 import { refHint, selectorFailure } from "../../page-state/domain";
+import { type PageStateSession } from "../../page-state/application";
 import {
-  type PageStateSession,
-  type Reach,
-} from "../../page-state/application";
-import type { JsonSchema, JsonValue, ToolDescriptor } from "../../shared";
+  toolFilterKey,
+  type ElementFilter,
+  type JsonSchema,
+  type JsonValue,
+  type ToolDescriptor,
+} from "../../shared";
 import type { RunContext } from "../../runs/application";
 import type { ToolInput, ToolResult } from "../domain/toolTypes";
 import type { AriaRef, PageStateCapture } from "../../page-state/domain";
-import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { RefResolutionError, ToolInputError } from "../../shared";
+import {
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+  type Predicate,
+} from "../../shared";
 
 /**
  * A Custom Tool: an operation an app registers that applies to one element.
@@ -31,16 +38,22 @@ export type CustomTool = {
   name: string;
   /** The only instruction the model gets about this operation. */
   description: string;
-  /** true = the Goal Loop may offer this element. Omitted = every node with a ref. */
-  filter?: (element: Element) => boolean;
   /**
-   * Acts on `target`. To use other tools, start them through `run`: each is
-   * a child Run of this one and runs within this Run's turn, after the
-   * child Runs started before it. Never call `ayme.tools.run` from here:
-   * that Run waits for this one to end, so neither ever finishes.
+   * The elements the Goal Loop may offer: a CSS selector, or a function the
+   * session calls once with its Page, returning the Locator of them (see
+   * `ElementFilter`). Omitted = every node with a ref.
+   */
+  filter?: ElementFilter;
+  /**
+   * Acts on the element `target.locator` matches, which `target.ref` names,
+   * in the browser and in Node alike: no code outside the page holds an
+   * element. To use other tools, start them through `run`: each is a child
+   * Run of this one and runs within this Run's turn, after the child Runs
+   * started before it. Never call `ayme.tools.run` from here: that Run waits
+   * for this one to end, so neither ever finishes.
    */
   execute(
-    target: { ref: AriaRef; element: Element },
+    target: { ref: AriaRef; locator: Locator },
     context: CustomToolContext
   ): Promise<unknown>;
 };
@@ -78,18 +91,26 @@ export type RegisteredElementTool = {
   /** The input the Goal Loop fills; publication-only options are left out. */
   readonly loopInputSchema: JsonSchema;
   /**
-   * true = the Goal Loop may offer this element; not enforced on direct
-   * calls. For a tool that needs reach, it keeps only elements its input
-   * would reach on `page`, as `reach` measures it, which a direct call does
+   * Which elements the Goal Loop may offer this tool; not enforced on direct
+   * calls. For a tool that needs reach, it offers only those its input would
+   * reach on the page, as `reach` measures it, which a direct call does
    * enforce.
    */
-  readonly filter: (element: Element, on: ReachOn) => boolean;
-  /**
-   * For a tool that needs reach, its filter before reach: what it may act on
-   * whether or not a click would reach it.
-   */
-  readonly matches?: (element: Element) => boolean;
+  readonly takes: ElementTake;
+  /** The input the tool sends its element, which must reach it. */
+  readonly needsReach?: ElementInput;
 };
+
+/**
+ * Which elements a tool takes: the elements a predicate keeps, evaluated in
+ * the page with the capture; every element with a ref; or, for a Custom Tool
+ * that gave one, the elements its filter keeps, which the capture carries
+ * under the tool's name.
+ */
+export type ElementTake =
+  | { readonly predicate: Predicate }
+  | { readonly filter: string }
+  | { readonly every: true };
 
 /**
  * Package-internal: where an element tool's filter measures reach: on
@@ -108,7 +129,11 @@ export type TargetField = "ref" | "target";
 export type ResolvedTarget = {
   /** Its current Structural Ref; absent when a selector addressed it. */
   ref?: AriaRef;
-  element: Element;
+  /**
+   * Its Structural Ref whichever way it was addressed: a selector's element
+   * is given one, a synthetic one when no capture has named it.
+   */
+  elementRef: string;
   /** A selector for it, for the browser Page: `ayme-ref=…` or the one given. */
   selector: string;
 };
@@ -170,10 +195,11 @@ function elementToolExecution(
     if (definition.needsReach)
       await assertReachable(
         context.reach,
+        context.page,
         definition.name,
-        context.page.locator(target.selector),
-        target.element,
-        definition.needsReach
+        target.elementRef,
+        definition.needsReach,
+        (ref) => context.pageStateSession.latestRefOfNamed(ref)
       );
     return context.pageStateSession.runAction(
       context.cursor,
@@ -190,7 +216,7 @@ function elementToolExecution(
 /** Package-internal: register a tool so it is published and the Goal Loop may choose it. */
 export function registerElementTool(
   definition: ElementToolDefinition,
-  filter: (element: Element) => boolean
+  takes: ElementTake
 ): RegisteredElementTool {
   return {
     tool: {
@@ -201,15 +227,8 @@ export function registerElementTool(
     },
     targetField: definition.targetField,
     loopInputSchema: requiredInputOnly(definition.inputSchema),
-    // The cheap filter first: only the elements it keeps are measured.
-    ...(definition.needsReach
-      ? {
-          filter: (element: Element, { page, reach }: ReachOn) =>
-            filter(element) &&
-            reaches(reach, page, element, definition.needsReach!),
-          matches: filter,
-        }
-      : { filter }),
+    takes,
+    ...(definition.needsReach ? { needsReach: definition.needsReach } : {}),
   };
 }
 
@@ -258,7 +277,7 @@ export async function resolveElementTarget(
     const node = await pageStateSession.resolveRef(requested, definition.label);
     return {
       ref: node.ref,
-      element: node.element,
+      elementRef: node.ref,
       selector: selectorForRef(node.ref),
     };
   }
@@ -273,14 +292,14 @@ export async function resolveElementTarget(
     );
   // Chained as Playwright's Locator.locator chains a selector.
   const selector = scope === undefined ? requested : `${scope} >> ${requested}`;
-  let elements: Element[];
+  let refs: string[];
   try {
-    elements = resolveLocatorElements(page.locator(selector));
+    refs = await refsOfLocator(page, page.locator(selector));
   } catch (error) {
     // The parser's diagnosis stays; the advice Playwright ends it with goes.
-    const diagnosis = (
-      error instanceof Error ? error.message : String(error)
-    ).replace(/\.? Did you mean to CSS\.escape it\?$/, "");
+    const diagnosis = (error instanceof Error ? error.message : String(error))
+      .replace(/^(?:\w+\.)?\$?\$?\w+: /, "")
+      .replace(/\.? Did you mean to CSS\.escape it\?$/, "");
     throw new ToolInputError(
       failure(
         `it is neither a Structural Ref nor a selector this runtime supports: ${diagnosis}`,
@@ -288,25 +307,26 @@ export async function resolveElementTarget(
       )
     );
   }
-  if (elements.length === 0)
+  if (refs.length === 0)
     throw new RefResolutionError(
       failure("the selector matches no element", hint)
     );
-  if (elements.length > 1)
+  if (refs.length > 1)
     throw new RefResolutionError(
       failure(
-        `the selector matches ${elements.length} elements; it must match exactly one`
+        `the selector matches ${refs.length} elements; it must match exactly one`
       )
     );
-  return { element: elements[0]!, selector };
+  return { elementRef: refs[0]!, selector };
 }
 
 // --- Registration ---
 
 /**
  * Package-internal: register a Custom Tool. It takes a Structural Ref as
- * `ref`, and the Goal Loop may offer it the elements its filter keeps, or
- * every node with a ref when it has no filter.
+ * `ref`, acts on its element through a Locator on the Run's page, and the
+ * Goal Loop may offer it the elements its filter keeps, or every node with a
+ * ref when it has no filter.
  */
 export function registerCustomTool(
   customTool: CustomTool
@@ -318,39 +338,64 @@ export function registerCustomTool(
       label: `run "${customTool.name}" on`,
       inputSchema: REF_INPUT_SCHEMA,
       targetField: "ref",
-      perform: ({ ref, element }, _input, { run }) =>
+      perform: ({ ref }, _input, { run, page }) =>
         customTool.execute(
-          { ref: ref!, element },
+          { ref: ref!, locator: page.locator(selectorForRef(ref!)) },
           {
             run: ((name, input) =>
               run(name, input)) as CustomToolContext["run"],
           }
         ),
     },
-    customTool.filter ?? (() => true)
+    customTool.filter ? { filter: customTool.name } : { every: true }
   );
 }
 
+/** The nodes a tool takes and the subset its input would reach. */
+export type ElementToolTargets = {
+  /** Every node of the capture, in tree order, the tool takes before reach. */
+  readonly matched: readonly StructuralNode[];
+  /** Those of them its input would reach: the tool's closed set. */
+  readonly nodes: readonly StructuralNode[];
+};
+
 /**
- * The closed set a single-element tool's ref comes from (ADR-0023): every node of the
- * capture, in tree order, whose element the tool's filter keeps, measured in
- * one batch of `reach`. The Goal Loop offers these as options; the Inspector
- * shows them as the tool's targets.
+ * The closed set a single-element tool's ref comes from (ADR-0023): every
+ * node of the capture, in tree order, the tool takes, measured for reach in
+ * one batch in the page when the tool needs it. The Goal Loop offers these as
+ * options; the Inspector shows them as the tool's targets. A predicate's
+ * nodes come from the refs the capture carries for it.
  */
-export function acceptedRefNodes(
-  reach: Reach,
-  filter: (element: Element) => boolean,
+export async function elementToolTargets(
+  tool: Pick<RegisteredElementTool, "takes" | "needsReach">,
+  { page, reach }: ReachOn,
   capture: PageStateCapture
-): StructuralNode[] {
-  return reach.inReachBatch(() => {
-    const nodes: StructuralNode[] = [];
-    for (const node of walkNodes(capture.tree)) {
-      const element = capture.elementsByRef.get(node.ref);
-      if (!element || !filter(element)) continue;
-      nodes.push(node);
-    }
-    return nodes;
-  });
+): Promise<ElementToolTargets> {
+  const matched = [...walkNodes(capture.tree)].filter(
+    takenBy(tool.takes, capture)
+  );
+  if (!tool.needsReach) return { matched, nodes: matched };
+  const reached = new Set(
+    await reach.reachable(
+      page,
+      matched.map(({ ref }) => ref),
+      tool.needsReach
+    )
+  );
+  return { matched, nodes: matched.filter(({ ref }) => reached.has(ref)) };
+}
+
+function takenBy(
+  takes: ElementTake,
+  capture: PageStateCapture
+): (node: StructuralNode) => boolean {
+  if ("every" in takes) return () => true;
+  const name =
+    "filter" in takes ? toolFilterKey(takes.filter) : takes.predicate;
+  const accepted = capture.accepted?.[name];
+  if (!accepted)
+    throw new RuntimeStateError(`The capture carries no refs for ${name}.`);
+  return ({ ref }) => accepted.has(ref);
 }
 
 function* walkNodes(tree: StructuralTree): Generator<StructuralNode> {

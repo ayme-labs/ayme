@@ -1,5 +1,9 @@
-import type { JsonPrimitive, JsonSchema, JsonValue } from "@ayme-dev/ayme";
-import type { ToolParameter } from "@ayme-dev/ayme/internal";
+import type {
+  JsonPrimitive,
+  JsonSchema,
+  JsonValue,
+} from "@ayme-dev/ayme/inspector";
+import type { ToolParameter } from "@ayme-dev/ayme/inspector";
 
 import type { ToolArguments } from "../../runs";
 import { jsonSyntaxError } from "./jsonSyntax";

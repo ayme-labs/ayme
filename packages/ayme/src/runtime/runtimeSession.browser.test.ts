@@ -75,8 +75,10 @@ describe("the public runtime session in Chromium", () => {
     const highlight: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
-      async execute({ element }) {
-        element.classList.add("highlighted");
+      async execute({ locator }) {
+        await locator.evaluate((element) =>
+          element.classList.add("highlighted")
+        );
         return null;
       },
     };

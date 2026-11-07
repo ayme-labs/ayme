@@ -38,6 +38,11 @@
       "import": "./dist/internal.mjs",
       "default": "./dist/internal.mjs"
     },
+    "./inspector": {
+      "types": "./dist/inspector.d.mts",
+      "import": "./dist/inspector.mjs",
+      "default": "./dist/inspector.mjs"
+    },
     "./absent": {
       "types": "./dist/absent.d.mts",
       "import": "./dist/absent.mjs",
@@ -48,6 +53,11 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./playwright": {
+      "types": "./dist/playwright.d.mts",
+      "import": "./dist/playwright.mjs",
+      "default": "./dist/playwright.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",
@@ -56,6 +66,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "sync:injected": "node scripts/syncInjectedScript.mjs",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "vitest run --config vitest.browser.config.ts",

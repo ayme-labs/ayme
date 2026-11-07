@@ -106,3 +106,18 @@ it("collapses the panel", async () => {
 
   expect(onCollapse).toHaveBeenCalledOnce();
 });
+
+it("has no layout menu and no collapse in a window of its own, which it fills", async () => {
+  unmounts.push(
+    renderPart(
+      <Header layout="bottom" theme="system" onThemeChange={vi.fn()} />
+    )
+  );
+
+  await expect.poll(() => header.title.textContent()).toBe("ayme");
+  await expect(header.themeSwitch.button.isVisible()).resolves.toBe(true);
+  await expect(header.layoutMenu.trigger.count()).resolves.toBe(0);
+  await expect(
+    page.getByRole("button", { name: "Collapse inspector" }).count()
+  ).resolves.toBe(0);
+});

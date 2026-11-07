@@ -1,8 +1,11 @@
 import { initTRPC } from "@trpc/server";
+import * as z from "zod/mini";
 
 import {
   HelloSchema,
   HiddenToolListSchema,
+  InspectorRequestSchema,
+  InspectorResponseSchema,
   PageNavigatingSchema,
   PageToolListSchema,
   ProcessToolCallSchema,
@@ -80,6 +83,28 @@ export const pageChannelRouter = t.router({
     for await (const hidden of ctx.connection.hiddenToolLists(session, signal))
       yield HiddenToolListSchema.parse(hidden);
   }),
+  inspectorRequests: t.procedure.subscription(async function* ({
+    ctx,
+    signal,
+  }) {
+    const session = await ctx.page.session;
+    // Only the page has an Inspector.
+    if (!(session instanceof PageSession)) return;
+    for await (const request of session.inspector.requests(signal))
+      yield InspectorRequestSchema.parse(request);
+  }),
+  inspectorResponse: t.procedure
+    .input(InspectorResponseSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await ctx.page.session;
+      if (session instanceof PageSession) session.inspector.respond(input);
+    }),
+  inspectorEvent: t.procedure
+    .input(z.unknown())
+    .mutation(async ({ ctx, input }) => {
+      const session = await ctx.page.session;
+      if (session instanceof PageSession) session.inspector.emit(input);
+    }),
   callProcessTool: t.procedure
     .input(ProcessToolCallSchema)
     .mutation(async ({ ctx, input }) => {

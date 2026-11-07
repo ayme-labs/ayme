@@ -1,7 +1,7 @@
 import { useCallback, useId, type ComponentType } from "react";
 import { XIcon } from "lucide-react";
 
-import type { JsonValue } from "@ayme-dev/ayme";
+import type { JsonValue } from "@ayme-dev/ayme/inspector";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { ToolArguments } from "../../runs";

@@ -1,4 +1,4 @@
-import type { ToolInput, ToolResult } from "@ayme-dev/ayme";
+import type { ToolInput, ToolResult } from "@ayme-dev/ayme/inspector";
 
 /**
  * `generate_locator`'s input: targets grouped by the container their

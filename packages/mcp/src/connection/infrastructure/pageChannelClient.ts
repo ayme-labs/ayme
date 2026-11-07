@@ -3,6 +3,7 @@ import { createTRPCClient, createWSClient, wsLink } from "@trpc/client";
 import {
   DISCONNECTED_CLOSE_CODE,
   HiddenToolListSchema,
+  InspectorRequestSchema,
   PageToolListSchema,
   PageWelcomeSchema,
   ToolCallOutcomeSchema,
@@ -185,6 +186,24 @@ export function openPageChannel(
         onError() {},
       });
       return () => subscription.unsubscribe();
+    },
+    serveInspector(handler) {
+      const subscription = live().inspectorRequests.subscribe(undefined, {
+        onData(data) {
+          // Started here, in the order the server sent them.
+          const answer = handler(InspectorRequestSchema.parse(data));
+          void answer
+            .then((response) => live().inspectorResponse.mutate(response))
+            // The channel closed before the answer went out.
+            .catch(() => {});
+        },
+        // A server from before the external Inspector has no such subscription.
+        onError() {},
+      });
+      return () => subscription.unsubscribe();
+    },
+    async sendInspectorEvent(event) {
+      await live().inspectorEvent.mutate(event);
     },
     async callProcessTool(name, input) {
       return ToolCallOutcomeSchema.parse(

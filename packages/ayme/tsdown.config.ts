@@ -1,6 +1,8 @@
 import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 
+import { inPageModule } from "./build/inPageModule.ts";
+
 // Private workspace packages, copied into the output instead of imported.
 // Core is bundled but its third-party dependency zod is declared in
 // package.json and left external, so a consumer's own zod dedupes and
@@ -24,13 +26,19 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/internal.ts",
+    // The Inspector contract and the runtime's inline serving of it.
+    "src/inspector.ts",
     // What a Build without Ayme resolves the two entries above to.
     "src/absent.ts",
     "src/server.ts",
     // The last Goal Loop run's result, for tests only (ADR-0026).
     "src/testing.ts",
+    // Ayme over a real Playwright Page, for a Node host (ADR-0049).
+    "src/playwright.ts",
   ],
   format: ["esm"],
+  // The in-page module's page part, as one self-contained function.
+  plugins: [inPageModule()],
   treeshake: {
     // A module of the package sets up on import only the state its own
     // exports use, so an entry keeps none of the modules a slice's index.ts

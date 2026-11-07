@@ -53,7 +53,6 @@ describe("resolveRequestedRef", () => {
     ["unknown-ref", "no snapshot of the current document issued it"],
     ["removed", "it is no longer on the page"],
     ["ambiguous", "it cannot be matched unambiguously to the current page"],
-    ["no-element", "it has no element on the page now"],
   ])("says what %s means", async (reason, why) => {
     resolvePageStateRefs.mockResolvedValueOnce([
       { status: "unresolved", requestedRef: "e2", reason },

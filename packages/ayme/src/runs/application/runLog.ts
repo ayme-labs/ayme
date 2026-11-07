@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import type { Caller, JsonValue } from "../../shared";
 import { errorText } from "../../shared";
 import type { Interaction } from "../domain/interactions";
@@ -75,11 +76,21 @@ const KEPT_RUNS = 200;
 const NO_RUNS: readonly Run[] = Object.freeze([]);
 const NO_INTERACTIONS: readonly Interaction[] = Object.freeze([]);
 
+/** A Page's Run log. */
+export type RunLog = ReturnType<typeof createRunLog>;
+
+const runLogs = new WeakMap<Page, RunLog>();
+
 /**
- * Package-internal: the document's Run log. A module instance lives as long
- * as its document, so a cross-document navigation starts an empty one.
+ * Package-internal: the Run log of `page` (ADR-0049), the browser's own
+ * Playwright Lite page or a Node host's Page, so two pages share none. A
+ * browser document starts an empty one with its page.
  */
-export const runLog = createRunLog();
+export function runLogOf(page: Page): RunLog {
+  let found = runLogs.get(page);
+  if (!found) runLogs.set(page, (found = createRunLog()));
+  return found;
+}
 
 function createRunLog() {
   let runs = NO_RUNS;

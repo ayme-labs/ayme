@@ -1,4 +1,4 @@
-import type { AgentConnectionStatus } from "@ayme-dev/ayme/internal";
+import type { AgentConnectionStatus } from "@ayme-dev/ayme/inspector";
 
 /** The WebMCP publication status, as the runtime reports it. */
 export type PublicationStatus = Readonly<{

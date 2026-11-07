@@ -1,142 +1,136 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import type { Look } from "../../shared";
+import type { InspectorHighlightLayer } from "@ayme-dev/ayme/inspector";
+
+import { inspectorClient, type InspectorClient, type Look } from "../../shared";
 import type { HighlightTarget } from "../domain/highlight";
 
 /**
  * The page's two highlights: `hover` (dashed) for what the pointer is over
  * in the panel, `pin` (solid) for the selection. Each shows on its target's
- * elements in the latest look at the page, and follows every new look
- * handed to `onLook`. Unmounting removes them.
+ * elements in the latest look at the page, through the Inspector contract, which
+ * has the runtime draw Playwright's highlight on each one's `ayme-ref=`
+ * locator: nothing is set on the app's elements. They follow every new look handed to `onLook`. Unmounting
+ * removes them.
  */
 export function useHighlights({
   targetsOf,
+  client = inspectorClient(),
 }: {
   /**
    * The registry target paths a highlight's path stands for, read as each
    * highlight shows, e.g. the roots of a collection's items.
    */
   targetsOf: (path: string) => ReadonlySet<string>;
+  /** The Inspector's client of the contract; the document's own unless given. */
+  client?: InspectorClient;
 }) {
   const latest = useRef<Look>(undefined);
-  const layers = useRef<Record<HighlightLayer, LayerState>>({
-    hover: { elements: [] },
-    pinned: { elements: [] },
-  });
-
+  const targets = useRef<Partial<Record<HighlightLayer, HighlightTarget>>>({});
+  const unmounted = useRef(false);
   const resolve = useRef(targetsOf);
+  const sendTo = useRef(client);
   useEffect(() => {
     resolve.current = targetsOf;
-  }, [targetsOf]);
+    sendTo.current = client;
+  }, [targetsOf, client]);
 
-  /** Shows a layer's highlight on the target's elements in the latest look. */
-  const showLayer = useCallback((layer: HighlightLayer) => {
-    const state = layers.current[layer];
-    const elements =
-      state.target && latest.current
-        ? targetElements(state.target, latest.current, resolve.current)
-        : [];
-    markElements(layer, state.elements, elements);
-    state.elements = elements;
+  /**
+   * Tells the runtime what each layer's target shows on now. The runtime
+   * takes the commands in order, an element both layers want showing the
+   * selection's, and ends highlights before it starts others.
+   */
+  const apply = useCallback(() => {
+    const wanted = wantedRefs(
+      unmounted.current ? {} : targets.current,
+      latest.current,
+      resolve.current
+    );
+    for (const layer of highlightLayers)
+      void sendTo.current.highlight(layer, [...wanted[layer]]).catch(() => {
+        // The element went away: the next look shows what is there.
+      });
   }, []);
+
+  const show = apply;
 
   const onLook = useCallback(
     (look: Look) => {
       latest.current = look;
-      for (const layer of highlightLayers) showLayer(layer);
+      show();
     },
-    [showLayer]
+    [show]
   );
 
   /** The dashed highlight: what the pointer is over in the panel, if anything. */
   const hover = useCallback(
     (target: HighlightTarget | undefined) => {
-      layers.current.hover.target = target;
-      showLayer("hover");
+      targets.current.hover = target;
+      show();
     },
-    [showLayer]
+    [show]
   );
 
   /** The solid highlight: the selection's element(s), if it has any. */
   const pin = useCallback(
     (target: HighlightTarget | undefined) => {
-      layers.current.pinned.target = target;
-      showLayer("pinned");
+      targets.current.pinned = target;
+      show();
     },
-    [showLayer]
+    [show]
   );
 
   useEffect(() => {
-    const layerStates = layers.current;
+    unmounted.current = false;
     return () => {
-      for (const layer of highlightLayers) {
-        const state = layerStates[layer];
-        markElements(layer, state.elements, []);
-        state.elements = [];
-      }
+      unmounted.current = true;
+      show();
     };
-  }, []);
+  }, [show]);
 
-  /** Whether this target still has a connected element in the latest look. */
+  /** Whether this target still has an element in the latest look. */
   const canHighlight = useCallback(
     (target: HighlightTarget) =>
       latest.current !== undefined &&
-      targetElements(target, latest.current, resolve.current).some(
-        (element) => element.isConnected
-      ),
+      targetRefs(target, latest.current, resolve.current).length > 0,
     []
   );
 
   return { onLook, hover, pin, canHighlight };
 }
 
+/** The refs each layer's target shows on in a look. */
+function wantedRefs(
+  targets: Partial<Record<HighlightLayer, HighlightTarget>>,
+  look: Look | undefined,
+  targetsOf: (path: string) => ReadonlySet<string>
+): Record<HighlightLayer, Set<string>> {
+  const refsOf = (target: HighlightTarget | undefined) =>
+    new Set(target && look ? targetRefs(target, look, targetsOf) : []);
+  return { hover: refsOf(targets.hover), pinned: refsOf(targets.pinned) };
+}
+
 /**
- * A target's elements in a look: a ref's element, or the elements of the
- * registry targets a path stands for, as far as the page state shows them.
+ * A target's refs in a look: a ref the page state holds, or the refs of the
+ * registry targets a path stands for, each target's element named by its one
+ * ref in the page state.
  */
-function targetElements(
+function targetRefs(
   target: HighlightTarget,
   look: Look,
   targetsOf: (path: string) => ReadonlySet<string>
-): Element[] {
-  if ("ref" in target) {
-    const elements: ReadonlyMap<string, Element> = look.state.elementsByRef;
-    const element = elements.get(target.ref);
-    return element ? [element] : [];
-  }
+): string[] {
+  if ("ref" in target) return look.refs.has(target.ref) ? [target.ref] : [];
   const paths = targetsOf(target.path);
   return [
     ...new Set(
       look.targets
-        .filter(({ path }) => paths.has(path))
-        .map(({ element }) => element)
-        .filter((element) => look.elementsInState.has(element))
+        .filter(({ path, ref }) => ref !== undefined && paths.has(path))
+        .map(({ ref }) => ref!)
     ),
   ];
 }
 
-type HighlightLayer = "hover" | "pinned";
+type HighlightLayer = InspectorHighlightLayer;
 
 const highlightLayers: readonly HighlightLayer[] = ["hover", "pinned"];
-
-/** The host attribute of each layer; the host style draws them. */
-const layerAttribute: Record<HighlightLayer, string> = {
-  hover: "data-ayme-hover",
-  pinned: "data-ayme-highlight",
-};
-
-type LayerState = {
-  target?: HighlightTarget;
-  elements: Element[];
-};
-
-function markElements(
-  layer: HighlightLayer,
-  previous: readonly Element[],
-  next: readonly Element[]
-) {
-  const attribute = layerAttribute[layer];
-  for (const element of previous)
-    if (!next.includes(element)) element.removeAttribute(attribute);
-  for (const element of next) element.setAttribute(attribute, "");
-}

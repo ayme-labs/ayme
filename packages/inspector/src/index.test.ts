@@ -1,9 +1,14 @@
-import { afterEach, expect, it } from "vitest";
-import { createPage } from "@ayme-dev/playwright-lite";
-import { createAyme, type AymePage } from "@ayme-dev/ayme";
-import { capturePageState, registerCompiledPom } from "@ayme-dev/ayme/internal";
+import { afterEach, expect, it, vi } from "vitest";
 
-import { installInspectorInstrumentation, mountInspector } from "./index";
+import { createPage } from "@ayme-dev/playwright-lite";
+import {
+  createAyme,
+  EXCLUDE_ATTRIBUTE,
+  type AymePage,
+  type AymeOptions,
+} from "@ayme-dev/ayme";
+
+import { mountInspector } from "./index";
 import { inspectorShadowRoot } from "./shared";
 
 const disposals: (() => void)[] = [];
@@ -11,81 +16,6 @@ const disposals: (() => void)[] = [];
 afterEach(() => {
   for (const dispose of disposals.splice(0)) dispose();
   document.body.innerHTML = "";
-});
-
-/**
- * Demo mode's pause before each action, less a margin for the timer firing
- * early.
- */
-const PAUSED = 450;
-
-/** How long a key press on `page` takes, which demo mode pauses before. */
-async function pressTime(page: AymePage) {
-  const started = performance.now();
-  await page.keyboard.press("Enter");
-  return performance.now() - started;
-}
-
-it("instruments a supplied Page before constructing the first Page Object", async () => {
-  disposals.push(installInspectorInstrumentation({ demo: true }));
-  const suppliedPage = createPage();
-  class Model {
-    constructor(readonly page: AymePage) {}
-  }
-  registerCompiledPom(Model, {
-    className: "Model",
-    components: [],
-    members: [],
-    tools: [],
-  });
-
-  const runtime = createAyme({ pageFactory: () => suppliedPage });
-  const instance = runtime.pom.get(Model);
-
-  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
-});
-
-it("instruments the default Page before constructing the first Page Object", async () => {
-  disposals.push(installInspectorInstrumentation({ demo: true }));
-  class DefaultModel {
-    constructor(readonly page: AymePage) {}
-  }
-  registerCompiledPom(DefaultModel, {
-    className: "DefaultModel",
-    components: [],
-    members: [],
-    tools: [],
-  });
-
-  const runtime = createAyme();
-  const instance = runtime.pom.get(DefaultModel);
-
-  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
-});
-
-it("stops pacing during disposal and resumes once after remount", async () => {
-  const dispose = installInspectorInstrumentation({ demo: true });
-  disposals.push(dispose);
-  class DisposableModel {
-    constructor(readonly page: AymePage) {}
-  }
-  registerCompiledPom(DisposableModel, {
-    className: "DisposableModel",
-    components: [],
-    members: [],
-    tools: [],
-  });
-  const instance = createAyme().pom.get(DisposableModel);
-  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
-
-  dispose();
-  expect(await pressTime(instance.page)).toBeLessThan(PAUSED);
-
-  disposals.push(installInspectorInstrumentation({ demo: true }));
-  const remounted = await pressTime(instance.page);
-  expect(remounted).toBeGreaterThanOrEqual(PAUSED);
-  // Once: a second wrapper would pause again.
-  expect(remounted).toBeLessThan(2 * PAUSED);
 });
 
 it("mounts one Inspector in a closed Shadow Root and supports disposal and remount", async () => {
@@ -115,22 +45,17 @@ it("mounts one Inspector in a closed Shadow Root and supports disposal and remou
   remounted.dispose();
 });
 
-it("owns consumer highlight styling for the mounted Inspector", () => {
-  const first = mountInspector();
-  const duplicate = mountInspector();
-  const style = document.head.querySelector(
-    "style[data-ayme-inspector-highlight-style]"
-  );
+it("marks its host as an excluded subtree, unless it is mounted for dogfooding", () => {
+  const hostOf = () =>
+    document.body.querySelector("[data-ayme-inspector-host]")!;
 
-  expect(
-    document.head.querySelectorAll("style[data-ayme-inspector-highlight-style]")
-  ).toHaveLength(1);
-  expect(style?.textContent).toContain("[data-ayme-highlight]");
+  const panel = mountInspector();
+  expect(hostOf().hasAttribute(EXCLUDE_ATTRIBUTE)).toBe(true);
+  panel.dispose();
 
-  duplicate.dispose();
-  expect(style?.isConnected).toBe(true);
-  first.dispose();
-  expect(style?.isConnected).toBe(false);
+  const dogfooded = mountInspector({ dogfood: true });
+  expect(hostOf().hasAttribute(EXCLUDE_ATTRIBUTE)).toBe(false);
+  dogfooded.dispose();
 });
 
 it("renders the React Inspector and its stylesheet inside the Shadow Root only", () => {
@@ -153,24 +78,85 @@ it("renders the React Inspector and its stylesheet inside the Shadow Root only",
       "[data-ayme-inspector-root] [data-ayme-inspector-portal]"
     )
   ).not.toBeNull();
-  // Only the page highlight style reaches the host document.
+  // No style reaches the host document: highlights are Playwright's overlay.
   expect(
     document.head.querySelectorAll("style, link[rel=stylesheet]")
-  ).toHaveLength(headStylesBefore + 1);
+  ).toHaveLength(headStylesBefore);
 
   inspector.dispose();
   expect(shadowRoot?.childNodes).toHaveLength(0);
 });
 
+// The Inspector asks the runtime for Demo Mode; the runtime paces its Pages.
+
+/** Demo mode's pause before each action. */
+const PAUSE_MS = 500;
+
+type Session = ReturnType<typeof startSession>;
+
+/** How many demo pauses an agent's key press through `session` waits for. */
+async function pausesOfKeyPress(session: Session) {
+  const timers = vi.spyOn(globalThis, "setTimeout");
+  try {
+    await session.tools.run("press_key", { key: "Enter" });
+    return timers.mock.calls.filter(([, delay]) => delay === PAUSE_MS).length;
+  } finally {
+    timers.mockRestore();
+  }
+}
+
+/** A started session over a Page the test supplies. */
+function startSession(options: AymeOptions = {}) {
+  const runtime = createAyme({
+    pageFactory: () => createPage() as unknown as AymePage,
+    ...options,
+  });
+  disposals.push(runtime.start());
+  return runtime;
+}
+
+it("paces a started session's Page while the Inspector is mounted with demo", async () => {
+  disposals.push(mountInspector({ demo: true }).dispose);
+  const runtime = startSession();
+
+  expect(await pausesOfKeyPress(runtime)).toBe(1);
+});
+
+it("paces a session started before the Inspector is mounted, until it is disposed", async () => {
+  const runtime = startSession();
+  expect(await pausesOfKeyPress(runtime)).toBe(0);
+
+  const mounted = mountInspector({ demo: true });
+  disposals.push(mounted.dispose);
+  expect(await pausesOfKeyPress(runtime)).toBe(1);
+  mounted.dispose();
+  expect(await pausesOfKeyPress(runtime)).toBe(0);
+});
+
+it("stops pacing during disposal and resumes once after remount", async () => {
+  const mounted = mountInspector({ demo: true });
+  disposals.push(mounted.dispose);
+  const runtime = startSession();
+  expect(await pausesOfKeyPress(runtime)).toBe(1);
+
+  mounted.dispose();
+  expect(await pausesOfKeyPress(runtime)).toBe(0);
+
+  disposals.push(mountInspector({ demo: true }).dispose);
+  // Once: a second wrapper would pause again.
+  expect(await pausesOfKeyPress(runtime)).toBe(1);
+});
+
 it("excludes the Inspector UI from structural page-state capture", async () => {
   document.body.innerHTML = "<main><h1>Consumer application</h1></main>";
   const inspector = mountInspector();
+  disposals.push(inspector.dispose);
   await Promise.resolve();
+  const runtime = startSession();
 
-  const state = await capturePageState(document.body);
+  const state = JSON.stringify(await runtime.tools.run("snapshot", {}));
 
   expect(state).toContain("Consumer application");
   // The panel is titled and labelled "ayme"; the host page never says it.
   expect(state).not.toContain("ayme");
-  inspector.dispose();
 });

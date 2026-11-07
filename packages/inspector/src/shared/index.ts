@@ -3,11 +3,6 @@ export { nodeLabel, nodeText } from "./domain/nodeDescription";
 export { NodeDetail } from "./view/NodeDetail";
 export { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "./domain/pageRendering";
 export { mapTargetsToRefs } from "./domain/targetsByRef";
-export {
-  describeCall,
-  type CallDescription,
-  type CallSubject,
-} from "./infrastructure/describeCall";
 export { renderInShadowRoot } from "./infrastructure/renderInShadowRoot";
 export {
   exposeInspectorShadowRoot,
@@ -32,3 +27,12 @@ export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./presentation/InspectorRoot";
 export { QualifiedName } from "./view/QualifiedName";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";
+export {
+  createInspectorClient,
+  emptyInspectorState,
+  inspectorClient,
+  replaceInspectorTransport,
+  useInspectorState,
+  type InspectorClient,
+} from "./infrastructure/inspectorClient";
+export { webSocketInspectorContract } from "./infrastructure/webSocketInspectorContract";

@@ -1,11 +1,14 @@
-import type { PomDefinition, PomMemberObservation } from "@ayme-dev/ayme";
+import type {
+  PomDefinition,
+  PomMemberObservation,
+} from "@ayme-dev/ayme/inspector";
 import type {
   PomManifest,
   PomMemberManifest,
-  RegisteredPom,
+  InspectorPageObject,
   ToolManifest,
   ToolParameter,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 /**
  * The page model the Model lens shows: the Page Objects on the page as a
@@ -120,7 +123,7 @@ export type Signature = (parameters: readonly ToolParameter[]) => string;
  * agents read it, on the page or off it.
  */
 export function buildPageModel(
-  registrations: readonly RegisteredPom[],
+  registrations: readonly InspectorPageObject[],
   liveToolNames: ReadonlySet<string>,
   definitions: readonly PomDefinition[],
   signature: Signature
@@ -198,7 +201,7 @@ function descriptionOf(description: string | undefined) {
 }
 
 function pageObject(
-  registration: RegisteredPom,
+  registration: InspectorPageObject,
   {
     liveToolNames,
     signature,
@@ -226,13 +229,13 @@ function pageObject(
     name: manifest.className,
     kind: "page",
     className: manifest.className,
-    live: registration.presentPaths.has(""),
+    live: registration.presentPaths.includes(""),
     ...objectParts(context, manifest, ""),
   };
 }
 
 type Context = {
-  registration: RegisteredPom;
+  registration: InspectorPageObject;
   liveToolNames: ReadonlySet<string>;
   signature: Signature;
   /** An action's description, by its tool's name and its author's text. */
@@ -267,7 +270,7 @@ function objectParts(
       ? `${path}.${member.memberName}`
       : member.memberName;
     // The member that resolved to the root is the root, not a child.
-    if (context.registration.rootMemberPaths.has(memberPath)) continue;
+    if (context.registration.rootMemberPaths.includes(memberPath)) continue;
     if (member.kind === "locator") {
       const observation = context.observations.get(memberPath);
       members.push({
@@ -290,7 +293,7 @@ function objectParts(
     const childParts = (childPath: string) =>
       component &&
       (!ancestors.has(member.componentClassName) ||
-        context.registration.presentPaths.has(childPath) ||
+        context.registration.presentPaths.includes(childPath) ||
         context.observations.has(`${childPath}.root`))
         ? objectParts(context, component, childPath, nested)
         : {
@@ -308,7 +311,7 @@ function objectParts(
           name: `[${index}]`,
           kind: "item" as const,
           className: member.componentClassName,
-          live: context.registration.presentPaths.has(itemPath),
+          live: context.registration.presentPaths.includes(itemPath),
           ...childParts(itemPath),
         };
       });
@@ -346,7 +349,7 @@ function objectParts(
       continue;
     }
 
-    const live = context.registration.presentPaths.has(memberPath);
+    const live = context.registration.presentPaths.includes(memberPath);
     const child: UnkeyedNode = {
       path: `${pageName}.${memberPath}`,
       name: member.memberName,
@@ -418,7 +421,7 @@ function modelMember(
  * which a model does not list among its members.
  */
 function rootMemberPaths(
-  registrations: readonly RegisteredPom[],
+  registrations: readonly InspectorPageObject[],
   objects: readonly PageObjectNode[]
 ): ReadonlySet<string> {
   const classNames = new Map(

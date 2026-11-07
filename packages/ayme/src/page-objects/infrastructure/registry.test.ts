@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runContext } from "../../test-utils/agentCalls.testSupport";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
+import {
+  latestStandIn,
+  nameElement,
+} from "../../test-utils/pageDriver.testSupport";
 import { checkedToolInput } from "../../shared";
 import type { PageStateSession, Reach } from "../../page-state/application";
 
@@ -9,25 +13,51 @@ const {
   testLocators,
   pageStateResolutions,
   pageStateRecordedListeners,
-  pageObjectStructure,
+  pageObjectProbe,
+  rootMeasure,
 } = vi.hoisted(() => ({
-  pageObjectStructure: { source: undefined as unknown },
+  pageObjectProbe: { source: undefined as unknown },
+  rootMeasure: {
+    current: undefined as
+      | undefined
+      | (() => {
+          present: boolean;
+          available: boolean;
+          inTheWay?: string[];
+        }),
+  },
   locatorElements: new WeakMap<object, Element[]>(),
   testLocators: new WeakSet<object>(),
   pageStateRecordedListeners: new Set<() => void>(),
-  pageStateResolutions: new Map<
-    string,
-    { node: { ref: string; element: Element } }
-  >(),
+  pageStateResolutions: new Map<string, { node: { ref: string } }>(),
 }));
-vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@ayme-dev/playwright-lite/internal")
-  >()),
-  isPlaywrightLiteLocator: (value: unknown) =>
-    typeof value === "object" && value !== null && testLocators.has(value),
-  resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
-}));
+// A jsdom test has no in-page module: it stands in a page driver whose refs
+// name the elements its locators hold.
+vi.mock(
+  "../../page-state/infrastructure/browserInPage",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    ...(
+      await import("../../test-utils/pageOfDocument.testSupport")
+    ).standInPageOfDocument(),
+  })
+);
+vi.mock("./inPageDriver", async () => {
+  const { standInPageDriver } =
+    await import("../../test-utils/pageDriver.testSupport");
+  return {
+    inPageDriver: () =>
+      standInPageDriver({
+        isLocator: (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          testLocators.has(value),
+        elementsOf: (value) => locatorElements.get(value) ?? [],
+        measure: () =>
+          rootMeasure.current?.() ?? { present: true, available: true },
+      }),
+  };
+});
 vi.mock(
   "../../page-state/infrastructure/pageState",
   async (importOriginal) => ({
@@ -36,8 +66,8 @@ vi.mock(
       pageStateRecordedListeners.add(listener);
       return () => pageStateRecordedListeners.delete(listener);
     },
-    providePageObjectStructure: (source: unknown) => {
-      pageObjectStructure.source = source;
+    providePageObjectProbe: (source: unknown) => {
+      pageObjectProbe.source = source;
     },
   })
 );
@@ -80,26 +110,24 @@ function brandedLocator(
   overrides: Record<string, unknown> = {},
   element: Element = { isConnected: true } as Element
 ) {
-  const loc: Record<string | symbol, unknown> = { ...overrides };
+  // What the in-page module answers of a locator's elements: one ref.
+  const loc: Record<string | symbol, unknown> = {
+    evaluateAll: async () => ({ kind: "ok", value: ["e1"] }),
+    ...overrides,
+  };
   testLocators.add(loc);
   locatorElements.set(loc, [element]);
   return loc as unknown as Locator;
 }
 
-class FakeMutationObserver {
-  static instances: FakeMutationObserver[] = [];
-
-  readonly disconnect = vi.fn();
-  readonly observe = vi.fn();
-
-  constructor(readonly callback: MutationCallback) {
-    FakeMutationObserver.instances.push(this);
-  }
-
-  trigger() {
-    this.callback([], this as unknown as MutationObserver);
-  }
+/** A ref the Run's page state resolves to `ref` itself, which the page names `element` by. */
+function resolvesTo(ref: string, element: Element) {
+  nameElement(element, ref);
+  pageStateResolutions.set(ref, { node: { ref } });
 }
+
+/** Tells the registry's watch the page changed. */
+const pageChanges = () => latestStandIn()?.trigger();
 
 const emptyManifest = (className: string): PomManifest => ({
   className,
@@ -138,15 +166,14 @@ describe("live Page Object registry", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.useFakeTimers();
-    FakeMutationObserver.instances = [];
     vi.stubGlobal("window", {});
     vi.stubGlobal("document", { documentElement: {} });
-    vi.stubGlobal("MutationObserver", FakeMutationObserver);
   });
 
   afterEach(() => {
     started?.stop();
     started = undefined;
+    rootMeasure.current = undefined;
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -176,9 +203,7 @@ describe("live Page Object registry", () => {
 
     first.dispose();
     expect(registry.listRegisteredPoms()).toHaveLength(0);
-    expect(
-      FakeMutationObserver.instances[0]?.disconnect
-    ).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
 
     const secondPage = {} as Page;
     const second = createAymeRuntime(secondPage);
@@ -252,40 +277,26 @@ describe("live Page Object registry", () => {
     expect(first.page).toBeDefined();
     expect(second.page).toBe(first.page);
 
-    expect(FakeMutationObserver.instances).toHaveLength(1);
-    expect(FakeMutationObserver.instances[0]?.observe).toHaveBeenCalledWith(
-      document.documentElement,
-      {
-        attributes: true,
-        childList: true,
-        characterData: true,
-        subtree: true,
-      }
-    );
+    // One watch of the page, whose first probe run is due.
     expect(vi.getTimerCount()).toBe(1);
 
     session.unregister(FirstPage);
-    expect(
-      FakeMutationObserver.instances[0]?.disconnect
-    ).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(1);
 
     session.unregister(SecondPage);
-    expect(
-      FakeMutationObserver.instances[0]?.disconnect
-    ).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("gives page state its Page Object Roots only while a Page Object is registered", async () => {
+  it("makes captures wait for the probe only while a Page Object is registered", async () => {
     const { registry, session } = await setup();
     class FirstPage {}
     registry.registerCompiledPom(FirstPage, emptyManifest("FirstPage"));
 
     session.register(FirstPage);
-    expect(pageObjectStructure.source).toBe(registry.getRegisteredPomStructure);
+    expect(pageObjectProbe.source).toBeTypeOf("function");
 
     session.unregister(FirstPage);
-    expect(pageObjectStructure.source).toBeUndefined();
+    expect(pageObjectProbe.source).toBeUndefined();
   });
 
   it("coalesces DOM mutations and ignores unchanged observations", async () => {
@@ -307,10 +318,9 @@ describe("live Page Object registry", () => {
     expect(count).toHaveBeenCalledOnce();
     expect(subscriber).toHaveBeenCalledOnce();
 
-    const observer = FakeMutationObserver.instances[0];
-    observer?.trigger();
-    observer?.trigger();
-    observer?.trigger();
+    pageChanges();
+    pageChanges();
+    pageChanges();
     expect(vi.getTimerCount()).toBe(1);
 
     await vi.runOnlyPendingTimersAsync();
@@ -334,10 +344,7 @@ describe("live Page Object registry", () => {
     session.register(UpdatingPage);
     const subscriber = vi.fn();
     const unsubscribe = registry.subscribeToRegisteredPoms(subscriber);
-    const activity = setInterval(
-      () => FakeMutationObserver.instances[0]?.trigger(),
-      5
-    );
+    const activity = setInterval(pageChanges, 5);
     let finished = false;
     const refresh = Promise.all([
       registry.probeRegisteredPomMembers(),
@@ -1166,15 +1173,13 @@ describe("live Page Object registry", () => {
     ).toEqual([["save", false]]);
   });
 
-  it("lists a root's tools absent once its element left the page, before the next probe", async () => {
+  it("lists a root's tools absent once the probe that follows a change finds its element left the page", async () => {
     const { registry, session, ayme, rootOf } = await setup();
-    const element = { isConnected: true } as { isConnected: boolean };
+    const element = { isConnected: true } as Element;
+    let count = 1;
 
     class RootedPage {
-      readonly root = brandedLocator(
-        { count: async () => 1 },
-        element as Element
-      );
+      readonly root = brandedLocator({ count: async () => count }, element);
       save() {}
     }
     ayme({ root: rootOf })(RootedPage);
@@ -1187,7 +1192,9 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools()).toHaveLength(1);
 
-    element.isConnected = false;
+    count = 0;
+    pageChanges();
+    await vi.runOnlyPendingTimersAsync();
     expect(registry.listRegisteredPomTools()).toEqual([
       expect.objectContaining({ present: false, available: false }),
     ]);
@@ -1220,21 +1227,18 @@ describe("live Page Object registry", () => {
     ]);
     expect(subscriber).toHaveBeenCalledOnce();
 
-    FakeMutationObserver.instances[0]?.trigger();
+    pageChanges();
     await vi.runOnlyPendingTimersAsync();
     expect(subscriber).toHaveBeenCalledOnce();
   });
 
   it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
-    const { registry, session, ayme, rootOf } = await setup(
-      alwaysReaches({
-        measurePomRoot: async () => ({
-          present: true,
-          available: false,
-          blocker: {} as Element,
-        }),
-      })
-    );
+    rootMeasure.current = () => ({
+      present: true,
+      available: false,
+      inTheWay: ["e1"],
+    });
+    const { registry, session, ayme, rootOf } = await setup();
 
     class CoveredPage {
       readonly root = brandedLocator({ count: async () => 1 });
@@ -1316,12 +1320,8 @@ describe("live Page Object registry", () => {
     let panelRootCount = 0;
     const dialogElement = { isConnected: true } as Element;
     const panelElement = { isConnected: true } as Element;
-    pageStateResolutions.set("e21", {
-      node: { ref: "e21", element: dialogElement },
-    });
-    pageStateResolutions.set("e22", {
-      node: { ref: "e22", element: panelElement },
-    });
+    resolvesTo("e21", dialogElement);
+    resolvesTo("e22", panelElement);
     const confirm = vi.fn();
     const save = vi.fn();
     class NestedPage {
@@ -1384,7 +1384,7 @@ describe("live Page Object registry", () => {
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
-    FakeMutationObserver.instances[0]?.trigger();
+    pageChanges();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "Dialog.confirm",
@@ -1397,7 +1397,7 @@ describe("live Page Object registry", () => {
 
     dialogRootCount = 0;
     panelRootCount = 0;
-    FakeMutationObserver.instances[0]?.trigger();
+    pageChanges();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools()).toHaveLength(0);
   });
@@ -1469,7 +1469,7 @@ describe("live Page Object registry", () => {
     ]);
 
     rootCount = 1;
-    FakeMutationObserver.instances[0]?.trigger();
+    pageChanges();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "ItemsPage.addItem",
@@ -1481,7 +1481,7 @@ describe("live Page Object registry", () => {
     ]);
 
     rootCount = 0;
-    FakeMutationObserver.instances[0]?.trigger();
+    pageChanges();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "ItemsPage.addItem",
@@ -1509,12 +1509,8 @@ describe("live Page Object registry", () => {
       brandedLocator({ count: async () => 1 }, replacementElement),
       { archive: replacementArchive }
     );
-    pageStateResolutions.set("e2", {
-      node: { ref: "e2", element: secondElement },
-    });
-    pageStateResolutions.set("e3", {
-      node: { ref: "e3", element: replacementElement },
-    });
+    resolvesTo("e2", secondElement);
+    resolvesTo("e3", replacementElement);
     let currentItems = [first, second];
     const getItems = vi.fn(async () => currentItems.slice());
     class ItemsPage {
@@ -1558,6 +1554,7 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
+    pageChanges();
     await registry.probeRegisteredPomMembers();
     await expect(
       tool.execute({ ref: "e3", args: {} }, pomRunContext())
@@ -1582,9 +1579,7 @@ describe("live Page Object registry", () => {
     const items = [
       rooted(brandedLocator({ count: async () => 1 }, knownElement), {}),
     ];
-    pageStateResolutions.set("e2", {
-      node: { ref: "e2", element: addedElement },
-    });
+    resolvesTo("e2", addedElement);
     class ItemsPage {
       readonly items = items;
     }
@@ -1633,8 +1628,12 @@ describe("live Page Object registry", () => {
     const { registry, session, ayme, rootOf } = await setup();
     const rootElement = { isConnected: true } as Element;
     const save = vi.fn();
+    let matches = 1;
     class RootedPage {
-      readonly root = brandedLocator({ count: async () => 1 }, rootElement);
+      readonly root = brandedLocator(
+        { count: async () => matches },
+        rootElement
+      );
       save() {
         save();
       }
@@ -1649,10 +1648,9 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected the Page Object Tool.");
-    pageStateResolutions.set("e5", {
-      node: { ref: "e5", element: rootElement },
-    });
+    resolvesTo("e5", rootElement);
     // A second element now matches the root's locator, after the first.
+    matches = 2;
     locatorElements.set(page.root, [
       rootElement,
       { isConnected: true } as Element,
@@ -1660,7 +1658,9 @@ describe("live Page Object registry", () => {
 
     await expect(
       tool.execute({ ref: "e5", args: {} }, pomRunContext())
-    ).rejects.toThrow('RootedPage on ref "e5" is unavailable');
+    ).rejects.toThrow(
+      'Cannot call save on ref "e5": it is not a root of RootedPage'
+    );
     expect(save).not.toHaveBeenCalled();
 
     pageStateResolutions.clear();
@@ -1677,7 +1677,7 @@ describe("live Page Object registry", () => {
       pin: vi.fn(),
       rename,
     });
-    pageStateResolutions.set("e2", { node: { ref: "e2", element } });
+    resolvesTo("e2", element);
     class ItemsPage {
       readonly items = [item];
     }

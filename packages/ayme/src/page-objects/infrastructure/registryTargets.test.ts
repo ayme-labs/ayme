@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { ayme } from "../domain/decorators";
 import { alwaysReaches } from "../../test-utils/reach.testSupport";
 import { rooted, rootOf } from "../../test-utils/pomRoot.testSupport";
@@ -123,9 +124,14 @@ describe("registered Page Object targets", () => {
       "ListPage.items[1].nameButton",
     ]);
     expect(
-      targets
-        .filter(({ element }) => element === milk || element === eggs)
-        .map(({ path }) => path)
+      (
+        await Promise.all(
+          targets.map(async ({ path, ref }) => {
+            const element = await elementOfRef(ref);
+            return element === milk || element === eggs ? path : undefined;
+          })
+        )
+      ).filter((path) => path !== undefined)
     ).toEqual([
       rootTargetPath("ListPage.items[0]"),
       rootTargetPath("ListPage.items[1]"),
@@ -155,12 +161,17 @@ describe("registered Page Object targets", () => {
     const targets = await listRegisteredPomTargets();
 
     expect(rootTargetPath("Editor")).not.toBe("Editor.root");
-    expect(targets.map(({ path, element }) => [path, element.tagName])).toEqual(
-      [
-        [rootTargetPath("Editor"), "SECTION"],
-        ["Editor.root", "P"],
-      ]
-    );
+    expect(
+      await Promise.all(
+        targets.map(async ({ path, ref }) => [
+          path,
+          (await elementOfRef(ref))?.tagName,
+        ])
+      )
+    ).toEqual([
+      [rootTargetPath("Editor"), "SECTION"],
+      ["Editor.root", "P"],
+    ]);
   });
 
   it("names each target's member locator, as an Interaction on it names it", async () => {
@@ -228,9 +239,11 @@ describe("registered Page Object targets", () => {
     });
     session.register(ListPage);
     const items = async () =>
-      (await listRegisteredPomTargets())
-        .filter(({ path }) => path === "ListPage.items")
-        .map(({ element }) => element.textContent);
+      Promise.all(
+        (await listRegisteredPomTargets())
+          .filter(({ path }) => path === "ListPage.items")
+          .map(async ({ ref }) => (await elementOfRef(ref))?.textContent)
+      );
 
     expect(await items()).toEqual(["Milk"]);
     const reads = rootReads;
@@ -303,10 +316,12 @@ describe("registered Page Object targets", () => {
     session.register(Todos);
     const [a, b] = document.querySelectorAll("input");
     const targets = async () =>
-      (await listRegisteredPomTargets()).map(({ path, element }) => [
-        path,
-        element.id,
-      ]);
+      Promise.all(
+        (await listRegisteredPomTargets()).map(async ({ path, ref }) => [
+          path,
+          (await elementOfRef(ref))?.id,
+        ])
+      );
 
     expect(await targets()).toEqual([[rootTargetPath("Todos"), "a"]]);
     a.checked = false;

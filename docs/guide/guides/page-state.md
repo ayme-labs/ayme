@@ -27,13 +27,31 @@ In each case, take a `snapshot` and use the ref it prints for the node. When an 
 
 ## Keep parts of the page out
 
-Pass `ignore` where Ayme starts to drop elements, and everything inside them, from the page state:
+Pass `ignore` where Ayme starts to drop elements, and everything inside them, from the page state. Its value is a CSS selector:
 
 ```ts
 createAyme({
-  ignore: (element) => element.matches("[data-assistant-panel]"),
+  ignore: "[data-assistant-panel]",
 });
 ```
+
+For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+
+```ts
+const assistantName = "Assistant";
+
+createAyme({
+  ignore: (page) => page.getByRole("complementary", { name: assistantName }),
+});
+```
+
+In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
+
+Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on. An element an action adds just before a full page load can appear in that action's Change Record, since the matches are from when the action began.
+
+A filter, here and in a Custom Tool, matches only the page's own document: a Locator into a frame, such as `page.frameLocator("iframe").locator(".private")`, matches nothing, as the page state holds none of a frame's contents.
+
+To leave out an element your own code owns, such as a widget you mount beside the app, put the attribute `data-ayme-exclude` on it, or set it from code with the exported `EXCLUDE_ATTRIBUTE` (`import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme"`). The element and everything in it is out of every capture, picking and clicks pass through it, and screenshots hide it. The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
 
 `ignore` changes page state only; it does not change which tools are published.
 
