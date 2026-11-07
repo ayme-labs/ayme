@@ -51,4 +51,6 @@ Duplicate runtime: serve the mcp-fixture app
 (`cd apps/mcp-fixture && pnpm exec vite --config app/vite.config.ts --port 4730`)
 and pass `--target http://127.0.0.1:4730/`.
 
-The findings are in the thread report, not here.
+The findings are in the thread report, not here. The Playwright CLI run
+(`scripts/drive-cli.mjs`) and the bundle size breakdown (`scripts/size/`) are
+in `CLI-AND-SIZE.md`.
