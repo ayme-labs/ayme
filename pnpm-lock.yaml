@@ -550,6 +550,40 @@ importers:
         specifier: ^3.3.11
         version: 3.3.11(typescript@6.0.3)
 
+  apps/inject-spike:
+    dependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../../packages/ayme
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
+    devDependencies:
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      "@ayme-dev/unplugin-ayme":
+        specifier: workspace:*
+        version: link:../../packages/unplugin-ayme
+      "@modelcontextprotocol/sdk":
+        specifier: ^1.32.0
+        version: 1.32.0(supports-color@10.2.2)(zod@4.6.5)
+      "@playwright/mcp":
+        specifier: 0.0.84
+        version: 0.0.84
+      "@playwright/test":
+        specifier: ^1.64.0
+        version: 1.64.0
+      playwright:
+        specifier: ^1.64.0
+        version: 1.64.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.2
+        version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
+
   apps/inspector-fixture:
     dependencies:
       "@ayme-dev/ayme":
@@ -4302,6 +4336,14 @@ packages:
     resolution:
       {
         integrity: sha512-oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
+
+  "@playwright/mcp@0.0.84":
+    resolution:
+      {
+        integrity: sha512-weqLrA7/D8MJzNV9/t3Hnjp100tS2sxFXKeb2gH6Nhktqmdfvx5qRA9AZ5Mhjnre1jY0wltsrRK5VZS5NBgcvw==,
       }
     engines: { node: ">=18" }
     hasBin: true
@@ -11562,6 +11604,14 @@ packages:
     engines: { node: ">=20" }
     hasBin: true
 
+  playwright-core@1.65.0-alpha-2026-10-30:
+    resolution:
+      {
+        integrity: sha512-LPMw8B/HRQKMcJeXTqWSrkB/AfCKKmbDQMbu0p7zg8MgibOWaKMjZWR/StAtrQkOxvOmZEju1o1TnPgdoOCwrg==,
+      }
+    engines: { node: ">=20" }
+    hasBin: true
+
   playwright@1.64.0:
     resolution:
       {
@@ -11574,6 +11624,14 @@ packages:
     resolution:
       {
         integrity: sha512-/5XDUMxpOd/9AojJtWDFIRV3EJZNQ0AwvK69wgt3CPzy8wTgiBG9pX45VfxtqtvIRGwfWzMhrvawNKreG69Snw==,
+      }
+    engines: { node: ">=20" }
+    hasBin: true
+
+  playwright@1.65.0-alpha-2026-10-30:
+    resolution:
+      {
+        integrity: sha512-dmAJMVHKzHvMQjn+XDcaq/pxaZ0W6n8i78rwTM+VGRtQ3WBF5ZiSdB1yL/cyoYUGUMwg3jxN65KqC9cERaCbIg==,
       }
     engines: { node: ">=20" }
     hasBin: true
@@ -16722,6 +16780,11 @@ snapshots:
       playwright: 1.64.0-alpha-1790635538000
       playwright-core: 1.64.0-alpha-1790635538000
 
+  "@playwright/mcp@0.0.84":
+    dependencies:
+      playwright: 1.65.0-alpha-2026-10-30
+      playwright-core: 1.65.0-alpha-2026-10-30
+
   "@playwright/test@1.64.0":
     dependencies:
       playwright: 1.64.0
@@ -18383,6 +18446,34 @@ snapshots:
       - msw
       - utf-8-validate
       - vite
+
+  "@vitest/browser-playwright@4.1.11(playwright@1.65.0-alpha-2026-10-30)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
+    dependencies:
+      "@vitest/browser": 4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/mocker": 4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+      playwright: 1.65.0-alpha-2026-10-30
+      tinyrainbow: 3.1.1
+      vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+    optional: true
+
+  "@vitest/browser-playwright@4.1.11(playwright@1.65.0-alpha-2026-10-30)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
+    dependencies:
+      "@vitest/browser": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/mocker": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+      playwright: 1.65.0-alpha-2026-10-30
+      tinyrainbow: 3.1.1
+      vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+    optional: true
 
   "@vitest/browser@4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
     dependencies:
@@ -21458,6 +21549,8 @@ snapshots:
 
   playwright-core@1.64.0-alpha-1790635538000: {}
 
+  playwright-core@1.65.0-alpha-2026-10-30: {}
+
   playwright@1.64.0:
     dependencies:
       playwright-core: 1.64.0
@@ -21465,6 +21558,10 @@ snapshots:
   playwright@1.64.0-alpha-1790635538000:
     dependencies:
       playwright-core: 1.64.0-alpha-1790635538000
+
+  playwright@1.65.0-alpha-2026-10-30:
+    dependencies:
+      playwright-core: 1.65.0-alpha-2026-10-30
 
   pluralize@8.0.0: {}
 
@@ -23147,7 +23244,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       "@types/node": 24.13.3
-      "@vitest/browser-playwright": 4.1.11(playwright@1.64.0)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/browser-playwright": 4.1.11(playwright@1.65.0-alpha-2026-10-30)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8": 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       jsdom: 30.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:
@@ -23177,7 +23274,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       "@types/node": 24.13.3
-      "@vitest/browser-playwright": 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/browser-playwright": 4.1.11(playwright@1.65.0-alpha-2026-10-30)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8": 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       jsdom: 30.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:

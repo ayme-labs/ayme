@@ -1,0 +1,25 @@
+{
+  "name": "@ayme-dev/inject-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway spike: inject a standalone Ayme bundle into a page that does not ship Ayme.",
+  "scripts": {
+    "build": "vite build",
+    "drive": "node scripts/drive.mjs"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@playwright/mcp": "0.0.84",
+    "@playwright/test": "^1.64.0",
+    "playwright": "^1.64.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2"
+  }
+}

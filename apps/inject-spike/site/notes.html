@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Spike notes</title>
+  </head>
+  <body>
+    <main>
+      <h1>Spike notes</h1>
+      <label>Note <input type="text" id="note" /></label>
+      <button type="button" id="add">Add</button>
+      <ul id="items"></ul>
+    </main>
+    <script>
+      document.querySelector("#add").addEventListener("click", () => {
+        const li = document.createElement("li");
+        li.textContent = document.querySelector("#note").value;
+        document.querySelector("#items").append(li);
+      });
+    </script>
+  </body>
+</html>
