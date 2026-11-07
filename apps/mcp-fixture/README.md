@@ -5,6 +5,8 @@ It is private and never published.
 
 ```
 app/         the fixture page, its startup code and the Vite config
+outside/     the .ayme folder of a project that keeps its Page Objects outside
+             the app: the entry and the Page Object of plain.html it lists
 tests/       the shared fixtures (fixtures.ts), one spec per concern, and
              appProcess.ts, a stand-in App Process
 ```
@@ -25,6 +27,11 @@ fixture calls `ayme_connect`, opens the link in the Playwright page and waits
 until the page's tools are MCP tools. Assertions go through the MCP client, and
 through the page only for what the page itself shows, such as its address bar.
 Add a spec file for a new concern and reuse `fixtures.ts`.
+
+`servedPageObjects.spec.ts` copies `outside/.ayme` into its test's output
+folder, starts `ayme mcp` there, and opens `plain.html` in a context whose
+init script is the `.ayme/init-script.js` the server wrote, so the page gets
+the runtime and the Page Objects the server serves.
 
 `appProcess.ts` stands in for an App Process: a Node script that starts Ayme
 with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The

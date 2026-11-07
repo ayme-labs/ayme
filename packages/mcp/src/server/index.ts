@@ -20,6 +20,12 @@ import {
   type Pairing,
 } from "../pairing";
 import {
+  buildPageObjects,
+  findPageObjectsEntry,
+  servedPageObjectsServer,
+  writeInitScript,
+} from "../served-page-objects";
+import {
   createMcpToolServer,
   saveToScreenshotFolder,
   screenshotFolder,
@@ -35,31 +41,52 @@ const log = (message: string) =>
  * server on the loopback interface for the page, on `port` if given, else on
  * the first free port of the server's range. Stops when the agent closes
  * stdio.
+ *
+ * With a Page Objects entry, `pageObjects` or else `.ayme/page-objects.ts`
+ * in the working folder, it also builds the entry, serves the build on the
+ * same server, and writes `.ayme/init-script.js`, which loads it into a
+ * page that doesn't ship Ayme. Experimental (ADR-0037).
  */
 export async function startMcpServer({
   port: pinnedPort,
-}: { port?: number } = {}): Promise<void> {
+  pageObjects,
+}: { port?: number; pageObjects?: string } = {}): Promise<void> {
+  const folder = process.cwd();
+  const entry = findPageObjectsEntry({ folder, named: pageObjects });
   const connection = new AgentConnection();
   const token = randomUUID();
   // The MCP server starts after the page's: a page may say hello before it.
   let agentName = (): string | undefined => undefined;
-  // The external Inspector is served by this server and relayed over its
-  // page channel: no other server and no other port.
+  // The external Inspector and the Page Objects entry's build are served
+  // by this server, the Inspector relayed over its page channel: no other
+  // server and no other port.
+  const built = entry === undefined ? undefined : buildPageObjects(entry);
+  built?.then(
+    () => log(`Built the Page Objects entry ${entry}.`),
+    (error: unknown) => log((error as Error).message)
+  );
   const channel = createPageChannelServer({
     connection,
     token,
     imageFolder: screenshotFolder,
     agent: () => agentName(),
-    extension: externalInspectorServer({
-      relay: new InspectorRelay(connection),
-      readBuild: readExternalBuild,
-    }),
+    extensions: [
+      externalInspectorServer({
+        relay: new InspectorRelay(connection),
+        readBuild: readExternalBuild,
+      }),
+      ...(built ? [servedPageObjectsServer(() => built)] : []),
+    ],
   });
   const port =
     pinnedPort === undefined
       ? await listenOnFirstFreePort(channel.server, SERVER_PORTS)
       : await listenOnPort(channel.server, pinnedPort);
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
+  if (entry !== undefined)
+    log(
+      `Serving ${entry} to pages that load ${await writeInitScript({ folder, port })}.`
+    );
 
   const stopBehaviours = connectionBehaviours.map((behaviour) =>
     behaviour({ connection, log })

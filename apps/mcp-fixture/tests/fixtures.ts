@@ -15,6 +15,7 @@ export {
   Agent,
   SERVER_TOOLS,
   aymeCommand,
+  connectPage,
   freePort,
   startAgent,
 } from "@ayme-dev/mcp/testing";

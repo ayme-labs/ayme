@@ -42,9 +42,9 @@ export type ServerExtension = {
  * localhost or a local process (see `admit`), and each accepted connection
  * attaches to `connection` once it says hello: as the page, or as an App
  * Process beside it. A `/probe` connection is closed at once and never
- * attaches. `extension` lets something else answer the HTTP requests and
- * WebSocket upgrades it claims, such as the external Inspector's page;
- * everything else is the channel's. Returns the HTTP server, not yet
+ * attaches. `extensions` let something else answer the HTTP requests and
+ * WebSocket upgrades one of them claims, in order, such as the external
+ * Inspector's page; everything else is the channel's. Returns the HTTP server, not yet
  * listening, and what closes it with every page connection, answering the
  * calls still waiting.
  */
@@ -53,7 +53,7 @@ export function createPageChannelServer({
   token,
   imageFolder,
   agent,
-  extension,
+  extensions = [],
 }: {
   connection: AgentConnection;
   token: string;
@@ -64,10 +64,11 @@ export function createPageChannelServer({
    * read at each hello, which the page's welcome names.
    */
   agent: () => string | undefined;
-  extension?: ServerExtension;
+  extensions?: readonly ServerExtension[];
 }): { server: Server; close(): void } {
   const server = createServer((request, response) => {
-    if (extension?.request(request, response)) return;
+    if (extensions.some((extension) => extension.request(request, response)))
+      return;
     response.statusCode = 426;
     response.end("The Ayme MCP server accepts WebSocket connections only.");
   });
@@ -80,7 +81,10 @@ export function createPageChannelServer({
   });
 
   server.on("upgrade", (request, socket, head) => {
-    if (extension?.upgrade(request, socket, head)) return;
+    if (
+      extensions.some((extension) => extension.upgrade(request, socket, head))
+    )
+      return;
     const admission = admit({
       path: request.url ?? "",
       origin: request.headers.origin,
@@ -127,7 +131,7 @@ export function createPageChannelServer({
   return {
     server,
     close() {
-      extension?.close();
+      for (const extension of extensions) extension.close();
       connection.close();
       for (const ws of sockets.clients) ws.terminate();
       sockets.close();

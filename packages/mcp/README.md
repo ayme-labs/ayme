@@ -30,7 +30,8 @@ when it stops. With the option off, the page requests none of its code. It
 works whether WebMCP publication is on or off.
 
 For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
-`ayme mcp` with an MCP client (`startAgent`) and pairs a Playwright page through
+`ayme mcp` with an MCP client (`startAgent`, in another folder with a leading
+`{ cwd }`) and pairs a Playwright page through
 a connect link (`connectPage`); `Agent.call` returns the tool's own text and
 the change note apart. `freePort` picks a port outside the range a page scans,
 for `startAgent("--port", ...)` when no page should auto-pair with the server,
