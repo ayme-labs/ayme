@@ -38,20 +38,22 @@ createAyme({ customTools: [highlight] });
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
-- `filter` is a CSS selector, or a function the page runs over each element. A function is sent to the page by its source, so it must be self-contained, as in [a function filter](#a-function-filter) below.
+- `filter` is a CSS selector, or a function that takes the session's Playwright `Page` and returns a `Locator`, as in [a Locator filter](#a-locator-filter) below.
 - A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
 
-## A function filter
+## A Locator filter
 
-A `filter` that a selector cannot express is a function, which the page runs over each element. It runs in the page on its own, so it may use its own arguments and the page's globals, but not a variable from the code around it:
+A `filter` that a selector cannot express is a function that takes the session's Playwright `Page` and returns a `Locator` of the elements the Goal Loop may offer. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
+const linksTable = "Shared links";
+
 const copyLink: CustomTool = {
   name: "copy_link",
   description: "Copy the link a row points to.",
-  filter: (element) =>
-    element instanceof HTMLAnchorElement && element.closest("tr") !== null,
+  filter: (page) =>
+    page.getByRole("table", { name: linksTable }).getByRole("link"),
   async execute({ locator }) {
     const href = await locator.evaluate(
       (element) => (element as HTMLAnchorElement).href
@@ -62,17 +64,15 @@ const copyLink: CustomTool = {
 };
 ```
 
-Ayme checks the function when the session starts. A function that reads a variable from the code around it, such as a selector held in a constant of the module, is rejected there with a `ToolInputError` that names the variable. Pass a CSS selector for that case, or move the value inside the function. A native or bound function cannot be sent to the page, so it is rejected too.
+In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names the `filter` of the Custom Tool.
 
-That check runs the function once, on the page's root element, so it catches a read the function makes on that run and no more. A read behind a condition, such as `element.matches(".private") && privateEnabled`, passes when the condition is false for the root, and is reported the first time a capture reaches an element that takes that branch. That report is a `ToolInputError` too: it names the filter, here the `filter` of the Custom Tool, and the variable. Ayme does not analyse the function's source, so keep a function filter free of outside variables on every branch, or use a CSS selector.
-
-A function may be written as a method (`filter(element) { … }`) as well as an arrow function. Where the page forbids evaluating code (a Content Security Policy without `unsafe-eval`), a function filter works only when Ayme runs in the page; Ayme driving a page from Node through `@ayme-dev/ayme/playwright` rejects it with a `ToolInputError` that recommends a CSS selector.
+Ayme resolves the Locator again each time, right before it reads the page, so the elements it offers follow the page. One that appears after the Locator resolved and before the page was read is offered from the next page state on.
 
 ## Migrating from the earlier shape
 
 Two things changed for apps that registered a Custom Tool or a filter before:
 
-- A filter, here and in the `ignore` option, takes a CSS selector or a self-contained function over an element, as above. It no longer takes a function that closes over the code around it. Replace such a function with a selector, or move what it reads inside it.
+- A filter, here and in the `ignore` option, takes a CSS selector or a function from the session's `Page` to a `Locator`, as above. It no longer takes a function over an `Element`: replace `(element) => element.matches("[data-x]")` with the selector `"[data-x]"`, and a rule a selector cannot say with a Locator, such as `(page) => page.getByRole("row").getByRole("link")`.
 - `execute` receives `{ ref, locator }`, never an `element`. A Custom Tool written as `execute({ element })` finds `element` undefined: act through the Playwright `Locator`, as in `locator.evaluate((element) => …)`, which runs your code on the element in the page.
 
 ## Use other tools from a Custom Tool

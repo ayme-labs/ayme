@@ -1,96 +1,96 @@
-// Registering an element filter: a host checks a filter where the module runs
-// it before anything runs it: the browser runtime, whose realm is the page,
-// runs the check itself; a Node host asks through the slot's `check`. A filter that reads
-// the code around it is refused here, with the identifier it reads named.
+// Registering an element filter when a session starts: a selector is checked
+// where the module matches it (the browser runtime, whose realm is the page,
+// checks it itself; a Node host asks through the slot's `check`), and kept as
+// data. A function is called once, with the session's Page, where the session
+// runs, and the Locator it returns is kept, for the host to resolve before
+// each capture.
+import type { Locator, Page } from "@playwright/test";
+
 import {
   checkFilter,
-  filterData,
   ToolInputError,
   type ElementFilter,
   type FilterCheck,
-  type FilterData,
-  type InPageFilter,
+  type SessionFilter,
 } from "../../shared";
 
-/** The advice every rejected function filter carries. */
-const runsOnItsOwn =
-  "A filter function runs in the page on its own, so it cannot use variables from the code around it: pass a CSS selector, or move what it needs inside the function.";
-
 /**
- * Checks `filter` for a registration named `name`, in the realm of the page
- * whose root element is `root`, and returns it as data for the module. Throws a
- * `ToolInputError` when the page cannot run it.
+ * `filter` for a registration named `name`, as "`ignore`" or "`filter` of
+ * the Custom Tool `x`", in the browser runtime: a selector checked against
+ * `root`, the page's root element, in the page's own realm, or the Locator a
+ * function returns for `page`. Throws a `ToolInputError` for a selector that
+ * does not parse, and for a function that throws or returns no Locator.
  */
 export function registerFilter(
   name: string,
   filter: ElementFilter,
-  root: Element
-): FilterData {
-  const data = filterData(filter);
-  return checkedFilter(name, filter, data, checkFilter(data, root), true);
+  { page, root }: { page: Page; root: Element }
+): SessionFilter {
+  if (typeof filter !== "string") return locatorOf(name, filter, page);
+  return checkedSelector(name, filter, checkFilter({ selector: filter }, root));
 }
 
 /**
- * Checks `filter` as a registration named `name`, as "`ignore`" or "`filter`
- * of the Custom Tool `x`", where the module runs it, asked through the slot's
- * `check`, and returns it as data for the module. Throws a `ToolInputError`
- * when the page cannot run it, a function included when the page forbids
- * `new Function`: the host's function cannot cross to the page.
+ * `filter` for a registration named `name` on `page`, as a Node host
+ * registers it: a selector checked where the module matches it, asked
+ * through the slot's `check`, or the Locator a function returns for `page`.
+ * Rejects as `registerFilter` throws.
  */
 export async function registerFilterThrough(
-  check: (data: FilterData) => Promise<FilterCheck>,
-  name: string,
-  filter: ElementFilter
-): Promise<FilterData> {
-  const data = filterData(filter);
-  return checkedFilter(name, filter, data, await check(data), false);
-}
-
-function checkedFilter(
+  check: (filter: { selector: string }) => Promise<FilterCheck>,
   name: string,
   filter: ElementFilter,
-  data: FilterData,
-  check: FilterCheck,
-  sameRealm: boolean
-): FilterData {
-  switch (check.kind) {
-    case "ok":
-      return data;
-    case "no-eval":
-      // The function itself reaches the module only in the page's own realm;
-      // a Node host's function cannot cross Playwright's argument boundary.
-      if (sameRealm) return { live: filter as InPageFilter };
-      throw new ToolInputError(
-        `The ${name} function cannot run in this page: the page forbids evaluating code, and a function from another process cannot be sent to it. Pass a CSS selector instead.`
-      );
-    case "bad-selector":
-      throw new ToolInputError(
-        `The ${name} is not a valid CSS selector: ${check.message}`
-      );
-    case "not-a-function":
-      throw new ToolInputError(
-        `The ${name} is not a function the page can run: a native or bound function cannot be sent to the page. Pass a CSS selector, or write the function in your code.`
-      );
-    case "reads":
-      throw new ToolInputError(
-        `The ${name} function reads \`${check.identifier}\`, which does not exist in the page. ${runsOnItsOwn}`
-      );
-  }
+  page: Page
+): Promise<SessionFilter> {
+  if (typeof filter !== "string") return locatorOf(name, filter, page);
+  return checkedSelector(name, filter, await check({ selector: filter }));
 }
 
-/**
- * What a capture throws when a filter reads the code around it on a branch
- * the registration's one check did not take (the check runs the function once,
- * on the document's root, so a read behind a condition is reported the first
- * time that branch runs), as a `ToolInputError` naming the registration and
- * the identifier; any other error as it is. The page names them in the
- * message it throws (`guarded`, in the page part).
- */
-export function filterFailure(error: unknown): unknown {
-  const message = error instanceof Error ? error.message : String(error);
-  const found = /ayme-filter-reads:(\S+?):([^\n]*)/.exec(message);
-  if (!found) return error;
-  return new ToolInputError(
-    `The ${found[2]} function reads \`${found[1]}\`, which does not exist in the page. It ran on an element the registration check did not reach, which runs the function once. ${runsOnItsOwn}`
+function checkedSelector(
+  name: string,
+  selector: string,
+  check: FilterCheck
+): SessionFilter {
+  if (check.kind === "bad-selector")
+    throw new ToolInputError(
+      `The ${name} is not a valid CSS selector: ${check.message}`
+    );
+  return { selector };
+}
+
+/** The Locator `filter` returns for `page`, or the `ToolInputError` that says why it gave none. */
+function locatorOf(
+  name: string,
+  filter: (page: Page) => Locator,
+  page: Page
+): SessionFilter {
+  let locator: unknown;
+  try {
+    locator = filter(page);
+  } catch (error) {
+    throw new ToolInputError(
+      `The ${name} function threw when the session started: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    );
+  }
+  if (!isLocator(locator))
+    throw new ToolInputError(
+      `The ${name} function did not return a Locator. It is called once, when the session starts, with the session's Page, and returns a Locator of it, such as \`(page) => page.getByRole("dialog")\`.`
+    );
+  return { locator };
+}
+
+/** What every Playwright Locator, over Playwright Lite or Playwright, can do. */
+const locatorMethods = ["evaluateAll", "count", "nth", "last", "locator"];
+
+/** Whether `value` is a Locator: Playwright's public API has no brand to test, so its shape tells. */
+function isLocator(value: unknown): value is Locator {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    locatorMethods.every(
+      (method) =>
+        typeof (value as Record<string, unknown>)[method] === "function"
+    )
   );
 }

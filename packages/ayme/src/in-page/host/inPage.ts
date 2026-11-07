@@ -21,13 +21,11 @@ import {
   type Capture,
   type ControlState,
   type DocumentToken,
-  type FilterData,
+  type FilterCheck,
   type NamedFilter,
   type Predicate,
 } from "../../shared";
 import type { CallName, CallResult } from "../page/call";
-import type { FilterCheck } from "../../shared";
-import { filterFailure } from "./filterRegistration";
 import type { CallOnName, CallOnResult } from "../page/callOn";
 import type {
   ActionInputs,
@@ -77,8 +75,15 @@ export type InPage = {
    * first when needed. Records nothing.
    */
   capture(options?: CaptureOptions): Promise<Capture>;
-  /** Checks a filter as a registration does: whether the page can run it, and what it reads. */
-  checkFilter(filter: FilterData): Promise<FilterCheck>;
+  /** Checks a selector filter as a registration does: whether it parses in the page. */
+  checkFilter(filter: { selector: string }): Promise<FilterCheck>;
+  /**
+   * Hands the module the elements `target` matches now, as this host's
+   * matches of `key`: the filter data `{ matches: key }` reads them in its
+   * captures from now on, until it hands that key's matches again. One call
+   * into the page.
+   */
+  match(target: Locator, key: string): Promise<void>;
   /**
    * Reach (ADR-0041) of the element `ref` names, measured in the page: what
    * a click would reach, and what blocks or takes it, named by Structural
@@ -517,18 +522,17 @@ export function createInPageHost(version = packageVersion): InPageHost {
 
     const inPage: InPage = {
       bound,
-      capture: async ({ elements, accepts, filters } = {}) => {
+      capture: ({ elements, accepts, filters } = {}) => {
         const ask =
           accepts || filters
             ? { ...(accepts && { accepts }), ...(filters && { filters }) }
             : undefined;
-        try {
-          return await call<Capture>("capture", [elements, ask]);
-        } catch (error) {
-          throw filterFailure(error);
-        }
+        return call<Capture>("capture", [elements, ask]);
       },
       checkFilter: (filter) => call<FilterCheck>("check", [filter]),
+      async match(target, key) {
+        await callOn<void>(target, "match", key);
+      },
       async begin({ elements } = {}) {
         return action(await call<Begun>("begin", [elements]), elements);
       },

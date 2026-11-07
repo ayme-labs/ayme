@@ -98,6 +98,11 @@ export function standInBrowserInPage(
     browserInPage: () => {
       throw new Error("A jsdom test has no in-page module to reach.");
     },
+    matchInDocument: () => {
+      throw new Error(
+        "A jsdom test has no in-page module to match a Locator in."
+      );
+    },
     captureDocument: (
       currentDocument: Document,
       inputs: ElementInputs,

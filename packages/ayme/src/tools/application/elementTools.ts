@@ -39,8 +39,9 @@ export type CustomTool = {
   /** The only instruction the model gets about this operation. */
   description: string;
   /**
-   * The elements the Goal Loop may offer: a CSS selector, or a self-contained
-   * function the page runs (see `ElementFilter`). Omitted = every node with a ref.
+   * The elements the Goal Loop may offer: a CSS selector, or a function the
+   * session calls once with its Page, returning the Locator of them (see
+   * `ElementFilter`). Omitted = every node with a ref.
    */
   filter?: ElementFilter;
   /**

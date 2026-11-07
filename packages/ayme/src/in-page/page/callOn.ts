@@ -8,7 +8,15 @@ import type { HostKey, Slot } from "./install";
 
 /** The slot's methods a host calls on the elements a Locator matches. */
 export type CallOnName =
-  "refs" | "cue" | "probe" | "mint" | "names" | "is" | "recommend" | "covered";
+  | "refs"
+  | "cue"
+  | "probe"
+  | "mint"
+  | "names"
+  | "is"
+  | "recommend"
+  | "covered"
+  | "match";
 
 export type CallOnArgument = {
   version: string;

@@ -468,77 +468,101 @@ export function inPageContract(lane: InPageLane) {
     });
   });
 
-  it("a selector and a self-contained function exclude the same subtree", async () => {
+  it("the elements a Locator matched exclude what a selector does, in the captures of the host that handed them", async () => {
     const page = await lane.newPage();
     await setBody(
       page,
-      '<button>Kept</button><aside id="ignored"><button>Ignored</button></aside>'
+      '<button>Kept</button><aside id="ignored" aria-label="Assistant"><button>Ignored</button></aside>'
     );
-    const host = lane.createHost(page);
+    const [host, other] = [lane.createHost(page), lane.createHost(page)];
+    const byMatches = () =>
+      page.evaluateHandle<ElementInputs>(
+        '({ ignores: [{ matches: "ignore" }] })'
+      );
+
     const bySelector = await host.inPage(page).capture({
       elements: await page.evaluateHandle<ElementInputs>(
         '({ ignores: [{ selector: "#ignored" }] })'
       ),
     });
-    const byFunction = await host.inPage(page).capture({
-      elements: await page.evaluateHandle<ElementInputs>(
-        '({ ignores: [{ source: "(element) => element.id === \\"ignored\\"" }] })'
-      ),
+    await host
+      .inPage(page)
+      .match(page.getByRole("complementary", { name: "Assistant" }), "ignore");
+    const byLocator = await host
+      .inPage(page)
+      .capture({ elements: await byMatches() });
+    const byAnotherHost = await other
+      .inPage(page)
+      .capture({ elements: await byMatches() });
+
+    expect(byLocator.excludedRefs).toEqual(bySelector.excludedRefs);
+    expect(bySelector.excludedRefs).toHaveLength(2);
+    expect(byAnotherHost.excludedRefs).toEqual([]);
+  });
+
+  it("a later match of a key replaces the elements the one before handed, so an element added between them is left out from the capture after the later one", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      '<aside aria-label="Panel"><button>First</button></aside>'
+    );
+    const inPageOf = lane.createHost(page).inPage(page);
+    const panels = page.getByRole("complementary", { name: "Panel" });
+    const capture = async () =>
+      inPageOf.capture({
+        elements: await page.evaluateHandle<ElementInputs>(
+          '({ ignores: [{ matches: "ignore" }] })'
+        ),
+      });
+
+    await inPageOf.match(panels, "ignore");
+    await page.evaluate(
+      `document.body.insertAdjacentHTML("beforeend", '<aside aria-label="Panel"><button>Second</button></aside>')`
+    );
+    const before = await capture();
+    await inPageOf.match(panels, "ignore");
+    const after = await capture();
+
+    expect(before.excludedRefs).toContain(refOf(before.fullText, '"First"'));
+    expect(before.excludedRefs).not.toContain(
+      refOf(before.fullText, '"Second"')
+    );
+    expect(after.excludedRefs).toContain(refOf(after.fullText, '"Second"'));
+  });
+
+  it("a Custom Tool's filter carries the refs of the elements its Locator matched under the tool's name, as a selector's", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      "<button>One</button><button data-x>Two</button><p data-x>Not captured on its own</p>"
+    );
+    const inPageOf = lane.createHost(page).inPage(page);
+
+    await inPageOf.match(page.getByRole("button", { name: "Two" }), "reveal");
+    const capture = await inPageOf.capture({
+      filters: [
+        { name: "byLocator", filter: { matches: "reveal" } },
+        { name: "bySelector", filter: { selector: "button[data-x]" } },
+        { name: "unmatched", filter: { matches: "never handed" } },
+      ],
     });
 
-    expect(byFunction.excludedRefs).toEqual(bySelector.excludedRefs);
-    expect(bySelector.excludedRefs).toHaveLength(2);
+    const two = refOf(capture.fullText, '"Two"');
+    expect(capture.accepted).toEqual({
+      "tool:byLocator": [two],
+      "tool:bySelector": [two],
+      "tool:unmatched": [],
+    });
   });
 
-  it("a filter that reads outer state on a branch the check did not take fails the capture, naming its registration and the identifier", async () => {
-    const page = await lane.newPage();
-    await setBody(page, '<button class="private">Secret</button>');
-    const host = lane.createHost(page);
-    const guarded =
-      '(element) => element.matches(".private") && privateEnabled';
-
-    const byIgnore = await host
-      .inPage(page)
-      .capture({
-        elements: await page.evaluateHandle<ElementInputs>(
-          `({ ignores: [{ source: ${JSON.stringify(guarded)} }] })`
-        ),
-      })
-      .catch((error: unknown) => error);
-    const byTool = await host
-      .inPage(page)
-      .capture({ filters: [{ name: "reveal", filter: { source: guarded } }] })
-      .catch((error: unknown) => error);
-
-    // The built package has its own class: the error is told by its name.
-    expect(byIgnore).toMatchObject({ name: "ToolInputError" });
-    expect((byIgnore as Error).message).toContain("`ignore`");
-    expect((byIgnore as Error).message).toContain("`privateEnabled`");
-    expect(byTool).toMatchObject({ name: "ToolInputError" });
-    expect((byTool as Error).message).toContain(
-      "`filter` of the Custom Tool `reveal`"
-    );
-    expect((byTool as Error).message).toContain("`privateEnabled`");
-  });
-
-  it("checks a filter as a registration does: a function that reads outer state names it", async () => {
+  it("checks a selector as a registration does: one that does not parse is a bad selector", async () => {
     const page = await lane.newPage();
     await setBody(page, "<button>Kept</button>");
     const host = lane.createHost(page);
 
-    expect(
-      await host.inPage(page).checkFilter({
-        source: "(element) => element.matches(panelSelector)",
-      })
-    ).toEqual({ kind: "reads", identifier: "panelSelector" });
-    expect(
-      await host.inPage(page).checkFilter({
-        source: "(element) => element.matches('#ok')",
-      })
-    ).toEqual({ kind: "ok" });
-    expect(
-      await host.inPage(page).checkFilter({ source: "Math.max.toString()" })
-    ).toEqual({ kind: "not-a-function" });
+    expect(await host.inPage(page).checkFilter({ selector: "#ok" })).toEqual({
+      kind: "ok",
+    });
     expect(
       await host.inPage(page).checkFilter({ selector: "[[not a selector" })
     ).toMatchObject({ kind: "bad-selector" });

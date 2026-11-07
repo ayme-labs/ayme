@@ -2,7 +2,7 @@
 // Playwright Lite page through which it installs the module, captures, runs
 // its actions and hears of its Visits.
 import { createPage } from "@ayme-dev/playwright-lite";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
   inPage,
   type ActionInputs,
@@ -61,7 +61,7 @@ export async function captureDocument(
   ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] } = {}
 ): Promise<Capture> {
   const page = browserPageOf(currentDocument);
-  // The inputs are plain data, which the module compiles in the page
+  // The inputs are plain data, which the module reads in the page
   // (ADR-0049); the handle carries them to Playwright Lite's page function.
   const elements = await page.evaluateHandle(() => inputs);
   try {
@@ -73,6 +73,18 @@ export async function captureDocument(
   } finally {
     void elements.dispose();
   }
+}
+
+/**
+ * Hands `currentDocument`'s module the elements `locator` matches now, under
+ * `key`, for the browser runtime's captures.
+ */
+export function matchInDocument(
+  currentDocument: Document,
+  locator: Locator,
+  key: string
+): Promise<void> {
+  return inPage(browserPageOf(currentDocument)).match(locator, key);
 }
 
 /**

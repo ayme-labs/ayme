@@ -5,7 +5,7 @@ import { tick } from "svelte";
 import { VERSION } from "svelte/compiler";
 import { get } from "svelte/store";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createAyme, RuntimeStateError } from "@ayme-dev/ayme";
+import { createAyme, createPage, RuntimeStateError } from "@ayme-dev/ayme";
 import { registerCompiledPom } from "@ayme-dev/ayme/internal";
 
 // A mount that throws leaves its started owners undestroyed, so the tests
@@ -124,7 +124,8 @@ const liveTools = ({ ayme }: UseAymeResult) =>
 it("C1: passes the options to the runtime session unchanged", () => {
   const options: UseAymeOptions = {
     pageFactory,
-    ignore: (element) => element.matches(".assistant"),
+    // The stand-in Page has no Locators: the filter returns one of Playwright Lite's.
+    ignore: () => createPage().locator(".assistant"),
     customTools: [],
     goalLoop: vi.fn(),
     webMCP: { enabled: false, toolNamePrefix: "ayme_" },

@@ -77,34 +77,34 @@ function browserTarget(options: AymeOptions): SessionTarget {
       typeof window === "undefined" ? processPeeks : peeksOf(key()),
     toolSources: browserToolSources,
     claim: (page) => createAymeRuntime(page),
-    // A filter the page cannot run is refused here, by this synchronous
-    // start: the browser's realm is the page, so checking is checking where
-    // the module runs it.
-    prepare: (options) => ({
-      ignore:
-        options.ignore === undefined
-          ? undefined
-          : registerFilter(
-              "`ignore`",
-              options.ignore,
-              document.documentElement
-            ),
-      customFilters: (options.customTools ?? []).flatMap(({ name, filter }) =>
-        filter === undefined
-          ? []
-          : [
-              {
-                name,
-                filter: registerFilter(
-                  `\`filter\` of the Custom Tool \`${name}\``,
-                  filter,
-                  document.documentElement
-                ),
-              },
-            ]
-      ),
-      customTools: options.customTools?.map(registerCustomTool),
-    }),
+    // A filter is registered here, by this synchronous start: the browser's
+    // realm is the page, so a selector is checked where the module matches
+    // it, and a function is called with the session's Page.
+    prepare: (options, page) => {
+      const on = { page, root: document.documentElement };
+      return {
+        ignore:
+          options.ignore === undefined
+            ? undefined
+            : registerFilter("`ignore`", options.ignore, on),
+        customFilters: (options.customTools ?? []).flatMap(
+          ({ name, filter }) =>
+            filter === undefined
+              ? []
+              : [
+                  {
+                    name,
+                    filter: registerFilter(
+                      `\`filter\` of the Custom Tool \`${name}\``,
+                      filter,
+                      on
+                    ),
+                  },
+                ]
+        ),
+        customTools: options.customTools?.map(registerCustomTool),
+      };
+    },
     latestRefOf: latestPageStateRefOf,
     feedback: (demo, signal) => {
       // Every session's Pages let pointer actions through the Inspector's

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Locator } from "@playwright/test";
 import { recordAgentImageRun } from "../tools/application";
 import { ayme } from "../page-objects/domain";
 import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
@@ -412,12 +413,21 @@ it("starts the Agent Connection while a session with agentConnection is started"
 it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnoreOf");
   try {
-    const ignore = (element: Element) => element.matches(".assistant");
+    // What a Locator can do, as the session tells one: nothing here runs it.
+    const locator = Object.fromEntries(
+      ["evaluateAll", "count", "nth", "last", "locator"].map((method) => [
+        method,
+        () => {},
+      ])
+    ) as unknown as Locator;
+    const ignore = vi.fn(() => locator);
     const runtime = createAyme({ pageFactory: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
+    expect(ignore).not.toHaveBeenCalled();
     const stop = start(runtime);
+    expect(ignore).toHaveBeenCalledOnce();
     expect(configureIgnore).toHaveBeenLastCalledWith(expect.anything(), {
-      source: expect.stringContaining(".assistant"),
+      locator,
     });
     stop();
     expect(configureIgnore).toHaveBeenLastCalledWith(

@@ -19,11 +19,13 @@ import type { ElementInputs } from "../../in-page";
 import {
   browserMonotonicClock,
   PREDICATES,
+  toolFilterKey,
   type Capture,
   type DocumentToken,
   type FilterData,
   type NamedFilter,
   type Predicate,
+  type SessionFilter,
 } from "../../shared";
 import { structureCapture, treeRefAllocator } from "../domain/capturedPage";
 import { createCursors, type Cursors } from "../domain/cursors";
@@ -67,17 +69,25 @@ export type PageStateHost = {
    * capture.
    */
   begin(inputs: () => Promise<ElementInputs>): Promise<PageAction>;
+  /**
+   * Hands the page's in-page module the elements `locator` matches now, under
+   * `key`, which a filter's data names in this host's captures from then on.
+   */
+  match(locator: Locator, key: string): Promise<void>;
 };
 
 /** What a capture reads besides the page, set by the session that owns it. */
 type CaptureSources = {
   /** What a capture waits for before it reads the page: a completed probe run. */
   probe?: () => Promise<void>;
-  /** The filters of the elements the app leaves out, and everything under them. */
-  ignores?: readonly FilterData[];
+  /** The filter of the elements the app leaves out, and everything under them. */
+  ignore?: SessionFilter;
   /** The Custom Tools' filters, whose accepted refs every capture carries. */
-  filters?: readonly NamedFilter[];
+  filters?: readonly NamedFilter<SessionFilter>[];
 };
+
+/** The key the `ignore` Locator's matches go to the module under; a Custom Tool's is `toolFilterKey`. */
+const IGNORE_KEY = "ignore";
 
 const sources = new WeakMap<Page, CaptureSources>();
 const cursorsByPage = new WeakMap<Page, Cursors>();
@@ -117,21 +127,30 @@ export function pageObjectsProbed(page: Page): Promise<void> | undefined {
   return sourcesOf(page).probe?.();
 }
 
-/** Package-internal: set while a runtime session is active, as checked filter data. */
+/**
+ * Package-internal: whether the session on `page` ignores what a Locator
+ * matches, whose matches a capture takes again before it reads the page.
+ */
+export function ignoresByLocator(page: Page): boolean {
+  const { ignore } = sourcesOf(page);
+  return ignore !== undefined && "locator" in ignore;
+}
+
+/** Package-internal: set while a runtime session is active, as the session registered it. */
 export function configurePageStateIgnoreOf(
   page: Page,
-  ignore: FilterData | undefined
+  ignore: SessionFilter | undefined
 ): void {
-  sourcesOf(page).ignores = ignore ? [ignore] : undefined;
+  sourcesOf(page).ignore = ignore;
 }
 
 /**
- * Package-internal: the Custom Tools' filters, as checked, under each tool's
- * name; every capture carries the refs each keeps.
+ * Package-internal: the Custom Tools' filters, as the session registered
+ * them, under each tool's name; every capture carries the refs each keeps.
  */
 export function configurePageStateFiltersOf(
   page: Page,
-  filters: readonly NamedFilter[] | undefined
+  filters: readonly NamedFilter<SessionFilter>[] | undefined
 ): void {
   sourcesOf(page).filters = filters;
 }
@@ -166,17 +185,42 @@ export function pageStateOf(page: Page, host: PageStateHost): PageStateStore {
 
 function createStore(page: Page, host: PageStateHost): PageStateStore {
   const read = sourcesOf(page);
+
+  /**
+   * `filter` as the module reads it in the capture that follows: a selector
+   * as it is, a Locator as the key of the elements it matches now, which go
+   * to the module under `key` first. The matches are taken here, a round
+   * trip before the capture reads them: an element that appears between the
+   * two is left out, or offered, only from the next capture on.
+   */
+  async function filterInput(
+    filter: SessionFilter,
+    key: string
+  ): Promise<FilterData> {
+    if ("selector" in filter) return filter;
+    await host.match(filter.locator, key);
+    return { matches: key };
+  }
+
   // What a capture leaves out besides the excluded subtrees, which the
   // module always does: the `ignore` of this runtime. The Page Object Roots it
   // places are those the module holds from the registry's probe runs,
   // current once the probe it waits for has resolved.
   async function elementInputs(): Promise<ElementInputs> {
     await read.probe?.();
-    return { ignores: [...(read.ignores ?? [])] };
+    return {
+      ignores: read.ignore ? [await filterInput(read.ignore, IGNORE_KEY)] : [],
+    };
   }
   const captureWith = async (accepts?: readonly Predicate[]) => {
     const inputs = await elementInputs();
-    return host.capture(inputs, { accepts, filters: read.filters ?? [] });
+    const filters = await Promise.all(
+      (read.filters ?? []).map(async ({ name, filter }) => ({
+        name,
+        filter: await filterInput(filter, toolFilterKey(name)),
+      }))
+    );
+    return host.capture(inputs, { accepts, filters });
   };
 
   let url = host.url();

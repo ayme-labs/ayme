@@ -7,7 +7,7 @@ import {
   listCustomToolsOf,
   listElementToolsOf,
 } from "./customToolStores";
-import type { NamedFilter } from "../../shared";
+import type { NamedFilter, SessionFilter } from "../../shared";
 import {
   registerCustomTool,
   type CustomTool,
@@ -17,7 +17,7 @@ import {
 /** Package-internal: set while a runtime session is active in the browser. */
 export function configureCustomTools(
   customTools: readonly CustomTool[] | undefined,
-  filters: readonly NamedFilter[] | undefined
+  filters: readonly NamedFilter<SessionFilter>[] | undefined
 ): void {
   configureCustomToolsOf(
     pageOfDocument(document),

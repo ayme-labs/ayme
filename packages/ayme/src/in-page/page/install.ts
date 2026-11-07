@@ -17,7 +17,6 @@ import type {
   ControlState,
   FilterCheck,
   DocumentToken,
-  FilterData,
   Predicate,
   ReachMeasurement,
 } from "../../shared";
@@ -31,6 +30,7 @@ import {
 import { watchActivity } from "./activity";
 import { readControls } from "./controls";
 import { createRefWorld, type CaptureAsk, type ElementInputs } from "./capture";
+import { createMatches } from "./filter";
 import { watchFullLoads, watchSameDocumentNavigations } from "./navigation";
 import { predicates } from "./predicates";
 import { createReach } from "./reach";
@@ -142,8 +142,14 @@ export type Slot = {
    * says what else it carries.
    */
   capture(host: HostKey, inputs?: ElementInputs, ask?: CaptureAsk): Capture;
-  /** Checks a filter as a registration does, before the page runs it. */
-  check(host: HostKey, filter: FilterData): FilterCheck;
+  /** Checks a selector filter as a registration does, before a capture matches it. */
+  check(host: HostKey, filter: { selector: string }): FilterCheck;
+  /**
+   * Keeps the elements a Locator filter of `host` matched, under `key`: the
+   * filter data `{ matches: key }` reads them in `host`'s captures from now
+   * on, until it hands that key's matches again.
+   */
+  match(host: HostKey, elements: readonly Element[], key: string): void;
   /**
    * Probes the Page Object Root the elements a Locator matched are, for
    * `host`, never scrolling or sending input. With a `round`, the probe
@@ -268,6 +274,8 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   // Pickings cancelled before they started: the cancel can arrive first.
   const cancelled = new Set<string>();
   const roots = createRoots({ measure: reach.measure, nameOf: refs.nameOf });
+  // Each host's Locator filters' matches, as it handed them last.
+  const matches = createMatches();
   const capture = (
     host: HostKey,
     inputs?: ElementInputs,
@@ -275,7 +283,11 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   ): Capture => ({
     document: token,
     url: location.href,
-    ...refs.capture(document.body, { ...inputs, ...roots.labelled(host) }, ask),
+    ...refs.capture(
+      document.body,
+      { ...inputs, ...roots.labelled(host), matched: matches.of(host) },
+      ask
+    ),
   });
 
   /** Tells `host` of `message`, if it is still bound and listening; answers when it has heard. */
@@ -337,8 +349,10 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       return { document: token, version, installedBy, host };
     },
     capture,
-    check: (_host: HostKey, filter: FilterData) =>
+    check: (_host: HostKey, filter: { selector: string }) =>
       checkFilter(filter, document.documentElement),
+    match: (host: HostKey, elements: readonly Element[], key: string) =>
+      matches.keep(host, key, elements),
     probe: (
       host: HostKey,
       elements: readonly Element[],

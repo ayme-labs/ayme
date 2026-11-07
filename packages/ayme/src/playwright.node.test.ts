@@ -77,6 +77,14 @@ async function startedOn(
   return ayme;
 }
 
+/** The structure a `snapshot` of the session's page prints. */
+async function snapshot(ayme: Playwright.PlaywrightAyme): Promise<string> {
+  const { structure } = (await ayme.tools.run("snapshot", {})) as {
+    structure: string;
+  };
+  return structure;
+}
+
 describe("Ayme over a Playwright Page", () => {
   it("runs a live Page Object Tool and reports what it changed", async () => {
     const page = await pageShowing(
@@ -142,6 +150,128 @@ describe("Ayme over a Playwright Page", () => {
     await expect(
       built.createAyme({ page, ignore: "[" }).start()
     ).rejects.toThrow("`ignore` is not a valid CSS selector");
+  });
+
+  describe("a Locator filter", () => {
+    const panels =
+      '<main><button>Save</button></main><aside aria-label="Assistant"><button>Get help</button></aside><aside aria-label="Notes"><button>Read notes</button></aside>';
+
+    it("leaves out what its Locator matches by role and a name it reads from the code around it", async () => {
+      const page = await pageShowing(panels);
+      const assistant = "Assistant";
+      const ayme = await startedOn(page, {
+        ignore: (session) =>
+          session.getByRole("complementary", { name: assistant }),
+      });
+
+      const structure = await snapshot(ayme);
+
+      expect(structure).toContain("Save");
+      expect(structure).toContain("Read notes");
+      expect(structure).not.toContain("Get help");
+    });
+
+    it("leaves out an element added after the session started, once its Locator matches it at the next capture", async () => {
+      const page = await pageShowing("<main><button>Save</button></main>");
+      const ayme = await startedOn(page, {
+        ignore: (session) =>
+          session.getByRole("complementary", { name: "Assistant" }),
+      });
+      expect(await snapshot(ayme)).toContain("Save");
+
+      await page.evaluate(
+        `document.body.insertAdjacentHTML("beforeend", '<aside aria-label="Assistant"><button>Get help</button></aside>')`
+      );
+
+      const structure = await snapshot(ayme);
+      expect(structure).toContain("Save");
+      expect(structure).not.toContain("Get help");
+    });
+
+    it("leaves out of an action's own changes what the action adds and its Locator matches, so nothing shows as removed after", async () => {
+      const page = await pageShowing(
+        "<button>Notify</button><button>Other</button>" +
+          `<script>document.querySelector("button").onclick = () => document.body.insertAdjacentHTML("beforeend", '<div role="status">Saved</div>')</script>`
+      );
+      const ayme = await startedOn(page, {
+        ignore: (session) => session.getByRole("status"),
+      });
+      const structure = await snapshot(ayme);
+      const refOf = (name: string) =>
+        new RegExp(`- (e\\d+) button "${name}"`).exec(structure)![1]!;
+
+      const clicked = (await ayme.tools.run("click", {
+        target: refOf("Notify"),
+      })) as { changes?: string };
+      const next = (await ayme.tools.run("click", {
+        target: refOf("Other"),
+      })) as { changes_before?: string };
+
+      expect(await page.getByRole("status").textContent()).toBe("Saved");
+      expect(clicked.changes ?? "").not.toContain("Saved");
+      expect(next.changes_before).toBeUndefined();
+      expect(await snapshot(ayme)).not.toContain("Saved");
+    });
+
+    it("works on a page whose Content Security Policy forbids evaluating code", async () => {
+      const page = await browser.newPage();
+      await page.route("http://ayme.test/", (route) =>
+        route.fulfill({
+          contentType: "text/html",
+          headers: { "content-security-policy": "script-src 'unsafe-inline'" },
+          body:
+            "<!doctype html><title>Ayme</title>" +
+            panels +
+            '<script>try { new Function("return 1"); window.evaluates = true } catch { window.evaluates = false }</script>',
+        })
+      );
+      await page.goto("http://ayme.test/");
+      expect(await page.evaluate("window.evaluates")).toBe(false);
+
+      const ayme = await startedOn(page, {
+        ignore: (session) =>
+          session.getByRole("complementary", { name: "Assistant" }),
+      });
+
+      const structure = await snapshot(ayme);
+      expect(structure).toContain("Read notes");
+      expect(structure).not.toContain("Get help");
+    });
+
+    it("refuses to start when its function throws or returns no Locator, naming the filter", async () => {
+      const page = await pageShowing(panels);
+      const tool = (filter: Playwright.CustomTool["filter"]) => ({
+        name: "label_of",
+        description: "Reads the text of an element",
+        filter,
+        execute: () => Promise.resolve(null),
+      });
+
+      const threw = built
+        .createAyme({
+          page,
+          ignore: () => {
+            throw new Error("no panel yet");
+          },
+        })
+        .start();
+      const gaveNone = built
+        .createAyme({ page, customTools: [tool((() => "aside") as never)] })
+        .start();
+
+      // The built package has its own class: the error is told by its name.
+      await expect(threw).rejects.toMatchObject({
+        name: "ToolInputError",
+        message:
+          "The `ignore` function threw when the session started: no panel yet",
+      });
+      await expect(gaveNone).rejects.toMatchObject({
+        name: "ToolInputError",
+        message: expect.stringContaining(
+          "The `filter` of the Custom Tool `label_of` function did not return a Locator."
+        ),
+      });
+    });
   });
 
   it("keeps the Page Objects and sessions of two pages in one process apart", async () => {

@@ -1,44 +1,48 @@
 // Stryker disable all
-// An element filter in the document: a selector matches, a function
-// compiled from its source runs. The module keeps one compiled predicate per
-// source, so a filter compiles once per document. Self-contained, like the
+// An element filter in the document: a selector matches as the capture runs;
+// a Locator's matches are the elements its host handed the module before the
+// capture, kept per host under the filter's key. Self-contained, like the
 // rest of the page part: the install function closes over nothing.
-import type { FilterData, InPageFilter } from "../../shared";
+import type { FilterData } from "../../shared";
 
-const compiled = new Map<string, InPageFilter>();
+type HostKey = string;
 
-/** The predicate a filter names, compiled from its source on first use. */
-export function compileFilter(data: FilterData): InPageFilter {
+/** The elements one host's Locators matched, by the key each was handed under. */
+export type Matched = (
+  key: string
+) => { has(element: Element): boolean } | undefined;
+
+/**
+ * Whether `data` keeps an element: a selector when the element matches it, a
+ * key when the element is one of the matches `matched` holds under it. A key
+ * no matches were handed under keeps nothing.
+ */
+export function filterOf(
+  data: FilterData,
+  matched?: Matched
+): (element: Element) => boolean {
   if ("selector" in data) return (element) => element.matches(data.selector);
-  if ("live" in data) return data.live;
-  let predicate = compiled.get(data.source);
-  if (!predicate) {
-    predicate = new Function(`return (${data.source});`)() as InPageFilter;
-    compiled.set(data.source, predicate);
-  }
-  return predicate;
+  const elements = matched?.(data.matches);
+  return (element) => elements?.has(element) === true;
 }
 
 /**
- * `predicate` as a capture runs it for the registration `label`. A filter
- * that reads a variable from the code around it, on a branch the
- * registration's one check did not take, throws a ReferenceError here; it
- * comes out naming the registration and the identifier, in the form the host
- * reads (`filterFailure`). Any other error goes on as it is.
+ * Each host's Locator matches, by key: the latest elements a host handed
+ * under a key replace those before. Held weakly, so an element the page lets
+ * go of is not kept for a host that stopped capturing.
  */
-export function guarded(label: string, predicate: InPageFilter): InPageFilter {
-  return (element) => {
-    try {
-      return predicate(element);
-    } catch (error) {
-      const identifier = /^(\S+) is not defined$/.exec(
-        (error as Error).message
-      )?.[1];
-      if (error instanceof ReferenceError && identifier)
-        throw new Error(`ayme-filter-reads:${identifier}:${label}`, {
-          cause: error,
-        });
-      throw error;
-    }
+export function createMatches() {
+  const byHost = new Map<HostKey, Map<string, WeakSet<Element>>>();
+  return {
+    /** Keeps `elements` as `host`'s matches of `key`, in place of the ones before. */
+    keep(host: HostKey, key: string, elements: readonly Element[]): void {
+      let keys = byHost.get(host);
+      if (!keys) byHost.set(host, (keys = new Map()));
+      keys.set(key, new WeakSet(elements));
+    },
+    /** What `host`'s captures read its matches through. */
+    of(host: HostKey): Matched {
+      return (key) => byHost.get(host)?.get(key);
+    },
   };
 }

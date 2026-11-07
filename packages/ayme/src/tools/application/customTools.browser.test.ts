@@ -9,7 +9,7 @@ import { createAyme } from "../../runtime";
 import { getPageStateSession } from "../../page-state/infrastructure";
 import type { CustomTool } from "./elementTools";
 import { listCustomTools } from "../infrastructure/customToolStore";
-import { errorText } from "../../shared";
+import { errorText, ToolInputError, type ElementFilter } from "../../shared";
 
 type ActionResultShape = {
   result?: unknown;
@@ -180,7 +180,7 @@ describe("Custom Tools in Chromium", () => {
   it("does not enforce the filter when the calling agent calls the tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool({
-      filter: () => false,
+      filter: (session) => session.locator("#nothing"),
     });
     start([customTool]);
     const saveRef = refFor(await structure(), "Save changes");
@@ -234,15 +234,39 @@ describe("Custom Tools in Chromium", () => {
     ).toEqual(["SELECT"]);
   });
 
-  it("refuses a filter function that closes over outer state when the runtime starts", () => {
-    document.body.innerHTML = '<button id="save">Save changes</button>';
-    const panelSelector = "#panel";
+  it("captures the refs a Locator filter keeps, under the tool's name, with a name it reads from the code around it", async () => {
+    document.body.innerHTML =
+      '<button id="save">Save changes</button><button>Cancel</button>';
+    const name = "Save changes";
     const { customTool } = recordingCustomTool({
-      filter: (element) => element.matches(panelSelector),
+      filter: (session) => session.getByRole("button", { name }),
     });
+    start([customTool]);
 
-    expect(() => start([customTool])).toThrow(
-      "The `filter` of the Custom Tool `highlight_element` function reads `panelSelector`, which does not exist in the page."
+    const look = await getPageStateSession(document).look({ accepts: [] });
+    const kept = [...(look.accepted?.["tool:highlight_element"] ?? [])];
+    expect(kept).toHaveLength(1);
+    expect(await readRef(kept[0] as string, (element) => element.id)).toBe(
+      "save"
+    );
+  });
+
+  it("refuses to start when a filter function throws or returns no Locator, naming the Custom Tool's filter, and registers no tool", () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const starting = (filter: ElementFilter) => () =>
+      start([recordingCustomTool({ filter }).customTool]);
+    const threw = starting(() => {
+      throw new Error("no panel yet");
+    });
+    const gaveNone = starting((() => ({ selector: "#save" })) as never);
+
+    expect(threw).toThrow(ToolInputError);
+    expect(threw).toThrow(
+      "The `filter` of the Custom Tool `highlight_element` function threw when the session started: no panel yet"
+    );
+    expect(gaveNone).toThrow(ToolInputError);
+    expect(gaveNone).toThrow(
+      "The `filter` of the Custom Tool `highlight_element` function did not return a Locator."
     );
     expect(listCustomTools()).toEqual([]);
   });

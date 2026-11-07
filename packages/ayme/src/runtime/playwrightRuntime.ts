@@ -41,8 +41,9 @@ export type PlaywrightAymeOptions = {
   /** The Playwright Page the session drives; its state is kept under this Page. */
   page: Page;
   /**
-   * The elements an agent does not see: a CSS selector, or a self-contained
-   * function the page runs over each element.
+   * The elements an agent does not see, and everything under them: a CSS
+   * selector, or a function called once with `page` when the session starts,
+   * returning the Locator of them, which each capture resolves again.
    */
   ignore?: ElementFilter;
   /** Custom Tools, acting on the element they are given through a Locator. */
@@ -55,7 +56,7 @@ export type PlaywrightAymeOptions = {
 
 /**
  * A Node host's session: the runtime object of the browser, but its `start()`
- * checks the options' filters in the page first, so it resolves with the
+ * checks the options' selectors in the page first, so it resolves with the
  * function that stops the session.
  */
 export type PlaywrightAyme = Omit<Ayme, "start"> & {
@@ -88,13 +89,17 @@ export function createPlaywrightAyme(
   };
 }
 
-/** The filters checked as the page runs them, and the Custom Tools registered. */
+/**
+ * The filters registered, selectors checked in the page and functions called
+ * with `page`, and the Custom Tools registered.
+ */
 async function prepare(
   page: Page,
   options: PlaywrightAymeOptions
 ): Promise<PreparedOptions> {
   const { ignore, customFilters } = await checkedFilters(
-    (data) => inPage(page).checkFilter(data),
+    (filter) => inPage(page).checkFilter(filter),
+    page,
     options
   );
   return {

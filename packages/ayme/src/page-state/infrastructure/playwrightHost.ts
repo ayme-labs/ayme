@@ -11,14 +11,18 @@ import type {
   Predicate,
 } from "../../shared";
 import type { PageAction } from "../application/pageStateSession";
-import { pageObjectsProbed, type PageStateHost } from "./pageStates";
+import {
+  ignoresByLocator,
+  pageObjectsProbed,
+  type PageStateHost,
+} from "./pageStates";
 
 /**
  * The host of a Node process over `page`: captures and actions go through
  * `inPage(page)`. The Page Object Roots the module places are those of a
  * completed probe run, which the host awaits before each capture it makes,
  * and once more after an action settles, since it cannot be asked from
- * inside the page.
+ * inside the page; so are the `ignore` Locator's matches.
  */
 export function playwrightPageHost(page: Page): PageStateHost {
   const module = inPage(page);
@@ -51,9 +55,11 @@ export function playwrightPageHost(page: Page): PageStateHost {
         // going away, and what the module captured of the old one stands.
         if (outcome.kind === "loading" || outcome.after === undefined)
           return outcome;
-        // The module placed the roots of the latest probe run it holds. The
-        // action changed the page, so probe again and read it once more.
-        if (!pageObjectsProbed(page)) return outcome;
+        // The module placed the roots of the latest probe run it holds, and
+        // left out what the `ignore` Locator matched when the action began.
+        // The action changed the page, so probe and match again and read it
+        // once more: an element the action added is not one of its changes.
+        if (!pageObjectsProbed(page) && !ignoresByLocator(page)) return outcome;
         return { ...outcome, after: await capture(await inputs(), {}) };
       },
     };
@@ -67,5 +73,6 @@ export function playwrightPageHost(page: Page): PageStateHost {
     },
     capture,
     begin,
+    match: (locator, key) => module.match(locator, key),
   };
 }

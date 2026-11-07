@@ -1,75 +1,41 @@
 import { describe, expect, it } from "vitest";
 
 import { pageOfDocument } from "../../page-state/infrastructure";
-import { ToolInputError, type ElementFilter } from "../../shared";
+import { ToolInputError } from "../../shared";
 import { inPage } from "./inPage";
 import { registerFilter, registerFilterThrough } from "./filterRegistration";
 
-const registerFilterIn = (name: string, filter: ElementFilter) =>
-  registerFilter(name, filter, document.documentElement);
+const page = () => pageOfDocument(document);
 
-/** Registers `filter` as a Node host does: asked through the slot's `check`. */
-const registerFilterNode = (name: string, filter: ElementFilter) =>
+/** Registers `selector` in the page's own realm, as the browser runtime does. */
+const registerIn = (selector: string) =>
+  registerFilter("`ignore`", selector, {
+    page: page(),
+    root: document.documentElement,
+  });
+
+/** Registers `selector` as a Node host does: asked through the slot's `check`. */
+const registerThrough = (selector: string) =>
   registerFilterThrough(
-    (data) => inPage(pageOfDocument(document)).checkFilter(data),
-    name,
-    filter
+    (filter) => inPage(page()).checkFilter(filter),
+    "`ignore`",
+    selector,
+    page()
   );
 
-describe("registering an element filter", () => {
-  it("refuses a function that closes over outer state, naming the identifier", async () => {
-    const panelSelector = "#panel";
-    let thrown: unknown;
-    try {
-      await registerFilterNode("`ignore`", (element: Element) =>
-        element.matches(panelSelector)
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    expect(thrown).toBeInstanceOf(ToolInputError);
-    expect((thrown as Error).message).toBe(
-      "The `ignore` function reads `panelSelector`, which does not exist in the page. A filter function runs in the page on its own, so it cannot use variables from the code around it: pass a CSS selector, or move what it needs inside the function."
+describe("registering a selector filter", () => {
+  it("keeps a selector as data, in the page's realm and through the slot's check", async () => {
+    expect(registerIn("#panel")).toEqual({ selector: "#panel" });
+    expect(await registerThrough("#panel")).toEqual({ selector: "#panel" });
+  });
+
+  it("refuses a selector that does not parse with a ToolInputError naming the registration, either way", async () => {
+    expect(() => registerIn("[[")).toThrow(ToolInputError);
+    expect(() => registerIn("[[")).toThrow(
+      "The `ignore` is not a valid CSS selector:"
     );
-  });
-
-  it("refuses a native function, which the page cannot run", async () => {
-    await expect(
-      registerFilterNode("`ignore`", Math.max as never)
-    ).rejects.toBeInstanceOf(ToolInputError);
-  });
-
-  it("keeps a selector and a self-contained function as data", async () => {
-    expect(await registerFilterNode("`ignore`", "#panel")).toEqual({
-      selector: "#panel",
-    });
-    const data = await registerFilterNode("`ignore`", (element: Element) =>
-      element.matches("[data-x]")
+    await expect(registerThrough("[[")).rejects.toThrow(
+      "The `ignore` is not a valid CSS selector:"
     );
-    expect(data).toMatchObject({ source: expect.stringContaining("data-x") });
-  });
-});
-
-describe("registering an element filter in the page's own realm", () => {
-  it("throws the ToolInputError naming the identifier a function reads from the code around it", () => {
-    const panelSelector = "#panel";
-    expect(() =>
-      registerFilterIn("`ignore`", (element: Element) =>
-        element.matches(panelSelector)
-      )
-    ).toThrow(
-      "The `ignore` function reads `panelSelector`, which does not exist in the page."
-    );
-  });
-
-  it("keeps a selector and a self-contained function as data", () => {
-    expect(registerFilterIn("`ignore`", "#panel")).toEqual({
-      selector: "#panel",
-    });
-    expect(
-      registerFilterIn("`ignore`", (element: Element) =>
-        element.matches("[data-x]")
-      )
-    ).toMatchObject({ source: expect.stringContaining("data-x") });
   });
 });

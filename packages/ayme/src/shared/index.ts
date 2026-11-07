@@ -8,13 +8,13 @@ export type {
   Predicate,
 } from "./capture";
 export { callers } from "./callers";
-export { checkFilter, filterData } from "./filter";
+export { checkFilter } from "./filter";
 export type {
   ElementFilter,
   FilterCheck,
   FilterData,
-  InPageFilter,
   NamedFilter,
+  SessionFilter,
 } from "./filter";
 export type { BuiltInCaller, Caller } from "./callers";
 export { containsThroughShadow, parentElement } from "./composedTree";

@@ -18,7 +18,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { createAyme } from "@ayme-dev/ayme";
+import { createAyme, createPage, type ElementFilter } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -74,7 +74,8 @@ afterEach(() => {
 });
 
 it("C1: passes the page factory and ignore to the runtime session", () => {
-  const ignore = (element: Element) => element.matches(".assistant");
+  // The stand-in Page has no Locators: the filter returns one of Playwright Lite's.
+  const ignore: ElementFilter = () => createPage().locator(".assistant");
   const scope = effectScope();
   scopes.push(scope);
   scope.run(() => useAyme({ pageFactory, ignore }));
@@ -305,7 +306,8 @@ it.each(["provider", "standalone"])(
 // nested-owner text, because the call is both owner and consumer.
 it("C3: rejects child page and ignore options and nested providers", () => {
   const errors: unknown[] = [];
-  const ignore = (element: Element) => element.matches(".assistant");
+  // The stand-in Page has no Locators: the filter returns one of Playwright Lite's.
+  const ignore: ElementFilter = () => createPage().locator(".assistant");
   const Child = defineComponent({
     setup() {
       try {

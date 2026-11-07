@@ -11,7 +11,7 @@ import {
   type NamedFilter,
   type Predicate,
 } from "../../shared";
-import { compileFilter, guarded } from "./filter";
+import { filterOf, type Matched } from "./filter";
 import { predicates } from "./predicates";
 
 /** A mark: the ref an element got, kept while its role and name stay. */
@@ -35,7 +35,7 @@ export type CaptureAriaSnapshot = (
 
 /**
  * What a host hands a capture: plain data, the filters of the elements it
- * leaves out, each a selector or a function's source.
+ * leaves out, each a selector or the key of a Locator's matches.
  */
 export type ElementInputs = {
   /** Each filter keeps `element`, and everything under it, out when it matches. */
@@ -44,13 +44,16 @@ export type ElementInputs = {
 
 /**
  * What a capture places besides the host's inputs: the host's Page Object
- * Roots as its latest completed probe run found them.
+ * Roots as its latest completed probe run found them, and the elements its
+ * Locator filters matched, as it handed them last.
  */
 export type CaptureRoots = {
   /** The host's present Page Object Roots, each with its label. */
   roots?: readonly { label: string; element: Element }[];
   /** The host's absent Page Object Roots, whose subtrees it leaves out. */
   absent?: readonly Element[];
+  /** The host's Locator matches, which a filter's key names. */
+  matched?: Matched;
 };
 
 /** What a host asks of a capture besides the roots and exclusions it hands in. */
@@ -151,7 +154,7 @@ export function createRefWorld(
     ask: CaptureAsk = {}
   ): CaptureBody {
     const ignoreFilters = (inputs.ignores ?? []).map((data) =>
-      guarded("`ignore`", compileFilter(data))
+      filterOf(data, inputs.matched)
     );
     // An excluded subtree is out of every capture, whoever asks.
     const ignores = (element: Element) =>
@@ -227,7 +230,7 @@ export function createRefWorld(
       excludedRefs,
       roots,
       ...(ask.accepts || ask.filters
-        ? { accepted: acceptedBy(ask, named) }
+        ? { accepted: acceptedBy(ask, named, inputs.matched) }
         : {}),
       ...(Object.keys(renamed).length > 0 ? { renamed } : {}),
     };
@@ -273,11 +276,12 @@ export function createRefWorld(
 
 /**
  * For each predicate asked, and each named filter, the refs of the elements
- * it keeps, in capture order.
+ * it keeps, in capture order: a Locator's matches through `matched`.
  */
 function acceptedBy(
   ask: CaptureAsk,
-  refsByElement: ReadonlyMap<Element, string>
+  refsByElement: ReadonlyMap<Element, string>,
+  matched: Matched | undefined
 ): Record<string, string[]> {
   const accepted: Record<string, string[]> = {};
   for (const predicate of ask.accepts ?? []) {
@@ -287,10 +291,7 @@ function acceptedBy(
       .map(([, ref]) => ref);
   }
   for (const { name, filter } of ask.filters ?? []) {
-    const keeps = guarded(
-      `\`filter\` of the Custom Tool \`${name}\``,
-      compileFilter(filter)
-    );
+    const keeps = filterOf(filter, matched);
     accepted[toolFilterKey(name)] = [...refsByElement]
       .filter(([element]) => keeps(element))
       .map(([, ref]) => ref);

@@ -3,7 +3,7 @@
 // Playwright Lite page, a Node host's those of the Page it was handed.
 import type { Page } from "@playwright/test";
 import { configurePageStateFiltersOf } from "../../page-state/infrastructure";
-import type { NamedFilter } from "../../shared";
+import type { NamedFilter, SessionFilter } from "../../shared";
 import { SINGLE_ELEMENT_TOOLS } from "../application/browserTools";
 import type { RegisteredElementTool } from "../application/elementTools";
 
@@ -11,12 +11,12 @@ const registeredByPage = new WeakMap<Page, readonly RegisteredElementTool[]>();
 
 /**
  * Package-internal: set while a runtime session is active on `page`, with the
- * tools registered and their filters checked.
+ * tools and their filters registered.
  */
 export function configureCustomToolsOf(
   page: Page,
   registered: readonly RegisteredElementTool[] | undefined,
-  filters: readonly NamedFilter[] | undefined
+  filters: readonly NamedFilter<SessionFilter>[] | undefined
 ): void {
   if (registered) registeredByPage.set(page, registered);
   else registeredByPage.delete(page);

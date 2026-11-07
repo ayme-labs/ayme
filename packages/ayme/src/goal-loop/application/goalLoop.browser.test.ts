@@ -2142,6 +2142,42 @@ describe("Goal Loop goal in Chromium", () => {
     ]);
   });
 
+  it("offers a single-element tool with a Locator filter only the elements its Locator matches", async () => {
+    setupPageWithOneClickable();
+    const highlighted: string[] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'button "Save changes"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // A Locator runs where the session does, so it may read this.
+    const actionable = "Save changes";
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        filter: (session) =>
+          session.getByRole("button", { name: actionable, exact: true }),
+        execute: async ({ ref }) => {
+          highlighted.push(ref);
+        },
+      },
+    ]);
+
+    await tool.execute({ goal: "highlight the save button", maxSteps: 5 });
+
+    const refQuestion = criteriaOf(requests[1]!).ref!;
+    expect(Object.values(refQuestion)).toEqual([
+      expect.stringContaining("Save changes"),
+    ]);
+    expect(highlighted).toEqual(Object.keys(refQuestion));
+  });
+
   it("carries what a Custom Tool returned into its history entry: the only trace of an effect the page does not show", async () => {
     setupPageWithOneClickable();
     const { requests, decide } = recording(

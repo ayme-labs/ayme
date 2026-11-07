@@ -35,17 +35,19 @@ createAyme({
 });
 ```
 
-A function works too, for a rule a selector cannot say. Ayme sends the function to the page and runs it there over each element, so it must be self-contained: it can use its own arguments and the page's globals, but not a variable from the code around it. Ayme checks this when the session starts, and throws a `ToolInputError` that names the variable the function reads:
+For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
+const assistantName = "Assistant";
+
 createAyme({
-  ignore: (element) => element.matches("[data-panel]") && element.hidden,
+  ignore: (page) => page.getByRole("complementary", { name: assistantName }),
 });
 ```
 
-The check runs the function once, on the page's root element. A read behind a condition, such as `element.matches(".private") && privateEnabled`, passes it when the condition is false for the root, and is reported the first time the page state reaches an element that takes that branch, as a `ToolInputError` that names `ignore` and the variable. Ayme does not analyse the function's source, so keep it free of outside variables on every branch, or use a selector. A function written as a method (`ignore(element) { … }`) works like an arrow function.
+In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
 
-Where your environment forbids the page from running code it was not built with (a Content Security Policy without `unsafe-eval`), Ayme cannot check or serialize the function, so it runs the function as it was passed, when Ayme runs in the page. Ayme driving a page from Node through `@ayme-dev/ayme/playwright` rejects the function with a `ToolInputError` instead; a selector always works.
+Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on.
 
 To leave out an element your own code owns, such as a widget you mount beside the app, put the attribute `data-ayme-exclude` on it, or set it from code with the exported `EXCLUDE_ATTRIBUTE` (`import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme"`). The element and everything in it is out of every capture, picking and clicks pass through it, and screenshots hide it. The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
 

@@ -76,8 +76,8 @@ import {
   type AppProcessTool,
   type Caller,
   type ElementFilter,
-  type FilterData,
   type NamedFilter,
+  type SessionFilter,
 } from "../shared";
 import type { ToolInput, ToolResult } from "../tools/domain";
 import { inspectorSetting } from "./runtimeOptions";
@@ -212,10 +212,11 @@ export type AymeOptions = {
    */
   pageFactory?: () => AymePage;
   /**
-   * The elements an agent does not see: a CSS selector, which excludes each
-   * matching element and everything under it, or a self-contained function
-   * the page runs over each element (it cannot read variables from the code
-   * around it: a function that does is rejected when the runtime starts).
+   * The elements an agent does not see, and everything under them: a CSS
+   * selector, or a function `start()` calls once with the session's Page,
+   * returning the Locator of them, which each capture resolves again. A
+   * function that throws or returns no Locator makes `start()` throw a
+   * `ToolInputError`.
    */
   ignore?: ElementFilter;
   customTools?: CustomTool[];
@@ -483,11 +484,13 @@ export type SessionTarget = {
   /** Makes the session the registry's owner; throws while another is. */
   claim(page: Page): { dispose(): void };
   /**
-   * Checks the options' filters as the page runs them, and registers the
-   * Custom Tools: what `start()` configures. Throws `ToolInputError` when
-   * the page cannot run a filter.
+   * Registers the options' filters, a selector checked where the module
+   * matches it, a function called with `page`, the session's Page, and the
+   * Custom Tools: what `start()` configures. Throws `ToolInputError` for a
+   * selector that does not parse, and for a function that throws or returns
+   * no Locator.
    */
-  prepare(options: AymeOptions): PreparedOptions;
+  prepare(options: AymeOptions, page: Page): PreparedOptions;
   /** The ref the session's latest page state gave the element a Locator matches. */
   latestRefOf(locator: Locator): Promise<AriaRef | undefined>;
   /**
@@ -515,11 +518,11 @@ export type SessionTarget = {
   };
 };
 
-/** What a session configures on start: its checked filters and registered Custom Tools. */
+/** What a session configures on start: its registered filters and Custom Tools. */
 export type PreparedOptions = {
-  ignore: FilterData | undefined;
+  ignore: SessionFilter | undefined;
   customTools: readonly RegisteredElementTool[] | undefined;
-  customFilters: readonly NamedFilter[];
+  customFilters: readonly NamedFilter<SessionFilter>[];
 };
 
 /**
@@ -924,8 +927,8 @@ export function createAymeOn(
           "The Ayme runtime already has an active owner.",
           { code: "active-owner" }
         );
-      // Checked before anything starts: a filter the page cannot run throws here.
-      const prepared = target.prepare(options);
+      // Registered before anything starts: a filter that cannot be throws here.
+      const prepared = target.prepare(options, getPage());
       const key = target.key();
       owner = target.claim(getPage());
       reach = sessionReach(ayme);

@@ -11,7 +11,7 @@
 import { type AriaRef } from "@ayme-dev/core/structural-observation";
 import type { Locator } from "@playwright/test";
 import { inPage } from "../../in-page";
-import type { FilterData, NamedFilter } from "../../shared";
+import type { NamedFilter, SessionFilter } from "../../shared";
 import type { InteractionHistory } from "../domain/interactionHistory";
 import type { Cursor, Cursors } from "../domain/cursors";
 import type { PageStateSession } from "../application/pageStateSession";
@@ -19,6 +19,7 @@ import {
   bindDocument,
   beginDocumentAction,
   captureDocument,
+  matchInDocument,
   pageOfDocument,
 } from "./browserInPage";
 import type { PageState, PageStateLook } from "../domain/structuralPageState";
@@ -46,6 +47,7 @@ function browserHost(currentDocument: Document): PageStateHost {
         bind: (onVisit) => bindDocument(currentDocument, onVisit),
         capture: (inputs, ask) => captureDocument(currentDocument, inputs, ask),
         begin: (inputs) => beginDocumentAction(currentDocument, inputs),
+        match: (locator, key) => matchInDocument(currentDocument, locator, key),
       })
     );
   return host;
@@ -82,17 +84,19 @@ export function providePageObjectProbe(
   providePageObjectProbeOf(pageOfDocument(document), probe);
 }
 
-/** Package-internal: set while a runtime session is active, as checked filter data. */
-export function configurePageStateIgnore(ignore: FilterData | undefined): void {
+/** Package-internal: set while a runtime session is active, as the session registered it. */
+export function configurePageStateIgnore(
+  ignore: SessionFilter | undefined
+): void {
   configurePageStateIgnoreOf(pageOfDocument(document), ignore);
 }
 
 /**
- * Package-internal: the Custom Tools' filters, as checked, under each tool's
- * name; every capture carries the refs each keeps.
+ * Package-internal: the Custom Tools' filters, as the session registered
+ * them, under each tool's name; every capture carries the refs each keeps.
  */
 export function configurePageStateFilters(
-  filters: readonly NamedFilter[] | undefined
+  filters: readonly NamedFilter<SessionFilter>[] | undefined
 ): void {
   configurePageStateFiltersOf(pageOfDocument(document), filters);
 }

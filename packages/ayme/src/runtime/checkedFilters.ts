@@ -1,20 +1,24 @@
+import type { Page } from "@playwright/test";
 import { registerFilterThrough } from "../in-page";
 import type { FilterCheck } from "../in-page";
-import type { ElementFilter, FilterData, NamedFilter } from "../shared";
+import type { ElementFilter, NamedFilter, SessionFilter } from "../shared";
 
-/** What a session's options hand a capture to leave out and to keep, as data. */
+/** What a session's options hand its captures to leave out and to keep. */
 export type CheckedFilters = {
-  ignore: FilterData | undefined;
-  customFilters: NamedFilter[];
+  ignore: SessionFilter | undefined;
+  customFilters: NamedFilter<SessionFilter>[];
 };
 
 /**
- * The options' filters, checked as the page runs them, through the slot's
- * check: `ignore`, and each Custom Tool's `filter` under the tool's name.
- * Rejects with a `ToolInputError` for a filter the page cannot run.
+ * The options' filters for a session on `page`, as a Node host registers
+ * them: `ignore`, and each Custom Tool's `filter` under the tool's name, a
+ * selector checked through the slot's check, a function called once with
+ * `page`. Rejects with a `ToolInputError` for a selector the page cannot
+ * parse, and for a function that throws or returns no Locator.
  */
 export async function checkedFilters(
-  check: (data: FilterData) => Promise<FilterCheck>,
+  check: (filter: { selector: string }) => Promise<FilterCheck>,
+  page: Page,
   options: {
     ignore?: ElementFilter;
     customTools?: readonly { name: string; filter?: ElementFilter }[];
@@ -23,8 +27,8 @@ export async function checkedFilters(
   const ignore =
     options.ignore === undefined
       ? undefined
-      : await registerFilterThrough(check, "`ignore`", options.ignore);
-  const customFilters: NamedFilter[] = [];
+      : await registerFilterThrough(check, "`ignore`", options.ignore, page);
+  const customFilters: NamedFilter<SessionFilter>[] = [];
   for (const tool of options.customTools ?? [])
     if (tool.filter !== undefined)
       customFilters.push({
@@ -32,7 +36,8 @@ export async function checkedFilters(
         filter: await registerFilterThrough(
           check,
           `\`filter\` of the Custom Tool \`${tool.name}\``,
-          tool.filter
+          tool.filter,
+          page
         ),
       });
   return { ignore, customFilters };
