@@ -36,7 +36,10 @@ The package is YAML-style text; it may not parse as YAML. Its outline:
 
 ```text
 recordingId: rec_…
-tracePath: …/trace.zip
+mode: structural
+createdAt: 2026-…               # when the recording was stored
+url: https://…                  # where the recording started
+tracePath: .ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
 visits:                         # one per page load
   - visitId, url, cause
     baselineTree:               # the page as first seen
@@ -54,7 +57,9 @@ has one only when an action targeted it.
 A ref names a node within this package. Each visit numbers its nodes anew, and
 a node the app re-renders gets a new ref: the same button can be `e44`, then
 `e137` after a click. Refs link an interaction to its target, and a node to its
-element in the trace; they never go into code.
+element in the trace; they never go into code. After a full page load a ref
+can carry a frame prefix, such as `f1e4`, because Playwright renumbers the
+main frame's refs; copy refs as they are written.
 
 A `changeTree` holds only the paths down to what changed. `<added>`,
 `<removed>` and `<changed>` mark nodes that appeared, disappeared, or changed
@@ -88,7 +93,9 @@ A `kind: change` entry is a change the recorder could not tie to an
 interaction. It is usually the late result of an earlier step, such as data
 that finished loading. It can also come before the interaction that caused
 it, because the recorder can see the page change before it records the click
-behind the change. Read it together with the steps around it.
+behind the change. A change no recorded action explains can also come from a
+hover, or from anything the page does on its own in between, such as an async
+update. Read it together with the steps around it.
 
 ## Write page objects from the recording
 
@@ -149,7 +156,7 @@ did, or to find a better locator. Each element carries its package ref as
 `__playwright_aria_ref__`, so you can look up a node from the timeline:
 
 ```sh
-npx @ayme-dev/cli trace open <trace.zip path>
+npx @ayme-dev/cli trace open latest      # or a recording id, or the trace.zip path
 npx @ayme-dev/cli trace actions     # numbered actions with their locators
 npx @ayme-dev/cli trace snapshot <number> --name after \
   eval "document.querySelector('[__playwright_aria_ref__=\"e45\"]').outerHTML"
@@ -157,6 +164,9 @@ npx @ayme-dev/cli trace close
 ```
 
 Find an interaction's action number in `trace actions` by its type and
-locator. A snapshot holds the refs of its own visit. An `s_*` ref is the
-recorder's own and is not in the trace: reach that element from its nearest
-ancestor with an `e` ref, such as `[__playwright_aria_ref__="e58"] img`.
+locator. A snapshot holds the refs of its own visit, written as the package
+writes them, such as `[__playwright_aria_ref__="f1e45"]`. A click that leaves
+the page has no `after` snapshot: its result is the next visit's baseline. An
+`s_*` ref is the recorder's own and is not in the trace: reach that element
+from its nearest ancestor with an `e` ref, such as
+`[__playwright_aria_ref__="e58"] img`.
