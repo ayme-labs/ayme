@@ -115,7 +115,7 @@ describe("InspectorRelay", () => {
     expect(started).toEqual(["subscribe", "unsubscribe"]);
   });
 
-  it("gives the page each window's pick as sent, and unsubscribes once when both windows close", async () => {
+  it("gives the page each window's pick as sent, cancels the one still waiting when its window closes, and unsubscribes once when both windows close", async () => {
     const connection = new AgentConnection();
     const page = connection.attach(hello("a"), () => {})!;
     const params: unknown[] = [];
@@ -139,12 +139,49 @@ describe("InspectorRelay", () => {
     second.receive({ id: 2, method: "pick", params: { id: "pick-b-1" } });
     first.close();
     await settle();
-    expect(started).toEqual(["subscribe", "pick", "pick"]);
+    expect(started).toEqual(["subscribe", "pick", "pick", "cancelPick"]);
     second.close();
     await settle();
 
     expect(params).toEqual([{ id: "pick-a-1" }, { id: "pick-b-1" }]);
-    expect(started).toEqual(["subscribe", "pick", "pick", "unsubscribe"]);
+    expect(started).toEqual([
+      "subscribe",
+      "pick",
+      "pick",
+      "cancelPick",
+      "unsubscribe",
+    ]);
+  });
+
+  it("cancels the picks a window started when it leaves, while another window still listens", async () => {
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    const started: { method: string; params: unknown }[] = [];
+    // A page whose picks wait for a click, and that answers anything else.
+    void (async () => {
+      for await (const { id, method, params } of page.inspector.requests(
+        undefined
+      )) {
+        started.push({ method, params });
+        if (method !== "pick")
+          page.inspector.respond({ id, ok: true, result: null });
+      }
+    })();
+    const relay = new InspectorRelay(connection);
+    const first = openWindow(relay);
+    const second = openWindow(relay);
+    first.receive({ id: 1, method: "subscribe" });
+    second.receive({ id: 1, method: "subscribe" });
+    first.receive({ id: 2, method: "pick", params: { id: "pick-a-1" } });
+    second.receive({ id: 2, method: "pick", params: { id: "pick-b-1" } });
+    await settle();
+
+    first.close();
+    await settle();
+
+    expect(started.slice(3)).toEqual([
+      { method: "cancelPick", params: { id: "pick-a-1" } },
+    ]);
   });
 
   it("resets the windows and subscribes the new page when the tab's page is replaced", async () => {

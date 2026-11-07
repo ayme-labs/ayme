@@ -10,7 +10,9 @@ const NO_PAGE = "No page is connected to this Ayme MCP server.";
  * Relays the Inspector contract between external Inspector windows and the
  * page the server holds the Agent Connection with (ADR-0049). A window's
  * request goes to the paired page in the order it arrived, in plain data
- * the relay does not read, and the page's answer goes back to that window.
+ * the relay does not read but for a pick's id, and the page's answer goes
+ * back to that window. A window that leaves has its picks still waiting
+ * cancelled, so none blocks the page's clicks for a window that is gone.
  * The page pushes its events only while a window listens: the relay asks
  * it to start when the first window subscribes and to stop when the last
  * one leaves, and asks the new page again when the tab's page is replaced,
@@ -18,7 +20,10 @@ const NO_PAGE = "No page is connected to this Ayme MCP server.";
  */
 export class InspectorRelay {
   readonly #connection: AgentConnection;
-  readonly #windows = new Map<InspectorWindow, { listening: boolean }>();
+  readonly #windows = new Map<
+    InspectorWindow,
+    { listening: boolean; picks: Set<string> }
+  >();
   #stopEvents: (() => void) | undefined;
 
   constructor(connection: AgentConnection) {
@@ -37,7 +42,7 @@ export class InspectorRelay {
     receive(request: WindowRequest): void;
     close(): void;
   } {
-    const state = { listening: false };
+    const state = { listening: false, picks: new Set<string>() };
     this.#windows.set(window, state);
     const setListening = (listening: boolean) => {
       if (state.listening === listening) return;
@@ -57,7 +62,13 @@ export class InspectorRelay {
         // Made now, not later, so the page starts requests in arrival order.
         const link = this.#connection.inspectorLink;
         if (!link) return window.send({ id, error: NO_PAGE });
-        link.request(method, params).then(
+        const answered = link.request(method, params);
+        const pick = method === "pick" ? pickId(params) : undefined;
+        if (pick !== undefined) {
+          state.picks.add(pick);
+          answered.finally(() => state.picks.delete(pick)).catch(() => {});
+        }
+        answered.then(
           (result) => window.send({ id, result: result ?? null }),
           (error: unknown) =>
             window.send({
@@ -67,6 +78,12 @@ export class InspectorRelay {
         );
       },
       close: () => {
+        // Its picks wait for a click no window takes any more.
+        for (const id of state.picks)
+          this.#connection.inspectorLink
+            ?.request("cancelPick", { id })
+            .catch(() => {});
+        state.picks.clear();
         setListening(false);
         this.#windows.delete(window);
       },
@@ -97,4 +114,10 @@ export class InspectorRelay {
         if (listening) window.send({ event });
     });
   }
+}
+
+/** The id a pick request names, which a later `cancelPick` names too. */
+function pickId(params: unknown): string | undefined {
+  const id = (params as { id?: unknown } | undefined)?.id;
+  return typeof id === "string" ? id : undefined;
 }
