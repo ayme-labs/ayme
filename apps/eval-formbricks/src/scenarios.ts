@@ -76,6 +76,7 @@ const notForDriving = [
   "references/browser-setup.md",
   "references/onboarding.md",
   "references/page-object-design.md",
+  "references/ayme-page-objects.md",
   "references/live-mapping.md",
   "references/runtime-integration.md",
   "references/peeks.md",
@@ -107,13 +108,19 @@ export const startupScenarios: Record<string, StartupScenario> = {
     id: "set-up-ayme",
     framing: "Get ready to set up Ayme in this project.",
     expected: ["references/onboarding.md", "references/runtime-integration.md"],
-    allowed: ["references/page-object-design.md"],
+    allowed: [
+      "references/page-object-design.md",
+      "references/ayme-page-objects.md",
+    ],
     forbidden: onlyForDriving,
   },
   "design-page-objects": {
     id: "design-page-objects",
     framing: "Get ready to design page object models for this project.",
-    expected: ["references/page-object-design.md"],
+    expected: [
+      "references/page-object-design.md",
+      "references/ayme-page-objects.md",
+    ],
     forbidden: onlyForDriving,
   },
 };

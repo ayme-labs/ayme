@@ -36,7 +36,7 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 }
 ```
 
-On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows, in `.ts` modules.
+On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules.
 
 ## Start Ayme at the root
 
@@ -71,7 +71,7 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Composables
 
-Register the app's pages once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+Register the app's pages once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`; each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
 
 ```svelte
 <script lang="ts">
