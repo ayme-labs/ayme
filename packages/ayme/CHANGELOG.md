@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/ayme-v0.2.0...ayme-v0.3.0) (2026-11-07)
+
+
+### Features
+
+* **ayme:** one in-page module per document ([#1169](https://github.com/ayme-labs/ayme/issues/1169)) ([3b742de](https://github.com/ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b))
+* **skills:** add the ayme-recorder skill and share page object design across skills ([#1198](https://github.com/ayme-labs/ayme/issues/1198)) ([860c240](https://github.com/ayme-labs/ayme/commit/860c240de4197bc59ff638cfb3e15a582c64848c))
+
+
+### Bug Fixes
+
+* **core:** attribute a before observation to the action before it ([#1163](https://github.com/ayme-labs/ayme/issues/1163)) ([c8e807f](https://github.com/ayme-labs/ayme/commit/c8e807f2f0a6eae78ac0934a75327775c45a1f46))
+* **core:** treat query-only URL changes as navigation within the current visit ([#1164](https://github.com/ayme-labs/ayme/issues/1164)) ([872975d](https://github.com/ayme-labs/ayme/commit/872975d5e054c2a32297dc741a642143fa8dba04)), closes [#1157](https://github.com/ayme-labs/ayme/issues/1157)
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/ayme-v0.1.1...ayme-v0.2.0) (2026-11-04)
 
 

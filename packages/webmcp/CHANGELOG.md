@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/webmcp-v0.2.0...webmcp-v0.3.0) (2026-11-07)
+
+
+### Miscellaneous Chores
+
+* **webmcp:** Synchronize ayme versions
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/webmcp-v0.1.1...webmcp-v0.2.0) (2026-11-04)
 
 
