@@ -266,4 +266,59 @@ describe("Ayme over a Playwright Page", () => {
 
     expect(page.url()).toBe("http://app.test/sub/next");
   });
+
+  describe("going back and forward over entries that keep the URL", () => {
+    /** A page that pushes a state-only entry per click and shows the state on `popstate`. */
+    async function pushingPage() {
+      const page = await pageServing(
+        () => `<h1>Step 0</h1><button>Next</button><script>
+          let step = 0;
+          document.querySelector("button").onclick = () => {
+            history.pushState({ step: ++step }, "");
+            document.querySelector("h1").textContent = "Step " + step;
+          };
+          addEventListener("popstate", (event) => {
+            step = event.state?.step ?? 0;
+            document.querySelector("h1").textContent = "Step " + step;
+          });
+        </script>`
+      );
+      const ayme = await startedOn(page);
+      await ayme.tools.run("snapshot", {});
+      await page.getByRole("button", { name: "Next" }).click();
+      return { page, ayme };
+    }
+
+    it("reports a move back over a state-only entry, with the change it made", async () => {
+      const { page, ayme } = await pushingPage();
+
+      const result = (await ayme.tools.run("navigate_back", {})) as {
+        result?: string;
+        page_changed: boolean;
+      };
+
+      expect(await page.locator("h1").textContent()).toBe("Step 0");
+      expect(result.result ?? "").not.toContain("no history entry");
+      expect(result.page_changed).toBe(true);
+      expect(JSON.stringify(result)).toContain("Step 0");
+    });
+
+    it("reports a move forward over one, and still reports no entry when there is none", async () => {
+      const { page, ayme } = await pushingPage();
+      await ayme.tools.run("navigate_back", {});
+
+      const forward = (await ayme.tools.run("navigate_forward", {})) as {
+        result?: string;
+      };
+      const none = (await ayme.tools.run("navigate_forward", {})) as {
+        result?: string;
+      };
+
+      expect(await page.locator("h1").textContent()).toBe("Step 1");
+      expect(forward.result ?? "").not.toContain("no history entry");
+      expect(none.result).toBe(
+        "There is no history entry to go forward to; the page did not move."
+      );
+    });
+  });
 });

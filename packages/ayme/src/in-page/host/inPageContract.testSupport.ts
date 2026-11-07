@@ -778,6 +778,27 @@ export function inPageContract(lane: InPageLane) {
       expect(await page.evaluate("window.presses")).toEqual([]);
     });
 
+    it("picks a Page Object Root that has no node of its own by its synthetic ref", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<div role="none" id="a" style="padding: 20px"><button>Inside</button></div><button>Other</button>'
+      );
+      const host = lane.createHost(page);
+      const inPage = host.inPage(page);
+      await labelling(inPage, page, [["ListPage", "#a"]]);
+      const { roots } = await inPage.capture();
+      const [root] = roots;
+      if (!root || !("syntheticRef" in root))
+        throw new Error("The root is synthetic.");
+
+      const picked = inPage.pick([root.syntheticRef]);
+      // The padding is the root's own pixels; the button inside has a ref of its own.
+      await page.locator("#a").click({ position: { x: 5, y: 5 } });
+
+      expect(await picked).toBe(root.syntheticRef);
+    });
+
     it("greys an element that is not accepted and does not pick it, and boxes an accepted one", async () => {
       const { page, inPage, refs } = await picking();
       const picked = inPage.pick([refs.input]);

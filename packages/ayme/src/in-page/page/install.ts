@@ -200,6 +200,8 @@ export type Slot = {
   currentRefs(host: HostKey, refs: readonly string[]): (string | undefined)[];
   /** The URL the document resolves relative URLs against: its `baseURI`. */
   baseURI(host: HostKey): string;
+  /** The key of the Navigation API's current history entry, or none where the browser has no such API. */
+  historyEntry(host: HostKey): string | undefined;
   /** The state of each native form control `refs` name, by ref: inputs, textareas and selects. */
   controls(
     host: HostKey,
@@ -432,11 +434,23 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       return Object.fromEntries(readControls(named));
     },
     baseURI: () => document.baseURI,
+    historyEntry: () => window.navigation?.currentEntry?.key,
     currentRefs: (_host: HostKey, asked: readonly string[]) =>
       asked.map(refs.currentRefOf),
     pick(host: HostKey, { id, ...request }: PickRequest) {
       if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
-      const picking = startPicking(request, refs.refOf, (notice) =>
+      // A capture's mark names an element; an accepted synthetic ref names a
+      // Page Object Root that has no node of its own.
+      const accepted = new Set(request.accept);
+      const pickable = (element: Element) => {
+        const marked = refs.refOf(element);
+        if (marked !== undefined) return marked;
+        const synthetic = refs.lastRefOf(element);
+        return synthetic !== undefined && accepted.has(synthetic)
+          ? synthetic
+          : undefined;
+      };
+      const picking = startPicking(request, pickable, (notice) =>
         tell(host, { kind: "pick", id, notice })
       );
       const key = `${host}:${id}`;

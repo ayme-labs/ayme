@@ -23,6 +23,7 @@ export type CallName =
   | "passThrough"
   | "currentRefs"
   | "baseURI"
+  | "historyEntry"
   | "controls";
 
 /** What a host calls: one of the slot's methods, with its arguments. */

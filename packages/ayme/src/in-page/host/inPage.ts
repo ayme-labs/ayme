@@ -135,6 +135,8 @@ export type InPage = {
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
   /** The URL the document resolves relative URLs against: its `baseURI`. */
   baseURI(): Promise<string>;
+  /** The key of the document's current history entry, or none without the Navigation API. */
+  historyEntry(): Promise<string | undefined>;
   /** The state of each native form control `refs` name (input, textarea, select), by ref. */
   controls(refs: readonly string[]): Promise<Record<string, ControlState>>;
   /**
@@ -567,6 +569,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
         return call<Record<string, ControlState>>("controls", [refs]);
       },
       baseURI: () => call<string>("baseURI", []),
+      historyEntry: () => call<string | undefined>("historyEntry", []),
       async currentRefs(refs) {
         if (refs.length === 0) return [];
         return call<(string | undefined)[]>("currentRefs", [refs]);

@@ -108,10 +108,16 @@ export function pageNavigation(page: Page): Navigation {
     },
     async traverse(move) {
       const from = page.url();
+      const entry = await inPage(page).historyEntry();
       // Playwright answers null for an entry that is not there, and for one
-      // within the document: only the URL tells those apart.
+      // within the document; the URL tells a move to another entry of a
+      // different URL, and the Navigation API's current entry one that kept
+      // it, as the browser runtime reads it.
       const response = await move();
-      return response !== null || page.url() !== from;
+      if (response !== null || page.url() !== from) return true;
+      return (
+        entry !== undefined && (await inPage(page).historyEntry()) !== entry
+      );
     },
   };
 }
