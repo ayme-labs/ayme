@@ -4,6 +4,7 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type { ServerExtension } from "../../connection";
+import { isLoopbackHostHeader } from "../../pairing";
 import {
   INSPECTOR_HTML,
   INSPECTOR_INSTALL_HINT,
@@ -13,8 +14,6 @@ import {
 } from "../domain/externalInspector";
 import { WindowRequestSchema } from "../domain/windowFrames";
 import type { InspectorRelay } from "../application/inspectorRelay";
-
-const LOCAL_HOST = /^(127\.0\.0\.1|localhost)(:\d+)?$/;
 
 /**
  * The external Inspector on the server's own HTTP server (no new server and
@@ -39,7 +38,7 @@ export function externalInspectorServer({
       const path = (request.url ?? "").split("?")[0];
       const isPage = path === INSPECTOR_PATH || path === `${INSPECTOR_PATH}/`;
       if (!isPage && path !== INSPECTOR_SCRIPT_PATH) return false;
-      if (!LOCAL_HOST.test(request.headers.host ?? "")) {
+      if (!isLoopbackHostHeader(request.headers.host)) {
         send(response, 403, "text/plain", "Not a loopback request.");
       } else if (request.method !== "GET" && request.method !== "HEAD") {
         send(response, 405, "text/plain", "Only GET is served here.");
@@ -76,7 +75,7 @@ export function externalInspectorServer({
 /** Whether the window comes from the page this server served, or from a local process. */
 function fromThisServer(request: IncomingMessage) {
   const { origin, host } = request.headers;
-  if (!LOCAL_HOST.test(host ?? "")) return false;
+  if (!isLoopbackHostHeader(host)) return false;
   return origin === undefined || origin === `http://${host}`;
 }
 

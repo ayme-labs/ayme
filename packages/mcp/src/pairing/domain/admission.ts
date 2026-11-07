@@ -46,6 +46,15 @@ export function isLocalHost(hostname: string): boolean {
 }
 
 /**
+ * Whether `host`, a request's `Host` header, names the loopback server
+ * (`127.0.0.1` or `localhost`, on any port). A page that rebinds another
+ * name to 127.0.0.1 sends that name, so the server answers it nothing.
+ */
+export function isLoopbackHostHeader(host: string | undefined): boolean {
+  return /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host ?? "");
+}
+
+/**
  * Whether `origin`, a WebSocket handshake's `Origin` header, is an http(s)
  * page on `localhost` or `127.0.0.1`, on any port.
  */
