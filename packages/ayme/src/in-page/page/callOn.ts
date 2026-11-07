@@ -28,7 +28,8 @@ export type CallOnArgument = {
 
 export type CallOnResult<T> =
   | { kind: "ok"; value: T }
-  | { kind: "missing"; matched: number }
+  /** `framed`: the call ran in a frame's window, not a top-level one. */
+  | { kind: "missing"; matched: number; framed: boolean }
   | { kind: "version"; found: string };
 
 export async function callOn(
@@ -38,7 +39,12 @@ export async function callOn(
   const slot = (globalThis as { [key: symbol]: Slot | undefined })[
     Symbol.for("ayme.inPage")
   ];
-  if (!slot) return { kind: "missing", matched: elements.length };
+  if (!slot)
+    return {
+      kind: "missing",
+      matched: elements.length,
+      framed: window.parent !== window,
+    };
   if (slot.version !== version) return { kind: "version", found: slot.version };
   return {
     kind: "ok",

@@ -19,6 +19,7 @@ import {
   bindDocument,
   beginDocumentAction,
   captureDocument,
+  forgetInDocument,
   matchInDocument,
   pageOfDocument,
 } from "./browserInPage";
@@ -48,6 +49,7 @@ function browserHost(currentDocument: Document): PageStateHost {
         capture: (inputs, ask) => captureDocument(currentDocument, inputs, ask),
         begin: (inputs) => beginDocumentAction(currentDocument, inputs),
         match: (locator, key) => matchInDocument(currentDocument, locator, key),
+        forget: (keys) => forgetInDocument(currentDocument, keys),
       })
     );
   return host;

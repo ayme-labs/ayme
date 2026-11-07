@@ -530,6 +530,33 @@ export function inPageContract(lane: InPageLane) {
     expect(after.excludedRefs).toContain(refOf(after.fullText, '"Second"'));
   });
 
+  it("a key a host forgets keeps nothing in its captures, while its other keys and another host's same key keep their matches", async () => {
+    const page = await lane.newPage();
+    await setBody(
+      page,
+      '<aside aria-label="Panel"><button>Ignored</button></aside><button>Kept</button>'
+    );
+    const [host, other] = [lane.createHost(page), lane.createHost(page)];
+    const panel = page.getByRole("complementary", { name: "Panel" });
+    const excluded = async (of: InPageHost, key: string) =>
+      (
+        await of.inPage(page).capture({
+          elements: await page.evaluateHandle<ElementInputs>(
+            `({ ignores: [{ matches: ${JSON.stringify(key)} }] })`
+          ),
+        })
+      ).excludedRefs;
+    await host.inPage(page).match(panel, "ignore");
+    await host.inPage(page).match(panel, "other");
+    await other.inPage(page).match(panel, "ignore");
+
+    await host.inPage(page).forget(["ignore"]);
+
+    expect(await excluded(host, "ignore")).toEqual([]);
+    expect(await excluded(host, "other")).toHaveLength(2);
+    expect(await excluded(other, "ignore")).toHaveLength(2);
+  });
+
   it("a Custom Tool's filter carries the refs of the elements its Locator matched under the tool's name, as a selector's", async () => {
     const page = await lane.newPage();
     await setBody(
@@ -848,6 +875,27 @@ export function inPageContract(lane: InPageLane) {
       expect(await page.evaluate("window.presses")).toEqual([]);
       await page.getByLabel("New item").click();
       expect(await picked).toBe(refs.input);
+    });
+
+    it("a pick that starts while another waits ends the earlier one, as Esc does, and the later one alone takes the click", async () => {
+      const { page, inPage, refs } = await picking();
+      const picks = () =>
+        page.evaluate(
+          "document.querySelectorAll('style[data-ayme-picking]').length"
+        );
+      const first = inPage.pick([refs.input]);
+      let firstEnded = false;
+      void first.then(() => (firstEnded = true));
+      await expect.poll(picks).toBe(1);
+
+      const second = inPage.pick([refs.button]);
+
+      await expect.poll(() => firstEnded).toBe(true);
+      expect(await first).toBeUndefined();
+      expect(await picks()).toBe(1);
+      await page.getByRole("button", { name: "Add item" }).click();
+      expect(await second).toBe(refs.button);
+      expect(await page.evaluate("window.presses")).toEqual([]);
     });
 
     it("an abort right after pick is called still cancels it, and the page handles a click normally", async () => {

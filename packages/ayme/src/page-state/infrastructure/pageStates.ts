@@ -74,6 +74,8 @@ export type PageStateHost = {
    * `key`, which a filter's data names in this host's captures from then on.
    */
   match(locator: Locator, key: string): Promise<void>;
+  /** Has the page's in-page module drop the matches this host handed under `keys`. */
+  forget(keys: readonly string[]): Promise<void>;
 };
 
 /** What a capture reads besides the page, set by the session that owns it. */
@@ -96,6 +98,32 @@ function sourcesOf(page: Page): CaptureSources {
   let found = sources.get(page);
   if (!found) sources.set(page, (found = {}));
   return found;
+}
+
+/** The keys under which captures of `read` hand the module a Locator's matches. */
+function locatorKeys({ ignore, filters = [] }: CaptureSources): string[] {
+  const keys = filters
+    .filter(({ filter }) => "locator" in filter)
+    .map(({ name }) => toolFilterKey(name));
+  return ignore && "locator" in ignore ? [IGNORE_KEY, ...keys] : keys;
+}
+
+/**
+ * Sets what captures of `page` read, and has its module drop the matches of
+ * the keys they name no more, as all of them once the session stops.
+ */
+function reconfigure(page: Page, change: Partial<CaptureSources>): void {
+  const read = sourcesOf(page);
+  const before = locatorKeys(read);
+  Object.assign(read, change);
+  const named = new Set(locatorKeys(read));
+  const retired = before.filter((key) => !named.has(key));
+  // Best effort: the page may be gone.
+  if (retired.length)
+    void hosts
+      .get(page)
+      ?.forget(retired)
+      .catch(() => {});
 }
 
 /** The page's Change Record cursors: module state is the page's, as is its Run log. */
@@ -141,7 +169,7 @@ export function configurePageStateIgnoreOf(
   page: Page,
   ignore: SessionFilter | undefined
 ): void {
-  sourcesOf(page).ignore = ignore;
+  reconfigure(page, { ignore });
 }
 
 /**
@@ -152,7 +180,7 @@ export function configurePageStateFiltersOf(
   page: Page,
   filters: readonly NamedFilter<SessionFilter>[] | undefined
 ): void {
-  sourcesOf(page).filters = filters;
+  reconfigure(page, { filters });
 }
 
 /** One page's Page State Session and the captures it makes. */
@@ -165,6 +193,8 @@ export type PageStateStore = {
 };
 
 const stores = new WeakMap<Page, PageStateStore>();
+// The host each store reaches its page through, which handed its matches.
+const hosts = new WeakMap<Page, PageStateHost>();
 let documentCount = 0;
 
 /** The page's store, if its Page State Session was created. */
@@ -179,7 +209,10 @@ export function existingPageState(page: Page): PageStateStore | undefined {
  */
 export function pageStateOf(page: Page, host: PageStateHost): PageStateStore {
   let found = stores.get(page);
-  if (!found) stores.set(page, (found = createStore(page, host)));
+  if (!found) {
+    stores.set(page, (found = createStore(page, host)));
+    hosts.set(page, host);
+  }
   return found;
 }
 

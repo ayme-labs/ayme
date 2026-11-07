@@ -103,6 +103,8 @@ export function standInBrowserInPage(
         "A jsdom test has no in-page module to match a Locator in."
       );
     },
+    // A jsdom test hands no Locator's matches, so it has none to drop.
+    forgetInDocument: async () => {},
     captureDocument: (
       currentDocument: Document,
       inputs: ElementInputs,

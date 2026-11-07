@@ -74,5 +74,6 @@ export function playwrightPageHost(page: Page): PageStateHost {
     capture,
     begin,
     match: (locator, key) => module.match(locator, key),
+    forget: (keys) => module.forget(keys),
   };
 }

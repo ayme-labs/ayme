@@ -28,8 +28,9 @@ export function filterOf(
 
 /**
  * Each host's Locator matches, by key: the latest elements a host handed
- * under a key replace those before. Held weakly, so an element the page lets
- * go of is not kept for a host that stopped capturing.
+ * under a key replace those before, until the host forgets the key. Held
+ * weakly, so an element the page lets go of is not kept for a host that
+ * stopped capturing.
  */
 export function createMatches() {
   const byHost = new Map<HostKey, Map<string, WeakSet<Element>>>();
@@ -39,6 +40,13 @@ export function createMatches() {
       let keys = byHost.get(host);
       if (!keys) byHost.set(host, (keys = new Map()));
       keys.set(key, new WeakSet(elements));
+    },
+    /** Drops `host`'s matches of `keys`, and the host with them once it has none left. */
+    forget(host: HostKey, keys: readonly string[]): void {
+      const kept = byHost.get(host);
+      if (!kept) return;
+      for (const key of keys) kept.delete(key);
+      if (kept.size === 0) byHost.delete(host);
     },
     /** What `host`'s captures read its matches through. */
     of(host: HostKey): Matched {

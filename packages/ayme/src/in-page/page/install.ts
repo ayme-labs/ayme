@@ -147,9 +147,11 @@ export type Slot = {
   /**
    * Keeps the elements a Locator filter of `host` matched, under `key`: the
    * filter data `{ matches: key }` reads them in `host`'s captures from now
-   * on, until it hands that key's matches again.
+   * on, until it hands that key's matches again or forgets the key.
    */
   match(host: HostKey, elements: readonly Element[], key: string): void;
+  /** Drops the matches `host` handed under `keys`, which its filters name no more. */
+  forget(host: HostKey, keys: readonly string[]): void;
   /**
    * Probes the Page Object Root the elements a Locator matched are, for
    * `host`, never scrolling or sending input. With a `round`, the probe
@@ -219,8 +221,9 @@ export type Slot = {
   queryRef(ref: string, root?: Node): Element[];
   /**
    * Picks a ref by pointing at the document, for `host`: answers with the ref
-   * clicked, or none when Esc or `cancelPick` ends it. The host hears what the
-   * pointer is over, as `{ id, ...notice }`, through its binding.
+   * clicked, or none when Esc, `cancelPick` or a later picking in the document
+   * ends it. The host hears what the pointer is over, as `{ id, ...notice }`,
+   * through its binding.
    */
   pick(host: HostKey, request: PickRequest): Promise<string | undefined>;
   /** Ends `host`'s picking `id`, if it is on, as Esc does. */
@@ -353,6 +356,8 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       checkFilter(filter, document.documentElement),
     match: (host: HostKey, elements: readonly Element[], key: string) =>
       matches.keep(host, key, elements),
+    forget: (host: HostKey, keys: readonly string[]) =>
+      matches.forget(host, keys),
     probe: (
       host: HostKey,
       elements: readonly Element[],
@@ -453,6 +458,9 @@ function createSlot(version: string, installedBy: HostKey): Slot {
       asked.map(refs.currentRefOf),
     pick(host: HostKey, { id, ...request }: PickRequest) {
       if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
+      // One picking at a time in the document: a new one ends the one before,
+      // as Esc does, whose handlers would take its clicks.
+      for (const cancel of pickings.values()) cancel();
       // A capture's mark names an element; an accepted synthetic ref names a
       // Page Object Root that has no node of its own.
       const accepted = new Set(request.accept);

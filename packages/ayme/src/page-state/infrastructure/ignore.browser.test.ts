@@ -12,6 +12,7 @@ import { ayme } from "../../test-utils/agentCalls.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import { createAyme } from "../../runtime";
+import { browserInPage } from "./browserInPage";
 import {
   ToolInputError,
   type ElementFilter,
@@ -204,6 +205,25 @@ describe("the ignore filter in page state capture", () => {
     expect(clicked.changes ?? "").not.toContain("Saved");
     expect(next.changes_before).toBeUndefined();
     expect((await ayme.getPageContext()).structure).not.toContain("Saved");
+  });
+
+  it("leaves none of its Locator's matches in the document's module once the session stops", async () => {
+    document.body.innerHTML = `
+      <main><button>Save changes</button></main>
+      <aside id="assistant"><button>Get help</button></aside>
+    `;
+    startRuntime((session) => session.locator("#assistant"));
+    expect((await ayme.getPageContext()).structure).not.toContain("Get help");
+
+    stop?.();
+    stop = undefined;
+
+    // The key the session handed the module the Locator's matches under.
+    const capture = () =>
+      browserInPage().capture({
+        elements: { ignores: [{ matches: "ignore" }] },
+      });
+    await expect.poll(async () => (await capture()).excludedRefs).toEqual([]);
   });
 
   it("calls the function once, on start, with the session's Page", () => {

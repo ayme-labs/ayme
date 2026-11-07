@@ -81,9 +81,16 @@ export type InPage = {
    * Hands the module the elements `target` matches now, as this host's
    * matches of `key`: the filter data `{ matches: key }` reads them in its
    * captures from now on, until it hands that key's matches again. One call
-   * into the page.
+   * into the page. The elements of a Locator into a frame count as none: a
+   * capture reads the Page's own document alone.
    */
   match(target: Locator, key: string): Promise<void>;
+  /**
+   * Drops the matches this host handed under `keys` in the document it last
+   * bound, whose captures read them. Never installs the module: a document
+   * without one holds none.
+   */
+  forget(keys: readonly string[]): Promise<void>;
   /**
    * Reach (ADR-0041) of the element `ref` names, measured in the page: what
    * a click would reach, and what blocks or takes it, named by Structural
@@ -181,7 +188,8 @@ export type InPage = {
    * the pointer that has a ref is boxed with the hover highlight, or the
    * unusable one when its ref is not in `accept`; a click picks an accepted
    * one, Esc cancels, and the page itself handles none of these presses.
-   * Answers the ref picked, or nothing when Esc or `options.signal` ends it.
+   * Answers the ref picked, or nothing when Esc, `options.signal` or a later
+   * pick in the document, by any host, ends it.
    */
   pick(
     accept: readonly string[],
@@ -387,9 +395,15 @@ export function createInPageHost(version = packageVersion): InPageHost {
         })
       );
 
-    /** Sends a call of the module, binding to the document's first when it has none. */
+    /**
+     * Sends a call of the module, binding to the document's first when it has
+     * none. A call on a Locator's elements that still finds no module once it
+     * is installed ran in a frame, whose document the Page's module never
+     * reads: it answers `inFrame()` when given.
+     */
     async function throughModule<T>(
-      send: () => Promise<CallResult<unknown> | CallOnResult<unknown>>
+      send: () => Promise<CallResult<unknown> | CallOnResult<unknown>>,
+      inFrame?: () => T
     ): Promise<T> {
       await expose();
       for (let installed = false; ; installed = true) {
@@ -400,10 +414,12 @@ export function createInPageHost(version = packageVersion): InPageHost {
           return result.value as T;
         }
         if (result.kind === "version") throw versionError(result.found);
-        if (installed)
+        if (installed) {
+          if (inFrame && "framed" in result && result.framed) return inFrame();
           throw new RuntimeStateError(
             "The document lost Ayme's in-page module right after it was installed."
           );
+        }
         await bound();
       }
     }
@@ -499,9 +515,15 @@ export function createInPageHost(version = packageVersion): InPageHost {
     }
 
     /** The module's `name` on the elements `target` matches, installed first when it is missing. */
-    const callOn = <T>(target: Locator, name: CallOnName, inputs?: unknown) =>
-      throughModule<T>(() =>
-        target.evaluateAll(callOnInPage, { version, host, name, inputs })
+    const callOn = <T>(
+      target: Locator,
+      name: CallOnName,
+      inputs?: unknown,
+      inFrame?: () => T
+    ) =>
+      throughModule<T>(
+        () => target.evaluateAll(callOnInPage, { version, host, name, inputs }),
+        inFrame
       );
 
     /** The one element answer of `locator`, which must match exactly one element. */
@@ -531,7 +553,20 @@ export function createInPageHost(version = packageVersion): InPageHost {
       },
       checkFilter: (filter) => call<FilterCheck>("check", [filter]),
       async match(target, key) {
-        await callOn<void>(target, "match", key);
+        // A Locator into a frame matches in the frame's document, which no
+        // capture reads: its matches count as none.
+        await callOn<void>(target, "match", key, () => undefined);
+      },
+      async forget(keys) {
+        await page.evaluate(callInPage, {
+          version,
+          host,
+          binding,
+          token: current,
+          strict: true,
+          name: "forget" as const,
+          args: [keys],
+        });
       },
       async begin({ elements } = {}) {
         return action(await call<Begun>("begin", [elements]), elements);

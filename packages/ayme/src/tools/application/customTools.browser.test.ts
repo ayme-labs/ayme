@@ -6,10 +6,18 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "../../page-objects/infrastructure";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
-import { getPageStateSession } from "../../page-state/infrastructure";
+import {
+  browserInPage,
+  getPageStateSession,
+} from "../../page-state/infrastructure";
 import type { CustomTool } from "./elementTools";
 import { listCustomTools } from "../infrastructure/customToolStore";
-import { errorText, ToolInputError, type ElementFilter } from "../../shared";
+import {
+  errorText,
+  toolFilterKey,
+  ToolInputError,
+  type ElementFilter,
+} from "../../shared";
 
 type ActionResultShape = {
   result?: unknown;
@@ -328,6 +336,33 @@ describe("Custom Tools in Chromium", () => {
     stop?.();
     stop = undefined;
     expect(listCustomTools()).toEqual([]);
+  });
+
+  it("leaves none of a Locator filter's matches in the document's module once the session ends", async () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const { customTool } = recordingCustomTool({
+      filter: (session) => session.locator("#save"),
+    });
+    start([customTool]);
+    // A capture that reads the matches the session handed under the tool's key.
+    const kept = async () =>
+      (
+        await browserInPage().capture({
+          filters: [
+            {
+              name: "kept",
+              filter: { matches: toolFilterKey("highlight_element") },
+            },
+          ],
+        })
+      ).accepted?.[toolFilterKey("kept")];
+    await getPageStateSession(document).look({ accepts: [] });
+    expect(await kept()).toHaveLength(1);
+
+    stop?.();
+    stop = undefined;
+
+    await expect.poll(kept).toEqual([]);
   });
 });
 

@@ -286,7 +286,8 @@ export type InspectorContract = Readonly<{
   /**
    * Picks a Structural Ref by pointing at the document: elements whose ref is
    * not in `refs` show greyed and cannot be picked. Answers when a click picks
-   * one or `cancelPick` (or Esc) ends it.
+   * one or `cancelPick` (or Esc) ends it, and with no ref when a later pick in
+   * the document, from any window, starts.
    */
   pick(request: {
     id: string;

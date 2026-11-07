@@ -87,6 +87,14 @@ export function matchInDocument(
   return inPage(browserPageOf(currentDocument)).match(locator, key);
 }
 
+/** Has `currentDocument`'s module drop the matches the browser runtime handed under `keys`. */
+export async function forgetInDocument(
+  currentDocument: Document,
+  keys: readonly string[]
+): Promise<void> {
+  await inPage(browserPageOf(currentDocument)).forget(keys);
+}
+
 /**
  * Begins an action on `currentDocument` through its module: the before
  * capture, and the action, whose captures read `inputs` again each, as the

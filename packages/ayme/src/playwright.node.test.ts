@@ -213,6 +213,22 @@ describe("Ayme over a Playwright Page", () => {
       expect(await snapshot(ayme)).not.toContain("Saved");
     });
 
+    it("matches nothing inside a frame, whose document no capture reads, and the snapshot is still taken", async () => {
+      const page = await pageShowing(
+        '<main><button>Save</button></main><iframe srcdoc="<button>Inside the frame</button><div class=private>Secret</div>"></iframe>'
+      );
+      await page.frameLocator("iframe").getByRole("button").waitFor();
+      const ayme = await startedOn(page, {
+        ignore: (session) => session.frameLocator("iframe").locator(".private"),
+      });
+
+      const structure = await snapshot(ayme);
+
+      expect(structure).toContain("Save");
+      expect(structure).toContain("iframe");
+      expect(structure).not.toContain("Inside the frame");
+    });
+
     it("works on a page whose Content Security Policy forbids evaluating code", async () => {
       const page = await browser.newPage();
       await page.route("http://ayme.test/", (route) =>
