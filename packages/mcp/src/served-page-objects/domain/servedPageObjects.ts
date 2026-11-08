@@ -37,6 +37,14 @@ export const ENTRY_MODULE = "entry.js";
  * frame or a document such as `about:blank` loads nothing, so only the tab
  * pairs, and neither does a page of `ayme mcp`'s own, such as the
  * Inspector's window. It is a classic script, as an init script runs.
+ *
+ * It runs before the page's own scripts, so it waits for the document's
+ * `load`, and then for the page to go idle, before it follows the stamps:
+ * a page that ships Ayme has started its runtime by then, and gets none
+ * from ayme mcp, so one runtime pairs. It knows that runtime by the
+ * Inspector contract every started browser runtime publishes on the
+ * document's global (ADR-0049). A page that starts Ayme only later still
+ * gets both.
  */
 export function initScript(port: number): string {
   const served = `http://127.0.0.1:${port}${SERVED_PATH}`;
@@ -126,7 +134,18 @@ export function initScript(port: number): string {
       retry = Math.min(retry * 2, 30000);
     };
   };
-  follow();
+  // A browser runtime publishes its Inspector contract here when it starts.
+  const shipsAyme = () =>
+    window[Symbol.for("ayme.inspectorContract")]?.contract !== undefined;
+  const begin = () => {
+    if (!shipsAyme()) follow();
+  };
+  const afterLoad = () =>
+    window.requestIdleCallback
+      ? window.requestIdleCallback(begin, { timeout: 1000 })
+      : setTimeout(begin);
+  if (window.document.readyState === "complete") afterLoad();
+  else window.addEventListener("load", afterLoad, { once: true });
 })();
 `;
 }

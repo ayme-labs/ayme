@@ -11,9 +11,14 @@ type Pending = {
 
 /**
  * Runs the init script in a top-level page of `https://app.test`, with the
- * runtime, the modules it imports and the stamp socket the test drives.
+ * runtime, the modules it imports and the stamp socket the test drives. The
+ * document has loaded unless `loading`, and `slot` is what its global holds
+ * where a browser runtime publishes its Inspector contract.
  */
-function runInitScript() {
+function runInitScript({
+  loading = false,
+  slot,
+}: { loading?: boolean; slot?: { contract?: object } } = {}) {
   const imports: Pending[] = [];
   const registered: string[] = [];
   const sockets: { onmessage?: (event: { data: string }) => void }[] = [];
@@ -32,8 +37,17 @@ function runInitScript() {
     registered.push(...pageObjects.map((model) => model.name));
     return { start() {}, pom };
   };
-  const window = {};
-  (window as { top: unknown }).top = window;
+  const loadListeners: (() => void)[] = [];
+  const window: Record<PropertyKey, unknown> = {
+    document: { readyState: loading ? "interactive" : "complete" },
+    addEventListener(type: string, listener: () => void) {
+      if (type === "load") loadListeners.push(listener);
+    },
+    // The page is idle at once.
+    requestIdleCallback: (callback: () => void) => callback(),
+    [Symbol.for("ayme.inspectorContract")]: slot,
+  };
+  window.top = window;
   const script = initScript(4720).replaceAll("import(", "importModule(");
   new Function(
     "window",
@@ -59,6 +73,10 @@ function runInitScript() {
   const settle = () => new Promise((resolve) => setImmediate(resolve));
   return {
     imports,
+    sockets,
+    load() {
+      for (const listener of loadListeners) listener();
+    },
     registered,
     reload,
     errors,
@@ -142,4 +160,25 @@ it("reloads the page after a rebuild of the runtime", async () => {
   await page.settle();
 
   expect(page.reload).toHaveBeenCalled();
+});
+
+it("follows the stamps only once the document has loaded", () => {
+  const page = runInitScript({ loading: true });
+  expect(page.sockets).toHaveLength(0);
+
+  page.load();
+
+  expect(page.sockets).toHaveLength(1);
+});
+
+it("loads nothing into a page whose own Ayme runtime has started", () => {
+  const page = runInitScript({ slot: { contract: {} } });
+
+  expect(page.sockets).toHaveLength(0);
+});
+
+it("loads the served runtime into a page whose Inspector waits for a runtime that never started", () => {
+  const page = runInitScript({ slot: {} });
+
+  expect(page.sockets).toHaveLength(1);
 });
