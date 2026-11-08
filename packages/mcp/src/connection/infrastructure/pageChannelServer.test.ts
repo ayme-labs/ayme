@@ -23,12 +23,13 @@ afterEach(() => {
   stop?.();
 });
 
-async function startServer() {
+async function startServer(ayme?: { version: string; contract: number }) {
   const connection = new AgentConnection();
   const { server, close } = createPageChannelServer({
     connection,
     token: "token",
     agent: () => undefined,
+    ...(ayme ? { ayme } : {}),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   stop = close;
@@ -166,5 +167,56 @@ describe("the Inspector link of the paired page", () => {
     channel.close();
 
     await rejected;
+  });
+});
+
+describe("a page whose Ayme and the server's speak different pairing contracts", () => {
+  const GAP =
+    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts.";
+
+  function openVersionedPage(url: string, onVersionGap: (gap: string) => void) {
+    const channel = openPageChannel(() => url, {
+      hello: () => ({
+        tab: "tab-1",
+        url: "http://127.0.0.1/",
+        version: "0.2.0",
+        contract: 1,
+      }),
+      onWelcome: () => {},
+      onDisconnected: () => {},
+      onUnknownPairing: () => {},
+      onVersionGap,
+    });
+    channels.push(channel);
+    return channel;
+  }
+
+  it("is refused, and the page and the agent's side both hear both versions", async () => {
+    const { connection, url } = await startServer({
+      version: "0.9.0",
+      contract: 2,
+    });
+    const gaps: string[] = [];
+    openVersionedPage(url, (gap) => gaps.push(gap));
+
+    await expect.poll(() => gaps).toEqual([GAP]);
+    expect(connection.paired).toBe(false);
+    expect(connection.versionGap).toBe(GAP);
+    // The page does not try again.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(gaps).toEqual([GAP]);
+  });
+
+  it("pairs as before when only the versions differ", async () => {
+    const { connection, url } = await startServer({
+      version: "0.9.0",
+      contract: 1,
+    });
+    const gaps: string[] = [];
+    openVersionedPage(url, (gap) => gaps.push(gap));
+
+    await expect.poll(() => connection.paired).toBe(true);
+    expect(connection.versionGap).toBeUndefined();
+    expect(gaps).toEqual([]);
   });
 });

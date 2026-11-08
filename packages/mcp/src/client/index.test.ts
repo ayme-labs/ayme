@@ -8,7 +8,9 @@ const channels = vi.hoisted(
       onWelcome(welcome: { token?: string; agent?: string }): void;
       onDisconnected(): void;
       onUnknownPairing(): void;
+      onVersionGap(gap: string): void;
       onLost(): void;
+      hello(): unknown;
       /** Sends the page the App Processes' tools, as the server does. */
       sendProcessTools(tools: { name: string }[]): void;
       /** How the server answers the next call to an App Process's tool. */
@@ -57,6 +59,7 @@ vi.mock("../connection", () => ({
   },
 }));
 vi.mock("../pairing", () => ({
+  OUR_AYME: { version: "0.2.0", contract: 1 },
   forgetStoredPairing() {},
   socketUrl: ({ address, token }: Pairing) => `${address}/${token}`,
   storePairing() {},
@@ -302,6 +305,37 @@ describe("startAgentConnection's status", () => {
 
     expect(status.get()).toEqual({ state: "not-connected" });
     expect(sourceStarts).toHaveLength(2);
+  });
+});
+
+describe("startAgentConnection's version gap", () => {
+  const GAP =
+    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts.";
+
+  it("names its version and pairing contract when it says hello", () => {
+    vi.stubGlobal("window", { location: { href: "http://localhost/" } });
+    startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+
+    expect(channels[0]!.hello()).toEqual({
+      tab: "tab",
+      url: "http://localhost/",
+      version: "0.2.0",
+      contract: 1,
+    });
+  });
+
+  it("reports the gap the server names, and stays unpaired", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+
+    channels[0]!.onVersionGap(GAP);
+
+    expect(error).toHaveBeenCalledWith(`[ayme] ${GAP}`);
+    expect(channels[0]!.closed).toBe(true);
+    expect(status.get()).toEqual({ state: "not-connected" });
+    expect(sourceStarts).toHaveLength(1);
   });
 });
 

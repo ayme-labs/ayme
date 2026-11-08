@@ -117,9 +117,16 @@ export function imageToolResult(
   };
 }
 
-/** The answer of a page tool or fallback tool while no page is paired. */
-export function notConnectedResult(): ToolResult {
-  return errorResult("No page is connected.");
+/**
+ * The answer of a page tool or fallback tool while no page is paired, with
+ * the version gap the server refused the last page for, if it did.
+ */
+export function notConnectedResult(versionGap?: string): ToolResult {
+  return errorResult(
+    versionGap === undefined
+      ? "No page is connected."
+      : `No page is connected: ${versionGap}`
+  );
 }
 
 /**
