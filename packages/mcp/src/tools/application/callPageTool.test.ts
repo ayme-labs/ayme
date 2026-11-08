@@ -57,6 +57,22 @@ it("answers that no page is connected, and why, after the server refused a page 
   );
 });
 
+it("answers why no page is connected while only an App Process is paired after the server refused a page", async () => {
+  const connection = new AgentConnection();
+  connection.attachProcess({ process: "server" }).publishTools([]);
+  connection.refuseVersion(
+    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+  );
+
+  expect(
+    await callPageTool(connection, "peek.counter", {}, unknown, saveImage)
+  ).toEqual(
+    errorResult(
+      "No page is connected: Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+    )
+  );
+});
+
 it("saves the image a page tool returns and gives it to the agent with its path", async () => {
   const connection = new AgentConnection();
   const page = connection.attach(
