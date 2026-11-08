@@ -261,7 +261,7 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## Bundle size
 
-Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a build that includes it. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
 A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
