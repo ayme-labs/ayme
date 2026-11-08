@@ -13,7 +13,7 @@ npm install -D @ayme-dev/inspector @ayme-dev/mcp
 
 - installs Ayme, the build plugin and `@playwright/test`;
 - switches the build and serve builders to `@angular-builders/custom-esbuild`;
-- adds the build plugin to the development configuration only, so `ng serve` has Ayme and `ng build` does not;
+- adds the plugin to the build target, and with `include: true` to its development configuration, so `ng serve` has Ayme and `ng build` does not;
 - adds `provideAyme()` to the application config.
 
 New Angular workspaces already enable `experimentalDecorators`. [Angular](../frameworks/angular.md) lists the manual steps.
