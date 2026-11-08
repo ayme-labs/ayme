@@ -62,7 +62,9 @@ Selecting anything opens its detail. A tool's page and a structure node's detail
 
 ## Running tools
 
-Every detail runs its tools through the same run card. The card has a form typed from the tool's input schema, and shows the last result. For a rooted Page Object Tool, such as `ProjectRow.remove`, it adds an instance picker. When only one instance is on the page, it is preselected.
+Every detail runs its tools through the same run card. For a Page Object Tool on several components, you pick the instance first:
+
+![The run card for ListItem.rename: the instance picker, a text field, Run, and the last result, Succeeded](../images/inspector-run-card.png)
 
 **Runs** lists every Run on the page, whoever started it: you from the panel, an agent, or the app. Each Run shows:
 
