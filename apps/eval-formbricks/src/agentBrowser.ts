@@ -9,7 +9,7 @@
  * for the baseline.
  */
 import { execFile } from "node:child_process";
-import { chmod, cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -73,19 +73,28 @@ export function shimScript(binary: string = nativeBinary()) {
 }
 
 /**
- * Where the run's agent-browser daemons keep their sockets. In the temporary
- * folder, since macOS caps a socket path at about 100 bytes and a run
- * folder's path is longer; the run id's random suffix keeps runs apart, so a
- * session the agent names itself never reaches another run's daemon.
+ * agent-browser refuses a session whose socket path would pass 103 bytes, as
+ * macOS caps a socket path there, and puts the session's name in that path.
+ * A run id is far longer, so the session is named after its random suffix.
  */
-export function socketDirectory(runId: string) {
-  return path.join(os.tmpdir(), `agent-browser-eval-${runId.slice(-6)}`);
+export function sessionName(runId: string) {
+  return `eval-${runId.slice(-6)}`;
+}
+
+/**
+ * The prefix of the folder, made with `mkdtemp` for each run, where the run's
+ * agent-browser daemons keep their sockets: short, in the temporary folder,
+ * since a run folder's path is too long, and the run's own, so a session the
+ * agent names itself never reaches another run's daemon.
+ */
+export function socketDirectoryPrefix() {
+  return path.join(os.tmpdir(), "ab-");
 }
 
 /**
  * agent-browser's configuration, from the environment, so the setup and the
- * agent share it. The session is named after the run, so the plain command
- * reaches it. Every session, one the agent names itself included, attaches
+ * agent share it. The session is named after the run (`sessionName`), so
+ * the plain command reaches it. Every session, one the agent names itself included, attaches
  * over CDP to the browser on `cdpPort` instead of launching one, and a
  * session that has lost that browser fails rather than launching another.
  * Screenshots go to the run's output folder. The outdated-Chrome check and
@@ -97,13 +106,13 @@ export function socketDirectory(runId: string) {
 export function agentBrowserEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "outputDir">,
   parentPath: string = process.env.PATH ?? "",
-  options: { cdpPort: number; webmcp: boolean }
+  options: { cdpPort: number; socketDir: string; webmcp: boolean }
 ): Record<string, string> {
   return {
     PATH: `${shimDirectory(context.runDir)}${path.delimiter}${parentPath}`,
-    AGENT_BROWSER_SESSION: context.runId,
+    AGENT_BROWSER_SESSION: sessionName(context.runId),
     AGENT_BROWSER_CDP: String(options.cdpPort),
-    AGENT_BROWSER_SOCKET_DIR: socketDirectory(context.runId),
+    AGENT_BROWSER_SOCKET_DIR: options.socketDir,
     AGENT_BROWSER_SCREENSHOT_DIR: context.outputDir,
     AGENT_BROWSER_NO_VERSION_CHECK: "1",
     ...(options.webmcp ? {} : { AGENT_BROWSER_NO_WEBMCP: "1" }),
@@ -157,14 +166,22 @@ async function setUpAgentBrowser(
   options: { webmcp: boolean }
 ): Promise<ArmSetup> {
   const port = await freeLoopbackPort();
+  const skillDir = await installCliAndSkill(context);
+  const socketDir = await mkdtemp(socketDirectoryPrefix());
   const environment = agentBrowserEnvironment(context, undefined, {
     cdpPort: port,
+    socketDir,
     webmcp: options.webmcp,
   });
-  const skillDir = await installCliAndSkill(context);
-  const page = await setUpWebMcpPage(context, {
-    browserArgs: [`--remote-debugging-port=${port}`],
-  });
+  let page: Awaited<ReturnType<typeof setUpWebMcpPage>>;
+  try {
+    page = await setUpWebMcpPage(context, {
+      browserArgs: [`--remote-debugging-port=${port}`],
+    });
+  } catch (error) {
+    await rm(socketDir, { recursive: true, force: true });
+    throw error;
+  }
   const dispose = async () => {
     try {
       await runCli(context, environment, ["close", "--all"]);
@@ -173,12 +190,12 @@ async function setUpAgentBrowser(
         `Closing the agent-browser sessions failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-    await rm(socketDirectory(context.runId), { recursive: true, force: true });
+    await rm(socketDir, { recursive: true, force: true });
     await page.dispose();
   };
   try {
     context.log(
-      `Attaching the agent-browser session "${context.runId}" over CDP on port ${port}, its WebMCP support ${options.webmcp ? "on" : "off"}.`
+      `Attaching the agent-browser session "${environment.AGENT_BROWSER_SESSION}" over CDP on port ${port}, its WebMCP support ${options.webmcp ? "on" : "off"}.`
     );
     const pageUrl = (await runCli(context, environment, ["get", "url"])).trim();
     if (

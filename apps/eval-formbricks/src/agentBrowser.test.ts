@@ -10,9 +10,10 @@ import {
   agentBrowserVersion,
   nativeBinary,
   shimDirectory,
+  sessionName,
   shimScript,
   skillDirectory,
-  socketDirectory,
+  socketDirectoryPrefix,
 } from "./agentBrowser.ts";
 
 const context = {
@@ -24,26 +25,34 @@ const context = {
 describe("the agent-browser environment", () => {
   const environment = agentBrowserEnvironment(context, "/usr/bin:/bin", {
     cdpPort: 9222,
+    socketDir: "/tmp/ab-x1y2z3",
     webmcp: false,
   });
 
   it("puts the run's command first on the PATH and names the run's session", () => {
     expect(environment.PATH).toBe("/run/bin:/usr/bin:/bin");
-    expect(environment.AGENT_BROWSER_SESSION).toBe("run-abc123");
+    expect(environment.AGENT_BROWSER_SESSION).toBe("eval-abc123");
   });
 
   it("attaches every session to the harness's browser over CDP, keeps its sockets apart from other runs' and its screenshots in the run's output folder", () => {
     expect(environment).toMatchObject({
       AGENT_BROWSER_CDP: "9222",
-      AGENT_BROWSER_SOCKET_DIR: path.join(
-        os.tmpdir(),
-        "agent-browser-eval-abc123"
-      ),
+      AGENT_BROWSER_SOCKET_DIR: "/tmp/ab-x1y2z3",
       AGENT_BROWSER_SCREENSHOT_DIR: "/run/playwright-output",
     });
-    expect(socketDirectory("run-abc123")).toBe(
-      environment.AGENT_BROWSER_SOCKET_DIR
-    );
+  });
+
+  it("keeps every socket path of the run's session, and of one the agent names, under agent-browser's 103-byte limit for a run id of any length", () => {
+    const runId = `${"2026-11-08T17-25-23-759Z-agent-browser-with-ayme-webmcp".repeat(3)}-23e005`;
+    // mkdtemp appends six characters to the prefix.
+    const socketDir = `${socketDirectoryPrefix()}XXXXXX`;
+    expect(socketDir.startsWith(os.tmpdir())).toBe(true);
+    // The longest file a session keeps there, for the run's session and a name the core guide suggests.
+    for (const session of [sessionName(runId), "task-be5442ae6b6b"])
+      expect(
+        Buffer.byteLength(path.join(socketDir, `${session}.version`))
+      ).toBeLessThan(104);
+    expect(sessionName(runId)).toBe("eval-23e005");
   });
 
   it("never names a browser, a profile or anything else that would launch one", () => {
@@ -64,6 +73,7 @@ describe("the agent-browser environment", () => {
   it("turns the page's WebMCP tools on when asked and changes nothing else", () => {
     const withWebMcp = agentBrowserEnvironment(context, "/usr/bin:/bin", {
       cdpPort: 9222,
+      socketDir: "/tmp/ab-x1y2z3",
       webmcp: true,
     });
     expect(withWebMcp).toEqual({
