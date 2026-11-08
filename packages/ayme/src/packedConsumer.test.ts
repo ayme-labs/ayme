@@ -417,10 +417,18 @@ it(
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], consumer);
     const specifiers = Object.entries(packed).flatMap(([name, { dir }]) =>
-      Object.keys(readManifest(dir).exports ?? {})
-        // A manifest export, for tools like the Angular CLI, is not a module.
-        .filter((subpath) => subpath !== "./package.json")
-        .map((subpath) => path.posix.join(name, subpath))
+      Object.entries(readManifest(dir).exports ?? {})
+        // A manifest export, for tools like the Angular CLI, is not a module,
+        // and neither is an export of types only.
+        .filter(
+          ([subpath, target]) =>
+            subpath !== "./package.json" &&
+            !(
+              typeof target === "object" &&
+              Object.keys(target as object).every((key) => key === "types")
+            )
+        )
+        .map(([subpath]) => path.posix.join(name, subpath))
     );
     expect(specifiers).toEqual(
       expect.arrayContaining([
@@ -819,11 +827,8 @@ for (const vite of ["7.0.0", "8.0.0"])
         path.join(consumer, "vite.config.ts"),
         `
 import { defineConfig, type Plugin } from 'vite';
-import aymeDefault, {
-  ayme,
-  type AymeOptions,
-  type AymePlaywrightOptions,
-} from '@ayme-dev/unplugin-ayme/vite';
+import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
+import type { AymePlaywrightOptions } from '@ayme-dev/unplugin-ayme';
 import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
 import {
   createPomCompiler,
@@ -838,7 +843,7 @@ export default defineConfig({ plugins: [plugin, aymeDefault()] });
 `
       );
       exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
-      for (const entry of ["vite.d.mts"])
+      for (const entry of ["index.d.mts", "vite.d.mts"])
         expect(
           fs.readFileSync(
             path.join(packed["@ayme-dev/unplugin-ayme"]!.dir, "dist", entry),

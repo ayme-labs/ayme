@@ -32,6 +32,9 @@
     "dist"
   ],
   "exports": {
+    ".": {
+      "types": "./dist/index.d.mts"
+    },
     "./vite": {
       "types": "./dist/vite.d.mts",
       "import": "./dist/vite.mjs",
