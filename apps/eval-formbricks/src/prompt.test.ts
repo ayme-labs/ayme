@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { arms, goalFirstSentence, type ArmContext } from "./arms.ts";
+import {
+  arms,
+  goalFirstSentence,
+  pageObjectToolsSentence,
+  type ArmContext,
+} from "./arms.ts";
 import { agentSocketPath, aymeMcpVersion } from "./ayme.ts";
 import { firstQuestionHeadline, type Mission } from "./missions.ts";
 import { createPrompt, setupPrompt } from "./prompt.ts";
@@ -197,6 +202,7 @@ describe.each([
   });
 
   it.each([
+    "playwright-mcp-with-ayme-page-objects",
     "playwright-cli",
     "ayme-goal-loop-off",
     "ayme-goal-loop-on",
@@ -242,6 +248,21 @@ describe("the interface lines", () => {
     }
     expect(goalFirstSentence).toBe(
       "Hand the goal to the `goal` tool first; use the other tools only if it can't finish."
+    );
+  });
+
+  it("of the arm with Ayme's Page Object Tools is the Playwright MCP arm's plus one sentence, and does not depend on the start", () => {
+    for (const start of [renameMission.start, signInMission.start]) {
+      expect(
+        arms["playwright-mcp-with-ayme-page-objects"].interfaceLine(start)
+      ).toBe(
+        `${arms["playwright-mcp"].interfaceLine(start)} ${pageObjectToolsSentence}`
+      );
+    }
+    expect(
+      arms["playwright-mcp-with-ayme-page-objects"].interfaceLine(mission.start)
+    ).toBe(
+      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step."
     );
   });
 
@@ -299,10 +320,19 @@ describe("the setup message", () => {
   });
 
   it("tells an arm without a skill not to look for one, and to read no files", () => {
-    const prompt = setupPrompt(arms["playwright-mcp"]);
-    expect(prompt).toContain("Don't look for a skill.");
-    expect(prompt).toContain("Don't read files and don't use the browser");
-    expect(prompt.toLowerCase()).not.toContain("playwright");
+    for (const armId of [
+      "playwright-mcp",
+      "playwright-mcp-with-ayme-page-objects",
+    ] as const) {
+      const prompt = setupPrompt(arms[armId]);
+      expect(prompt).toContain("Don't look for a skill.");
+      expect(prompt).toContain("Don't read files and don't use the browser");
+      expect(prompt.toLowerCase()).not.toContain("playwright");
+      expect(prompt.toLowerCase()).not.toContain("ayme");
+    }
+    expect(setupPrompt(arms["playwright-mcp-with-ayme-page-objects"])).toBe(
+      setupPrompt(arms["playwright-mcp"])
+    );
   });
 
   it("is not part of the task prompt", () => {
@@ -351,6 +381,40 @@ describe.each([
     ]);
     expect(arm.setup).toBeTypeOf("function");
     expect(arm.interfaceLine(mission.start).includes("`goal`")).toBe(goalLoop);
+  });
+});
+
+describe("the playwright-mcp-with-ayme-page-objects arm", () => {
+  const arm = arms["playwright-mcp-with-ayme-page-objects"];
+
+  it("gives the agent Ayme's MCP server through the proxy, and leaves Playwright MCP's entry to its setup, which names the port", () => {
+    const servers = arm.mcpServers(armContext);
+    expect(Object.keys(servers)).toEqual(["ayme"]);
+    expect(servers.ayme).toEqual(
+      arms["ayme-goal-loop-off"].mcpServers(armContext).ayme
+    );
+    expect(arm.setup).toBeTypeOf("function");
+    expect(arm.browserInterface()).toEqual({
+      name: "@playwright/mcp",
+      version: "0.0.83",
+    });
+  });
+
+  it("is the Playwright MCP arm with the ayme server allowed beside Playwright's, no skill and nothing denied", () => {
+    const playwrightMcp = arms["playwright-mcp"];
+    expect(arm.tools).toEqual(playwrightMcp.tools);
+    expect(arm.allowedTools).toEqual(["mcp__playwright", "mcp__ayme"]);
+    expect(arm.skill).toBeUndefined();
+    expect(arm.readsSkillReferences).toBeUndefined();
+    expect(arm.disallowedTools).toBeUndefined();
+  });
+
+  it("checks the Ayme server's build and ports, and not the Decision Endpoint, since the Goal Loop is off", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual([
+      "Ayme MCP server",
+      "Ayme MCP ports",
+    ]);
+    expect(arm.interfaceLine(mission.start)).not.toContain("goal");
   });
 });
 

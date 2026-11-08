@@ -4,6 +4,9 @@
  * headless browser holding the mission's start page, with the Goal Loop and
  * page objects switches set for the arm. The pairing follows the tab through the screens
  * the task moves it to: the server tells the agent each time the tools change.
+ * The arm that adds Ayme's Page Object Tools to Playwright MCP shares the
+ * server and the page (`setUpAymePage`) and adds its own browser arguments
+ * and a proxy that offers the agent the Page Object Tools alone.
  *
  * A coding agent normally starts its own `ayme mcp` over stdio, and a tab of
  * the app on localhost pairs with it by itself: it looks for a server when it
@@ -114,16 +117,122 @@ export function proxyScriptPath(runDir: string) {
 }
 
 /**
+ * The shape of a Page Object Tool's name: `<class>.<action>`, the class a
+ * Page Object Action belongs to and the action, both JavaScript identifiers.
+ * The marker is the name because the MCP tool list carries nothing else: the
+ * server lists a page tool as its name, description and input schema, with
+ * no annotation of what published it. Every other tool is told apart by that
+ * shape: the server's own `ayme_*` tools, the Browser Tools, `snapshot` and
+ * `goal` carry no dot, and a Peek Tool, the one other dotted family, is
+ * `peek.<name>` or `peek.node.<name>`. A class named `peek` would be missed;
+ * no app names one so.
+ */
+export const pageObjectToolNamePattern =
+  /^(?!peek\.)[A-Za-z_$][\w$]*\.[A-Za-z_$][\w$]*$/;
+
+export function isPageObjectToolName(name: string): boolean {
+  return pageObjectToolNamePattern.test(name);
+}
+
+/** The Page Object Tools among a page's tool names. */
+export function pageObjectToolNames(names: string[]): string[] {
+  return names.filter(isPageObjectToolName);
+}
+
+/**
  * The command Claude Code starts as the agent's MCP server: forwards its
  * stdio to the `ayme mcp` the harness started and paired before the agent,
- * through the socket named on its command line.
+ * through the socket named on its command line. With `pageObjectToolsOnly`
+ * it reads the newline-delimited JSON-RPC messages instead of piping bytes:
+ * a `tools/list` answer keeps the Page Object Tools alone, a `tools/call` of
+ * any other tool is answered with a JSON-RPC error and never forwarded, and
+ * everything else, `notifications/tools/list_changed` included, passes
+ * through unchanged. The server itself is not told; it still lists and would
+ * run every tool.
  */
-export function proxyScript() {
+export function proxyScript(
+  options: { pageObjectToolsOnly: boolean } = { pageObjectToolsOnly: false }
+) {
   return `// Written by the eval harness for one run. Claude Code starts this as the agent's MCP server command;
 // it forwards the agent's stdio to the ayme mcp server the harness started and paired before the agent.
+// With pageObjectToolsOnly it offers the agent the page's Page Object Tools alone; see the harness's ayme.ts.
 const net = require("node:net");
+const { StringDecoder } = require("node:string_decoder");
+const pageObjectToolsOnly = ${JSON.stringify(options.pageObjectToolsOnly)};
+const pageObjectToolName = /${pageObjectToolNamePattern.source}/;
 const socket = net.connect(process.argv[2]);
+
+// Calls fn with each newline-delimited line of the stream, whole, whatever the chunks were.
+function forEachLine(stream, fn) {
+  const decoder = new StringDecoder("utf8");
+  let rest = "";
+  stream.on("data", (chunk) => {
+    rest += decoder.write(chunk);
+    let newline;
+    while ((newline = rest.indexOf("\\n")) !== -1) {
+      fn(rest.slice(0, newline));
+      rest = rest.slice(newline + 1);
+    }
+  });
+  stream.on("end", () => {
+    if (rest) fn(rest);
+  });
+}
+
+function parse(line) {
+  try {
+    const message = JSON.parse(line);
+    return message && typeof message === "object" ? message : null;
+  } catch {
+    return null;
+  }
+}
+
+function filtered() {
+  // The ids of the agent's tools/list requests whose answers are still to come.
+  const listRequests = new Set();
+  forEachLine(process.stdin, (line) => {
+    const message = parse(line);
+    if (message?.method === "tools/list" && message.id !== undefined)
+      listRequests.add(JSON.stringify(message.id));
+    if (message?.method === "tools/call") {
+      const name = message.params?.name;
+      if (typeof name !== "string" || !pageObjectToolName.test(name)) {
+        if (message.id !== undefined)
+          process.stdout.write(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: message.id,
+              error: { code: -32602, message: \`Unknown tool "\${name}".\` },
+            }) + "\\n"
+          );
+        return;
+      }
+    }
+    socket.write(line + "\\n");
+  });
+  forEachLine(socket, (line) => {
+    const message = parse(line);
+    if (
+      message?.id !== undefined &&
+      listRequests.delete(JSON.stringify(message.id)) &&
+      Array.isArray(message.result?.tools)
+    ) {
+      message.result.tools = message.result.tools.filter((tool) =>
+        pageObjectToolName.test(tool?.name)
+      );
+      process.stdout.write(JSON.stringify(message) + "\\n");
+      return;
+    }
+    process.stdout.write(line + "\\n");
+  });
+}
+
 socket.on("connect", () => {
+  if (pageObjectToolsOnly) {
+    filtered();
+    return;
+  }
   process.stdin.pipe(socket);
   socket.pipe(process.stdout);
 });
@@ -209,6 +318,22 @@ export type AymeEvidence = {
   goalToolPublished: boolean;
   /** Whether the page's page objects were on; off, it published no Page Object Tool. */
   pageObjects: boolean;
+  /**
+   * Present when the proxy offered the agent the Page Object Tools alone:
+   * the tools of the start screen the agent was offered after filtering.
+   * The agent's tool list is the proxy's; the server itself lists every tool.
+   */
+  proxy?: { pageObjectToolsOnly: true; offeredTools: string[] };
+};
+
+/** What `setUpAymePage` needs to know about the arm. */
+export type AymePageOptions = {
+  goalLoop: boolean;
+  pageObjects: boolean;
+  /** Extra arguments for the headless browser the page opens in. */
+  browserArgs?: string[];
+  /** Whether the proxy offers the agent the page's Page Object Tools alone. */
+  pageObjectToolsOnly?: boolean;
 };
 
 type Page = ReturnType<BrowserContext["pages"]>[number];
@@ -224,11 +349,6 @@ function publishedToolNames(page: Page): Promise<string[]> {
     if (!modelContext) return [];
     return (await modelContext.getTools()).map((tool) => tool.name).sort();
   });
-}
-
-/** Page Object Tools are named `<page object>.<action>`; Ayme's own tools carry no dot. */
-export function pageObjectToolNames(names: string[]): string[] {
-  return names.filter((name) => name.includes("."));
 }
 
 /**
@@ -423,10 +543,9 @@ class HarnessedServer {
 }
 
 /**
- * Starts the Ayme MCP server, opens the mission's start page with the Goal
- * Loop and page objects switches set for the arm, waits until the page has
- * paired with the server and published the screen's tools, and hands the
- * server to the agent.
+ * The Ayme arms' setup: the shipped skill in the run's configuration folder,
+ * then the server and the page from `setUpAymePage`, with Claude Code's
+ * per-call limit raised for `goal`.
  */
 export async function setUpAymeAgent(
   context: ArmContext,
@@ -436,7 +555,27 @@ export async function setUpAymeAgent(
   // Playwright CLI arm's skill is.
   const skillDir = aymeSkillDirectory(context.configDir);
   await cp(aymeSkillSource, skillDir, { recursive: true });
+  const { evidence, dispose } = await setUpAymePage(context, options);
+  return {
+    // Claude Code's own per-call limit must outlast a goal call.
+    environment: { MCP_TOOL_TIMEOUT: String(mcpToolTimeoutMs) },
+    readableDirectories: [skillDir],
+    evidence,
+    dispose,
+  };
+}
 
+/**
+ * Starts the Ayme MCP server, opens the mission's start page with the Goal
+ * Loop and page objects switches set for the arm, waits until the page has
+ * paired with the server and published the screen's tools, and hands the
+ * server to the agent through the proxy in the run folder.
+ */
+export async function setUpAymePage(
+  context: ArmContext,
+  options: AymePageOptions
+): Promise<Pick<ArmSetup, "dispose"> & { evidence: AymeEvidence }> {
+  const pageObjectToolsOnly = options.pageObjectToolsOnly === true;
   const origin = new URL(context.start.url).origin;
   const screenTool = options.pageObjects
     ? startScreenTool[context.start.screen]
@@ -476,12 +615,20 @@ export async function setUpAymeAgent(
     await server.waitUntilListening(port, 15_000);
     context.log(`Ayme MCP server listening on port ${port}.`);
     await mkdir(context.runDir, { recursive: true });
-    await writeFile(proxyScriptPath(context.runDir), proxyScript());
+    await writeFile(
+      proxyScriptPath(context.runDir),
+      proxyScript({ pageObjectToolsOnly })
+    );
     await server.listen(socketPath);
 
     browser = await playwright().chromium.launchPersistentContext(
       context.profileDir,
-      { channel: "chrome", headless: true, viewport }
+      {
+        channel: "chrome",
+        headless: true,
+        viewport,
+        ...(options.browserArgs ? { args: options.browserArgs } : {}),
+      }
     );
     if (options.goalLoop)
       await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
@@ -544,6 +691,10 @@ export async function setUpAymeAgent(
     context.log(
       `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published; page objects are ${options.pageObjects ? "on" : "off"}.`
     );
+    if (pageObjectToolsOnly)
+      context.log(
+        `The proxy offers the agent the Page Object Tools alone: ${pageObjectToolNames(tools).join(", ")}.`
+      );
     await writeLog();
     const evidence: AymeEvidence = {
       server: { name: aymeMcpPackageName, version: aymeMcpVersion(), port },
@@ -554,14 +705,16 @@ export async function setUpAymeAgent(
       tools,
       goalToolPublished,
       pageObjects: options.pageObjects,
+      ...(pageObjectToolsOnly
+        ? {
+            proxy: {
+              pageObjectToolsOnly,
+              offeredTools: pageObjectToolNames(tools),
+            },
+          }
+        : {}),
     };
-    return {
-      // Claude Code's own per-call limit must outlast a goal call.
-      environment: { MCP_TOOL_TIMEOUT: String(mcpToolTimeoutMs) },
-      readableDirectories: [skillDir],
-      evidence,
-      dispose,
-    };
+    return { evidence, dispose };
   } catch (error) {
     await dispose();
     throw error;

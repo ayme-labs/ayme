@@ -106,7 +106,7 @@ async function main() {
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
-      // Once each: the two Ayme arms share theirs.
+      // Once each: the arms with Ayme's server share theirs.
       ...new Set(
         options.arms.flatMap((armId) => arms[armId].preconditions ?? [])
       ),

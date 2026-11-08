@@ -5,9 +5,6 @@
  * tools it leaves the agent, the permission rules that let it use them, and
  * what it needs checked and set up outside the measured window.
  */
-import { createRequire } from "node:module";
-import path from "node:path";
-
 import {
   aymeGoalLoopPreconditions,
   aymeMcpPackageName,
@@ -18,13 +15,18 @@ import {
   aymeSkillName,
   setUpAymeAgent,
 } from "./ayme.ts";
-import { playwrightMcpRoot } from "./browser.ts";
 import type { Mission } from "./missions.ts";
 import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
+import {
+  playwrightMcpServer,
+  playwrightMcpVersion,
+  setUpPlaywrightMcpWithAymePageObjects,
+} from "./playwrightMcp.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export type ArmId =
   | "playwright-mcp"
+  | "playwright-mcp-with-ayme-page-objects"
   | "playwright-cli"
   | "ayme-goal-loop-off"
   | "ayme-goal-loop-on"
@@ -60,6 +62,11 @@ export type ArmSetup = {
   readableDirectories: string[];
   /** What the setup established before the measured window, recorded in the result. */
   evidence?: Record<string, unknown>;
+  /**
+   * MCP servers the setup adds to the arm's own, for an interface whose
+   * command the setup alone can name, such as one attached to a port chosen then.
+   */
+  mcpServers?: Record<string, McpServer>;
   /** Undoes the setup after the run, whatever its outcome. */
   dispose: () => Promise<void>;
 };
@@ -78,6 +85,7 @@ export type Arm = {
   allowedTools: string[];
   /** Permission rules that stay denied, whatever the interface's own skill allows. */
   disallowedTools?: string[];
+  /** The arm's MCP servers; the run adds the ones its setup returns. */
   mcpServers: (context: ArmContext) => Record<string, McpServer>;
   /** What the interface needs before a run starts, checked with the shared preconditions. */
   preconditions?: Precondition[];
@@ -89,15 +97,6 @@ export type Arm = {
   /** The pinned interface and its version, recorded in every result. */
   browserInterface: () => { name: string; version: string };
 };
-
-const require = createRequire(import.meta.url);
-
-function playwrightMcpVersion(): string {
-  const manifest = require(path.join(playwrightMcpRoot, "package.json")) as {
-    version: string;
-  };
-  return manifest.version;
-}
 
 /**
  * Every arm gets Claude Code's ToolSearch, as a default install has it. Without it Claude Code
@@ -160,37 +159,50 @@ function aymeArm(
   };
 }
 
+/** The Playwright MCP arm's interface line; the arm with Ayme's Page Object Tools adds one sentence to it. */
+const playwrightMcpInterfaceLine =
+  "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.";
+
+/**
+ * What the arm with Ayme's Page Object Tools adds to the Playwright MCP
+ * arm's interface line; the two arms differ in nothing else the agent reads.
+ */
+export const pageObjectToolsSentence = `The \`${aymeServerName}\` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.`;
+
+const playwrightMcpInterface = () => ({
+  name: "@playwright/mcp",
+  version: playwrightMcpVersion(),
+});
+
 export const arms: Record<ArmId, Arm> = {
   "playwright-mcp": {
     id: "playwright-mcp",
-    interfaceLine: () =>
-      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.",
+    interfaceLine: () => playwrightMcpInterfaceLine,
     tools: baseTools,
     allowedTools: ["mcp__playwright"],
-    mcpServers: ({ profileDir, outputDir, initPagePath }) => ({
-      playwright: {
-        command: process.execPath,
-        args: [
-          path.join(playwrightMcpRoot, "cli.js"),
-          // The system Chrome, Playwright MCP's default; the harness prepares the profile with the same browser.
-          "--browser",
-          "chrome",
-          "--headless",
-          // The lab app publishes Ayme's tools through WebMCP; this arm gets Playwright MCP's own tools only.
-          "--no-webmcp",
-          "--user-data-dir",
-          profileDir,
-          "--output-dir",
-          outputDir,
-          "--init-page",
-          initPagePath,
-        ],
-      },
-    }),
-    browserInterface: () => ({
-      name: "@playwright/mcp",
-      version: playwrightMcpVersion(),
-    }),
+    mcpServers: (context) => ({ playwright: playwrightMcpServer(context) }),
+    browserInterface: playwrightMcpInterface,
+  },
+  /**
+   * The Playwright MCP arm with Ayme's Page Object Tools beside it, so a
+   * browser tool is compared with and without Ayme. Playwright MCP drives the
+   * page that paired with the run's `ayme mcp`, attached over CDP to the
+   * browser the setup launched, and the `ayme` server reaches the agent
+   * through a proxy that offers the page's Page Object Tools alone: none of
+   * the server's own tools, no Browser Tool, no `snapshot`. Page objects on,
+   * Goal Loop off, no skill. The Playwright MCP entry is the setup's, since it
+   * names the port chosen then.
+   */
+  "playwright-mcp-with-ayme-page-objects": {
+    id: "playwright-mcp-with-ayme-page-objects",
+    interfaceLine: () =>
+      `${playwrightMcpInterfaceLine} ${pageObjectToolsSentence}`,
+    tools: baseTools,
+    allowedTools: ["mcp__playwright", `mcp__${aymeServerName}`],
+    mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
+    preconditions: aymeMcpPreconditions,
+    setup: setUpPlaywrightMcpWithAymePageObjects,
+    browserInterface: playwrightMcpInterface,
   },
   "playwright-cli": {
     id: "playwright-cli",

@@ -12,6 +12,7 @@ import {
   aymeMcpServer,
   aymeSkillDirectory,
   aymeSkillSource,
+  isPageObjectToolName,
   mcpToolTimeoutMs,
   pageObjectToolNames,
   proxyScript,
@@ -68,7 +69,7 @@ describe("the agent's MCP server entry", () => {
 });
 
 describe("the Page Object Tools among a page's tools", () => {
-  it("are the names with a dot, so neither snapshot, a Browser Tool nor goal counts", () => {
+  it("are the names shaped <class>.<action>, so neither snapshot, a Browser Tool, goal nor a server tool counts", () => {
     expect(
       pageObjectToolNames([
         "SignInPage.fillEmail",
@@ -76,9 +77,22 @@ describe("the Page Object Tools among a page's tools", () => {
         "fill_form",
         "goal",
         "snapshot",
+        "ayme_list_tools",
         "Question.setHeadline",
       ])
     ).toEqual(["SignInPage.fillEmail", "Question.setHeadline"]);
+  });
+
+  it.each(["peek.cart", "peek.node.orders", "a.b.c", ".fill", "Page.", "Page"])(
+    "leave out %s",
+    (name) => {
+      expect(isPageObjectToolName(name)).toBe(false);
+    }
+  );
+
+  it("take any class and action identifiers", () => {
+    expect(isPageObjectToolName("survey_editor.save_and_close")).toBe(true);
+    expect(isPageObjectToolName("$Page._go")).toBe(true);
   });
 });
 
@@ -156,5 +170,222 @@ describe("the proxy", () => {
     } finally {
       server.close();
     }
+  });
+});
+
+/**
+ * The proxy offering the Page Object Tools alone, against a stand-in server
+ * on the socket that answers tools/list with every kind of tool, echoes any
+ * other request as its result, and sends a list_changed notification when
+ * asked to.
+ */
+describe("the proxy offering the Page Object Tools alone", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "ayme-eval-filter-"));
+  afterAll(() => rmSync(directory, { recursive: true, force: true }));
+
+  const listed = [
+    { name: "ayme_connect", inputSchema: { type: "object" } },
+    { name: "ayme_list_tools", inputSchema: { type: "object" } },
+    { name: "ayme_call", inputSchema: { type: "object" } },
+    { name: "ayme_inspect", inputSchema: { type: "object" } },
+    { name: "snapshot", inputSchema: { type: "object" } },
+    { name: "click", inputSchema: { type: "object" } },
+    { name: "fill_form", inputSchema: { type: "object" } },
+    { name: "navigate", inputSchema: { type: "object" } },
+    { name: "goal", inputSchema: { type: "object" } },
+    { name: "peek.cart", inputSchema: { type: "object" } },
+    {
+      name: "SurveyEditorPage.setSurveyName",
+      description: "Sets the name.",
+      inputSchema: { type: "object", properties: { name: { type: "string" } } },
+    },
+    { name: "Question.setHeadline", inputSchema: { type: "object" } },
+  ];
+  const listChanged = JSON.stringify({
+    jsonrpc: "2.0",
+    method: "notifications/tools/list_changed",
+  });
+
+  async function startProxy(name: string) {
+    const socketPath = path.join(directory, `${name}.sock`);
+    const script = path.join(directory, `${name}.cjs`);
+    writeFileSync(script, proxyScript({ pageObjectToolsOnly: true }));
+    const received: unknown[] = [];
+    let client: net.Socket | undefined;
+    const server = net.createServer((socket) => {
+      client = socket;
+      let rest = "";
+      socket.on("data", (chunk) => {
+        rest += String(chunk);
+        const lines = rest.split("\n");
+        rest = lines.pop() ?? "";
+        for (const line of lines) {
+          const message = JSON.parse(line) as {
+            id?: number;
+            method: string;
+            params?: unknown;
+          };
+          received.push(message);
+          if (message.method === "tools/list")
+            socket.write(
+              `${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { tools: listed, nextCursor: "n" } })}\n`
+            );
+          else if (message.id !== undefined)
+            socket.write(
+              `${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { echoed: message.params } })}\n`
+            );
+        }
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    const proxy = spawn(process.execPath, [script, socketPath]);
+    let output = "";
+    proxy.stdout.on("data", (chunk) => (output += String(chunk)));
+    const lines = () =>
+      output
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+    return {
+      proxy,
+      received,
+      lines,
+      notify: () => client!.write(`${listChanged}\n`),
+      close: async () => {
+        proxy.stdin.end();
+        await new Promise((resolve) => proxy.once("exit", resolve));
+        server.close();
+      },
+    };
+  }
+
+  it("keeps the Page Object Tools of a tools/list answer and drops every other tool, leaving the rest of the answer", async () => {
+    const { proxy, received, lines, close } = await startProxy("list");
+    try {
+      proxy.stdin.write(
+        '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n'
+      );
+      await expect.poll(() => lines().length).toBe(1);
+      expect(lines()[0]).toEqual({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          tools: [listed[10], listed[11]],
+          nextCursor: "n",
+        },
+      });
+      expect(received).toEqual([
+        { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+      ]);
+    } finally {
+      await close();
+    }
+  });
+
+  it("forwards a call of a Page Object Tool and its result", async () => {
+    const { proxy, received, lines, close } = await startProxy("call");
+    try {
+      proxy.stdin.write(
+        `${JSON.stringify({ jsonrpc: "2.0", id: "c1", method: "tools/call", params: { name: "SurveyEditorPage.setSurveyName", arguments: { name: "x" } } })}\n`
+      );
+      await expect.poll(() => lines().length).toBe(1);
+      expect(lines()[0]).toEqual({
+        jsonrpc: "2.0",
+        id: "c1",
+        result: {
+          echoed: {
+            name: "SurveyEditorPage.setSurveyName",
+            arguments: { name: "x" },
+          },
+        },
+      });
+      expect(received).toHaveLength(1);
+    } finally {
+      await close();
+    }
+  });
+
+  it.each(["click", "snapshot", "ayme_call", "goal", "peek.cart"])(
+    "answers a call of %s with a JSON-RPC error and never forwards it",
+    async (name) => {
+      const { proxy, received, lines, close } = await startProxy(
+        `refuse-${name}`
+      );
+      try {
+        proxy.stdin.write(
+          `${JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name, arguments: {} } })}\n`
+        );
+        await expect.poll(() => lines().length).toBe(1);
+        expect(lines()[0]).toEqual({
+          jsonrpc: "2.0",
+          id: 7,
+          error: { code: -32602, message: `Unknown tool "${name}".` },
+        });
+        // A later request still reaches the server, after nothing of the refused one did.
+        proxy.stdin.write('{"jsonrpc":"2.0","id":8,"method":"ping"}\n');
+        await expect.poll(() => lines().length).toBe(2);
+        expect(received).toEqual([{ jsonrpc: "2.0", id: 8, method: "ping" }]);
+      } finally {
+        await close();
+      }
+    }
+  );
+
+  it("passes notifications and other messages through unchanged, both ways", async () => {
+    const { proxy, received, lines, notify, close } = await startProxy("pass");
+    try {
+      proxy.stdin.write(
+        '{"jsonrpc":"2.0","method":"notifications/initialized"}\n'
+      );
+      proxy.stdin.write(
+        '{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"capabilities":{}}}\n'
+      );
+      await expect.poll(() => lines().length).toBe(1);
+      notify();
+      await expect.poll(() => lines().length).toBe(2);
+      expect(received).toEqual([
+        { jsonrpc: "2.0", method: "notifications/initialized" },
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "initialize",
+          params: { capabilities: {} },
+        },
+      ]);
+      expect(lines()[1]).toEqual(JSON.parse(listChanged));
+    } finally {
+      await close();
+    }
+  });
+
+  it("reads messages whole however they are chunked", async () => {
+    const { proxy, lines, close } = await startProxy("chunks");
+    try {
+      const list = '{"jsonrpc":"2.0","id":3,"method":"tools/list"}\n';
+      const call =
+        '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"click","arguments":{}}}\n';
+      const text = list + call;
+      for (let at = 0; at < text.length; at += 7) {
+        proxy.stdin.write(text.slice(at, at + 7));
+        await new Promise((resolve) => setTimeout(resolve, 2));
+      }
+      await expect.poll(() => lines().length).toBe(2);
+      const byId = Object.fromEntries(lines().map((line) => [line.id, line]));
+      expect(
+        (byId[3] as { result: { tools: { name: string }[] } }).result.tools.map(
+          (tool) => tool.name
+        )
+      ).toEqual(["SurveyEditorPage.setSurveyName", "Question.setHeadline"]);
+      expect(byId[4]).toHaveProperty("error");
+    } finally {
+      await close();
+    }
+  });
+
+  it("is written with the filter off for the Ayme arms", () => {
+    expect(proxyScript()).toContain("const pageObjectToolsOnly = false;");
+    expect(proxyScript({ pageObjectToolsOnly: true })).toContain(
+      "const pageObjectToolsOnly = true;"
+    );
   });
 });
