@@ -8,7 +8,7 @@ Object covers.
 
 Once the page is connected, its tools are the Browser Tools and the Page
 Object Tools it publishes. Each Page Object Tool is named after its class and action,
-such as `ListItem.archive`, across all instances of the class. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
+such as `ProjectRow.remove`, across all instances of the class. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
 lists every built-in tool with its input. To connect to the page, when its
 tools are missing, or when the page left before a call answered, read
 [Browser setup](browser-setup.md).
@@ -41,37 +41,78 @@ explains the two. A tool's own return value is in `result`.
 - `settled: false` means the page was still changing when the call answered,
   so `changes` may not hold all the call did.
 - After an action, take a `snapshot` only when an answer is empty or
-  inconclusive about whether the call worked, when its `next` says to, or when
-  you need a fresh ref.
+  inconclusive about whether the call worked, after a full page load when its
+  `next` says to, or when you need a fresh ref.
 
 ## Refs and refused calls
 
 - When a ref fails to resolve, call `snapshot` and use the ref it prints for
-  that node; if that ref fails the same way, use a Browser Tool with a selector such as
-  `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
-  rooted Page Object Tool the ref of that instance's own Page Object Root,
-  including a page or single child. Pass its action arguments under `args`.
-  A root-less Page Object Tool takes its arguments directly.
+  that node. If that ref fails the same way, use a Browser Tool with a
+  selector, such as `role=button[name="Save"]`. Pass a ref alone, such as
+  `e36`.
   [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
-  says what each failure reason means. Refs belong to one document: after a
-  full load, call `snapshot` before you use a ref, since a ref printed before
-  the load can name another element on the new page.
-- The page state marks each Page Object Root with its class. Call a nested
-  item marked `e9 ListItem` through its class's tool: `ListItem.archive({ ref: "e9" })`.
-  [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-page-objects.md#aymechild)
-  has the example.
-- When a tool answers that it is unavailable, read the reason. A runtime
-  reason, `a click would not reach it; e42 is in the way`, names the element
-  in the way in the page state, such as an open dialog to close first, and
-  stops before the ref when nothing in the way has one. A Browser Tool that
-  types or selects (`type`, `fill`, `select_option`, or a `fill_form` field
-  other than a checkbox or radio) gives
-  `it cannot take focus; e42 is in the way` instead, for a field outside an
-  open native modal dialog or inside an inert region. Any other reason is the
-  app's own, such as `No item is selected`. A Page Object Tool stays listed:
-  `ayme_list_tools` shows whether each tool is available and why not,
-  and a tool result says which tools became available or unavailable since
-  your previous call.
+  says what each failure reason means.
+- A ref belongs to one document. After a full page load, call `snapshot`
+  before you use a ref. A ref printed before the load can name another
+  element on the new page.
+- The page state marks each Page Object Root with its class. Example:
+  `ProjectsPage` holds a collection `projects()` of `ProjectRow`.
+  `ProjectRow` has the actions `remove()` and `rename(name)`. `snapshot`
+  shows:
+
+  ```
+  - e5 table:
+    - e6 rowgroup:
+      - e7 ProjectRow:
+        - e8 cell "Website redesign"
+        - e9 cell:
+          - e10 button "Remove"
+      - e11 ProjectRow:
+        - e12 cell "Mobile app"
+        - e13 cell:
+          - e14 button "Remove"
+  ```
+
+  One tool serves every `ProjectRow`. Name the row by the ref on its mark,
+  `e11`:
+
+  ```
+  ProjectRow.remove({ ref: "e11" })
+  ProjectRow.rename({ ref: "e11", args: { name: "Mobile app v2" } })
+  ```
+
+  The action's own arguments go under `args`. Leave `args` out when the
+  action takes none. Any class with a mark is called this way, a single
+  child included. The ref of the row's button, `e14`, is refused:
+  `Cannot call ProjectRow.remove on ref "e14": it is not a root of ProjectRow.`
+
+- A class with no root gets no mark. A page usually has none, since its base
+  class makes it present by its URL. Its tools take the action's arguments
+  directly, such as `ProjectsPage.openNewProjectDialog({})`.
+  [Page Object root](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
+  has the rules.
+- When a tool answers that it is unavailable, read the reason. Example: a
+  native modal dialog opened over the rows above.
+
+  ```
+  - e15 dialog "Remove Mobile app?":
+    - e16 button "Cancel" [active]
+  ```
+
+  `ProjectRow.remove` is now unavailable, with the reason
+  `a click would not reach it; e15 is in the way`. A call on `e11` is refused
+  with that reason. `e15` is the open dialog. Close it, such as with `click`
+  on `e16`, then call again. When the element in the way has no ref, the
+  reason ends at `a click would not reach it`.
+
+- `type`, `fill`, `select_option` and the `fill_form` fields other than a
+  checkbox or radio give `it cannot take focus; e15 is in the way` instead.
+  They give it for a field outside an open native modal dialog, or inside an
+  `inert` region.
+- Any other reason comes from the app, such as `No item is selected`.
+- An unavailable Page Object Tool stays listed. `ayme_list_tools` shows
+  whether each tool is available, and why not. Each tool result says which
+  tools became available or unavailable since your previous call.
 - When a tool answers that it is gone, what offered it is no longer there,
   such as a Page Object that is no longer present, a page that navigated or
   an App Process that stopped. Use one of the current tools instead.

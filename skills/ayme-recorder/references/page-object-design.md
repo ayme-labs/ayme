@@ -65,12 +65,35 @@ export class ComboboxOptions extends AppComponent {
 }
 ```
 
+The flow's page objects, which the sections below add actions to:
+
+```ts
+export class ProjectsPage extends AppPage {
+  readonly newProjectButton = this.page.getByRole("button", {
+    name: "New project",
+  });
+}
+
+export class NewProjectDialog extends AppComponent {
+  readonly nameInput = this.root.getByLabel("Name");
+  readonly nameError = this.root.getByTestId("name-error");
+  // The owner picker, the Combobox from above.
+  readonly owner = new Combobox(this.root.getByTestId("owner"));
+  readonly createButton = this.root.getByRole("button", { name: "Create" });
+}
+
+// The page a created project opens on.
+export class ProjectPage extends AppPage {
+  readonly heading = this.page.getByRole("heading", { level: 1 });
+}
+```
+
 ## Return repeated components from a method
 
 A repeated item becomes a component when it has actions or parts to read, as
-any boundary does; a list of plain items stays one locator matching all of
-them. Return repeated components one per element from a method without
-parameters, so a caller gets the items the page shows when it asks:
+any other boundary does. A list of plain items stays one locator that matches
+all of them. Return the components from a method without parameters, one per
+element. Each call then returns the items the page shows at that moment:
 
 ```ts
 // On ProjectsPage:
@@ -159,6 +182,18 @@ is likely to break or match the wrong element:
 - A position, `nth()` or `first()`, among generic elements.
 - A locator that matches an ancestor of the element rather than the element.
 
+```ts
+// On ProjectRow, locating the project's name:
+// ❌ The row's whole text, run together across its cells.
+this.root.page().getByText("Website redesign Abel Archive");
+// ❌ A position among generic elements.
+this.root.locator("div").nth(2);
+// ❌ The row around the name, not the name.
+this.root.page().locator("tr", { hasText: "Website redesign" });
+// ✅
+this.root.getByTestId("project-name");
+```
+
 ## Compute derived state in a query method
 
 Tests check state through the locators directly, with Playwright's web-first
@@ -223,24 +258,22 @@ export class Modal extends AppComponent {
   }
 }
 
-// The dialog is a Modal with app meaning: it knows the projects page is
-// behind it.
-export class NewProjectDialog extends AppComponent {
-  readonly modal = new Modal(this.root);
+// On NewProjectDialog: it holds a generic Modal and adds the app's meaning.
+// It knows the projects page is behind it.
+readonly modal = new Modal(this.root);
 
-  async cancel() {
-    await this.modal.close();
-    return new ProjectsPage(this.root.page());
-  }
+async cancel() {
+  await this.modal.close();
+  return new ProjectsPage(this.root.page());
 }
 ```
 
 ## Finish in the target state
 
-An action ensures a state and returns once that state holds, observed on its
-own root and children. `openSettings()` clicks only when the panel isn't
-already open; a dialog's `create()` returns once the dialog has closed or
-shown its error, not when Create was clicked.
+An action returns once the state it promises holds, not once its last click
+is done. `openNewProjectDialog()` waits for the dialog's root before it
+returns the dialog. `create()`, below, waits until the project's page or the
+name error shows.
 
 ## Return where the user continues
 
