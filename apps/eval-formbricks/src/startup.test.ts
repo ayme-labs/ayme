@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -315,7 +316,10 @@ describe("runStartup", () => {
   });
 
   it("names Claude Code as the missing precondition, and nothing else", async () => {
-    vi.stubEnv("PATH", path.dirname(process.execPath));
+    // A folder with nothing in it: Node's own folder may hold a claude beside node, as a Claude Code cloud container's does.
+    const emptyBin = await mkdtemp(path.join(os.tmpdir(), "eval-no-claude-"));
+    runDirs.push(emptyBin);
+    vi.stubEnv("PATH", emptyBin);
     vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "token-for-the-test");
     await expect(
       runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 })
