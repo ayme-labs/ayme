@@ -58,9 +58,11 @@ project's Page Objects to a page that doesn't ship Ayme. Set it up as
 describes. When it fails:
 
 - The browser tool fails with `Init script file does not exist`: start
-  `ayme mcp` first, then restart the browser tool.
+  `ayme mcp` first, and check the path, which is relative to the config
+  file's folder. Then restart the browser tool.
 - The page never pairs: check the browser tool's config has `bypassCSP` and
   the `local-network-access` permission, and that the browser started after
-  `ayme mcp` or `--port` pins its port.
-- A Page Object's tools don't change after an edit: the build failed, and
-  the error is in `ayme mcp`'s standard error.
+  `ayme mcp`. Otherwise pin the port with `--port` and restart the browser.
+- A Page Object's tools don't change after an edit: a failed build is in
+  `ayme mcp`'s standard error, and a build that failed to load is in the
+  browser console.

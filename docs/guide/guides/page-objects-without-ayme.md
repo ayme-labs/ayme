@@ -8,7 +8,7 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 
 ## Set it up
 
-1. In the folder `ayme mcp` starts in, export your Page Object classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there; no build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
+1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, with a `tsconfig.json` that covers `.ayme/`; no build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
 
    ```ts
    import type { AymeOptions } from "@ayme-dev/ayme";
@@ -42,7 +42,7 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 ## What to expect
 
 - Playwright MCP and Playwright CLI refuse to start while the init script is missing, so start `ayme mcp` first in a fresh clone.
-- The browser reads the init script when it starts. If it can start before `ayme mcp`, or outlive a restart on another port, add `--port <port>` to the `ayme mcp` registration so every start writes the same init script.
+- The browser reads the init script when it starts. If it can start before `ayme mcp`, or outlive a restart on another port, add `--port <port>` to the `ayme mcp` registration so every start writes the same init script, then restart the browser once.
 - After an edit, `ayme mcp` rebuilds and the open page swaps in the new Page Objects. A failed build is logged to `ayme mcp`'s standard error, and the page keeps the last good one.
 - Chromium-based browsers only.
 - Navigating to another origin needs a new `ayme_connect` link.
