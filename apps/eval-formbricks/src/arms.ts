@@ -6,6 +6,11 @@
  * what it needs checked and set up outside the measured window.
  */
 import {
+  agentBrowserVersion,
+  setUpAgentBrowserBaseline,
+  setUpAgentBrowserWithAymeWebMcp,
+} from "./agentBrowser.ts";
+import {
   aymeGoalLoopPreconditions,
   aymeMcpPackageName,
   aymeMcpPreconditions,
@@ -38,6 +43,8 @@ export type ArmId =
   | "playwright-cli"
   | "playwright-cli-with-ayme-page-objects"
   | "playwright-cli-with-ayme-webmcp"
+  | "agent-browser"
+  | "agent-browser-with-ayme-webmcp"
   | "ayme-goal-loop-off"
   | "ayme-goal-loop-on"
   | "ayme-no-page-objects-goal-loop-off"
@@ -254,6 +261,66 @@ function playwrightCliArm(
   };
 }
 
+const agentBrowserInterfaceLine = (start: Mission["start"]) =>
+  `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`agent-browser snapshot\`.`;
+
+/**
+ * What the agent-browser arm with the page's tools through WebMCP adds to
+ * its interface line: `webMcpToolsSentence` with agent-browser's commands in
+ * place of Playwright. Attached over CDP to a page that registered its tools
+ * before the session started, agent-browser announces none of them in its
+ * output, so the sentence names the command that lists them.
+ */
+export const agentBrowserWebMcpToolsSentence =
+  "The page's own tools, which `agent-browser webmcp list` lists and `agent-browser webmcp invoke` calls, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.";
+
+/**
+ * An agent-browser arm: the Playwright CLI arm's counterpart with Vercel's
+ * `agent-browser` CLI. Its session is attached over CDP to the browser the
+ * setup launched on the start page, as the CLI's WebMCP twin's is, since
+ * agent-browser must not launch or download a browser of its own. The
+ * baseline keeps agent-browser's WebMCP support off and denies its `webmcp`
+ * commands, which would otherwise still reach the lab app's own Ayme tools;
+ * the twin turns it on and adds its one sentence. Nothing else differs.
+ */
+function agentBrowserArm(
+  id: "agent-browser" | "agent-browser-with-ayme-webmcp"
+): Arm {
+  const withWebMcp = id === "agent-browser-with-ayme-webmcp";
+  return {
+    id,
+    interfaceLine: (start) =>
+      withWebMcp
+        ? `${agentBrowserInterfaceLine(start)} ${agentBrowserWebMcpToolsSentence}`
+        : agentBrowserInterfaceLine(start),
+    skill: "agent-browser",
+    // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
+    tools: [...baseTools, "Bash", "Skill"],
+    allowedTools: ["Bash(agent-browser:*)", "Skill(agent-browser)"],
+    disallowedTools: [
+      // The skill's guide pre-approves `npx agent-browser`, which could fetch another version.
+      "Bash(npx:*)",
+      // Downloads a browser, or a newer agent-browser.
+      ...bashCommand("agent-browser install"),
+      ...bashCommand("agent-browser upgrade"),
+      // Reinstalls the browser and purges state.
+      ...bashCommand("agent-browser doctor --fix"),
+      // Closes every session, not only the run's.
+      ...bashCommand("agent-browser close --all"),
+      ...(withWebMcp ? [] : bashCommand("agent-browser webmcp")),
+    ],
+    mcpServers: () => ({}),
+    preconditions: aymeWebMcpPreconditions,
+    setup: withWebMcp
+      ? setUpAgentBrowserWithAymeWebMcp
+      : setUpAgentBrowserBaseline,
+    browserInterface: () => ({
+      name: "agent-browser",
+      version: agentBrowserVersion(),
+    }),
+  };
+}
+
 export const arms: Record<ArmId, Arm> = {
   "playwright-mcp": {
     id: "playwright-mcp",
@@ -326,6 +393,22 @@ export const arms: Record<ArmId, Arm> = {
    */
   "playwright-cli-with-ayme-webmcp": playwrightCliArm(
     "playwright-cli-with-ayme-webmcp"
+  ),
+  /**
+   * The baseline for agent-browser, the Playwright CLI arm's counterpart:
+   * the `agent-browser` command and its skill, attached to the harness's
+   * browser, with its WebMCP support off. Page objects as for the Playwright
+   * CLI arm, Goal Loop off.
+   */
+  "agent-browser": agentBrowserArm("agent-browser"),
+  /**
+   * The agent-browser twin of `playwright-cli-with-ayme-webmcp`: the same
+   * command and skill with agent-browser's WebMCP support on, so `webmcp
+   * list` and `webmcp invoke` reach the tools the page registered. No Ayme
+   * server, nothing paired, page objects on, Goal Loop off.
+   */
+  "agent-browser-with-ayme-webmcp": agentBrowserArm(
+    "agent-browser-with-ayme-webmcp"
   ),
   "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", {
     goalLoop: false,

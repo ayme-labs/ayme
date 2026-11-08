@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  agentBrowserWebMcpToolsSentence,
   arms,
   goalFirstSentence,
   pageObjectToolsSentence,
@@ -208,6 +209,8 @@ describe.each([
     "playwright-cli",
     "playwright-cli-with-ayme-page-objects",
     "playwright-cli-with-ayme-webmcp",
+    "agent-browser",
+    "agent-browser-with-ayme-webmcp",
     "ayme-goal-loop-off",
     "ayme-goal-loop-on",
     "ayme-no-page-objects-goal-loop-off",
@@ -305,6 +308,33 @@ describe("the interface lines", () => {
     );
   });
 
+  it("of the agent-browser arms are the Playwright CLI arm's with agent-browser's command, for either start", () => {
+    for (const start of [renameMission.start, signInMission.start])
+      expect(arms["agent-browser"].interfaceLine(start)).toBe(
+        arms["playwright-cli"]
+          .interfaceLine(start)
+          .replaceAll("playwright-cli", "agent-browser")
+      );
+    expect(arms["agent-browser"].interfaceLine(mission.start)).toBe(
+      "Use the `agent-browser` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `agent-browser snapshot`."
+    );
+  });
+
+  it("of the agent-browser arm with the page's tools through WebMCP is the baseline's plus one sentence that names its commands and no server, for either start", () => {
+    for (const start of [renameMission.start, signInMission.start])
+      expect(arms["agent-browser-with-ayme-webmcp"].interfaceLine(start)).toBe(
+        `${arms["agent-browser"].interfaceLine(start)} ${agentBrowserWebMcpToolsSentence}`
+      );
+    expect(agentBrowserWebMcpToolsSentence).toBe(
+      "The page's own tools, which `agent-browser webmcp list` lists and `agent-browser webmcp invoke` calls, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step."
+    );
+    expect(agentBrowserWebMcpToolsSentence).not.toContain("ayme");
+    expect(agentBrowserWebMcpToolsSentence).not.toContain("Playwright");
+    expect(
+      agentBrowserWebMcpToolsSentence.replace(/, which .+ calls,/, "")
+    ).toBe(webMcpToolsSentence.replace(/, which .+ WebMCP tools,/, ""));
+  });
+
   it("of the Ayme arms without page objects name no Page Object Tools and differ in the goal-first sentence alone", () => {
     const off = arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(
       mission.start
@@ -362,6 +392,19 @@ describe("the setup message", () => {
     expect(setupPrompt(arms["playwright-cli-with-ayme-webmcp"])).toBe(
       setupPrompt(arms["playwright-cli"])
     );
+  });
+
+  it("gives the agent-browser arms the Playwright CLI arm's setup message, naming their own skill", () => {
+    for (const armId of [
+      "agent-browser",
+      "agent-browser-with-ayme-webmcp",
+    ] as const)
+      expect(setupPrompt(arms[armId])).toBe(
+        setupPrompt(arms["playwright-cli"]).replace(
+          "`playwright-cli`",
+          "`agent-browser`"
+        )
+      );
   });
 
   it("tells an arm without a skill not to look for one, and to read no files", () => {
@@ -577,6 +620,51 @@ describe("the playwright-cli-with-ayme-webmcp arm", () => {
     expect(arm.setup).not.toBe(
       arms["playwright-cli-with-ayme-page-objects"].setup
     );
+  });
+});
+
+describe.each([
+  ["agent-browser", false],
+  ["agent-browser-with-ayme-webmcp", true],
+] as const)("the %s arm", (armId, withWebMcp) => {
+  const arm = arms[armId];
+
+  it("gives the agent no MCP server, read-only file tools, its skill and a Bash limited to the command", () => {
+    expect(arm.mcpServers(armContext)).toEqual({});
+    expect(arm.skill).toBe("agent-browser");
+    expect(arm.readsSkillReferences).toBeUndefined();
+    expect(arm.tools).toEqual(arms["playwright-cli"].tools);
+    expect(arm.allowedTools).toEqual([
+      "Bash(agent-browser:*)",
+      "Skill(agent-browser)",
+    ]);
+    expect(arm.interfaceLine(mission.start)).not.toContain("skill");
+    expect(arm.interfaceLine(mission.start)).not.toContain("goal");
+  });
+
+  it("denies npx and what downloads, reinstalls or closes other runs' sessions, and the webmcp commands in the baseline alone", () => {
+    expect(arm.disallowedTools).toEqual(
+      expect.arrayContaining([
+        "Bash(npx:*)",
+        "Bash(agent-browser install)",
+        "Bash(agent-browser install:*)",
+        "Bash(agent-browser upgrade:*)",
+        "Bash(agent-browser doctor --fix:*)",
+        "Bash(agent-browser close --all:*)",
+      ])
+    );
+    expect(arm.disallowedTools?.includes("Bash(agent-browser webmcp:*)")).toBe(
+      !withWebMcp
+    );
+  });
+
+  it("checks the ports a page scans, sets itself up outside the measured window and records the pinned agent-browser", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
+    expect(arm.setup).toBeTypeOf("function");
+    expect(arm.browserInterface()).toEqual({
+      name: "agent-browser",
+      version: "0.41.2",
+    });
   });
 });
 
