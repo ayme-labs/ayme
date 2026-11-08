@@ -25,20 +25,22 @@ export const ENTRY_MODULE = "entry.js";
 
 /**
  * The init script for the browser automation: in every top-level http(s)
- * document, it imports the runtime and the entry the server on `port`
- * serves, starts the runtime with the Agent Connection on and registers the
- * entry's classes, with the Inspector in a window of its own, which the
- * page serves only once `ayme_inspect`'s URL is opened. It then follows the
- * server's build stamps: after a rebuild of the entry it imports the new
- * entry and swaps its classes in for the old ones, and after a rebuild of
- * the runtime, which it cannot swap, it reloads the page. A frame or a
- * document such as `about:blank` loads nothing, so only the tab pairs, and
- * neither does a page of `ayme mcp`'s own, such as the Inspector's window.
- * It is a classic script, as an init script runs.
+ * document, it follows the build stamps of the server on `port`, imports
+ * the runtime and the entry of the first one, starts the runtime with the
+ * Agent Connection on and registers the entry's classes, with the
+ * Inspector in a window of its own, which the page serves only once
+ * `ayme_inspect`'s URL is opened. After a rebuild of the entry it imports
+ * the new entry and swaps its classes in for the old ones, keeping the old
+ * ones if that fails; after a rebuild of the runtime, which it cannot swap,
+ * it reloads the page. It loads one build at a time, the newest it was told
+ * of, and a build that fails to load is loaded again on the next stamp. A
+ * frame or a document such as `about:blank` loads nothing, so only the tab
+ * pairs, and neither does a page of `ayme mcp`'s own, such as the
+ * Inspector's window. It is a classic script, as an init script runs.
  */
 export function initScript(port: number): string {
   const served = `http://127.0.0.1:${port}${SERVED_PATH}`;
-  const events = `http://127.0.0.1:${port}${EVENTS_PATH}`;
+  const events = `ws://127.0.0.1:${port}${EVENTS_PATH}`;
   return `// Written by ayme mcp (experimental) when it started on port ${port}.
 // It loads the Page Objects that ayme mcp serves into each page, and swaps
 // in their new build after each edit.
@@ -52,34 +54,79 @@ export function initScript(port: number): string {
     return;
   const failed = (error) =>
     console.error("[ayme] The Page Objects ayme mcp serves at " + served + " did not load.", error);
-  Promise.all([
-    import(served + ${JSON.stringify(RUNTIME_MODULE)}),
-    import(served + ${JSON.stringify(ENTRY_MODULE)}),
-  ]).then(([{ createAyme }, { default: pageObjects }]) => {
-    const ayme = createAyme({
-      agentConnection: true,
-      inspector: { placement: "external" },
-      pageObjects,
-    });
-    ayme.start();
-    let registered = pageObjects;
-    let loaded;
-    new EventSource(${JSON.stringify(events)}).onmessage = ({ data }) => {
-      const stamp = JSON.parse(data);
-      if (loaded === undefined) return void (loaded = stamp);
-      if (stamp.runtime !== loaded.runtime) return location.reload();
-      if (stamp.entry === loaded.entry) return;
-      loaded = stamp;
-      import(served + ${JSON.stringify(ENTRY_MODULE)} + "?build=" + stamp.entry).then(
-        ({ default: rebuilt }) => {
-          for (const model of registered) ayme.pom.unregister(model);
-          for (const model of rebuilt) ayme.pom.register(model);
-          registered = rebuilt;
-        },
-        failed
-      );
+  const load = (name, stamp) => import(served + name + "?build=" + stamp);
+  const same = (a, b) => a?.entry === b?.entry && a?.runtime === b?.runtime;
+  let ayme, registered, loaded, wanted, loading = false;
+  const swap = (rebuilt) => {
+    for (const model of registered) ayme.pom.unregister(model);
+    const added = [];
+    try {
+      for (const model of rebuilt) {
+        ayme.pom.register(model);
+        added.push(model);
+      }
+    } catch (error) {
+      for (const model of added) ayme.pom.unregister(model);
+      for (const model of registered) ayme.pom.register(model);
+      throw error;
+    }
+    registered = rebuilt;
+  };
+  const loadWanted = async () => {
+    if (loading) return;
+    loading = true;
+    try {
+      while (!same(wanted, loaded)) {
+        const stamp = wanted;
+        if (loaded && stamp.runtime !== loaded.runtime) return location.reload();
+        if (ayme === undefined) {
+          const [{ createAyme }, { default: pageObjects }] = await Promise.all([
+            load(${JSON.stringify(RUNTIME_MODULE)}, stamp.runtime),
+            load(${JSON.stringify(ENTRY_MODULE)}, stamp.entry),
+          ]);
+          if (!same(stamp, wanted)) continue;
+          ayme = createAyme({
+            agentConnection: true,
+            inspector: { placement: "external" },
+            pageObjects,
+          });
+          ayme.start();
+          registered = pageObjects;
+        } else {
+          const { default: rebuilt } = await load(${JSON.stringify(ENTRY_MODULE)}, stamp.entry);
+          if (!same(stamp, wanted)) continue;
+          swap(rebuilt);
+        }
+        loaded = stamp;
+      }
+    } catch (error) {
+      failed(error);
+    } finally {
+      loading = false;
+    }
+  };
+  // A WebSocket, which, unlike a stream over HTTP, holds none of the
+  // browser's few connections to the server.
+  let retry = 1000, followed = false;
+  const follow = () => {
+    const socket = new WebSocket(${JSON.stringify(events)});
+    socket.onopen = () => {
+      followed = true;
+      retry = 1000;
     };
-  }, failed);
+    socket.onerror = () => {
+      if (!followed && retry === 1000) failed(new Error("No connection to " + socket.url));
+    };
+    socket.onmessage = ({ data }) => {
+      wanted = JSON.parse(data);
+      void loadWanted();
+    };
+    socket.onclose = () => {
+      setTimeout(follow, retry);
+      retry = Math.min(retry * 2, 30000);
+    };
+  };
+  follow();
 })();
 `;
 }
