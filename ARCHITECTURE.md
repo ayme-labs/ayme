@@ -92,12 +92,16 @@ in-browser agents and the app's own code call on the running page.
   their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its
   own tools, and serves the external Inspector: its page and script over the same loopback
   HTTP server, and a WebSocket per window whose requests it relays to the paired page and
-  whose answers and events it relays back
+  whose answers and events it relays back; experimentally, for a page whose app does not
+  ship Ayme, it also builds the project's Page Objects with the build plugin, rebuilding
+  them as they change, and serves them with the project's runtime as ES modules over the
+  same HTTP server, for the browser automation's init script to load
 - Technology: Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over
   WebSocket on `127.0.0.1`, ports 9350 to 9365
 - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts),
   [packages/mcp/src/pairing/domain/pairing.ts](packages/mcp/src/pairing/domain/pairing.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
-  [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md)
+  [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md),
+  [packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts](packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts), [packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts](packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts), [docs/adr/0050-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md](docs/adr/0050-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md)
 
 ### App Process runtime
 
@@ -180,6 +184,12 @@ in-browser agents and the app's own code call on the running page.
     - → Page Object Model sources through the bundler's transform hooks
     - ← transformed modules carrying POM metadata
   - Evidence: verified: [packages/unplugin-ayme/src/unplugin.ts](packages/unplugin-ayme/src/unplugin.ts), [packages/unplugin-ayme/src/vite.ts](packages/unplugin-ayme/src/vite.ts)
+- **Ayme MCP server → Build plugin**
+  - Flows:
+    - → the Page Objects entry and the Page Object Model sources it imports, through esbuild,
+      resolved from the project's folder
+    - ← transformed modules carrying POM metadata, and the files to watch
+  - Evidence: verified: [packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts](packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts), [packages/unplugin-ayme/src/angular.ts](packages/unplugin-ayme/src/angular.ts)
 - **WebMCP driver → Browser runtime**
   - Flows:
     - → `execute` of a published tool
@@ -193,8 +203,10 @@ in-browser agents and the app's own code call on the running page.
       Inspector
     - → with the external Inspector, the Inspector contract's answers and events, as plain data
     - ← with the external Inspector, a window's requests, in the order they arrived
+    - ← with served Page Objects, the runtime and the Page Objects as ES modules over HTTP
   - Evidence: verified: [packages/mcp/src/client/](packages/mcp/src/client/), [packages/mcp/src/connection/](packages/mcp/src/connection/),
-    [packages/mcp/README.md](packages/mcp/README.md), [packages/ayme/src/runtime/inspectorChannelPort.ts](packages/ayme/src/runtime/inspectorChannelPort.ts)
+    [packages/mcp/README.md](packages/mcp/README.md), [packages/ayme/src/runtime/inspectorChannelPort.ts](packages/ayme/src/runtime/inspectorChannelPort.ts),
+    [packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts](packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts)
 - **Browser runtime → Decision Endpoint**
   - Flows:
     - → `POST { state, questions }` per Goal Loop step
