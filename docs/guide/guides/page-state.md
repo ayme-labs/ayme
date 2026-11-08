@@ -70,7 +70,7 @@ createAyme({
 
 In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
 
-Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on. An element an action adds just before a full page load can still appear in that action's Change Record.
+An element that matches later is dropped too. An element an action adds just before a full page load can still appear in that action's Change Record.
 
 A filter, here and in a Custom Tool, matches only the page's own document: a Locator into a frame, such as `page.frameLocator("iframe").locator(".private")`, matches nothing, as the page state holds none of a frame's contents.
 

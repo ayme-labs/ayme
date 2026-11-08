@@ -49,7 +49,7 @@ npm install @ayme-dev/webmcp
 
 The call that starts Ayme decides whether its tools are published through WebMCP.
 
-- `webMCP.enabled` turns publication on. The session then loads `@ayme-dev/webmcp` when it starts in the browser; with the option off, the page requests none of its code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
+- `webMCP.enabled` turns publication on. With it off, the page loads none of WebMCP's code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
 - `webMCP.toolNamePrefix` is prepended to every published tool name: `snapshot`, `goal`, the Browser Tools, Custom Tools and Page Object Tools. With `toolNamePrefix: "shop_"`, the agent sees `shop_snapshot` and `shop_ProjectsPage.openNewProjectDialog`. It is empty by default. It applies only at publication: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
 
 ```ts

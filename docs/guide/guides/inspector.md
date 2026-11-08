@@ -78,7 +78,7 @@ Captured target names stay readable after the element disappears or the page rel
 
 ## The panel
 
-The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Within a tab, it also keeps the open lens, the selection, the Runs region and the newest 50 runs in `sessionStorage`, so a reload comes back to them. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
+The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site. Within a tab, a reload brings back the open lens, the selection, the Runs region and the newest 50 runs. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
 The pill after the panel's title says whether a coding agent is connected to the tab through the [Agent Connection](connect-an-agent.md), and names it: Claude Code, Codex, Cursor, or the name any other agent's MCP client gives. It reads:
 

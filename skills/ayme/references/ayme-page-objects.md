@@ -40,7 +40,7 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-Declare the function with a type, since TypeScript types an inline one's `self` as `unknown`. Ayme runs it whenever it observes the page, never as part of a call, so keep it to reads, such as the URL, visibility or text.
+Declare the function with a type, since TypeScript types an inline one's `self` as `unknown`. It can run at any time, but never as part of a call, so keep it to reads, such as the URL, visibility or text.
 
 **`root`** returns the Locator of the element a component lives in, its Page Object Root. Write it once, on a component base class that takes that element:
 
