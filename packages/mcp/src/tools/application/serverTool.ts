@@ -19,6 +19,11 @@ export type ServerToolContext = {
     /** Whether the optional `@ayme-dev/inspector` package that holds it is installed. */
     installed(): Promise<boolean>;
   };
+  /**
+   * The init script that loads the Page Objects this server serves, when it
+   * serves any (see `served-page-objects`).
+   */
+  initScript?: string;
   /** Whether the connection ever offered a tool by that name, to tell a gone tool from an unknown one. */
   wasOffered(name: string): boolean;
 };

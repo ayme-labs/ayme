@@ -31,6 +31,26 @@ it("ayme_connect returns the connect link for the app's URL", async () => {
   );
 });
 
+it("ayme_connect names the init script of the Page Objects the server serves", async () => {
+  expect(
+    await connectTool({
+      ...context(),
+      initScript: "/work/.ayme/init-script.js",
+    }).call({ url: "http://localhost:5173/" })
+  ).toEqual({
+    content: [
+      {
+        type: "text",
+        text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d",
+      },
+      {
+        type: "text",
+        text: "This server serves Page Objects to pages that load /work/.ayme/init-script.js.",
+      },
+    ],
+  });
+});
+
 it("ayme_list_tools and ayme_call say no page is connected while nothing is paired", async () => {
   expect(await listToolsTool(context()).call({})).toEqual(notConnectedResult());
   expect(await callTool(context()).call({ tool: "peek" })).toEqual(

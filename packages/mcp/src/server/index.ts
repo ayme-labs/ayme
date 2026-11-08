@@ -83,9 +83,13 @@ export async function startMcpServer({
       ? await listenOnFirstFreePort(channel.server, SERVER_PORTS)
       : await listenOnPort(channel.server, pinnedPort);
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
+  let initScript: string | undefined;
   if (entry !== undefined)
     await writeInitScript({ folder, port }).then(
-      (initScript) => log(`Serving ${entry} to pages that load ${initScript}.`),
+      (written) => {
+        initScript = written;
+        log(`Serving ${entry} to pages that load ${written}.`);
+      },
       (error: unknown) =>
         log(
           `Writing the init script for ${entry} failed: ${(error as Error).message}`
@@ -103,6 +107,7 @@ export async function startMcpServer({
       connection,
       pairing,
       saveImage: saveToScreenshotFolder,
+      initScript,
       inspector: {
         url: inspectorUrl(SERVER_HOST, port),
         installed: async () => (await readExternalBuild()) !== undefined,
