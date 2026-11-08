@@ -203,7 +203,8 @@ in-browser agents and the app's own code call on the running page.
       Inspector
     - → with the external Inspector, the Inspector contract's answers and events, as plain data
     - ← with the external Inspector, a window's requests, in the order they arrived
-    - ← with served Page Objects, the runtime and the Page Objects as ES modules over HTTP
+    - ← with served Page Objects, the runtime and the Page Objects as ES modules over HTTP,
+      and a stamp of each rebuild, after which the page swaps in the new Page Objects
   - Evidence: verified: [packages/mcp/src/client/](packages/mcp/src/client/), [packages/mcp/src/connection/](packages/mcp/src/connection/),
     [packages/mcp/README.md](packages/mcp/README.md), [packages/ayme/src/runtime/inspectorChannelPort.ts](packages/ayme/src/runtime/inspectorChannelPort.ts),
     [packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts](packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts)

@@ -27,6 +27,8 @@ export type PageObjectsBuild = {
    * while no build has succeeded, it rejects with why the last one failed.
    */
   modules(): Promise<BuiltModules>;
+  /** Calls `listener` with each good build from now on; returns how to stop. */
+  onBuilt(listener: (modules: BuiltModules) => void): () => void;
   /** Stops watching. */
   close(): Promise<void>;
 };
@@ -83,7 +85,11 @@ export async function watchPageObjects(
     ],
   });
   await context.watch();
-  return { modules: outcomes.modules, close: () => context.dispose() };
+  return {
+    modules: outcomes.modules,
+    onBuilt: outcomes.onBuilt,
+    close: () => context.dispose(),
+  };
 }
 
 /**
@@ -106,6 +112,7 @@ function buildOutcomes({
   let firstEnded: () => void;
   const first = new Promise<void>((resolve) => (firstEnded = resolve));
   let built = 0;
+  const listeners = new Set<(modules: BuiltModules) => void>();
   const plugin: Esbuild.Plugin = {
     name: "ayme-served-outcomes",
     setup(build) {
@@ -121,6 +128,7 @@ function buildOutcomes({
           log(
             `${built++ === 0 ? "Built" : "Rebuilt"} the Page Objects entry ${entry}.`
           );
+          for (const listener of listeners) listener(good);
         } else {
           failure = new Error(
             buildFailure({
@@ -148,6 +156,10 @@ function buildOutcomes({
       await first;
       if (good !== undefined) return good;
       throw failure!;
+    },
+    onBuilt(listener: (modules: BuiltModules) => void) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
     },
   };
 }

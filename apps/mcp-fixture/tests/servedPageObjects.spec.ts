@@ -120,7 +120,7 @@ test("--page-objects points ayme mcp at an entry elsewhere", async ({
   }
 });
 
-test("after an edit to a Page Object the entry imports, a reload shows the changed tools", async ({
+test("after an edit to a Page Object the entry imports, the open page swaps in the changed tools without a reload", async ({
   context,
   page,
   baseURL,
@@ -140,16 +140,23 @@ test("after an edit to a Page Object the entry imports, a reload shows the chang
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
+    // A mark on this document, which a reload would drop.
+    await page.evaluate(() => {
+      document.documentElement.dataset.before = "edit";
+    });
 
     await editPlainPage(project, withReadTitle);
-    await expect
-      .poll(() => agent.log, REBUILT_WITHIN)
-      .toMatch(/Rebuilt the Page Objects entry/);
-    await page.reload();
 
     await expect
-      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .poll(() => agent.pageToolNames(), {
+        ...REBUILT_WITHIN,
+        message: agent.log,
+      })
       .toContain("PlainPage.readTitle");
+    expect(await agent.pageToolNames()).toContain(PLAIN_PAGE_TOOL);
+    expect(
+      await page.evaluate(() => document.documentElement.dataset.before)
+    ).toBe("edit");
     const { text, isError } = await agent.call("PlainPage.readTitle");
     expect(isError, text).toBe(false);
     expect(text).toContain("Without Ayme");

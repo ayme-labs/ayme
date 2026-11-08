@@ -73,9 +73,7 @@ export async function startMcpServer({
         relay: new InspectorRelay(connection),
         readBuild: readExternalBuild,
       }),
-      ...(build
-        ? [servedPageObjectsServer(() => build.then((b) => b.modules()))]
-        : []),
+      ...(build ? [servedPageObjectsServer(build)] : []),
     ],
   });
   const closeBuild = () =>
