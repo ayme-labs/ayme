@@ -107,8 +107,6 @@ provideAyme({
 });
 ```
 
-Every option is optional. Without them, actions time out after 1 second and navigation after 30 seconds.
-
 `injectAyme`, `injectPageObject` and the experimental [`injectPeek`](#api) need an injection context, such as a field initializer or a constructor. They also need `provideAyme` in an ancestor injector. Each throws when either is missing.
 
 ## Optional: publish with WebMCP

@@ -166,7 +166,7 @@ On Angular, the plugin entry under the build target's `options` has no `include`
 }
 ```
 
-On Next.js, the config function computes `include` from the phase Next passes it, and hands it to the loader. A loader cannot redirect imports, so the loader alone does not remove Ayme. When `include` is false, `turbopack.resolveAlias` also points `@ayme-dev/ayme`, `@ayme-dev/ayme/internal` and `@ayme-dev/react` at their absent entries for the browser:
+On Next.js, the config function computes `include` from the phase Next passes it, and hands it to the loader. When `include` is false, `turbopack.resolveAlias` also points `@ayme-dev/ayme`, `@ayme-dev/ayme/internal` and `@ayme-dev/react` at their absent entries for the browser:
 
 ```js
 // next.config.mjs
@@ -238,11 +238,7 @@ Each field resolves on its own. `use` wins over the selected project, then the t
 
 These fail the build or the dev server.
 
-The build runs the same [root-less class check](ayme.md#root-less-models) as the runtime, on what it can read from the source:
-
-- It follows declared Page Object Children. It does not follow the Page Objects an action returns.
-- It sees a `root` in inline decorator options, such as `@ayme({ root: rootOf })`. This includes one inherited from a base class in another module.
-- It cannot see a root given through computed or spread options, or through a base class it cannot read, such as an ambient declaration. It lets such a class through, and the runtime checks it at registration.
+The build runs the same [root-less class check](ayme.md#root-less-models) as the runtime. A class whose root it cannot read from the source, such as one given through spread options, passes the build and is checked at registration.
 
 | Message                                                                                                                                                                                                                                                                                                                                                                                       | When                                                                                                                                                                                                                                             |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

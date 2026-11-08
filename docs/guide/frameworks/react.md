@@ -57,7 +57,7 @@ The props must stay fixed while the provider is mounted; remount the provider an
 
 Only one owner can run Ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
 
-In development, Strict Mode runs the provider's effect twice: Ayme starts, stops and starts again on the same session. The Page and the Page Objects are kept.
+Strict Mode's effect replay in development keeps the session's Page and Page Objects.
 
 Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops Ayme and closes the agent connection. The agent can lose the answer to its call.
 

@@ -105,8 +105,7 @@ interaction:
 A `kind: change` entry is a change the recorder could not tie to an
 interaction. Read it together with the steps around it. It is usually the
 late result of an earlier step, such as data that finished loading. It can
-also come before the interaction that caused it. The recorder can see the
-page change before it records the click behind the change. A change that no
+also come before the interaction that caused it. A change that no
 recorded action explains can also come from a hover. It can come from
 something the page does on its own in between, too, such as an async update.
 

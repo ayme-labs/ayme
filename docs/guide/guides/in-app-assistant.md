@@ -15,12 +15,10 @@ export function OnboardingAssistant() {
   const { ayme } = useAyme();
   const projects = usePageObject(ProjectsPage);
 
-  // A tool for the assistant: create a project while the user watches.
   async function createProject(name: string) {
     await projects.createProject(name);
   }
 
-  // A tool for the assistant: read what the page shows.
   async function getPageState() {
     const { structure } = await ayme.tools.run("snapshot", {});
     return structure;

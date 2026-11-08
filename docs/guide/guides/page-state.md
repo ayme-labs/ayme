@@ -70,7 +70,7 @@ createAyme({
 
 In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
 
-Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on. Ayme matches the Locator when an action begins. An element the action adds just before a full page load was not matched then. So it can appear in that action's Change Record.
+Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on. An element an action adds just before a full page load can still appear in that action's Change Record.
 
 A filter, here and in a Custom Tool, matches only the page's own document: a Locator into a frame, such as `page.frameLocator("iframe").locator(".private")`, matches nothing, as the page state holds none of a frame's contents.
 
@@ -131,7 +131,7 @@ Every action returns its Change Record: what changed on the page, in two parts. 
 - Each part is present only when it has a change. `page_changed` is true when either part is present.
 - `settled` says whether the page went quiet after the action.
 
-Ayme knows what "last read" means because it keeps a cursor per Caller name. The cursor is the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
+Each Caller name has its own cursor: the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
 - `webmcp`, an agent calling through WebMCP;
 - `ayme-mcp`, an agent calling through the Ayme MCP server;
@@ -140,7 +140,7 @@ Ayme knows what "last read" means because it keeps a cursor per Caller name. The
 
 Two Callers that use one name share one cursor.
 
-A Custom Tool's Change Record also covers what the tools it started through `run` changed. A Goal Loop run reads with a copy of its Caller's cursor. It moves the real cursor only when it hands over.
+A Custom Tool's Change Record also covers what the tools it started through `run` changed.
 
 An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling through WebMCP or the Ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone. The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
 

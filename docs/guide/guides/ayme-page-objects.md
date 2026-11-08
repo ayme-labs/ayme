@@ -149,7 +149,7 @@ export class ProjectRow extends AppComponent {
 
 `ProjectRow.remove` stays listed, because it can run on Launch plan. For a member who is not an admin of any project, no row shows Remove. The tool then stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason with the other tool changes it is told about.
 
-Like `present`, the predicate runs whenever Ayme observes the page, so keep it to reads.
+Like `present`, keep the predicate to reads.
 
 ## `@ayme.child`
 
@@ -191,7 +191,7 @@ A Locator declared `@ayme.child` that matches several elements logs a [warning](
 
 `@ayme.collection` declares many parts of one kind. It takes a Locator that matches any number of elements, or a method without parameters that returns Page Objects.
 
-Return Page Objects from a method, not an array field. Ayme calls `projects()` each time it reads the page, so it gets the rows the page shows now. An array field would keep the rows from when the model was built.
+Return Page Objects from a method, not an array field. The method returns the rows the page shows now. An array field would keep the rows from when the model was built.
 
 What to declare is as for [`@ayme.child`](#aymechild).
 

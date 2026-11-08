@@ -34,10 +34,10 @@ Every built-in tool Ayme publishes, with its input.
 
   `e42` is the Structural Ref of the element in the way. When that element has no ref, the message ends before `; e42 is in the way`. An element covering a text field does not stop typing. A `fill_form` field refused this way is the one in `failed`.
 
-- `generate_locator` turns targets into Playwright locator strings for your Page Object Model code. A Structural Ref belongs to one capture, so it does not belong in code. The tool never acts on the page. Take the projects page from [Page Object root](ayme.md#page-object-root). Its page state shows a New project button, `e4`, and a row, `e7`, that holds a Remove button, `e10`. You call:
+- `generate_locator` turns targets into Playwright locator strings for your Page Object Model code. A Structural Ref belongs to one capture, so it does not belong in code. The tool never acts on the page. Take the projects page from [Page Object root](ayme.md#page-object-root). Its page state shows a New project button, `e4`, and a row, `e6`, that holds a Remove button, `e9`. You call:
 
   ```json
-  { "groups": [{ "within": "e7", "targets": ["e10"] }, { "targets": ["e4"] }] }
+  { "groups": [{ "within": "e6", "targets": ["e9"] }, { "targets": ["e4"] }] }
   ```
 
   It returns the groups and targets in the same order:
@@ -46,10 +46,10 @@ Every built-in tool Ayme publishes, with its input.
   {
     "groups": [
       {
-        "within": "e7",
+        "within": "e6",
         "locators": [
           {
-            "target": "e10",
+            "target": "e9",
             "locator": "getByRole('button', { name: 'Remove' })"
           }
         ]
@@ -66,7 +66,7 @@ Every built-in tool Ayme publishes, with its input.
   }
   ```
 
-  The first locator is relative to `e7`, ready for a component whose `root` is that row. The second is relative to the page, because its group has no `within`. Each locator is Playwright's own generator's pick, test id first. It matches exactly its element, or the button or link around it.
+  The first locator is relative to `e6`, ready for a component whose `root` is that row. The second is relative to the page, because its group has no `within`. Each locator is Playwright's own generator's pick, test id first. It matches exactly its element, or the button or link around it.
 
   In a group with `within`, a selector target is matched inside the container, as `container.locator(target)` is in Playwright, so it must match exactly one element there. A Structural Ref names its element wherever it is, and fails when that element is outside the container. A target that cannot be resolved, or lies outside its container, gets `{ "target", "error" }` in place of a locator. A container that cannot be resolved turns its whole group into `{ "within", "error" }`.
 

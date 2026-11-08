@@ -124,7 +124,7 @@ useAyme({
   inspector: import.meta.env.DEV,
   agentConnection: import.meta.env.DEV,
 });
-const pom = usePageObject(ProjectsPage); // uses the session started on the line above
+const pom = usePageObject(ProjectsPage);
 ```
 
 Without an owner above, `usePageObject` uses the standalone owner that is already started, as here. `useAyme()` looks for an owner in ancestor components only. An `AymeProvider` in the calling component's own template is below it, so `useAyme()` doesn't find it. The standalone owner also works in an `effectScope()`. Unrelated `effectScope()` calls don't share a session. A consumer's cleanup removes only its own subscriptions and Page Object registrations.

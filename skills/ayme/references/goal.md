@@ -51,5 +51,4 @@ projects, call the tool: `ProjectsPage.filter({ status: ["archived"] })`. Or
 call `goal` again with a goal that names the value, such as "Show the
 archived projects". If nothing in the task names a status, ask the user
 which one. Adding a
-Goal Value of a type the parameter does not take changes nothing. The loop
-offers this parameter only its allowed values.
+Goal Value of a type the parameter does not take changes nothing.

@@ -9,11 +9,9 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | `@ayme-dev/ayme`        | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types. |
 | `@ayme-dev/ayme/server` | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                |
 
-Three more entries serve Ayme itself. Applications import none of them, and they may change in any release.
+Three more entries serve Ayme itself: `@ayme-dev/ayme/internal`, `@ayme-dev/ayme/inspector` and `@ayme-dev/ayme/absent`. Applications import none of them, and they may change in any release.
 
-- `@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates.
-- `@ayme-dev/ayme/inspector` is the Inspector contract: plain-data state, commands and revisioned events. The Inspector reads the runtime through it.
-- `@ayme-dev/ayme/absent` is what a build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to. Such a build publishes nothing, so its `createAyme` logs an error when `webMCP.enabled` is on. See [Include Ayme in a build](build-plugin.md#include-ayme-in-a-build).
+A build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to `@ayme-dev/ayme/absent`; see [Include Ayme in a build](build-plugin.md#include-ayme-in-a-build). Such a build publishes nothing, so its `createAyme` logs an error when `webMCP.enabled` is on.
 
 ## Decorators
 
@@ -36,7 +34,7 @@ Three more entries serve Ayme itself. Applications import none of them, and they
 
 A subclass inherits each from the nearest class in its chain that declares it, with or without a decorator of its own. It may declare its own. `root` and `present` are inherited separately, so a subclass can override one and keep the other.
 
-They run with the runtime's observation of the page, never when a tool is called. So they must only read: they must not scroll, click, focus or change the page. They never run on the server, where registration is inert. The build plugin does not read them. The decorator keeps them at runtime.
+They can run at any time, but never as part of a tool call. So they must only read: they must not scroll, click, focus or change the page. They never run on the server.
 
 ### Page Object presence
 
@@ -61,11 +59,9 @@ export class ProjectsPage extends AppPage {
 
 Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone.
 
-The predicate runs before the model's members are read. So an absent model costs one predicate call per observation.
+A predicate that reads the URL follows client-side routing and the browser's Back and Forward.
 
-Observation also runs after each same-document navigation. So a predicate that reads the URL follows client-side routing and the browser's Back and Forward.
-
-A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.` It is logged once. It is logged again when the error changes, or when it stops and later comes back.
+A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.`, once until the error changes.
 
 Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
 
@@ -138,6 +134,9 @@ export class ProjectsPage extends AppPage {
   readonly path = "/projects";
   readonly rows = this.page.getByRole("listitem");
 
+  @ayme.child
+  readonly searchbox = this.page.getByRole("searchbox");
+
   @ayme.collection
   async projects(): Promise<ProjectRow[]> {
     return (await this.rows.all()).map((row) => new ProjectRow(row));
@@ -145,7 +144,7 @@ export class ProjectsPage extends AppPage {
 
   @ayme.action
   async search(query: string) {
-    await this.page.getByRole("searchbox").fill(query);
+    await this.searchbox.fill(query);
   }
 }
 ```
@@ -203,7 +202,7 @@ await ayme.tools.run("ProjectsPage.search", { query: "web" });
 
 Two instances of one class whose roots are the same element count as one instance.
 
-`AppComponent` declares the predicate as its own function to type `self`. A Locator declared `@ayme.child` that resolves to the root's element is the root, not a child. The model lists it once. This also holds for a getter that builds a fresh Locator on each read.
+`AppComponent` declares the predicate as its own function to type `self`. A Locator declared `@ayme.child` that resolves to the root's element is the root, not a child. The model lists it once.
 
 A root predicate that throws makes the Page Object absent. The console gets the error with the instance's path, such as `ProjectRow at ProjectsPage.projects[0]: its root predicate threw TypeError: frame is undefined.`
 
@@ -211,7 +210,7 @@ A root predicate that throws makes the Page Object absent. The console gets the 
 
 Only the `root` option anchors a model. A model whose class chain declares no `root` option is root-less, even when it has a member named `root`. To anchor it, give the option to the model or to its base class.
 
-A root-less model has no mark in the page state. The runtime does not measure whether a click reaches it. Its presence depends on where it sits:
+A root-less model has no mark in the page state. Its tools are never unavailable because something covers it. Its presence depends on where it sits:
 
 | Root-less model                               | Present while                                     |
 | --------------------------------------------- | ------------------------------------------------- |
@@ -309,7 +308,7 @@ export class ProjectsPage extends AppPage {
 
 An action that may return one of several Page Objects names them all, joined by `or`. An action that returns its own class, as `ProjectRow.remove` does, names none. This text is the tool's `agentDescription` in [`ayme.tools.list()`](#toolinfo).
 
-An action that has no description and returns no other Page Object has no description at all. WebMCP and the Goal Loop need one, so they use `Run <method>.`, such as `Run remove.` for `ProjectRow.remove`.
+An action that has no description and returns no other Page Object has no description at all. WebMCP needs one, so it publishes `Run <method>.`, such as `Run remove.` for `ProjectRow.remove`.
 
 ## createAyme
 
@@ -449,17 +448,17 @@ A `reason` comes from one of two places.
     - e17 button "Cancel"
 ```
 
-The dialog covers the centre of both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: "a click would not reach it; e14 is in the way", … }`. A call on Launch plan is refused with `ProjectRow on ref "e6" is unavailable: a click would not reach it; e14 is in the way.`
+The dialog covers both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: "a click would not reach it; e14 is in the way", … }`. A call on Launch plan is refused with `ProjectRow on ref "e6" is unavailable: a click would not reach it; e14 is in the way.`
 
 The ref names what the click would hit instead:
 
-| What blocks the root   | The ref names                                                                          |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| An element covering it | The nearest ancestor with a ref of the element at the root's centre: here, the dialog. |
-| An open native modal   | The modal.                                                                             |
-| An `inert` ancestor    | That ancestor.                                                                         |
+| What blocks the root   | The ref names                                                               |
+| ---------------------- | --------------------------------------------------------------------------- |
+| An element covering it | The covering element, or its nearest ancestor with a ref: here, the dialog. |
+| An open native modal   | The modal.                                                                  |
+| An `inert` ancestor    | That ancestor.                                                              |
 
-The ref comes from the agent's latest page state. Sometimes no page state has shown that element yet, or nothing in the way has a ref, such as with `pointer-events: none` on `body`. Then the reason is just `a click would not reach it`. The runtime reports what it measured. It never names a kind of widget, such as a modal, popover or banner.
+The ref comes from the agent's latest page state. Sometimes no page state has shown that element yet, or nothing in the way has a ref, such as with `pointer-events: none` on `body`. Then the reason is just `a click would not reach it`. The reason never names a kind of widget, such as a modal, popover or banner.
 
 **Your predicate** produces every other reason: the string the action's [availability predicate](#action-availability) returned, or the text of an error it threw.
 
