@@ -3,9 +3,10 @@
  * `playwright-cli` command on the agent's PATH, the CLI's official skill in the
  * run's Claude Code configuration folder, and a browser session already open
  * on the mission's start page. The measured agent installs and downloads
- * nothing. The arm that adds Ayme's Page Object Tools to the CLI shares all
- * of it, with the session attached to the browser that paired with the run's
- * `ayme mcp` instead of one the CLI launches.
+ * nothing. The arms that add Ayme's Page Object Tools to the CLI share all
+ * of it, with the session attached to a browser the harness launched instead
+ * of one the CLI launches: the one that paired with the run's `ayme mcp`, or,
+ * for the arm with WebMCP, one whose page tools the CLI collects itself.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, writeFile } from "node:fs/promises";
@@ -14,7 +15,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import { setUpAymePage } from "./ayme.ts";
+import { setUpAymePage, setUpWebMcpPage } from "./ayme.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { cdpEndpoint, freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -58,13 +59,16 @@ export function shimScript() {
  * endpoint instead, the daemon attaches to the browser already running
  * there, and a restart attaches again, so the browser and profile switches,
  * which describe a launch that never happens, are left out. The page's WebMCP
- * tools stay off: the lab app registers Ayme's, and the agent gets them, if
- * at all, through the `ayme` server.
+ * tools stay off unless `webmcp` says otherwise: the lab app registers
+ * Ayme's, and the agent gets them through the `ayme` server, or, with
+ * `webmcp`, through the CLI itself, which then counts them in the page
+ * status, lists them at the top of each snapshot and offers `webmcp-list`
+ * and `webmcp-call`. The daemon reads the variable when the session starts.
  */
 export function playwrightCliEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "profileDir" | "outputDir">,
   parentPath: string = process.env.PATH ?? "",
-  options: { cdpEndpoint?: string } = {}
+  options: { cdpEndpoint?: string; webmcp?: boolean } = {}
 ): Record<string, string> {
   return {
     // No update check on the network, no download.
@@ -79,7 +83,7 @@ export function playwrightCliEnvironment(
         }
       : { PLAYWRIGHT_MCP_CDP_ENDPOINT: options.cdpEndpoint }),
     PLAYWRIGHT_MCP_OUTPUT_DIR: context.outputDir,
-    PLAYWRIGHT_MCP_WEBMCP: "false",
+    PLAYWRIGHT_MCP_WEBMCP: options.webmcp ? "true" : "false",
   };
 }
 
@@ -179,32 +183,33 @@ export async function setUpPlaywrightCli(
   };
 }
 
+/** A page setup an attached CLI session drives: the browser's arguments in, its evidence and disposal out. */
+type AttachedPage = (
+  browserArgs: string[]
+) => Promise<Pick<ArmSetup, "dispose"> & { evidence: Record<string, unknown> }>;
+
 /**
- * The setup of the CLI arm with Ayme's Page Object Tools: the Ayme server
- * and the page as for the Ayme arms, with the page objects on and the Goal
- * Loop off, the browser listening on a remote-debugging port, and the proxy
- * offering the agent the Page Object Tools alone; then the CLI as for the
- * Playwright CLI arm, with its session attached to that browser over CDP.
+ * The setup shared by the CLI arms with Ayme's Page Object Tools: the page
+ * from `setUpPage`, on a browser listening on a remote-debugging port, then
+ * the CLI as for the Playwright CLI arm, with its session attached to that
+ * browser over CDP and the page's WebMCP tools on or off as the arm wants.
  * `playwright-cli open` would navigate the adopted tab to its URL again (it
- * runs `goto` once the session is up), a second page load the pairing would
- * have to survive; `attach` takes a snapshot instead and leaves the tab as it
- * is, and the snapshot names the page, which must be the start page.
+ * runs `goto` once the session is up), a second page load the page's state
+ * would have to survive; `attach` takes a snapshot instead and leaves the tab
+ * as it is, and the snapshot names the page, which must be the start page.
  */
-export async function setUpPlaywrightCliWithAymePageObjects(
-  context: ArmContext
+async function setUpAttachedPlaywrightCli(
+  context: ArmContext,
+  options: { webmcp: boolean; setUpPage: AttachedPage }
 ): Promise<ArmSetup> {
   const port = await freeLoopbackPort();
   const endpoint = cdpEndpoint(port);
   const environment = playwrightCliEnvironment(context, undefined, {
     cdpEndpoint: endpoint,
+    webmcp: options.webmcp,
   });
   const skillDir = await installCliAndSkill(context);
-  const page = await setUpAymePage(context, {
-    goalLoop: false,
-    pageObjects: true,
-    browserArgs: [`--remote-debugging-port=${port}`],
-    pageObjectToolsOnly: true,
-  });
+  const page = await options.setUpPage([`--remote-debugging-port=${port}`]);
   let session: { dispose: () => Promise<void> } | undefined;
   const dispose = async () => {
     // The session first: it only attaches, and the browser is the page setup's to close.
@@ -226,4 +231,40 @@ export async function setUpPlaywrightCliWithAymePageObjects(
     evidence: { ...page.evidence, remoteDebuggingPort: port },
     dispose,
   };
+}
+
+/**
+ * The setup of the CLI arm with Ayme's Page Object Tools through the `ayme`
+ * server: the Ayme server and the page as for the Ayme arms, with the page
+ * objects on and the Goal Loop off, and the proxy offering the agent the
+ * Page Object Tools alone; the CLI attached to that browser with the page's
+ * WebMCP tools off, so they reach the agent through `ayme` alone.
+ */
+export function setUpPlaywrightCliWithAymePageObjects(
+  context: ArmContext
+): Promise<ArmSetup> {
+  return setUpAttachedPlaywrightCli(context, {
+    webmcp: false,
+    setUpPage: (browserArgs) =>
+      setUpAymePage(context, {
+        goalLoop: false,
+        pageObjects: true,
+        browserArgs,
+        pageObjectToolsOnly: true,
+      }),
+  });
+}
+
+/**
+ * The setup of the CLI arm with the page's tools through WebMCP: the page
+ * on a Chrome with the WebMCP flag and no Ayme server, and the CLI attached
+ * to that browser with its WebMCP collection on.
+ */
+export function setUpPlaywrightCliWithAymeWebMcp(
+  context: ArmContext
+): Promise<ArmSetup> {
+  return setUpAttachedPlaywrightCli(context, {
+    webmcp: true,
+    setUpPage: (browserArgs) => setUpWebMcpPage(context, { browserArgs }),
+  });
 }

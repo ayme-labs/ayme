@@ -51,6 +51,22 @@ describe("the Playwright MCP server entry", () => {
     ]);
   });
 
+  it("keeps the page's WebMCP tools on when asked, attached over CDP, and leaves the rest", () => {
+    const server = playwrightMcpServer(context, {
+      cdpEndpoint: "http://127.0.0.1:9222",
+      webmcp: true,
+    });
+    expect(server.args.slice(1)).toEqual([
+      "--cdp-endpoint",
+      "http://127.0.0.1:9222",
+      "--output-dir",
+      "/run/playwright-output",
+      "--init-page",
+      "/run/init-page.cjs",
+    ]);
+    expect(server.args).not.toContain("--no-webmcp");
+  });
+
   it("is pinned to an exact version", () => {
     expect(playwrightMcpVersion()).toBe("0.0.83");
   });

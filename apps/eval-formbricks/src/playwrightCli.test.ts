@@ -54,6 +54,18 @@ describe("the Playwright CLI environment", () => {
     expect(environment.NO_UPDATE_NOTIFIER).toBe("1");
   });
 
+  it("turns the page's WebMCP tools on when asked, attached over CDP, and changes nothing else", () => {
+    const attached = playwrightCliEnvironment(context, "/usr/bin:/bin", {
+      cdpEndpoint: "http://127.0.0.1:9222",
+    });
+    expect(
+      playwrightCliEnvironment(context, "/usr/bin:/bin", {
+        cdpEndpoint: "http://127.0.0.1:9222",
+        webmcp: true,
+      })
+    ).toEqual({ ...attached, PLAYWRIGHT_MCP_WEBMCP: "true" });
+  });
+
   it("holds a CLI shim in a folder of its own", () => {
     expect(shimDirectory("/run")).toBe("/run/bin");
     expect(shimScript()).toMatch(

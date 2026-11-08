@@ -13,6 +13,7 @@ import {
   aymeMcpVersion,
   aymeServerName,
   aymeSkillName,
+  aymeWebMcpPreconditions,
   setUpAymeAgent,
 } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
@@ -20,19 +21,23 @@ import {
   playwrightCliVersion,
   setUpPlaywrightCli,
   setUpPlaywrightCliWithAymePageObjects,
+  setUpPlaywrightCliWithAymeWebMcp,
 } from "./playwrightCli.ts";
 import {
   playwrightMcpServer,
   playwrightMcpVersion,
   setUpPlaywrightMcpWithAymePageObjects,
+  setUpPlaywrightMcpWithAymeWebMcp,
 } from "./playwrightMcp.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export type ArmId =
   | "playwright-mcp"
   | "playwright-mcp-with-ayme-page-objects"
+  | "playwright-mcp-with-ayme-webmcp"
   | "playwright-cli"
   | "playwright-cli-with-ayme-page-objects"
+  | "playwright-cli-with-ayme-webmcp"
   | "ayme-goal-loop-off"
   | "ayme-goal-loop-on"
   | "ayme-no-page-objects-goal-loop-off"
@@ -175,6 +180,16 @@ const playwrightMcpInterfaceLine =
  */
 export const pageObjectToolsSentence = `The \`${aymeServerName}\` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.`;
 
+/**
+ * What an arm with the page's tools through WebMCP adds to its browser
+ * tool's interface line instead: Playwright lists the tools the page
+ * registered, Ayme's Page Object Tools among them, and nothing names the
+ * `ayme` server, which does not run. The Playwright CLI's own skill already
+ * says to prefer a page's tools, so this stays one sentence for both arms.
+ */
+export const webMcpToolsSentence =
+  "The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.";
+
 const playwrightMcpInterface = () => ({
   name: "@playwright/mcp",
   version: playwrightMcpVersion(),
@@ -184,20 +199,28 @@ const playwrightCliInterfaceLine = (start: Mission["start"]) =>
   `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`;
 
 /**
- * The Playwright CLI arm, or its twin with Ayme's Page Object Tools, which
- * adds the `ayme` server through the filtered proxy, its permission and its
- * sentence to the interface line, and nothing else.
+ * The Playwright CLI arm, or one of its twins with Ayme's Page Object Tools:
+ * the one with the `ayme` server adds it through the filtered proxy, with
+ * its permission and its sentence on the interface line; the one with WebMCP
+ * adds its sentence alone, since the CLI itself lists and calls the page's
+ * tools. Nothing else differs.
  */
 function playwrightCliArm(
-  id: "playwright-cli" | "playwright-cli-with-ayme-page-objects"
+  id:
+    | "playwright-cli"
+    | "playwright-cli-with-ayme-page-objects"
+    | "playwright-cli-with-ayme-webmcp"
 ): Arm {
   const withAyme = id === "playwright-cli-with-ayme-page-objects";
+  const withWebMcp = id === "playwright-cli-with-ayme-webmcp";
+  const sentence = withAyme
+    ? ` ${pageObjectToolsSentence}`
+    : withWebMcp
+      ? ` ${webMcpToolsSentence}`
+      : "";
   return {
     id,
-    interfaceLine: (start) =>
-      withAyme
-        ? `${playwrightCliInterfaceLine(start)} ${pageObjectToolsSentence}`
-        : playwrightCliInterfaceLine(start),
+    interfaceLine: (start) => `${playwrightCliInterfaceLine(start)}${sentence}`,
     skill: "playwright-cli",
     // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
@@ -218,9 +241,12 @@ function playwrightCliArm(
     mcpServers: (context): Record<string, McpServer> =>
       withAyme ? { [aymeServerName]: aymeMcpServer(context) } : {},
     ...(withAyme ? { preconditions: aymeMcpPreconditions } : {}),
+    ...(withWebMcp ? { preconditions: aymeWebMcpPreconditions } : {}),
     setup: withAyme
       ? setUpPlaywrightCliWithAymePageObjects
-      : setUpPlaywrightCli,
+      : withWebMcp
+        ? setUpPlaywrightCliWithAymeWebMcp
+        : setUpPlaywrightCli,
     browserInterface: () => ({
       name: "@playwright/cli",
       version: playwrightCliVersion(),
@@ -258,6 +284,27 @@ export const arms: Record<ArmId, Arm> = {
     setup: setUpPlaywrightMcpWithAymePageObjects,
     browserInterface: playwrightMcpInterface,
   },
+  /**
+   * The Playwright MCP arm with Ayme's Page Object Tools through WebMCP as
+   * Playwright MCP itself surfaces it: the server attaches over CDP to a
+   * browser with the WebMCP flag, collects the tools the page registered
+   * with each snapshot and lists each as a `webmcp_<name>` tool of its own,
+   * so the agent gets `snapshot`, the Browser Tools and the Page Object
+   * Tools as the page publishes them today, and no `ayme` server runs. Page
+   * objects on, Goal Loop off, no skill. The Playwright MCP entry is the
+   * setup's, since it names the port chosen then; the arm has no server of
+   * its own.
+   */
+  "playwright-mcp-with-ayme-webmcp": {
+    id: "playwright-mcp-with-ayme-webmcp",
+    interfaceLine: () => `${playwrightMcpInterfaceLine} ${webMcpToolsSentence}`,
+    tools: baseTools,
+    allowedTools: ["mcp__playwright"],
+    mcpServers: () => ({}),
+    preconditions: aymeWebMcpPreconditions,
+    setup: setUpPlaywrightMcpWithAymeWebMcp,
+    browserInterface: playwrightMcpInterface,
+  },
   "playwright-cli": playwrightCliArm("playwright-cli"),
   /**
    * The Playwright CLI arm with Ayme's Page Object Tools beside it, the CLI's
@@ -269,6 +316,16 @@ export const arms: Record<ArmId, Arm> = {
    */
   "playwright-cli-with-ayme-page-objects": playwrightCliArm(
     "playwright-cli-with-ayme-page-objects"
+  ),
+  /**
+   * The CLI's twin of `playwright-mcp-with-ayme-webmcp`: the CLI session is
+   * attached over CDP to a browser with the WebMCP flag and no Ayme server,
+   * with the CLI's handling of page tools on, so the page status counts
+   * them, the snapshot lists them and `webmcp-list` and `webmcp-call` reach
+   * them. Page objects on, Goal Loop off; the CLI's skill as for its arm.
+   */
+  "playwright-cli-with-ayme-webmcp": playwrightCliArm(
+    "playwright-cli-with-ayme-webmcp"
   ),
   "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", {
     goalLoop: false,
