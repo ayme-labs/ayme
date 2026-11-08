@@ -24,7 +24,8 @@ export const ENTRY_MODULE = "entry.js";
  * The init script for the browser automation: in every top-level http(s)
  * document, it imports the runtime and the entry the server on `port`
  * serves, starts the runtime with the Agent Connection on and registers the
- * entry's classes. A frame or a document such as `about:blank` loads
+ * entry's classes, with the Inspector in a window of its own, which the
+ * page serves only once `ayme_inspect`'s URL is opened. A frame or a document such as `about:blank` loads
  * nothing, so only the tab pairs. It is a classic script, as an init script
  * runs, and holds no other state.
  */
@@ -40,7 +41,11 @@ export function initScript(port: number): string {
     import(served + ${JSON.stringify(ENTRY_MODULE)}),
   ]).then(
     ([{ createAyme }, { default: pageObjects }]) =>
-      createAyme({ agentConnection: true, pageObjects }).start(),
+      createAyme({
+        agentConnection: true,
+        inspector: { placement: "external" },
+        pageObjects,
+      }).start(),
     (error) =>
       console.error("[ayme] The Page Objects ayme mcp serves at " + served + " did not load.", error)
   );

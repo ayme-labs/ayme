@@ -2,7 +2,17 @@ import { cp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { selectors } from "@playwright/test";
+import {
+  Inspector,
+  registerInspectorSelectors,
+} from "@ayme-dev/inspector/testing";
+
 import { connectPage, expect, freePort, startAgent, test } from "./fixtures";
+
+// The Inspector renders into a closed shadow root; its page objects reach it
+// through these selectors.
+test.beforeAll(() => registerInspectorSelectors(selectors));
 
 /**
  * The `.ayme` folder of a project that keeps its Page Objects outside the
@@ -175,6 +185,42 @@ test("a Page Object that fails to compile is reported with its file, and the pag
       .toContain(PLAIN_PAGE_TOOL);
     const { isError, text } = await agent.call(PLAIN_PAGE_TOOL);
     expect(isError, text).toBe(false);
+  } finally {
+    await agent.close();
+  }
+});
+
+test("the Inspector ayme_inspect links to shows the served Page Objects of the paired page, and runs them there", async ({
+  context,
+  page,
+  baseURL,
+}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(await freePort())
+  );
+  try {
+    await context.addInitScript({
+      path: join(project, ".ayme", "init-script.js"),
+    });
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain(PLAIN_PAGE_TOOL);
+
+    const { text: url, isError } = await agent.call("ayme_inspect");
+    expect(isError, url).toBe(false);
+    const window = await context.newPage();
+    await window.goto(url);
+    const inspector = new Inspector(window);
+    await (await inspector.tool(PLAIN_PAGE_TOOL)).run();
+
+    const run = inspector.runs.latest(PLAIN_PAGE_TOOL);
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.resultText()).toContain("does not run Ayme");
   } finally {
     await agent.close();
   }
