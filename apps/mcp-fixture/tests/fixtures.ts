@@ -6,9 +6,17 @@ import {
   startAgent,
 } from "@ayme-dev/mcp/testing";
 import { spawn } from "node:child_process";
+import { cp } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { test as base, expect, type Page } from "@playwright/test";
+import {
+  test as base,
+  expect,
+  type BrowserContext,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 
 export { expect };
 export {
@@ -128,6 +136,33 @@ export async function serverAddress(agent: Agent) {
   const address = /#ayme=(ws:\/\/127\.0\.0\.1:(\d+))\//.exec(text);
   expect(address, text).not.toBeNull();
   return { address: address![1]!, port: Number(address![2]) };
+}
+
+/**
+ * Starts `ayme mcp` in a project of its own under the test's output folder,
+ * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
+ * Objects, and runs the init script it writes in every page of `context`.
+ * Returns the agent and the origin of its server, where a page fetches the
+ * served code from.
+ */
+export async function startServingAgent(
+  context: BrowserContext,
+  testInfo: TestInfo
+) {
+  // Beside the fixture's own packages, as a project's `.ayme` sits beside its
+  // installed `@ayme-dev/ayme`.
+  const project = testInfo.outputPath("project");
+  await cp(
+    fileURLToPath(new URL("../outside/.ayme", import.meta.url)),
+    join(project, ".ayme"),
+    { recursive: true }
+  );
+  const port = await freePort();
+  const agent = await startAgent({ cwd: project }, "--port", String(port));
+  await context.addInitScript({
+    path: join(project, ".ayme", "init-script.js"),
+  });
+  return { agent, server: `http://127.0.0.1:${port}` };
 }
 
 /** The ref of the page's "Add item" button, from its snapshot, as an agent finds one. */
