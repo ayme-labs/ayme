@@ -4,7 +4,7 @@
  * and stores the run.
  * `runOnce` is the function the suite calls; the command below wraps it.
  *
- *   node src/run.ts --arm playwright-mcp [--model sonnet] [--timeout-seconds 600] [--mission <id>]
+ *   node src/run.ts --arm playwright-mcp [--model haiku] [--timeout-seconds 600] [--mission <id>]
  */
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -77,7 +77,7 @@ export type RunOptions = {
   timeoutSeconds: number;
 };
 
-export const defaultModel = "sonnet";
+export const defaultModel = "haiku";
 export const defaultTimeoutSeconds = 600;
 
 function usage() {

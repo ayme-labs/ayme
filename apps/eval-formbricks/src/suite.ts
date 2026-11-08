@@ -6,7 +6,7 @@
  * own mission. Writes the suite's manifest and summary under
  * `results/suites/<suite id>/`.
  *
- *   node src/suite.ts [--arms a,b] [--runs 3] [--model sonnet] [--timeout-seconds 600] [--mission <id>]
+ *   node src/suite.ts [--arms a,b] [--runs 3] [--model haiku] [--timeout-seconds 600] [--mission <id>]
  *
  * Every run calls the model and costs money. The first run that cannot
  * complete ends the suite, since the lab app or the environment is then

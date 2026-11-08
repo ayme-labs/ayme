@@ -4,11 +4,11 @@ import { armIds } from "./arms.ts";
 import { parseSuiteOptions } from "./suite.ts";
 
 describe("the suite options", () => {
-  it("default to every defined arm, three runs each, Sonnet and 600 seconds", () => {
+  it("default to every defined arm, three runs each, Haiku and 600 seconds", () => {
     const options = parseSuiteOptions([]);
     expect(options.arms).toEqual(armIds);
     expect(options.runsPerArm).toBe(3);
-    expect(options.model).toBe("sonnet");
+    expect(options.model).toBe("haiku");
     expect(options.timeoutSeconds).toBe(600);
     expect(options.mission.id).toBe("rename-survey-and-question");
   });
