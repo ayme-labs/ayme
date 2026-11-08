@@ -19,4 +19,4 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 
 ## Page Objects that `ayme mcp` serves
 
-The `--page-objects <file>` option of `ayme mcp` in `@ayme-dev/mcp`, and the `.ayme/page-objects.ts` entry it reads by default: `ayme mcp` builds the entry, serves it, and writes `.ayme/init-script.js`, which loads it into a page that doesn't ship Ayme. The usage text of `ayme mcp` marks the option experimental.
+The `--page-objects <file>` option of `ayme mcp` in `@ayme-dev/mcp`, and the `.ayme/page-objects.ts` entry it reads by default: `ayme mcp` builds the entry, serves it, and writes `.ayme/init-script.js`, which loads it into a page that doesn't ship Ayme. The usage text of `ayme mcp` marks the option experimental. See [A page that doesn't ship Ayme](../guides/connect-an-agent.md#a-page-that-doesnt-ship-ayme).
