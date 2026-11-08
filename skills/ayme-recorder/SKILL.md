@@ -23,10 +23,10 @@ a Playwright test that replays the flow.
    [Page object design](references/page-object-design.md). Where it conflicts
    with the project's existing POM and test conventions, raise the conflict
    with the user.
-5. **Run** the test until it passes. Fix locators and timing without changing
-   the flow: when passing would take different steps or different checks, for
-   example because the app no longer behaves as recorded, stop and tell the
-   user.
+5. **Run** the test until it passes. Fix locators and timing, but not the
+   flow. When passing would take different steps or different checks, stop
+   and tell the user. That happens, for example, when the app no longer
+   behaves as recorded.
 
 Done when the test passes against the app and replays the flow you agreed.
 
@@ -40,31 +40,42 @@ mode: structural
 createdAt: 2026-…               # when the recording was stored
 url: https://…                  # where the recording started
 tracePath: .ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
-visits:                         # one per page load
+visits:                         # one per page, from a load or a navigation to another path
   - visitId, url, cause
     baselineTree:               # the page as first seen
     timelineEntries:            # in order
       - kind: interaction       # or `change`
         timestamp
-        interaction:            # id, type, targetRef, values
+        interaction:            # id, type, target, and what the user entered
         changeTree:             # only when something changed
 traceActionPoints:              # the interactions the trace holds
 ```
 
-`/locator:` lines under a node are Playwright locators for it. An `s_*` node
-has one only when an action targeted it.
+A node can carry `/locator:` lines, which are Playwright locators for its
+element:
+
+```text
+- [ref=e11] textbox "Username":
+  - /locator: "locator('[data-test=\"username\"]')"
+- [ref=s_1] img
+```
+
+A ref that starts with `s_`, such as `s_1`, is the recorder's own. It names a
+node that Playwright gave no ref. An `s_*` node has a `/locator:` line only
+when an action targeted it.
 
 A ref names a node within this package. Each visit numbers its nodes anew, and
 a node the app re-renders gets a new ref: the same button can be `e44`, then
 `e137` after a click. Refs link an interaction to its target, and a node to its
-element in the trace; they never go into code. After a full page load a ref
+element in the trace. They never go into code. After a full page load, a ref
 can carry a frame prefix, such as `f1e4`, because Playwright renumbers the
-main frame's refs; copy refs as they are written.
+main frame's refs. Copy refs exactly as they are written.
 
 A `changeTree` holds only the paths down to what changed. `<added>`,
 `<removed>` and `<changed>` mark nodes that appeared, disappeared, or changed
 their own content or state; an unmarked node is only the path to a change
-below it.
+below it. After the user adds a second item to the cart, the cart button
+re-renders with a new name:
 
 ```text
 - [ref=e25]:
@@ -76,9 +87,11 @@ below it.
   - <removed> [ref=e44] button "Cart, 1 items"
 ```
 
-An interaction names its target by `targetRef`, a node in the visit's baseline
-tree or one `<added>` earlier in the same visit. Its other fields, such as a
-fill's `text`, are the values the user entered.
+An interaction has an `id` and a `type`, such as `fill` or `click`.
+`targetRef` names its target: a node in the visit's baseline tree, or one
+`<added>` earlier in the same visit. `targetSelector` is a selector for that
+target. The remaining fields are what the user entered, such as a fill's
+`text`.
 
 ```text
 interaction:
@@ -90,12 +103,12 @@ interaction:
 ```
 
 A `kind: change` entry is a change the recorder could not tie to an
-interaction. It is usually the late result of an earlier step, such as data
-that finished loading. It can also come before the interaction that caused
-it, because the recorder can see the page change before it records the click
-behind the change. A change no recorded action explains can also come from a
-hover, or from anything the page does on its own in between, such as an async
-update. Read it together with the steps around it.
+interaction. Read it together with the steps around it. It is usually the
+late result of an earlier step, such as data that finished loading. It can
+also come before the interaction that caused it. The recorder can see the
+page change before it records the click behind the change. A change that no
+recorded action explains can also come from a hover. It can come from
+something the page does on its own in between, too, such as an async update.
 
 ## Write page objects from the recording
 
@@ -110,8 +123,8 @@ evidence:
   subtree in a Change Tree.
 - A repeated structure shows as sibling subtrees of one shape, whose locators
   differ only in position.
-- Part of the page that every visit repeats, such as a header, is the same
-  element on every page.
+- A part that every visit shows, such as a header, is one component. Each
+  page that shows it holds it as a member.
 - An action's parameters are the values the user entered, or derived from elements the user interacted with.
 
 A recording shows one outcome of each action. When the app can end it another
@@ -126,10 +139,14 @@ for a better one in the trace.
 ## Write the test
 
 One test replays the flow in recorded order, with no steps the user did not
-take and no branching. Every step goes through a page object action or one of its named locators, and
-every check through a page object locator or method. When an action returns one of
-several page objects, assert the one the recorded flow reached, such as
-`assert(page instanceof ProjectPage)` from `node:assert`, rather than branching on it.
+take and no branching. Every step goes through a page object action or one
+of its named locators. Every check goes through a page object locator or
+method. When an action returns one of several page objects, assert the one
+the recorded flow reached, rather than branching on it. For example,
+`dialog.create()` in
+[Page object design](references/page-object-design.md#return-where-the-user-continues)
+returns a `ProjectPage` or the dialog:
+`assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
 
 Turn the timeline into assertions:
 
