@@ -41,6 +41,13 @@ describe("readCommand", () => {
     });
   });
 
+  it("rejects an empty --page-objects value", () => {
+    expect(readCommand(["mcp", "--page-objects", ""])).toEqual({
+      kind: "error",
+      text: `--page-objects expects a file, got an empty value.\n\n${USAGE}`,
+    });
+  });
+
   it("marks --page-objects experimental in the usage text", () => {
     expect(USAGE).toMatch(/--page-objects <file>\s+Experimental:/);
   });

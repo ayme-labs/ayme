@@ -61,6 +61,11 @@ export function readCommand(args: string[]): Command {
       kind: "error",
       text: `--page-objects is an option of \`ayme mcp\` only.\n\n${USAGE}`,
     };
+  if (pageObjects !== undefined && pageObjects.trim() === "")
+    return {
+      kind: "error",
+      text: `--page-objects expects a file, got an empty value.\n\n${USAGE}`,
+    };
   const entry = pageObjects === undefined ? {} : { pageObjects };
   if (values.port === undefined) return { kind, ...entry };
   const port = Number(values.port);

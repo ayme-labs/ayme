@@ -84,8 +84,12 @@ export async function startMcpServer({
       : await listenOnPort(channel.server, pinnedPort);
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
   if (entry !== undefined)
-    log(
-      `Serving ${entry} to pages that load ${await writeInitScript({ folder, port })}.`
+    await writeInitScript({ folder, port }).then(
+      (initScript) => log(`Serving ${entry} to pages that load ${initScript}.`),
+      (error: unknown) =>
+        log(
+          `Writing the init script for ${entry} failed: ${(error as Error).message}`
+        )
     );
 
   const stopBehaviours = connectionBehaviours.map((behaviour) =>
