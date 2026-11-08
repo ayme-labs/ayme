@@ -106,7 +106,30 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-**`available`** declares when an action can run, for an action whose control shows only in some states or to some users. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not.
+**`available`** declares when an action can run, for an action whose control shows only in some states or to some users.
+
+Say a row shows its Remove button only to an admin of that project. The user is an admin of Launch plan but not of Q4 survey. `snapshot` marks each row's root with its class, `ProjectRow`:
+
+```text
+- e5 list:
+  - e6 ProjectRow:
+    - text: Launch plan
+    - e7 button "Archive"
+    - e8 button "Rename"
+    - e9 button "Remove"
+  - e10 ProjectRow:
+    - text: Q4 survey
+    - e11 button "Archive"
+    - e12 button "Rename"
+```
+
+An agent names a row by the ref on its marked line. It calls `ProjectRow.remove({ ref: "e10" })` to remove Q4 survey. The call is refused before anything runs:
+
+```text
+RuntimeStateError: ProjectRow on ref "e10" is unavailable: Only admins can remove projects.
+```
+
+The reason comes from `available`. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not:
 
 ```ts
 const canRemove = async (self: ProjectRow) =>
@@ -124,11 +147,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-For a member who is not an admin, no row shows Remove. `canRemove` then returns its string, and `ProjectRow.remove` stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason with the other tool changes it is told about. A call is refused with it before anything runs:
-
-```text
-RuntimeStateError: ProjectRow on ref "e10" is unavailable: Only admins can remove projects.
-```
+`ProjectRow.remove` stays listed, because it can run on Launch plan. For a member who is not an admin of any project, no row shows Remove. The tool then stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason with the other tool changes it is told about.
 
 Like `present`, the predicate runs whenever Ayme observes the page, so keep it to reads.
 

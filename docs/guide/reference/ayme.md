@@ -32,7 +32,11 @@ Three more entries serve Ayme itself. Applications import none of them, and they
 
 ### Page Object root and presence
 
-`root` and `present` are predicates that get the live Page Object instance as `self`; declared as their own functions, `self` is typed. A subclass inherits each from the nearest class in its chain that declares it, with or without a decorator of its own, and may declare its own: `root` and `present` are inherited separately, so a subclass overrides one and keeps the other. They run read-only with the runtime's observation of the page, never when a tool is called, so they must not scroll, click, focus or change the page. They never run on the server, where registration is inert, and the build plugin does not read them; the decorator keeps them at runtime.
+`root` and `present` are predicates that get the live Page Object instance as `self`. Declared as their own functions, they type `self`.
+
+A subclass inherits each from the nearest class in its chain that declares it, with or without a decorator of its own. It may declare its own. `root` and `present` are inherited separately, so a subclass can override one and keep the other.
+
+They run with the runtime's observation of the page, never when a tool is called. So they must only read: they must not scroll, click, focus or change the page. They never run on the server, where registration is inert. The build plugin does not read them. The decorator keeps them at runtime.
 
 ### Page Object presence
 
@@ -61,7 +65,7 @@ The predicate runs before the model's members are read. So an absent model costs
 
 Observation also runs after each same-document navigation. So a predicate that reads the URL follows client-side routing and the browser's Back and Forward.
 
-A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.` It is logged once, and again only when the error changes.
+A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.` It is logged once. It is logged again when the error changes, or when it stops and later comes back.
 
 Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
 
@@ -97,9 +101,14 @@ An app with a typed router calls the router's matcher from the predicate instead
 
 ### Page Object root
 
-`root` is a root predicate, `(self) => Locator | Promise<Locator>` (`RootPredicate`). The Locator it answers names the Page Object Root: the Page Object is present while the locator resolves to one rendered element, the page state marks that element with the Page Object's class, every tool of the class takes that element's Structural Ref as `ref`, and availability is measured at it.
+`root` is a root predicate, `(self) => Locator | Promise<Locator>` (`RootPredicate`). The Locator it answers names the Page Object Root.
 
-Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per table row:
+- The Page Object is present while the Locator resolves to one rendered element.
+- The page state marks that element with the Page Object's class.
+- Every tool of the class takes that element's Structural Ref as `ref`.
+- Availability is measured at that element.
+
+Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item:
 
 ```ts
 const rootOf = (self: AppComponent) => self.root;
@@ -144,24 +153,37 @@ export class ProjectsPage extends AppPage {
 The page state marks each row's root with its class, in place of its role:
 
 ```text
-- e5 table:
-  - e6 rowgroup:
-    - e7 ProjectRow:
-      - e8 cell "Website"
-      - e9 cell:
-        - e10 button "Remove"
-    - e11 ProjectRow:
-      - e12 cell "Mobile app"
-      - e13 cell
+- e5 list:
+  - e6 ProjectRow:
+    - text: Launch plan
+    - e7 button "Archive"
+    - e8 button "Rename"
+    - e9 button "Remove"
+  - e10 ProjectRow:
+    - text: Q4 survey
+    - e11 button "Archive"
+    - e12 button "Rename"
+    - e13 button "Remove"
 ```
 
-There is one `ProjectRow.remove` tool for both rows. A rooted class's tool takes two inputs. `ref` is the Structural Ref of the instance's root. `args` holds the action's arguments:
+There is one `ProjectRow.remove` tool for both rows. Your code calls it through the session that [`createAyme`](#createayme) returns. Create it in your app's entry file, apart from the models, so its name does not clash with the `ayme` decorator:
 
 ```ts
-await ayme.tools.run("ProjectRow.remove", { ref: "e7" }); // removes Website
+// main.ts
+import { createAyme } from "@ayme-dev/ayme";
+import { ProjectsPage } from "./pages";
+
+const ayme = createAyme({ pageObjects: [ProjectsPage] });
+ayme.start();
+```
+
+A rooted class's tool takes two inputs. `ref` is the Structural Ref of the instance's root. `args` holds the action's arguments:
+
+```ts
+await ayme.tools.run("ProjectRow.remove", { ref: "e10" }); // removes Q4 survey
 await ayme.tools.run("ProjectRow.rename", {
-  ref: "e11",
-  args: { name: "iOS app" },
+  ref: "e6",
+  args: { name: "Launch plan v2" },
 });
 ```
 
@@ -257,7 +279,9 @@ The other classes keep their tools. To fix either case, give the class a `root`.
 
 The predicate runs during the runtime's observation of the page, the same read-only probe that checks Page Object Roots. It never runs when the action is called. It must not scroll, click, focus or change the page.
 
-It runs once for each present instance. Give `remove` on `ProjectRow` from [Page Object root](#page-object-root) a predicate. A row shows its Remove button only to an admin of that project:
+It runs once for each present instance. It is skipped for an instance whose root a click would not reach, because that instance is already unavailable.
+
+Give `remove` on `ProjectRow` from [Page Object root](#page-object-root) a predicate. A row shows its Remove button only to an admin of that project:
 
 ```ts
 const canRemove = async (self: ProjectRow) =>
@@ -277,23 +301,24 @@ export class ProjectRow extends AppComponent {
 
 Declaring the predicate as its own function types `self`. One predicate can be given to several actions.
 
-The user is an admin of Website but not of Mobile app, so only Website's row has a Remove button:
+The user is an admin of Launch plan but not of Q4 survey, so only Launch plan's row has a Remove button:
 
 ```text
-- e5 table:
-  - e6 rowgroup:
-    - e7 ProjectRow:
-      - e8 cell "Website"
-      - e9 cell:
-        - e10 button "Remove"
-    - e11 ProjectRow:
-      - e12 cell "Mobile app"
-      - e13 cell
+- e5 list:
+  - e6 ProjectRow:
+    - text: Launch plan
+    - e7 button "Archive"
+    - e8 button "Rename"
+    - e9 button "Remove"
+  - e10 ProjectRow:
+    - text: Q4 survey
+    - e11 button "Archive"
+    - e12 button "Rename"
 ```
 
-- `ayme.tools.list()` lists `ProjectRow.remove` with `available: true`, because Website passes.
-- `ayme.tools.run("ProjectRow.remove", { ref: "e7" })` removes Website.
-- `ayme.tools.run("ProjectRow.remove", { ref: "e11" })` is refused before anything runs, with Mobile app's reason: `RuntimeStateError: ProjectRow on ref "e11" is unavailable: Only admins can remove projects.`
+- `ayme.tools.list()` lists `ProjectRow.remove` with `available: true`, because Launch plan passes.
+- `ayme.tools.run("ProjectRow.remove", { ref: "e6" })` removes Launch plan.
+- `ayme.tools.run("ProjectRow.remove", { ref: "e10" })` is refused before anything runs, with Q4 survey's reason: `RuntimeStateError: ProjectRow on ref "e10" is unavailable: Only admins can remove projects.`
 - If no row passed, the tool would be listed with `available: false` and the first failing row's reason.
 
 A predicate that throws makes the action unavailable. The error's text, such as `TypeError: store is undefined`, becomes the reason. Without `available`, an action is available while its Page Object is: its root is present and a click would reach it. The build plugin does not read the predicate. The decorator keeps it at runtime.
@@ -449,26 +474,30 @@ When no row shows a Remove button, the `ProjectRow.remove` entry from [Action av
 
 A `reason` comes from one of two places.
 
-**The runtime** writes one when the Page Object Root is on the page but a click would not reach it. Say the New project dialog is open and covers the table from [Action availability](#action-availability). The agent's latest page state shows:
+**The runtime** writes one when the Page Object Root is on the page but a click would not reach it. Say the New project dialog is open and covers the list from [Action availability](#action-availability). The agent's latest page state shows:
 
 ```text
 - e1:
   - e2 main:
     - e3 heading "Projects" [level=1]
     - e4 button "New project"
-    - e5 table:
-      - e6 rowgroup:
-        - e7 ProjectRow:
-          - e8 cell "Website"
-          - e9 cell:
-            - e10 button "Remove"
-        - e11 ProjectRow:
-          - e12 cell "Mobile app"
-          - e13 cell
-  - e14 dialog "New project"
+    - e5 list:
+      - e6 ProjectRow:
+        - text: Launch plan
+        - e7 button "Archive"
+        - e8 button "Rename"
+        - e9 button "Remove"
+      - e10 ProjectRow:
+        - text: Q4 survey
+        - e11 button "Archive"
+        - e12 button "Rename"
+  - e14 dialog "New project":
+    - e15 textbox "Project name"
+    - e16 button "Create"
+    - e17 button "Cancel"
 ```
 
-The dialog covers the centre of both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: "a click would not reach it; e14 is in the way", … }`. A call on Website is refused with `ProjectRow on ref "e7" is unavailable: a click would not reach it; e14 is in the way.`
+The dialog covers the centre of both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: "a click would not reach it; e14 is in the way", … }`. A call on Launch plan is refused with `ProjectRow on ref "e6" is unavailable: a click would not reach it; e14 is in the way.`
 
 The ref names what the click would hit instead:
 
@@ -491,19 +520,19 @@ The ref comes from the agent's latest page state. Sometimes no page state has sh
 | `list()`              | The newest 200 top-level Runs with their child Runs, oldest first, as `Run` objects; an older top-level Run is dropped with its children. Returns the same array until a Run starts, gains an Interaction, or ends. A new document starts an empty log. |
 | `subscribe(listener)` | Calls `listener` with the new list when a Run starts, gains an Interaction, or ends. Returns the function that unsubscribes.                                                                                                                            |
 
-A `Run` is one tool call in the log. Say your code removes Website from [Action availability](#action-availability) with `await ayme.tools.run("ProjectRow.remove", { ref: "e7" })`. The action clicks the Remove button, `e10`. The last entry of `ayme.runs.list()` is then:
+A `Run` is one tool call in the log. Say your code removes Launch plan from [Action availability](#action-availability) with `await ayme.tools.run("ProjectRow.remove", { ref: "e6" })`. The action clicks the Remove button, `e9`. The last entry of `ayme.runs.list()` is then:
 
 ```ts
 {
   id: "1",
   tool: "ProjectRow.remove",
-  input: { ref: "e7" },
+  input: { ref: "e6" },
   by: "app",
   status: "succeeded",
   result: { page_changed: true, settled: true, changes: "…" },
   startedAt: 1794147726312,
   durationMs: 388,
-  interactions: [{ operation: "click", locator: "…", ref: "e10" }],
+  interactions: [{ operation: "click", locator: "…", ref: "e9" }],
 }
 ```
 

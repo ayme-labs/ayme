@@ -16,28 +16,29 @@ Map a user flow into a POM against the running app, in this order:
 
    ```
    - e4 button "New project"
-   - e20 dialog "New project":
-     - e21 textbox "Name"
-     - e22 button "Create"
+   - e14 dialog "New project":
+     - e15 textbox "Project name"
+     - e16 button "Create"
+     - e17 button "Cancel"
    ```
 
    `ProjectsPage` holds `newProjectButton`. `NewProjectDialog` is rooted at
-   `e20`. Pass one group per root, with the root's ref as `within`. Pass one
+   `e14`. Pass one group per root, with the root's ref as `within`. Pass one
    more group, without `within`, for locators taken from the page, such as
    the page's own members and the dialog's root:
 
    ```json
    {
      "groups": [
-       { "within": "e20", "targets": ["e21", "e22"] },
-       { "targets": ["e4", "e20"] }
+       { "within": "e14", "targets": ["e15", "e16", "e17"] },
+       { "targets": ["e4", "e14"] }
      ]
    }
    ```
 
    The result mirrors the input. Each group lists `{ target, locator }` per
    target, such as
-   `{ "target": "e22", "locator": "getByRole('button', { name: 'Create' })" }`.
+   `{ "target": "e16", "locator": "getByRole('button', { name: 'Create' })" }`.
    A group's locators are relative to its `within`, ready to call on that
    component's `root`. A target that fails gets `{ target, error }`. A ref
    belongs to one snapshot and does not belong in code.

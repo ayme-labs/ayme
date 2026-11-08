@@ -43,7 +43,7 @@ const tools = ayme.tools.list().filter(({ available }) => available);
 // each has name, agentDescription and inputSchema
 
 // Call this when the assistant's model picks a tool, with the input it chose:
-async function runTool(name: string, input: unknown) {
+async function runTool(name: string, input: object) {
   return ayme.tools.run(name, input);
 }
 ```

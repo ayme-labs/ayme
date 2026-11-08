@@ -12,7 +12,8 @@ goal({
 })
 ```
 
-`goal` never makes up text. It types only what you pass in `values`.
+`goal` never makes up text. A parameter without fixed values gets only a
+value you pass in `values`.
 
 Every run ends in a
 [Handover](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md#the-handover).

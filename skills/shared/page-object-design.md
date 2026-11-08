@@ -84,7 +84,9 @@ export class NewProjectDialog extends AppComponent {
 
 // The page a created project opens on.
 export class ProjectPage extends AppPage {
-  readonly heading = this.page.getByRole("heading", { level: 1 });
+  // Not getByRole("heading", { level: 1 }): the Projects page's heading
+  // matches that too, and it stays on the page behind the dialog.
+  readonly heading = this.page.getByTestId("project-heading");
 }
 ```
 
@@ -273,7 +275,8 @@ async cancel() {
 An action returns once the state it promises holds, not once its last click
 is done. `openNewProjectDialog()` waits for the dialog's root before it
 returns the dialog. `create()`, below, waits until the project's page or the
-name error shows.
+name error shows. Wait for an element only that outcome shows, not one the
+page showed already.
 
 ## Return where the user continues
 
@@ -315,15 +318,15 @@ await expect(rejected.nameError).toBeVisible();
 
 ## Compose actions
 
-An action can call the actions of its children and of the components it opens.
-A call that moves the user out of the action's boundary comes last, and the
+An action can use its children and the components it opens, through their
+actions and their locators. A call that moves the user out of the action's boundary comes last, and the
 action returns what that call returns:
 
 ```ts
 // On ProjectsPage:
-async createProject(name: string, owner: string) {
+async createProject(name: string) {
   const dialog = await this.openNewProjectDialog();
-  await dialog.fillProjectForm(name, owner);
+  await dialog.nameInput.fill(name);
   return dialog.create();
 }
 ```

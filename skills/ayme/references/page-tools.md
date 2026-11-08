@@ -61,52 +61,55 @@ explains the two. A tool's own return value is in `result`.
   shows:
 
   ```
-  - e5 table:
-    - e6 rowgroup:
-      - e7 ProjectRow:
-        - e8 cell "Website redesign"
-        - e9 cell:
-          - e10 button "Remove"
-      - e11 ProjectRow:
-        - e12 cell "Mobile app"
-        - e13 cell:
-          - e14 button "Remove"
+  - e5 list:
+    - e6 ProjectRow:
+      - text: Launch plan
+      - e7 button "Archive"
+      - e8 button "Rename"
+      - e9 button "Remove"
+    - e10 ProjectRow:
+      - text: Q4 survey
+      - e11 button "Archive"
+      - e12 button "Rename"
+      - e13 button "Remove"
   ```
 
-  One tool serves every `ProjectRow`. Name the row by the ref on its mark,
-  `e11`:
+  One tool serves every `ProjectRow`. Name the row by the ref on its mark.
+  To remove Q4 survey, pass `e10`. To rename Launch plan, pass `e6`:
 
   ```
-  ProjectRow.remove({ ref: "e11" })
-  ProjectRow.rename({ ref: "e11", args: { name: "Mobile app v2" } })
+  ProjectRow.remove({ ref: "e10" })
+  ProjectRow.rename({ ref: "e6", args: { name: "Launch plan v2" } })
   ```
 
   The action's own arguments go under `args`. Leave `args` out when the
   action takes none. Any class with a mark is called this way, a single
-  child included. The ref of the row's button, `e14`, is refused:
-  `Cannot call ProjectRow.remove on ref "e14": it is not a root of ProjectRow.`
+  child included. The ref of the row's button, `e13`, is refused:
+  `Cannot call ProjectRow.remove on ref "e13": it is not a root of ProjectRow.`
 
 - A class with no root gets no mark. A page usually has none, since its base
   class makes it present by its URL. Its tools take the action's arguments
   directly, such as `ProjectsPage.openNewProjectDialog({})`.
   [Page Object root](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
   has the rules.
-- When a tool answers that it is unavailable, read the reason. Example: a
-  native modal dialog opened over the rows above.
+- When a tool answers that it is unavailable, read the reason. Example: the
+  New project dialog opened over the rows above.
 
   ```
-  - e15 dialog "Remove Mobile app?":
-    - e16 button "Cancel" [active]
+  - e14 dialog "New project":
+    - e15 textbox "Project name"
+    - e16 button "Create"
+    - e17 button "Cancel"
   ```
 
   `ProjectRow.remove` is now unavailable, with the reason
-  `a click would not reach it; e15 is in the way`. A call on `e11` is refused
-  with that reason. `e15` is the open dialog. Close it, such as with `click`
-  on `e16`, then call again. When the element in the way has no ref, the
+  `a click would not reach it; e14 is in the way`. A call on `e10` is refused
+  with that reason. `e14` is the open dialog. Close it, such as with `click`
+  on `e17`, then call again. When the element in the way has no ref, the
   reason ends at `a click would not reach it`.
 
 - `type`, `fill`, `select_option` and the `fill_form` fields other than a
-  checkbox or radio give `it cannot take focus; e15 is in the way` instead.
+  checkbox or radio give `it cannot take focus; e14 is in the way` instead.
   They give it for a field outside an open native modal dialog, or inside an
   `inert` region.
 - Any other reason comes from the app, such as `No item is selected`.
