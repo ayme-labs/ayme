@@ -17,7 +17,14 @@ export {
   parseStoredPairing,
   serializePairing,
 } from "./domain/pairingStorage";
-export { admit, isLocalOrigin, isLocalProcess } from "./domain/admission";
+export {
+  admit,
+  isLocalOrigin,
+  isLocalProcess,
+  isLoopbackHostHeader,
+} from "./domain/admission";
+export type { AymeVersion } from "./domain/versionGap";
+export { OUR_AYME, versionGap } from "./domain/versionGap";
 export { autoPairing } from "./infrastructure/autoPairing";
 export {
   listenOnFirstFreePort,

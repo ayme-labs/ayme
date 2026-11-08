@@ -5,6 +5,8 @@ It is private and never published.
 
 ```
 app/         the fixture page, its startup code and the Vite config
+outside/     the .ayme folder of a project that keeps its Page Objects outside
+             the app: the entry and the Page Object of plain.html it lists
 tests/       the shared fixtures (fixtures.ts), one spec per concern, and
              appProcess.ts, a stand-in App Process
 ```
@@ -17,7 +19,9 @@ Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
 document of the same origin without Ayme. WebMCP publication is off unless the
 URL has `?webmcp`, so the tests show the Agent Connection works without it.
 `?peek=<name>` adds a Peek of that name, which reads `{ "value": "page" }`. `?inspector` mounts the Inspector, whose
-spec drives it through `@ayme-dev/inspector/testing`.
+spec drives it through `@ayme-dev/inspector/testing`. `?strict-csp` serves any
+page with a Content Security Policy that allows scripts and connections only to
+the page's own origin.
 
 Each test starts the built `ayme mcp` command as a child process and talks to
 it through an MCP SDK client over stdio, as a coding agent does. The `connect`
@@ -25,6 +29,14 @@ fixture calls `ayme_connect`, opens the link in the Playwright page and waits
 until the page's tools are MCP tools. Assertions go through the MCP client, and
 through the page only for what the page itself shows, such as its address bar.
 Add a spec file for a new concern and reuse `fixtures.ts`.
+
+`servedPageObjects.spec.ts` copies `outside/.ayme` into its test's output
+folder, starts `ayme mcp` there, and opens `plain.html` in a context whose
+init script is the `.ayme/init-script.js` the server wrote, so the page gets
+the runtime and the Page Objects the server serves. The other
+`servedPageObjects*.spec.ts` files do the same through `startServingAgent`:
+one opens `plain.html?strict-csp`, with and without `bypassCSP`, and one reads
+the requests the page makes to the server to show what loads on first use.
 
 `appProcess.ts` stands in for an App Process: a Node script that starts Ayme
 with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The

@@ -124,12 +124,23 @@ export const InspectorResponseSchema = z.discriminatedUnion("ok", [
 export type InspectorResponse = z.infer<typeof InspectorResponseSchema>;
 
 /**
+ * The version of these messages a page speaks, which it names in its hello.
+ * The server refuses a page that speaks another. A change both sides
+ * tolerate, such as an optional field, keeps it.
+ */
+export const PAIRING_CONTRACT = 1;
+
+/**
  * The page introduces itself when its channel opens: the id its tab keeps
- * for this pairing across reloads and navigation, and the document's URL.
+ * for this pairing across reloads and navigation, the document's URL, and
+ * its `@ayme-dev/mcp` version and the pairing contract it speaks. A page
+ * from before the contract was named sends neither.
  */
 export const PageHelloSchema = z.object({
   tab: z.string().check(z.minLength(1)),
   url: z.string(),
+  version: z.optional(z.string()),
+  contract: z.optional(z.number()),
 });
 export type PageHello = z.infer<typeof PageHelloSchema>;
 
@@ -193,3 +204,10 @@ export const DISCONNECTED_CLOSE_CODE = 4001;
  * pairing.
  */
 export const UNKNOWN_PAIRING_CLOSE_CODE = 4002;
+
+/**
+ * The WebSocket close code the server ends a page's channel with when the
+ * page speaks another pairing contract than the server. The close reason
+ * names both versions. The page stops reconnecting.
+ */
+export const VERSION_GAP_CLOSE_CODE = 4003;

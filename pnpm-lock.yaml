@@ -1030,6 +1030,9 @@ importers:
       "@trpc/server":
         specifier: ^11.19.0
         version: 11.19.0(typescript@6.0.3)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       ws:
         specifier: ^8.22.0
         version: 8.22.0

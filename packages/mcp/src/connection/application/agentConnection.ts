@@ -181,6 +181,7 @@ export class AgentConnection {
   #timer: ReturnType<typeof setTimeout> | undefined;
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
+  #versionGap: string | undefined;
 
   /** The tools the agent sees: the page's, then the App Processes'. */
   get tools(): readonly PageTool[] {
@@ -208,6 +209,20 @@ export class AgentConnection {
   /** The paired page's link for an external Inspector, if a page is paired. */
   get inspectorLink(): InspectorLink | undefined {
     return this.#page?.inspector;
+  }
+
+  /**
+   * Why the server refused the last page that said hello, when its Ayme and
+   * the server's can't work together (see `versionGap`), naming both
+   * versions. A page that pairs clears it.
+   */
+  get versionGap(): string | undefined {
+    return this.#versionGap;
+  }
+
+  /** The server refused a page whose Ayme it can't work with, as `gap` says. */
+  refuseVersion(gap: string) {
+    this.#versionGap = gap;
   }
 
   /** Whether a page is paired. */
@@ -263,6 +278,7 @@ export class AgentConnection {
       this.#emit({ type: "unpaired" });
     }
 
+    this.#versionGap = undefined;
     const page = new PageSession(disconnect, (tools) => {
       if (this.#page !== page) return;
       this.#apply(
