@@ -408,6 +408,9 @@ it(
           vue: "3.5.42",
           "@angular/core": "22.2.1",
           rxjs: "7.8.2",
+          // The compiler entry and the build plugin run on the project's
+          // TypeScript.
+          typescript: "6.0.3",
         },
       })
     );
@@ -816,23 +819,26 @@ for (const vite of ["7.0.0", "8.0.0"])
         path.join(consumer, "vite.config.ts"),
         `
 import { defineConfig, type Plugin } from 'vite';
-import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
+import aymeDefault, {
+  ayme,
+  type AymeOptions,
+  type AymePlaywrightOptions,
+} from '@ayme-dev/unplugin-ayme/vite';
 import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
 import {
-  derivePomManifests,
-  type AymePlaywrightOptions,
+  createPomCompiler,
   type PomCompilerOptions,
-} from '@ayme-dev/unplugin-ayme';
+} from '@ayme-dev/ayme/compiler';
 const options: AymeOptions = { playwright: { use: { testIdAttribute: 'data-id' } } };
 const plugin: Plugin = ayme(options);
 const playwright: AymePlaywrightOptions | undefined = options.playwright;
 const compilerOptions: PomCompilerOptions = {};
-void [turbopackLoader, derivePomManifests, playwright, compilerOptions];
+void [turbopackLoader, createPomCompiler, playwright, compilerOptions];
 export default defineConfig({ plugins: [plugin, aymeDefault()] });
 `
       );
       exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
-      for (const entry of ["index.d.mts", "vite.d.mts"])
+      for (const entry of ["vite.d.mts"])
         expect(
           fs.readFileSync(
             path.join(packed["@ayme-dev/unplugin-ayme"]!.dir, "dist", entry),

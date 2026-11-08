@@ -1,9 +1,9 @@
 import ts from "typescript";
 
 /**
- * Transpiles a module to JavaScript with fixed settings, for bundler paths
- * that must return JavaScript: the Turbopack loader and the Angular plugin.
- * Not exported from the package.
+ * Transpiles a module to JavaScript with fixed settings, for callers that
+ * must return JavaScript: the Turbopack loader, the esbuild adapter and
+ * `ayme mcp`, through the compiler's `compile` and `transpile`.
  */
 export function transpilePomModule(code: string, fileName: string) {
   const result = ts.transpileModule(code, {

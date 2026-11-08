@@ -835,9 +835,9 @@
       {
         "name": "Build plugin",
         "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries Ayme at all. Without it, the runtime's root and internal entries and the framework packages resolve to absent entries and each Page Object Model compiles to a stand-in. A build prints one line saying which it is, except a Next.js build that compiles no Page Object Model",
-        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, running the TypeScript compiler",
+        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only `compiler` entry, which runs the project's own TypeScript compiler",
         "evidence": {
-          "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/unplugin-ayme/src/derivePomManifests.ts`, `packages/unplugin-ayme/src/transformPomModule.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
+          "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/ayme/src/compiler/pomCompiler.ts`, `packages/ayme/src/compiler/derivePomManifests.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
           "inferred": false,
           "mixed": false
         }

@@ -10,7 +10,7 @@ The options of `@ayme-dev/unplugin-ayme`, which compiles your Page Object Models
 | `@ayme-dev/unplugin-ayme/angular`          | The Angular CLI's application builder, through `@angular-builders/custom-esbuild`.    |
 | `@ayme-dev/unplugin-ayme/turbopack-loader` | Next.js 16 with Turbopack.                                                            |
 
-The plugin runs on Node.js 20.19 and later 20.x, or 22.12 and later. It compiles Page Object Models with its own TypeScript dependency, whichever TypeScript version your project uses.
+The plugin runs on Node.js 20.19 and later 20.x, or 22.12 and later. It compiles Page Object Models with your project's own TypeScript, 5.4 to 6.x, which the project installs.
 
 It has no publication or Inspector setting: you turn both on where Ayme starts in your app. Turning publication off does not remove Page Object Model code from the bundle: whether a build has Ayme in it at all is the `include` option, false by default, as [Include Ayme in a build](#include-ayme-in-a-build) describes.
 

@@ -6,7 +6,7 @@ import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 
 import { readDecisionProvider } from "../scripts/appEnvironment";
 import { ListPage } from "../playwright/pom/ListPage";
-import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
+import { createPomCompiler } from "@ayme-dev/ayme/compiler";
 import {
   Inspector,
   registerInspectorSelectors,
@@ -188,7 +188,7 @@ async function recordedToolSet(page: Page) {
 }
 
 test("derives nested object input schemas from POM action types", () => {
-  const [manifest] = derivePomManifests(
+  const [manifest] = createPomCompiler().derivePomManifests(
     path.resolve("tests/fixtures/objectInputPom.ts")
   );
 

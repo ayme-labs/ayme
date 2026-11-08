@@ -2,21 +2,21 @@ import path from "node:path";
 
 import ts from "typescript";
 
-export type PomCompilerOptions = {
+export type PomProjectOptions = {
   tsconfigPath?: string;
 };
 
 /** The TypeScript project a Page Object Model module compiles with. */
 export function pomProjectConfig(
   fileName: string,
-  options: PomCompilerOptions = {}
+  options: PomProjectOptions = {}
 ) {
   return projectConfigFor(path.resolve(fileName), options);
 }
 
 export function createPomProgram(
   fileName: string,
-  options: PomCompilerOptions = {},
+  options: PomProjectOptions = {},
   config = pomProjectConfig(fileName, options)
 ) {
   return ts.createProgram({
@@ -30,7 +30,7 @@ export function createPomProgram(
 
 export function pomProgramDependencies(
   fileName: string,
-  options: PomCompilerOptions = {}
+  options: PomProjectOptions = {}
 ) {
   const absoluteFileName = path.resolve(fileName);
   const dependencies = new Set<string>();
@@ -60,7 +60,7 @@ export function carriesPomMarker(source: string) {
  */
 export function importsPomModule(
   fileName: string,
-  options: PomCompilerOptions = {}
+  options: PomProjectOptions = {}
 ) {
   const absoluteFileName = path.resolve(fileName);
   const compilerOptions = projectConfigPath(absoluteFileName, options)
@@ -107,7 +107,7 @@ function walkImportedModules(
   }
 }
 
-function projectConfigPath(fileName: string, options: PomCompilerOptions) {
+function projectConfigPath(fileName: string, options: PomProjectOptions) {
   return options.tsconfigPath
     ? path.resolve(options.tsconfigPath)
     : ts.findConfigFile(
@@ -119,7 +119,7 @@ function projectConfigPath(fileName: string, options: PomCompilerOptions) {
 
 function projectConfigFor(
   fileName: string,
-  options: PomCompilerOptions,
+  options: PomProjectOptions,
   onConfigFile?: (fileName: string) => void
 ): ts.ParsedCommandLine {
   const configPath = projectConfigPath(fileName, options);

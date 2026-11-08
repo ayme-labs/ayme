@@ -1,4 +1,0 @@
-{
-  "extends": "@ayme-dev/typescript-config/library.json",
-  "include": ["vite.config.ts"]
-}
