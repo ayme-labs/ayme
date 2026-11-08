@@ -137,6 +137,59 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
   }
 }, 30_000);
 
+it("in watch mode, rebuilds after an edit to a Page Object Model module that its tsconfig does not list", async () => {
+  const root = await workspace({
+    // As the tsconfig above a project's `.ayme` folder may not list it.
+    "tsconfig.json": JSON.stringify({
+      ...JSON.parse(tsconfig),
+      files: ["main.ts"],
+    }),
+    "main.ts":
+      'import { EditedPage } from "./EditedPage";\nconsole.log(EditedPage);\n',
+    "EditedPage.ts": pomSource("EditedPage"),
+  });
+  const ends: string[] = [];
+  const builds = await context({
+    absWorkingDir: root,
+    entryPoints: ["main.ts"],
+    bundle: true,
+    write: false,
+    format: "esm",
+    external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
+    plugins: [
+      aymeAngularPlugin({ include: true }),
+      {
+        name: "ends",
+        setup(build) {
+          build.onEnd(({ outputFiles }) => {
+            ends.push(outputFiles?.[0]?.text ?? "");
+          });
+        },
+      },
+    ],
+    logLevel: "silent",
+  });
+  try {
+    await builds.watch();
+    await vi.waitFor(() => expect(ends).toHaveLength(1));
+
+    await writeFile(
+      path.join(root, "EditedPage.ts"),
+      pomSource("EditedPage").replace(
+        "doIt() {}",
+        'doIt() {}\n\n  @ayme.action({ description: "Undo it." })\n  undoIt() {}'
+      )
+    );
+
+    await vi.waitFor(() => expect(ends.at(-1)).toContain('"undoIt"'), {
+      timeout: 10_000,
+    });
+  } finally {
+    await builds.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 30_000);
+
 it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme, the default", async () => {
   const result = await build({
     absWorkingDir: fixtures,

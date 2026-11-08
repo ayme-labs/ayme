@@ -149,7 +149,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
           contents: pom.contents,
           loader: "js",
           resolveDir: path.dirname(fileName),
-          watchFiles: [...pom.watchFiles],
+          // esbuild watches a module that a plugin loads only through the
+          // files the plugin names, the module's own file included.
+          watchFiles: [fileName, ...pom.watchFiles],
         };
       });
     },
