@@ -145,7 +145,8 @@ method. When an action returns one of several page objects, assert the one
 the recorded flow reached, rather than branching on it. For example,
 `dialog.create()` in
 [Page object design](references/page-object-design.md#return-where-the-user-continues)
-returns a `ProjectPage` or the dialog:
+returns a `ProjectPage` or the dialog. After
+`const created = await dialog.create()`, write
 `assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
 
 Turn the timeline into assertions:
