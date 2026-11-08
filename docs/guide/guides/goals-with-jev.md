@@ -108,7 +108,7 @@ If the next operation is "type" or "fill" and enters text into one element of th
 
 `type` and `fill` both take a `text` string and act on one element, so they share that one question.
 
-At most eight such questions are asked, one per required text or number parameter. Ayme reads only the answer for the operation the model chose. If that answer names a Goal Value, the value fills the parameter. The second request then asks only for the closed-set parameters: the element to receive the value and, for `type`, its optional `submit` and `slowly`. Past eight questions, or when the answer names no Goal Value, the second request asks for the parameter as described below.
+At most eight such questions are asked, one per required text or number parameter. Ayme reads only the answer for the operation the model chose. If that answer names a Goal Value, the value fills the parameter. The second request then asks only for the parameters still open. For `type` and `fill`, that is the element to receive the value. Past eight questions, or when the answer names no Goal Value, the second request asks for the parameter as described below.
 
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
 - A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.

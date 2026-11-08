@@ -326,7 +326,7 @@ action returns what that call returns:
 // On ProjectsPage:
 async createProject(name: string) {
   const dialog = await this.openNewProjectDialog();
-  await dialog.nameInput.fill(name);
+  await dialog.nameInput.fill(name); // the owner keeps its default
   return dialog.create();
 }
 ```
