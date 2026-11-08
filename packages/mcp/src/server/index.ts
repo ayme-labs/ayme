@@ -78,10 +78,23 @@ export async function startMcpServer({
         : []),
     ],
   });
-  const port =
-    pinnedPort === undefined
-      ? await listenOnFirstFreePort(channel.server, SERVER_PORTS)
-      : await listenOnPort(channel.server, pinnedPort);
+  const closeBuild = () =>
+    void build?.then(
+      (b) => b.close(),
+      () => {}
+    );
+  let port: number;
+  try {
+    port =
+      pinnedPort === undefined
+        ? await listenOnFirstFreePort(channel.server, SERVER_PORTS)
+        : await listenOnPort(channel.server, pinnedPort);
+  } catch (error) {
+    // The watcher would keep the process alive after a failed start.
+    channel.close();
+    closeBuild();
+    throw error;
+  }
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
   let initScript: string | undefined;
   if (entry !== undefined)
@@ -119,10 +132,7 @@ export async function startMcpServer({
   const stop = () => {
     for (const stopBehaviour of stopBehaviours) stopBehaviour();
     channel.close();
-    void build?.then(
-      (b) => b.close(),
-      () => {}
-    );
+    closeBuild();
   };
   mcp.onclose = stop;
   process.stdin.once("end", () => void mcp.close());

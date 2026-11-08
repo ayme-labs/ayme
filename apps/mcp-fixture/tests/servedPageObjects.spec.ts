@@ -1,4 +1,6 @@
+import { spawn } from "node:child_process";
 import { cp, readFile, writeFile } from "node:fs/promises";
+import { createServer, type AddressInfo } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,7 +10,14 @@ import {
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
 
-import { connectPage, expect, freePort, startAgent, test } from "./fixtures";
+import {
+  aymeCommand,
+  connectPage,
+  expect,
+  freePort,
+  startAgent,
+  test,
+} from "./fixtures";
 
 // The Inspector renders into a closed shadow root; its page objects reach it
 // through these selectors.
@@ -230,5 +239,35 @@ test("the Inspector ayme_inspect links to shows the served Page Objects of the p
     expect(servedToWindow).toEqual([]);
   } finally {
     await agent.close();
+  }
+});
+
+// Playwright reads a test's fixtures from this pattern.
+// eslint-disable-next-line no-empty-pattern
+test("with a Page Objects entry, ayme mcp still exits when its port is taken, its build watcher stopped", async ({}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  const taken = createServer();
+  await new Promise<void>((resolve) =>
+    taken.listen(0, "127.0.0.1", () => resolve())
+  );
+  const port = (taken.address() as AddressInfo).port;
+  try {
+    const server = spawn(
+      process.execPath,
+      [aymeCommand, "mcp", "--port", String(port)],
+      { cwd: project, stdio: ["pipe", "pipe", "pipe"] }
+    );
+    let stderr = "";
+    server.stderr.on("data", (chunk: Buffer) => (stderr += String(chunk)));
+
+    const exitCode = await new Promise<number | null>((resolve) =>
+      server.once("exit", resolve)
+    );
+
+    expect(exitCode, stderr).toBe(1);
+    expect(stderr).toContain(`Port ${port} is in use`);
+  } finally {
+    await new Promise((resolve) => taken.close(resolve));
   }
 });
