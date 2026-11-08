@@ -91,6 +91,18 @@ describe("every browser the harness launches", () => {
       "--enable-features=WebMCP",
     ]);
   });
+
+  it("joins an arm's extra Chrome features into that one switch, since Chrome reads one --enable-features", () => {
+    expect(
+      browserLaunchArgs(
+        ["--remote-debugging-port=9222"],
+        ["WebMCPTesting", "DevToolsWebMCPSupport"]
+      )
+    ).toEqual([
+      "--remote-debugging-port=9222",
+      "--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport",
+    ]);
+  });
 });
 
 describe("the Page Object Tools among a page's tools", () => {

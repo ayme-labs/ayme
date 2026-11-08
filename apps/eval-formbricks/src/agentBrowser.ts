@@ -151,6 +151,22 @@ async function installCliAndSkill(context: ArmContext): Promise<string> {
 }
 
 /**
+ * The Chrome features agent-browser's WebMCP support needs besides WebMCP
+ * itself: it discovers the page's tools through Chrome's experimental
+ * DevTools `WebMCP` domain (`toolsAdded`, `toolsRemoved`, `invokeTool`),
+ * which only these two features expose, and it adds them to a browser it
+ * launches itself. An attached browser without them makes `WebMCP.enable`
+ * fail once; agent-browser then treats the session as unsupported, never
+ * announces the page's tools after a command, and `webmcp list` fails. The
+ * twin with WebMCP on passes them to the harness's browser, so the attached
+ * browser matches one agent-browser launches.
+ */
+export const agentBrowserWebMcpFeatures = [
+  "WebMCPTesting",
+  "DevToolsWebMCPSupport",
+];
+
+/**
  * The setup of both agent-browser arms: the start page as for the arms with
  * the page's tools through WebMCP (`setUpWebMcpPage`: page objects on, Goal
  * Loop off, no Ayme server, on a Chrome with the WebMCP flag and a
@@ -177,6 +193,7 @@ async function setUpAgentBrowser(
   try {
     page = await setUpWebMcpPage(context, {
       browserArgs: [`--remote-debugging-port=${port}`],
+      browserFeatures: options.webmcp ? agentBrowserWebMcpFeatures : [],
     });
   } catch (error) {
     await rm(socketDir, { recursive: true, force: true });
@@ -216,6 +233,7 @@ async function setUpAgentBrowser(
       ...page.evidence,
       remoteDebuggingPort: port,
       agentBrowserWebMcp: options.webmcp,
+      browserFeatures: options.webmcp ? agentBrowserWebMcpFeatures : [],
     },
     dispose,
   };

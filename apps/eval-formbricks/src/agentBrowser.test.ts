@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   agentBrowserEnvironment,
   agentBrowserRoot,
+  agentBrowserWebMcpFeatures,
   agentBrowserVersion,
   nativeBinary,
   shimDirectory,
@@ -81,6 +82,15 @@ describe("the agent-browser environment", () => {
       AGENT_BROWSER_NO_WEBMCP: undefined,
     });
     expect(Object.keys(withWebMcp)).not.toContain("AGENT_BROWSER_NO_WEBMCP");
+  });
+});
+
+describe("the twin with WebMCP on", () => {
+  it("gives the attached Chrome the two features agent-browser's CDP WebMCP discovery needs, as its own launch does", () => {
+    expect(agentBrowserWebMcpFeatures).toEqual([
+      "WebMCPTesting",
+      "DevToolsWebMCPSupport",
+    ]);
   });
 });
 

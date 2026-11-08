@@ -97,9 +97,19 @@ export const pageObjectsOffCookie = {
  */
 export const webMcpFeatureFlag = "--enable-features=WebMCP";
 
-/** The arguments every browser the harness launches gets: the arm's own, then the WebMCP flag. */
-export function browserLaunchArgs(browserArgs: string[] = []): string[] {
-  return [...browserArgs, webMcpFeatureFlag];
+/**
+ * The arguments every browser the harness launches gets: the arm's own, then
+ * one `--enable-features` switch with WebMCP and the arm's extra Chrome
+ * features. Chrome reads one such switch, so the features travel together.
+ */
+export function browserLaunchArgs(
+  browserArgs: string[] = [],
+  browserFeatures: string[] = []
+): string[] {
+  return [
+    ...browserArgs,
+    `--enable-features=${["WebMCP", ...browserFeatures].join(",")}`,
+  ];
 }
 
 /**
@@ -364,6 +374,8 @@ export type AymePageOptions = {
   pageObjects: boolean;
   /** Extra arguments for the headless browser the page opens in. */
   browserArgs?: string[];
+  /** Extra Chrome features, joined into the WebMCP flag's `--enable-features` switch. */
+  browserFeatures?: string[];
   /** Whether the proxy offers the agent the page's Page Object Tools alone. */
   pageObjectToolsOnly?: boolean;
 };
@@ -604,7 +616,10 @@ export async function setUpAymeAgent(
  */
 async function launchStartPage(
   context: Pick<ArmContext, "profileDir" | "start">,
-  options: Pick<AymePageOptions, "goalLoop" | "pageObjects" | "browserArgs">
+  options: Pick<
+    AymePageOptions,
+    "goalLoop" | "pageObjects" | "browserArgs" | "browserFeatures"
+  >
 ): Promise<{ browser: BrowserContext; page: Page; opened: number }> {
   const origin = new URL(context.start.url).origin;
   const browser = await playwright().chromium.launchPersistentContext(
@@ -613,7 +628,7 @@ async function launchStartPage(
       channel: "chrome",
       headless: true,
       viewport,
-      args: browserLaunchArgs(options.browserArgs),
+      args: browserLaunchArgs(options.browserArgs, options.browserFeatures),
     }
   );
   if (options.goalLoop)
@@ -798,7 +813,7 @@ export type WebMcpEvidence = {
  */
 export async function setUpWebMcpPage(
   context: ArmContext,
-  options: { browserArgs: string[] }
+  options: { browserArgs: string[]; browserFeatures?: string[] }
 ): Promise<Pick<ArmSetup, "dispose"> & { evidence: WebMcpEvidence }> {
   const screenTool = startScreenTool[context.start.screen];
   const inUse = await portsInUse();
@@ -810,6 +825,7 @@ export async function setUpWebMcpPage(
     goalLoop: false,
     pageObjects: true,
     browserArgs: options.browserArgs,
+    browserFeatures: options.browserFeatures,
   });
   const dispose = async () => {
     try {
