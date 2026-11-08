@@ -204,6 +204,7 @@ describe.each([
   it.each([
     "playwright-mcp-with-ayme-page-objects",
     "playwright-cli",
+    "playwright-cli-with-ayme-page-objects",
     "ayme-goal-loop-off",
     "ayme-goal-loop-on",
     "ayme-no-page-objects-goal-loop-off",
@@ -266,6 +267,21 @@ describe("the interface lines", () => {
     );
   });
 
+  it("of the CLI arm with Ayme's Page Object Tools is the Playwright CLI arm's plus the same sentence, for either start", () => {
+    for (const start of [renameMission.start, signInMission.start]) {
+      expect(
+        arms["playwright-cli-with-ayme-page-objects"].interfaceLine(start)
+      ).toBe(
+        `${arms["playwright-cli"].interfaceLine(start)} ${pageObjectToolsSentence}`
+      );
+    }
+    expect(
+      arms["playwright-cli-with-ayme-page-objects"].interfaceLine(mission.start)
+    ).toBe(
+      "Use the `playwright-cli` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step."
+    );
+  });
+
   it("of the Ayme arms without page objects name no Page Object Tools and differ in the goal-first sentence alone", () => {
     const off = arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(
       mission.start
@@ -313,9 +329,12 @@ describe("the setup message", () => {
       );
   });
 
-  it("keeps the Playwright CLI arm's setup message as its published runs had it", () => {
+  it("keeps the Playwright CLI arm's setup message as its published runs had it, and gives its twin the same", () => {
     expect(setupPrompt(arms["playwright-cli"])).toBe(
       "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `playwright-cli` skill now with the Skill tool. Don't read files and don't use the browser; just reply ready.\n"
+    );
+    expect(setupPrompt(arms["playwright-cli-with-ayme-page-objects"])).toBe(
+      setupPrompt(arms["playwright-cli"])
     );
   });
 
@@ -449,6 +468,34 @@ describe("the playwright-mcp arm", () => {
       "ToolSearch",
     ]);
     expect(arms["playwright-mcp"].allowedTools).toEqual(["mcp__playwright"]);
+  });
+});
+
+describe("the playwright-cli-with-ayme-page-objects arm", () => {
+  const arm = arms["playwright-cli-with-ayme-page-objects"];
+  const cli = arms["playwright-cli"];
+
+  it("is the Playwright CLI arm with Ayme's MCP server through the proxy and its permission beside the CLI's", () => {
+    const servers = arm.mcpServers(armContext);
+    expect(Object.keys(servers)).toEqual(["ayme"]);
+    expect(servers.ayme).toEqual(
+      arms["ayme-goal-loop-off"].mcpServers(armContext).ayme
+    );
+    expect(arm.skill).toBe(cli.skill);
+    expect(arm.tools).toEqual(cli.tools);
+    expect(arm.allowedTools).toEqual([...cli.allowedTools, "mcp__ayme"]);
+    expect(arm.disallowedTools).toEqual(cli.disallowedTools);
+    expect(arm.browserInterface()).toEqual(cli.browserInterface());
+  });
+
+  it("checks the Ayme server's build and ports, which the CLI arm does not, and sets itself up outside the measured window", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual([
+      "Ayme MCP server",
+      "Ayme MCP ports",
+    ]);
+    expect(cli.preconditions).toBeUndefined();
+    expect(arm.setup).toBeTypeOf("function");
+    expect(arm.setup).not.toBe(cli.setup);
   });
 });
 

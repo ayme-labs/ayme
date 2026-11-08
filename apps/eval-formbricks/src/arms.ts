@@ -16,7 +16,11 @@ import {
   setUpAymeAgent,
 } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
-import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
+import {
+  playwrightCliVersion,
+  setUpPlaywrightCli,
+  setUpPlaywrightCliWithAymePageObjects,
+} from "./playwrightCli.ts";
 import {
   playwrightMcpServer,
   playwrightMcpVersion,
@@ -28,6 +32,7 @@ export type ArmId =
   | "playwright-mcp"
   | "playwright-mcp-with-ayme-page-objects"
   | "playwright-cli"
+  | "playwright-cli-with-ayme-page-objects"
   | "ayme-goal-loop-off"
   | "ayme-goal-loop-on"
   | "ayme-no-page-objects-goal-loop-off"
@@ -164,8 +169,9 @@ const playwrightMcpInterfaceLine =
   "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.";
 
 /**
- * What the arm with Ayme's Page Object Tools adds to the Playwright MCP
- * arm's interface line; the two arms differ in nothing else the agent reads.
+ * What an arm with Ayme's Page Object Tools adds to its browser tool's
+ * interface line; the two arms of a pair differ in nothing else the agent
+ * reads.
  */
 export const pageObjectToolsSentence = `The \`${aymeServerName}\` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.`;
 
@@ -173,6 +179,54 @@ const playwrightMcpInterface = () => ({
   name: "@playwright/mcp",
   version: playwrightMcpVersion(),
 });
+
+const playwrightCliInterfaceLine = (start: Mission["start"]) =>
+  `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`;
+
+/**
+ * The Playwright CLI arm, or its twin with Ayme's Page Object Tools, which
+ * adds the `ayme` server through the filtered proxy, its permission and its
+ * sentence to the interface line, and nothing else.
+ */
+function playwrightCliArm(
+  id: "playwright-cli" | "playwright-cli-with-ayme-page-objects"
+): Arm {
+  const withAyme = id === "playwright-cli-with-ayme-page-objects";
+  return {
+    id,
+    interfaceLine: (start) =>
+      withAyme
+        ? `${playwrightCliInterfaceLine(start)} ${pageObjectToolsSentence}`
+        : playwrightCliInterfaceLine(start),
+    skill: "playwright-cli",
+    // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
+    tools: [...baseTools, "Bash", "Skill"],
+    allowedTools: [
+      "Bash(playwright-cli:*)",
+      "Skill(playwright-cli)",
+      ...(withAyme ? [`mcp__${aymeServerName}`] : []),
+    ],
+    disallowedTools: [
+      // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
+      "Bash(npx:*)",
+      // Downloads a browser.
+      ...bashCommand("playwright-cli install"),
+      ...bashCommand("playwright-cli install-browser"),
+      // Kills every Playwright daemon on the machine, other runs' included.
+      ...bashCommand("playwright-cli kill-all"),
+    ],
+    mcpServers: (context): Record<string, McpServer> =>
+      withAyme ? { [aymeServerName]: aymeMcpServer(context) } : {},
+    ...(withAyme ? { preconditions: aymeMcpPreconditions } : {}),
+    setup: withAyme
+      ? setUpPlaywrightCliWithAymePageObjects
+      : setUpPlaywrightCli,
+    browserInterface: () => ({
+      name: "@playwright/cli",
+      version: playwrightCliVersion(),
+    }),
+  };
+}
 
 export const arms: Record<ArmId, Arm> = {
   "playwright-mcp": {
@@ -204,30 +258,18 @@ export const arms: Record<ArmId, Arm> = {
     setup: setUpPlaywrightMcpWithAymePageObjects,
     browserInterface: playwrightMcpInterface,
   },
-  "playwright-cli": {
-    id: "playwright-cli",
-    interfaceLine: (start) =>
-      `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`,
-    skill: "playwright-cli",
-    // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
-    tools: [...baseTools, "Bash", "Skill"],
-    allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
-    disallowedTools: [
-      // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
-      "Bash(npx:*)",
-      // Downloads a browser.
-      ...bashCommand("playwright-cli install"),
-      ...bashCommand("playwright-cli install-browser"),
-      // Kills every Playwright daemon on the machine, other runs' included.
-      ...bashCommand("playwright-cli kill-all"),
-    ],
-    mcpServers: () => ({}),
-    setup: setUpPlaywrightCli,
-    browserInterface: () => ({
-      name: "@playwright/cli",
-      version: playwrightCliVersion(),
-    }),
-  },
+  "playwright-cli": playwrightCliArm("playwright-cli"),
+  /**
+   * The Playwright CLI arm with Ayme's Page Object Tools beside it, the CLI's
+   * twin of `playwright-mcp-with-ayme-page-objects`: the CLI session is
+   * attached over CDP to the browser the setup paired with the run's `ayme
+   * mcp`, and the `ayme` server reaches the agent through the proxy that
+   * offers the Page Object Tools alone. Page objects on, Goal Loop off; the
+   * CLI's skill as for its arm.
+   */
+  "playwright-cli-with-ayme-page-objects": playwrightCliArm(
+    "playwright-cli-with-ayme-page-objects"
+  ),
   "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", {
     goalLoop: false,
     pageObjects: true,
