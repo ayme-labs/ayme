@@ -1,4 +1,4 @@
-import { cp, readFile } from "node:fs/promises";
+import { cp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +14,33 @@ const OUTSIDE_THE_APP = fileURLToPath(
 
 /** The Page Object Tool of the entry's `PlainPage`. */
 const PLAIN_PAGE_TOOL = "PlainPage.readNote";
+
+/** The entry's `PlainPage`, with `edit` applied to its source. */
+async function editPlainPage(
+  project: string,
+  edit: (source: string) => string
+) {
+  const file = join(project, ".ayme", "pom", "PlainPage.ts");
+  await writeFile(file, edit(await readFile(file, "utf8")));
+}
+
+/**
+ * How long a rebuild may take to show in the server's log: esbuild's watch
+ * mode polls the files, and notices a change after seconds.
+ */
+const REBUILT_WITHIN = { timeout: 20_000 };
+
+/** `PlainPage` with a second action, `readTitle`. */
+const withReadTitle = (source: string) =>
+  source.replace(
+    "  async readNote() {",
+    `  async readTitle() {
+    return "Without Ayme";
+  }
+
+  @ayme.action({ description: "Read the page's note." })
+  async readNote() {`
+  );
 
 test("a page without Ayme gets the Page Objects ayme mcp serves through the init script it writes", async ({
   context,
@@ -69,6 +96,85 @@ test("--page-objects points ayme mcp at an entry elsewhere", async ({
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
+  } finally {
+    await agent.close();
+  }
+});
+
+test("after an edit to a Page Object the entry imports, a reload shows the changed tools", async ({
+  context,
+  page,
+  baseURL,
+}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(await freePort())
+  );
+  try {
+    await context.addInitScript({
+      path: join(project, ".ayme", "init-script.js"),
+    });
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain(PLAIN_PAGE_TOOL);
+
+    await editPlainPage(project, withReadTitle);
+    await expect
+      .poll(() => agent.log, REBUILT_WITHIN)
+      .toMatch(/Rebuilt the Page Objects entry/);
+    await page.reload();
+
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain("PlainPage.readTitle");
+    const { text, isError } = await agent.call("PlainPage.readTitle");
+    expect(isError, text).toBe(false);
+    expect(text).toContain("Without Ayme");
+  } finally {
+    await agent.close();
+  }
+});
+
+test("a Page Object that fails to compile is reported with its file, and the page keeps the last good build", async ({
+  context,
+  page,
+  baseURL,
+}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(await freePort())
+  );
+  try {
+    await context.addInitScript({
+      path: join(project, ".ayme", "init-script.js"),
+    });
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain(PLAIN_PAGE_TOOL);
+
+    await editPlainPage(project, (source) =>
+      source.replace("async readNote() {", "async readNote() {{")
+    );
+    await expect
+      .poll(() => agent.log, REBUILT_WITHIN)
+      .toMatch(
+        /did not build\. The page gets the last good build\.\n[^\n]*pom[\\/]PlainPage\.ts\b/
+      );
+    await page.reload();
+
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain(PLAIN_PAGE_TOOL);
+    const { isError, text } = await agent.call(PLAIN_PAGE_TOOL);
+    expect(isError, text).toBe(false);
   } finally {
     await agent.close();
   }

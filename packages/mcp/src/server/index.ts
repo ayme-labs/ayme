@@ -20,9 +20,9 @@ import {
   type Pairing,
 } from "../pairing";
 import {
-  buildPageObjects,
   findPageObjectsEntry,
   servedPageObjectsServer,
+  watchPageObjects,
   writeInitScript,
 } from "../served-page-objects";
 import {
@@ -43,9 +43,9 @@ const log = (message: string) =>
  * stdio.
  *
  * With a Page Objects entry, `pageObjects` or else `.ayme/page-objects.ts`
- * in the working folder, it also builds the entry, serves the build on the
- * same server, and writes `.ayme/init-script.js`, which loads it into a
- * page that doesn't ship Ayme. Experimental (ADR-0037).
+ * in the working folder, it also builds the entry in watch mode, serves its
+ * last good build on the same server, and writes `.ayme/init-script.js`,
+ * which loads it into a page that doesn't ship Ayme. Experimental (ADR-0037).
  */
 export async function startMcpServer({
   port: pinnedPort,
@@ -60,11 +60,9 @@ export async function startMcpServer({
   // The external Inspector and the Page Objects entry's build are served
   // by this server, the Inspector relayed over its page channel: no other
   // server and no other port.
-  const built = entry === undefined ? undefined : buildPageObjects(entry);
-  built?.then(
-    () => log(`Built the Page Objects entry ${entry}.`),
-    (error: unknown) => log((error as Error).message)
-  );
+  // It rebuilds as the entry's files change, and logs each outcome.
+  const build = entry === undefined ? undefined : watchPageObjects(entry, log);
+  build?.catch((error: unknown) => log((error as Error).message));
   const channel = createPageChannelServer({
     connection,
     token,
@@ -75,7 +73,9 @@ export async function startMcpServer({
         relay: new InspectorRelay(connection),
         readBuild: readExternalBuild,
       }),
-      ...(built ? [servedPageObjectsServer(() => built)] : []),
+      ...(build
+        ? [servedPageObjectsServer(() => build.then((b) => b.modules()))]
+        : []),
     ],
   });
   const port =
@@ -110,6 +110,10 @@ export async function startMcpServer({
   const stop = () => {
     for (const stopBehaviour of stopBehaviours) stopBehaviour();
     channel.close();
+    void build?.then(
+      (b) => b.close(),
+      () => {}
+    );
   };
   mcp.onclose = stop;
   process.stdin.once("end", () => void mcp.close());
