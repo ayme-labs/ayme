@@ -9,9 +9,12 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   agentSocketPath,
   aymeMcpCliPath,
+  aymeMcpPortsPrecondition,
+  aymeMcpPreconditions,
   aymeMcpServer,
   aymeSkillDirectory,
   aymeSkillSource,
+  aymeWebMcpPreconditions,
   isPageObjectToolName,
   mcpToolTimeoutMs,
   pageObjectToolNames,
@@ -19,6 +22,7 @@ import {
   proxyScriptPath,
   serverPorts,
   settledStartPageProblem,
+  webMcpFeatureFlag,
 } from "./ayme.ts";
 import { evalRoot, repoRoot } from "./paths.ts";
 
@@ -65,6 +69,21 @@ describe("the agent's MCP server entry", () => {
     expect(aymeMcpCliPath).toMatch(/\/packages\/mcp\/dist\/cli\.mjs$/);
     expect(serverPorts).toEqual({ first: 9350, last: 9365 });
     expect(mcpToolTimeoutMs).toBeGreaterThan(300_000);
+  });
+
+  it("has the arms with and without a server share one ports check, so a suite runs it once", () => {
+    expect(aymeMcpPreconditions.map((p) => p.name)).toEqual([
+      "Ayme MCP server",
+      "Ayme MCP ports",
+    ]);
+    expect(aymeMcpPreconditions[1]).toBe(aymeMcpPortsPrecondition);
+    expect(aymeWebMcpPreconditions).toEqual([aymeMcpPortsPrecondition]);
+  });
+});
+
+describe("the WebMCP arms' browser", () => {
+  it("gets Chrome's WebMCP flag, which supplies document.modelContext without the app's polyfill", () => {
+    expect(webMcpFeatureFlag).toBe("--enable-features=WebMCP");
   });
 });
 

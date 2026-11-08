@@ -6,7 +6,10 @@
  * the task moves it to: the server tells the agent each time the tools change.
  * The arm that adds Ayme's Page Object Tools to Playwright MCP shares the
  * server and the page (`setUpAymePage`) and adds its own browser arguments
- * and a proxy that offers the agent the Page Object Tools alone.
+ * and a proxy that offers the agent the Page Object Tools alone. The arms
+ * that reach the page's tools through Playwright's own WebMCP collection
+ * open the same page without a server (`setUpWebMcpPage`), on a Chrome
+ * whose WebMCP flag is on.
  *
  * A coding agent normally starts its own `ayme mcp` over stdio, and a tab of
  * the app on localhost pairs with it by itself: it looks for a server when it
@@ -79,6 +82,18 @@ export const pageObjectsOffCookie = {
   name: "ayme-lab-page-objects",
   value: "off",
 };
+
+/**
+ * The Chrome flag that supplies `document.modelContext` natively: the WebMCP
+ * API, `registerTool`, `getTools`, `executeTool` and `ontoolchange`, and no
+ * `navigator.modelContext`. Without it a Chrome supplies neither, and
+ * Playwright MCP and the Playwright CLI supply none either: both read
+ * `document.modelContext ?? navigator.modelContext` and collect the tools a
+ * page registered there. The lab app's polyfill keeps native WebMCP where
+ * present, so the flag changes nothing while the polyfill is loaded and
+ * carries the arms that use it once the polyfill is dropped.
+ */
+export const webMcpFeatureFlag = "--enable-features=WebMCP";
 
 /**
  * How long Claude Code lets one MCP tool call run. The `goal` tool runs the
@@ -276,10 +291,22 @@ async function portsInUse(): Promise<number[]> {
 }
 
 /**
- * The server command must be built, and the range a page scans must be free:
- * a tab pairs by itself only when exactly one Ayme MCP server listens there,
- * so another coding agent's `ayme mcp` would keep the page from pairing.
+ * The range a page scans must be free: a tab pairs by itself only when
+ * exactly one Ayme MCP server listens there, so another coding agent's `ayme
+ * mcp` would keep the page from pairing with the run's server, or, in an arm
+ * without a server, would pair with the page and could drive it. One object,
+ * so a suite checks it once however many arms share it.
  */
+export const aymeMcpPortsPrecondition: Precondition = {
+  name: "Ayme MCP ports",
+  check: async () => {
+    const ports = await portsInUse();
+    if (ports.length === 0) return null;
+    return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for Ayme MCP servers; the page would pair with it instead of this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
+  },
+};
+
+/** The server command must be built, and the range a page scans must be free. */
 export const aymeMcpPreconditions: Precondition[] = [
   {
     name: "Ayme MCP server",
@@ -288,14 +315,12 @@ export const aymeMcpPreconditions: Precondition[] = [
         ? null
         : `${aymeMcpPackageName} is not built: ${aymeMcpCliPath} is missing. Run pnpm build at the repository root.`,
   },
-  {
-    name: "Ayme MCP ports",
-    check: async () => {
-      const ports = await portsInUse();
-      if (ports.length === 0) return null;
-      return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for Ayme MCP servers; the page would not pair with this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
-    },
-  },
+  aymeMcpPortsPrecondition,
+];
+
+/** The arms with the page's tools through WebMCP run no server; the range must still be free. */
+export const aymeWebMcpPreconditions: Precondition[] = [
+  aymeMcpPortsPrecondition,
 ];
 
 /** With the Goal Loop on, the lab app's Decision Endpoint must also have its model key. */
@@ -566,6 +591,37 @@ export async function setUpAymeAgent(
 }
 
 /**
+ * Launches the headless system Chrome on the run's profile, with the arm's
+ * browser arguments and the lab app's switches set as cookies before the
+ * page loads, and opens the mission's start page.
+ */
+async function launchStartPage(
+  context: Pick<ArmContext, "profileDir" | "start">,
+  options: Pick<AymePageOptions, "goalLoop" | "pageObjects" | "browserArgs">
+): Promise<{ browser: BrowserContext; page: Page; opened: number }> {
+  const origin = new URL(context.start.url).origin;
+  const browser = await playwright().chromium.launchPersistentContext(
+    context.profileDir,
+    {
+      channel: "chrome",
+      headless: true,
+      viewport,
+      // The lab app publishes through Chrome's own document.modelContext,
+      // which the WebMCP flag supplies; it loads no polyfill.
+      args: ["--enable-features=WebMCP", ...(options.browserArgs ?? [])],
+    }
+  );
+  if (options.goalLoop)
+    await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
+  if (!options.pageObjects)
+    await browser.addCookies([{ ...pageObjectsOffCookie, url: origin }]);
+  const page = browser.pages()[0] ?? (await browser.newPage());
+  const opened = Date.now();
+  await page.goto(context.start.url);
+  return { browser, page, opened };
+}
+
+/**
  * Starts the Ayme MCP server, opens the mission's start page with the Goal
  * Loop and page objects switches set for the arm, waits until the page has
  * paired with the server and published the screen's tools, and hands the
@@ -576,7 +632,6 @@ export async function setUpAymePage(
   options: AymePageOptions
 ): Promise<Pick<ArmSetup, "dispose"> & { evidence: AymeEvidence }> {
   const pageObjectToolsOnly = options.pageObjectToolsOnly === true;
-  const origin = new URL(context.start.url).origin;
   const screenTool = options.pageObjects
     ? startScreenTool[context.start.screen]
     : "snapshot";
@@ -621,24 +676,9 @@ export async function setUpAymePage(
     );
     await server.listen(socketPath);
 
-    browser = await playwright().chromium.launchPersistentContext(
-      context.profileDir,
-      // The lab app publishes through Chrome's own document.modelContext,
-      // which the WebMCP flag supplies; it loads no polyfill.
-      {
-        channel: "chrome",
-        headless: true,
-        viewport,
-        args: ["--enable-features=WebMCP", ...(options.browserArgs ?? [])],
-      }
-    );
-    if (options.goalLoop)
-      await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
-    if (!options.pageObjects)
-      await browser.addCookies([{ ...pageObjectsOffCookie, url: origin }]);
-    const page = browser.pages()[0] ?? (await browser.newPage());
-    const opened = Date.now();
-    await page.goto(context.start.url);
+    const launched = await launchStartPage(context, options);
+    browser = launched.browser;
+    const { page, opened } = launched;
     // The page scans the range as it loads and finds this run's server alone.
     const pairing = await waitFor(
       "Pairing the start page with the Ayme MCP server",
@@ -715,6 +755,95 @@ export async function setUpAymePage(
             },
           }
         : {}),
+    };
+    return { evidence, dispose };
+  } catch (error) {
+    await dispose();
+    throw error;
+  }
+}
+
+/**
+ * What the setup of an arm with the page's tools through WebMCP established,
+ * recorded in the result. No Ayme MCP server ran and nothing paired: the
+ * page's tools reach the agent through Playwright's WebMCP collection alone.
+ */
+export type WebMcpEvidence = {
+  server: null;
+  page: { url: string };
+  paired: false;
+  /** From opening the start page to the start screen's Page Object Tool being published. */
+  publishedMs: number;
+  /** The page's tool names as WebMCP publishes them, read from `document.modelContext`. */
+  tools: string[];
+  goalToolPublished: false;
+  pageObjects: true;
+  /** The flag the browser was launched with, and the Page Object Tools among the start screen's tools. */
+  webmcp: { browserFlag: string; pageObjectTools: string[] };
+};
+
+/**
+ * Opens the mission's start page as `setUpAymePage` does, with the page
+ * objects on and the Goal Loop off, on a Chrome with the WebMCP flag beside
+ * the arm's own browser arguments, and waits until the page publishes the
+ * start screen's Page Object Tool. No Ayme MCP server is started: the agent
+ * reaches the page's tools through Playwright, which collects them from
+ * `document.modelContext` itself. The range a page scans is re-checked, so
+ * no stray server pairs with the page.
+ */
+export async function setUpWebMcpPage(
+  context: ArmContext,
+  options: { browserArgs: string[] }
+): Promise<Pick<ArmSetup, "dispose"> & { evidence: WebMcpEvidence }> {
+  const screenTool = startScreenTool[context.start.screen];
+  const inUse = await portsInUse();
+  if (inUse.length > 0)
+    throw new Error(
+      `Something listens on port ${inUse.join(", ")}, in the range a page scans for Ayme MCP servers; it would pair with the page. Stop it and run again.`
+    );
+  const { browser, page, opened } = await launchStartPage(context, {
+    goalLoop: false,
+    pageObjects: true,
+    browserArgs: [...options.browserArgs, webMcpFeatureFlag],
+  });
+  const dispose = async () => {
+    try {
+      await browser.close();
+    } catch (error) {
+      context.log(
+        `Closing the WebMCP page's browser failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  };
+  try {
+    const tools = await waitFor(
+      `Publishing ${screenTool} through WebMCP`,
+      60_000,
+      async () => {
+        const names = await publishedToolNames(page);
+        return names.includes(screenTool) ? names : null;
+      },
+      (last) =>
+        ` The page published ${last?.join(", ") || "nothing"}. The lab app must run (pnpm lab:dev), and the browser must supply document.modelContext: Chrome with ${webMcpFeatureFlag}, or the app's polyfill.`
+    );
+    const publishedMs = Date.now() - opened;
+    if (tools.includes("goal"))
+      throw new Error(
+        `The page publishes goal although the Goal Loop should be off for ${context.runId}.`
+      );
+    const pageObjectTools = pageObjectToolNames(tools);
+    context.log(
+      `The start page published ${tools.length} tools through WebMCP ${publishedMs} ms after opening, the Page Object Tools ${pageObjectTools.join(", ")} among them; no Ayme MCP server runs.`
+    );
+    const evidence: WebMcpEvidence = {
+      server: null,
+      page: { url: page.url() },
+      paired: false,
+      publishedMs,
+      tools,
+      goalToolPublished: false,
+      pageObjects: true,
+      webmcp: { browserFlag: webMcpFeatureFlag, pageObjectTools },
     };
     return { evidence, dispose };
   } catch (error) {

@@ -4,6 +4,7 @@ import {
   arms,
   goalFirstSentence,
   pageObjectToolsSentence,
+  webMcpToolsSentence,
   type ArmContext,
 } from "./arms.ts";
 import { agentSocketPath, aymeMcpVersion } from "./ayme.ts";
@@ -203,8 +204,10 @@ describe.each([
 
   it.each([
     "playwright-mcp-with-ayme-page-objects",
+    "playwright-mcp-with-ayme-webmcp",
     "playwright-cli",
     "playwright-cli-with-ayme-page-objects",
+    "playwright-cli-with-ayme-webmcp",
     "ayme-goal-loop-off",
     "ayme-goal-loop-on",
     "ayme-no-page-objects-goal-loop-off",
@@ -282,6 +285,26 @@ describe("the interface lines", () => {
     );
   });
 
+  it("of the arms with the page's tools through WebMCP are their browser tool's plus one shared sentence that names no server, for either start", () => {
+    for (const start of [renameMission.start, signInMission.start]) {
+      expect(arms["playwright-mcp-with-ayme-webmcp"].interfaceLine(start)).toBe(
+        `${arms["playwright-mcp"].interfaceLine(start)} ${webMcpToolsSentence}`
+      );
+      expect(arms["playwright-cli-with-ayme-webmcp"].interfaceLine(start)).toBe(
+        `${arms["playwright-cli"].interfaceLine(start)} ${webMcpToolsSentence}`
+      );
+    }
+    expect(webMcpToolsSentence).toBe(
+      "The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step."
+    );
+    expect(webMcpToolsSentence).not.toContain("ayme");
+    expect(
+      arms["playwright-mcp-with-ayme-webmcp"].interfaceLine(mission.start)
+    ).toBe(
+      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction. The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step."
+    );
+  });
+
   it("of the Ayme arms without page objects name no Page Object Tools and differ in the goal-first sentence alone", () => {
     const off = arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(
       mission.start
@@ -336,12 +359,16 @@ describe("the setup message", () => {
     expect(setupPrompt(arms["playwright-cli-with-ayme-page-objects"])).toBe(
       setupPrompt(arms["playwright-cli"])
     );
+    expect(setupPrompt(arms["playwright-cli-with-ayme-webmcp"])).toBe(
+      setupPrompt(arms["playwright-cli"])
+    );
   });
 
   it("tells an arm without a skill not to look for one, and to read no files", () => {
     for (const armId of [
       "playwright-mcp",
       "playwright-mcp-with-ayme-page-objects",
+      "playwright-mcp-with-ayme-webmcp",
     ] as const) {
       const prompt = setupPrompt(arms[armId]);
       expect(prompt).toContain("Don't look for a skill.");
@@ -350,6 +377,9 @@ describe("the setup message", () => {
       expect(prompt.toLowerCase()).not.toContain("ayme");
     }
     expect(setupPrompt(arms["playwright-mcp-with-ayme-page-objects"])).toBe(
+      setupPrompt(arms["playwright-mcp"])
+    );
+    expect(setupPrompt(arms["playwright-mcp-with-ayme-webmcp"])).toBe(
       setupPrompt(arms["playwright-mcp"])
     );
   });
@@ -437,6 +467,34 @@ describe("the playwright-mcp-with-ayme-page-objects arm", () => {
   });
 });
 
+describe("the playwright-mcp-with-ayme-webmcp arm", () => {
+  const arm = arms["playwright-mcp-with-ayme-webmcp"];
+  const playwrightMcp = arms["playwright-mcp"];
+
+  it("gives the agent no MCP server of its own and leaves Playwright MCP's entry to its setup, which names the port", () => {
+    expect(arm.mcpServers(armContext)).toEqual({});
+    expect(arm.setup).toBeTypeOf("function");
+    expect(arm.setup).not.toBe(
+      arms["playwright-mcp-with-ayme-page-objects"].setup
+    );
+    expect(arm.browserInterface()).toEqual(playwrightMcp.browserInterface());
+  });
+
+  it("is the Playwright MCP arm in its tools, permissions, skill and denials: the page's tools come through the playwright server", () => {
+    expect(arm.tools).toEqual(playwrightMcp.tools);
+    expect(arm.allowedTools).toEqual(playwrightMcp.allowedTools);
+    expect(arm.allowedTools).not.toContain("mcp__ayme");
+    expect(arm.skill).toBeUndefined();
+    expect(arm.readsSkillReferences).toBeUndefined();
+    expect(arm.disallowedTools).toBeUndefined();
+  });
+
+  it("checks the ports a page scans and not the Ayme server's build, since no server runs, nor the Decision Endpoint", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
+    expect(arm.interfaceLine(mission.start)).not.toContain("goal");
+  });
+});
+
 describe("the playwright-mcp arm", () => {
   it("runs the pinned Playwright MCP server, headless, on the prepared profile, without the page's WebMCP tools", () => {
     const servers = arms["playwright-mcp"].mcpServers(armContext);
@@ -496,6 +554,29 @@ describe("the playwright-cli-with-ayme-page-objects arm", () => {
     expect(cli.preconditions).toBeUndefined();
     expect(arm.setup).toBeTypeOf("function");
     expect(arm.setup).not.toBe(cli.setup);
+  });
+});
+
+describe("the playwright-cli-with-ayme-webmcp arm", () => {
+  const arm = arms["playwright-cli-with-ayme-webmcp"];
+  const cli = arms["playwright-cli"];
+
+  it("is the Playwright CLI arm with no MCP server, the same skill, tools, permissions and denials", () => {
+    expect(arm.mcpServers(armContext)).toEqual({});
+    expect(arm.skill).toBe(cli.skill);
+    expect(arm.tools).toEqual(cli.tools);
+    expect(arm.allowedTools).toEqual(cli.allowedTools);
+    expect(arm.disallowedTools).toEqual(cli.disallowedTools);
+    expect(arm.browserInterface()).toEqual(cli.browserInterface());
+  });
+
+  it("checks the ports a page scans, which the CLI arm does not, and sets itself up outside the measured window", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
+    expect(arm.setup).toBeTypeOf("function");
+    expect(arm.setup).not.toBe(cli.setup);
+    expect(arm.setup).not.toBe(
+      arms["playwright-cli-with-ayme-page-objects"].setup
+    );
   });
 });
 
