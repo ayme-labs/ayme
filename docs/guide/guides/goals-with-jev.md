@@ -120,7 +120,7 @@ The history shows the value a step used as `label: value`, such as `fill(textbox
 
 ## What leaves the page
 
-Each step sends the page state, the goal and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
+Each step sends the page state, the goal, the Goal Values, the run's history and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
 
 ## The Handover
 

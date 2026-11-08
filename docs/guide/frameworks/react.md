@@ -63,7 +63,7 @@ Wrap the application root, not a route component or a layout that unmounts on na
 
 ## Hooks
 
-Register the app's pages once, in the provider's `pageObjects` prop. Each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the provider's `pageObjects` prop:
 
 ```tsx
 import { StrictMode } from "react";

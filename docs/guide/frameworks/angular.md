@@ -52,7 +52,7 @@ export const appConfig: ApplicationConfig = {
 
 Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
-Register the app's pages once, in the `pageObjects` option of `provideAyme`. Each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the `pageObjects` option of `provideAyme`:
 
 ```ts
 // src/app/app.config.ts

@@ -9,6 +9,7 @@ An agent sees each model as its definition: the model with its description, its 
 ```text
 ProjectsPage // Projects of the current workspace, visible to every member.
   newProjectButton
+  newProjectDialog: NewProjectDialog
   filterChips[] // Filters applied to the list.
   projects: ProjectRow[]
 
@@ -170,6 +171,7 @@ export class ProjectsPage extends AppPage {
 
   readonly rows = this.page.getByRole("listitem"); // not declared: projects() reads it
 
+  @ayme.child
   readonly newProjectDialog = new NewProjectDialog(
     this.page.getByRole("dialog")
   );

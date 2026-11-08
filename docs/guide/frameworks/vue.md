@@ -131,7 +131,7 @@ Without an owner above, `usePageObject` uses the standalone owner that is alread
 
 ## Composables
 
-Register the app's pages once, in the owner's `pageObjects` option, or as `:pageObjects` on the provider. Each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the owner's `pageObjects` option, or as `:pageObjects` on the provider:
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";

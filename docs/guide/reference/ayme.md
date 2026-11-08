@@ -218,7 +218,7 @@ A root-less model has no mark in the page state. Its tools are never unavailable
 | A single Page Object Child, without `present` | The Page Object it is reached through is present. |
 | Either of the above, with `present`           | The presence predicate returns `true`.            |
 
-A root-less class has no `ref`, so its tools act on its one instance. A collection item, and every Page Object Child below it, needs a root. [Troubleshooting](../troubleshooting.md#a-page-object-has-no-tools) shows the error you get otherwise.
+A root-less class has no `ref`, so it must be reached from exactly one declared member. A class two pages both declare needs a root. So does a collection item, and every Page Object Child below it. [Troubleshooting](../troubleshooting.md#a-page-object-has-no-tools) shows the error you get otherwise.
 
 ### Action availability
 
@@ -289,6 +289,7 @@ export class ProjectsPage extends AppPage {
     name: "New project",
   });
 
+  @ayme.child
   readonly newProjectDialog = new NewProjectDialog(
     this.page.getByRole("dialog")
   );

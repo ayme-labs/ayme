@@ -81,7 +81,7 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Composables
 
-Register the app's pages once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`. Each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`:
 
 ```svelte
 <!-- src/routes/+layout.svelte -->
