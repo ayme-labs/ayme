@@ -21,9 +21,11 @@ const RUNTIME_ENTRY = "ayme-served-runtime";
 
 /**
  * Builds `entry` once for the browser, with esbuild and the build plugin's
- * esbuild adapter, as ES modules split into chunks: `entry.js`, whose
- * default export is the entry's, and `runtime.js`, which re-exports
- * `@ayme-dev/ayme`; both share one copy of the runtime. Every import,
+ * esbuild adapter, as minified ES modules split into chunks: `entry.js`,
+ * whose default export is the entry's, and `runtime.js`, which re-exports
+ * `@ayme-dev/ayme`; both share one copy of the runtime. What the runtime
+ * imports lazily, such as the Inspector and the screenshot renderer, stays
+ * in chunks of its own, which a page fetches on first use. Every import,
  * the runtime's and the build plugin's included, resolves from the entry's
  * folder, as in a build of the project itself, so the page runs the
  * project's own `@ayme-dev/ayme`.
@@ -50,6 +52,7 @@ export async function buildPageObjects(entry: string): Promise<BuiltModules> {
       bundle: true,
       splitting: true,
       format: "esm",
+      minify: true,
       platform: "browser",
       write: false,
       outdir,
