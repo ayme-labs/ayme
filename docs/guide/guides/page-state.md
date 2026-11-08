@@ -4,7 +4,7 @@ What an agent sees of your page: the Structural Page State, the Structural Refs 
 
 ## Structural Page State
 
-Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ListItem`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
+Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ProjectRow`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
@@ -12,7 +12,24 @@ Page state works without WebMCP publication. An agent reads it with the `snapsho
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks a rooted Page Object instance, including a page or single child. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
+Each node in the state carries a Structural Ref. In this excerpt, `e10` is the ref of a [`ProjectRow`](ayme-page-objects.md#how-an-agent-calls-an-action), and `e13` the ref of its Remove button:
+
+```text
+- e5 list:
+  - e10 ProjectRow:
+    - text: Q4 survey
+    - e11 button "Archive"
+    - e12 button "Rename"
+    - e13 button "Remove"
+```
+
+An agent passes a ref back to act on that node:
+
+- a Browser Tool takes it as `target`: `click({ target: "e13" })`;
+- a [Custom Tool](custom-tools.md) takes it as `ref`: `highlight_element({ ref: "e10" })`;
+- a rooted Page Object's tool takes its root's ref as `ref`: `ProjectRow.remove({ ref: "e10" })`. This holds for a rooted page or single child too.
+
+A ref comes from one capture. Within one document, Ayme tries to keep refs stable, so a ref from an earlier capture usually still names the same node. A ref that cannot be used fails with a `RefResolutionError`, such as `Cannot click ref "e13": it is no longer on the page.` Its reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -23,7 +40,13 @@ Each node in the state carries a Structural Ref, such as `e5`. An agent passes i
 
 Refs restart with each document, so a ref from before a full load can resolve to a different node that the new document numbered the same, and the call succeeds on that node; only a ref the new document never issued fails, with the first reason.
 
-In each case, take a `snapshot` and use the ref it prints for the node. When an input writes a ref another way, such as `[ref=e36]`, the message names the ref it writes, `e36`, and the tool takes that ref alone.
+In each case, take a `snapshot` and use the ref it prints for the node.
+
+Pass the ref alone, as `e36`. An agent that copies it the way a Playwright snapshot writes it, `[ref=e36]`, gets an error that names the ref to pass instead:
+
+```text
+Cannot click "[ref=e36]": the selector matches no element. It writes the Structural Ref e36 another way.
+```
 
 ## Keep parts of the page out
 
@@ -47,11 +70,32 @@ createAyme({
 
 In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
 
-Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on. An element an action adds just before a full page load can appear in that action's Change Record, since the matches are from when the action began.
+Ayme resolves the Locator again each time, right before it reads the page, so an element that appears later is dropped too. One that appears after the Locator resolved and before the page was read is dropped from the next page state on. Ayme matches the Locator when an action begins. An element the action adds just before a full page load was not matched then. So it can appear in that action's Change Record.
 
 A filter, here and in a Custom Tool, matches only the page's own document: a Locator into a frame, such as `page.frameLocator("iframe").locator(".private")`, matches nothing, as the page state holds none of a frame's contents.
 
-To leave out an element your own code owns, such as a widget you mount beside the app, put the attribute `data-ayme-exclude` on it, or set it from code with the exported `EXCLUDE_ATTRIBUTE` (`import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme"`). The element and everything in it is out of every capture, picking and clicks pass through it, and screenshots hide it. The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
+To leave out an element your own code owns, such as a widget you mount beside the app, put the attribute `data-ayme-exclude` on it:
+
+```html
+<div id="support-widget" data-ayme-exclude></div>
+```
+
+From code, use the exported constant:
+
+```ts
+import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme";
+
+const widget = document.getElementById("support-widget")!;
+widget.setAttribute(EXCLUDE_ATTRIBUTE, "");
+```
+
+The element and everything in it:
+
+- is out of every capture;
+- lets picking and clicks pass through it;
+- is hidden from screenshots.
+
+The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
 
 `ignore` changes page state only; it does not change which tools are published.
 
@@ -59,7 +103,43 @@ To leave out an element your own code owns, such as a widget you mount beside th
 
 Ayme records what happens in the document for the length of its Page State Session: a Visit at load and at each same-document navigation, every tool call and Goal Loop step as an action, and every page state it captures. A full page load starts a new Page State Session and a new history.
 
-Each Caller name, the agent calling through WebMCP or the Ayme MCP server, the Inspector, and your application's `ayme.tools.run` under `app` or the name it passes as `by`, has its own cursor: the page state it last received, through `snapshot` or as the Settled Page after its last action. Two Callers under one name share one. Every action returns a result with `page_changed` and `settled`, and its Change Record in two parts, each present only when it has a change: `changes_before`, what changed between the state the Caller had last received and the page right before the action, on its own or by another Caller; and `changes`, what the action changed, from that page to the Settled Page after it. `settled` says whether the page went quiet after the action, and `page_changed` is true when either part has a change. A change that lands while the page settles counts as the action's. So an agent's next action also reports what your application or another Caller changed in between, under `changes_before`, and a Custom Tool's Change Record covers what the tools it ran through its `run` changed. A Goal Loop run reads with a fork of its Caller's cursor and leaves the cursor alone until it hands over.
+Every action returns its Change Record: what changed on the page, in two parts. Take the list of [`ProjectRow`](ayme-page-objects.md#how-an-agent-calls-an-action)s above. Say an agent last read it with Launch plan (`e6`) and Q4 survey (`e10`). Then the user removes Launch plan by hand. Then the agent calls `ProjectRow.archive({ ref: "e10" })` to archive Q4 survey. The result is:
+
+```ts
+{
+  page_changed: true,
+  settled: true,
+  changes_before: `- e2 main:
+  - e5 list:
+    - e6 ProjectRow <removed>:
+      - text: Launch plan
+      - e7 <removed> button "Archive"
+      - e8 <removed> button "Rename"
+      - e9 <removed> button "Remove"`,
+  changes: `- e2 main:
+  - e5 list:
+    - e10 ProjectRow <removed>:
+      - text: Q4 survey
+      - e11 <removed> button "Archive"
+      - e12 <removed> button "Rename"
+      - e13 <removed> button "Remove"`,
+}
+```
+
+- `changes_before` is what changed after the agent last read the page and before its action ran. Here, that is the user's removal of Launch plan.
+- `changes` is what the action changed, up to the Settled Page after it. A change that lands while the page settles counts as the action's.
+- Each part is present only when it has a change. `page_changed` is true when either part is present.
+- `settled` says whether the page went quiet after the action.
+
+Ayme knows what "last read" means because it keeps a cursor per Caller name. The cursor is the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
+
+- the agent, calling through WebMCP or the Ayme MCP server;
+- the Inspector;
+- your app's `ayme.tools.run`, under `app` or the name it passes as `by`.
+
+Two Callers that use one name share one cursor.
+
+A Custom Tool's Change Record also covers what the tools it started through `run` changed. A Goal Loop run reads with a copy of its Caller's cursor. It moves the real cursor only when it hands over.
 
 An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling through WebMCP or the Ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone. The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
 
