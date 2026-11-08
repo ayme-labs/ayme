@@ -215,11 +215,14 @@ export async function runOnce(
     await writeFile(path.join(runDir, "setup-prompt.txt"), setup);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.start.url));
-    await writeJson(mcpConfigPath, {
-      mcpServers: options.arm.mcpServers(armContext),
-    });
     // Whatever the arm's interface needs outside the measured window.
     armSetup = await options.arm.setup?.(armContext);
+    await writeJson(mcpConfigPath, {
+      mcpServers: {
+        ...options.arm.mcpServers(armContext),
+        ...armSetup?.mcpServers,
+      },
+    });
 
     log(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`

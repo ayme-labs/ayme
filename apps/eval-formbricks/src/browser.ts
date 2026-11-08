@@ -55,6 +55,7 @@ type Chromium = {
       channel?: string;
       headless: boolean;
       viewport: { width: number; height: number };
+      /** Extra browser arguments, such as a remote-debugging port another tool attaches to. */
       args?: string[];
     }
   ): Promise<BrowserContext>;
