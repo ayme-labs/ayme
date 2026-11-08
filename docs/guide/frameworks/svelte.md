@@ -214,7 +214,7 @@ The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example
 
 ## Bundle size
 
-Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in one chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
 A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
