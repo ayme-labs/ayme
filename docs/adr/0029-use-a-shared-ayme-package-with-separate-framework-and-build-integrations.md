@@ -1,6 +1,7 @@
 ---
 status: accepted
 supersedes: ADR-0005
+amended-by: ADR-0050
 ---
 
 # Use a shared Ayme package with separate framework and build integrations
