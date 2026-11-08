@@ -21,6 +21,10 @@ on:
         description: Runs per arm
         type: number
         default: 3
+      model:
+        description: The agent's model, as Claude Code's --model takes it
+        type: string
+        default: haiku
       qualify_only:
         description: Prepare and qualify the lab app only, with no agent and no model call
         type: boolean
@@ -121,8 +125,9 @@ jobs:
           MISSION: ${{ inputs.mission }}
           ARMS: ${{ inputs.arms }}
           RUNS: ${{ inputs.runs }}
+          MODEL: ${{ inputs.model }}
         run: |
-          args=(--mission "$MISSION" --runs "$RUNS")
+          args=(--mission "$MISSION" --runs "$RUNS" --model "$MODEL")
           if [ -n "$ARMS" ]; then args+=(--arms "$ARMS"); fi
           pnpm eval:suite -- "${args[@]}"
 
