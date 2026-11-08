@@ -39,6 +39,8 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
+`URLPattern` has no TypeScript type before TypeScript 6, and older browsers lack it. For either, import `urlpattern-polyfill` before the app starts, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/src/main.ts) does.
+
 Declare the function with a type, since TypeScript types an inline one's `self` as `unknown`. Ayme runs it whenever it observes the page, never as part of a call, so keep it to reads, such as the URL, visibility or text.
 
 **`root`** returns the Locator of the element a component lives in, its Page Object Root. Write it once, on a component base class that takes that element:
@@ -59,7 +61,7 @@ export class NewProjectDialog extends AppComponent {
 The root decides two things:
 
 - **Present:** while its root matches exactly one element on the page, the component's tools are listed.
-- **Available:** while a click would reach the root, its tools can run. When something covers the root, such as an open dialog, the tools stay listed but unavailable, and a call is refused with a reason that names what is in the way. [How an agent calls an action](#how-an-agent-calls-an-action) shows one.
+- **Available:** while a click would reach the root, its tools can run on it. When something covers the root, such as an open dialog, the tools stay listed. A call on that component is refused with a reason that names what is in the way. A tool shared by several components, such as a row's, shows `available: false` only when none of them can run it. [How an agent calls an action](#how-an-agent-calls-an-action) shows one.
 
 Availability is measured at the root, so a component's root should contain everything its actions touch.
 
@@ -237,16 +239,16 @@ async rename(name: string) {
       - e13 button "Remove"
 ```
 
-`ProjectRow.remove` is one tool for every row. The agent picks the row by the ref on its marked line:
+`ProjectRow.remove` is one tool for every row. The agent picks the row by the ref on its marked line. Its tool call to remove Q4 survey is:
 
-```ts
-ProjectRow.remove({ ref: "e10" }); // removes Q4 survey
+```text
+ProjectRow.remove({ ref: "e10" })
 ```
 
-An action with parameters takes them under `args`:
+An action with parameters takes them under `args`. The agent's tool call to rename Launch plan is:
 
-```ts
-ProjectRow.rename({ ref: "e6", args: { name: "Launch plan v2" } });
+```text
+ProjectRow.rename({ ref: "e6", args: { name: "Launch plan v2" } })
 ```
 
 Leave `args` out when the action has none.

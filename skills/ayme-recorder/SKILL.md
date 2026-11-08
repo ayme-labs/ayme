@@ -162,13 +162,18 @@ Turn the timeline into assertions:
   user checked something: from its target and the changes around it, work out
   what they meant to check, and assert that.
 - Each assertion checks one fact. When an `<added>` node takes the place of a
-  `<removed>` node with the same role, and the same `/locator:` where both
-  show one, the element re-rendered. That is one fact, its new content. For
-  the cart button above, held as `cartLink` by a `Header` component `header`:
+  `<removed>` node with the same role and the same `/locator:`, the element
+  re-rendered. That is one fact, its new content. For the cart button above,
+  held as `cartLink` by a `Header` component `header`:
 
   ```ts
   await expect(header.cartLink).toHaveAccessibleName("Cart, 2 items");
   ```
+
+  When either node has no `/locator:` line, the role alone does not show that
+  it is the same element. Compare the two elements in the trace, as
+  [Use the trace](#use-the-trace) shows. When the trace does not show they
+  are the same, treat them as two elements.
 
   When a different element takes the old one's place, such as a confirmation
   that replaces a form, that is two facts: the old one is gone, and the new

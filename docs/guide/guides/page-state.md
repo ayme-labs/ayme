@@ -42,7 +42,7 @@ Refs restart with each document, so a ref from before a full load can resolve to
 
 In each case, take a `snapshot` and use the ref it prints for the node.
 
-Pass the ref alone, as `e36`. An agent that copies it the way a Playwright snapshot writes it, `[ref=e36]`, gets an error that names the ref to pass instead:
+Pass the ref alone, as `e36`. A Playwright snapshot writes it as `[ref=e36]`. A Browser Tool reads that as a CSS selector in `target`. When the selector matches no element, the error names the ref to pass instead:
 
 ```text
 Cannot click "[ref=e36]": the selector matches no element. It writes the Structural Ref e36 another way.
@@ -133,9 +133,10 @@ Every action returns its Change Record: what changed on the page, in two parts. 
 
 Ayme knows what "last read" means because it keeps a cursor per Caller name. The cursor is the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
-- the agent, calling through WebMCP or the Ayme MCP server;
-- the Inspector;
-- your app's `ayme.tools.run`, under `app` or the name it passes as `by`.
+- `webmcp`, an agent calling through WebMCP;
+- `ayme-mcp`, an agent calling through the Ayme MCP server;
+- `inspector`, the Inspector;
+- `app`, your app's `ayme.tools.run`, or the name it passes as `by`.
 
 Two Callers that use one name share one cursor.
 

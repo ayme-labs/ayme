@@ -232,11 +232,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 ```
 
 ```tsx
-// app/projects.tsx
+// app/projects/projects.tsx
 "use client";
 
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../pom/ProjectsPage";
+import { ProjectsPage } from "../../pom/ProjectsPage";
 
 export default function Projects() {
   const pom = usePageObject(ProjectsPage);
@@ -249,10 +249,10 @@ export default function Projects() {
 ```
 
 ```tsx
-// app/page.tsx
+// app/projects/page.tsx
 import Projects from "./projects";
 
-export default function Home() {
+export default function ProjectsRoute() {
   return <Projects />;
 }
 ```

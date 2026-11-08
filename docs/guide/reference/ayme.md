@@ -59,6 +59,8 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
+`URLPattern` has no TypeScript type before TypeScript 6, and older browsers lack it. For either, import `urlpattern-polyfill` before the app starts, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/src/main.ts) does.
+
 Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone.
 
 The predicate runs before the model's members are read. So an absent model costs one predicate call per observation.
@@ -509,7 +511,7 @@ The ref names what the click would hit instead:
 
 The ref comes from the agent's latest page state. Sometimes no page state has shown that element yet, or nothing in the way has a ref, such as with `pointer-events: none` on `body`. Then the reason is just `a click would not reach it`. The runtime reports what it measured. It never names a kind of widget, such as a modal, popover or banner.
 
-**Your predicate** produces every other reason: the string the action's [availability predicate](#action-availability) returned.
+**Your predicate** produces every other reason: the string the action's [availability predicate](#action-availability) returned, or the text of an error it threw.
 
 ## ayme.runs
 

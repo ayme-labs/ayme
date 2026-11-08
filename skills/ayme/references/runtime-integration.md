@@ -30,9 +30,10 @@ A registered POM brings every POM it declares with `@ayme.child` or
 Example: registering `ProjectsPage` also brings each `ProjectRow` of its
 `projects()` collection.
 
-A POM that no registered POM declares is not registered, and its tools never
-appear. That covers a POM held in a member without a decorator, a POM that an
-action only returns, and a marked class that no registered POM reaches.
+A POM's tools appear only when it is registered itself, or a registered POM
+declares it, at any depth. Otherwise its tools never appear. That covers a
+POM held in a member without a decorator, a POM that an action only returns,
+and a marked class that no registered POM reaches.
 
 ## Keep one runtime owner at the root
 
