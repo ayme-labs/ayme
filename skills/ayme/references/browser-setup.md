@@ -52,63 +52,15 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
 
 ## A page that doesn't ship Ayme
 
-Experimental: this may change in any release. When you drive the browser
-with Playwright MCP or Playwright CLI, `ayme mcp` can serve the project's Page
-Objects to a page whose app doesn't ship Ayme. Set it up as
-[A page that doesn't ship Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#a-page-that-doesnt-ship-ayme)
-describes:
+Experimental. With Playwright MCP or Playwright CLI, `ayme mcp` can serve the
+project's Page Objects to a page that doesn't ship Ayme. Set it up as
+[Page Objects on a page without Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
+describes. When it fails:
 
-- Put the entry at `.ayme/page-objects.ts`, in the folder `ayme mcp` starts
-  in. Its default export lists the Page Object classes. Put the Page Object
-  files in `.ayme/pom/`, unless the project keeps them elsewhere. The project
-  needs `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test`
-  installed, and no build plugin.
-- On start, `ayme mcp` writes `.ayme/init-script.js` and ignores it in
-  `.ayme/.gitignore`. Don't commit the init script or edit it: each start
-  writes it again.
-- Point the browser tool's config file at the init script, with both context
-  settings:
-
-  ```json
-  {
-    "browser": {
-      "initScript": [".ayme/init-script.js"],
-      "contextOptions": {
-        "bypassCSP": true,
-        "permissions": ["local-network-access"]
-      }
-    }
-  }
-  ```
-
-  Pass it to Playwright MCP with `--config <file>` in its registration, and
-  to Playwright CLI with `playwright-cli open --config <file> <url>`. A path in
-  the file is relative to the file's folder, so from
-  `.playwright/cli.config.json` it is `../.ayme/init-script.js`.
-
-- When the browser can start before `ayme mcp`, add `--port <port>` to
-  `ayme mcp`'s registration, so each start writes the same init script.
-- Connect with `ayme_connect` as for any page. Its answer ends with a line
-  naming the init script while `ayme mcp` serves Page Objects; without that
-  line, `ayme mcp` found no entry in the folder it started in.
-
-When it fails:
-
-- When Playwright MCP or Playwright CLI fails with
-  `Init script file does not exist`, `ayme mcp` has not started in that
-  folder yet. Restart the browser tool once `ayme mcp` runs, or ask the user
-  to.
-- When the page never pairs and its tools answer that no page is connected,
-  check that the config file has both `bypassCSP` and the
-  `local-network-access` permission, and that the browser started after
-  `ayme mcp` or that `--port` pins its port. A page whose console logs
-  `The Page Objects ayme mcp serves at … did not load` has no good build to
-  load yet.
-- After an edit to a Page Object, the page swaps in the new build by itself.
-  A build that fails keeps the last good build. Build errors, with their file,
-  line and column, are in `ayme mcp`'s standard error.
-- After navigating to another origin, call `ayme_connect` with a URL on that
-  origin and open the new link.
-- On a page whose app ships Ayme, you get the app's tools, not the served
-  Page Objects' tools.
-- Only Chromium-based browsers are supported.
+- The browser tool fails with `Init script file does not exist`: start
+  `ayme mcp` first, then restart the browser tool.
+- The page never pairs: check the browser tool's config has `bypassCSP` and
+  the `local-network-access` permission, and that the browser started after
+  `ayme mcp` or `--port` pins its port.
+- A Page Object's tools don't change after an edit: the build failed, and
+  the error is in `ayme mcp`'s standard error.
