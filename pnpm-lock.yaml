@@ -74,6 +74,9 @@ importers:
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
+      agent-browser:
+        specifier: 0.41.2
+        version: 0.41.2
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
@@ -7284,6 +7287,14 @@ packages:
         integrity: sha512-TQf59BsZnytt8GdJKLPfUZ54g/iaUL2OWDSFCCvMOhsHduDQxO8xC4PNeyIkVcA5KwL2phPSv0douC0fgWzmnA==,
       }
     engines: { node: ">= 20" }
+
+  agent-browser@0.41.2:
+    resolution:
+      {
+        integrity: sha512-/agCKB5rw1EEK8SKWo4zid7a5kOwlclqALC0P3c69buJvKdhrl/dJkKdfLqGGaiNIbWzRdqqT0PxZVkwVEf2fg==,
+      }
+    engines: { node: ">=24.0.0", pnpm: ">=11.0.0" }
+    hasBin: true
 
   ajv-formats@3.0.1:
     resolution:
@@ -18768,6 +18779,8 @@ snapshots:
   agent-base@7.1.4: {}
 
   agent-base@9.0.0: {}
+
+  agent-browser@0.41.2: {}
 
   ajv-formats@3.0.1(ajv@8.20.0):
     optionalDependencies:
