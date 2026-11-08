@@ -4,6 +4,7 @@ export {
   HelloSchema,
   HiddenToolListSchema,
   ImageResultSchema,
+  PAIRING_CONTRACT,
   InspectorRequestSchema,
   InspectorResponseSchema,
   PageNavigatingSchema,
@@ -14,6 +15,7 @@ export {
   ToolCallOutcomeSchema,
   ToolCallSchema,
   UNKNOWN_PAIRING_CLOSE_CODE,
+  VERSION_GAP_CLOSE_CODE,
 } from "./messages";
 export type {
   Hello,

@@ -23,6 +23,8 @@ export {
   isLocalProcess,
   isLoopbackHostHeader,
 } from "./domain/admission";
+export type { AymeVersion } from "./domain/versionGap";
+export { OUR_AYME, versionGap } from "./domain/versionGap";
 export { autoPairing } from "./infrastructure/autoPairing";
 export {
   listenOnFirstFreePort,

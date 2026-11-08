@@ -29,7 +29,9 @@ export async function callPageTool(
 ): Promise<ToolResult> {
   const outcome = await connection.call(name, input);
   if (!outcome)
-    return connection.connected ? unknown(name) : notConnectedResult();
+    return connection.connected
+      ? unknown(name)
+      : notConnectedResult(connection.versionGap);
   const image = imageOf(outcome);
   if (!image) return pageToolResult(outcome);
   let saved: SavedImage;
