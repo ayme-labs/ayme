@@ -5,7 +5,7 @@
  * transcript. It needs Claude Code and a token and nothing else. `runStartup`
  * is what a suite calls; the command below wraps it.
  *
- *   node src/startup.ts [--scenario <id>] [--model sonnet]
+ *   node src/startup.ts [--scenario <id>] [--model haiku]
  */
 import { randomBytes } from "node:crypto";
 import { cp, rm, writeFile } from "node:fs/promises";

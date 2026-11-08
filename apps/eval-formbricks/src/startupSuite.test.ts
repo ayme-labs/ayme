@@ -139,11 +139,11 @@ describe("runStartupSuite", () => {
 });
 
 describe("the startup suite options", () => {
-  it("default to every scenario, three runs each and Sonnet", () => {
+  it("default to every scenario, three runs each and Haiku", () => {
     const options = parseStartupSuiteOptions([]);
     expect(options.scenarios).toEqual(Object.values(startupScenarios));
     expect(options.runsPerScenario).toBe(3);
-    expect(options.model).toBe("sonnet");
+    expect(options.model).toBe("haiku");
     expect(options.timeoutMs).toBe(120_000);
   });
 

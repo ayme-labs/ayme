@@ -4,7 +4,7 @@
  * comparable runs. Writes the manifest after each run and the summary at the
  * end, under `results/suites/<suite id>/`.
  *
- *   node src/startupSuite.ts [--runs 3] [--model sonnet]
+ *   node src/startupSuite.ts [--runs 3] [--model haiku]
  *
  * Every run calls the model and costs money. A failed verdict is a result; the
  * first run that cannot complete ends the suite, the runs stored so far are
