@@ -94,11 +94,12 @@ in-browser agents and the app's own code call on the running page.
   own tools, and serves the external Inspector: its page and script over the same loopback
   HTTP server, and a WebSocket per window whose requests it relays to the paired page and
   whose answers and events it relays back; experimentally, for a page whose app does not
-  ship Ayme, it also builds the project's Page Objects with the build plugin, rebuilding
-  them as they change, and serves them with the project's runtime as ES modules over the
+  ship Ayme, it also builds the project's Page Objects with esbuild and the project's own
+  Page Object compiler, rebuilding them as they change, and serves them with the project's runtime as ES modules over the
   same HTTP server, for the browser automation's init script to load
 - Technology: Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over
-  WebSocket on `127.0.0.1`, ports 9350 to 9365
+  WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for
+  served Page Objects
 - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts),
   [packages/mcp/src/pairing/domain/pairing.ts](packages/mcp/src/pairing/domain/pairing.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
   [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md),
@@ -185,12 +186,6 @@ in-browser agents and the app's own code call on the running page.
     - → Page Object Model sources through the bundler's transform hooks
     - ← transformed modules carrying POM metadata
   - Evidence: verified: [packages/unplugin-ayme/src/unplugin.ts](packages/unplugin-ayme/src/unplugin.ts), [packages/unplugin-ayme/src/vite.ts](packages/unplugin-ayme/src/vite.ts)
-- **Ayme MCP server → Build plugin**
-  - Flows:
-    - → the Page Objects entry and the Page Object Model sources it imports, through esbuild,
-      resolved from the project's folder
-    - ← transformed modules carrying POM metadata, and the files to watch
-  - Evidence: verified: [packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts](packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts), [packages/unplugin-ayme/src/angular.ts](packages/unplugin-ayme/src/angular.ts)
 - **WebMCP driver → Browser runtime**
   - Flows:
     - → `execute` of a published tool

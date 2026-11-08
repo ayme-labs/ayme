@@ -12,7 +12,7 @@ if (command.kind === "help") {
 } else if (command.kind === "inspect") {
   process.exitCode = await printInspectorUrl(command);
 } else {
-  // Stdout carries MCP: whatever else logs, such as the build plugin while
+  // Stdout carries MCP: whatever else logs, such as the Page Object compiler while
   // it builds the Page Objects entry, logs to stderr.
   globalThis.console = new Console(process.stderr, process.stderr);
   await startMcpServer(command).catch((error: unknown) => {

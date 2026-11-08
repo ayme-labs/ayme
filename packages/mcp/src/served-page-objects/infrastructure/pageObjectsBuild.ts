@@ -1,8 +1,9 @@
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type * as Esbuild from "esbuild";
+import * as esbuild from "esbuild";
 
 import { buildFailure } from "../domain/buildFailure";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
@@ -10,12 +11,19 @@ import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
 /** The built modules, by their path under the served path. */
 export type BuiltModules = ReadonlyMap<string, string>;
 
-/** The build plugin's esbuild adapter, as `@ayme-dev/unplugin-ayme/angular` exports it. */
-type AymeEsbuildAdapter = {
-  aymeAngular(options: { include: boolean }): Esbuild.Plugin;
+/** What `ayme mcp` uses of the Page Object compiler of `@ayme-dev/ayme/compiler`. */
+type PomCompilerEntry = {
+  createPomCompiler(options: { include: boolean }): {
+    compile(
+      fileName: string,
+      source: string,
+      options: { emit: "js" }
+    ): { code: string; dependencies: readonly string[] } | null;
+    invalidate(): void;
+  };
 };
 
-const PLUGIN = "@ayme-dev/unplugin-ayme/angular";
+const COMPILER = "@ayme-dev/ayme/compiler";
 const RUNTIME = "@ayme-dev/ayme";
 /** The runtime entry's id, which no file on disk has. */
 const RUNTIME_ENTRY = "ayme-served-runtime";
@@ -34,15 +42,15 @@ export type PageObjectsBuild = {
 };
 
 /**
- * Builds `entry` for the browser, with esbuild and the build plugin's
- * esbuild adapter, as minified ES modules split into chunks: `entry.js`,
+ * Builds `entry` for the browser, with esbuild and the Page Object compiler
+ * of `@ayme-dev/ayme`, as minified ES modules split into chunks: `entry.js`,
  * whose default export is the entry's, and `runtime.js`, which re-exports
  * `@ayme-dev/ayme`; both share one copy of the runtime. What the runtime
  * imports lazily, such as the Inspector and the screenshot renderer, stays
  * in chunks of its own, which a page fetches on first use. Every import,
- * the runtime's and the build plugin's included, resolves from the entry's
- * folder, as in a build of the project itself, so the page runs the
- * project's own `@ayme-dev/ayme`.
+ * the runtime's and the compiler's included, resolves from the entry's
+ * folder, as in a build of the project itself, so the page runs, and its
+ * Page Objects are compiled by, the project's own `@ayme-dev/ayme`.
  *
  * It builds again whenever a file the build read changes, in watch mode,
  * and logs each outcome. A build that fails is logged with each error's
@@ -53,14 +61,9 @@ export async function watchPageObjects(
   log: (message: string) => void
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
-  const pluginFile = resolveFrom(folder, PLUGIN, entry);
-  // The build plugin's own peer, so the plugin and the build agree.
-  const esbuildModule = await importFile<
-    typeof Esbuild & { default?: typeof Esbuild }
-  >(resolveFrom(dirname(pluginFile), "esbuild", entry));
-  // esbuild is CommonJS: Node may hand its exports over as the default.
-  const esbuild = esbuildModule.default ?? esbuildModule;
-  const { aymeAngular } = await importFile<AymeEsbuildAdapter>(pluginFile);
+  const { createPomCompiler } = await importFile<PomCompilerEntry>(
+    resolveFrom(folder, COMPILER, entry)
+  );
   // Nothing is written there: the outputs stay in memory.
   const outdir = join(folder, "ayme-served");
   const outcomes = buildOutcomes({ entry, folder, outdir, log });
@@ -80,7 +83,7 @@ export async function watchPageObjects(
     logLevel: "silent",
     plugins: [
       runtimeEntry(folder),
-      aymeAngular({ include: true }),
+      pageObjectModels(createPomCompiler({ include: true })),
       outcomes.plugin,
     ],
   });
@@ -89,6 +92,37 @@ export async function watchPageObjects(
     modules: outcomes.modules,
     onBuilt: outcomes.onBuilt,
     close: () => context.dispose(),
+  };
+}
+
+/**
+ * Compiles each Page Object Model the build reaches, outside
+ * `node_modules`, with the project's own compiler; every other module
+ * builds as esbuild builds it.
+ */
+function pageObjectModels(
+  compiler: ReturnType<PomCompilerEntry["createPomCompiler"]>
+): esbuild.Plugin {
+  return {
+    name: "ayme-served-page-object-models",
+    setup(build) {
+      // A rebuild compiles afresh, so an edited dependency reaches the manifest.
+      build.onStart(() => compiler.invalidate());
+      build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
+        if (path.split(sep).includes("node_modules")) return;
+        const pom = compiler.compile(path, await readFile(path, "utf8"), {
+          emit: "js",
+        });
+        if (pom === null) return;
+        return {
+          contents: pom.code,
+          loader: "js",
+          // esbuild watches a module a plugin loads only through the files
+          // the plugin names, the module's own file included.
+          watchFiles: [path, ...pom.dependencies],
+        };
+      });
+    },
   };
 }
 
@@ -113,7 +147,7 @@ function buildOutcomes({
   const first = new Promise<void>((resolve) => (firstEnded = resolve));
   let built = 0;
   const listeners = new Set<(modules: BuiltModules) => void>();
-  const plugin: Esbuild.Plugin = {
+  const plugin: esbuild.Plugin = {
     name: "ayme-served-outcomes",
     setup(build) {
       build.onEnd(({ errors, outputFiles = [] }) => {
@@ -165,7 +199,7 @@ function buildOutcomes({
 }
 
 /** The runtime's entry: a module that re-exports `@ayme-dev/ayme` from `folder`. */
-function runtimeEntry(folder: string): Esbuild.Plugin {
+function runtimeEntry(folder: string): esbuild.Plugin {
   const namespace = "ayme-served";
   return {
     name: "ayme-served-runtime",

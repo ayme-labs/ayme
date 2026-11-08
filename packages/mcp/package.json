@@ -63,6 +63,7 @@
     "@modelcontextprotocol/sdk": "^1.32.0",
     "@trpc/client": "^11.19.0",
     "@trpc/server": "^11.19.0",
+    "esbuild": "^0.28.2",
     "ws": "^8.22.0",
     "zod": "^4.5.4"
   },
@@ -89,7 +90,6 @@
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^4.1.11",
-    "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",

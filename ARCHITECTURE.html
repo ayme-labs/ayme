@@ -844,8 +844,8 @@
       },
       {
         "name": "Ayme MCP server",
-        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools, and serves the external Inspector: its page and script over the same loopback HTTP server, and a WebSocket per window whose requests it relays to the paired page and whose answers and events it relays back; experimentally, for a page whose app does not ship Ayme, it also builds the project's Page Objects with the build plugin, rebuilding them as they change, and serves them with the project's runtime as ES modules over the same HTTP server, for the browser automation's init script to load",
-        "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365",
+        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools, and serves the external Inspector: its page and script over the same loopback HTTP server, and a WebSocket per window whose requests it relays to the paired page and whose answers and events it relays back; experimentally, for a page whose app does not ship Ayme, it also builds the project's Page Objects with esbuild and the project's own Page Object compiler, rebuilding them as they change, and serves them with the project's runtime as ES modules over the same HTTP server, for the browser automation's init script to load",
+        "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for served Page Objects",
         "evidence": {
           "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
           "inferred": false,
@@ -1023,25 +1023,6 @@
         ],
         "evidence": {
           "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/unplugin-ayme/src/vite.ts`",
-          "inferred": false,
-          "mixed": false
-        }
-      },
-      {
-        "from": "Ayme MCP server",
-        "to": "Build plugin",
-        "flows": [
-          {
-            "dir": "→",
-            "text": "the Page Objects entry and the Page Object Model sources it imports, through esbuild, resolved from the project's folder"
-          },
-          {
-            "dir": "←",
-            "text": "transformed modules carrying POM metadata, and the files to watch"
-          }
-        ],
-        "evidence": {
-          "text": "verified: `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/unplugin-ayme/src/angular.ts`",
           "inferred": false,
           "mixed": false
         }

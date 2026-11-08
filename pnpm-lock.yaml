@@ -1030,6 +1030,9 @@ importers:
       "@trpc/server":
         specifier: ^11.19.0
         version: 11.19.0(typescript@6.0.3)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       ws:
         specifier: ^8.22.0
         version: 8.22.0
@@ -1067,9 +1070,6 @@ importers:
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
-      esbuild:
-        specifier: ^0.28.2
-        version: 0.28.2
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
