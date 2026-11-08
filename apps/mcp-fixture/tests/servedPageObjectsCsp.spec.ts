@@ -51,8 +51,13 @@ test.describe("with bypassCSP", () => {
       });
 
       await page.goto(link);
+      // The page's imports wait for the server's first build, which takes
+      // a few seconds while the rest of the suite runs beside it.
       await expect
-        .poll(() => agent.pageToolNames(), { message: agent.log })
+        .poll(() => agent.pageToolNames(), {
+          message: agent.log,
+          timeout: 15_000,
+        })
         .toContain(PLAIN_PAGE_TOOL);
 
       const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
