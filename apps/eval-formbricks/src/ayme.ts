@@ -89,11 +89,18 @@ export const pageObjectsOffCookie = {
  * `navigator.modelContext`. Without it a Chrome supplies neither, and
  * Playwright MCP and the Playwright CLI supply none either: both read
  * `document.modelContext ?? navigator.modelContext` and collect the tools a
- * page registered there. The lab app's polyfill keeps native WebMCP where
- * present, so the flag changes nothing while the polyfill is loaded and
- * carries the arms that use it once the polyfill is dropped.
+ * page registered there. Every browser the harness launches gets the flag:
+ * the Ayme arms' page publishes through `document.modelContext` too, so the
+ * pairing and the setup's wait for the screen's tools hold once the lab
+ * app's polyfill is dropped, and while it is loaded it keeps native WebMCP
+ * where present, so the flag changes nothing.
  */
 export const webMcpFeatureFlag = "--enable-features=WebMCP";
+
+/** The arguments every browser the harness launches gets: the arm's own, then the WebMCP flag. */
+export function browserLaunchArgs(browserArgs: string[] = []): string[] {
+  return [...browserArgs, webMcpFeatureFlag];
+}
 
 /**
  * How long Claude Code lets one MCP tool call run. The `goal` tool runs the
@@ -592,8 +599,8 @@ export async function setUpAymeAgent(
 
 /**
  * Launches the headless system Chrome on the run's profile, with the arm's
- * browser arguments and the lab app's switches set as cookies before the
- * page loads, and opens the mission's start page.
+ * browser arguments and the WebMCP flag, the lab app's switches set as
+ * cookies before the page loads, and opens the mission's start page.
  */
 async function launchStartPage(
   context: Pick<ArmContext, "profileDir" | "start">,
@@ -606,7 +613,7 @@ async function launchStartPage(
       channel: "chrome",
       headless: true,
       viewport,
-      ...(options.browserArgs ? { args: options.browserArgs } : {}),
+      args: browserLaunchArgs(options.browserArgs),
     }
   );
   if (options.goalLoop)
@@ -782,8 +789,8 @@ export type WebMcpEvidence = {
 
 /**
  * Opens the mission's start page as `setUpAymePage` does, with the page
- * objects on and the Goal Loop off, on a Chrome with the WebMCP flag beside
- * the arm's own browser arguments, and waits until the page publishes the
+ * objects on and the Goal Loop off, on a Chrome with the WebMCP flag as
+ * every launch has it, and waits until the page publishes the
  * start screen's Page Object Tool. No Ayme MCP server is started: the agent
  * reaches the page's tools through Playwright, which collects them from
  * `document.modelContext` itself. The range a page scans is re-checked, so
@@ -802,7 +809,7 @@ export async function setUpWebMcpPage(
   const { browser, page, opened } = await launchStartPage(context, {
     goalLoop: false,
     pageObjects: true,
-    browserArgs: [...options.browserArgs, webMcpFeatureFlag],
+    browserArgs: options.browserArgs,
   });
   const dispose = async () => {
     try {

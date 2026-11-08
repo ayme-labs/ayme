@@ -15,6 +15,7 @@ import {
   aymeSkillDirectory,
   aymeSkillSource,
   aymeWebMcpPreconditions,
+  browserLaunchArgs,
   isPageObjectToolName,
   mcpToolTimeoutMs,
   pageObjectToolNames,
@@ -81,9 +82,14 @@ describe("the agent's MCP server entry", () => {
   });
 });
 
-describe("the WebMCP arms' browser", () => {
-  it("gets Chrome's WebMCP flag, which supplies document.modelContext without the app's polyfill", () => {
+describe("every browser the harness launches", () => {
+  it("gets Chrome's WebMCP flag, which supplies document.modelContext without the app's polyfill, after the arm's own arguments", () => {
     expect(webMcpFeatureFlag).toBe("--enable-features=WebMCP");
+    expect(browserLaunchArgs()).toEqual(["--enable-features=WebMCP"]);
+    expect(browserLaunchArgs(["--remote-debugging-port=9222"])).toEqual([
+      "--remote-debugging-port=9222",
+      "--enable-features=WebMCP",
+    ]);
   });
 });
 
