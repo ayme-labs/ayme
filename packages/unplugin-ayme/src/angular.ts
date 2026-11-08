@@ -3,14 +3,7 @@ import path from "node:path";
 
 import type { Plugin } from "esbuild";
 
-import {
-  absentEntryFor,
-  createPomTransform,
-  includeLine,
-  includeOption,
-  type PomPrograms,
-} from "./transformPomModule";
-import { transpilePomModule } from "./transpilePomModule";
+import { createPomCompiler } from "@ayme-dev/ayme/compiler";
 
 export type AymeAngularOptions = {
   /**
@@ -48,7 +41,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
     typeof options.tsconfigPath !== "string"
   )
     throw new TypeError("tsconfigPath must be a string");
-  const include = includeOption(options.include);
+  // Checks include where the options are taken, before any build.
+  const { includeLine } = createPomCompiler({ include: options.include });
+  const include = options.include === true;
   return {
     name: "ayme-angular",
     setup(build) {
@@ -56,27 +51,22 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       if (build.initialOptions.platform === "node") return;
       const root = build.initialOptions.absWorkingDir ?? process.cwd();
       // One Program per tsconfig project and build (ADR-0036).
-      const programs: PomPrograms = new Map();
-      const transformPom = createPomTransform(
-        {
-          tsconfigPath:
-            options.tsconfigPath && path.resolve(root, options.tsconfigPath),
-          include,
-        },
-        undefined,
-        programs
-      );
+      const compiler = createPomCompiler({
+        tsconfigPath:
+          options.tsconfigPath && path.resolve(root, options.tsconfigPath),
+        include: options.include,
+      });
       // One compilation per module and build; a rebuild starts afresh so an
       // edited dependency reaches the manifest.
       let compiled = new Map<string, Promise<CompiledPom | null>>();
       build.onStart(() => {
         compiled = new Map();
-        programs.clear();
+        compiler.invalidate();
         // esbuild gives a plugin no logger, so the line goes to the console.
-        console.info(includeLine(options.include));
+        console.info(includeLine);
       });
       build.onEnd(() => {
-        programs.clear();
+        compiler.invalidate();
       });
 
       // The stand-in of a build without Ayme is what `onLoad` hands esbuild
@@ -84,11 +74,11 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       // it loaded, so no source map carries the replaced model.
       const compile = async (fileName: string) => {
         const source = await readFile(fileName, "utf8");
-        const transformed = transformPom(source, fileName);
-        if (!transformed) return null;
+        const compiledPom = compiler.compile(fileName, source, { emit: "js" });
+        if (!compiledPom) return null;
         return {
-          contents: transpilePomModule(transformed.code, fileName),
-          watchFiles: transformed.dependencies,
+          contents: compiledPom.code,
+          watchFiles: compiledPom.dependencies,
         };
       };
 
@@ -97,7 +87,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       // imported from.
       if (!include)
         build.onResolve({ filter: /^@ayme-dev\// }, (args) => {
-          const absent = absentEntryFor(args.path);
+          const absent = compiler.absentEntry(args.path);
           if (absent === undefined) return;
           return build.resolve(absent, {
             kind: args.kind,
@@ -149,7 +139,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
           contents: pom.contents,
           loader: "js",
           resolveDir: path.dirname(fileName),
-          watchFiles: [...pom.watchFiles],
+          // esbuild watches a module that a plugin loads only through the
+          // files the plugin names, the module's own file included.
+          watchFiles: [fileName, ...pom.watchFiles],
         };
       });
     },

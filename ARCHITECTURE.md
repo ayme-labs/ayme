@@ -79,10 +79,11 @@ in-browser agents and the app's own code call on the running page.
   to absent entries and each Page Object Model compiles to a stand-in. A build prints one
   line saying which it is, except a Next.js build that compiles no Page Object Model
 - Technology: Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and
-  Turbopack entries, running the TypeScript compiler
+  Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only
+  `compiler` entry, which runs the project's own TypeScript compiler
 - Evidence: verified: [packages/unplugin-ayme/src/unplugin.ts](packages/unplugin-ayme/src/unplugin.ts),
-  [packages/unplugin-ayme/src/derivePomManifests.ts](packages/unplugin-ayme/src/derivePomManifests.ts),
-  [packages/unplugin-ayme/src/transformPomModule.ts](packages/unplugin-ayme/src/transformPomModule.ts),
+  [packages/ayme/src/compiler/pomCompiler.ts](packages/ayme/src/compiler/pomCompiler.ts),
+  [packages/ayme/src/compiler/derivePomManifests.ts](packages/ayme/src/compiler/derivePomManifests.ts),
   [docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md](docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md)
 
 ### Ayme MCP server

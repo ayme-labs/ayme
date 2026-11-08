@@ -1,10 +1,14 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createPomProgram } from "../../pomProgram";
 import { rewritePomImports } from "..";
+
+// Each test builds TypeScript Programs, which run several times slower on CI
+// while the browser suites and the packed-consumer test run beside them.
+vi.setConfig({ testTimeout: 15_000 });
 
 function rewrittenImport(importDeclaration: string) {
   const fileName = path.resolve(

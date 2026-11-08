@@ -33,9 +33,7 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs",
-      "default": "./dist/index.mjs"
+      "types": "./dist/index.d.mts"
     },
     "./vite": {
       "types": "./dist/vite.d.mts",
@@ -63,11 +61,11 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
-    "typescript": "^6.0.3",
     "unplugin": "^3.3.0"
   },
   "peerDependencies": {
     "esbuild": ">=0.24.0",
+    "typescript": ">=5.4 <7",
     "vite": "^7.0.0 || ^8.0.0"
   },
   "peerDependenciesMeta": {
@@ -96,6 +94,7 @@
     "playwright": "~1.64.0",
     "react": "^19.0.0",
     "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }

@@ -10,7 +10,7 @@ import {
   toolInputViolations,
   type ToolParameter,
 } from "@ayme-dev/ayme/inspector";
-import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
+import { createPomCompiler } from "@ayme-dev/ayme/compiler";
 import { describe, expect, it } from "vitest";
 
 import { actionSignature } from "./actionSignature";
@@ -22,18 +22,16 @@ import { actionSignature } from "./actionSignature";
 // the definition text gives agents.
 
 /**
- * The build plugin's compiler test fixtures, found through its package, so
+ * The compiler's test fixtures, found through Ayme's package, so
  * they resolve from a copy of this test elsewhere too, such as Stryker's
  * sandbox.
  */
 const fixtures = new URL(
-  "../src/fixtures/",
-  pathToFileURL(
-    createRequire(import.meta.url).resolve("@ayme-dev/unplugin-ayme")
-  )
+  "../src/compiler/fixtures/",
+  pathToFileURL(createRequire(import.meta.url).resolve("@ayme-dev/ayme"))
 );
 
-/** A fixture of the build plugin's compiler tests. */
+/** A fixture of the compiler's tests. */
 function fixture(name: string) {
   return fileURLToPath(new URL(`${name}.ts`, fixtures));
 }
@@ -43,7 +41,9 @@ const tools = [
   "defaultedParametersPom",
   "destructuredParametersPom",
 ].flatMap((name) =>
-  derivePomManifests(fixture(name)).flatMap((manifest) => manifest.tools)
+  createPomCompiler()
+    .derivePomManifests(fixture(name))
+    .flatMap((manifest) => manifest.tools)
 );
 
 /** A call each action's schema must accept, by tool name. */

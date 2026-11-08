@@ -4,12 +4,16 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  derivePomManifests,
   derivePomManifestsFromProgram,
   type SkippedPomMethod,
 } from "./derivePomManifests";
-import { derivePomManifests } from "./index";
 import { createPomProgram } from "./pomProgram";
-import { version } from "../package.json";
+import { version } from "../../package.json";
+
+// Each test builds TypeScript Programs, which run several times slower on CI
+// while the browser suites and the packed-consumer test run beside them.
+vi.setConfig({ testTimeout: 15_000 });
 
 /**
  * The line of a fixture that holds `text`, as the file stands: a header a
@@ -21,13 +25,15 @@ function lineOf(fileName: string, text: string) {
 }
 
 function manifestFor(fixture: string) {
-  return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`))[0];
+  return derivePomManifests(
+    path.resolve(`src/compiler/fixtures/${fixture}.ts`)
+  )[0];
 }
 
 function manifestForClass(fixture: string, className: string) {
-  return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`)).find(
-    (manifest) => manifest.className === className
-  );
+  return derivePomManifests(
+    path.resolve(`src/compiler/fixtures/${fixture}.ts`)
+  ).find((manifest) => manifest.className === className);
 }
 
 describe("derivePomManifests", () => {
@@ -116,7 +122,7 @@ describe("derivePomManifests", () => {
       "fails the build for the description of %s, which is not a constant string",
       (fixture, owner, description) => {
         const fileName = path.resolve(
-          `src/fixtures/computedDescriptions/${fixture}.ts`
+          `src/compiler/fixtures/computedDescriptions/${fixture}.ts`
         );
         expect(() => derivePomManifests(fileName)).toThrow(
           `The description of ${owner} is not a constant string (${fileName}:${lineOf(fileName, description)}).`
@@ -133,7 +139,7 @@ describe("derivePomManifests", () => {
     "fails the build for %s, whose description may come from a spread or a computed key",
     (fixture, action, description) => {
       const fileName = path.resolve(
-        `src/fixtures/computedDescriptions/${fixture}.ts`
+        `src/compiler/fixtures/computedDescriptions/${fixture}.ts`
       );
       expect(() => derivePomManifests(fileName)).toThrow(
         `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${lineOf(fileName, description)}).`
@@ -369,7 +375,9 @@ describe("derivePomManifests", () => {
   });
 
   it("names a class's file by its package, whatever directory the build runs from", () => {
-    const fileName = path.resolve("src/fixtures/undecoratedChildPom.ts");
+    const fileName = path.resolve(
+      "src/compiler/fixtures/undecoratedChildPom.ts"
+    );
     const fromPackage = derivePomManifests(fileName)[0]?.file;
     const cwd = vi.spyOn(process, "cwd").mockReturnValue(path.resolve("/"));
     try {
@@ -378,7 +386,7 @@ describe("derivePomManifests", () => {
       cwd.mockRestore();
     }
     expect(fromPackage).toBe(
-      `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`
+      `@ayme-dev/ayme@${version}/src/compiler/fixtures/undecoratedChildPom.ts`
     );
   });
 
@@ -469,7 +477,7 @@ describe("derivePomManifests", () => {
     expect(manifest.components).toEqual([
       {
         className: "AnnotatedComponent",
-        file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/annotatedChildrenPom.ts`,
+        file: `@ayme-dev/ayme@${version}/src/compiler/fixtures/annotatedChildrenPom.ts`,
         members: [
           {
             memberName: "root",
@@ -684,14 +692,16 @@ describe("derivePomManifests", () => {
       // `undefined` is thrown.
       expect(() =>
         derivePomManifests(
-          path.resolve(`src/fixtures/declaredChildErrors/${fixture}.ts`)
+          path.resolve(
+            `src/compiler/fixtures/declaredChildErrors/${fixture}.ts`
+          )
         )
       ).toThrow(new Error(message));
     });
 
     it("fails the build for a child description that is not a constant string", () => {
       const fileName = path.resolve(
-        "src/fixtures/declaredChildErrors/descriptionPom.ts"
+        "src/compiler/fixtures/declaredChildErrors/descriptionPom.ts"
       );
       expect(() => derivePomManifests(fileName)).toThrow(
         new Error(
@@ -811,7 +821,7 @@ describe("derivePomManifests", () => {
 
   describe("two different classes with one name", () => {
     const fixture = (name: string) =>
-      path.resolve(`src/fixtures/sameNamedChildren/${name}.ts`);
+      path.resolve(`src/compiler/fixtures/sameNamedChildren/${name}.ts`);
     const clash = (page: string, first: string, second: string) =>
       `Page Object "${page}" reaches two different classes named "Row", declared in ${fixture(
         first
@@ -894,7 +904,7 @@ describe("derivePomManifests", () => {
 
   it("lists only the Children and return POMs of each Page Object in a file", () => {
     const manifests = derivePomManifests(
-      path.resolve("src/fixtures/twoPagesPom.ts")
+      path.resolve("src/compiler/fixtures/twoPagesPom.ts")
     );
     const componentsOf = (className: string) =>
       manifests
@@ -906,7 +916,9 @@ describe("derivePomManifests", () => {
   });
 
   it("lists Children of Children once, and reports their unmarked methods", () => {
-    const fileName = path.resolve("src/fixtures/nestedChildren/shopPage.ts");
+    const fileName = path.resolve(
+      "src/compiler/fixtures/nestedChildren/shopPage.ts"
+    );
     let skipped: SkippedPomMethod[] = [];
     const [manifest] = derivePomManifestsFromProgram(
       fileName,
@@ -923,7 +935,9 @@ describe("derivePomManifests", () => {
 
   describe("inherited @ayme recognition", () => {
     function manifestsOf(fixture: string) {
-      return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`));
+      return derivePomManifests(
+        path.resolve(`src/compiler/fixtures/${fixture}.ts`)
+      );
     }
 
     function expectNames(names: readonly string[], expected: string[]) {
@@ -1034,7 +1048,7 @@ describe("derivePomManifests", () => {
       expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
           className: "PageX",
-          file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`,
+          file: `@ayme-dev/ayme@${version}/src/compiler/fixtures/undecoratedChildPom.ts`,
           members: [
             {
               memberName: "heading",
@@ -1542,19 +1556,19 @@ describe("derivePomManifests", () => {
         ],
         [
           "indexSignaturePatternPom",
-          `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+          `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
         ],
         [
           "stringPatternPom",
-          `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+          `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
         ],
         [
           "tupleUnionPom",
-          `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+          `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
         ],
         [
           "correlatedTuplePom",
-          `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/fixtures/tsconfig.json")}.`,
+          `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
         ],
         [
           "renamedDuplicatePom",
@@ -1572,7 +1586,9 @@ describe("derivePomManifests", () => {
         let thrown: unknown;
         try {
           derivePomManifests(
-            path.resolve(`src/fixtures/unsupportedPatterns/${fixture}.ts`)
+            path.resolve(
+              `src/compiler/fixtures/unsupportedPatterns/${fixture}.ts`
+            )
           );
         } catch (error) {
           thrown = error;
@@ -1665,7 +1681,7 @@ describe("derivePomManifests", () => {
     ])("still fails the build for %s", (fixture, parameter) => {
       expect(() =>
         derivePomManifests(
-          path.resolve(`src/fixtures/unsupportedShapes/${fixture}.ts`)
+          path.resolve(`src/compiler/fixtures/unsupportedShapes/${fixture}.ts`)
         )
       ).toThrow(`Unsupported Page Object Tool input type for ${parameter}.`);
     });
