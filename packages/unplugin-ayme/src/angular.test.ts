@@ -201,7 +201,8 @@ it("in watch mode, rebuilds after an edit to a Page Object Model module that its
   });
   try {
     await builds.watch();
-    await vi.waitFor(() => expect(ends).toHaveLength(1));
+    // The first build builds the project's Program, seconds on CI.
+    await vi.waitFor(() => expect(ends).toHaveLength(1), { timeout: 10_000 });
 
     await writeFile(
       path.join(root, "EditedPage.ts"),
