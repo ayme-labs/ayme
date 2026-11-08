@@ -77,7 +77,7 @@ Two things changed for apps that registered a Custom Tool or a filter before:
 
 ## Use other tools from a Custom Tool
 
-`execute` gets a second argument, `{ run }`. `run(name, input)` runs another available tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, never waiting on the page's queue, one after the other in the order it starts them, even when it starts them together, and `ayme.runs` lists them under its Run:
+`execute` gets a second argument, `{ run }`. `run(name, input)` runs another available tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, so they never wait on the page's queue. They run one after the other, in the order the Custom Tool starts them, even when it starts them together. `ayme.runs` lists them under the Custom Tool's Run:
 
 ```ts
 const submitSample: CustomTool = {
