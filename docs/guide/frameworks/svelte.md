@@ -55,7 +55,17 @@ Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without Sv
 {@render children()}
 ```
 
-Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. The options are the [`createAyme` options](../reference/ayme.md#createayme), passed through unchanged, such as `navigate: (url) => goto(url)` with `goto` from `$app/navigation`, so the `navigate` tool moves through SvelteKit's router. Without SvelteKit, use `import.meta.env.DEV` for `dev`. The options are read once; to change them, remount the owner. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. Without SvelteKit, use `import.meta.env.DEV` for `dev`.
+
+The options are the [`createAyme` options](../reference/ayme.md#createayme), passed through unchanged. To make the `navigate` tool move through SvelteKit's router, pass `goto`:
+
+```ts
+import { goto } from "$app/navigation";
+
+useAyme({ navigate: (url) => goto(url), inspector: dev, agentConnection: dev });
+```
+
+The options are read once; to change them, remount the owner. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
 ## Root ownership
 
@@ -71,21 +81,63 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Composables
 
-Register the app's pages once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`; each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
+Give your pages a base class whose `present` checks the URL, as [`@ayme`](../guides/ayme-page-objects.md#ayme) shows:
+
+```ts
+// src/lib/pom/AppPage.ts
+import { ayme } from "@ayme-dev/ayme";
+import type { Page } from "@playwright/test";
+
+const onPage = (self: AppPage) =>
+  new URLPattern({ pathname: self.path }).test(self.page.url());
+
+@ayme({ present: onPage })
+export abstract class AppPage {
+  abstract readonly path: string;
+  constructor(readonly page: Page) {}
+}
+```
+
+```ts
+// src/lib/pom/ProjectsPage.ts
+import { ayme } from "@ayme-dev/ayme";
+import { AppPage } from "./AppPage";
+
+export class ProjectsPage extends AppPage {
+  readonly path = "/projects";
+
+  @ayme.action
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
+  }
+}
+```
+
+`SettingsPage` extends `AppPage` the same way, with `path = "/settings"`. Register both once, in the `pageObjects` option of `useAyme` in the root `+layout.svelte`:
 
 ```svelte
+<!-- src/routes/+layout.svelte -->
 <script lang="ts">
+  import type { Snippet } from "svelte";
+  import { dev } from "$app/environment";
   import { useAyme } from "@ayme-dev/svelte";
   import { ProjectsPage } from "$lib/pom/ProjectsPage";
   import { SettingsPage } from "$lib/pom/SettingsPage";
 
+  let { children }: { children: Snippet } = $props();
   useAyme({
     pageObjects: [ProjectsPage, SettingsPage],
     inspector: dev,
     agentConnection: dev,
   });
 </script>
+
+{@render children()}
 ```
+
+On `/projects`, the agent's tool list has `ProjectsPage.createProject`. On `/settings`, it doesn't. A model with no `present` or `root` anywhere in its class chain is present while it is registered. The [quickstart](../start/quickstart-svelte.md)'s `ProjectsPage` extends nothing, so registered on its own, its tools are listed on every route.
 
 A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component lives:
 
@@ -117,7 +169,7 @@ Then add `webMCP` to the owner's options:
 useAyme({ inspector: dev, agentConnection: dev, webMCP: { enabled: true } });
 ```
 
-`useAyme()`'s `webMCP.publicationStatus` is a readable store that listens to the session only while it has subscribers, and `retryPublication` tries again after publication found no WebMCP driver or failed:
+`useAyme()` returns `webMCP.publicationStatus` as a readable store. It listens to the session only while it has subscribers. When its `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `retryPublication` tries again:
 
 ```svelte
 <script lang="ts">
@@ -129,16 +181,29 @@ useAyme({ inspector: dev, agentConnection: dev, webMCP: { enabled: true } });
 </script>
 
 <p>Publication: {$publicationStatus.state}</p>
-{#if $publicationStatus.state === "unavailable"}
+{#if $publicationStatus.state === "unavailable" || $publicationStatus.state === "failed"}
   <button onclick={retryPublication}>Retry</button>
 {/if}
 ```
 
-`$publicationStatus` needs a top-level variable, so destructure it as above; it works in legacy and runes components alike. In a Svelte 5 `.svelte.ts` module, `fromStore(useAyme().webMCP.publicationStatus)` from `svelte/store` turns the store into a rune-backed value; create it during component initialization.
+`$publicationStatus` needs a top-level variable, so destructure it as above. This works in legacy and runes components alike.
+
+In a Svelte 5 `.svelte.ts` module, turn the store into a rune-backed value with `fromStore`. Call the function during component initialization, because `useAyme` reads the component's context:
+
+```ts
+// src/lib/publication.svelte.ts
+import { fromStore } from "svelte/store";
+import { useAyme } from "@ayme-dev/svelte";
+
+export function usePublicationState() {
+  const status = fromStore(useAyme().webMCP.publicationStatus);
+  return () => status.current.state;
+}
+```
 
 ## Server rendering
 
-SvelteKit renders on the server by default, and the setup above needs nothing more: `useAyme` and `usePageObject` run during server rendering without starting anything, and hydration constructs the real Page Objects. `peek` adds its instance in `onMount`, which never runs on the server. The same files work in SvelteKit's SPA mode:
+SvelteKit renders on the server by default, and the setup above needs nothing more: `useAyme` and `usePageObject` run during server rendering without starting anything, and hydration constructs the real Page Objects. The experimental [`peek`](#api) composable adds its Peek in `onMount`. `onMount` never runs on the server. The same files work in SvelteKit's SPA mode:
 
 ```ts
 // src/routes/+layout.ts
@@ -149,7 +214,9 @@ The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example
 
 ## Bundle size
 
-Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a build that includes it, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build includes Ayme only with the plugin's `include: true`; the config above keeps it in the dev server and out of `vite build`. See [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a build that includes it. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+
+A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 
