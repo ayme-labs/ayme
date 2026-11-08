@@ -26,7 +26,8 @@ export const ENTRY_MODULE = "entry.js";
  * serves, starts the runtime with the Agent Connection on and registers the
  * entry's classes, with the Inspector in a window of its own, which the
  * page serves only once `ayme_inspect`'s URL is opened. A frame or a document such as `about:blank` loads
- * nothing, so only the tab pairs. It is a classic script, as an init script
+ * nothing, so only the tab pairs, and neither does a page of `ayme mcp`'s
+ * own, such as the Inspector's window. It is a classic script, as an init script
  * runs, and holds no other state.
  */
 export function initScript(port: number): string {
@@ -34,8 +35,13 @@ export function initScript(port: number): string {
   return `// Written by ayme mcp (experimental) when it started on port ${port}.
 // It loads the Page Objects that ayme mcp serves into each page.
 (() => {
-  if (window.top !== window || !/^https?:$/.test(location.protocol)) return;
   const served = ${JSON.stringify(served)};
+  if (
+    window.top !== window ||
+    !/^https?:$/.test(location.protocol) ||
+    location.origin === new URL(served).origin
+  )
+    return;
   Promise.all([
     import(served + ${JSON.stringify(RUNTIME_MODULE)}),
     import(served + ${JSON.stringify(ENTRY_MODULE)}),

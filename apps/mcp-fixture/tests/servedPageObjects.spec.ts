@@ -190,7 +190,7 @@ test("a Page Object that fails to compile is reported with its file, and the pag
   }
 });
 
-test("the Inspector ayme_inspect links to shows the served Page Objects of the paired page, and runs them there", async ({
+test("the Inspector ayme_inspect links to shows the served Page Objects of the paired page, runs them there, and loads none itself", async ({
   context,
   page,
   baseURL,
@@ -214,6 +214,11 @@ test("the Inspector ayme_inspect links to shows the served Page Objects of the p
     const { text: url, isError } = await agent.call("ayme_inspect");
     expect(isError, url).toBe(false);
     const window = await context.newPage();
+    const servedToWindow: string[] = [];
+    window.on("request", (request) => {
+      if (request.url().includes("/page-objects/"))
+        servedToWindow.push(request.url());
+    });
     await window.goto(url);
     const inspector = new Inspector(window);
     await (await inspector.tool(PLAIN_PAGE_TOOL)).run();
@@ -221,6 +226,8 @@ test("the Inspector ayme_inspect links to shows the served Page Objects of the p
     const run = inspector.runs.latest(PLAIN_PAGE_TOOL);
     await expect.poll(() => run.status()).toBe("Succeeded");
     expect(await run.resultText()).toContain("does not run Ayme");
+    // The init script leaves ayme mcp's own pages alone.
+    expect(servedToWindow).toEqual([]);
   } finally {
     await agent.close();
   }
