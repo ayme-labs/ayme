@@ -26,13 +26,13 @@ useAyme({ inspector: import.meta.env.DEV });
 
 ## In a window of its own
 
-The panel can run outside the page instead of in it. Pass `inspector: { placement: "external" }`; `"inline"` is the default placement and what `true` and `{ demo }` give. The page then mounts no panel and serves the Inspector over its [Agent Connection](connect-an-agent.md), which the option turns on, so a coding agent's `ayme mcp` has to be running and paired with the tab:
+The panel can run outside the page instead of in it. Pass `inspector: { placement: "external" }`. The default placement is `"inline"`, which `true` and `{ demo }` also give. With `"external"`, the page mounts no panel. It serves the Inspector over its [Agent Connection](connect-an-agent.md) instead, and the option turns that connection on. So a coding agent's `ayme mcp` has to be running and paired with the tab:
 
 ```ts
 useAyme({ inspector: { placement: "external" } });
 ```
 
-`ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`, or run `ayme inspect` in a terminal; both give the same URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting an element and picking one by pointing at the page, which a tool's ref field does, work across the two windows: the highlights and the pick happen in the app's tab.
+`ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`, or run `ayme inspect` in a terminal; both give the same URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
 
 - Install `@ayme-dev/inspector` where `ayme` runs, as in the first section. Without it, `ayme inspect` and `ayme_inspect` say to install it.
 - With several servers running, `ayme inspect` prints a URL for each; `ayme inspect --port <port>` looks on one port only.
@@ -55,20 +55,39 @@ Demo mode works in either placement. It pauses briefly before each action, thoug
 The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](ayme-page-objects.md#aymechild), each with its description and its state on the page, such as `3 matches`.
-- **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `rows[1]`.
-- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek) under Browser and, while the tab is paired with a coding agent's Ayme MCP server, those of the App Processes paired beside it under Node, which the panel runs through that server.
+- **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `filterChips[1]`.
+- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. Peek tools lists the page's own [Peeks](../reference/ayme.md#aymepeek) under Browser. While the tab is paired with a coding agent's Ayme MCP server, it also lists the Peeks of the App Processes paired beside it, under Node. The panel runs those through that server.
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 
 ## Running tools
 
-Every detail runs its tools through the same run card, a form typed from the tool's input schema, with an instance picker for every rooted Page Object Tool, with a single instance preselected and the last result. **Runs** lists every Run on the page, whoever started it: you from the panel, an agent, or the app. A single Browser Tool input shows its action, target and value together; custom and multi-input tools list their Interactions, such as clicks and fills, before their result. Targets show their Page Object member when registered, including an element of a Locator collection by its index, such as `rows[1]`; otherwise their accessible role and name or direct text, with a containing Page Object as context when known. Captured target names stay readable after the element disappears or the page reloads. Additional arguments stay visible, and results can be expanded and copied. The Runs a Run started sit under it: a goal Run shows the Runs its steps executed, and a Custom Tool the Runs it started, each with its own Interactions.
+Every detail runs its tools through the same run card. The card has a form typed from the tool's input schema, and shows the last result. For a rooted Page Object Tool, such as `ProjectRow.remove`, it adds an instance picker. When only one instance is on the page, it is preselected.
+
+**Runs** lists every Run on the page, whoever started it: you from the panel, an agent, or the app. Each Run shows:
+
+- for a single Browser Tool input: its action, target and value together;
+- for Custom and multi-input tools: their Interactions, such as clicks and fills, before the result;
+- each target by its Page Object member when registered, including an element of a Locator collection by its index, such as `filterChips[1]`. Otherwise it shows the target's accessible role and name or direct text, with a containing Page Object as context when known;
+- its other arguments, and its result, which you can expand and copy;
+- the Runs it started, underneath it. A goal Run shows the Runs its steps executed, and a Custom Tool the Runs it started, each with its own Interactions.
+
+Captured target names stay readable after the element disappears or the page reloads.
 
 ## The panel
 
 The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Within a tab, it also keeps the open lens, the selection, the Runs region and the newest 50 runs in `sessionStorage`, so a reload comes back to them. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
-The pill after the panel's title says whether a coding agent is connected to the tab through the [Agent Connection](connect-an-agent.md), and names it: Claude Code, Codex, Cursor, or the name any other agent's MCP client gives. It reads "Not connected" while `agentConnection` is on and no agent is connected, "Reconnecting" for up to 10 seconds after the tab loses its agent's server, while it tries again, and "No agent" while `agentConnection` is off. Open it for both ways agents reach the page, the Agent Connection and WebMCP: each says whether it is on and working, why not, and the option that turns it on. A mark on the pill's corner means WebMCP is on but cannot publish.
+The pill after the panel's title says whether a coding agent is connected to the tab through the [Agent Connection](connect-an-agent.md), and names it: Claude Code, Codex, Cursor, or the name any other agent's MCP client gives. It reads:
+
+| Pill             | When                                                                          |
+| ---------------- | ----------------------------------------------------------------------------- |
+| the agent's name | an agent is connected                                                         |
+| Not connected    | `agentConnection` is on and no agent is connected                             |
+| Reconnecting     | up to 10 seconds after the tab loses its agent's server, while it tries again |
+| No agent         | `agentConnection` is off                                                      |
+
+Open it for both ways agents reach the page, the Agent Connection and WebMCP: each says whether it is on and working, why not, and the option that turns it on. A mark on the pill's corner means WebMCP is on but cannot publish.
 
 It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it.
 
