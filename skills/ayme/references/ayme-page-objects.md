@@ -149,7 +149,7 @@ export class ProjectsPage extends AppPage {
     name: "New project",
   });
 
-  readonly rows = this.page.getByRole("listitem"); // not declared: only the tests use it
+  readonly rows = this.page.getByRole("listitem"); // not declared: projects() reads it
 
   @ayme.action
   async openNewProjectDialog(): Promise<NewProjectDialog> {

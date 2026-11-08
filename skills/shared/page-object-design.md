@@ -98,7 +98,7 @@ element. Each call then returns the items the page shows at that moment:
 ```ts
 // On ProjectsPage:
 async projects(): Promise<ProjectRow[]> {
-  return (await this.page.getByRole("row").all()).map(
+  return (await this.page.getByRole("listitem").all()).map(
     (row) => new ProjectRow(row)
   );
 }

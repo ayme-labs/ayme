@@ -127,7 +127,7 @@ export class ProjectRow extends AppComponent {
 
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
-  readonly rows = this.page.getByRole("row");
+  readonly rows = this.page.getByRole("listitem");
 
   @ayme.collection
   async projects(): Promise<ProjectRow[]> {
