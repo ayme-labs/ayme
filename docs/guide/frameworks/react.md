@@ -63,41 +63,7 @@ Wrap the application root, not a route component or a layout that unmounts on na
 
 ## Hooks
 
-Give your pages a base class whose `present` checks the URL, as [`@ayme`](../guides/ayme-page-objects.md#ayme) shows:
-
-```ts
-// src/pom/AppPage.ts
-import { ayme } from "@ayme-dev/ayme";
-import type { Page } from "@playwright/test";
-
-const onPage = (self: AppPage) =>
-  new URLPattern({ pathname: self.path }).test(self.page.url());
-
-@ayme({ present: onPage })
-export abstract class AppPage {
-  abstract readonly path: string;
-  constructor(readonly page: Page) {}
-}
-```
-
-```ts
-// src/pom/ProjectsPage.ts
-import { ayme } from "@ayme-dev/ayme";
-import { AppPage } from "./AppPage";
-
-export class ProjectsPage extends AppPage {
-  readonly path = "/projects";
-
-  @ayme.action
-  async createProject(name: string) {
-    await this.page.getByRole("button", { name: "New project" }).click();
-    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
-    await this.page.getByRole("button", { name: "Create" }).click();
-  }
-}
-```
-
-`SettingsPage` extends `AppPage` the same way, with `path = "/settings"`. Register both once, in the provider's `pageObjects` prop:
+Register the app's pages once, in the provider's `pageObjects` prop. Each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
 
 ```tsx
 import { StrictMode } from "react";
@@ -119,8 +85,6 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 ```
-
-On `/projects`, the agent's tool list has `ProjectsPage.createProject`. On `/settings`, it doesn't. A model with no `present` or `root` anywhere in its class chain is present while it is registered. The [quickstart](../start/quickstart-react.md)'s `ProjectsPage` extends nothing, so registered on its own, its tools are listed on every route.
 
 Call the hooks in descendants of the provider. A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component is mounted:
 

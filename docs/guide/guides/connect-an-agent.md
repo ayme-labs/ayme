@@ -103,7 +103,7 @@ Once a tab is paired, the page's tools are the agent's MCP tools, under the name
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [How an agent calls an action](ayme-page-objects.md#how-an-agent-calls-an-action) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
 
 `ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
 

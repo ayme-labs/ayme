@@ -94,31 +94,6 @@ The `goal` tool is published only when `goalLoop` is set. `goalLoop` accepts any
 
 Your own code runs the same loop with `ayme.tools.run("goal", { goal, maxSteps, values })`, whether or not tools are published and whether or not a WebMCP driver is present. It throws when the session is not started or has no `goalLoop`.
 
-## What one step asks
-
-The model decides each step on the current Structural Page State as JSON, one object per node, pruned of what it cannot target: a `generic` node with no name, props, state or pointer cursor is replaced by its children, so wrapper chains vanish and the text of their leaves is kept. The pruning affects only what the model reads; the options it is offered and the Change Record come from the full capture.
-
-A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
-
-The first request also guesses which [Goal Value](#goal-values) the next operation would enter. Take the goal "Rename the survey to Q4 Feedback" with `values: { "survey name": "Q4 Feedback" }`. Next to the question about the operation, the first request asks:
-
-```text
-If the next operation is "type" or "fill" and enters text into one element of the page as its "text" parameter, which Goal Value is that text?
-```
-
-`type` and `fill` both take a `text` string and act on one element, so they share that one question.
-
-At most eight such questions are asked, one per required text or number parameter. Ayme reads only the answer for the operation the model chose. If that answer names a Goal Value, the value fills the parameter. The second request then asks only for the parameters still open. For `type` and `fill`, that is the element to receive the value. Past eight questions, or when the answer names no Goal Value, the second request asks for the parameter as described below.
-
-- The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
-- A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
-- One question offers at most 255 options. A Browser Tool's ref choice with more elements is cut into chunks of at most 254, each with "none of these" added, asked side by side. When exactly one chunk names an element, the operation runs on it. When several do, one more question offers just those. When none does, the loop ends with `no_fitting_option`.
-- Other choices are not cut into chunks. When a rooted Page Object Tool has more instances than one question can offer, the loop ends with `needs_value` and the calling agent picks the instance.
-- A required choice of a rooted Page Object instance always adds "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A Browser Tool's ref choice with 255 elements or fewer gets no "none of these".
-- Each rooted instance, including a single child or page, is offered while its action is available on it and the page state gives it a ref. The option names the class, the ref and the node, such as `ProjectRow on ref "e6" (listitem): Launch plan · Archive · Rename · Remove`. A root-less Page Object Tool offers no items. When the loop ends at such a choice, the Handover names each item it left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
-- An optional closed-set parameter gets an extra choice that leaves it unset.
-- The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
-
 ## Goal Values
 
 Text the page does not hold, such as the name to type into `fill`, the URL for `navigate` or the options for `select_option`, comes from the calling agent. It passes it with the goal as `values`: strings or numbers, each labelled in its own words.
@@ -145,7 +120,7 @@ The history shows the value a step used as `label: value`, such as `fill(textbox
 
 ## What leaves the page
 
-Each step sends the pruned page state, the goal and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
+Each step sends the page state, the goal and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
 
 ## The Handover
 
@@ -190,7 +165,7 @@ A step repeats to no effect when it has the same operation and chosen arguments 
 
 `changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record.
 
-Take `ProjectsPage` and `ProjectRow` from [Page Object Models](ayme-page-objects.md#how-an-agent-calls-an-action). Say the goal is "archive the Q4 survey project". The run opens the New project dialog by mistake. It closes the dialog with its Cancel button. Then it archives Q4 survey. The Handover's `changes` carries only the net result: Q4 survey removed. The dialog that came and went shows only in `history`.
+Take `ProjectsPage` and `ProjectRow` from [Page Object Models](ayme-page-objects.md#aymeaction). Say the goal is "archive the Q4 survey project". The run opens the New project dialog by mistake. It closes the dialog with its Cancel button. Then it archives Q4 survey. The Handover's `changes` carries only the net result: Q4 survey removed. The dialog that came and went shows only in `history`.
 
 ```ts
 {

@@ -12,7 +12,7 @@ Page state works without WebMCP publication. An agent reads it with the `snapsho
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref. In this excerpt, `e10` is the ref of a [`ProjectRow`](ayme-page-objects.md#how-an-agent-calls-an-action), and `e13` the ref of its Remove button:
+Each node in the state carries a Structural Ref. In this excerpt, `e10` is the ref of a [`ProjectRow`](ayme-page-objects.md#aymeaction), and `e13` the ref of its Remove button:
 
 ```text
 - e5 list:
@@ -103,7 +103,7 @@ The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
 
 Ayme records what happens in the document for the length of its Page State Session: a Visit at load and at each same-document navigation, every tool call and Goal Loop step as an action, and every page state it captures. A full page load starts a new Page State Session and a new history.
 
-Every action returns its Change Record: what changed on the page, in two parts. Take the list of [`ProjectRow`](ayme-page-objects.md#how-an-agent-calls-an-action)s above. Say an agent last read it with Launch plan (`e6`) and Q4 survey (`e10`). Then the user removes Launch plan by hand. Then the agent calls `ProjectRow.archive({ ref: "e10" })` to archive Q4 survey. The result is:
+Every action returns its Change Record: what changed on the page, in two parts. Take the list of [`ProjectRow`](ayme-page-objects.md#aymeaction)s above. Say an agent last read it with Launch plan (`e6`) and Q4 survey (`e10`). Then the user removes Launch plan by hand. Then the agent calls `ProjectRow.archive({ ref: "e10" })` to archive Q4 survey. The result is:
 
 ```ts
 {

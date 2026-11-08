@@ -59,8 +59,6 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-`URLPattern` has no TypeScript type before TypeScript 6, and older browsers lack it. For either, import `urlpattern-polyfill` before the app starts, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/src/main.ts) does.
-
 Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone.
 
 The predicate runs before the model's members are read. So an absent model costs one predicate call per observation.
@@ -221,59 +219,7 @@ A root-less model has no mark in the page state. The runtime does not measure wh
 | A single Page Object Child, without `present` | The Page Object it is reached through is present. |
 | Either of the above, with `present`           | The presence predicate returns `true`.            |
 
-A root-less class has no `ref`, so its tools can act only when there is exactly one instance. The class must be reached from exactly one place among the registered Page Objects. Say `AccountMenu` has no `root`, and two registered pages declare it:
-
-```ts
-@ayme
-export class AccountMenu {
-  constructor(readonly page: Page) {}
-
-  @ayme.action
-  async signOut() {
-    await this.page.getByRole("button", { name: "Sign out" }).click();
-  }
-}
-
-export class ProjectsPage extends AppPage {
-  readonly path = "/projects";
-
-  @ayme.child
-  readonly accountMenu = new AccountMenu(this.page);
-}
-
-export class SettingsPage extends AppPage {
-  readonly path = "/settings";
-
-  @ayme.child
-  readonly accountMenu = new AccountMenu(this.page);
-}
-```
-
-With both pages registered, `AccountMenu` is reached from two places. At registration the runtime logs this error and withholds `AccountMenu`'s tools:
-
-```text
-The Page Object class "AccountMenu" declares no root and is reached from more than one place: ProjectsPage.accountMenu, SettingsPage.accountMenu.
-```
-
-A root-less class below a collection is refused the same way, because every item would hold one. Here each `ProjectRow` holds a `RenameDialog`, and `RenameDialog` has no `root`:
-
-```ts
-@ayme
-export class RenameDialog {
-  constructor(readonly page: Page) {}
-}
-
-export class ProjectRow extends AppComponent {
-  @ayme.child
-  readonly renameDialog = new RenameDialog(this.root.page());
-}
-```
-
-```text
-The Page Object class "RenameDialog" declares no root and has many instances below a collection: ProjectsPage.projects[].renameDialog (below a collection).
-```
-
-The other classes keep their tools. To fix either case, give the class a `root`. So a collection item, and every Page Object Child below it, needs a root.
+A root-less class has no `ref`, so its tools act on its one instance. A collection item, and every Page Object Child below it, needs a root. [Troubleshooting](../troubleshooting.md#a-page-object-has-no-tools) shows the error you get otherwise.
 
 ### Action availability
 
@@ -344,15 +290,19 @@ export class ProjectsPage extends AppPage {
     name: "New project",
   });
 
+  readonly newProjectDialog = new NewProjectDialog(
+    this.page.getByRole("dialog")
+  );
+
   @ayme.action({ description: "Opens the form for a new project." })
   async openNewProjectDialog(): Promise<NewProjectDialog> {
     await this.newProjectButton.click();
-    return new NewProjectDialog(this.page.getByRole("dialog"));
+    return this.newProjectDialog;
   }
 }
 ```
 
-| `description` given                   | What agents read                                                 |
+| `description` given                   | What agents get                                                  |
 | ------------------------------------- | ---------------------------------------------------------------- |
 | `"Opens the form for a new project."` | `Opens the form for a new project. Then shows NewProjectDialog.` |
 | none                                  | `Shows NewProjectDialog.`                                        |

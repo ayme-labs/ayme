@@ -72,6 +72,10 @@ export class ProjectsPage extends AppPage {
   readonly newProjectButton = this.page.getByRole("button", {
     name: "New project",
   });
+  // Rendered at the end of the document, so located from the page.
+  readonly newProjectDialog = new NewProjectDialog(
+    this.page.getByRole("dialog")
+  );
 }
 
 export class NewProjectDialog extends AppComponent {
@@ -99,10 +103,10 @@ element. Each call then returns the items the page shows at that moment:
 
 ```ts
 // On ProjectsPage:
+readonly rows = this.page.getByRole("listitem");
+
 async projects(): Promise<ProjectRow[]> {
-  return (await this.page.getByRole("listitem").all()).map(
-    (row) => new ProjectRow(row)
-  );
+  return (await this.rows.all()).map((row) => new ProjectRow(row));
 }
 
 // ✅ A component: each row has parts to read and an action of its own.
@@ -135,9 +139,8 @@ outside the dialog. The page owns that button, so the page owns the action:
 // On ProjectsPage:
 async openNewProjectDialog() {
   await this.newProjectButton.click();
-  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
-  await dialog.root.waitFor();
-  return dialog;
+  await this.newProjectDialog.root.waitFor();
+  return this.newProjectDialog;
 }
 ```
 
@@ -153,9 +156,8 @@ locator.
 // ✅ An action: it moves the user to another boundary.
 async openNewProjectDialog() {
   await this.newProjectButton.click();
-  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
-  await dialog.root.waitFor();
-  return dialog;
+  await this.newProjectDialog.root.waitFor();
+  return this.newProjectDialog;
 }
 
 // On NewProjectDialog:
@@ -326,7 +328,7 @@ action returns what that call returns:
 // On ProjectsPage:
 async createProject(name: string) {
   const dialog = await this.openNewProjectDialog();
-  await dialog.nameInput.fill(name); // the owner keeps its default
+  await dialog.nameInput.fill(name);
   return dialog.create();
 }
 ```

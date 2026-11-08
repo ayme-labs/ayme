@@ -39,8 +39,6 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-`URLPattern` has no TypeScript type before TypeScript 6, and older browsers lack it. For either, import `urlpattern-polyfill` before the app starts, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/src/main.ts) does.
-
 Declare the function with a type, since TypeScript types an inline one's `self` as `unknown`. Ayme runs it whenever it observes the page, never as part of a call, so keep it to reads, such as the URL, visibility or text.
 
 **`root`** returns the Locator of the element a component lives in, its Page Object Root. Write it once, on a component base class that takes that element:
@@ -61,7 +59,7 @@ export class NewProjectDialog extends AppComponent {
 The root decides two things:
 
 - **Present:** while its root matches exactly one element on the page, the component's tools are listed.
-- **Available:** while a click would reach the root, its tools can run on it. When something covers the root, such as an open dialog, the tools stay listed. A call on that component is refused with a reason that names what is in the way. A tool shared by several components, such as a row's, shows `available: false` only when none of them can run it. [How an agent calls an action](#how-an-agent-calls-an-action) shows one.
+- **Available:** while a click would reach the root, its tools can run on it. When something covers the root, such as an open dialog, the tools stay listed. A call on that component is refused with a reason that names what is in the way. A tool shared by several components, such as a row's, shows `available: false` only when none of them can run it.
 
 Availability is measured at the root, so a component's root should contain everything its actions touch.
 
@@ -172,12 +170,15 @@ export class ProjectsPage extends AppPage {
 
   readonly rows = this.page.getByRole("listitem"); // not declared: projects() reads it
 
+  readonly newProjectDialog = new NewProjectDialog(
+    this.page.getByRole("dialog")
+  );
+
   @ayme.action
   async openNewProjectDialog(): Promise<NewProjectDialog> {
     await this.newProjectButton.click();
-    const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
-    await dialog.root.waitFor();
-    return dialog;
+    await this.newProjectDialog.root.waitFor();
+    return this.newProjectDialog;
   }
 }
 ```
@@ -205,74 +206,6 @@ async projects(): Promise<ProjectRow[]> {
 ```
 
 **`description`** works as for `@ayme.child`.
-
-## How an agent calls an action
-
-Say the list shows two projects. Besides `archive` and `remove` above, `ProjectRow` has an action with a parameter:
-
-```ts
-@ayme.action
-async rename(name: string) {
-  await this.root.getByRole("button", { name: "Rename" }).click();
-  await this.root.getByRole("textbox").fill(name);
-  await this.root.getByRole("textbox").press("Enter");
-  return this;
-}
-```
-
-`snapshot` marks the root of each `ProjectRow` with its class:
-
-```text
-- e2 main:
-  - e3 heading "Projects" [level=1]
-  - e4 button "New project"
-  - e5 list:
-    - e6 ProjectRow:
-      - text: Launch plan
-      - e7 button "Archive"
-      - e8 button "Rename"
-      - e9 button "Remove"
-    - e10 ProjectRow:
-      - text: Q4 survey
-      - e11 button "Archive"
-      - e12 button "Rename"
-      - e13 button "Remove"
-```
-
-`ProjectRow.remove` is one tool for every row. The agent picks the row by the ref on its marked line. Its tool call to remove Q4 survey is:
-
-```text
-ProjectRow.remove({ ref: "e10" })
-```
-
-An action with parameters takes them under `args`. The agent's tool call to rename Launch plan is:
-
-```text
-ProjectRow.rename({ ref: "e6", args: { name: "Launch plan v2" } })
-```
-
-Leave `args` out when the action has none.
-
-`ProjectsPage` has no `root`, so it has one instance and no ref. Its tools take the action's arguments directly. `openNewProjectDialog` has none, so the call is `ProjectsPage.openNewProjectDialog({})`.
-
-Now say the agent opens the New project dialog, and it covers the list. The page state shows it as `- e14 dialog "New project":`. The rows are still on the page, so `ProjectRow.remove` stays listed. But a click on a row would land on the dialog. [`ayme.tools.list()`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/in-app-assistant.md#hand-it-every-tool) then holds:
-
-```ts
-{
-  name: "ProjectRow.remove",
-  className: "ProjectRow",
-  inputSchema: { … },
-  group: "pageObject",
-  available: false,
-  reason: "a click would not reach it; e14 is in the way",
-}
-```
-
-`e14` is the ref of what the click would hit instead, here the dialog. A call to `ProjectRow.remove` is refused with that reason before anything runs:
-
-```text
-RuntimeStateError: ProjectRow on ref "e10" is unavailable: a click would not reach it; e14 is in the way.
-```
 
 ## Inheritance
 

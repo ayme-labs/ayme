@@ -64,7 +64,7 @@ Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chr
 
 ## What gets published
 
-With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now stays published, and a call to it is refused with its reason. [How an agent calls an action](ayme-page-objects.md#how-an-agent-calls-an-action) shows one. The agent gets the refusal as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
+With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now stays published, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. The agent gets the refusal as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
 
 ## Publication status
 
