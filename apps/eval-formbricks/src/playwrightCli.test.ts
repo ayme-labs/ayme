@@ -35,6 +35,20 @@ describe("the Playwright CLI environment", () => {
     });
   });
 
+  it("attaches to a browser over CDP instead when asked, with no browser or profile switch, keeping the rest", () => {
+    const attached = playwrightCliEnvironment(context, "/usr/bin:/bin", {
+      cdpEndpoint: "http://127.0.0.1:9222",
+    });
+    expect(attached).toEqual({
+      ...environment,
+      PLAYWRIGHT_MCP_CDP_ENDPOINT: "http://127.0.0.1:9222",
+      PLAYWRIGHT_MCP_BROWSER: undefined,
+      PLAYWRIGHT_MCP_USER_DATA_DIR: undefined,
+    });
+    expect(Object.keys(attached)).not.toContain("PLAYWRIGHT_MCP_BROWSER");
+    expect(Object.keys(attached)).not.toContain("PLAYWRIGHT_MCP_USER_DATA_DIR");
+  });
+
   it("keeps the page's WebMCP tools and the update check off", () => {
     expect(environment.PLAYWRIGHT_MCP_WEBMCP).toBe("false");
     expect(environment.NO_UPDATE_NOTIFIER).toBe("1");
