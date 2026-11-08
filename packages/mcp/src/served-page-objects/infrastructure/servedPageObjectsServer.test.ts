@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
 import { afterEach, expect, it } from "vitest";
+import { WebSocket } from "ws";
 
 import type { BuiltModules, PageObjectsBuild } from "./pageObjectsBuild";
 import { servedPageObjectsServer } from "./servedPageObjectsServer";
@@ -35,14 +36,30 @@ async function serve(build: PageObjectsBuild) {
   server = createServer((request, response) => {
     if (!extension.request(request, response)) response.end();
   });
+  server.on("upgrade", (request, socket, head) => {
+    if (!extension.upgrade(request, socket, head)) socket.destroy();
+  });
   await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
   const { port } = server.address() as AddressInfo;
-  return async (path: string) => {
+  const get = async (path: string) => {
     const response = await fetch(
       `http://127.0.0.1:${port}/page-objects/${path}`
     );
     return { status: response.status, text: await response.text() };
   };
+  /** The stamp of the last good build, as a page following the builds gets it. */
+  const stamp = () =>
+    new Promise<{ entry: string }>((resolve, reject) => {
+      const socket = new WebSocket(
+        `ws://127.0.0.1:${port}/page-objects/events`
+      );
+      socket.once("message", (data) => {
+        resolve(JSON.parse(String(data)) as { entry: string });
+        socket.close();
+      });
+      socket.once("error", reject);
+    });
+  return Object.assign(get, { stamp });
 }
 
 const modules = (entry: string, chunk: string) =>
@@ -73,12 +90,7 @@ it("serves the chunks of an earlier build after a rebuild, for a page still impo
 it("serves the entry of the build a stamp names", async () => {
   const { build, rebuild } = fakeBuild(modules("old entry", "chunk-OLD.js"));
   const get = await serve(build);
-  await get("entry.js");
-  const { createHash } = await import("node:crypto");
-  const stamp = createHash("sha256")
-    .update("old entry")
-    .digest("hex")
-    .slice(0, 16);
+  const { entry: stamp } = await get.stamp();
 
   rebuild(modules("new entry", "chunk-NEW.js"));
 
