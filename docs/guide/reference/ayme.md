@@ -268,7 +268,7 @@ The user is an admin of Launch plan but not of Q4 survey, so only Launch plan's 
 - `ayme.tools.run("ProjectRow.remove", { ref: "e10" })` is refused before anything runs, with Q4 survey's reason: `RuntimeStateError: ProjectRow on ref "e10" is unavailable: Only admins can remove projects.`
 - If no row passed, the tool would be listed with `available: false` and the first failing row's reason.
 
-A predicate that throws makes the action unavailable. The error's text, such as `TypeError: store is undefined`, becomes the reason. Without `available`, an action is available while its Page Object is: its root is present and a click would reach it. The build plugin does not read the predicate. The decorator keeps it at runtime.
+A predicate that throws makes the action unavailable. The error's text, such as `TypeError: store is undefined`, becomes the reason. Without `available`, an action is available while its Page Object is: its root is present and a click would reach it.
 
 Availability never adds or withdraws a tool. [`ayme.tools`](#aymetools) says how an unavailable tool is listed and refused.
 
