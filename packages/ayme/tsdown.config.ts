@@ -35,6 +35,9 @@ export default defineConfig({
     "src/testing.ts",
     // Ayme over a real Playwright Page, for a Node host (ADR-0049).
     "src/playwright.ts",
+    // The Page Object compiler, for Node: the bundler integrations and
+    // `ayme mcp` (ADR-0006: no browser entry ships TypeScript).
+    "src/compiler.ts",
   ],
   format: ["esm"],
   // The in-page module's page part, as one self-contained function.

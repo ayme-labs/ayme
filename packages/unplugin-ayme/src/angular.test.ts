@@ -6,14 +6,34 @@ import { fileURLToPath } from "node:url";
 import { build, context, type Plugin } from "esbuild";
 import { expect, it, vi } from "vitest";
 
-const { createPomProgram } = vi.hoisted(() => ({
-  createPomProgram: vi.fn(),
+// What the adapter asks of its compiler, in order: a compile keeps the
+// Programs, an invalidate drops them (ADR-0036).
+const { compilerCalls } = vi.hoisted(() => ({
+  compilerCalls: [] as ("compile" | "invalidate")[],
 }));
 
-vi.mock("./pomProgram", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./pomProgram")>();
-  createPomProgram.mockImplementation(actual.createPomProgram);
-  return { ...actual, createPomProgram };
+vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@ayme-dev/ayme/compiler")>();
+  return {
+    ...actual,
+    createPomCompiler: (
+      ...args: Parameters<typeof actual.createPomCompiler>
+    ) => {
+      const compiler = actual.createPomCompiler(...args);
+      return {
+        ...compiler,
+        compile(...compileArgs: Parameters<typeof compiler.compile>) {
+          compilerCalls.push("compile");
+          return compiler.compile(...compileArgs);
+        },
+        invalidate() {
+          compilerCalls.push("invalidate");
+          compiler.invalidate();
+        },
+      };
+    },
+  };
 });
 
 import aymeAngularPlugin, { type AymeAngularOptions } from "./angular";
@@ -110,7 +130,7 @@ it("claims only Page Object Model modules, relative or aliased, and leaves the r
   ]);
 }, 30_000);
 
-it("builds one Program per tsconfig project and build, and a rebuild starts afresh", async () => {
+it("keeps the compiler's Programs for the length of a build, and a rebuild starts afresh", async () => {
   const builds = await context({
     absWorkingDir: fixtures,
     entryPoints: ["main.ts"],
@@ -124,14 +144,24 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
     ],
     logLevel: "silent",
   });
+  const oneBuild = () => {
+    const calls = compilerCalls.splice(0);
+    expect(calls[0]).toBe("invalidate");
+    expect(calls.at(-1)).toBe("invalidate");
+    // Three Page Object Model modules of one project, and the modules that
+    // declare none, compile with the Programs kept.
+    expect(
+      calls.slice(1, -1).filter((call) => call === "compile").length
+    ).toBeGreaterThanOrEqual(3);
+    expect(calls.slice(1, -1)).not.toContain("invalidate");
+  };
   try {
-    createPomProgram.mockClear();
-    // Three Page Object Model modules of one project.
+    compilerCalls.splice(0);
     await builds.rebuild();
-    expect(createPomProgram).toHaveBeenCalledTimes(1);
+    oneBuild();
 
     await builds.rebuild();
-    expect(createPomProgram).toHaveBeenCalledTimes(2);
+    oneBuild();
   } finally {
     await builds.dispose();
   }
@@ -171,7 +201,8 @@ it("in watch mode, rebuilds after an edit to a Page Object Model module that its
   });
   try {
     await builds.watch();
-    await vi.waitFor(() => expect(ends).toHaveLength(1));
+    // The first build builds the project's Program, seconds on CI.
+    await vi.waitFor(() => expect(ends).toHaveLength(1), { timeout: 10_000 });
 
     await writeFile(
       path.join(root, "EditedPage.ts"),

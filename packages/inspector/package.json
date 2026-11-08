@@ -68,7 +68,6 @@
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@ayme-dev/unplugin-ayme": "workspace:*",
     "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",

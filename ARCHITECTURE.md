@@ -79,10 +79,11 @@ in-browser agents and the app's own code call on the running page.
   to absent entries and each Page Object Model compiles to a stand-in. A build prints one
   line saying which it is, except a Next.js build that compiles no Page Object Model
 - Technology: Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and
-  Turbopack entries, running the TypeScript compiler
+  Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only
+  `compiler` entry, which runs the project's own TypeScript compiler
 - Evidence: verified: [packages/unplugin-ayme/src/unplugin.ts](packages/unplugin-ayme/src/unplugin.ts),
-  [packages/unplugin-ayme/src/derivePomManifests.ts](packages/unplugin-ayme/src/derivePomManifests.ts),
-  [packages/unplugin-ayme/src/transformPomModule.ts](packages/unplugin-ayme/src/transformPomModule.ts),
+  [packages/ayme/src/compiler/pomCompiler.ts](packages/ayme/src/compiler/pomCompiler.ts),
+  [packages/ayme/src/compiler/derivePomManifests.ts](packages/ayme/src/compiler/derivePomManifests.ts),
   [docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md](docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md)
 
 ### Ayme MCP server
@@ -101,7 +102,7 @@ in-browser agents and the app's own code call on the running page.
 - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts),
   [packages/mcp/src/pairing/domain/pairing.ts](packages/mcp/src/pairing/domain/pairing.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
   [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md),
-  [packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts](packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts), [packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts](packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts), [docs/adr/0050-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md](docs/adr/0050-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md)
+  [packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts](packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts), [packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts](packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts), [docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md](docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md)
 
 ### App Process runtime
 

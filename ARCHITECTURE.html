@@ -835,9 +835,9 @@
       {
         "name": "Build plugin",
         "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries Ayme at all. Without it, the runtime's root and internal entries and the framework packages resolve to absent entries and each Page Object Model compiles to a stand-in. A build prints one line saying which it is, except a Next.js build that compiles no Page Object Model",
-        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, running the TypeScript compiler",
+        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only `compiler` entry, which runs the project's own TypeScript compiler",
         "evidence": {
-          "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/unplugin-ayme/src/derivePomManifests.ts`, `packages/unplugin-ayme/src/transformPomModule.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
+          "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/ayme/src/compiler/pomCompiler.ts`, `packages/ayme/src/compiler/derivePomManifests.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
           "inferred": false,
           "mixed": false
         }
@@ -847,7 +847,7 @@
         "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools, and serves the external Inspector: its page and script over the same loopback HTTP server, and a WebSocket per window whose requests it relays to the paired page and whose answers and events it relays back; experimentally, for a page whose app does not ship Ayme, it also builds the project's Page Objects with the build plugin, rebuilding them as they change, and serves them with the project's runtime as ES modules over the same HTTP server, for the browser automation's init script to load",
         "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365",
         "evidence": {
-          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `docs/adr/0050-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
+          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
           "inferred": false,
           "mixed": false
         }

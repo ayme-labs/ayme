@@ -1,17 +1,14 @@
 import path from "node:path";
 
 import {
-  createPomTransform,
-  includeLine,
-  includeOption,
-  type PomTransformOptions,
-} from "./transformPomModule";
-import { transpilePomModule } from "./transpilePomModule";
+  createPomCompiler,
+  type PomCompilerOptions,
+} from "@ayme-dev/ayme/compiler";
 
 // Only the webpack loader methods used by this integration. No webpack dependency.
 type LoaderContext = {
   resourcePath: string;
-  getOptions(): PomTransformOptions;
+  getOptions(): Pick<PomCompilerOptions, "tsconfigPath" | "include">;
   addDependency?: (fileName: string) => void;
 };
 
@@ -21,16 +18,17 @@ let announced = false;
 
 /** The .ts POM loader for Next.js. Configure it on Turbopack's browser graph only. */
 export default function turbopackLoader(this: LoaderContext, source: string) {
-  const options = this.getOptions();
-  const include = includeOption(options.include);
+  const { tsconfigPath, include } = this.getOptions();
+  // A loader keeps no state between modules (ADR-0036), so each module gets
+  // a compiler of its own.
+  const compiler = createPomCompiler({ tsconfigPath, include });
   if (!announced) {
-    console.info(includeLine(options.include));
+    console.info(compiler.includeLine);
     announced = true;
   }
-  const transformed = createPomTransform({ ...options, include })(
-    source,
-    this.resourcePath,
-    (dependencies) => {
+  const compiled = compiler.compile(this.resourcePath, source, {
+    emit: "ts",
+    onDependencies: (dependencies) => {
       if (dependencies.length === 0) return;
       if (!this.addDependency)
         throw new Error(
@@ -41,10 +39,10 @@ export default function turbopackLoader(this: LoaderContext, source: string) {
         if (path.resolve(dependency) !== resourcePath)
           this.addDependency(dependency);
       }
-    }
-  );
+    },
+  });
 
   // Turbopack's custom loaders must return JavaScript, including when a content
   // filter matched a comment or string rather than a decorated POM class.
-  return transpilePomModule(transformed?.code ?? source, this.resourcePath);
+  return compiler.transpile(this.resourcePath, compiled?.code ?? source);
 }
