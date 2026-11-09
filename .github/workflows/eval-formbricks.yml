@@ -85,9 +85,6 @@ jobs:
       # into the authorization store and compiles the page.
       - name: Start the lab app
         working-directory: apps/lab-formbricks
-        env:
-          # The qualification never calls the Decision Endpoint, so it runs without the key.
-          AYME_OPENROUTER_API_KEY: ${{ !inputs.qualify_only && secrets.AYME_OPENROUTER_API_KEY || '' }}
         run: |
           nohup pnpm lab:dev > "$LAB_LOG" 2>&1 &
           echo $! > "$RUNNER_TEMP/lab-dev.pid"
@@ -121,7 +118,6 @@ jobs:
         working-directory: apps/eval-formbricks
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          AYME_OPENROUTER_API_KEY: ${{ secrets.AYME_OPENROUTER_API_KEY }}
           MISSION: ${{ inputs.mission }}
           ARMS: ${{ inputs.arms }}
           RUNS: ${{ inputs.runs }}
