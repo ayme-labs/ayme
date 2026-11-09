@@ -118,8 +118,8 @@ export const serverPorts = { first: 9350, last: 9365 };
  * `snapshot` and the start page's URL.
  */
 export const startScreenTool: Record<StartScreen, string> = {
-  editor: "SurveyEditorPage.setSurveyName",
-  "sign-in": "SignInPage.fillEmail",
+  editor: "SurveyEditorPage.fillSurveyForm",
+  "sign-in": "SignInPage.logIn",
 };
 
 /** The sessionStorage key under which a tab keeps its pairing, as `@ayme-dev/mcp` stores it. */

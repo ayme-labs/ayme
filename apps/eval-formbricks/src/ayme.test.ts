@@ -97,7 +97,7 @@ describe("the Page Object Tools among a page's tools", () => {
   it("are the names shaped <class>.<action>, so neither snapshot, a Browser Tool, goal nor a server tool counts", () => {
     expect(
       pageObjectToolNames([
-        "SignInPage.fillEmail",
+        "SignInPage.logIn",
         "click",
         "fill_form",
         "goal",
@@ -105,7 +105,7 @@ describe("the Page Object Tools among a page's tools", () => {
         "ayme_list_tools",
         "Question.setHeadline",
       ])
-    ).toEqual(["SignInPage.fillEmail", "Question.setHeadline"]);
+    ).toEqual(["SignInPage.logIn", "Question.setHeadline"]);
   });
 
   it.each(["peek.cart", "peek.node.orders", "a.b.c", ".fill", "Page.", "Page"])(
@@ -144,10 +144,7 @@ describe("a start page without page objects, looked at again after pairing", () 
   });
 
   it.each([
-    [
-      "a Page Object Tool",
-      { tools: [...settled.tools, "SignInPage.fillEmail"] },
-    ],
+    ["a Page Object Tool", { tools: [...settled.tools, "SignInPage.logIn"] }],
     ["no tools, as during a reload", { tools: [] }],
     ["goal with the Goal Loop off", { goalLoop: false }],
     ["a lost pairing", { storedAddress: null }],
