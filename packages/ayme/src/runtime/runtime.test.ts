@@ -944,7 +944,7 @@ it("loads nothing while webMCP.enabled is unset", async () => {
   });
 });
 
-it("hands publication the session's tools, and runs an agent's call as a webmcp Run", async () => {
+it("hands publication the session's tools and page_objects, and runs an agent's call as a webmcp Run", async () => {
   class Saver {
     save() {}
   }
@@ -966,7 +966,10 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
   await publicationStarts();
   const { tools } = published();
   const names = () => tools.list().map(({ name }) => name);
-  expect(names()).toEqual(runtime.tools.list().map(({ name }) => name));
+  expect(names()).toEqual([
+    ...runtime.tools.list().map(({ name }) => name),
+    "page_objects",
+  ]);
   expect(names()).toContain("click");
 
   const listener = vi.fn();

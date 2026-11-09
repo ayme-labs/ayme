@@ -21,3 +21,5 @@ export {
 export { rootTargetPath } from "./pomTree";
 export type { RegisteredPomTarget } from "./pomTree";
 export { rootlessClassRefusals } from "./pomClasses";
+export { renderPomScreen, renderScreenChanges } from "./pomScreenText";
+export type { ScreenObject } from "./pomScreenText";

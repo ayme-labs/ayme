@@ -9,7 +9,6 @@ import {
   type PageObjectConstructor,
 } from "../page-objects/application";
 import { getPomDefinitionsOf } from "../page-objects/infrastructure";
-import { requiredDescription } from "../page-objects/domain";
 import {
   configureCustomToolsOf,
   configureRouterNavigateOf,
@@ -69,6 +68,7 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
+import { webMcpToolSource } from "./webMcpTools";
 import {
   callers,
   checkedToolInput,
@@ -607,16 +607,15 @@ export function createAymeOn(
    * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
    * calls as `webmcp` Runs. The package decides which of them it publishes.
    */
-  const webMcpTools = {
-    list: () =>
-      ayme.tools.list().map((tool) => ({
-        ...tool,
-        description: requiredDescription(tool),
-      })),
+  const webMcpTools = webMcpToolSource({
+    list: () => ayme.tools.list(),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
     run: (name: string, input: unknown) =>
       ayme.tools.run(name, input as never, { by: callers.webmcp }),
-  };
+    readScreen: () =>
+      takeTurn(() => target.registry().readRegisteredPomScreen()),
+    url: () => target.rawPage().url(),
+  });
 
   /**
    * Loads the WebMCP package and starts publication, until `signal` aborts,
