@@ -58,7 +58,8 @@ const connectedPageTools: StubTool[] = [
   },
   {
     name: "SurveyEditorPage.saveAndClose",
-    description: "Save the survey and close the editor.",
+    description:
+      "Publishes a draft survey, so it starts collecting responses; saves a published one. When the survey is invalid, the editor stays open with the error.",
   },
 ];
 
