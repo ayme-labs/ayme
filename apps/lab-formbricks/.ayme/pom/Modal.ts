@@ -1,6 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
+import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 /** A dialog closed by its Close button. */
 export class Modal extends AppComponent {
@@ -15,7 +16,7 @@ export class Modal extends AppComponent {
   @ayme.action
   async close() {
     await this.closeButton.click();
-    await this.root.waitFor({ state: "hidden" });
+    await this.root.waitFor({ state: "hidden", timeout: NEXT_SCREEN_TIMEOUT });
     return this;
   }
 }

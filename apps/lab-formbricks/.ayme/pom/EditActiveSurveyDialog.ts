@@ -2,6 +2,7 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
 import { SurveyEditorPage } from "./SurveyEditorPage";
+import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 /** The warning Formbricks shows before it opens the editor of a survey that has responses. */
 export class EditActiveSurveyDialog extends AppComponent {
@@ -26,7 +27,7 @@ export class EditActiveSurveyDialog extends AppComponent {
   async edit(): Promise<SurveyEditorPage> {
     await this.editButton.click();
     const editor = new SurveyEditorPage(this.root.page());
-    await editor.surveyNameInput.waitFor();
+    await editor.surveyNameInput.waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
     return editor;
   }
 }

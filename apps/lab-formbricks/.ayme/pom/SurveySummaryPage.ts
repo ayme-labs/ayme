@@ -4,6 +4,7 @@ import { AppPage } from "./AppPage";
 import { EditActiveSurveyDialog } from "./EditActiveSurveyDialog";
 import { ShareSurveyDialog } from "./ShareSurveyDialog";
 import { SurveyEditorPage } from "./SurveyEditorPage";
+import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 @ayme({
   description:
@@ -47,7 +48,7 @@ export class SurveySummaryPage extends AppPage {
     await editor.surveyNameInput
       .or(this.editActiveSurveyDialog.root)
       .first()
-      .waitFor();
+      .waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
     return (await this.editActiveSurveyDialog.root.isVisible())
       ? this.editActiveSurveyDialog
       : editor;

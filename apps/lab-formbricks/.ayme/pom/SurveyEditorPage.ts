@@ -2,6 +2,7 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
+import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 @ayme({
   description:
@@ -60,7 +61,7 @@ export class SurveyEditorPage extends AppPage {
   async saveAndClose(): Promise<SurveySummaryPage> {
     await this.saveAndCloseButton.click();
     const summary = new SurveySummaryPage(this.page);
-    await summary.surveyTitleHeading.waitFor();
+    await summary.surveyTitleHeading.waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
     return summary;
   }
 

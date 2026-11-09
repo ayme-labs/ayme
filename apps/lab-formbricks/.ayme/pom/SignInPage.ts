@@ -2,6 +2,7 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveyNavigationPage } from "./SurveyNavigationPage";
+import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 export class SignInPage extends AppPage {
   readonly path = "/auth/login";
@@ -50,7 +51,7 @@ export class SignInPage extends AppPage {
     await navigationPage.startFromScratchButton
       .or(this.errorMessage)
       .first()
-      .waitFor();
+      .waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
     return (await this.errorMessage.first().isVisible())
       ? this
       : navigationPage;
