@@ -944,7 +944,7 @@ it("loads nothing while webMCP.enabled is unset", async () => {
   });
 });
 
-it("hands publication the session's tools and page_objects, and runs an agent's call as a webmcp Run", async () => {
+it("hands publication the session's Page Object Tools and page_objects, and runs an agent's call as a webmcp Run", async () => {
   class Saver {
     save() {}
   }
@@ -966,11 +966,9 @@ it("hands publication the session's tools and page_objects, and runs an agent's 
   await publicationStarts();
   const { tools } = published();
   const names = () => tools.list().map(({ name }) => name);
-  expect(names()).toEqual([
-    ...runtime.tools.list().map(({ name }) => name),
-    "page_objects",
-  ]);
-  expect(names()).toContain("click");
+  // Only Page Object Tools, and none is registered yet.
+  expect(names()).toEqual(["page_objects"]);
+  expect(runtime.tools.list().map(({ name }) => name)).toContain("click");
 
   const listener = vi.fn();
   const unsubscribe = tools.subscribe(listener);
@@ -978,6 +976,7 @@ it("hands publication the session's tools and page_objects, and runs an agent's 
   // Its tools are listed once the first observation has run.
   expect(names()).not.toContain("Saver.save");
   await registryModule.probeRegisteredPomMembers();
+  expect(names()).toEqual(["Saver.save", "page_objects"]);
   expect(listener).toHaveBeenCalledOnce();
   // WebMCP refuses a tool without a description, so a bare action has one.
   expect(tools.list().find(({ name }) => name === "Saver.save")).toMatchObject({
