@@ -25,12 +25,11 @@ import { disconnect, seedUser, waitForAuthorization } from "./seed";
 //
 // WEBMCP: `ayme mcp` starts the served runtime with the Agent Connection only,
 // so the page publishes nothing over `document.modelContext`, and the
-// qualification reads the page's tools from the server, as an agent does. Once
-// `ayme mcp` can serve with WebMCP publication on, pass its flag in the
-// `agent` fixture below and check in `expectTools` that
-// `document.modelContext` lists the same tools but `screenshot`, whose image
-// result WebMCP cannot carry. The browser already starts with Chrome's WebMCP
-// flag (playwright.config.ts).
+// qualification reads the page's tools from the server, as an agent does.
+// Started with `--webmcp`, the `webMcp` option of the `agent` fixture below,
+// the page also publishes its Page Object Tools and the read tool
+// `page_objects` there, which one test checks on the sign-in screen. The
+// browser starts with Chrome's WebMCP flag (playwright.config.ts).
 
 /** The lab app's folder, where `ayme mcp` finds `.ayme/page-objects.ts`. */
 const LAB_DIR = fileURLToPath(new URL("..", import.meta.url));
@@ -58,6 +57,8 @@ const test = base.extend<{
    * `.ayme/page-objects.ts` when undefined.
    */
   pageObjectsEntry: string | undefined;
+  /** Whether `ayme mcp` starts with `--webmcp`, so the page also publishes through WebMCP. */
+  webMcp: boolean;
   /**
    * An `ayme mcp` server started in the lab app's folder, whose init script
    * runs in every page of the test's context. One at a time: a page's scan
@@ -66,12 +67,14 @@ const test = base.extend<{
   agent: Agent;
 }>({
   pageObjectsEntry: [undefined, { option: true }],
-  agent: async ({ context, pageObjectsEntry }, use) => {
+  webMcp: [false, { option: true }],
+  agent: async ({ context, pageObjectsEntry, webMcp }, use) => {
     const agent = await startAgent(
       { cwd: LAB_DIR },
       ...(pageObjectsEntry === undefined
         ? []
-        : ["--page-objects", pageObjectsEntry])
+        : ["--page-objects", pageObjectsEntry]),
+      ...(webMcp ? ["--webmcp"] : [])
     );
     try {
       // The server wrote it as it started, naming its port.
@@ -108,6 +111,19 @@ async function expectTools(agent: Agent, names: string[]): Promise<void> {
       { message: agent.log }
     )
     .toEqual([]);
+}
+
+/** The names of the tools the page publishes over WebMCP now, as Chrome's `document.modelContext` lists them, sorted. */
+function publishedToolNames(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const modelContext = (
+      document as unknown as {
+        modelContext?: { getTools(): Promise<{ name: string }[]> };
+      }
+    ).modelContext;
+    const tools = (await modelContext?.getTools()) ?? [];
+    return tools.map((tool) => tool.name).sort();
+  });
 }
 
 /**
@@ -195,6 +211,22 @@ test.describe("served the entry without Page Objects", () => {
     await page.goto("/auth/login");
     await expectTools(agent, [...BROWSER_TOOLS, "snapshot"]);
     expect(pageObjectTools(await agent.pageToolNames())).toEqual([]);
+  });
+});
+
+test.describe("served with --webmcp", () => {
+  test.use({ webMcp: true });
+
+  test("document.modelContext lists the sign-in screen's Page Object Tool", async ({
+    page,
+    agent,
+  }) => {
+    await page.goto("/auth/login");
+    await expect
+      .poll(() => publishedToolNames(page), { message: agent.log })
+      .toEqual(["SignInPage.logIn", "page_objects"]);
+    // The server offers the same Page Object Tool as without the flag.
+    await expectTools(agent, ["SignInPage.logIn"]);
   });
 });
 

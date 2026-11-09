@@ -616,6 +616,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
