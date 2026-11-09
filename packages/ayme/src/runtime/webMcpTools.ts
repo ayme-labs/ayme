@@ -112,13 +112,18 @@ const pageObjectsTool: WebMcpToolInfo = {
 };
 
 /**
- * The session's tools as `@ayme-dev/webmcp` reaches them: the session's own
- * and `page_objects`, an action's result reshaped as `WebMcpActionResult`.
+ * The session's tools as `@ayme-dev/webmcp` reaches them: its Page Object
+ * Tools and `page_objects`, an action's result reshaped as
+ * `WebMcpActionResult`. The Browser Tools, Custom Tools, `snapshot`, `goal`
+ * and the Peek Tools are not published.
  */
 export function webMcpToolSource(session: WebMcpSession) {
   return {
     list: (): readonly WebMcpToolInfo[] => [
-      ...session.list().map(publishedInfo),
+      ...session
+        .list()
+        .filter(({ group }) => group === "pageObject")
+        .map(publishedInfo),
       pageObjectsTool,
     ],
     subscribe: (listener: () => void) => session.subscribe(listener),

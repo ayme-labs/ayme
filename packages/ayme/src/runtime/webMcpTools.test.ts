@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { ScreenObject } from "../page-objects/domain";
 import { ACTION_RESULT_NOTE } from "../page-state/domain";
 import type { ToolInfo } from "../shared";
-import { webMcpToolSource, type WebMcpSession } from "./webMcpTools";
+import {
+  publishedInfo,
+  webMcpToolSource,
+  type WebMcpSession,
+} from "./webMcpTools";
 
 const screen = (name: string): ScreenObject[] => [
   {
@@ -67,11 +71,10 @@ function session(overrides: Partial<Omit<WebMcpSession, "run">> = {}) {
 }
 
 describe("the session's tools as WebMCP publishes them", () => {
-  it("adds page_objects, asks a rooted tool for a po ref and drops the Change Record sentence", () => {
+  it("publishes the Page Object Tools and page_objects alone, asking a rooted tool for a po ref", () => {
     const tools = webMcpToolSource(session()).list();
     expect(tools.map(({ name }) => name)).toEqual([
       "QuestionCard.remove",
-      "click",
       "page_objects",
     ]);
     expect(
@@ -81,7 +84,10 @@ describe("the session's tools as WebMCP publishes them", () => {
         }
       ).properties.ref.description
     ).toBe("The instance's ref, po<n>, as page_objects shows it.");
-    expect(tools[1]!.description).toBe("Click an element.");
+  });
+
+  it("drops the Change Record sentence from a published description", () => {
+    expect(publishedInfo(clickTool).description).toBe("Click an element.");
   });
 
   it("answers page_objects with the Page Object Screen as text", async () => {
