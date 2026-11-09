@@ -39,6 +39,12 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 
 `bypassCSP` lets a page with a Content Security Policy connect to `ayme mcp`. The `local-network-access` permission lets a page on a public site reach `127.0.0.1`; without it, Chrome blocks the connection when headless and waits on a permission prompt when headed.
 
+## Publish through WebMCP too
+
+Add `--webmcp` after `mcp` in the registration, and each start writes an init script that also starts the served runtime with `webMCP: { enabled: true }`. A page that loads it then publishes your Page Objects' tools through WebMCP as well, for an agent that reads the page's `document.modelContext`, while `ayme mcp` offers the same tools as before. It is off unless set.
+
+Install `@ayme-dev/webmcp` beside `@ayme-dev/ayme`, and give the page a WebMCP driver, as [Publish tools](publish-tools.md#give-the-page-webmcp) describes. `ayme mcp` refuses to start with `--webmcp` when it has no entry to serve.
+
 ## What to expect
 
 - Playwright MCP and Playwright CLI refuse to start while the init script is missing, so start `ayme mcp` first in a fresh clone.
