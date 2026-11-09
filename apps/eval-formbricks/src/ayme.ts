@@ -481,7 +481,14 @@ export async function setUpAymeAgent(
 
     browser = await playwright().chromium.launchPersistentContext(
       context.profileDir,
-      { channel: "chrome", headless: true, viewport }
+      // The lab app publishes through Chrome's own document.modelContext,
+      // which the WebMCP flag supplies; it loads no polyfill.
+      {
+        channel: "chrome",
+        headless: true,
+        viewport,
+        args: ["--enable-features=WebMCP"],
+      }
     );
     if (options.goalLoop)
       await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
