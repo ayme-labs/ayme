@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { cp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type AddressInfo } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,10 @@ import {
   Inspector,
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
+import {
+  publishedToolNames,
+  recordPublishedTools,
+} from "@ayme-dev/webmcp/testing";
 
 import {
   aymeCommand,
@@ -78,6 +82,7 @@ test("a page without Ayme gets the Page Objects ayme mcp serves through the init
       `http://127.0.0.1:${port}/`
     );
     await context.addInitScript({ path: initScript });
+    await recordPublishedTools(context);
 
     await connectPage(agent, page, `${baseURL}/plain.html`);
     await expect
@@ -87,6 +92,38 @@ test("a page without Ayme gets the Page Objects ayme mcp serves through the init
     const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
     expect(isError, text).toBe(false);
     expect(text).toContain("does not run Ayme");
+    // Without --webmcp, the served runtime publishes nothing through WebMCP.
+    expect(await publishedToolNames(page)).toEqual([]);
+  } finally {
+    await agent.close();
+  }
+});
+
+test("with --webmcp, the page publishes the served Page Object Tools through WebMCP too", async ({
+  context,
+  page,
+  baseURL,
+}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(await freePort()),
+    "--webmcp"
+  );
+  try {
+    await context.addInitScript({
+      path: join(project, ".ayme", "init-script.js"),
+    });
+    await recordPublishedTools(context);
+
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+
+    await expect
+      .poll(() => publishedToolNames(page), { message: agent.log })
+      .toContain(PLAIN_PAGE_TOOL);
+    expect(await agent.pageToolNames()).toContain(PLAIN_PAGE_TOOL);
   } finally {
     await agent.close();
   }
@@ -247,6 +284,26 @@ test("the Inspector ayme_inspect links to shows the served Page Objects of the p
   } finally {
     await agent.close();
   }
+});
+
+// Playwright reads a test's fixtures from this pattern.
+// eslint-disable-next-line no-empty-pattern
+test("--webmcp without a Page Objects entry to serve stops ayme mcp with the reason", async ({}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await mkdir(project, { recursive: true });
+  const server = spawn(process.execPath, [aymeCommand, "mcp", "--webmcp"], {
+    cwd: project,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let stderr = "";
+  server.stderr.on("data", (chunk: Buffer) => (stderr += String(chunk)));
+
+  const exitCode = await new Promise<number | null>((resolve) =>
+    server.once("exit", resolve)
+  );
+
+  expect(exitCode, stderr).toBe(1);
+  expect(stderr).toContain("--webmcp needs a Page Objects entry to serve");
 });
 
 // Playwright reads a test's fixtures from this pattern.
