@@ -108,6 +108,11 @@ export function standInPageDriver(deps: {
         inTheWay,
       };
     },
+    // A stand-in element shows as its text.
+    async ariaSnapshot(locator) {
+      const element = deps.elementsOf(locator)[0];
+      return element ? `- text: ${element.textContent ?? ""}` : "";
+    },
     refs: refsOf,
     // A stand-in ref never changes name: a capture has marked nothing.
     currentRefs: async (refs) => [...refs],

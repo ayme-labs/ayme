@@ -48,6 +48,13 @@ import {
   type PageObjectConstructor,
 } from "./compiledPoms";
 import type { PageDriver } from "./pageDriver";
+import {
+  createInstanceRefs,
+  isInstanceRef,
+  readPomScreen,
+  type InstanceRefs,
+} from "./pomScreen";
+import type { ScreenObject } from "../domain/pomScreenText";
 import type { RunContext } from "../../runs/application";
 
 /**
@@ -143,6 +150,8 @@ export function createPomRegistry(
   let refusedClasses = new Map<string, RuntimeStateError>();
   const subscribers = new Set<() => void>();
   let stopWatchingPage: (() => void) | undefined;
+  // The Instance Refs of this page's Page Object instances.
+  const instanceRefs = createInstanceRefs(driver);
   let stopWatchingPageStates: (() => void) | undefined;
 
   /**
@@ -363,7 +372,8 @@ export function createPomRegistry(
             driver,
             pomToolFacts(component.className, rooted, action),
             action,
-            instancesOf
+            instancesOf,
+            instanceRefs
           )
         )
       );
@@ -501,6 +511,26 @@ export function createPomRegistry(
     );
   }
 
+  /**
+   * Package-internal: the Page Object Screen once the probe the page's
+   * changes made due has run: every present instance, those rooted tools act
+   * on with their Instance Refs.
+   */
+  async function readRegisteredPomScreen(): Promise<ScreenObject[]> {
+    await probeRegisteredPomMembers();
+    const rootedClasses = new Set(
+      listRegisteredPomTools().flatMap(({ tool }) =>
+        tool.rooted ? [tool.className] : []
+      )
+    );
+    return readPomScreen(
+      driver,
+      [...registeredPoms],
+      rootedClasses,
+      instanceRefs
+    );
+  }
+
   function subscribeToRegisteredPoms(subscriber: () => void) {
     subscribers.add(subscriber);
     return () => subscribers.delete(subscriber);
@@ -554,6 +584,7 @@ export function createPomRegistry(
     listRegisteredPomTools,
     listRegisteredPoms,
     probeRegisteredPomMembers,
+    readRegisteredPomScreen,
     registerPageObject,
     resetRegisteredPoms,
     subscribeToRegisteredPoms,
@@ -621,7 +652,8 @@ function createTool(
   driver: PageDriver,
   facts: RegisteredPomTool,
   action: ToolManifest,
-  instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[]
+  instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[],
+  instanceRefs: InstanceRefs
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
     ...facts,
@@ -650,10 +682,13 @@ function createTool(
         };
         args = actionArgs;
         const label = `call ${tool.name} on`;
-        const { ref: resolved } = await context.pageStateSession.resolveRef(
-          ref,
-          label
-        );
+        const resolved = isInstanceRef(ref)
+          ? await instanceRefs.rootOf(ref)
+          : (await context.pageStateSession.resolveRef(ref, label)).ref;
+        if (resolved === undefined)
+          throw new RefResolutionError(
+            refFailure(label, ref, "it is not on the page")
+          );
         const previous = await rootedAt(driver, instances, resolved);
         observed = await rootedAt(driver, instancesOf(tool), resolved);
         // Ref resolution captures the page and may observe a replacement

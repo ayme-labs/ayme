@@ -46,7 +46,7 @@ type SynchronizationOptions = {
  */
 async function asToolResult(call: () => Promise<unknown>): Promise<unknown> {
   try {
-    return withoutChangeRecord(await call());
+    return await call();
   } catch (error) {
     return {
       content: [{ type: "text", text: errorText(error) }],
@@ -194,7 +194,7 @@ export async function synchronizeWebMcpTools(
             await driver.registerTool(
               {
                 name: prefix + name,
-                description: withoutChangeRecordNote(tool.description),
+                description: tool.description,
                 inputSchema: tool.inputSchema,
                 execute: (input: unknown) =>
                   asToolResult(() => call(name, registration, input)),
@@ -229,23 +229,4 @@ export async function synchronizeWebMcpTools(
     message: `Registered ${published.size} WebMCP tools and watching for changes.`,
     dispose,
   };
-}
-
-// Spike: published results carry no Change Record.
-const CHANGE_RECORD_NOTE =
-  " The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included.";
-
-function withoutChangeRecord(result: unknown): unknown {
-  if (!result || typeof result !== "object" || Array.isArray(result))
-    return result;
-  const {
-    changes_before: _before,
-    changes: _changes,
-    ...rest
-  } = result as Record<string, unknown>;
-  return rest;
-}
-
-function withoutChangeRecordNote(description: string): string {
-  return description.replace(CHANGE_RECORD_NOTE, "");
 }
