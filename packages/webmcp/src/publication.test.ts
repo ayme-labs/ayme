@@ -233,7 +233,7 @@ describe("startWebMcpPublication", () => {
     expect(driver.names()).toEqual([]);
   });
 
-  it("returns a failing call as an isError result with the error's text and Change Record", async () => {
+  it("returns a failing call as an isError result with the error's text and no Change Record", async () => {
     const tools = toolSource([tool("click")]);
     await publish(tools.source).retry();
     class RefResolutionError extends Error {
@@ -258,9 +258,7 @@ describe("startWebMcpPublication", () => {
         changes_before: "- e2 status: Saved",
       })
     );
-    expect(await driver.call("click")).toEqual(
-      failure("Timeout 1000ms.\n\nchanges_before:\n- e2 status: Saved")
-    );
+    expect(await driver.call("click")).toEqual(failure("Timeout 1000ms."));
     tools.source.run.mockRejectedValueOnce("plain");
     expect(await driver.call("click")).toEqual(failure("plain"));
   });
