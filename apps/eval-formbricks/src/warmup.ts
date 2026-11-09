@@ -1,13 +1,18 @@
 /**
  * Warms the lab app once per suite, before the first run. Turbopack compiles
- * each route on its first visit, which takes seconds; left to the first run
- * it would land inside that run's measured window. This seeds a throwaway
- * user without a survey and walks the screens the missions touch: the
- * sign-in page, signed out; then, signed in, the root the sign-in form sends
- * the browser to and the screen where a new organization creates its first
- * survey, from which it starts a survey from scratch to reach the editor;
- * then the survey list and the summary page.
- * It only visits; it never starts or restarts the lab app.
+ * each route, and each server action, on its first use, which takes 15 to 25
+ * seconds a screen on a fresh dev server; left to the first run it would
+ * land inside that run's measured window, and outlast the ten seconds a Page
+ * Object action waits for the screen it leads to. This seeds a throwaway
+ * user without a survey and walks every screen the missions pass through,
+ * by the steps they take: the sign-in page, signed out; then, signed in,
+ * the root the sign-in form sends the browser to and the screen where a new
+ * organization creates its first survey, from which it starts a survey from
+ * scratch to reach the editor; there it saves and closes, which publishes
+ * the survey and opens the summary page with its share dialog, closes the
+ * dialog, opens the editor again from the summary, and saves and closes
+ * once more; then the survey list. The survey it saves is its own.
+ * It never starts or restarts the lab app.
  */
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -94,8 +99,28 @@ export async function warmLabApp(options: {
       });
       await openEditor(page, page.url(), log);
 
+      // The save, the summary it leads to and the way back to the editor compile on their first
+      // use too, so the warm-up takes them with its own survey, as the longer mission does.
+      const summary = new RegExp(summaryPath(mission.workspaceId, surveyId));
+      const saveAndClose = page.getByRole("button", { name: "Save & Close" });
+      const edit = page.getByRole("button", { name: "Edit", exact: true });
+      await saveAndClose.click();
+      await page.waitForURL(summary, { timeout: navigationTimeoutMs });
+      // Publishing a survey for the first time opens its share dialog over the summary.
+      const closeShareDialog = page.getByRole("button", {
+        name: "Close",
+        exact: true,
+      });
+      await closeShareDialog.waitFor({ timeout: 60_000 });
+      await closeShareDialog.click();
+      await edit.click();
+      await page.waitForURL(editor, { timeout: navigationTimeoutMs });
+      await saveAndClose.waitFor({ timeout: 60_000 });
+      await saveAndClose.click();
+      await page.waitForURL(summary, { timeout: navigationTimeoutMs });
+      await edit.waitFor({ timeout: 60_000 });
+
       await visit(`${baseUrl}/workspaces/${mission.workspaceId}/surveys`);
-      await visit(`${baseUrl}${summaryPath(mission.workspaceId, surveyId)}`);
     } finally {
       await context.close();
     }
