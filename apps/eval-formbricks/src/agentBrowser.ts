@@ -4,9 +4,10 @@
  * Code configuration folder, and a session attached over CDP to the browser
  * the harness launched on the mission's start page. agent-browser never
  * launches or downloads a browser of its own, and the measured agent
- * installs nothing. The arm with Ayme's Page Object Tools through WebMCP
- * differs only in agent-browser's WebMCP support, which is on for it and off
- * for the baseline.
+ * installs nothing. The baseline's page is Formbricks as it is. The arm with
+ * Ayme's Page Object Tools through WebMCP gets them served into its page by
+ * the run's `ayme mcp`, and has agent-browser's WebMCP support on, which is
+ * off for the baseline.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -16,7 +17,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import { setUpWebMcpPage } from "./ayme.ts";
+import { launchStartPage, setUpWebMcpPage } from "./ayme.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -98,10 +99,10 @@ export function socketDirectoryPrefix() {
  * over CDP to the browser on `cdpPort` instead of launching one, and a
  * session that has lost that browser fails rather than launching another.
  * Screenshots go to the run's output folder. The outdated-Chrome check and
- * its request to Google are off. The page's WebMCP tools stay off unless
- * `webmcp` says otherwise: the lab app registers Ayme's, and with `webmcp`
- * the agent reaches them through `agent-browser webmcp list` and `webmcp
- * invoke`.
+ * its request to Google are off. agent-browser's WebMCP support stays off
+ * unless `webmcp` says otherwise: with it, the agent reaches the tools the
+ * served Page Objects publish through `agent-browser webmcp list` and
+ * `webmcp invoke`.
  */
 export function agentBrowserEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "outputDir">,
@@ -167,15 +168,40 @@ export const agentBrowserWebMcpFeatures = [
 ];
 
 /**
- * The setup of both agent-browser arms: the start page as for the arms with
- * the page's tools through WebMCP (`setUpWebMcpPage`: page objects on, Goal
- * Loop off, no Ayme server, on a Chrome with the WebMCP flag and a
- * remote-debugging port), then the run's session attached to that browser.
- * The session starts with `get url`, which attaches and adopts the open tab
- * without navigating it; `open` would load the page again. The URL it
- * reports must be the start page. After the run every session in the run's
- * socket folder is closed, which detaches without closing the browser, and
- * then the browser is.
+ * The baseline's page: Formbricks as it is, on the harness's browser. No
+ * init script and no `ayme mcp`, so nothing of Ayme reaches the page.
+ */
+async function setUpPlainPage(
+  context: ArmContext,
+  browserArgs: string[]
+): Promise<Pick<ArmSetup, "dispose"> & { evidence: Record<string, unknown> }> {
+  const { browser, page } = await launchStartPage(context, { browserArgs });
+  return {
+    evidence: { server: null, page: { url: page.url() }, paired: false },
+    dispose: async () => {
+      try {
+        await browser.close();
+      } catch (error) {
+        context.log(
+          `Closing the agent-browser arm's browser failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    },
+  };
+}
+
+/**
+ * The setup of both agent-browser arms: the start page on a Chrome the
+ * harness launches with the WebMCP flag and a remote-debugging port, then
+ * the run's session attached to that browser. The baseline's page is
+ * Formbricks as it is (`setUpPlainPage`); the twin's is the page of the arms
+ * with the page's tools through WebMCP (`setUpWebMcpPage`: the lab app's
+ * Page Objects served with `--webmcp` by the run's `ayme mcp`, which no
+ * agent is given). The session starts with `get url`, which attaches and
+ * adopts the open tab without navigating it; `open` would load the page
+ * again. The URL it reports must be the start page. After the run every
+ * session in the run's socket folder is closed, which detaches without
+ * closing the browser, and then the browser is.
  */
 async function setUpAgentBrowser(
   context: ArmContext,
@@ -189,12 +215,15 @@ async function setUpAgentBrowser(
     socketDir,
     webmcp: options.webmcp,
   });
-  let page: Awaited<ReturnType<typeof setUpWebMcpPage>>;
+  const browserArgs = [`--remote-debugging-port=${port}`];
+  let page: Awaited<ReturnType<typeof setUpPlainPage>>;
   try {
-    page = await setUpWebMcpPage(context, {
-      browserArgs: [`--remote-debugging-port=${port}`],
-      browserFeatures: options.webmcp ? agentBrowserWebMcpFeatures : [],
-    });
+    page = options.webmcp
+      ? await setUpWebMcpPage(context, {
+          browserArgs,
+          browserFeatures: agentBrowserWebMcpFeatures,
+        })
+      : await setUpPlainPage(context, browserArgs);
   } catch (error) {
     await rm(socketDir, { recursive: true, force: true });
     throw error;
@@ -239,14 +268,14 @@ async function setUpAgentBrowser(
   };
 }
 
-/** The baseline: agent-browser on the harness's browser, its WebMCP support off. */
+/** The baseline: agent-browser on the harness's browser, on Formbricks as it is, its WebMCP support off. */
 export function setUpAgentBrowserBaseline(
   context: ArmContext
 ): Promise<ArmSetup> {
   return setUpAgentBrowser(context, { webmcp: false });
 }
 
-/** The twin with the page's tools through agent-browser's WebMCP support. */
+/** The twin with the served Page Objects' tools through agent-browser's WebMCP support. */
 export function setUpAgentBrowserWithAymeWebMcp(
   context: ArmContext
 ): Promise<ArmSetup> {

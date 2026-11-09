@@ -25,7 +25,7 @@ export type Page = {
     pageFunction: (argument: A) => T | Promise<T>,
     argument?: A
   ): Promise<T>;
-  getByRole(role: string, options: { name: string }): Locator;
+  getByRole(role: string, options: { name: string; exact?: boolean }): Locator;
   getByPlaceholder(text: string): Locator;
   request: {
     post(
@@ -40,9 +40,8 @@ export type Page = {
 export type BrowserContext = {
   newPage(): Promise<Page>;
   pages(): Page[];
-  addCookies(
-    cookies: { name: string; value: string; url: string }[]
-  ): Promise<void>;
+  /** Runs the script in every document of the context's pages, before the page's own. */
+  addInitScript(script: { path: string }): Promise<void>;
   cookies(): Promise<{ name: string }[]>;
   close(): Promise<void>;
   browser(): { version(): string } | null;
@@ -57,6 +56,9 @@ type Chromium = {
       viewport: { width: number; height: number };
       /** Extra browser arguments, such as a remote-debugging port another tool attaches to. */
       args?: string[];
+      /** Lets a page load scripts and open connections its content security policy forbids. */
+      bypassCSP?: boolean;
+      permissions?: string[];
     }
   ): Promise<BrowserContext>;
 };

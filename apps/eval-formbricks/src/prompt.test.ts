@@ -508,8 +508,12 @@ describe("the playwright-mcp-with-ayme-webmcp arm", () => {
     expect(arm.disallowedTools).toBeUndefined();
   });
 
-  it("checks the ports a page scans and not the Ayme server's build, since no server runs", () => {
-    expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
+  it("checks the server that serves its page the Page Objects, the WebMCP package the page publishes with, and the ports a page scans", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual([
+      "Ayme MCP server",
+      "Ayme WebMCP package",
+      "Ayme MCP ports",
+    ]);
     expect(arm.interfaceLine(mission.start)).not.toContain("goal");
   });
 });
@@ -589,8 +593,13 @@ describe("the playwright-cli-with-ayme-webmcp arm", () => {
     expect(arm.browserInterface()).toEqual(cli.browserInterface());
   });
 
-  it("checks the ports a page scans, which the CLI arm does not, and sets itself up outside the measured window", () => {
-    expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
+  it("checks the server, the WebMCP package and the ports a page scans, which the CLI arm does not, and sets itself up outside the measured window", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual([
+      "Ayme MCP server",
+      "Ayme WebMCP package",
+      "Ayme MCP ports",
+    ]);
+    expect(cli.preconditions).toBeUndefined();
     expect(arm.setup).toBeTypeOf("function");
     expect(arm.setup).not.toBe(cli.setup);
     expect(arm.setup).not.toBe(
@@ -634,9 +643,17 @@ describe.each([
     );
   });
 
-  it("checks the ports a page scans, sets itself up outside the measured window and records the pinned agent-browser", () => {
-    expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
+  it("checks what the served Page Objects need in the arm with them alone, sets itself up outside the measured window and records the pinned agent-browser", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual(
+      withWebMcp
+        ? ["Ayme MCP server", "Ayme WebMCP package", "Ayme MCP ports"]
+        : undefined
+    );
     expect(arm.setup).toBeTypeOf("function");
+    expect(arm.setup).not.toBe(
+      arms[withWebMcp ? "agent-browser" : "agent-browser-with-ayme-webmcp"]
+        .setup
+    );
     expect(arm.browserInterface()).toEqual({
       name: "agent-browser",
       version: "0.41.2",

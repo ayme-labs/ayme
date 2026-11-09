@@ -5,8 +5,11 @@
  * on the mission's start page. The measured agent installs and downloads
  * nothing. The arms that add Ayme's Page Object Tools to the CLI share all
  * of it, with the session attached to a browser the harness launched instead
- * of one the CLI launches: the one that paired with the run's `ayme mcp`, or,
- * for the arm with WebMCP, one whose page tools the CLI collects itself.
+ * of one the CLI launches: the one whose page the run's `ayme mcp` serves
+ * the lab app's Page Objects to and paired with. Their tools reach the agent
+ * through that server, or, for the arm with WebMCP, whose server is started
+ * with `--webmcp` and given to no agent, through the CLI, which collects the
+ * page's tools itself.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, writeFile } from "node:fs/promises";
@@ -59,11 +62,13 @@ export function shimScript() {
  * endpoint instead, the daemon attaches to the browser already running
  * there, and a restart attaches again, so the browser and profile switches,
  * which describe a launch that never happens, are left out. The page's WebMCP
- * tools stay off unless `webmcp` says otherwise: the lab app registers
- * Ayme's, and the agent gets them through the `ayme` server, or, with
- * `webmcp`, through the CLI itself, which then counts them in the page
- * status, lists them at the top of each snapshot and offers `webmcp-list`
- * and `webmcp-call`. The daemon reads the variable when the session starts.
+ * tools stay off unless `webmcp` says otherwise: with it, the CLI counts
+ * the tools the served Page Objects publish in the page status, lists them
+ * at the top of each snapshot and offers `webmcp-list` and `webmcp-call`.
+ * The daemon reads the variable when the session starts. The server's init
+ * script is not named here: the harness's own Playwright added it to the
+ * attached browser's context and stays attached, so it runs in every
+ * document the CLI navigates the page to.
  */
 export function playwrightCliEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "profileDir" | "outputDir">,
@@ -235,10 +240,10 @@ async function setUpAttachedPlaywrightCli(
 
 /**
  * The setup of the CLI arm with Ayme's Page Object Tools through the `ayme`
- * server: the Ayme server and the page as for the Ayme arms, with the page
- * objects on and the Goal Loop off, and the proxy offering the agent the
- * Page Object Tools alone; the CLI attached to that browser with the page's
- * WebMCP tools off, so they reach the agent through `ayme` alone.
+ * server: the Ayme server and the page as for the Ayme arms, with the lab
+ * app's Page Objects served, and the proxy offering the agent the Page
+ * Object Tools alone; the CLI attached to that browser with its handling of
+ * page tools off, so they reach the agent through `ayme` alone.
  */
 export function setUpPlaywrightCliWithAymePageObjects(
   context: ArmContext
@@ -256,8 +261,9 @@ export function setUpPlaywrightCliWithAymePageObjects(
 
 /**
  * The setup of the CLI arm with the page's tools through WebMCP: the page
- * on a Chrome with the WebMCP flag and no Ayme server, and the CLI attached
- * to that browser with its WebMCP collection on.
+ * on a Chrome with the WebMCP flag, served the lab app's Page Objects with
+ * `--webmcp` by an Ayme server no agent is given, and the CLI attached to
+ * that browser with its WebMCP collection on.
  */
 export function setUpPlaywrightCliWithAymeWebMcp(
   context: ArmContext

@@ -127,8 +127,8 @@ function bashCommand(command: string) {
 /**
  * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
  * the page before the agent starts, and nothing else. The arms differ in
- * the lab app's page objects switch, which the setup sets before the page
- * loads: without page objects the page publishes `snapshot` and the Browser
+ * the entry that server serves the page, the lab app's one switch: served
+ * the entry without Page Objects, the page offers `snapshot` and the Browser
  * Tools only and the interface line names no Page Object Tools. The Goal
  * Loop arms were removed; the ids keep their `goal-loop-off` suffix so
  * stored results stay comparable by arm name. The server's own tools stay: `ayme_connect` only
@@ -176,8 +176,9 @@ export const pageObjectToolsSentence = `The \`${aymeServerName}\` MCP server off
  * What an arm with the page's tools through WebMCP adds to its browser
  * tool's interface line instead: Playwright lists the tools the page
  * registered, Ayme's Page Object Tools among them, and nothing names the
- * `ayme` server, which does not run. The Playwright CLI's own skill already
- * says to prefer a page's tools, so this stays one sentence for both arms.
+ * `ayme` server, which the agent is not given. The Playwright CLI's own
+ * skill already says to prefer a page's tools, so this stays one sentence
+ * for both arms.
  */
 export const webMcpToolsSentence =
   "The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.";
@@ -264,9 +265,11 @@ export const agentBrowserWebMcpToolsSentence =
  * `agent-browser` CLI. Its session is attached over CDP to the browser the
  * setup launched on the start page, as the CLI's WebMCP twin's is, since
  * agent-browser must not launch or download a browser of its own. The
- * baseline keeps agent-browser's WebMCP support off and denies its `webmcp`
- * commands, which would otherwise still reach the lab app's own Ayme tools;
- * the twin turns it on and adds its one sentence. Nothing else differs.
+ * baseline's page is Formbricks as it is, with nothing of Ayme; it keeps
+ * agent-browser's WebMCP support off and denies its `webmcp` commands, as
+ * it did while the lab app shipped Ayme's tools. The twin's page gets the
+ * lab app's Page Objects served with `--webmcp`; it turns that support on
+ * and adds its one sentence.
  */
 function agentBrowserArm(
   id: "agent-browser" | "agent-browser-with-ayme-webmcp"
@@ -295,7 +298,8 @@ function agentBrowserArm(
       ...(withWebMcp ? [] : bashCommand("agent-browser webmcp")),
     ],
     mcpServers: () => ({}),
-    preconditions: aymeWebMcpPreconditions,
+    // The baseline starts no Ayme server and loads nothing of Ayme, so it needs none of these.
+    ...(withWebMcp ? { preconditions: aymeWebMcpPreconditions } : {}),
     setup: withWebMcp
       ? setUpAgentBrowserWithAymeWebMcp
       : setUpAgentBrowserBaseline,
@@ -321,9 +325,9 @@ export const arms: Record<ArmId, Arm> = {
    * page that paired with the run's `ayme mcp`, attached over CDP to the
    * browser the setup launched, and the `ayme` server reaches the agent
    * through a proxy that offers the page's Page Object Tools alone: none of
-   * the server's own tools, no Browser Tool, no `snapshot`. Page objects on,
-   * Goal Loop off, no skill. The Playwright MCP entry is the setup's, since it
-   * names the port chosen then.
+   * the server's own tools, no Browser Tool, no `snapshot`. The lab app's
+   * Page Objects served, no skill. The Playwright MCP entry is the setup's,
+   * since it names the port chosen then.
    */
   "playwright-mcp-with-ayme-page-objects": {
     id: "playwright-mcp-with-ayme-page-objects",
@@ -341,11 +345,11 @@ export const arms: Record<ArmId, Arm> = {
    * Playwright MCP itself surfaces it: the server attaches over CDP to a
    * browser with the WebMCP flag, collects the tools the page registered
    * with each snapshot and lists each as a `webmcp_<name>` tool of its own,
-   * so the agent gets `snapshot`, the Browser Tools and the Page Object
-   * Tools as the page publishes them today, and no `ayme` server runs. Page
-   * objects on, Goal Loop off, no skill. The Playwright MCP entry is the
-   * setup's, since it names the port chosen then; the arm has no server of
-   * its own.
+   * so the agent gets what the page publishes through WebMCP, the screen's
+   * Page Object Tools and the read tool `page_objects`. The run's `ayme mcp`
+   * serves the lab app's Page Objects with `--webmcp` and is given to no
+   * agent. No skill. The Playwright MCP entry is the setup's, since it names
+   * the port chosen then; the arm has no server of its own.
    */
   "playwright-mcp-with-ayme-webmcp": {
     id: "playwright-mcp-with-ayme-webmcp",
@@ -363,18 +367,19 @@ export const arms: Record<ArmId, Arm> = {
    * twin of `playwright-mcp-with-ayme-page-objects`: the CLI session is
    * attached over CDP to the browser the setup paired with the run's `ayme
    * mcp`, and the `ayme` server reaches the agent through the proxy that
-   * offers the Page Object Tools alone. Page objects on, Goal Loop off; the
-   * CLI's skill as for its arm.
+   * offers the Page Object Tools alone. The lab app's Page Objects served;
+   * the CLI's skill as for its arm.
    */
   "playwright-cli-with-ayme-page-objects": playwrightCliArm(
     "playwright-cli-with-ayme-page-objects"
   ),
   /**
    * The CLI's twin of `playwright-mcp-with-ayme-webmcp`: the CLI session is
-   * attached over CDP to a browser with the WebMCP flag and no Ayme server,
+   * attached over CDP to a browser with the WebMCP flag, whose page the
+   * run's `ayme mcp` serves the lab app's Page Objects with `--webmcp`,
    * with the CLI's handling of page tools on, so the page status counts
    * them, the snapshot lists them and `webmcp-list` and `webmcp-call` reach
-   * them. Page objects on, Goal Loop off; the CLI's skill as for its arm.
+   * them. No agent is given the server; the CLI's skill as for its arm.
    */
   "playwright-cli-with-ayme-webmcp": playwrightCliArm(
     "playwright-cli-with-ayme-webmcp"
@@ -382,15 +387,16 @@ export const arms: Record<ArmId, Arm> = {
   /**
    * The baseline for agent-browser, the Playwright CLI arm's counterpart:
    * the `agent-browser` command and its skill, attached to the harness's
-   * browser, with its WebMCP support off. Page objects as for the Playwright
-   * CLI arm, Goal Loop off.
+   * browser, with its WebMCP support off. As in the Playwright CLI arm, the
+   * page is Formbricks as it is: no init script and no Ayme server.
    */
   "agent-browser": agentBrowserArm("agent-browser"),
   /**
    * The agent-browser twin of `playwright-cli-with-ayme-webmcp`: the same
    * command and skill with agent-browser's WebMCP support on, so `webmcp
-   * list` and `webmcp invoke` reach the tools the page registered. No Ayme
-   * server, nothing paired, page objects on, Goal Loop off.
+   * list` and `webmcp invoke` reach the tools the page registered. The run's
+   * `ayme mcp` serves the lab app's Page Objects with `--webmcp` and is
+   * given to no agent.
    */
   "agent-browser-with-ayme-webmcp": agentBrowserArm(
     "agent-browser-with-ayme-webmcp"

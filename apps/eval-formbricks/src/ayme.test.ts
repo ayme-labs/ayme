@@ -8,6 +8,8 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import {
   agentSocketPath,
+  aymeMcpArgs,
+  aymeMcpBuiltPrecondition,
   aymeMcpCliPath,
   aymeMcpPortsPrecondition,
   aymeMcpPreconditions,
@@ -16,15 +18,21 @@ import {
   aymeSkillSource,
   aymeWebMcpPreconditions,
   browserLaunchArgs,
+  initScriptPath,
+  initScriptProblem,
   isPageObjectToolName,
+  noPageObjectsEntry,
+  pageObjectsEntry,
   pageObjectToolNames,
+  pageToolNames,
   proxyScript,
   proxyScriptPath,
+  servedPageContextOptions,
   serverPorts,
   settledStartPageProblem,
   webMcpFeatureFlag,
 } from "./ayme.ts";
-import { evalRoot, repoRoot } from "./paths.ts";
+import { evalRoot, labRoot, repoRoot } from "./paths.ts";
 
 describe("the Ayme arms' skill", () => {
   it("is the one the repository ships, under skills/", () => {
@@ -70,18 +78,120 @@ describe("the agent's MCP server entry", () => {
     expect(serverPorts).toEqual({ first: 9350, last: 9365 });
   });
 
-  it("has the arms with and without a server share one ports check, so a suite runs it once", () => {
-    expect(aymeMcpPreconditions.map((p) => p.name)).toEqual([
+  it("has every arm with Ayme share one server check and one ports check, so a suite runs each once, and the arms through WebMCP check its package too", () => {
+    expect(aymeMcpPreconditions).toEqual([
+      aymeMcpBuiltPrecondition,
+      aymeMcpPortsPrecondition,
+    ]);
+    expect(aymeWebMcpPreconditions.map((p) => p.name)).toEqual([
       "Ayme MCP server",
+      "Ayme WebMCP package",
       "Ayme MCP ports",
     ]);
-    expect(aymeMcpPreconditions[1]).toBe(aymeMcpPortsPrecondition);
-    expect(aymeWebMcpPreconditions).toEqual([aymeMcpPortsPrecondition]);
+    expect(aymeWebMcpPreconditions[0]).toBe(aymeMcpBuiltPrecondition);
+    expect(aymeWebMcpPreconditions[2]).toBe(aymeMcpPortsPrecondition);
+  });
+});
+
+describe("the run's ayme mcp", () => {
+  const port = serverPorts.first;
+
+  it("serves the lab app's Page Objects, which it finds by itself, on the port the harness names", () => {
+    expect(aymeMcpArgs(port, { pageObjects: true, webmcp: false })).toEqual([
+      "mcp",
+      "--port",
+      "9350",
+    ]);
+  });
+
+  it("serves the entry without Page Objects for the arm without them", () => {
+    expect(aymeMcpArgs(port, { pageObjects: false, webmcp: false })).toEqual([
+      "mcp",
+      "--port",
+      "9350",
+      "--page-objects",
+      ".ayme/no-page-objects.ts",
+    ]);
+  });
+
+  it("gets --webmcp for the arms that read the page's tools from document.modelContext", () => {
+    expect(aymeMcpArgs(port, { pageObjects: true, webmcp: true })).toEqual([
+      "mcp",
+      "--port",
+      "9350",
+      "--webmcp",
+    ]);
+  });
+
+  it("serves entries the lab app holds, and writes its init script beside them", () => {
+    expect(existsSync(path.join(labRoot, pageObjectsEntry))).toBe(true);
+    expect(existsSync(path.join(labRoot, noPageObjectsEntry))).toBe(true);
+    expect(initScriptPath).toBe(path.join(labRoot, ".ayme/init-script.js"));
+  });
+});
+
+describe("the init script the run's server wrote", () => {
+  // As `ayme mcp` writes it, cut to what the check reads.
+  const script = (port: number, webmcp: boolean) =>
+    `const served = "http://127.0.0.1:${port}/page-objects/";
+ayme = createAyme({
+  agentConnection: true,
+  inspector: { placement: "external" },
+  pageObjects,${webmcp ? "\n  webMCP: { enabled: true }," : ""}
+});`;
+
+  it.each([true, false])(
+    "passes when it names the run's port, with WebMCP publication %s as the arm wants it",
+    (webmcp) => {
+      expect(
+        initScriptProblem(script(9350, webmcp), { port: 9350, webmcp })
+      ).toBeNull();
+    }
+  );
+
+  it("fails when it names another port, as one an earlier server left would", () => {
+    expect(
+      initScriptProblem(script(9351, false), { port: 9350, webmcp: false })
+    ).toContain("port 9350");
+  });
+
+  it.each([true, false])(
+    "fails when WebMCP publication is %s and the arm wants the opposite",
+    (webmcp) => {
+      expect(
+        initScriptProblem(script(9350, webmcp), { port: 9350, webmcp: !webmcp })
+      ).toContain(webmcp ? "publication on" : "publication off");
+    }
+  );
+});
+
+describe("a browser whose page loads the init script", () => {
+  it("lets the page past Formbricks's content security policy and Chrome's local network prompt", () => {
+    expect(servedPageContextOptions).toEqual({
+      bypassCSP: true,
+      permissions: ["local-network-access"],
+    });
+  });
+});
+
+describe("the page's tools among the names the server lists", () => {
+  it("are every name but the server's own tools, sorted", () => {
+    expect(
+      pageToolNames([
+        "ayme_connect",
+        "ayme_list_tools",
+        "ayme_call",
+        "ayme_inspect",
+        "snapshot",
+        "click",
+        "SignInPage.logIn",
+      ])
+    ).toEqual(["SignInPage.logIn", "click", "snapshot"]);
   });
 });
 
 describe("every browser the harness launches", () => {
-  it("gets Chrome's WebMCP flag, which supplies document.modelContext without the app's polyfill, after the arm's own arguments", () => {
+  it("gets Chrome's WebMCP flag, which supplies document.modelContext, after the arm's own arguments", () => {
     expect(webMcpFeatureFlag).toBe("--enable-features=WebMCP");
     expect(browserLaunchArgs()).toEqual(["--enable-features=WebMCP"]);
     expect(browserLaunchArgs(["--remote-debugging-port=9222"])).toEqual([

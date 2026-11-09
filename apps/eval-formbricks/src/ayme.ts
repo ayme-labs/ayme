@@ -1,15 +1,27 @@
 /**
- * Everything the Ayme arms set up before the measured window: the Ayme MCP
- * server the agent talks to, `ayme mcp` from `@ayme-dev/mcp`, paired with a
- * headless browser holding the mission's start page, with the page objects
- * switch set for the arm. The pairing follows the tab through the screens
- * the task moves it to: the server tells the agent each time the tools change.
- * The arm that adds Ayme's Page Object Tools to Playwright MCP shares the
- * server and the page (`setUpAymePage`) and adds its own browser arguments
- * and a proxy that offers the agent the Page Object Tools alone. The arms
- * that reach the page's tools through Playwright's own WebMCP collection
- * open the same page without a server (`setUpWebMcpPage`), on a Chrome
- * whose WebMCP flag is on.
+ * Everything the arms with Ayme set up before the measured window. The lab
+ * app is unmodified Formbricks and ships no Ayme: an `ayme mcp` from
+ * `@ayme-dev/mcp`, started in the lab app's folder, builds and serves the
+ * Page Objects in its `.ayme/` and writes `.ayme/init-script.js`, and the
+ * headless browser the harness launches on the mission's start page runs
+ * that init script in every document, so the page starts Ayme and pairs
+ * with the server by itself. The arms differ in what the server is started
+ * with and in how the page's tools reach the agent.
+ *
+ * The Ayme arms, and the arms that add Ayme's Page Object Tools to a browser
+ * tool through the `ayme` server (`setUpAymePage`), hand the server to the
+ * agent. The pairing follows the tab through the screens the task moves it
+ * to: the server tells the agent each time the tools change. The arm
+ * without Page Objects has the server serve the lab app's entry that lists
+ * none. The arms that add the Page Object Tools to a browser tool add its
+ * browser arguments and a proxy that offers the agent the Page Object Tools
+ * alone.
+ *
+ * The arms that reach the page's tools through their browser tool's own
+ * WebMCP support (`setUpWebMcpPage`) start the server with `--webmcp`, so
+ * the page also publishes through `document.modelContext`, on a Chrome
+ * whose WebMCP flag is on. Their server serves the files and nothing else:
+ * no agent is given it.
  *
  * A coding agent normally starts its own `ayme mcp` over stdio, and a tab of
  * the app on localhost pairs with it by itself: it looks for a server when it
@@ -34,7 +46,7 @@ import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import type { StartScreen } from "./missions.ts";
-import { repoRoot } from "./paths.ts";
+import { labRoot, repoRoot } from "./paths.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export const aymeMcpPackageName = "@ayme-dev/mcp";
@@ -65,13 +77,52 @@ export function aymeSkillDirectory(configDir: string) {
 }
 
 /**
- * The lab app's page objects switch: with this cookie set before the page
- * loads, the page registers no page objects, so it publishes `snapshot` and
- * the Browser Tools but no Page Object Tool. Without it the page objects are on.
+ * The entries `ayme mcp` serves from the lab app's folder, relative to it:
+ * the lab app's Page Objects, which the server finds by itself, and the
+ * entry without any, the lab app's one switch, which `--page-objects` names.
+ * Served the second, the page offers `snapshot` and the Browser Tools and no
+ * Page Object Tool.
  */
-export const pageObjectsOffCookie = {
-  name: "ayme-lab-page-objects",
-  value: "off",
+export const pageObjectsEntry = ".ayme/page-objects.ts";
+export const noPageObjectsEntry = ".ayme/no-page-objects.ts";
+
+/**
+ * The init script `ayme mcp` writes as it starts in the lab app's folder,
+ * naming its port. Git ignores it there.
+ */
+export const initScriptPath = path.join(labRoot, ".ayme/init-script.js");
+
+/** What the run's `ayme mcp` serves and how. */
+export type ServedPageObjects = {
+  /** With the lab app's Page Objects, or with its entry that lists none. */
+  pageObjects: boolean;
+  /** Whether the page also publishes its tools through `document.modelContext`. */
+  webmcp: boolean;
+};
+
+/**
+ * The `ayme` command's arguments for a run: the server on `port`, so every
+ * start writes the same init script, serving the entry for the arm.
+ */
+export function aymeMcpArgs(port: number, served: ServedPageObjects): string[] {
+  return [
+    "mcp",
+    "--port",
+    String(port),
+    ...(served.pageObjects ? [] : ["--page-objects", noPageObjectsEntry]),
+    ...(served.webmcp ? ["--webmcp"] : []),
+  ];
+}
+
+/**
+ * What a page that loads the init script needs of its browser context:
+ * Formbricks's content security policy allows neither the served modules nor
+ * the server's loopback WebSocket, and Chrome asks before a page reaches
+ * `127.0.0.1`.
+ */
+export const servedPageContextOptions = {
+  bypassCSP: true,
+  permissions: ["local-network-access"],
 };
 
 /**
@@ -80,11 +131,10 @@ export const pageObjectsOffCookie = {
  * `navigator.modelContext`. Without it a Chrome supplies neither, and
  * Playwright MCP and the Playwright CLI supply none either: both read
  * `document.modelContext ?? navigator.modelContext` and collect the tools a
- * page registered there. Every browser the harness launches gets the flag:
- * the Ayme arms' page publishes through `document.modelContext` too, so the
- * pairing and the setup's wait for the screen's tools hold once the lab
- * app's polyfill is dropped, and while it is loaded it keeps native WebMCP
- * where present, so the flag changes nothing.
+ * page registered there. Every browser the harness launches gets the flag.
+ * Only a page served with `--webmcp` publishes there: Formbricks itself
+ * registers no tool, and without `--webmcp` the served runtime keeps its
+ * WebMCP publication off.
  */
 export const webMcpFeatureFlag = "--enable-features=WebMCP";
 
@@ -294,9 +344,9 @@ async function portsInUse(): Promise<number[]> {
 /**
  * The range a page scans must be free: a tab pairs by itself only when
  * exactly one Ayme MCP server listens there, so another coding agent's `ayme
- * mcp` would keep the page from pairing with the run's server, or, in an arm
- * without a server, would pair with the page and could drive it. One object,
- * so a suite checks it once however many arms share it.
+ * mcp` would keep the page from pairing with the run's server, which starts
+ * on the range's first port. One object, so a suite checks it once however
+ * many arms share it.
  */
 export const aymeMcpPortsPrecondition: Precondition = {
   name: "Ayme MCP ports",
@@ -307,37 +357,77 @@ export const aymeMcpPortsPrecondition: Precondition = {
   },
 };
 
-/** The server command must be built, and the range a page scans must be free. */
+/** Resolves a package as the served build does: from the lab app's folder. */
+const requireFromLab = createRequire(path.join(labRoot, "package.json"));
+
+function resolvesFromLab(specifier: string): boolean {
+  try {
+    requireFromLab.resolve(specifier);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The server command must be built, and so must the `@ayme-dev/ayme` it
+ * builds the lab app's Page Objects with and serves as the page's runtime.
+ * One object, as the ports check is.
+ */
+export const aymeMcpBuiltPrecondition: Precondition = {
+  name: "Ayme MCP server",
+  check: () => {
+    if (!existsSync(aymeMcpCliPath))
+      return `${aymeMcpPackageName} is not built: ${aymeMcpCliPath} is missing. Run pnpm lab:prepare in apps/lab-formbricks.`;
+    if (!resolvesFromLab("@ayme-dev/ayme/compiler"))
+      return "@ayme-dev/ayme, which the server builds and serves the lab app's Page Objects with, is not built. Run pnpm lab:prepare in apps/lab-formbricks.";
+    return null;
+  },
+};
+
+/** The server, built, and the range a page scans, free. */
 export const aymeMcpPreconditions: Precondition[] = [
+  aymeMcpBuiltPrecondition,
+  aymeMcpPortsPrecondition,
+];
+
+/**
+ * The arms with the page's tools through WebMCP run the server too, to serve
+ * the Page Objects, and the runtime it serves loads `@ayme-dev/webmcp` in the
+ * page once `--webmcp` turns publication on.
+ */
+export const aymeWebMcpPreconditions: Precondition[] = [
+  aymeMcpBuiltPrecondition,
   {
-    name: "Ayme MCP server",
+    name: "Ayme WebMCP package",
     check: () =>
-      existsSync(aymeMcpCliPath)
+      resolvesFromLab("@ayme-dev/webmcp")
         ? null
-        : `${aymeMcpPackageName} is not built: ${aymeMcpCliPath} is missing. Run pnpm build at the repository root.`,
+        : "@ayme-dev/webmcp, which the served runtime publishes through WebMCP with, is not built. Run pnpm lab:prepare in apps/lab-formbricks.",
   },
   aymeMcpPortsPrecondition,
 ];
 
-/** The arms with the page's tools through WebMCP run no server; the range must still be free. */
-export const aymeWebMcpPreconditions: Precondition[] = [
-  aymeMcpPortsPrecondition,
-];
-
-/** What the setup established before the measured window, recorded in the result. */
-export type AymeEvidence = {
+/** What every setup that serves the Page Objects records of the server and the pairing. */
+type ServedEvidence = {
   server: { name: string; version: string; port: number };
+  /** What the server served the page: the entry, relative to the lab app's folder, and whether with `--webmcp`. */
+  served: { entry: string; webmcp: boolean };
   page: { url: string };
   /** The page paired with the server before the agent started. */
-  paired: boolean;
+  paired: true;
   pairedAt: string;
   /** From opening the start page to the pairing. */
   pairingMs: number;
-  /** The page's tool names as WebMCP publishes them: the agent's, without the server prefix, but `screenshot`. */
-  tools: string[];
-  /** The harness never turns the lab app's Goal Loop on, so the page never publishes `goal`. */
+  /** The harness never turns a Goal Loop on, and the lab app has none, so the page never offers `goal`. */
   goalToolPublished: false;
-  /** Whether the page's page objects were on; off, it published no Page Object Tool. */
+};
+
+/** What the setup established before the measured window, recorded in the result. */
+export type AymeEvidence = ServedEvidence & {
+  /** The page's tool names as the server lists them to the agent, without the server's own tools. */
+  tools: string[];
+  /** Whether the server served the lab app's Page Objects; without them the page offered no Page Object Tool. */
   pageObjects: boolean;
   /**
    * Present when the proxy offered the agent the Page Object Tools alone:
@@ -360,7 +450,12 @@ export type AymePageOptions = {
 
 type Page = ReturnType<BrowserContext["pages"]>[number];
 
-/** The page's current tool names as WebMCP publishes them: the list it reports to the server, but `screenshot`. */
+/**
+ * The page's current tool names as WebMCP publishes them, read from
+ * `document.modelContext`: the Page Object Tools of the screen and the read
+ * tool `page_objects`, once the page is served with `--webmcp`, and nothing
+ * otherwise.
+ */
 function publishedToolNames(page: Page): Promise<string[]> {
   return page.evaluate(async () => {
     const modelContext = (
@@ -374,8 +469,16 @@ function publishedToolNames(page: Page): Promise<string[]> {
 }
 
 /**
+ * The page's tools among the names the server lists: every name but the
+ * server's own tools, which all start with `ayme_`.
+ */
+export function pageToolNames(listed: string[]): string[] {
+  return listed.filter((name) => !name.startsWith("ayme_")).sort();
+}
+
+/**
  * What is wrong with a start page without page objects, looked at again after pairing: it must
- * still publish its screen tool, without goal, and no Page Object
+ * still offer its screen tool, without goal, and no Page Object
  * Tool, keep this run's pairing, and stay at the start URL. Null when nothing is.
  */
 export function settledStartPageProblem(look: {
@@ -388,9 +491,9 @@ export function settledStartPageProblem(look: {
 }): string | null {
   const pageObjectTools = pageObjectToolNames(look.tools);
   if (pageObjectTools.length > 0)
-    return `The page publishes ${pageObjectTools.join(", ")} although its page objects should be off.`;
+    return `The page offers ${pageObjectTools.join(", ")} although the server serves no Page Objects.`;
   if (!look.tools.includes(look.screenTool) || look.tools.includes("goal"))
-    return `The page publishes ${look.tools.join(", ") || "nothing"} two seconds after pairing, instead of ${look.screenTool} without goal.`;
+    return `The page offers ${look.tools.join(", ") || "nothing"} two seconds after pairing, instead of ${look.screenTool} without goal.`;
   if (look.storedAddress !== look.pairedAddress)
     return `The page no longer keeps its pairing with ${look.pairedAddress} two seconds after pairing.`;
   const at = new URL(look.pageUrl);
@@ -440,11 +543,14 @@ async function waitFor<T>(
 }
 
 /**
- * The `ayme mcp` server as the harness runs it: started on `port`, its
- * stderr kept in the run folder, and its stdio handed to the first client of
- * the socket. Whatever the server writes before that client connects is
- * dropped: a server that paired before any agent existed announces the
- * tool-list change to nobody, and the agent's first tool list reflects it.
+ * The `ayme mcp` server as the harness runs it: started in the lab app's
+ * folder on `port`, serving the entry for the arm, its stderr kept in the
+ * run folder. Until an agent connects to its socket, if one ever does, the
+ * harness itself may ask it for its tool list; then its stdio is handed to
+ * the first client of the socket. Whatever else the server writes before
+ * that client connects is dropped: a server that paired before any agent
+ * existed announces the tool-list change to nobody, and the agent's first
+ * tool list reflects it.
  */
 class HarnessedServer {
   readonly process: ChildProcess;
@@ -453,13 +559,29 @@ class HarnessedServer {
   private listener: net.Server | undefined;
   private pendingOutput = "";
   private readonly context: Pick<ArmContext, "log">;
+  /** Whether an agent will be given the server; without one, what it writes is nobody's. */
+  private readonly forAgent: boolean;
+  /** The harness's own requests the server has yet to answer, by id. */
+  private readonly requests = new Map<
+    string,
+    (message: { result?: unknown; error?: unknown }) => void
+  >();
+  private requestCount = 0;
 
-  constructor(port: number, context: Pick<ArmContext, "log">) {
+  constructor(
+    port: number,
+    served: ServedPageObjects,
+    context: Pick<ArmContext, "log">,
+    forAgent: boolean
+  ) {
     this.context = context;
+    this.forAgent = forAgent;
     this.process = spawn(
       process.execPath,
-      [aymeMcpCliPath, "mcp", "--port", String(port)],
+      [aymeMcpCliPath, ...aymeMcpArgs(port, served)],
       {
+        // Where the server finds the Page Objects it serves and writes its init script.
+        cwd: labRoot,
         // Scrubbed, so the server carries none of the launcher's Claude Code variables or token.
         env: withoutClaudeVariables(process.env),
         stdio: ["pipe", "pipe", "pipe"],
@@ -477,10 +599,69 @@ class HarnessedServer {
       this.pendingOutput += String(chunk);
       const lastNewline = this.pendingOutput.lastIndexOf("\n");
       if (lastNewline === -1) return;
-      const dropped = this.pendingOutput.slice(0, lastNewline).split("\n");
+      const lines = this.pendingOutput.slice(0, lastNewline).split("\n");
       this.pendingOutput = this.pendingOutput.slice(lastNewline + 1);
-      this.context.log(
-        `Dropped ${dropped.length} message(s) the Ayme MCP server sent before the agent connected.`
+      const dropped = lines.filter((line) => !this.answered(line));
+      if (dropped.length > 0 && this.forAgent)
+        this.context.log(
+          `Dropped ${dropped.length} message(s) the Ayme MCP server sent before the agent connected.`
+        );
+    });
+  }
+
+  /** Whether `line` answers one of the harness's own requests, which it then settles. */
+  private answered(line: string): boolean {
+    let message: { id?: unknown; result?: unknown; error?: unknown };
+    try {
+      message = JSON.parse(line) as typeof message;
+    } catch {
+      return false;
+    }
+    const settle =
+      typeof message.id === "string" ? this.requests.get(message.id) : null;
+    if (!settle) return false;
+    this.requests.delete(message.id as string);
+    settle(message);
+    return true;
+  }
+
+  /**
+   * The names of the tools the server lists now, as an agent's `tools/list`
+   * reads them. Only before the agent connects. The harness asks without an
+   * `initialize`, which the server answers all the same, so the agent's own
+   * `initialize` stays the session's one. The server notes these tools as
+   * shown to its agent; the agent's own first list, which Claude Code reads
+   * as it starts, notes the same.
+   */
+  listToolNames(timeoutMs = 10_000): Promise<string[]> {
+    if (this.agent)
+      throw new Error(
+        "The Ayme MCP server's stdio is the agent's once it has connected."
+      );
+    const id = `eval-harness-${(this.requestCount += 1)}`;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.requests.delete(id);
+        reject(
+          new Error(
+            `The Ayme MCP server did not answer tools/list within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
+          )
+        );
+      }, timeoutMs);
+      this.requests.set(id, ({ result, error }) => {
+        clearTimeout(timer);
+        const tools = (result as { tools?: { name: string }[] } | undefined)
+          ?.tools;
+        if (Array.isArray(tools)) resolve(tools.map((tool) => tool.name));
+        else
+          reject(
+            new Error(
+              `The Ayme MCP server answered tools/list with ${JSON.stringify(error ?? result)}.`
+            )
+          );
+      });
+      this.process.stdin!.write(
+        `${JSON.stringify({ jsonrpc: "2.0", id, method: "tools/list" })}\n`
       );
     });
   }
@@ -583,17 +764,20 @@ export async function setUpAymeAgent(
 
 /**
  * Launches the headless system Chrome on the run's profile, with the arm's
- * browser arguments and the WebMCP flag, the lab app's page objects switch
- * set as a cookie before the page loads, and opens the mission's start page.
+ * browser arguments and the WebMCP flag, and opens the mission's start page.
+ * With `initScript`, the run's server's, every document of the browser's
+ * pages runs it first, in a context that lets it reach the server: the page
+ * the harness opens here, and whatever the agent's own browser tool,
+ * attached to this browser over CDP, navigates it to or opens beside it,
+ * since the harness stays attached for the run. Without it the page is
+ * Formbricks as it is, with nothing of Ayme.
  */
-async function launchStartPage(
+export async function launchStartPage(
   context: Pick<ArmContext, "profileDir" | "start">,
-  options: Pick<
-    AymePageOptions,
-    "pageObjects" | "browserArgs" | "browserFeatures"
-  >
+  options: Pick<AymePageOptions, "browserArgs" | "browserFeatures"> & {
+    initScript?: string;
+  }
 ): Promise<{ browser: BrowserContext; page: Page; opened: number }> {
-  const origin = new URL(context.start.url).origin;
   const browser = await playwright().chromium.launchPersistentContext(
     context.profileDir,
     {
@@ -601,30 +785,70 @@ async function launchStartPage(
       headless: true,
       viewport,
       args: browserLaunchArgs(options.browserArgs, options.browserFeatures),
+      ...(options.initScript === undefined ? {} : servedPageContextOptions),
     }
   );
-  if (!options.pageObjects)
-    await browser.addCookies([{ ...pageObjectsOffCookie, url: origin }]);
-  const page = browser.pages()[0] ?? (await browser.newPage());
-  const opened = Date.now();
-  await page.goto(context.start.url);
-  return { browser, page, opened };
+  try {
+    if (options.initScript !== undefined)
+      await browser.addInitScript({ path: options.initScript });
+    const page = browser.pages()[0] ?? (await browser.newPage());
+    const opened = Date.now();
+    await page.goto(context.start.url);
+    return { browser, page, opened };
+  } catch (error) {
+    await browser.close().catch(() => {});
+    throw error;
+  }
 }
 
 /**
- * Starts the Ayme MCP server, opens the mission's start page with the page
- * objects switch set for the arm, waits until the page has
- * paired with the server and published the screen's tools, and hands the
- * server to the agent through the proxy in the run folder.
+ * What is wrong with the init script the run's server wrote: it must name
+ * the run's port, and turn WebMCP publication on exactly when the arm wants
+ * it. Null when nothing is.
  */
-export async function setUpAymePage(
+export function initScriptProblem(
+  script: string,
+  expected: { port: number; webmcp: boolean }
+): string | null {
+  if (!script.includes(`http://127.0.0.1:${expected.port}/`))
+    return `The init script at ${initScriptPath} does not name this run's server on port ${expected.port}.`;
+  const webmcp = /webMCP:\s*\{\s*enabled:\s*true\s*\}/.test(script);
+  if (webmcp !== expected.webmcp)
+    return `The init script at ${initScriptPath} turns WebMCP publication ${webmcp ? "on" : "off"}, and this arm needs it ${expected.webmcp ? "on" : "off"}.`;
+  return null;
+}
+
+/** The run's server and the start page paired with it, before anything reads the page's tools. */
+type ServedStartPage = {
+  server: HarnessedServer;
+  page: Page;
+  /** The address of the run's server, which the tab keeps its pairing with. */
+  pairedAddress: string;
+  /** What every such setup records; the caller adds what it read of the page's tools. */
+  evidence: ServedEvidence;
+  /** When the start page was opened, for the time the tools took. */
+  opened: number;
+  /** Writes the server's log into the run folder. */
+  writeLog: () => Promise<void>;
+  dispose: () => Promise<void>;
+};
+
+/**
+ * Starts the run's `ayme mcp` in the lab app's folder, before the browser,
+ * waits for the init script it writes, launches the browser with that init
+ * script on the mission's start page, and waits until the page has paired
+ * with the server. With `agentProxy`, the server's stdio is the agent's,
+ * through the proxy written into the run folder; without it, the server
+ * serves the page and no agent is given it. Disposes of what it started
+ * when it fails.
+ */
+async function openServedStartPage(
   context: ArmContext,
-  options: AymePageOptions
-): Promise<Pick<ArmSetup, "dispose"> & { evidence: AymeEvidence }> {
-  const pageObjectToolsOnly = options.pageObjectToolsOnly === true;
-  const screenTool = options.pageObjects
-    ? startScreenTool[context.start.screen]
-    : "snapshot";
+  options: ServedPageObjects &
+    Pick<AymePageOptions, "browserArgs" | "browserFeatures"> & {
+      agentProxy?: { pageObjectToolsOnly: boolean };
+    }
+): Promise<ServedStartPage> {
   const socketPath = agentSocketPath(context.runId);
   const logPath = path.join(context.runDir, "ayme-mcp.log");
 
@@ -635,15 +859,26 @@ export async function setUpAymePage(
       `Something listens on port ${inUse.join(", ")}, in the range a page scans for Ayme MCP servers. Stop it and run again.`
     );
   const port = serverPorts.first;
-  const server = new HarnessedServer(port, context);
-  const writeLog = () =>
-    writeFile(logPath, `${server.log.join("\n")}\n`).catch(() => {});
+  // An earlier server's init script, which may name another port or another WebMCP setting.
+  await rm(initScriptPath, { force: true });
+  const server = new HarnessedServer(
+    port,
+    options,
+    context,
+    options.agentProxy !== undefined
+  );
+  const writeLog = async () => {
+    await mkdir(context.runDir, { recursive: true });
+    await writeFile(logPath, `${server.log.join("\n")}\n`).catch(() => {});
+  };
 
   let browser: BrowserContext | null = null;
   const dispose = async () => {
     for (const close of [
       () => browser?.close(),
       () => server.stop(socketPath),
+      // The server is gone, so its init script would load nothing.
+      () => rm(initScriptPath, { force: true }),
     ]) {
       try {
         await close();
@@ -658,15 +893,36 @@ export async function setUpAymePage(
 
   try {
     await server.waitUntilListening(port, 15_000);
-    context.log(`Ayme MCP server listening on port ${port}.`);
-    await mkdir(context.runDir, { recursive: true });
-    await writeFile(
-      proxyScriptPath(context.runDir),
-      proxyScript({ pageObjectToolsOnly })
+    context.log(
+      `Ayme MCP server listening on port ${port}, serving ${options.pageObjects ? pageObjectsEntry : noPageObjectsEntry}${options.webmcp ? " with --webmcp" : ""}.`
     );
-    await server.listen(socketPath);
+    // The server says so once the init script is written, after it listens.
+    await waitFor(
+      "Writing the init script",
+      15_000,
+      async () =>
+        server.log.some((line) => line.includes(initScriptPath)) ? true : null,
+      () => ` Server log:\n${server.log.join("\n")}`
+    );
+    const problem = initScriptProblem(readFileSync(initScriptPath, "utf8"), {
+      port,
+      webmcp: options.webmcp,
+    });
+    if (problem) throw new Error(problem);
+    if (options.agentProxy) {
+      await mkdir(context.runDir, { recursive: true });
+      await writeFile(
+        proxyScriptPath(context.runDir),
+        proxyScript(options.agentProxy)
+      );
+      await server.listen(socketPath);
+    }
 
-    const launched = await launchStartPage(context, options);
+    const launched = await launchStartPage(context, {
+      browserArgs: options.browserArgs,
+      browserFeatures: options.browserFeatures,
+      initScript: initScriptPath,
+    });
     browser = launched.browser;
     const { page, opened } = launched;
     // The page scans the range as it loads and finds this run's server alone.
@@ -675,10 +931,11 @@ export async function setUpAymePage(
       90_000,
       () => storedPairing(page),
       () =>
-        ` The lab app must run in lab mode (pnpm lab:dev) for the page to look for a server. Server log:\n${server.log.join("\n")}`
+        ` The lab app must run (pnpm lab:dev), and the page must load the Page Objects the server serves. Server log:\n${server.log.join("\n")}`
     );
     const pairedAt = new Date();
-    if (pairing.address !== `ws://127.0.0.1:${port}`)
+    const pairedAddress = `ws://127.0.0.1:${port}`;
+    if (pairing.address !== pairedAddress)
       throw new Error(
         `The page paired with ${pairing.address} instead of this run's server on port ${port}.`
       );
@@ -686,29 +943,82 @@ export async function setUpAymePage(
       throw new Error(
         `The page stored a pairing but the server did not report it. Server log:\n${server.log.join("\n")}`
       );
+    return {
+      server,
+      page,
+      pairedAddress,
+      evidence: {
+        server: { name: aymeMcpPackageName, version: aymeMcpVersion(), port },
+        served: {
+          entry: options.pageObjects ? pageObjectsEntry : noPageObjectsEntry,
+          webmcp: options.webmcp,
+        },
+        page: { url: page.url() },
+        paired: true,
+        pairedAt: pairedAt.toISOString(),
+        pairingMs: pairedAt.getTime() - opened,
+        goalToolPublished: false,
+      },
+      opened,
+      writeLog,
+      dispose,
+    };
+  } catch (error) {
+    await dispose();
+    throw error;
+  }
+}
+
+/**
+ * The server and the page of the arms whose agent gets the `ayme` server:
+ * the start page paired with the run's server (`openServedStartPage`), then
+ * the wait until the server lists the start screen's tools, read from the
+ * server as the agent will read them, since the page publishes nothing
+ * through WebMCP here. The server is handed to the agent through the proxy
+ * in the run folder.
+ */
+export async function setUpAymePage(
+  context: ArmContext,
+  options: AymePageOptions
+): Promise<Pick<ArmSetup, "dispose"> & { evidence: AymeEvidence }> {
+  const pageObjectToolsOnly = options.pageObjectToolsOnly === true;
+  const screenTool = options.pageObjects
+    ? startScreenTool[context.start.screen]
+    : "snapshot";
+  const served = await openServedStartPage(context, {
+    pageObjects: options.pageObjects,
+    webmcp: false,
+    browserArgs: options.browserArgs,
+    browserFeatures: options.browserFeatures,
+    agentProxy: { pageObjectToolsOnly },
+  });
+  const { server, page, pairedAddress } = served;
+  const listedTools = async () => pageToolNames(await server.listToolNames());
+  try {
     let tools = await waitFor(
-      `Publishing ${screenTool}`,
+      `Listing ${screenTool}`,
       60_000,
       async () => {
-        const names = await publishedToolNames(page);
+        const names = await listedTools();
         return names.includes(screenTool) ? names : null;
       },
-      (last) => ` The page published ${last?.join(", ") || "nothing"}.`
+      (last) =>
+        ` The server listed ${last?.join(", ") || "no tool of the page"}. Server log:\n${server.log.join("\n")}`
     );
     if (tools.includes("goal"))
       throw new Error(
-        `The page publishes goal although the Goal Loop should be off for ${context.runId}.`
+        `The page offers goal although the lab app has no Goal Loop (${context.runId}).`
       );
     if (!options.pageObjects) {
-      // The provider publishes a screen's Page Object Tools as it mounts them, so look again once
+      // The runtime offers a screen's Page Object Tools as it finds the screen, so look again once
       // they would have had time to appear. That second look is the one recorded, so it must still
       // show a complete, paired start page.
       await new Promise((resolve) => setTimeout(resolve, 2_000));
-      tools = await publishedToolNames(page);
+      tools = await listedTools();
       const problem = settledStartPageProblem({
         tools,
         screenTool,
-        pairedAddress: pairing.address,
+        pairedAddress,
         storedAddress: (await storedPairing(page))?.address ?? null,
         pageUrl: page.url(),
         startUrl: context.start.url,
@@ -716,21 +1026,17 @@ export async function setUpAymePage(
       if (problem) throw new Error(`${problem} (${context.runId})`);
     }
     context.log(
-      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; page objects are ${options.pageObjects ? "on" : "off"}.`
+      `The start page paired with the Ayme MCP server ${served.evidence.pairingMs} ms after opening, and the server lists ${tools.length} tools of it; Page Objects are ${options.pageObjects ? "served" : "not served"}.`
     );
     if (pageObjectToolsOnly)
       context.log(
         `The proxy offers the agent the Page Object Tools alone: ${pageObjectToolNames(tools).join(", ")}.`
       );
-    await writeLog();
+    await served.writeLog();
     const evidence: AymeEvidence = {
-      server: { name: aymeMcpPackageName, version: aymeMcpVersion(), port },
+      ...served.evidence,
       page: { url: page.url() },
-      paired: true,
-      pairedAt: pairedAt.toISOString(),
-      pairingMs: pairedAt.getTime() - opened,
       tools,
-      goalToolPublished: false,
       pageObjects: options.pageObjects,
       ...(pageObjectToolsOnly
         ? {
@@ -741,65 +1047,52 @@ export async function setUpAymePage(
           }
         : {}),
     };
-    return { evidence, dispose };
+    return { evidence, dispose: served.dispose };
   } catch (error) {
-    await dispose();
+    await served.dispose();
     throw error;
   }
 }
 
 /**
  * What the setup of an arm with the page's tools through WebMCP established,
- * recorded in the result. No Ayme MCP server ran and nothing paired: the
- * page's tools reach the agent through Playwright's WebMCP collection alone.
+ * recorded in the result. The run's server served the Page Objects with
+ * `--webmcp` and the page paired with it, but no agent was given the server:
+ * the page's tools reach the agent through its browser tool's WebMCP support
+ * alone.
  */
-export type WebMcpEvidence = {
-  server: null;
-  page: { url: string };
-  paired: false;
+export type WebMcpEvidence = ServedEvidence & {
   /** From opening the start page to the start screen's Page Object Tool being published. */
   publishedMs: number;
   /** The page's tool names as WebMCP publishes them, read from `document.modelContext`. */
   tools: string[];
-  goalToolPublished: false;
   pageObjects: true;
   /** The flag the browser was launched with, and the Page Object Tools among the start screen's tools. */
   webmcp: { browserFlag: string; pageObjectTools: string[] };
 };
 
 /**
- * Opens the mission's start page as `setUpAymePage` does, with the page
- * objects on and the Goal Loop off, on a Chrome with the WebMCP flag as
- * every launch has it, and waits until the page publishes the
- * start screen's Page Object Tool. No Ayme MCP server is started: the agent
- * reaches the page's tools through Playwright, which collects them from
- * `document.modelContext` itself. The range a page scans is re-checked, so
- * no stray server pairs with the page.
+ * The server and the page of the arms with the page's tools through WebMCP:
+ * the start page paired with the run's server (`openServedStartPage`),
+ * which serves the lab app's Page Objects with `--webmcp`, on a Chrome with
+ * the WebMCP flag as every launch has it, then the wait until the page
+ * publishes the start screen's Page Object Tool through
+ * `document.modelContext`, where the agent's browser tool reads it. The
+ * server serves the files and keeps the pairing; no proxy is written and no
+ * agent is given it.
  */
 export async function setUpWebMcpPage(
   context: ArmContext,
   options: { browserArgs: string[]; browserFeatures?: string[] }
 ): Promise<Pick<ArmSetup, "dispose"> & { evidence: WebMcpEvidence }> {
   const screenTool = startScreenTool[context.start.screen];
-  const inUse = await portsInUse();
-  if (inUse.length > 0)
-    throw new Error(
-      `Something listens on port ${inUse.join(", ")}, in the range a page scans for Ayme MCP servers; it would pair with the page. Stop it and run again.`
-    );
-  const { browser, page, opened } = await launchStartPage(context, {
+  const served = await openServedStartPage(context, {
     pageObjects: true,
+    webmcp: true,
     browserArgs: options.browserArgs,
     browserFeatures: options.browserFeatures,
   });
-  const dispose = async () => {
-    try {
-      await browser.close();
-    } catch (error) {
-      context.log(
-        `Closing the WebMCP page's browser failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  };
+  const { server, page } = served;
   try {
     const tools = await waitFor(
       `Publishing ${screenTool} through WebMCP`,
@@ -809,30 +1102,29 @@ export async function setUpWebMcpPage(
         return names.includes(screenTool) ? names : null;
       },
       (last) =>
-        ` The page published ${last?.join(", ") || "nothing"}. The lab app must run (pnpm lab:dev), and the browser must supply document.modelContext: Chrome with ${webMcpFeatureFlag}, or the app's polyfill.`
+        ` The page published ${last?.join(", ") || "nothing"}. The browser must supply document.modelContext, as Chrome does with ${webMcpFeatureFlag}. Server log:\n${server.log.join("\n")}`
     );
-    const publishedMs = Date.now() - opened;
+    const publishedMs = Date.now() - served.opened;
     if (tools.includes("goal"))
       throw new Error(
-        `The page publishes goal although the Goal Loop should be off for ${context.runId}.`
+        `The page publishes goal although the lab app has no Goal Loop (${context.runId}).`
       );
     const pageObjectTools = pageObjectToolNames(tools);
     context.log(
-      `The start page published ${tools.length} tools through WebMCP ${publishedMs} ms after opening, the Page Object Tools ${pageObjectTools.join(", ")} among them; no Ayme MCP server runs.`
+      `The start page paired with the Ayme MCP server and published ${tools.length} tools through WebMCP ${publishedMs} ms after opening, the Page Object Tools ${pageObjectTools.join(", ")} among them; no agent is given the server.`
     );
+    await served.writeLog();
     const evidence: WebMcpEvidence = {
-      server: null,
+      ...served.evidence,
       page: { url: page.url() },
-      paired: false,
       publishedMs,
       tools,
-      goalToolPublished: false,
       pageObjects: true,
       webmcp: { browserFlag: webMcpFeatureFlag, pageObjectTools },
     };
-    return { evidence, dispose };
+    return { evidence, dispose: served.dispose };
   } catch (error) {
-    await dispose();
+    await served.dispose();
     throw error;
   }
 }

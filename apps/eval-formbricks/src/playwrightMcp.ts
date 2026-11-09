@@ -1,12 +1,14 @@
 /**
  * The pinned Playwright MCP as the arms run it: its server entry, on a
  * browser it launches itself or on one the harness launched, and the setups
- * of the arms that add Ayme's Page Object Tools to it. The arm with Ayme's
- * server drives, through Playwright MCP, the very page that paired with the
- * run's `ayme mcp`; the arm with WebMCP drives a page no server paired with
- * and gets its tools from Playwright MCP's own WebMCP collection. Either way
- * the harness launches the browser with a remote-debugging port and
- * Playwright MCP attaches to it over CDP instead of launching its own.
+ * of the arms that add Ayme's Page Object Tools to it. Both drive, through
+ * Playwright MCP, the page the run's `ayme mcp` serves the lab app's Page
+ * Objects to: the arm with Ayme's server gets their tools from that server,
+ * and the arm with WebMCP, whose server is started with `--webmcp` and given
+ * to no agent, from Playwright MCP's own WebMCP collection. Either way the
+ * harness launches the browser with a remote-debugging port and the
+ * server's init script, and Playwright MCP attaches to it over CDP instead
+ * of launching its own.
  */
 import { createRequire } from "node:module";
 import net from "node:net";
@@ -33,7 +35,10 @@ export function playwrightMcpVersion(): string {
  * its open pages as tabs, the first as the current one, so the agent's first
  * look is the start page. The browser, profile and headless switches are
  * accepted beside a CDP endpoint but describe a launch that never happens,
- * so they are left out. The page's WebMCP tools stay off unless `webmcp`
+ * so they are left out. The server's init script is not named here either:
+ * the harness's own Playwright added it to the browser's context and stays
+ * attached, so it runs in every document Playwright MCP navigates the page
+ * to. The page's WebMCP tools stay off unless `webmcp`
  * says otherwise: on, Playwright MCP collects the tools the page registered
  * with each snapshot, lists each as a tool of its own named `webmcp_<name>`
  * (a dot in the page's name becomes an underscore) and announces the change
@@ -62,7 +67,7 @@ export function playwrightMcpServer(
     args: [
       path.join(playwrightMcpRoot, "cli.js"),
       ...browser,
-      // The lab app publishes Ayme's tools through WebMCP; unless the arm wants them that way, the agent gets Playwright MCP's own tools only.
+      // Unless the arm wants the page's tools through WebMCP, the agent gets Playwright MCP's own tools only.
       ...(options.webmcp ? [] : ["--no-webmcp"]),
       "--output-dir",
       context.outputDir,
@@ -91,7 +96,7 @@ export function cdpEndpoint(port: number) {
 
 /**
  * The setup of the arm with both servers: the Ayme server and the page as
- * for the Ayme arms, with the page objects on and the Goal Loop off, the
+ * for the Ayme arms, with the lab app's Page Objects served, the
  * browser listening on a remote-debugging port, and the proxy offering the
  * agent the Page Object Tools alone; then Playwright MCP's entry, attached
  * to that browser, which the run adds to the agent's MCP servers. No skill,
@@ -121,12 +126,12 @@ export async function setUpPlaywrightMcpWithAymePageObjects(
 
 /**
  * The setup of the arm with the page's tools through WebMCP: the page as
- * for the Ayme arms, with the page objects on and the Goal Loop off, on a
- * browser with the WebMCP flag and a remote-debugging port, and no Ayme
- * server; then Playwright MCP's entry, attached to that browser with its
- * WebMCP collection on, which the run adds to the agent's MCP servers. No
- * skill, no readable folder and no environment beyond the Playwright MCP
- * arm's.
+ * for the Ayme arms, with the lab app's Page Objects served with
+ * `--webmcp`, on a browser with the WebMCP flag and a remote-debugging
+ * port, and the run's Ayme server given to no agent; then Playwright MCP's
+ * entry, attached to that browser with its WebMCP collection on, which the
+ * run adds to the agent's MCP servers. No skill, no readable folder and no
+ * environment beyond the Playwright MCP arm's.
  */
 export async function setUpPlaywrightMcpWithAymeWebMcp(
   context: ArmContext
