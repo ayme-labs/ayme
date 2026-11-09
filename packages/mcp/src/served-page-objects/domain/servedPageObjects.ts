@@ -37,8 +37,14 @@ export const ENTRY_MODULE = "entry.js";
  * frame or a document such as `about:blank` loads nothing, so only the tab
  * pairs, and neither does a page of `ayme mcp`'s own, such as the
  * Inspector's window. It is a classic script, as an init script runs.
+ *
+ * With `webMCP`, the runtime it starts also publishes its tools through
+ * WebMCP; without it, the runtime's WebMCP publication stays off.
  */
-export function initScript(port: number): string {
+export function initScript(
+  port: number,
+  { webMCP = false }: { webMCP?: boolean } = {}
+): string {
   const served = `http://127.0.0.1:${port}${SERVED_PATH}`;
   const events = `ws://127.0.0.1:${port}${EVENTS_PATH}`;
   return `// Written by ayme mcp (experimental) when it started on port ${port}.
@@ -88,7 +94,7 @@ export function initScript(port: number): string {
           ayme = createAyme({
             agentConnection: true,
             inspector: { placement: "external" },
-            pageObjects,
+            pageObjects,${webMCP ? "\n            webMCP: { enabled: true }," : ""}
           });
           ayme.start();
           registered = pageObjects;

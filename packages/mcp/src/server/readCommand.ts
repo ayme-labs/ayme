@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
+export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>] [--webmcp]
        ayme inspect [--port <port>]
 
   mcp            Start the Ayme MCP server for a coding agent, over stdio.
@@ -14,6 +14,9 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
                  export lists Page Object classes, to pages that load
                  .ayme/init-script.js, which the server writes. Without it,
                  the server serves .ayme/page-objects.ts if there is one.
+  --webmcp       Experimental: pages that load .ayme/init-script.js also
+                 publish the tools of the Page Objects the server serves
+                 through WebMCP. Needs an entry to serve.
   -h, --help     Print this usage text.
 `;
 
@@ -22,7 +25,7 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
  * print help, or fail with a message.
  */
 export type Command =
-  | { kind: "start"; port?: number; pageObjects?: string }
+  | { kind: "start"; port?: number; pageObjects?: string; webMCP?: true }
   | { kind: "inspect"; port?: number }
   | { kind: "help"; text: string }
   | { kind: "error"; text: string };
@@ -30,7 +33,12 @@ export type Command =
 /** The command the arguments (without the node and script paths) ask for. */
 export function readCommand(args: string[]): Command {
   let positionals: string[];
-  let values: { port?: string; "page-objects"?: string; help?: boolean };
+  let values: {
+    port?: string;
+    "page-objects"?: string;
+    webmcp?: boolean;
+    help?: boolean;
+  };
   try {
     ({ positionals, values } = parseArgs({
       args,
@@ -38,6 +46,7 @@ export function readCommand(args: string[]): Command {
       options: {
         port: { type: "string" },
         "page-objects": { type: "string" },
+        webmcp: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
     }));
@@ -66,13 +75,21 @@ export function readCommand(args: string[]): Command {
       kind: "error",
       text: `--page-objects expects a file, got an empty value.\n\n${USAGE}`,
     };
-  const entry = pageObjects === undefined ? {} : { pageObjects };
-  if (values.port === undefined) return { kind, ...entry };
+  if (values.webmcp && kind !== "start")
+    return {
+      kind: "error",
+      text: `--webmcp is an option of \`ayme mcp\` only.\n\n${USAGE}`,
+    };
+  const served = {
+    ...(pageObjects === undefined ? {} : { pageObjects }),
+    ...(values.webmcp ? { webMCP: true as const } : {}),
+  };
+  if (values.port === undefined) return { kind, ...served };
   const port = Number(values.port);
   if (!Number.isInteger(port) || port < 1 || port > 65_535)
     return {
       kind: "error",
       text: `--port expects a port number, got "${values.port}".\n\n${USAGE}`,
     };
-  return { kind, port, ...entry };
+  return { kind, port, ...served };
 }

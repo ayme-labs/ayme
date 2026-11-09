@@ -52,6 +52,46 @@ describe("readCommand", () => {
     expect(USAGE).toMatch(/--page-objects <file>\s+Experimental:/);
   });
 
+  it("starts the server with WebMCP publication on for --webmcp", () => {
+    expect(readCommand(["mcp", "--webmcp"])).toEqual({
+      kind: "start",
+      webMCP: true,
+    });
+    expect(
+      readCommand([
+        "mcp",
+        "--webmcp",
+        "--page-objects",
+        "e2e/agent.ts",
+        "--port",
+        "9400",
+      ])
+    ).toEqual({
+      kind: "start",
+      port: 9400,
+      pageObjects: "e2e/agent.ts",
+      webMCP: true,
+    });
+  });
+
+  it("rejects --webmcp for `inspect`", () => {
+    expect(readCommand(["inspect", "--webmcp"])).toEqual({
+      kind: "error",
+      text: `--webmcp is an option of \`ayme mcp\` only.\n\n${USAGE}`,
+    });
+  });
+
+  it("rejects a value for --webmcp, which takes none", () => {
+    const command = readCommand(["mcp", "--webmcp=on"]);
+
+    expect(command).toMatchObject({ kind: "error" });
+    expect((command as { text: string }).text).toContain("--webmcp");
+  });
+
+  it("marks --webmcp experimental in the usage text", () => {
+    expect(USAGE).toMatch(/--webmcp\s+Experimental:/);
+  });
+
   it("prints the Inspector's URL for `inspect`, on the given port if any", () => {
     expect(readCommand(["inspect"])).toEqual({ kind: "inspect" });
     expect(readCommand(["inspect", "--port", "9400"])).toEqual({

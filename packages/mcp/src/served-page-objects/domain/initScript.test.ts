@@ -13,9 +13,10 @@ type Pending = {
  * Runs the init script in a top-level page of `https://app.test`, with the
  * runtime, the modules it imports and the stamp socket the test drives.
  */
-function runInitScript() {
+function runInitScript(options?: Parameters<typeof initScript>[1]) {
   const imports: Pending[] = [];
   const registered: string[] = [];
+  const startedWith: unknown[] = [];
   const sockets: { onmessage?: (event: { data: string }) => void }[] = [];
   const reload = vi.fn();
   const errors: unknown[] = [];
@@ -28,13 +29,17 @@ function runInitScript() {
       registered.splice(registered.indexOf(model.name), 1);
     },
   };
-  const createAyme = ({ pageObjects }: { pageObjects: { name: string }[] }) => {
-    registered.push(...pageObjects.map((model) => model.name));
+  const createAyme = (runtimeOptions: { pageObjects: { name: string }[] }) => {
+    startedWith.push(runtimeOptions);
+    registered.push(...runtimeOptions.pageObjects.map((model) => model.name));
     return { start() {}, pom };
   };
   const window = {};
   (window as { top: unknown }).top = window;
-  const script = initScript(4720).replaceAll("import(", "importModule(");
+  const script = initScript(4720, options).replaceAll(
+    "import(",
+    "importModule("
+  );
   new Function(
     "window",
     "location",
@@ -60,6 +65,7 @@ function runInitScript() {
   return {
     imports,
     registered,
+    startedWith,
     reload,
     errors,
     settle,
@@ -80,8 +86,8 @@ const entry = (...names: (string | { name: string; fails: true })[]) => ({
   default: names.map((name) => (typeof name === "string" ? { name } : name)),
 });
 
-async function started() {
-  const page = runInitScript();
+async function started(options?: Parameters<typeof initScript>[1]) {
+  const page = runInitScript(options);
   page.stamp("e1");
   await page.answer(/runtime\.js\?build=r1$/, { createAyme: page.createAyme });
   await page.answer(/entry\.js\?build=e1$/, entry("A"));
@@ -92,6 +98,38 @@ it("loads the build of the first stamp it is told of", async () => {
   const page = await started();
 
   expect(page.registered).toEqual(["A"]);
+});
+
+it("starts the runtime with the Agent Connection and the external Inspector, WebMCP publication left off", async () => {
+  const page = await started();
+
+  expect(page.startedWith).toEqual([
+    {
+      agentConnection: true,
+      inspector: { placement: "external" },
+      pageObjects: [{ name: "A" }],
+    },
+  ]);
+  expect(initScript(4720)).not.toMatch(/webmcp/i);
+});
+
+it("with webMCP, starts the same runtime with WebMCP publication on too", async () => {
+  const page = await started({ webMCP: true });
+
+  expect(page.startedWith).toEqual([
+    {
+      agentConnection: true,
+      inspector: { placement: "external" },
+      pageObjects: [{ name: "A" }],
+      webMCP: { enabled: true },
+    },
+  ]);
+  expect(page.registered).toEqual(["A"]);
+});
+
+it("writes the same script without the option as with it off", () => {
+  expect(initScript(4720, { webMCP: false })).toBe(initScript(4720));
+  expect(initScript(4720, {})).toBe(initScript(4720));
 });
 
 it("swaps in the newest rebuild, not one that finishes loading after it", async () => {

@@ -31,6 +31,18 @@ it("names the port it is given anew each time it writes", async () => {
   expect(script).not.toContain("9411");
 });
 
+it("writes an init script that leaves WebMCP publication off unless asked", async () => {
+  await writeInitScript({ folder, port: 9411 });
+
+  expect(await read("init-script.js")).not.toMatch(/webmcp/i);
+});
+
+it("with webMCP, writes an init script that turns WebMCP publication on", async () => {
+  await writeInitScript({ folder, port: 9411, webMCP: true });
+
+  expect(await read("init-script.js")).toContain("webMCP: { enabled: true }");
+});
+
 it("creates a .gitignore that ignores the init script", async () => {
   await writeInitScript({ folder, port: 9411 });
 
