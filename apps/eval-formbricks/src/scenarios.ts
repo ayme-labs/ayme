@@ -52,12 +52,14 @@ const connectedPageTools: StubTool[] = [
       "Open a URL on the page's own origin, or a path relative to the current page.",
   },
   {
-    name: "SurveyEditorPage.setSurveyName",
-    description: "Set the survey's name.",
+    name: "SurveyEditorPage.fillSurveyForm",
+    description:
+      "Replaces the survey's name and the text of the question open in the editor, the first one when the editor opens. Leave out what stays as it is.",
   },
   {
     name: "SurveyEditorPage.saveAndClose",
-    description: "Save the survey and close the editor.",
+    description:
+      "Publishes a draft survey, so it starts collecting responses; saves a published one.",
   },
 ];
 

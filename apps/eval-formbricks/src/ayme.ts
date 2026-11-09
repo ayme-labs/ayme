@@ -93,8 +93,8 @@ export const serverPorts = { first: 9350, last: 9365 };
  * `snapshot` and the start page's URL.
  */
 export const startScreenTool: Record<StartScreen, string> = {
-  editor: "SurveyEditorPage.setSurveyName",
-  "sign-in": "SignInPage.fillEmail",
+  editor: "SurveyEditorPage.fillSurveyForm",
+  "sign-in": "SignInPage.logIn",
 };
 
 /** The sessionStorage key under which a tab keeps its pairing, as `@ayme-dev/mcp` stores it. */
@@ -481,7 +481,14 @@ export async function setUpAymeAgent(
 
     browser = await playwright().chromium.launchPersistentContext(
       context.profileDir,
-      { channel: "chrome", headless: true, viewport }
+      // The lab app publishes through Chrome's own document.modelContext,
+      // which the WebMCP flag supplies; it loads no polyfill.
+      {
+        channel: "chrome",
+        headless: true,
+        viewport,
+        args: ["--enable-features=WebMCP"],
+      }
     );
     if (options.goalLoop)
       await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
