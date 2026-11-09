@@ -608,7 +608,33 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
 
-  apps/lab-formbricks: {}
+  apps/lab-formbricks:
+    dependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../../packages/ayme
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
+    devDependencies:
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      "@playwright/test":
+        specifier: ^1.64.0
+        version: 1.64.0
+      "@types/node":
+        specifier: ^24.0.0
+        version: 24.13.3
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
   apps/mcp-fixture:
     dependencies:

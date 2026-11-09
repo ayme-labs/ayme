@@ -32,6 +32,8 @@ apps/example-angular/.angular/
 
 # The Formbricks lab app submodule, formatted by its own upstream
 /apps/lab-formbricks/formbricks/
+# Written by ayme mcp each time it starts in the lab app
+/apps/lab-formbricks/.ayme/init-script.js
 
 # The Formbricks eval's run artifacts and Claude Code configuration
 /apps/eval-formbricks/results/
