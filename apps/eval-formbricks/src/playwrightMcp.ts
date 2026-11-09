@@ -102,7 +102,6 @@ export async function setUpPlaywrightMcpWithAymePageObjects(
 ): Promise<ArmSetup> {
   const port = await freeLoopbackPort();
   const { evidence, dispose } = await setUpAymePage(context, {
-    goalLoop: false,
     pageObjects: true,
     browserArgs: [`--remote-debugging-port=${port}`],
     pageObjectToolsOnly: true,

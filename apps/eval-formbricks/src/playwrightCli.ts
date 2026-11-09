@@ -247,7 +247,6 @@ export function setUpPlaywrightCliWithAymePageObjects(
     webmcp: false,
     setUpPage: (browserArgs) =>
       setUpAymePage(context, {
-        goalLoop: false,
         pageObjects: true,
         browserArgs,
         pageObjectToolsOnly: true,

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   agentBrowserWebMcpToolsSentence,
   arms,
-  goalFirstSentence,
   pageObjectToolsSentence,
   webMcpToolsSentence,
   type ArmContext,
@@ -212,9 +211,7 @@ describe.each([
     "agent-browser",
     "agent-browser-with-ayme-webmcp",
     "ayme-goal-loop-off",
-    "ayme-goal-loop-on",
     "ayme-no-page-objects-goal-loop-off",
-    "ayme-no-page-objects-goal-loop-on",
   ] as const)(
     "differs between the Playwright MCP arm and %s in that one line alone",
     (armId) => {
@@ -235,27 +232,16 @@ describe.each([
 });
 
 describe("the interface lines", () => {
-  it("name the goal tool only in the Goal Loop on arm's line", () => {
-    const on = arms["ayme-goal-loop-on"].interfaceLine(mission.start);
-    expect(on).toContain("`goal`");
-    expect(on).toContain("Hand the goal to the `goal` tool first");
-    expect(
-      arms["ayme-goal-loop-off"].interfaceLine(mission.start)
-    ).not.toContain("goal");
+  it("name the goal tool in no arm's line", () => {
+    for (const arm of Object.values(arms))
+      expect(arm.interfaceLine(mission.start)).not.toContain("goal");
   });
 
-  it("of the Ayme arms differ in the goal-first sentence alone, and do not depend on the start", () => {
-    for (const start of [renameMission.start, signInMission.start]) {
-      expect(arms["ayme-goal-loop-on"].interfaceLine(start)).toBe(
-        `${arms["ayme-goal-loop-off"].interfaceLine(start)} ${goalFirstSentence}`
-      );
+  it("of the Ayme arms do not depend on the start", () => {
+    for (const start of [renameMission.start, signInMission.start])
       expect(arms["ayme-goal-loop-off"].interfaceLine(start)).toBe(
         arms["ayme-goal-loop-off"].interfaceLine(renameMission.start)
       );
-    }
-    expect(goalFirstSentence).toBe(
-      "Hand the goal to the `goal` tool first; use the other tools only if it can't finish."
-    );
   });
 
   it("of the arm with Ayme's Page Object Tools is the Playwright MCP arm's plus one sentence, and does not depend on the start", () => {
@@ -335,16 +321,12 @@ describe("the interface lines", () => {
     ).toBe(webMcpToolsSentence.replace(/, which .+ WebMCP tools,/, ""));
   });
 
-  it("of the Ayme arms without page objects name no Page Object Tools and differ in the goal-first sentence alone", () => {
-    const off = arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(
-      mission.start
-    );
-    expect(off).toBe(
+  it("of the Ayme arm without page objects names no Page Object Tools", () => {
+    expect(
+      arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(mission.start)
+    ).toBe(
       "Use the page's own tools through the `ayme` MCP server, which is already connected to the page, for every browser interaction: `snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed."
     );
-    expect(
-      arms["ayme-no-page-objects-goal-loop-on"].interfaceLine(mission.start)
-    ).toBe(`${off} ${goalFirstSentence}`);
   });
 });
 
@@ -362,7 +344,7 @@ describe("the setup message", () => {
     expect(setupPrompt(arms["ayme-goal-loop-off"])).toContain(
       "Load the `ayme` skill now with the Skill tool"
     );
-    expect(setupPrompt(arms["ayme-no-page-objects-goal-loop-on"])).toContain(
+    expect(setupPrompt(arms["ayme-no-page-objects-goal-loop-off"])).toContain(
       "Load the `ayme` skill now with the Skill tool"
     );
     expect(setupPrompt(arms["playwright-cli"])).toContain(
@@ -373,9 +355,7 @@ describe("the setup message", () => {
   it("has every Ayme arm read its skill's references, and no file outside the skill's folder", () => {
     for (const armId of [
       "ayme-goal-loop-off",
-      "ayme-goal-loop-on",
       "ayme-no-page-objects-goal-loop-off",
-      "ayme-no-page-objects-goal-loop-on",
     ] as const)
       expect(setupPrompt(arms[armId])).toBe(
         "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n"
@@ -436,11 +416,9 @@ describe("the setup message", () => {
 });
 
 describe.each([
-  ["ayme-goal-loop-off", false],
-  ["ayme-goal-loop-on", true],
-  ["ayme-no-page-objects-goal-loop-off", false],
-  ["ayme-no-page-objects-goal-loop-on", true],
-] as const)("the %s arm", (armId, goalLoop) => {
+  "ayme-goal-loop-off",
+  "ayme-no-page-objects-goal-loop-off",
+] as const)("the %s arm", (armId) => {
   const arm = arms[armId];
 
   it("gives the agent Ayme's MCP server, through the proxy to the one the setup starts, and no Playwright interface", () => {
@@ -465,14 +443,12 @@ describe.each([
     expect(arm.interfaceLine(mission.start)).not.toContain("skill");
   });
 
-  it("checks the server's build and ports first, and the Decision Endpoint with the Goal Loop on, and sets the server and the page up outside the measured window", () => {
+  it("checks the server's build and ports first, and sets the server and the page up outside the measured window", () => {
     expect(arm.preconditions?.map((p) => p.name)).toEqual([
       "Ayme MCP server",
       "Ayme MCP ports",
-      ...(goalLoop ? ["Decision Endpoint"] : []),
     ]);
     expect(arm.setup).toBeTypeOf("function");
-    expect(arm.interfaceLine(mission.start).includes("`goal`")).toBe(goalLoop);
   });
 });
 
@@ -501,7 +477,7 @@ describe("the playwright-mcp-with-ayme-page-objects arm", () => {
     expect(arm.disallowedTools).toBeUndefined();
   });
 
-  it("checks the Ayme server's build and ports, and not the Decision Endpoint, since the Goal Loop is off", () => {
+  it("checks the Ayme server's build and ports", () => {
     expect(arm.preconditions?.map((p) => p.name)).toEqual([
       "Ayme MCP server",
       "Ayme MCP ports",
@@ -532,7 +508,7 @@ describe("the playwright-mcp-with-ayme-webmcp arm", () => {
     expect(arm.disallowedTools).toBeUndefined();
   });
 
-  it("checks the ports a page scans and not the Ayme server's build, since no server runs, nor the Decision Endpoint", () => {
+  it("checks the ports a page scans and not the Ayme server's build, since no server runs", () => {
     expect(arm.preconditions?.map((p) => p.name)).toEqual(["Ayme MCP ports"]);
     expect(arm.interfaceLine(mission.start)).not.toContain("goal");
   });

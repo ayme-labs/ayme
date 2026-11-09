@@ -8,12 +8,6 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import {
-  completeGoalLoopCost,
-  lookUpGenerationCosts,
-  type GoalLoopUsage,
-} from "./goalLoop.ts";
-import { summarizeResult, type NormalizedResult } from "./normalize.ts";
 import { repoRoot, runsRoot, suitesRoot } from "./paths.ts";
 import type { SummarizedStartupRun } from "./startupSummary.ts";
 import type { SummarizedRun } from "./summary.ts";
@@ -126,11 +120,6 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     versions.browserInterface,
     `${what} browserInterface`
   );
-  // A result stored before the Goal Loop was measured has no calls in it.
-  const goalLoop =
-    run.goalLoop === null || run.goalLoop === undefined
-      ? null
-      : record(run.goalLoop, `${what} goalLoop`);
   return {
     runId: string(run, "runId", what),
     arm: string(run, "arm", what),
@@ -138,23 +127,19 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     pass: boolean(run, "pass", what),
     wallTimeMs: nullableNumber(run, "wallTimeMs", what),
     tokens: tokenUsage(run, what),
-    combinedCostUsd: nullableNumber(run, "combinedCostUsd", what),
+    // A result stored while the Goal Loop arms existed has a combined cost, the agent's plus the
+    // Goal Loop's, unknown while the Goal Loop's was; that is the run's cost.
+    costUsd: nullableNumber(
+      run,
+      "combinedCostUsd" in run ? "combinedCostUsd" : "costUsd",
+      what
+    ),
     toolCallTotal:
       typeof run.toolCalls === "object" &&
       run.toolCalls !== null &&
       typeof (run.toolCalls as Record<string, unknown>).total === "number"
         ? ((run.toolCalls as Record<string, unknown>).total as number)
         : null,
-    goalLoop: {
-      calls:
-        goalLoop === null
-          ? 0
-          : (nullableNumber(goalLoop, "calls", `${what} goalLoop`) ?? 0),
-      costUsd:
-        goalLoop === null
-          ? null
-          : nullableNumber(goalLoop, "costUsd", `${what} goalLoop`),
-    },
     timeoutSeconds: number(run, "timeoutSeconds", what),
     labCheckoutDirty: boolean(run, "labCheckoutDirty", what),
     versions: {
@@ -272,54 +257,6 @@ export async function latestSuiteId(): Promise<string | null> {
 
 async function readJson(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as unknown;
-}
-
-/** A stored result whose Goal Loop ran at a cost OpenRouter had no record of when the run ended. */
-function awaitsGoalLoopCost(
-  value: unknown
-): value is NormalizedResult & { goalLoop: GoalLoopUsage } {
-  if (typeof value !== "object" || value === null) return false;
-  const goalLoop = (value as { goalLoop?: unknown }).goalLoop;
-  if (typeof goalLoop !== "object" || goalLoop === null) return false;
-  const { calls, costUsd, generationIds } = goalLoop as Partial<GoalLoopUsage>;
-  return (
-    typeof calls === "number" &&
-    calls > 0 &&
-    costUsd === null &&
-    Array.isArray(generationIds) &&
-    generationIds.length > 0
-  );
-}
-
-/**
- * Fills in the Goal Loop cost of stored runs whose OpenRouter records were
- * not there when the run ended: those records can lag by an hour. Rewrites
- * each completed run's `result.json` and `summary.md`. Returns the runs it
- * completed.
- */
-export async function completeStoredCosts(
-  runIds: string[],
-  options: { openRouterApiKey: string; log: (line: string) => void }
-): Promise<string[]> {
-  const completed: string[] = [];
-  for (const runId of runIds) {
-    const runDir = path.join(runsRoot, runId);
-    const file = path.join(runDir, "result.json");
-    const stored = await readJson(file);
-    if (!awaitsGoalLoopCost(stored)) continue;
-    const costs = await lookUpGenerationCosts(stored.goalLoop.generationIds, {
-      apiKey: options.openRouterApiKey,
-      log: options.log,
-    });
-    const result: NormalizedResult = {
-      ...stored,
-      ...completeGoalLoopCost(stored, costs),
-    };
-    await writeFile(file, `${JSON.stringify(result, null, 2)}\n`);
-    await writeFile(path.join(runDir, "summary.md"), summarizeResult(result));
-    if (result.goalLoop.costUsd !== null) completed.push(runId);
-  }
-  return completed;
 }
 
 /** A stored manifest, of either lane. */

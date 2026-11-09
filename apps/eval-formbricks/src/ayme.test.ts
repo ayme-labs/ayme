@@ -17,7 +17,6 @@ import {
   aymeWebMcpPreconditions,
   browserLaunchArgs,
   isPageObjectToolName,
-  mcpToolTimeoutMs,
   pageObjectToolNames,
   proxyScript,
   proxyScriptPath,
@@ -59,7 +58,7 @@ describe("the agent's MCP server entry", () => {
 
   it("keeps the socket path short enough for macOS and apart per run", () => {
     const socket = agentSocketPath(
-      "2026-10-05T10-00-00-000Z-ayme-goal-loop-on-abc123"
+      "2026-10-05T10-00-00-000Z-ayme-goal-loop-off-abc123"
     );
     expect(socket.startsWith(os.tmpdir())).toBe(true);
     expect(socket.endsWith("ayme-eval-abc123.sock")).toBe(true);
@@ -69,7 +68,6 @@ describe("the agent's MCP server entry", () => {
   it("names the built ayme command and the ports a page scans", () => {
     expect(aymeMcpCliPath).toMatch(/\/packages\/mcp\/dist\/cli\.mjs$/);
     expect(serverPorts).toEqual({ first: 9350, last: 9365 });
-    expect(mcpToolTimeoutMs).toBeGreaterThan(300_000);
   });
 
   it("has the arms with and without a server share one ports check, so a suite runs it once", () => {
@@ -135,30 +133,22 @@ describe("the Page Object Tools among a page's tools", () => {
 
 describe("a start page without page objects, looked at again after pairing", () => {
   const settled = {
-    tools: ["click", "goal", "snapshot"],
+    tools: ["click", "snapshot"],
     screenTool: "snapshot",
-    goalLoop: true,
     pairedAddress: "ws://127.0.0.1:9350",
     storedAddress: "ws://127.0.0.1:9350",
     pageUrl: "http://localhost:3000/auth/login",
     startUrl: "http://localhost:3000/auth/login",
   };
 
-  it("passes with its screen tool, goal as the Goal Loop says, the pairing and the start URL", () => {
+  it("passes with its screen tool, no goal, the pairing and the start URL", () => {
     expect(settledStartPageProblem(settled)).toBeNull();
-    expect(
-      settledStartPageProblem({
-        ...settled,
-        tools: ["click", "snapshot"],
-        goalLoop: false,
-      })
-    ).toBeNull();
   });
 
   it.each([
     ["a Page Object Tool", { tools: [...settled.tools, "SignInPage.logIn"] }],
     ["no tools, as during a reload", { tools: [] }],
-    ["goal with the Goal Loop off", { goalLoop: false }],
+    ["goal", { tools: [...settled.tools, "goal"] }],
     ["a lost pairing", { storedAddress: null }],
     [
       "a query the start URL lacks",

@@ -1,8 +1,8 @@
 /**
  * Everything the Ayme arms set up before the measured window: the Ayme MCP
  * server the agent talks to, `ayme mcp` from `@ayme-dev/mcp`, paired with a
- * headless browser holding the mission's start page, with the Goal Loop and
- * page objects switches set for the arm. The pairing follows the tab through the screens
+ * headless browser holding the mission's start page, with the page objects
+ * switch set for the arm. The pairing follows the tab through the screens
  * the task moves it to: the server tells the agent each time the tools change.
  * The arm that adds Ayme's Page Object Tools to Playwright MCP shares the
  * server and the page (`setUpAymePage`) and adds its own browser arguments
@@ -34,11 +34,8 @@ import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import type { StartScreen } from "./missions.ts";
-import { labUrl, repoRoot } from "./paths.ts";
-import {
-  decisionEndpointPrecondition,
-  type Precondition,
-} from "./preconditions.ts";
+import { repoRoot } from "./paths.ts";
+import type { Precondition } from "./preconditions.ts";
 
 export const aymeMcpPackageName = "@ayme-dev/mcp";
 const aymeMcpPackagePath = createRequire(import.meta.url).resolve(
@@ -66,12 +63,6 @@ export const aymeSkillSource = path.join(repoRoot, "skills", aymeSkillName);
 export function aymeSkillDirectory(configDir: string) {
   return path.join(configDir, "skills", aymeSkillName);
 }
-
-/**
- * The lab app's Goal Loop switch: with this cookie set before the page loads,
- * the page publishes `goal`. Without it the Goal Loop is off.
- */
-export const goalLoopCookie = { name: "ayme-lab-goal-loop", value: "on" };
 
 /**
  * The lab app's page objects switch: with this cookie set before the page
@@ -111,13 +102,6 @@ export function browserLaunchArgs(
     `--enable-features=${["WebMCP", ...browserFeatures].join(",")}`,
   ];
 }
-
-/**
- * How long Claude Code lets one MCP tool call run. The `goal` tool runs the
- * whole Goal Loop inside one call, far beyond any default per-call limit; the
- * server itself waits for the page's answer however long it takes.
- */
-export const mcpToolTimeoutMs = 320_000;
 
 /** The ports a page's auto-pair scan probes; the server listens on one of them. */
 export const serverPorts = { first: 9350, last: 9365 };
@@ -340,12 +324,6 @@ export const aymeWebMcpPreconditions: Precondition[] = [
   aymeMcpPortsPrecondition,
 ];
 
-/** With the Goal Loop on, the lab app's Decision Endpoint must also have its model key. */
-export const aymeGoalLoopPreconditions: Precondition[] = [
-  ...aymeMcpPreconditions,
-  decisionEndpointPrecondition(labUrl),
-];
-
 /** What the setup established before the measured window, recorded in the result. */
 export type AymeEvidence = {
   server: { name: string; version: string; port: number };
@@ -357,7 +335,8 @@ export type AymeEvidence = {
   pairingMs: number;
   /** The page's tool names as WebMCP publishes them: the agent's, without the server prefix, but `screenshot`. */
   tools: string[];
-  goalToolPublished: boolean;
+  /** The harness never turns the lab app's Goal Loop on, so the page never publishes `goal`. */
+  goalToolPublished: false;
   /** Whether the page's page objects were on; off, it published no Page Object Tool. */
   pageObjects: boolean;
   /**
@@ -370,7 +349,6 @@ export type AymeEvidence = {
 
 /** What `setUpAymePage` needs to know about the arm. */
 export type AymePageOptions = {
-  goalLoop: boolean;
   pageObjects: boolean;
   /** Extra arguments for the headless browser the page opens in. */
   browserArgs?: string[];
@@ -397,13 +375,12 @@ function publishedToolNames(page: Page): Promise<string[]> {
 
 /**
  * What is wrong with a start page without page objects, looked at again after pairing: it must
- * still publish its screen tool (and goal exactly when the Goal Loop is on) and no Page Object
+ * still publish its screen tool, without goal, and no Page Object
  * Tool, keep this run's pairing, and stay at the start URL. Null when nothing is.
  */
 export function settledStartPageProblem(look: {
   tools: string[];
   screenTool: string;
-  goalLoop: boolean;
   pairedAddress: string;
   storedAddress: string | null;
   pageUrl: string;
@@ -412,11 +389,8 @@ export function settledStartPageProblem(look: {
   const pageObjectTools = pageObjectToolNames(look.tools);
   if (pageObjectTools.length > 0)
     return `The page publishes ${pageObjectTools.join(", ")} although its page objects should be off.`;
-  if (
-    !look.tools.includes(look.screenTool) ||
-    look.tools.includes("goal") !== look.goalLoop
-  )
-    return `The page publishes ${look.tools.join(", ") || "nothing"} two seconds after pairing, instead of ${look.screenTool} ${look.goalLoop ? "and" : "without"} goal.`;
+  if (!look.tools.includes(look.screenTool) || look.tools.includes("goal"))
+    return `The page publishes ${look.tools.join(", ") || "nothing"} two seconds after pairing, instead of ${look.screenTool} without goal.`;
   if (look.storedAddress !== look.pairedAddress)
     return `The page no longer keeps its pairing with ${look.pairedAddress} two seconds after pairing.`;
   const at = new URL(look.pageUrl);
@@ -588,12 +562,11 @@ class HarnessedServer {
 
 /**
  * The Ayme arms' setup: the shipped skill in the run's configuration folder,
- * then the server and the page from `setUpAymePage`, with Claude Code's
- * per-call limit raised for `goal`.
+ * then the server and the page from `setUpAymePage`.
  */
 export async function setUpAymeAgent(
   context: ArmContext,
-  options: { goalLoop: boolean; pageObjects: boolean }
+  options: { pageObjects: boolean }
 ): Promise<ArmSetup> {
   // The shipped skill with its references, read from the fresh configuration folder, as the
   // Playwright CLI arm's skill is.
@@ -601,8 +574,7 @@ export async function setUpAymeAgent(
   await cp(aymeSkillSource, skillDir, { recursive: true });
   const { evidence, dispose } = await setUpAymePage(context, options);
   return {
-    // Claude Code's own per-call limit must outlast a goal call.
-    environment: { MCP_TOOL_TIMEOUT: String(mcpToolTimeoutMs) },
+    environment: {},
     readableDirectories: [skillDir],
     evidence,
     dispose,
@@ -611,14 +583,14 @@ export async function setUpAymeAgent(
 
 /**
  * Launches the headless system Chrome on the run's profile, with the arm's
- * browser arguments and the WebMCP flag, the lab app's switches set as
- * cookies before the page loads, and opens the mission's start page.
+ * browser arguments and the WebMCP flag, the lab app's page objects switch
+ * set as a cookie before the page loads, and opens the mission's start page.
  */
 async function launchStartPage(
   context: Pick<ArmContext, "profileDir" | "start">,
   options: Pick<
     AymePageOptions,
-    "goalLoop" | "pageObjects" | "browserArgs" | "browserFeatures"
+    "pageObjects" | "browserArgs" | "browserFeatures"
   >
 ): Promise<{ browser: BrowserContext; page: Page; opened: number }> {
   const origin = new URL(context.start.url).origin;
@@ -631,8 +603,6 @@ async function launchStartPage(
       args: browserLaunchArgs(options.browserArgs, options.browserFeatures),
     }
   );
-  if (options.goalLoop)
-    await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
   if (!options.pageObjects)
     await browser.addCookies([{ ...pageObjectsOffCookie, url: origin }]);
   const page = browser.pages()[0] ?? (await browser.newPage());
@@ -642,8 +612,8 @@ async function launchStartPage(
 }
 
 /**
- * Starts the Ayme MCP server, opens the mission's start page with the Goal
- * Loop and page objects switches set for the arm, waits until the page has
+ * Starts the Ayme MCP server, opens the mission's start page with the page
+ * objects switch set for the arm, waits until the page has
  * paired with the server and published the screen's tools, and hands the
  * server to the agent through the proxy in the run folder.
  */
@@ -717,19 +687,15 @@ export async function setUpAymePage(
         `The page stored a pairing but the server did not report it. Server log:\n${server.log.join("\n")}`
       );
     let tools = await waitFor(
-      `Publishing ${options.goalLoop ? `${screenTool} and goal` : screenTool}`,
+      `Publishing ${screenTool}`,
       60_000,
       async () => {
         const names = await publishedToolNames(page);
-        const complete =
-          names.includes(screenTool) &&
-          (!options.goalLoop || names.includes("goal"));
-        return complete ? names : null;
+        return names.includes(screenTool) ? names : null;
       },
       (last) => ` The page published ${last?.join(", ") || "nothing"}.`
     );
-    const goalToolPublished = tools.includes("goal");
-    if (goalToolPublished !== options.goalLoop)
+    if (tools.includes("goal"))
       throw new Error(
         `The page publishes goal although the Goal Loop should be off for ${context.runId}.`
       );
@@ -742,7 +708,6 @@ export async function setUpAymePage(
       const problem = settledStartPageProblem({
         tools,
         screenTool,
-        goalLoop: options.goalLoop,
         pairedAddress: pairing.address,
         storedAddress: (await storedPairing(page))?.address ?? null,
         pageUrl: page.url(),
@@ -751,7 +716,7 @@ export async function setUpAymePage(
       if (problem) throw new Error(`${problem} (${context.runId})`);
     }
     context.log(
-      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published; page objects are ${options.pageObjects ? "on" : "off"}.`
+      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; page objects are ${options.pageObjects ? "on" : "off"}.`
     );
     if (pageObjectToolsOnly)
       context.log(
@@ -765,7 +730,7 @@ export async function setUpAymePage(
       pairedAt: pairedAt.toISOString(),
       pairingMs: pairedAt.getTime() - opened,
       tools,
-      goalToolPublished,
+      goalToolPublished: false,
       pageObjects: options.pageObjects,
       ...(pageObjectToolsOnly
         ? {
@@ -822,7 +787,6 @@ export async function setUpWebMcpPage(
       `Something listens on port ${inUse.join(", ")}, in the range a page scans for Ayme MCP servers; it would pair with the page. Stop it and run again.`
     );
   const { browser, page, opened } = await launchStartPage(context, {
-    goalLoop: false,
     pageObjects: true,
     browserArgs: options.browserArgs,
     browserFeatures: options.browserFeatures,
