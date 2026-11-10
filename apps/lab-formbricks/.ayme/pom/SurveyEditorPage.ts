@@ -61,6 +61,11 @@ export class SurveyEditorPage extends AppPage {
   async saveAndClose(): Promise<SurveySummaryPage> {
     await this.saveAndCloseButton.click();
     const summary = new SurveySummaryPage(this.page);
+    // The editor has a level-1 heading too, so the summary's heading alone
+    // would be found before the navigation: wait for its address first.
+    await this.page.waitForURL(/\/summary(\?|$)/, {
+      timeout: NEXT_SCREEN_TIMEOUT,
+    });
     await summary.surveyTitleHeading.waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
     return summary;
   }
