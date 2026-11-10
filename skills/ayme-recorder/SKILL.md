@@ -51,8 +51,11 @@ visits:                         # one per page load
 traceActionPoints:              # the interactions the trace holds
 ```
 
-`/locator:` lines under a node are Playwright locators for it. An `s_*` node
-has one only when an action targeted it.
+Nodes carry no locators. An interaction's `targetSelector` identifies its
+target; read any other locator from the trace, as
+[Use the trace](#use-the-trace) describes. Packages from older recorder
+versions also have `/locator:` lines under some nodes, with a Playwright
+locator for that node.
 
 A ref names a node within this package. Each visit numbers its nodes anew, and
 a node the app re-renders gets a new ref: the same button can be `e44`, then
@@ -69,9 +72,7 @@ below it.
 ```text
 - [ref=e25]:
   - <added> [ref=e137] button "Cart, 2 items":
-    - /locator: "locator('[data-test=\"shopping-cart-link\"]')"
     - <changed> [ref=e45]:
-      - /locator: "locator('[data-test=\"shopping-cart-link\"]')"
       - text: 2
   - <removed> [ref=e44] button "Cart, 1 items"
 ```
@@ -108,8 +109,7 @@ evidence:
 - Each visit is a page, by its URL path.
 - A boundary that appears or disappears is an `<added>` or `<removed>`
   subtree in a Change Tree.
-- A repeated structure shows as sibling subtrees of one shape, whose locators
-  differ only in position.
+- A repeated structure shows as sibling subtrees of one shape.
 - Part of the page that every visit repeats, such as a header, is the same
   element on every page.
 - An action's parameters are the values the user entered, or derived from elements the user interacted with.
@@ -119,9 +119,9 @@ way, such as with a validation error, and the recording does not show how to
 tell the outcomes apart, ask the user before writing a return that depends on
 the outcome.
 
-Recorded locators are candidates. Check each by
-[Locator strategy](references/page-object-design.md#locator-strategy), and look
-for a better one in the trace.
+Target selectors, and `/locator:` lines in older packages, are candidates.
+Check each by [Locator strategy](references/page-object-design.md#locator-strategy),
+and look for a better one in the trace.
 
 ## Write the test
 
@@ -152,7 +152,7 @@ Turn the timeline into assertions:
 
 The trace holds a DOM snapshot after each recorded interaction, with the real
 elements and their attributes. Read it when a tree does not settle what a step
-did, or to find a better locator. Each element carries its package ref as
+did, or to find a locator for an element. Each element carries its package ref as
 `__playwright_aria_ref__`, so you can look up a node from the timeline:
 
 ```sh
