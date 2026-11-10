@@ -2,7 +2,6 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveyNavigationPage } from "./SurveyNavigationPage";
-import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 export class SignInPage extends AppPage {
   readonly path = "/auth/login";
@@ -47,13 +46,18 @@ export class SignInPage extends AppPage {
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
     await this.logInWithEmailButton.click();
-    const navigationPage = new SurveyNavigationPage(this.page);
-    await navigationPage.startFromScratchButton
-      .or(this.errorMessage)
+    // A sign-in that went through shows nothing here before Formbricks leaves
+    // the page, so the one outcome to see on this page is the error, which a
+    // refused sign-in showed after 0.3 s. Without one within Ayme's own limit
+    // for a wait, stated here for Playwright, which has none, the sign-in is
+    // taken to have gone through.
+    const refused = await this.errorMessage
       .first()
-      .waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
-    return (await this.errorMessage.first().isVisible())
-      ? this
-      : navigationPage;
+      .waitFor({ timeout: 1_000 })
+      .then(
+        () => true,
+        () => false
+      );
+    return refused ? this : new SurveyNavigationPage(this.page);
   }
 }

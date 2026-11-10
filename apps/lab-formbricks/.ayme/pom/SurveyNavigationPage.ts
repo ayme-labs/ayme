@@ -2,7 +2,6 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveyEditorPage } from "./SurveyEditorPage";
-import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
 
 @ayme({
   description: "Where an organization without surveys creates its first one.",
@@ -24,8 +23,6 @@ export class SurveyNavigationPage extends AppPage {
   @ayme.action({ description: "Creates an empty survey." })
   async startFromScratch(): Promise<SurveyEditorPage> {
     await this.startFromScratchButton.click();
-    const editor = new SurveyEditorPage(this.page);
-    await editor.surveyNameInput.waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
-    return editor;
+    return new SurveyEditorPage(this.page);
   }
 }

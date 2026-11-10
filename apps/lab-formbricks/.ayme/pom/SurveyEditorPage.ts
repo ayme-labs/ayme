@@ -2,7 +2,10 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
-import { NEXT_SCREEN_TIMEOUT } from "./timeouts";
+
+const canSaveAsDraft = async (self: SurveyEditorPage) =>
+  (await self.saveAsDraftButton.isVisible()) ||
+  "Formbricks shows Save as draft only for a draft, and not in the editor a first survey opens in.";
 
 @ayme({
   description:
@@ -18,6 +21,11 @@ export class SurveyEditorPage extends AppPage {
   readonly questionTextEditor: Locator;
   @ayme.child
   readonly saveAndCloseButton: Locator;
+  @ayme.child
+  readonly saveAsDraftButton: Locator;
+  /** Shows for about two seconds after a save went through. */
+  @ayme.child
+  readonly changesSavedMessage: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -36,6 +44,15 @@ export class SurveyEditorPage extends AppPage {
       name: "Save & Close",
       exact: true,
     });
+    this.saveAsDraftButton = page.getByRole("button", {
+      name: "Save as draft",
+      exact: true,
+    });
+    // A toast has no name or test id, so its text tells it from an error's.
+    this.changesSavedMessage = page
+      .locator("[data-rht-toaster]")
+      .getByRole("status")
+      .filter({ hasText: "Changes saved." });
   }
 
   @ayme.action({
@@ -60,19 +77,24 @@ export class SurveyEditorPage extends AppPage {
   })
   async saveAndClose(): Promise<SurveySummaryPage> {
     await this.saveAndCloseButton.click();
-    const summary = new SurveySummaryPage(this.page);
-    // The editor has a level-1 heading too, so the summary's heading alone
-    // would be found before the navigation: wait for its address first.
-    await this.page.waitForURL(/\/summary(\?|$)/, {
-      timeout: NEXT_SCREEN_TIMEOUT,
-    });
-    // A survey published for the first time opens with its share dialog,
-    // which hides the heading behind it.
-    await summary.surveyTitleHeading
-      .or(summary.shareSurveyDialog.root)
-      .first()
-      .waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
-    return summary;
+    return new SurveySummaryPage(this.page);
+  }
+
+  @ayme.action({
+    available: canSaveAsDraft,
+    description:
+      "Saves the changes without publishing: the survey stays a draft, which collects no responses, and the editor stays open.",
+  })
+  async saveAsDraft() {
+    await this.saveAsDraftButton.click();
+    // While Formbricks saves, the button shows a spinner in place of its
+    // name, so it is back once the save has ended. The save is a round trip
+    // to the server, which took 0.5 to 0.75 s on a warm dev server: too close
+    // to the one second Ayme gives a wait, so this one has its own limit.
+    await this.saveAsDraftButton.waitFor({ timeout: 5_000 });
+    if (!(await this.changesSavedMessage.isVisible()))
+      throw new Error("Formbricks did not save the draft.");
+    return this;
   }
 
   private async fillQuestionText(text: string) {

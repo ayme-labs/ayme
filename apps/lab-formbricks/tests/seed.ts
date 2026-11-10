@@ -18,6 +18,8 @@ type Prisma = {
   user: Delegate;
   account: Delegate;
   workspace: Delegate;
+  survey: Delegate;
+  response: Delegate;
   contactAttributeKey: Delegate;
   authzedProjectionOutbox: Delegate;
   $disconnect(): Promise<void>;
@@ -212,6 +214,23 @@ export async function waitForAuthorization(
       );
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
+}
+
+/** A survey's name and status as Formbricks has stored them. */
+export async function storedSurvey(
+  surveyId: string
+): Promise<{ name: string; status: string }> {
+  return (await formbricks().prisma.survey.findFirstOrThrow({
+    where: { id: surveyId },
+    select: { name: true, status: true },
+  })) as { name: string; status: string };
+}
+
+/** Gives the survey one finished response. */
+export async function seedResponse(surveyId: string): Promise<void> {
+  await formbricks().prisma.response.create({
+    data: { surveyId, finished: true },
+  });
 }
 
 /** Closes the database connection, if a test opened one. */

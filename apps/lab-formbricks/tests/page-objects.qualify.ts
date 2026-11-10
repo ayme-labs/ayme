@@ -11,11 +11,18 @@ import {
   test as base,
 } from "@playwright/test";
 
+import { EditActiveSurveyDialog } from "../.ayme/pom/EditActiveSurveyDialog";
 import { SignInPage } from "../.ayme/pom/SignInPage";
 import { SurveyEditorPage } from "../.ayme/pom/SurveyEditorPage";
 import { SurveyNavigationPage } from "../.ayme/pom/SurveyNavigationPage";
 import { SurveySummaryPage } from "../.ayme/pom/SurveySummaryPage";
-import { disconnect, seedUser, waitForAuthorization } from "./seed";
+import {
+  disconnect,
+  seedResponse,
+  seedUser,
+  storedSurvey,
+  waitForAuthorization,
+} from "./seed";
 
 // The qualification drives the Page Objects with Playwright; the lab app,
 // which ships no Ayme, gets the same classes from an `ayme mcp` server, which
@@ -127,9 +134,9 @@ function publishedToolNames(page: Page): Promise<string[]> {
 }
 
 /**
- * Formbricks renders the sign-in page on the server, and a click on it does
- * nothing until React has attached its handlers, which on a dev server's
- * first page load takes a while.
+ * Formbricks renders a page on the server, and a click on it does nothing
+ * until React has attached its handlers, which on a dev server takes a while
+ * after a page load.
  */
 async function expectHydrated(locator: Locator): Promise<void> {
   await expect
@@ -156,11 +163,16 @@ async function createdSurveyId(page: Page): Promise<string> {
   return String(body.data?.id);
 }
 
+/** The editor as a survey opens in it from the survey list, not as a first survey does (`?mode=cx`). */
+const editorPath = (workspaceId: string, surveyId: string) =>
+  `/workspaces/${workspaceId}/surveys/${surveyId}/edit`;
+
 /**
- * Turbopack compiles each route on its first request, which on a fresh dev
- * server takes longer than a Page Object action waits for the screen it leads
- * to. So a throwaway user first walks the screens with Playwright alone,
- * which waits as long as the test may run.
+ * Turbopack compiles each route and each server action on its first use,
+ * which on a fresh dev server takes longer than `saveAsDraft` waits for its
+ * save and than the assertions below wait for a screen. So a throwaway user
+ * first walks the screens with Playwright alone, which waits as long as the
+ * test may run.
  */
 async function compileScreens(browser: Browser): Promise<void> {
   const user = await seedUser();
@@ -178,7 +190,15 @@ async function compileScreens(browser: Browser): Promise<void> {
     const surveyId = createdSurveyId(page);
     await new SurveyNavigationPage(page).startFromScratchButton.click();
     await waitForAuthorization([await surveyId]);
-    await new SurveyEditorPage(page).saveAndCloseButton.click();
+    const editor = new SurveyEditorPage(page);
+    await editor.saveAndCloseButton.waitFor();
+    await page.goto(editorPath(user.workspaceId, await surveyId));
+    await expectHydrated(editor.saveAsDraftButton);
+    await editor.saveAsDraftButton.click();
+    await editor.changesSavedMessage.waitFor();
+    await page.goto(`${editorPath(user.workspaceId, await surveyId)}?mode=cx`);
+    await expectHydrated(editor.saveAndCloseButton);
+    await editor.saveAndCloseButton.click();
     await new SurveySummaryPage(page).shareSurveyDialog.root.waitFor();
   } finally {
     await context.close();
@@ -247,6 +267,15 @@ test("each page object locator resolves exactly once in its intended state, and 
   await expect(signInPage.emailInput).toHaveCount(0);
   await expectHydrated(signInPage.logInWithEmailButton);
 
+  // A refused sign-in stays on the page and says why.
+  const rejected = await signInPage.logIn(user.email, `not ${user.password}`);
+  assert(rejected === signInPage);
+  await expectExactlyOnce(signInPage.errorMessage);
+  await expectExactlyOnce(signInPage.emailInput);
+  await expectExactlyOnce(signInPage.passwordInput);
+  // The message is a toast, which goes by itself.
+  await expect(signInPage.errorMessage).toHaveCount(0);
+
   // A new organization without surveys is sent to create its first survey.
   const surveyNavigationPage = await signInPage.logIn(
     user.email,
@@ -273,12 +302,43 @@ test("each page object locator resolves exactly once in its intended state, and 
   await expectTools(agent, [
     "SurveyEditorPage.fillSurveyForm",
     "SurveyEditorPage.saveAndClose",
+    "SurveyEditorPage.saveAsDraft",
   ]);
 
   const call = async (name: string, input: Record<string, unknown> = {}) => {
     const result = await agent.call(name, input);
     expect(result.isError, `${name}: ${result.text}`).toBe(false);
   };
+
+  // The editor a first survey opens in has no Save as draft, and the action says so.
+  await expect(surveyEditorPage.saveAsDraftButton).toHaveCount(0);
+  const refused = await agent.call("SurveyEditorPage.saveAsDraft");
+  expect(refused.isError, refused.text).toBe(true);
+  expect(refused.text).toContain("only for a draft");
+
+  // The editor a draft opens in from the survey list has it.
+  await page.goto(editorPath(user.workspaceId, surveyId));
+  await expectExactlyOnce(surveyEditorPage.saveAsDraftButton);
+  await expectHydrated(surveyEditorPage.saveAsDraftButton);
+  await expect(surveyEditorPage.saveAndCloseButton).toHaveCount(0);
+  await expectTools(agent, ["SurveyEditorPage.saveAsDraft"]);
+  const draftName = `Ayme lab draft ${surveyId}`;
+  await call("SurveyEditorPage.fillSurveyForm", { name: draftName });
+  await call("SurveyEditorPage.saveAsDraft");
+  // The action returned once the save had ended, and the survey is not published.
+  expect(await storedSurvey(surveyId)).toEqual({
+    name: draftName,
+    status: "draft",
+  });
+  await expect(page).toHaveURL(
+    new RegExp(`${editorPath(user.workspaceId, surveyId)}$`)
+  );
+
+  await page.goto(`${editorPath(user.workspaceId, surveyId)}?mode=cx`);
+  await expectExactlyOnce(surveyEditorPage.saveAndCloseButton);
+  await expectHydrated(surveyEditorPage.saveAndCloseButton);
+  await expect(surveyEditorPage.surveyNameInput).toHaveValue(draftName);
+  await expectTools(agent, ["SurveyEditorPage.saveAndClose"]);
 
   const surveyName = `Ayme lab qualification ${surveyId}`;
   const questionText = `What should the lab check next? ${surveyId}`;
@@ -313,4 +373,23 @@ test("each page object locator resolves exactly once in its intended state, and 
     new RegExp(`/workspaces/${user.workspaceId}/surveys/${surveyId}/edit`)
   );
   await expect(reopened.surveyNameInput).toHaveValue(surveyName);
+
+  // A survey with responses asks before it opens in the editor.
+  await seedResponse(surveyId);
+  await page.goto(
+    `/workspaces/${user.workspaceId}/surveys/${surveyId}/summary`
+  );
+  await expectExactlyOnce(surveySummaryPage.editButton);
+  await expectHydrated(surveySummaryPage.editButton);
+  const dialog = await surveySummaryPage.edit();
+  assert(dialog instanceof EditActiveSurveyDialog);
+  await expectExactlyOnce(dialog.root);
+  await expectExactlyOnce(dialog.editButton);
+  await expectExactlyOnce(dialog.duplicateAndEditButton);
+  await expectTools(agent, ["EditActiveSurveyDialog.edit"]);
+  const editor = await dialog.edit();
+  await page.waitForURL(
+    new RegExp(`${editorPath(user.workspaceId, surveyId)}$`)
+  );
+  await expect(editor.surveyNameInput).toHaveValue(surveyName);
 });
