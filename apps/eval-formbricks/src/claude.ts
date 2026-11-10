@@ -15,6 +15,7 @@ import { createWriteStream } from "node:fs";
 import { createInterface } from "node:readline";
 
 import type { Arm } from "./arms.ts";
+import { signalProcessGroup } from "./processGroup.ts";
 import { resultEvent } from "./transcript.ts";
 
 /** How long the setup turn may take; a setup that runs out of it ends the run. */
@@ -202,14 +203,6 @@ export function claudeAuthStatus(
     };
   } catch {
     return null;
-  }
-}
-
-function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
-  try {
-    process.kill(-pid, signal);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
   }
 }
 

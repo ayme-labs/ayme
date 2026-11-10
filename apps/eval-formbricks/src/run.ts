@@ -20,6 +20,7 @@ import {
   type ArmSetup,
 } from "./arms.ts";
 import { initPageScript, openStartPage } from "./browser.ts";
+import { runCommand } from "./command.ts";
 import {
   agentEffort,
   claudeEnvironment,
@@ -306,11 +307,4 @@ async function main() {
   process.exitCode = result.pass ? 0 : 1;
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) void runCommand(main, log);

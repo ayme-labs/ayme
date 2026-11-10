@@ -20,6 +20,7 @@ import path from "node:path";
 import { armIds, arms, isArmId, type ArmId } from "./arms.ts";
 import { parseFlags } from "./cli.ts";
 import { claudeEnvironment } from "./claude.ts";
+import { runCommand } from "./command.ts";
 import { readOauthToken } from "./environment.ts";
 import { ensureDatabaseBuilt } from "./formbricks/database.ts";
 import {
@@ -176,11 +177,4 @@ async function main() {
   log(`Summary written to ${written.join(", ")}.`);
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) void runCommand(main, log);

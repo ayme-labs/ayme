@@ -34,7 +34,7 @@
  * agent's one MCP server is an `ayme mcp` that lists the page's tools from
  * the agent's first tool list on.
  */
-import { spawn, type ChildProcess } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -48,6 +48,7 @@ import { withoutClaudeVariables } from "./claude.ts";
 import type { StartScreen } from "./missions.ts";
 import { labRoot, repoRoot } from "./paths.ts";
 import type { Precondition } from "./preconditions.ts";
+import { spawnProcessGroup } from "./processGroup.ts";
 
 export const aymeMcpPackageName = "@ayme-dev/mcp";
 const aymeMcpPackagePath = createRequire(import.meta.url).resolve(
@@ -545,16 +546,18 @@ async function waitFor<T>(
 /**
  * The `ayme mcp` server as the harness runs it: started in the lab app's
  * folder on `port`, serving the entry for the arm, its stderr kept in the
- * run folder. Until an agent connects to its socket, if one ever does, the
- * harness itself may ask it for its tool list; then its stdio is handed to
- * the first client of the socket. Whatever else the server writes before
- * that client connects is dropped: a server that paired before any agent
- * existed announces the tool-list change to nobody, and the agent's first
- * tool list reflects it.
+ * run folder. It leads a process group of its own, so that stopping it
+ * stops the esbuild service it starts too (see `processGroup.ts`). Until an
+ * agent connects to its socket, if one ever does, the harness itself may ask
+ * it for its tool list; then its stdio is handed to the first client of the
+ * socket. Whatever else the server writes before that client connects is
+ * dropped: a server that paired before any agent existed announces the
+ * tool-list change to nobody, and the agent's first tool list reflects it.
  */
 class HarnessedServer {
   readonly process: ChildProcess;
   readonly log: string[] = [];
+  private readonly stopProcess: () => Promise<{ stdioHeldOpen: boolean }>;
   private agent: net.Socket | undefined;
   private listener: net.Server | undefined;
   private pendingOutput = "";
@@ -576,7 +579,7 @@ class HarnessedServer {
   ) {
     this.context = context;
     this.forAgent = forAgent;
-    this.process = spawn(
+    const group = spawnProcessGroup(
       process.execPath,
       [aymeMcpCliPath, ...aymeMcpArgs(port, served)],
       {
@@ -584,9 +587,10 @@ class HarnessedServer {
         cwd: labRoot,
         // Scrubbed, so the server carries none of the launcher's Claude Code variables or token.
         env: withoutClaudeVariables(process.env),
-        stdio: ["pipe", "pipe", "pipe"],
       }
     );
+    this.process = group.child;
+    this.stopProcess = group.stop;
     this.process.stderr!.on("data", (chunk: Buffer) => {
       for (const line of String(chunk).split("\n"))
         if (line.trim()) this.log.push(`${new Date().toISOString()} ${line}`);
@@ -725,19 +729,21 @@ class HarnessedServer {
     });
   }
 
+  /**
+   * Closes the socket and ends the server with whatever it started, a
+   * server that ended by itself when its agent left included: its esbuild
+   * service inherits its standard error, and one left behind would keep the
+   * harness's end of that pipe, and so the harness, from ever ending.
+   */
   async stop(socketPath: string): Promise<void> {
     this.listener?.close();
     this.agent?.destroy();
     await rm(socketPath, { force: true });
-    if (this.process.exitCode === null && !this.process.killed) {
-      const exited = new Promise<void>((resolve) =>
-        this.process.once("exit", () => resolve())
+    const { stdioHeldOpen } = await this.stopProcess();
+    if (stdioHeldOpen)
+      this.context.log(
+        "A process the Ayme MCP server started left the server's process group and still holds its output open; the harness let go of it instead of waiting. Look for a stray process of this run."
       );
-      this.process.kill("SIGTERM");
-      const forceKill = setTimeout(() => this.process.kill("SIGKILL"), 5_000);
-      await exited;
-      clearTimeout(forceKill);
-    }
   }
 }
 
