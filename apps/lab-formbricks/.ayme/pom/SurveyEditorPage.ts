@@ -66,7 +66,12 @@ export class SurveyEditorPage extends AppPage {
     await this.page.waitForURL(/\/summary(\?|$)/, {
       timeout: NEXT_SCREEN_TIMEOUT,
     });
-    await summary.surveyTitleHeading.waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
+    // A survey published for the first time opens with its share dialog,
+    // which hides the heading behind it.
+    await summary.surveyTitleHeading
+      .or(summary.shareSurveyDialog.root)
+      .first()
+      .waitFor({ timeout: NEXT_SCREEN_TIMEOUT });
     return summary;
   }
 
