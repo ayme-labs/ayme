@@ -3,6 +3,10 @@ import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
 
+const canSave = async (self: SurveyEditorPage) =>
+  (await self.saveButton.isVisible()) ||
+  "Formbricks shows Save only for a survey that is no longer a draft, and not in the editor a first survey opens in.";
+
 const canSaveAndClose = async (self: SurveyEditorPage) =>
   (await self.saveAndCloseButton.isVisible()) ||
   "Formbricks shows Save & Close for a published survey, and for a draft only in the editor a first survey opens in.";
@@ -23,6 +27,15 @@ export class SurveyEditorPage extends AppPage {
   /** The text of the question open in the editor, the first one when the editor opens. */
   @ayme.child
   readonly questionTextEditor: Locator;
+  /**
+   * Tells a draft from a survey that is no longer one: "Auto-save on" or
+   * "Progress saved" on a draft, "Auto-save disabled" on a published, paused
+   * or completed survey.
+   */
+  @ayme.child
+  readonly autoSaveStatus: Locator;
+  @ayme.child
+  readonly saveButton: Locator;
   @ayme.child
   readonly saveAndCloseButton: Locator;
   @ayme.child
@@ -44,6 +57,11 @@ export class SurveyEditorPage extends AppPage {
       .locator("..")
       .locator("..")
       .locator(".editor-input");
+    // The badge has no role, name or test id, so it is found by the texts it shows.
+    this.autoSaveStatus = page.getByText(
+      /^(Auto-save on|Progress saved|Auto-save disabled)$/
+    );
+    this.saveButton = page.getByRole("button", { name: "Save", exact: true });
     this.saveAndCloseButton = page.getByRole("button", {
       name: "Save & Close",
       exact: true,
@@ -76,6 +94,16 @@ export class SurveyEditorPage extends AppPage {
   }
 
   @ayme.action({
+    available: canSave,
+    description:
+      "Saves the changes to a survey that is no longer a draft. Its status stays as it is, a published survey stays published, and the editor stays open.",
+  })
+  async save() {
+    await this.saveWith(this.saveButton);
+    return this;
+  }
+
+  @ayme.action({
     available: canSaveAndClose,
     description:
       "Publishes a draft survey, so it starts collecting responses; saves a published one.",
@@ -91,15 +119,20 @@ export class SurveyEditorPage extends AppPage {
       "Saves the changes without publishing: the survey stays a draft, which collects no responses, and the editor stays open.",
   })
   async saveAsDraft() {
-    await this.saveAsDraftButton.click();
+    await this.saveWith(this.saveAsDraftButton);
+    return this;
+  }
+
+  /** Saves with a button that keeps the editor open, and fails unless Formbricks confirms the save. */
+  private async saveWith(button: Locator) {
+    await button.click();
     // While Formbricks saves, the button shows a spinner in place of its
     // name, so it is back once the save has ended. The save is a round trip
     // to the server, which took 0.5 to 0.75 s on a warm dev server: too close
     // to the one second Ayme gives a wait, so this one has its own limit.
-    await this.saveAsDraftButton.waitFor({ timeout: 5_000 });
+    await button.waitFor({ timeout: 5_000 });
     if (!(await this.changesSavedMessage.isVisible()))
-      throw new Error("Formbricks did not save the draft.");
-    return this;
+      throw new Error("Formbricks did not save the survey.");
   }
 
   private async fillQuestionText(text: string) {
