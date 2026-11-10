@@ -88,7 +88,11 @@ export function formbricksPreparedPrecondition(
   };
 }
 
-/** The lab app folder, submodule included, has no untracked or modified file: the agent starts from the checkout as committed. */
+/**
+ * The lab app folder, submodule included, has no untracked or modified file:
+ * the agent starts from the Formbricks checkout as committed, and the run's
+ * server serves the Page Objects as committed.
+ */
 export function labCheckoutCleanPrecondition(
   read: () => LabChanges
 ): Precondition {
@@ -100,7 +104,7 @@ export function labCheckoutCleanPrecondition(
       const list = (files: string[]) =>
         files.slice(0, 5).join(", ") +
         (files.length > 5 ? `, and ${files.length - 5} more` : "");
-      return `apps/lab-formbricks has changes the agent would see: ${[
+      return `apps/lab-formbricks has changes the agent would see or the run's server would serve: ${[
         untracked.length > 0 ? `untracked ${list(untracked)}` : null,
         modified.length > 0 ? `modified ${list(modified)}` : null,
       ]

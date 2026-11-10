@@ -1,7 +1,9 @@
 /**
- * Keeps the lab app folder, the agent's working root, as the next run's agent
- * must find it. Gitignored files do not count. Before a run the checkout must
- * be clean; after it, files the agent left behind are moved out, never deleted.
+ * Keeps the lab app folder as the next run must find it: the Formbricks
+ * submodule in it, the agent's working root, and around it what the run's
+ * server serves. Gitignored files do not count. Before a run the checkout
+ * must be clean; after it, files the agent left behind are moved out, never
+ * deleted.
  */
 import { spawnSync } from "node:child_process";
 import { mkdir, rename } from "node:fs/promises";

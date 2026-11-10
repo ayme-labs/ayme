@@ -32,7 +32,7 @@ import {
   settledStartPageProblem,
   webMcpFeatureFlag,
 } from "./ayme.ts";
-import { evalRoot, labRoot, repoRoot } from "./paths.ts";
+import { agentRoot, evalRoot, labRoot, repoRoot } from "./paths.ts";
 
 describe("the Ayme arms' skill", () => {
   it("is the one the repository ships, under skills/", () => {
@@ -127,6 +127,28 @@ describe("the run's ayme mcp", () => {
     expect(existsSync(path.join(labRoot, pageObjectsEntry))).toBe(true);
     expect(existsSync(path.join(labRoot, noPageObjectsEntry))).toBe(true);
     expect(initScriptPath).toBe(path.join(labRoot, ".ayme/init-script.js"));
+  });
+});
+
+describe("the agent's working root", () => {
+  const outsideIt = (file: string) =>
+    path.relative(agentRoot, file).startsWith("..");
+
+  it("is the Formbricks source, inside the lab app's folder", () => {
+    expect(agentRoot).toBe(path.join(labRoot, "formbricks"));
+  });
+
+  it("holds nothing the lab app keeps of Ayme: the entries the server serves, the Page Objects, their qualification and the init script are all outside it", () => {
+    for (const file of [
+      pageObjectsEntry,
+      noPageObjectsEntry,
+      ".ayme/pom/SignInPage.ts",
+      "tests/page-objects.qualify.ts",
+    ]) {
+      expect(existsSync(path.join(labRoot, file))).toBe(true);
+      expect(outsideIt(path.join(labRoot, file))).toBe(true);
+    }
+    expect(outsideIt(initScriptPath)).toBe(true);
   });
 });
 

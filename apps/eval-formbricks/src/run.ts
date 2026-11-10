@@ -48,9 +48,9 @@ import {
   type NormalizedResult,
 } from "./normalize.ts";
 import {
+  agentRoot,
   evalRoot,
   formbricksRoot,
-  labRoot,
   labUrl,
   repoRoot,
   runsRoot,
@@ -203,7 +203,7 @@ export async function runOnce(
       initPagePath,
       configDir: claudeConfigDir,
       start: mission.start,
-      cwd: labRoot,
+      cwd: agentRoot,
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
@@ -224,7 +224,7 @@ export async function runOnce(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
     const run = await runClaude({
-      cwd: labRoot,
+      cwd: agentRoot,
       environment: { ...environment, ...armSetup?.environment },
       model: options.model,
       arm: options.arm,

@@ -8,10 +8,23 @@ export const evalRoot = path.resolve(
 );
 export const repoRoot = path.resolve(evalRoot, "../..");
 
-/** The agent's working root: the lab app and nothing else. */
+/**
+ * The lab app: the Formbricks submodule, and around it everything of Ayme,
+ * the Page Objects `ayme mcp` serves when it starts here and their
+ * qualification. No agent reads this folder itself.
+ */
 export const labRoot = path.join(repoRoot, "apps/lab-formbricks");
 /** The Formbricks submodule checkout inside the lab app. */
 export const formbricksRoot = path.join(labRoot, "formbricks");
+/**
+ * A mission agent's working root: the Formbricks source and nothing else.
+ * Claude Code reads files in its working root and the folders a run adds,
+ * with its file tools and with read-only shell commands alike, and under
+ * the runs' permission mode nothing outside them. The lab app's folder is
+ * the submodule's parent, so the Page Objects, their qualification and the
+ * init script the run's server writes there are out of every arm's reach.
+ */
+export const agentRoot = formbricksRoot;
 
 /** Ignored by git. One folder per run. */
 export const resultsRoot = path.join(evalRoot, "results");

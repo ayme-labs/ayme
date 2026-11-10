@@ -194,6 +194,7 @@ describe("a completed run", () => {
       skills: ["playwright-cli"],
       plugins: [],
       permissionMode: "dontAsk",
+      workingDirectory: "/repo/apps/lab-formbricks/formbricks",
     });
     expect(result.unparsedTranscriptLines).toBe(0);
   });

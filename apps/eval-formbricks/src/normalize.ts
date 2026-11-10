@@ -90,6 +90,12 @@ export type NormalizedResult = {
     skills: string[];
     plugins: { name: string; source: string | null }[];
     permissionMode: string | null;
+    /**
+     * The agent's working folder, as Claude Code reported it: with the
+     * folders the arm's setup added, all its file tools can read. `null` in
+     * a result stored before this was recorded.
+     */
+    workingDirectory: string | null;
   };
   setup: Record<string, unknown> | null;
   /**
@@ -191,6 +197,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
       skills: init?.skills ?? [],
       plugins: init?.plugins ?? [],
       permissionMode: init?.permissionMode ?? null,
+      workingDirectory: init?.cwd ?? null,
     },
     setup: artifacts.setup,
     setupTurn: {

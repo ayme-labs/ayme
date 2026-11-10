@@ -27,6 +27,8 @@ export type TranscriptInit = {
   model: string | null;
   claudeCodeVersion: string | null;
   permissionMode: string | null;
+  /** The agent's working folder, as Claude Code reports it. */
+  cwd: string | null;
   tools: string[];
   mcpServers: { name: string; status: string }[];
   skills: string[];
@@ -116,6 +118,7 @@ function readInit(event: Json): TranscriptInit {
     model: stringOrNull(event.model),
     claudeCodeVersion: stringOrNull(event.claude_code_version),
     permissionMode: stringOrNull(event.permissionMode),
+    cwd: stringOrNull(event.cwd),
     tools: Array.isArray(event.tools)
       ? event.tools.filter((tool) => typeof tool === "string")
       : [],

@@ -63,7 +63,7 @@ export type ArmContext = {
   configDir: string;
   /** Where the agent starts, and whether the browser is signed in there. */
   start: Mission["start"];
-  /** The agent's working root. */
+  /** The agent's working root, where its interface's commands run too. */
   cwd: string;
   log: (line: string) => void;
 };
