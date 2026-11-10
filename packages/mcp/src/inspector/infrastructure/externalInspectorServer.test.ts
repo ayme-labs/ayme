@@ -22,7 +22,7 @@ async function start(build: string | undefined = "export const build = 1;") {
     connection,
     token: "token",
     agent: () => undefined,
-    extension,
+    extensions: [extension],
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   stop = close;

@@ -121,7 +121,7 @@ The Inspector's setting for showing people what an agent does: it pauses briefly
 _Avoid_: slow mode, demo trace
 
 **Agent Connection**:
-The link between one coding agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools.
+The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools.
 
 **Peek**:
 A named view of application state that a coding agent can read on demand while the app runs, from the browser or from the app's own server process. Reading it changes nothing.

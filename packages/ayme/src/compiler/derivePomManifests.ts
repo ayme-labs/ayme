@@ -3,8 +3,10 @@ import path from "node:path";
 
 import ts from "typescript";
 
-import type { JsonPrimitive, JsonSchema } from "@ayme-dev/ayme";
+import { rootlessClassRefusals } from "../page-objects/domain";
 import type {
+  JsonPrimitive,
+  JsonSchema,
   PomComponentManifest,
   PomManifest,
   PomMemberAccess,
@@ -12,11 +14,8 @@ import type {
   NamedToolParameter,
   ToolManifest,
   ToolParameter,
-} from "@ayme-dev/ayme/internal";
-import { rootlessClassRefusals } from "@ayme-dev/ayme/internal";
-import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
-
-export type { PomCompilerOptions } from "./pomProgram";
+} from "../shared";
+import { createPomProgram, type PomProjectOptions } from "./pomProgram";
 
 /** A public method of a Page Object Model that is not a Page Object Action. */
 export type SkippedPomMethod = {
@@ -26,22 +25,6 @@ export type SkippedPomMethod = {
   unsupported?: string;
 };
 
-export type PomCompiler = {
-  derivePomManifests(fileName: string): PomManifest[];
-};
-
-/**
- * Derives browser POM metadata from a TypeScript project without depending on
- * a particular bundler.
- */
-export function createPomCompiler(
-  options: PomCompilerOptions = {}
-): PomCompiler {
-  return {
-    derivePomManifests: (fileName) => derivePomManifests(fileName, options),
-  };
-}
-
 /**
  * Returns one manifest per marked class in the file, Page Object Children
  * included. A class that another manifest lists in `components` is a child,
@@ -49,7 +32,7 @@ export function createPomCompiler(
  */
 export function derivePomManifests(
   fileName: string,
-  options: PomCompilerOptions = {}
+  options: PomProjectOptions = {}
 ): PomManifest[] {
   const absoluteFileName = path.resolve(fileName);
   const program = createPomProgram(absoluteFileName, options);
@@ -1207,6 +1190,31 @@ function toolParameter(
   };
 }
 
+/** The property names an object pattern binds, a rest binding aside. */
+function boundKeys(pattern: ts.ObjectBindingPattern): string[] {
+  return pattern.elements.flatMap((element) => {
+    if (element.dotDotDotToken) return [];
+    const key = element.propertyName ?? element.name;
+    return ts.isIdentifier(key) || ts.isLiteralExpression(key)
+      ? [key.text]
+      : [];
+  });
+}
+
+/** The refusal of an object pattern whose `untyped` bindings have no type. */
+function untypedBindings(
+  context: SchemaContext,
+  parameter: ts.ParameterDeclaration,
+  untyped: readonly string[]
+) {
+  const names = untyped.join(", ").replace(/, ([^,]*)$/, " and $1");
+  const verb = untyped.length === 1 ? "has" : "have";
+  return new UnsupportedParameterError(
+    `Page Object Action ${context.className}.${context.methodName}: ${names} in ${patternLabel(parameter)} ${verb} no type.${parameter.type ? "" : " Annotate the parameter."}`,
+    `${names} in parameter ${patternLabel(parameter)} ${verb} no type`
+  );
+}
+
 /**
  * An object pattern's fields: every property of its type, by property name,
  * whatever the pattern binds or renames, with the literal default of a
@@ -1220,6 +1228,20 @@ function objectPatternFields(
   pattern: ts.ObjectBindingPattern,
   type: ts.Type
 ): NamedToolParameter[] {
+  // An unannotated pattern has no type of its own: TypeScript 6 types it
+  // `{}`, which the check below finds, and TypeScript 5 gives each binding
+  // `any`.
+  if (!parameter.type) {
+    const untyped = boundKeys(pattern).filter((key) => {
+      const property = type.getProperty(key);
+      return (
+        property !== undefined &&
+        (context.checker.getTypeOfSymbol(property).flags & ts.TypeFlags.Any) !==
+          0
+      );
+    });
+    if (untyped.length) throw untypedBindings(context, parameter, untyped);
+  }
   const schema = schemaForType(context, type, context.parameter);
   // Only an object schema closes its properties.
   if (schema.additionalProperties !== false)
@@ -1237,14 +1259,7 @@ function objectPatternFields(
     const value = element.initializer && literalDefault(element.initializer);
     if (value !== undefined) defaults.set(key.text, value);
   }
-  if (untyped.length) {
-    const names = untyped.join(", ").replace(/, ([^,]*)$/, " and $1");
-    const verb = untyped.length === 1 ? "has" : "have";
-    throw new UnsupportedParameterError(
-      `Page Object Action ${context.className}.${context.methodName}: ${names} in ${patternLabel(parameter)} ${verb} no type.${parameter.type ? "" : " Annotate the parameter."}`,
-      `${names} in parameter ${patternLabel(parameter)} ${verb} no type`
-    );
-  }
+  if (untyped.length) throw untypedBindings(context, parameter, untyped);
   return Object.entries(properties).map(([name, fieldSchema]) => {
     const value = defaults.get(name);
     return {

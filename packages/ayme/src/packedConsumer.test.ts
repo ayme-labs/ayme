@@ -408,16 +408,27 @@ it(
           vue: "3.5.42",
           "@angular/core": "22.2.1",
           rxjs: "7.8.2",
+          // The compiler entry and the build plugin run on the project's
+          // TypeScript.
+          typescript: "6.0.3",
         },
       })
     );
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], consumer);
     const specifiers = Object.entries(packed).flatMap(([name, { dir }]) =>
-      Object.keys(readManifest(dir).exports ?? {})
-        // A manifest export, for tools like the Angular CLI, is not a module.
-        .filter((subpath) => subpath !== "./package.json")
-        .map((subpath) => path.posix.join(name, subpath))
+      Object.entries(readManifest(dir).exports ?? {})
+        // A manifest export, for tools like the Angular CLI, is not a module,
+        // and neither is an export of types only.
+        .filter(
+          ([subpath, target]) =>
+            subpath !== "./package.json" &&
+            !(
+              typeof target === "object" &&
+              Object.keys(target as object).every((key) => key === "types")
+            )
+        )
+        .map(([subpath]) => path.posix.join(name, subpath))
     );
     expect(specifiers).toEqual(
       expect.arrayContaining([
@@ -817,17 +828,17 @@ for (const vite of ["7.0.0", "8.0.0"])
         `
 import { defineConfig, type Plugin } from 'vite';
 import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
+import type { AymePlaywrightOptions } from '@ayme-dev/unplugin-ayme';
 import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
 import {
-  derivePomManifests,
-  type AymePlaywrightOptions,
+  createPomCompiler,
   type PomCompilerOptions,
-} from '@ayme-dev/unplugin-ayme';
+} from '@ayme-dev/ayme/compiler';
 const options: AymeOptions = { playwright: { use: { testIdAttribute: 'data-id' } } };
 const plugin: Plugin = ayme(options);
 const playwright: AymePlaywrightOptions | undefined = options.playwright;
 const compilerOptions: PomCompilerOptions = {};
-void [turbopackLoader, derivePomManifests, playwright, compilerOptions];
+void [turbopackLoader, createPomCompiler, playwright, compilerOptions];
 export default defineConfig({ plugins: [plugin, aymeDefault()] });
 `
       );

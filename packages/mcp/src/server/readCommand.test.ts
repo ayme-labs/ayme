@@ -28,6 +28,30 @@ describe("readCommand", () => {
     });
   });
 
+  it("starts the server with the Page Objects entry --page-objects names", () => {
+    expect(
+      readCommand(["mcp", "--page-objects", "e2e/agent.ts", "--port", "9400"])
+    ).toEqual({ kind: "start", port: 9400, pageObjects: "e2e/agent.ts" });
+  });
+
+  it("rejects --page-objects for `inspect`", () => {
+    expect(readCommand(["inspect", "--page-objects", "a.ts"])).toEqual({
+      kind: "error",
+      text: `--page-objects is an option of \`ayme mcp\` only.\n\n${USAGE}`,
+    });
+  });
+
+  it("rejects an empty --page-objects value", () => {
+    expect(readCommand(["mcp", "--page-objects", ""])).toEqual({
+      kind: "error",
+      text: `--page-objects expects a file, got an empty value.\n\n${USAGE}`,
+    });
+  });
+
+  it("marks --page-objects experimental in the usage text", () => {
+    expect(USAGE).toMatch(/--page-objects <file>\s+Experimental:/);
+  });
+
   it("prints the Inspector's URL for `inspect`, on the given port if any", () => {
     expect(readCommand(["inspect"])).toEqual({ kind: "inspect" });
     expect(readCommand(["inspect", "--port", "9400"])).toEqual({

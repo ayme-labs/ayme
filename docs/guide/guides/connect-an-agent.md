@@ -121,6 +121,7 @@ The server listens on the loopback interface only, on the first free port from 9
 
 ## Limits
 
+- A page whose app doesn't ship Ayme never pairs. With Playwright MCP or Playwright CLI, `ayme mcp` can serve your Page Objects to it; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).
 - The agent and the browser must run on the same machine. Remote agents, such as an agent on another machine driving a browser on your computer, are not supported.
 - From an origin other than `localhost` or `127.0.0.1`, such as a deployed preview, a tab pairs only through a link, and Chrome may ask you to allow local network access before the page can reach the server. Allow it and reload.
 

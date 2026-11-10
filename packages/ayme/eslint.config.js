@@ -37,9 +37,11 @@ const allowedSlices = {
     "in-page",
     "shared",
   ],
+  // The Page Object compiler, for Node. Only the compiler entry uses it.
+  compiler: ["page-objects", "shared"],
 };
 const slices = Object.keys(allowedSlices);
-// shared and runtime stay unlayered, as packages/ayme/AGENTS.md says.
+// shared, runtime and compiler stay unlayered, as packages/ayme/AGENTS.md says.
 const layeredSlices = [
   "page-state",
   "runs",
@@ -277,6 +279,9 @@ const inPageImport = {
 
 export default [
   ...config,
+  // The compiler's fixtures are Page Object Models as a project writes them,
+  // importing Ayme by its package name. The compiler's tests read them.
+  { ignores: ["src/compiler/**/fixtures/**"] },
   ...horizontalBoundaries({
     packageRoot,
     enforcedSlices: layeredSlices,

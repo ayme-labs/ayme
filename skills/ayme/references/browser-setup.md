@@ -28,9 +28,10 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
 - When a tool answers that no page reconnected in its place, the page the tab
   loaded did not pair within a few seconds. A slow page of the app pairs
   later by itself, and its tools come back with a tool list change. A page
-  that doesn't run Ayme's Agent Connection never pairs, through `ayme_connect`
-  either: go back to a page of the app in that tab, in your browser tool or by
-  asking the user, and its tools return.
+  that doesn't run Ayme's Agent Connection, and loads no
+  [served Page Objects](#a-page-that-doesnt-ship-ayme), never pairs, through
+  `ayme_connect` either: go back to a page of the app in that tab, in your
+  browser tool or by asking the user, and its tools return.
 - When a Page Object's tools never appear, read the browser console, or ask
   the user to: a refused registration, `Cannot register the Page Object …`,
   is logged there and does not reach you. It names two classes that share a
@@ -48,3 +49,20 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
   a page-state read alone does not check the connection.
 - When Chrome asks to allow local network access, ask the user to allow it,
   then reload.
+
+## A page that doesn't ship Ayme
+
+Experimental. With Playwright MCP or Playwright CLI, `ayme mcp` can serve the
+project's Page Objects to a page that doesn't ship Ayme. Set it up as
+[Page Objects on a page without Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
+describes. When it fails:
+
+- The browser tool fails with `Init script file does not exist`: start
+  `ayme mcp` first, and check the path, which is relative to the config
+  file's folder. Then restart the browser tool.
+- The page never pairs: check the browser tool's config has `bypassCSP` and
+  the `local-network-access` permission, and that the browser started after
+  `ayme mcp`. Otherwise pin the port with `--port` and restart the browser.
+- A Page Object's tools don't change after an edit: a failed build is in
+  `ayme mcp`'s standard error, and a build that failed to load is in the
+  browser console.

@@ -8,16 +8,12 @@ import { createUnplugin, type UnpluginFactory } from "unplugin";
 // @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
 import playwrightRange from "../../../playwright-range.json";
 
-import type { SkippedPomMethod } from "./derivePomManifests";
-import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import {
-  absentEntryFor,
-  createPomTransform,
-  includeLine,
-  includeOption,
-  injectedImport,
-  type PomPrograms,
-} from "./transformPomModule";
+  createPomCompiler,
+  type SkippedPomMethod,
+} from "@ayme-dev/ayme/compiler";
+
+import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 
 const PLAYWRIGHT_TEST_PACKAGE = "@playwright/test";
 const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
@@ -67,7 +63,6 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   options = {}
 ) => {
   const report = reportOption(options.report);
-  const include = includeOption(options.include);
   // The latest skipped methods of each transformed module, by file.
   const skipped = new Map<string, SkippedPomMethod[]>();
   let command: string | undefined;
@@ -77,17 +72,22 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // dependency installed mid-session is not seen until the dev server
   // restarts, because the reported dependencies skip `node_modules` and `lib`.
   // Upgrade: also drop the Programs when a package manifest or lockfile changes.
-  const programs: PomPrograms = new Map();
-  const transformPom = createPomTransform(
-    { ...options, include },
-    report === "none"
-      ? undefined
-      : (fileName, methods) => {
-          // A dev server never reports.
-          if (command !== "serve") skipped.set(fileName, methods);
-        },
-    programs
-  );
+  const compiler = createPomCompiler({
+    tsconfigPath: options.tsconfigPath,
+    include: options.include,
+    onSkipped:
+      report === "none"
+        ? undefined
+        : (fileName, methods) => {
+            // A dev server never reports.
+            if (command !== "serve") skipped.set(fileName, methods);
+          },
+  });
+  const include = options.include === true;
+  const transformPom = (code: string, id: string) => {
+    const compiled = compiler.compile(id, code, { emit: "ts" });
+    return compiled && { ...compiled, map: null };
+  };
   // Vite soft-invalidates static importers of a changed file and keeps their
   // previous transform result, so a Page Object compiled from a changed base
   // class would keep a stale manifest. Record which transformed modules read
@@ -120,7 +120,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     name: "ayme",
     enforce: "pre",
     buildEnd() {
-      programs.clear();
+      compiler.invalidate();
       // A dev server ends its "build" when it closes.
       if (command === "serve") return;
       const lines = reportLines(skipped, report);
@@ -138,7 +138,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // Once per build, and once when a dev server starts. A SvelteKit or
         // Nuxt `vite build` runs a client and a server build; the line
         // belongs to the client one, which the option decides about.
-        if (!config.build.ssr) config.logger.info(includeLine(options.include));
+        if (!config.build.ssr) config.logger.info(compiler.includeLine);
       },
       // A build without Ayme resolves the runtime's two entries and the
       // framework packages to their absent entries, in the client output
@@ -146,7 +146,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       // leaves server modules alone.
       async resolveId(source, importer, resolveOptions) {
         if (include) return null;
-        const absent = absentEntryFor(source);
+        const absent = compiler.absentEntry(source);
         if (absent === undefined) return null;
         if (resolveOptions?.ssr) return null;
         if (this.environment.config.consumer !== "client") return null;
@@ -188,7 +188,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       // Vite otherwise calls watchChange for the client environment only.
       perEnvironmentWatchChangeDuringDev: true,
       watchChange(file) {
-        programs.clear();
+        compiler.invalidate();
         const environment = this.environment;
         if (environment.mode !== "dev") return;
         const moduleGraph = environment.moduleGraph;
@@ -205,7 +205,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // the first page load would find them late and reload.
         const injected =
           env?.command === "serve"
-            ? installedImports(injectedImport(include), root, exclude)
+            ? installedImports(compiler.injectedImport, root, exclude)
             : [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,

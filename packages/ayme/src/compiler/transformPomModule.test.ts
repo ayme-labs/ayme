@@ -21,6 +21,10 @@ import {
   type PomPrograms,
 } from "./transformPomModule";
 
+// Each test builds TypeScript Programs, which run several times slower on CI
+// while the browser suites and the packed-consumer test run beside them.
+vi.setConfig({ testTimeout: 15_000 });
+
 it("builds one TypeScript program per POM transform", () => {
   const fixturePath = fileURLToPath(
     new URL("./fixtures/annotatedChildrenPom.ts", import.meta.url)

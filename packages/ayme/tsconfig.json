@@ -4,5 +4,8 @@
     "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  // Page Object Models as a project writes them; the compiler's tests read
+  // them with their own tsconfig.
+  "exclude": ["src/compiler/**/fixtures/**"]
 }

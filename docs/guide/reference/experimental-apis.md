@@ -16,3 +16,7 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 - `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).
 - `decisionEndpoint(url, options?)` in `@ayme-dev/ayme`: the decision function that posts each step to your Decision Endpoint, in [`decisionEndpoint`](decision-endpoint.md#decisionendpoint).
 - `createDecisionEndpoint(options)` in `@ayme-dev/ayme/server`: the Decision Endpoint's handler, in [`createDecisionEndpoint`](decision-endpoint.md#createdecisionendpoint).
+
+## Page Objects that `ayme mcp` serves
+
+The `--page-objects <file>` option of `ayme mcp` in `@ayme-dev/mcp`, and the `.ayme/page-objects.ts` entry it reads by default: `ayme mcp` builds the entry, serves it, and writes `.ayme/init-script.js`, which loads it into a page that doesn't ship Ayme. The usage text of `ayme mcp` marks the option experimental. See [Page Objects on a page without Ayme](../guides/page-objects-without-ayme.md).

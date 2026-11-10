@@ -63,6 +63,7 @@
     "@modelcontextprotocol/sdk": "^1.32.0",
     "@trpc/client": "^11.19.0",
     "@trpc/server": "^11.19.0",
+    "esbuild": "^0.28.2",
     "ws": "^8.22.0",
     "zod": "^4.5.4"
   },

@@ -58,6 +58,11 @@
       "import": "./dist/playwright.mjs",
       "default": "./dist/playwright.mjs"
     },
+    "./compiler": {
+      "types": "./dist/compiler.d.mts",
+      "import": "./dist/compiler.mjs",
+      "default": "./dist/compiler.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",
@@ -68,7 +73,7 @@
     "build": "tsdown",
     "sync:injected": "node scripts/syncInjectedScript.mjs",
     "lint": "eslint src --max-warnings 0",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests && vitest run --config vitest.typescript-floor.config.ts",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
     "test:package": "vitest run src/packedConsumer.test.ts",
     "typecheck": "tsc --noEmit",
@@ -79,10 +84,11 @@
     "zod": "^4.5.4"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.65",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
-    "@ayme-dev/webmcp": "workspace:*"
+    "@ayme-dev/webmcp": "workspace:*",
+    "@playwright/test": ">=1.29 <1.65",
+    "typescript": ">=5.4 <7"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
@@ -95,6 +101,9 @@
       "optional": true
     },
     "@ayme-dev/webmcp": {
+      "optional": true
+    },
+    "typescript": {
       "optional": true
     }
   },
@@ -115,6 +124,7 @@
     "playwright": "^1.64.0",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
+    "typescript-floor": "npm:typescript@5.4.5",
     "vitest": "^4.1.11"
   }
 }
