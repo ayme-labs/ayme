@@ -12,9 +12,20 @@ holds it before inferring that state from the page or the source.
 - `peek.<name>` reads the browser's Peek; `peek.node.<name>` reads an App
   Process, one of the app's own Node processes such as its dev server. One
   name can have both, each with its own side's values.
-- The result is the Peek's name and, per live instance, its `id` and either
-  its `values` or the error its read threw. A component's Peek has one
-  instance per mounted component.
+- The result lists each live instance, with its `id` and either its
+  `values` or the `error` its read threw. A component's Peek has one instance
+  per mounted component:
+
+  ```json
+  {
+    "name": "cart",
+    "instances": [
+      { "id": "header", "values": { "count": 2 } },
+      { "id": "sidebar", "error": "store is undefined" }
+    ]
+  }
+  ```
+
 - A Peek Tool appears while its Peek has an instance and goes with the last
   one. When one you expect is missing from the current tools, check that the
   component is mounted, or that the App Process is running and paired.
@@ -39,8 +50,9 @@ Process's. Follow the linked README for the exact call.
 | Outside components | `ayme.peek(read, name, id?)`, such as for a store ([`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#peek-at-app-state)) |
 | The app's server   | `ayme.peek` on the session the server starts ([In Node](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#in-node))                    |
 
-When the server already starts Ayme, add the Peek to that session; a server
-process has one, as a document has one
+When the server already starts Ayme, add the Peek to that session. Don't
+start a second one. A server process has one App Process, started once in its
+entry point, as a document has one
 [runtime owner](runtime-integration.md#keep-one-runtime-owner-at-the-root).
 
 Then call the new Peek Tool and confirm its values match what the app holds.

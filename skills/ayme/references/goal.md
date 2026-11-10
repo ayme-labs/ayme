@@ -1,16 +1,54 @@
 # Goal
 
-To use `goal`, pass every value the task names in `values`, as strings or
-numbers each labelled in plain words, such as `{ "survey name": "Q4 Feedback" }`. The Goal Loop takes
-free text only from `values`; when a step needs text you did not pass, it hands
-back with `needs_value`.
+Pass the goal in words, and every value the task names in `values`. Label
+each value in plain words. A value is a string or a number. Example:
+`ProjectsPage` has an action `createProject(name)`.
+
+```
+goal({
+  goal: "Create a project named Website relaunch",
+  maxSteps: 5,
+  values: { "project name": "Website relaunch" },
+})
+```
+
+`goal` never makes up text. A parameter without fixed values gets only a
+value you pass in `values`.
 
 Every run ends in a
-[Handover](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md#the-handover):
-follow its `next`, and when it names a tool in `needs`, finish with that tool.
+[Handover](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md#the-handover).
+Read its `next` and do what it says. Without `values`, the run above hands
+over:
 
-When `goal` hands over with `needs_value` because none of a parameter's
-allowed values belongs in it, the loop offered that parameter only its
-allowed values, so a Goal Value of a type it does not take changes nothing.
-Call the tool named in `needs` yourself with a valid argument, or call `goal`
-again with a goal that picks one of the parameter's allowed values.
+```
+{
+  reason: "needs_value",
+  next: 'The operation "ProjectsPage.createProject" needs values for: name, and no Goal Value fits name. Call goal again with a value for name in values, or call ProjectsPage.createProject directly.',
+  history: [],
+  needs: { tool: "ProjectsPage.createProject", parameters: ["name"] },
+}
+```
+
+When `needs` names a tool, finish with that tool:
+`ProjectsPage.createProject({ name: "Website relaunch" })`. Or call `goal`
+again with the value in `values`.
+
+Some parameters take only fixed values. Example: `ProjectsPage` also has an
+action `filter(status: ("active" | "archived")[])`, and the goal was "Filter
+the projects". When none of the statuses fits, `goal` hands over:
+
+```
+{
+  reason: "needs_value",
+  next: 'The operation "ProjectsPage.filter" needs a value for "status", and the model judged that none of its allowed values belongs in it.',
+  history: [],
+  needs: { tool: "ProjectsPage.filter", parameters: ["status"] },
+}
+```
+
+Use a value only when the task supports it. If the user asked for archived
+projects, call the tool: `ProjectsPage.filter({ status: ["archived"] })`. Or
+call `goal` again with a goal that names the value, such as "Show the
+archived projects". If nothing in the task names a status, ask the user
+which one. Adding a
+Goal Value of a type the parameter does not take changes nothing.

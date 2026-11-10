@@ -53,29 +53,44 @@ The provider takes the [`createAyme` options](../reference/ayme.md#createayme) a
 
 ## Root ownership
 
-The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them. One owner may be active: nested providers and concurrent owners are rejected. Unmounting the provider stops publication and observation. React's Strict Mode cleanup and setup replay keeps the Page and the instances.
+The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them.
 
-Wrap the application root, not a route component or a layout that unmounts on navigation. Unmounting the provider stops Ayme, which ends its publication and agent connection, so a tool call whose action navigates away from that component can lose its answer.
+Only one owner can run Ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
+
+Strict Mode's effect replay in development keeps the session's Page and Page Objects.
+
+Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops Ayme and closes the agent connection. The agent can lose the answer to its call.
 
 ## Hooks
 
-Register the app's pages once, in the provider's `pageObjects` prop; each page is present by its URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the provider's `pageObjects` prop:
 
 ```tsx
-<AymeProvider
-  pageObjects={[ProjectsPage, SettingsPage]}
-  inspector={import.meta.env.DEV}
-  agentConnection={import.meta.env.DEV}
->
-  <App />
-</AymeProvider>
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { AymeProvider } from "@ayme-dev/react";
+import App from "./App";
+import { ProjectsPage } from "./pom/ProjectsPage";
+import { SettingsPage } from "./pom/SettingsPage";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <AymeProvider
+      pageObjects={[ProjectsPage, SettingsPage]}
+      inspector={import.meta.env.DEV}
+      agentConnection={import.meta.env.DEV}
+    >
+      <App />
+    </AymeProvider>
+  </StrictMode>
+);
 ```
 
 Call the hooks in descendants of the provider. A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component is mounted:
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "./playwright/pom/ProjectsPage";
+import { ProjectsPage } from "./pom/ProjectsPage";
 
 export default function Controls() {
   const pom = usePageObject(ProjectsPage);
@@ -90,7 +105,17 @@ export default function Controls() {
 
 - `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
 - `useAyme()` returns the provider's session, `ayme`, and its WebMCP publication, `webMCP`.
-- Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
+
+Hooks need the provider in an ancestor component, and throw without it. A hook in the component that renders the provider throws too:
+
+```tsx
+function App() {
+  const pom = usePageObject(ProjectsPage); // throws: the provider is below, not above
+  return <AymeProvider>…</AymeProvider>;
+}
+```
+
+Move the hook into a child component rendered inside `AymeProvider`, such as `Controls` above.
 
 ## Optional: publish with WebMCP
 
@@ -112,7 +137,7 @@ Then add `webMCP` to the provider's props:
 </AymeProvider>
 ```
 
-`useAyme()`'s `webMCP` is React state: `webMCP.publicationStatus` is a read-only snapshot that updates with renders, and `webMCP.retryPublication()` tries again after publication found no WebMCP driver or failed:
+`useAyme()` returns `webMCP` as React state. `webMCP.publicationStatus` is a read-only snapshot that updates with renders. When its `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `webMCP.retryPublication()` tries again:
 
 ```tsx
 import { useAyme } from "@ayme-dev/react";
@@ -133,7 +158,7 @@ export default function PublicationStatus() {
 
 ## Server rendering
 
-The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. `usePeek` adds its instance in an effect, which never runs on the server. In the Next.js App Router, put `AymeProvider` in a `"use client"` module that the root layout renders, so it owns every page and stays mounted across navigation, and call its hooks from `"use client"` components:
+The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. The experimental [`usePeek`](#api) hook adds its Peek in an effect. Effects never run on the server. In the Next.js App Router, put `AymeProvider` in a `"use client"` module that the root layout renders, so it owns every page and stays mounted across navigation, and call its hooks from `"use client"` components:
 
 ```tsx
 // app/ayme-runtime.tsx
@@ -171,11 +196,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 ```
 
 ```tsx
-// app/projects.tsx
+// app/projects/projects.tsx
 "use client";
 
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../pom/ProjectsPage";
+import { ProjectsPage } from "../../pom/ProjectsPage";
 
 export default function Projects() {
   const pom = usePageObject(ProjectsPage);
@@ -188,10 +213,10 @@ export default function Projects() {
 ```
 
 ```tsx
-// app/page.tsx
+// app/projects/page.tsx
 import Projects from "./projects";
 
-export default function Home() {
+export default function ProjectsRoute() {
   return <Projects />;
 }
 ```
@@ -200,7 +225,9 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## Bundle size
 
-Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a build that includes it, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build includes Ayme only with the plugin's `include: true`; the config above keeps it in the dev server and out of `vite build`. See [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+
+A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 

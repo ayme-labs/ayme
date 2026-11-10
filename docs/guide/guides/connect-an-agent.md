@@ -46,7 +46,7 @@ With Vite, a development build you serve without a dev server, such as static fi
 
 ## Register the server in your agent
 
-Register the server pinned to the version of `@ayme-dev/mcp` your app installed, the same version as your other Ayme packages: replace `<version>` below with the installed version, which `npm ls @ayme-dev/mcp` prints, so the server matches the page client in your app.
+Pin the server to the version of `@ayme-dev/mcp` your app installed, so it matches the page client in your app. `npm ls @ayme-dev/mcp` prints that version. Use it in place of `<version>` below.
 
 Claude Code:
 
@@ -86,7 +86,7 @@ Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every 
 
 Any other MCP client takes the same command, `npx`, with the arguments `-y @ayme-dev/mcp@<version> mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
 
-Your app already installs `@ayme-dev/mcp`, so a client that starts its servers in the app's folder can run that copy instead, which always matches the page client: the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` keeps `npx` from downloading anything, so started from any other folder the server fails to start rather than running another version.
+If your client starts its servers in the app's folder, it can run the copy of `@ayme-dev/mcp` your app installed. That copy always matches the page client. Use the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` stops `npx` from downloading anything. So, started from any other folder, the server fails to start instead of running another version.
 
 ## Connect a tab
 
@@ -103,7 +103,7 @@ Once a tab is paired, the page's tools are the agent's MCP tools, under the name
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now, because a click would not reach its Page Object Root or its [availability predicate](ayme-page-objects.md#aymeaction) says so, stays listed, and calling it is refused with its reason before anything runs. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
 
 `ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
 

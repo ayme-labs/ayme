@@ -19,4 +19,15 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 
 ## Page Objects that `ayme mcp` serves
 
-The `--page-objects <file>` option of `ayme mcp` in `@ayme-dev/mcp`, and the `.ayme/page-objects.ts` entry it reads by default: `ayme mcp` builds the entry, serves it, and writes `.ayme/init-script.js`, which loads it into a page that doesn't ship Ayme. The usage text of `ayme mcp` marks the option experimental. See [Page Objects on a page without Ayme](../guides/page-objects-without-ayme.md).
+`ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship Ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:
+
+```ts
+// .ayme/page-objects.ts
+import { ProjectsPage } from "../src/pages/ProjectsPage";
+
+export default [ProjectsPage];
+```
+
+Without `--page-objects`, `ayme mcp` serves `.ayme/page-objects.ts` if the project has one. `--page-objects <file>` names another entry. The server builds the entry and serves it. It also writes `.ayme/init-script.js`, which your browser automation loads into the page as an init script. The script starts Ayme in the page, with the Agent Connection on, and registers the classes.
+
+The usage text of `ayme mcp` marks `--page-objects` experimental. See [Page Objects on a page without Ayme](../guides/page-objects-without-ayme.md).

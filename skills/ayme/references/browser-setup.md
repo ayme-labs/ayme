@@ -28,22 +28,31 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
 - When a tool answers that no page reconnected in its place, the page the tab
   loaded did not pair within a few seconds. A slow page of the app pairs
   later by itself, and its tools come back with a tool list change. A page
-  that doesn't run Ayme's Agent Connection, and loads no
-  [served Page Objects](#a-page-that-doesnt-ship-ayme), never pairs, through
-  `ayme_connect` either: go back to a page of the app in that tab, in your
-  browser tool or by asking the user, and its tools return.
+  that doesn't run Ayme's Agent Connection and loads no
+  [served Page Objects](#a-page-that-doesnt-ship-ayme), such as another site,
+  never pairs. `ayme_connect` can't pair it either. Go back to a page of the
+  app in that tab, with your browser tool or by asking the user. Its tools
+  then return.
 - When a Page Object's tools never appear, read the browser console, or ask
-  the user to: a refused registration, `Cannot register the Page Object …`,
-  is logged there and does not reach you. It names two classes that share a
-  name; rename one. For a refusal beginning `The Page Object class`, see the
-  [root rules](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root). A `present` or root
-  predicate that throws is logged there too, and its Page Object is absent.
+  the user to. A refused registration is logged there and does not reach you.
+  - `Cannot register the Page Object "…": …` names two different classes
+    with one name. Rename one.
+  - `The Page Object class "…" declares no root and is reached from more than one place: …`
+    or `… declares no root and has many instances below a collection: …`
+    names a class without a root. Give it one, usually by extending the
+    project's component base class. The
+    [root rules](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
+    have the details.
+
+  A `present` or root predicate that throws is logged there too, and its
+  Page Object is absent.
+
 - When the dev server refuses to build a Page Object, the reason is in the
-  dev server's output. A page that loads after the refusal does not pair, and
-  the tools answer that no page is connected; a page already paired can keep
-  its earlier tools after a refused hot update. Once the build succeeds
-  again, `reload` that page before relying on its tools: it can keep running
-  the Page Objects from before the refusal.
+  dev server's output. A page that loads after the refusal does not pair, so
+  the tools answer that no page is connected. A page that was already paired
+  can keep its earlier tools after a refused hot update. Once the build
+  succeeds again, `reload` that page before relying on its tools. Until then
+  it may still run the Page Objects from before the refusal.
 - Check the connection end to end: invoke the exposed action through Ayme's
   MCP server and confirm its visible effect in the app. A direct Ayme call or
   a page-state read alone does not check the connection.

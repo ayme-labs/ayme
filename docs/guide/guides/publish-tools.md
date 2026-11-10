@@ -25,7 +25,7 @@ One session owns the current document at a time. `start()` returns the function 
 
 ## Register Page Objects
 
-A Page Object's tools are listed while its class is registered and the Page Object is present, as [Pages and components](ayme-page-objects.md#ayme) describes. Register at app setup by default: a page states its own presence from the URL, so every page is listed once, in the `pageObjects` option where Ayme starts, `createAyme` or your framework's owner. Each one's tools come and go with the browser's location, and the classes stay registered for the session's lifetime.
+A Page Object's tools are listed while its class is registered and the Page Object is present, as [`@ayme`](ayme-page-objects.md#ayme) describes. Register pages at app setup, in the `pageObjects` option of `createAyme`, `AymeProvider`, `useAyme` or `provideAyme`. A page states its own presence from the URL, so it can be listed once with all the others. Its tools then come and go with the browser's location. The classes stay registered for the session's lifetime.
 
 ```ts
 const ayme = createAyme({
@@ -49,8 +49,8 @@ npm install @ayme-dev/webmcp
 
 The call that starts Ayme decides whether its tools are published through WebMCP.
 
-- `webMCP.enabled` turns publication on. The session then loads `@ayme-dev/webmcp` when it starts in the browser; with the option off, the page requests none of its code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
-- `webMCP.toolNamePrefix` is prepended to every published tool name: the agent's tools, Browser Tools, Custom Tools and Page Object Tools. It is empty by default. It applies at publication only: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
+- `webMCP.enabled` turns publication on. With it off, the page loads none of WebMCP's code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
+- `webMCP.toolNamePrefix` is prepended to every published tool name: `snapshot`, `goal`, the Browser Tools, Custom Tools and Page Object Tools. With `toolNamePrefix: "shop_"`, the agent sees `shop_snapshot` and `shop_ProjectsPage.openNewProjectDialog`. It is empty by default. It applies only at publication: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
 
 ```ts
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
@@ -64,8 +64,17 @@ Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chr
 
 ## What gets published
 
-With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now, because a click would not reach the root or its [availability predicate](ayme-page-objects.md#aymeaction) says so, stays published; a call is refused with its reason before anything runs, as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
+With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now stays published, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. The agent gets the refusal as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
 
 ## Publication status
 
-`ayme.webMCP.publicationStatus` reports where publication stands. With publication on, it reads `waiting` until a WebMCP driver appears, then `active`; `unavailable` when none appeared within two seconds and `failed` when publication failed, and `retryPublication()` tries again after either. The framework packages hand out the same status in their own reactive form, and [`ayme.webMCP`](../reference/ayme.md#aymewebmcp) lists every state.
+`ayme.webMCP.publicationStatus` reports where publication stands. With publication on, its `state` reads:
+
+| State         | When                                           |
+| ------------- | ---------------------------------------------- |
+| `waiting`     | No WebMCP driver has appeared yet.             |
+| `active`      | A driver appeared and the tools are published. |
+| `unavailable` | No driver appeared within two seconds.         |
+| `failed`      | Publication failed.                            |
+
+After `unavailable` or `failed`, `ayme.webMCP.retryPublication()` tries again. The framework packages hand out the same status in their own reactive form. [`ayme.webMCP`](../reference/ayme.md#aymewebmcp) lists every state.
