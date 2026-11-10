@@ -3,6 +3,10 @@ import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
 
+const canSaveAndClose = async (self: SurveyEditorPage) =>
+  (await self.saveAndCloseButton.isVisible()) ||
+  "Formbricks shows Save & Close for a published survey, and for a draft only in the editor a first survey opens in.";
+
 const canSaveAsDraft = async (self: SurveyEditorPage) =>
   (await self.saveAsDraftButton.isVisible()) ||
   "Formbricks shows Save as draft only for a draft, and not in the editor a first survey opens in.";
@@ -72,6 +76,7 @@ export class SurveyEditorPage extends AppPage {
   }
 
   @ayme.action({
+    available: canSaveAndClose,
     description:
       "Publishes a draft survey, so it starts collecting responses; saves a published one.",
   })

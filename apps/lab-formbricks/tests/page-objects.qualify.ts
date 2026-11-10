@@ -321,7 +321,14 @@ test("each page object locator resolves exactly once in its intended state, and 
   await expectExactlyOnce(surveyEditorPage.saveAsDraftButton);
   await expectHydrated(surveyEditorPage.saveAsDraftButton);
   await expect(surveyEditorPage.saveAndCloseButton).toHaveCount(0);
-  await expectTools(agent, ["SurveyEditorPage.saveAsDraft"]);
+  await expectTools(agent, [
+    "SurveyEditorPage.saveAndClose",
+    "SurveyEditorPage.saveAsDraft",
+  ]);
+  // It has no Save & Close, and that action says so.
+  const noSaveAndClose = await agent.call("SurveyEditorPage.saveAndClose");
+  expect(noSaveAndClose.isError, noSaveAndClose.text).toBe(true);
+  expect(noSaveAndClose.text).toContain("for a draft only in the editor");
   const draftName = `Ayme lab draft ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: draftName });
   await call("SurveyEditorPage.saveAsDraft");
