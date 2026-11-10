@@ -43,8 +43,7 @@ export class SignInPage extends AppPage {
     // The button shows the form on its first click and submits it on the next.
     if (!(await this.emailInput.isVisible()))
       await this.logInWithEmailButton.click();
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
+    await this.fillCredentials(email, password);
     await this.logInWithEmailButton.click();
     // A sign-in that went through shows nothing here before Formbricks leaves
     // the page, so the one outcome to see on this page is the error, which a
@@ -59,5 +58,22 @@ export class SignInPage extends AppPage {
         () => false
       );
     return refused ? this : new SurveyNavigationPage(this.page);
+  }
+
+  private async fillCredentials(email: string, password: string) {
+    // Formbricks focuses the email input a tenth of a second after it shows
+    // the form, which sends a password being filled just then into the email
+    // input. So fill, check that both inputs kept their values, and fill
+    // again when they did not.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await this.emailInput.fill(email);
+      await this.passwordInput.fill(password);
+      if (
+        (await this.emailInput.inputValue()) === email &&
+        (await this.passwordInput.inputValue()) === password
+      )
+        return;
+    }
+    throw new Error("The sign-in form did not keep the email and password.");
   }
 }

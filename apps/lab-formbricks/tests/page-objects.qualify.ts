@@ -182,10 +182,7 @@ async function compileScreens(browser: Browser): Promise<void> {
     const signInPage = new SignInPage(page);
     await page.goto("/auth/login");
     await expectHydrated(signInPage.logInWithEmailButton);
-    await signInPage.logInWithEmailButton.click();
-    await signInPage.emailInput.fill(user.email);
-    await signInPage.passwordInput.fill(user.password);
-    await signInPage.logInWithEmailButton.click();
+    await signInPage.logIn(user.email, user.password);
 
     const surveyId = createdSurveyId(page);
     await new SurveyNavigationPage(page).startFromScratchButton.click();
