@@ -2,8 +2,7 @@
  * Warms the lab app once per suite, before the first run. Turbopack compiles
  * each route, and each server action, on its first use, which takes 15 to 25
  * seconds a screen on a fresh dev server; left to the first run it would
- * land inside that run's measured window, and outlast the ten seconds a Page
- * Object action waits for the screen it leads to. This seeds a throwaway
+ * land inside that run's measured window. This seeds a throwaway
  * user without a survey and walks every screen the missions pass through,
  * by the steps they take: the sign-in page, signed out; then, signed in,
  * the root the sign-in form sends the browser to and the screen where a new
