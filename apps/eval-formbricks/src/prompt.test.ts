@@ -7,7 +7,7 @@ import {
   webMcpToolsSentence,
   type ArmContext,
 } from "./arms.ts";
-import { agentSocketPath, aymeMcpVersion } from "./ayme.ts";
+import { agentSocketPath } from "./ayme.ts";
 import { firstQuestionHeadline, type Mission } from "./missions.ts";
 import { createPrompt, setupPrompt } from "./prompt.ts";
 
@@ -209,9 +209,8 @@ describe.each([
     "playwright-cli-with-ayme-page-objects",
     "playwright-cli-with-ayme-webmcp",
     "agent-browser",
+    "agent-browser-with-ayme-page-objects",
     "agent-browser-with-ayme-webmcp",
-    "ayme-goal-loop-off",
-    "ayme-no-page-objects-goal-loop-off",
   ] as const)(
     "differs between the Playwright MCP arm and %s in that one line alone",
     (armId) => {
@@ -235,13 +234,6 @@ describe("the interface lines", () => {
   it("name the goal tool in no arm's line", () => {
     for (const arm of Object.values(arms))
       expect(arm.interfaceLine(mission.start)).not.toContain("goal");
-  });
-
-  it("of the Ayme arms do not depend on the start", () => {
-    for (const start of [renameMission.start, signInMission.start])
-      expect(arms["ayme-goal-loop-off"].interfaceLine(start)).toBe(
-        arms["ayme-goal-loop-off"].interfaceLine(renameMission.start)
-      );
   });
 
   it("of the arm with Ayme's Page Object Tools is the Playwright MCP arm's plus one sentence, and does not depend on the start", () => {
@@ -321,12 +313,25 @@ describe("the interface lines", () => {
     ).toBe(webMcpToolsSentence.replace(/, which .+ WebMCP tools,/, ""));
   });
 
-  it("of the Ayme arm without page objects names no Page Object Tools", () => {
+  it("of the agent-browser arm with Ayme's Page Object Tools is the baseline's plus the sentence the other arms with the ayme server add, for either start", () => {
+    for (const start of [renameMission.start, signInMission.start])
+      expect(
+        arms["agent-browser-with-ayme-page-objects"].interfaceLine(start)
+      ).toBe(
+        `${arms["agent-browser"].interfaceLine(start)} ${pageObjectToolsSentence}`
+      );
     expect(
-      arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(mission.start)
+      arms["agent-browser-with-ayme-page-objects"].interfaceLine(mission.start)
     ).toBe(
-      "Use the page's own tools through the `ayme` MCP server, which is already connected to the page, for every browser interaction: `snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed."
+      "Use the `agent-browser` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `agent-browser snapshot`. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step."
     );
+  });
+
+  it("of every arm name a browser tool first: no arm runs Ayme without one", () => {
+    for (const arm of Object.values(arms))
+      expect(arm.interfaceLine(mission.start)).toMatch(
+        /^Use the (Playwright MCP browser tools|`playwright-cli` command|`agent-browser` command)/
+      );
   });
 });
 
@@ -341,25 +346,26 @@ describe("the setup message", () => {
   });
 
   it("names the arm's skill and loads it now", () => {
-    expect(setupPrompt(arms["ayme-goal-loop-off"])).toContain(
-      "Load the `ayme` skill now with the Skill tool"
-    );
-    expect(setupPrompt(arms["ayme-no-page-objects-goal-loop-off"])).toContain(
-      "Load the `ayme` skill now with the Skill tool"
-    );
     expect(setupPrompt(arms["playwright-cli"])).toContain(
       "Load the `playwright-cli` skill now with the Skill tool"
     );
+    expect(setupPrompt(arms["agent-browser"])).toContain(
+      "Load the `agent-browser` skill now with the Skill tool"
+    );
   });
 
-  it("has every Ayme arm read its skill's references, and no file outside the skill's folder", () => {
-    for (const armId of [
-      "ayme-goal-loop-off",
-      "ayme-no-page-objects-goal-loop-off",
-    ] as const)
-      expect(setupPrompt(arms[armId])).toBe(
-        "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n"
-      );
+  it("loads the ayme skill in no arm, and has no arm read a skill's references: the arms with Ayme add tools, not a skill", () => {
+    for (const arm of Object.values(arms)) {
+      expect(arm.skill).not.toBe("ayme");
+      expect(arm.readsSkillReferences).toBeUndefined();
+      expect(arm.allowedTools).not.toContain("Skill(ayme)");
+    }
+  });
+
+  it("has a setup turn that reads a skill's references keep to the skill's folder, as the startup lane's does", () => {
+    expect(setupPrompt({ skill: "ayme", readsSkillReferences: true })).toBe(
+      "Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n"
+    );
   });
 
   it("keeps the Playwright CLI arm's setup message as its published runs had it, and gives its twin the same", () => {
@@ -377,6 +383,7 @@ describe("the setup message", () => {
   it("gives the agent-browser arms the Playwright CLI arm's setup message, naming their own skill", () => {
     for (const armId of [
       "agent-browser",
+      "agent-browser-with-ayme-page-objects",
       "agent-browser-with-ayme-webmcp",
     ] as const)
       expect(setupPrompt(arms[armId])).toBe(
@@ -415,52 +422,16 @@ describe("the setup message", () => {
   });
 });
 
-describe.each([
-  "ayme-goal-loop-off",
-  "ayme-no-page-objects-goal-loop-off",
-] as const)("the %s arm", (armId) => {
-  const arm = arms[armId];
-
-  it("gives the agent Ayme's MCP server, through the proxy to the one the setup starts, and no Playwright interface", () => {
-    const servers = arm.mcpServers(armContext);
-    expect(Object.keys(servers)).toEqual(["ayme"]);
-    expect(servers.ayme.command).toBe(process.execPath);
-    expect(servers.ayme.args).toEqual([
-      "/run/ayme-mcp-proxy.cjs",
-      agentSocketPath("run-1"),
-    ]);
-    expect(arm.browserInterface()).toEqual({
-      name: "@ayme-dev/mcp",
-      version: aymeMcpVersion(),
-    });
-  });
-
-  it("leaves the agent read-only file tools, the server's tools and the shipped ayme skill, with nothing denied", () => {
-    expect(arm.tools).toEqual(["Read", "Glob", "Grep", "ToolSearch", "Skill"]);
-    expect(arm.allowedTools).toEqual(["mcp__ayme", "Skill(ayme)"]);
-    expect(arm.disallowedTools).toBeUndefined();
-    // The skill is loaded in the setup turn; the task turn does not name it again.
-    expect(arm.interfaceLine(mission.start)).not.toContain("skill");
-  });
-
-  it("checks the server's build and ports first, and sets the server and the page up outside the measured window", () => {
-    expect(arm.preconditions?.map((p) => p.name)).toEqual([
-      "Ayme MCP server",
-      "Ayme MCP ports",
-    ]);
-    expect(arm.setup).toBeTypeOf("function");
-  });
-});
-
 describe("the playwright-mcp-with-ayme-page-objects arm", () => {
   const arm = arms["playwright-mcp-with-ayme-page-objects"];
 
   it("gives the agent Ayme's MCP server through the proxy, and leaves Playwright MCP's entry to its setup, which names the port", () => {
     const servers = arm.mcpServers(armContext);
     expect(Object.keys(servers)).toEqual(["ayme"]);
-    expect(servers.ayme).toEqual(
-      arms["ayme-goal-loop-off"].mcpServers(armContext).ayme
-    );
+    expect(servers.ayme).toEqual({
+      command: process.execPath,
+      args: ["/run/ayme-mcp-proxy.cjs", agentSocketPath("run-1")],
+    });
     expect(arm.setup).toBeTypeOf("function");
     expect(arm.browserInterface()).toEqual({
       name: "@playwright/mcp",
@@ -560,7 +531,7 @@ describe("the playwright-cli-with-ayme-page-objects arm", () => {
     const servers = arm.mcpServers(armContext);
     expect(Object.keys(servers)).toEqual(["ayme"]);
     expect(servers.ayme).toEqual(
-      arms["ayme-goal-loop-off"].mcpServers(armContext).ayme
+      arms["playwright-mcp-with-ayme-page-objects"].mcpServers(armContext).ayme
     );
     expect(arm.skill).toBe(cli.skill);
     expect(arm.tools).toEqual(cli.tools);
@@ -609,25 +580,34 @@ describe("the playwright-cli-with-ayme-webmcp arm", () => {
 });
 
 describe.each([
-  ["agent-browser", false],
-  ["agent-browser-with-ayme-webmcp", true],
-] as const)("the %s arm", (armId, withWebMcp) => {
+  ["agent-browser", "none"],
+  ["agent-browser-with-ayme-page-objects", "server"],
+  ["agent-browser-with-ayme-webmcp", "webmcp"],
+] as const)("the %s arm", (armId, ayme) => {
   const arm = arms[armId];
 
-  it("gives the agent no MCP server, read-only file tools, its skill and a Bash limited to the command", () => {
-    expect(arm.mcpServers(armContext)).toEqual({});
+  it("gives the agent read-only file tools, its skill and a Bash limited to the command, and the ayme server in the arm with it alone", () => {
+    const servers = arm.mcpServers(armContext);
+    if (ayme === "server")
+      expect(servers).toEqual({
+        ayme: arms["playwright-cli-with-ayme-page-objects"].mcpServers(
+          armContext
+        ).ayme,
+      });
+    else expect(servers).toEqual({});
     expect(arm.skill).toBe("agent-browser");
     expect(arm.readsSkillReferences).toBeUndefined();
     expect(arm.tools).toEqual(arms["playwright-cli"].tools);
     expect(arm.allowedTools).toEqual([
       "Bash(agent-browser:*)",
       "Skill(agent-browser)",
+      ...(ayme === "server" ? ["mcp__ayme"] : []),
     ]);
     expect(arm.interfaceLine(mission.start)).not.toContain("skill");
     expect(arm.interfaceLine(mission.start)).not.toContain("goal");
   });
 
-  it("denies npx and what downloads, reinstalls or closes other runs' sessions, and the webmcp commands in the baseline alone", () => {
+  it("denies npx and what downloads, reinstalls or closes other runs' sessions, and the webmcp commands in every arm but the one through WebMCP", () => {
     expect(arm.disallowedTools).toEqual(
       expect.arrayContaining([
         "Bash(npx:*)",
@@ -639,21 +619,25 @@ describe.each([
       ])
     );
     expect(arm.disallowedTools?.includes("Bash(agent-browser webmcp:*)")).toBe(
-      !withWebMcp
+      ayme !== "webmcp"
     );
   });
 
-  it("checks what the served Page Objects need in the arm with them alone, sets itself up outside the measured window and records the pinned agent-browser", () => {
+  it("checks what the served Page Objects need in the arms with them alone, sets itself up outside the measured window and records the pinned agent-browser", () => {
     expect(arm.preconditions?.map((p) => p.name)).toEqual(
-      withWebMcp
-        ? ["Ayme MCP server", "Ayme WebMCP package", "Ayme MCP ports"]
-        : undefined
+      {
+        none: undefined,
+        server: ["Ayme MCP server", "Ayme MCP ports"],
+        webmcp: ["Ayme MCP server", "Ayme WebMCP package", "Ayme MCP ports"],
+      }[ayme]
     );
     expect(arm.setup).toBeTypeOf("function");
-    expect(arm.setup).not.toBe(
-      arms[withWebMcp ? "agent-browser" : "agent-browser-with-ayme-webmcp"]
-        .setup
-    );
+    const setups = [
+      "agent-browser",
+      "agent-browser-with-ayme-page-objects",
+      "agent-browser-with-ayme-webmcp",
+    ].map((id) => arms[id as typeof armId].setup);
+    expect(new Set(setups).size).toBe(3);
     expect(arm.browserInterface()).toEqual({
       name: "agent-browser",
       version: "0.41.2",

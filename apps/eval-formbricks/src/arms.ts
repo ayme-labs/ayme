@@ -4,21 +4,28 @@
  * an arm contributes only its interface line, its MCP servers, the built-in
  * tools it leaves the agent, the permission rules that let it use them, and
  * what it needs checked and set up outside the measured window.
+ *
+ * Each browser tool, Playwright MCP, the Playwright CLI and agent-browser,
+ * has three arms: the tool alone, on Formbricks as it is; the tool with
+ * Ayme's Page Object Tools through WebMCP, which the tool itself reads from
+ * the page; and the tool with the same tools through Ayme's own MCP server,
+ * `ayme mcp`, beside it. Both kinds of arm with Ayme add the Page Object
+ * Tools of the screen the browser is on and the read tool `page_objects`,
+ * with the same descriptions, input schemas and results, and nothing else
+ * of Ayme: the browser automation is the browser tool's alone. No arm runs
+ * Ayme without a browser tool.
  */
 import {
   agentBrowserVersion,
   setUpAgentBrowserBaseline,
+  setUpAgentBrowserWithAymePageObjects,
   setUpAgentBrowserWithAymeWebMcp,
 } from "./agentBrowser.ts";
 import {
-  aymeMcpPackageName,
   aymeMcpPreconditions,
   aymeMcpServer,
-  aymeMcpVersion,
   aymeServerName,
-  aymeSkillName,
   aymeWebMcpPreconditions,
-  setUpAymeAgent,
 } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
 import {
@@ -43,9 +50,8 @@ export type ArmId =
   | "playwright-cli-with-ayme-page-objects"
   | "playwright-cli-with-ayme-webmcp"
   | "agent-browser"
-  | "agent-browser-with-ayme-webmcp"
-  | "ayme-goal-loop-off"
-  | "ayme-no-page-objects-goal-loop-off";
+  | "agent-browser-with-ayme-page-objects"
+  | "agent-browser-with-ayme-webmcp";
 
 export type McpServer = { command: string; args: string[] };
 
@@ -91,7 +97,7 @@ export type Arm = {
   interfaceLine: (start: Mission["start"]) => string;
   /** The interface's skill, which the setup turn names and loads; none for an arm without one. */
   skill?: string;
-  /** The setup turn also reads the skill's references, from the folder the arm's setup makes readable. */
+  /** The setup turn also reads the skill's references. No arm asks for it now; the startup lane's first message does. */
   readsSkillReferences?: boolean;
   /** Built-in Claude Code tools the agent keeps. Read-only file tools; the arm's interface does the rest. */
   tools: string[];
@@ -124,51 +130,14 @@ function bashCommand(command: string) {
   return [`Bash(${command})`, `Bash(${command}:*)`];
 }
 
-/**
- * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
- * the page before the agent starts, and nothing else. The arms differ in
- * the entry that server serves the page, the lab app's one switch: served
- * the entry without Page Objects, the page offers `snapshot` and the Browser
- * Tools only and the interface line names no Page Object Tools. The Goal
- * Loop arms were removed; the ids keep their `goal-loop-off` suffix so
- * stored results stay comparable by arm name. The server's own tools stay: `ayme_connect` only
- * returns a link, which the agent has no way to open, and the server, busy
- * with its tab, ignores any other tab's scan, so the agent cannot leave the
- * harness's tab.
- */
-function aymeArm(id: ArmId, options: { pageObjects: boolean }): Arm {
-  const { pageObjects } = options;
-  const toolsLine = pageObjects
-    ? "`snapshot`, Ayme's Browser Tools and the Page Object Tools of the screen you are on."
-    : "`snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
-  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, for every browser interaction: ${toolsLine}`;
-  return {
-    id,
-    interfaceLine: () => interfaceLine,
-    skill: aymeSkillName,
-    readsSkillReferences: true,
-    // The skill is loaded through the Skill tool, in the setup turn. Its references are read then
-    // too; the setup's readable folder is expected to let Read reach them, without a Read rule.
-    tools: [...baseTools, "Skill"],
-    allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
-    mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
-    preconditions: aymeMcpPreconditions,
-    setup: (context) => setUpAymeAgent(context, options),
-    browserInterface: () => ({
-      name: aymeMcpPackageName,
-      version: aymeMcpVersion(),
-    }),
-  };
-}
-
 /** The Playwright MCP arm's interface line; the arm with Ayme's Page Object Tools adds one sentence to it. */
 const playwrightMcpInterfaceLine =
   "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.";
 
 /**
- * What an arm with Ayme's Page Object Tools adds to its browser tool's
- * interface line; the two arms of a pair differ in nothing else the agent
- * reads.
+ * What an arm with Ayme's Page Object Tools through the `ayme` server adds
+ * to its browser tool's interface line; the arm and its browser tool's own
+ * differ in nothing else the agent reads.
  */
 export const pageObjectToolsSentence = `The \`${aymeServerName}\` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step.`;
 
@@ -193,10 +162,11 @@ const playwrightCliInterfaceLine = (start: Mission["start"]) =>
 
 /**
  * The Playwright CLI arm, or one of its twins with Ayme's Page Object Tools:
- * the one with the `ayme` server adds it through the filtered proxy, with
- * its permission and its sentence on the interface line; the one with WebMCP
- * adds its sentence alone, since the CLI itself lists and calls the page's
- * tools. Nothing else differs.
+ * the one with the `ayme` server adds that server, which lists the Page
+ * Object Tools and `page_objects` alone, with its permission and its
+ * sentence on the interface line; the one with WebMCP adds its sentence
+ * alone, since the CLI itself lists and calls the page's tools. Nothing
+ * else differs.
  */
 function playwrightCliArm(
   id:
@@ -263,28 +233,41 @@ export const agentBrowserWebMcpToolsSentence =
 /**
  * An agent-browser arm: the Playwright CLI arm's counterpart with Vercel's
  * `agent-browser` CLI. Its session is attached over CDP to the browser the
- * setup launched on the start page, as the CLI's WebMCP twin's is, since
+ * setup launched on the start page, as the CLI's twins' are, since
  * agent-browser must not launch or download a browser of its own. The
  * baseline's page is Formbricks as it is, with nothing of Ayme; it keeps
  * agent-browser's WebMCP support off and denies its `webmcp` commands, as
- * it did while the lab app shipped Ayme's tools. The twin's page gets the
- * lab app's Page Objects served with `--webmcp`; it turns that support on
- * and adds its one sentence.
+ * it did while the lab app shipped Ayme's tools. The twin through WebMCP
+ * gets the lab app's Page Objects served with `--webmcp`; it turns that
+ * support on and adds its one sentence. The twin with the `ayme` server
+ * mirrors `playwright-cli-with-ayme-page-objects`: the baseline's command,
+ * skill and denied commands, its WebMCP support off, plus the server, with
+ * its permission and the sentence that arm adds.
  */
 function agentBrowserArm(
-  id: "agent-browser" | "agent-browser-with-ayme-webmcp"
+  id:
+    | "agent-browser"
+    | "agent-browser-with-ayme-page-objects"
+    | "agent-browser-with-ayme-webmcp"
 ): Arm {
+  const withAyme = id === "agent-browser-with-ayme-page-objects";
   const withWebMcp = id === "agent-browser-with-ayme-webmcp";
+  const sentence = withAyme
+    ? ` ${pageObjectToolsSentence}`
+    : withWebMcp
+      ? ` ${agentBrowserWebMcpToolsSentence}`
+      : "";
   return {
     id,
-    interfaceLine: (start) =>
-      withWebMcp
-        ? `${agentBrowserInterfaceLine(start)} ${agentBrowserWebMcpToolsSentence}`
-        : agentBrowserInterfaceLine(start),
+    interfaceLine: (start) => `${agentBrowserInterfaceLine(start)}${sentence}`,
     skill: "agent-browser",
     // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
-    allowedTools: ["Bash(agent-browser:*)", "Skill(agent-browser)"],
+    allowedTools: [
+      "Bash(agent-browser:*)",
+      "Skill(agent-browser)",
+      ...(withAyme ? [`mcp__${aymeServerName}`] : []),
+    ],
     disallowedTools: [
       // The skill's guide pre-approves `npx agent-browser`, which could fetch another version.
       "Bash(npx:*)",
@@ -297,12 +280,16 @@ function agentBrowserArm(
       ...bashCommand("agent-browser close --all"),
       ...(withWebMcp ? [] : bashCommand("agent-browser webmcp")),
     ],
-    mcpServers: () => ({}),
+    mcpServers: (context): Record<string, McpServer> =>
+      withAyme ? { [aymeServerName]: aymeMcpServer(context) } : {},
     // The baseline starts no Ayme server and loads nothing of Ayme, so it needs none of these.
+    ...(withAyme ? { preconditions: aymeMcpPreconditions } : {}),
     ...(withWebMcp ? { preconditions: aymeWebMcpPreconditions } : {}),
-    setup: withWebMcp
-      ? setUpAgentBrowserWithAymeWebMcp
-      : setUpAgentBrowserBaseline,
+    setup: withAyme
+      ? setUpAgentBrowserWithAymePageObjects
+      : withWebMcp
+        ? setUpAgentBrowserWithAymeWebMcp
+        : setUpAgentBrowserBaseline,
     browserInterface: () => ({
       name: "agent-browser",
       version: agentBrowserVersion(),
@@ -323,11 +310,12 @@ export const arms: Record<ArmId, Arm> = {
    * The Playwright MCP arm with Ayme's Page Object Tools beside it, so a
    * browser tool is compared with and without Ayme. Playwright MCP drives the
    * page that paired with the run's `ayme mcp`, attached over CDP to the
-   * browser the setup launched, and the `ayme` server reaches the agent
-   * through a proxy that offers the page's Page Object Tools alone: none of
-   * the server's own tools, no Browser Tool, no `snapshot`. The lab app's
-   * Page Objects served, no skill. The Playwright MCP entry is the setup's,
-   * since it names the port chosen then.
+   * browser the setup launched, and the agent gets that server as `ayme`,
+   * started with `--only-page-object-tools`: it lists the screen's Page
+   * Object Tools and `page_objects` alone, none of its own tools, no
+   * Browser Tool, no `snapshot`, and answers them as WebMCP publishes them.
+   * The lab app's Page Objects served, no skill. The Playwright MCP entry is
+   * the setup's, since it names the port chosen then.
    */
   "playwright-mcp-with-ayme-page-objects": {
     id: "playwright-mcp-with-ayme-page-objects",
@@ -366,9 +354,9 @@ export const arms: Record<ArmId, Arm> = {
    * The Playwright CLI arm with Ayme's Page Object Tools beside it, the CLI's
    * twin of `playwright-mcp-with-ayme-page-objects`: the CLI session is
    * attached over CDP to the browser the setup paired with the run's `ayme
-   * mcp`, and the `ayme` server reaches the agent through the proxy that
-   * offers the Page Object Tools alone. The lab app's Page Objects served;
-   * the CLI's skill as for its arm.
+   * mcp`, and the agent gets that server as `ayme`, listing the Page Object
+   * Tools and `page_objects` alone. The lab app's Page Objects served; the
+   * CLI's skill as for its arm.
    */
   "playwright-cli-with-ayme-page-objects": playwrightCliArm(
     "playwright-cli-with-ayme-page-objects"
@@ -392,6 +380,17 @@ export const arms: Record<ArmId, Arm> = {
    */
   "agent-browser": agentBrowserArm("agent-browser"),
   /**
+   * The agent-browser twin of `playwright-cli-with-ayme-page-objects`: the
+   * baseline's command and skill, its session attached to the browser the
+   * setup paired with the run's `ayme mcp`, plus that server as `ayme`,
+   * listing the Page Object Tools and `page_objects` alone.
+   * agent-browser's WebMCP support stays off, so those tools reach the
+   * agent through `ayme` alone.
+   */
+  "agent-browser-with-ayme-page-objects": agentBrowserArm(
+    "agent-browser-with-ayme-page-objects"
+  ),
+  /**
    * The agent-browser twin of `playwright-cli-with-ayme-webmcp`: the same
    * command and skill with agent-browser's WebMCP support on, so `webmcp
    * list` and `webmcp invoke` reach the tools the page registered. The run's
@@ -400,11 +399,6 @@ export const arms: Record<ArmId, Arm> = {
    */
   "agent-browser-with-ayme-webmcp": agentBrowserArm(
     "agent-browser-with-ayme-webmcp"
-  ),
-  "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", { pageObjects: true }),
-  "ayme-no-page-objects-goal-loop-off": aymeArm(
-    "ayme-no-page-objects-goal-loop-off",
-    { pageObjects: false }
   ),
 };
 

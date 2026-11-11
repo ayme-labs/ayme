@@ -240,22 +240,17 @@ async function setUpAttachedPlaywrightCli(
 
 /**
  * The setup of the CLI arm with Ayme's Page Object Tools through the `ayme`
- * server: the Ayme server and the page as for the Ayme arms, with the lab
- * app's Page Objects served, and the proxy offering the agent the Page
- * Object Tools alone; the CLI attached to that browser with its handling of
- * page tools off, so they reach the agent through `ayme` alone.
+ * server: the run's Ayme server, started with `--only-page-object-tools`,
+ * and the page paired with it (`setUpAymePage`), the lab app's Page Objects
+ * served; the CLI attached to that browser with its handling of page tools
+ * off, so they reach the agent through `ayme` alone.
  */
 export function setUpPlaywrightCliWithAymePageObjects(
   context: ArmContext
 ): Promise<ArmSetup> {
   return setUpAttachedPlaywrightCli(context, {
     webmcp: false,
-    setUpPage: (browserArgs) =>
-      setUpAymePage(context, {
-        pageObjects: true,
-        browserArgs,
-        pageObjectToolsOnly: true,
-      }),
+    setUpPage: (browserArgs) => setUpAymePage(context, { browserArgs }),
   });
 }
 

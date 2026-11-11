@@ -95,21 +95,20 @@ export function cdpEndpoint(port: number) {
 }
 
 /**
- * The setup of the arm with both servers: the Ayme server and the page as
- * for the Ayme arms, with the lab app's Page Objects served, the
- * browser listening on a remote-debugging port, and the proxy offering the
- * agent the Page Object Tools alone; then Playwright MCP's entry, attached
- * to that browser, which the run adds to the agent's MCP servers. No skill,
- * no readable folder and no environment beyond the Playwright MCP arm's.
+ * The setup of the arm with both servers: the run's Ayme server, started
+ * with `--only-page-object-tools`, and the page paired with it
+ * (`setUpAymePage`), the lab app's Page Objects served and the browser
+ * listening on a remote-debugging port; then Playwright MCP's entry,
+ * attached to that browser, which the run adds to the agent's MCP servers.
+ * No skill, no readable folder and no environment beyond the Playwright MCP
+ * arm's.
  */
 export async function setUpPlaywrightMcpWithAymePageObjects(
   context: ArmContext
 ): Promise<ArmSetup> {
   const port = await freeLoopbackPort();
   const { evidence, dispose } = await setUpAymePage(context, {
-    pageObjects: true,
     browserArgs: [`--remote-debugging-port=${port}`],
-    pageObjectToolsOnly: true,
   });
   return {
     environment: {},
@@ -125,8 +124,8 @@ export async function setUpPlaywrightMcpWithAymePageObjects(
 }
 
 /**
- * The setup of the arm with the page's tools through WebMCP: the page as
- * for the Ayme arms, with the lab app's Page Objects served with
+ * The setup of the arm with the page's tools through WebMCP: the page with
+ * the lab app's Page Objects served with
  * `--webmcp`, on a browser with the WebMCP flag and a remote-debugging
  * port, and the run's Ayme server given to no agent; then Playwright MCP's
  * entry, attached to that browser with its WebMCP collection on, which the

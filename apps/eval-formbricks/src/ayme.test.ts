@@ -21,20 +21,19 @@ import {
   initScriptPath,
   initScriptProblem,
   isPageObjectToolName,
-  noPageObjectsEntry,
+  onlyPageObjectToolsFlag,
   pageObjectsEntry,
   pageObjectToolNames,
-  pageToolNames,
+  otherToolNames,
   proxyScript,
   proxyScriptPath,
   servedPageContextOptions,
   serverPorts,
-  settledStartPageProblem,
   webMcpFeatureFlag,
 } from "./ayme.ts";
 import { agentRoot, evalRoot, labRoot, repoRoot } from "./paths.ts";
 
-describe("the Ayme arms' skill", () => {
+describe("the startup lane's skill", () => {
   it("is the one the repository ships, under skills/", () => {
     const skills = path.join(repoRoot, "skills");
     expect(aymeSkillSource.startsWith(`${skills}${path.sep}`)).toBe(true);
@@ -66,7 +65,7 @@ describe("the agent's MCP server entry", () => {
 
   it("keeps the socket path short enough for macOS and apart per run", () => {
     const socket = agentSocketPath(
-      "2026-10-05T10-00-00-000Z-ayme-goal-loop-off-abc123"
+      "2026-10-05T10-00-00-000Z-playwright-cli-with-ayme-page-objects-abc123"
     );
     expect(socket.startsWith(os.tmpdir())).toBe(true);
     expect(socket.endsWith("ayme-eval-abc123.sock")).toBe(true);
@@ -96,26 +95,18 @@ describe("the agent's MCP server entry", () => {
 describe("the run's ayme mcp", () => {
   const port = serverPorts.first;
 
-  it("serves the lab app's Page Objects, which it finds by itself, on the port the harness names", () => {
-    expect(aymeMcpArgs(port, { pageObjects: true, webmcp: false })).toEqual([
+  it("lists the Page Object Tools and page_objects alone, on the port the harness names, for the arms whose agent gets the server", () => {
+    expect(onlyPageObjectToolsFlag).toBe("--only-page-object-tools");
+    expect(aymeMcpArgs(port, { webmcp: false })).toEqual([
       "mcp",
       "--port",
       "9350",
+      "--only-page-object-tools",
     ]);
   });
 
-  it("serves the entry without Page Objects for the arm without them", () => {
-    expect(aymeMcpArgs(port, { pageObjects: false, webmcp: false })).toEqual([
-      "mcp",
-      "--port",
-      "9350",
-      "--page-objects",
-      ".ayme/no-page-objects.ts",
-    ]);
-  });
-
-  it("gets --webmcp for the arms that read the page's tools from document.modelContext", () => {
-    expect(aymeMcpArgs(port, { pageObjects: true, webmcp: true })).toEqual([
+  it("gets --webmcp instead for the arms that read the page's tools from document.modelContext", () => {
+    expect(aymeMcpArgs(port, { webmcp: true })).toEqual([
       "mcp",
       "--port",
       "9350",
@@ -123,9 +114,8 @@ describe("the run's ayme mcp", () => {
     ]);
   });
 
-  it("serves entries the lab app holds, and writes its init script beside them", () => {
+  it("serves the entry the lab app holds, which the server finds by itself, and writes its init script beside it", () => {
     expect(existsSync(path.join(labRoot, pageObjectsEntry))).toBe(true);
-    expect(existsSync(path.join(labRoot, noPageObjectsEntry))).toBe(true);
     expect(initScriptPath).toBe(path.join(labRoot, ".ayme/init-script.js"));
   });
 });
@@ -138,10 +128,9 @@ describe("the agent's working root", () => {
     expect(agentRoot).toBe(path.join(labRoot, "formbricks"));
   });
 
-  it("holds nothing the lab app keeps of Ayme: the entries the server serves, the Page Objects, their qualification and the init script are all outside it", () => {
+  it("holds nothing the lab app keeps of Ayme: the entry the server serves, the Page Objects, their qualification and the init script are all outside it", () => {
     for (const file of [
       pageObjectsEntry,
-      noPageObjectsEntry,
       ".ayme/pom/SignInPage.ts",
       "tests/page-objects.qualify.ts",
     ]) {
@@ -153,17 +142,21 @@ describe("the agent's working root", () => {
 });
 
 describe("the init script the run's server wrote", () => {
-  // As `ayme mcp` writes it, cut to what the check reads.
-  const script = (port: number, webmcp: boolean) =>
+  // As `ayme mcp` writes it, cut to what the check reads: with --webmcp, or with --only-page-object-tools.
+  const script = (
+    port: number,
+    webmcp: boolean,
+    onlyPageObjectTools = !webmcp
+  ) =>
     `const served = "http://127.0.0.1:${port}/page-objects/";
 ayme = createAyme({
-  agentConnection: true,
+  agentConnection: ${onlyPageObjectTools ? '{ tools: "page-objects" }' : "true"},
   inspector: { placement: "external" },
   pageObjects,${webmcp ? "\n  webMCP: { enabled: true }," : ""}
 });`;
 
   it.each([true, false])(
-    "passes when it names the run's port, with WebMCP publication %s as the arm wants it",
+    "passes when it names the run's port, with WebMCP publication %s as the arm wants it and the Page Object Tools alone for the server exactly when the agent gets it",
     (webmcp) => {
       expect(
         initScriptProblem(script(9350, webmcp), { port: 9350, webmcp })
@@ -185,6 +178,21 @@ ayme = createAyme({
       ).toContain(webmcp ? "publication on" : "publication off");
     }
   );
+
+  it("fails when the page would hand the agent's server every tool, as a server started without --only-page-object-tools has it", () => {
+    expect(
+      initScriptProblem(script(9350, false, false), {
+        port: 9350,
+        webmcp: false,
+      })
+    ).toContain("every tool of the page");
+  });
+
+  it("fails when a server no agent gets was started with --only-page-object-tools too", () => {
+    expect(
+      initScriptProblem(script(9350, true, true), { port: 9350, webmcp: true })
+    ).toContain("the Page Object Tools alone");
+  });
 });
 
 describe("a browser whose page loads the init script", () => {
@@ -196,19 +204,41 @@ describe("a browser whose page loads the init script", () => {
   });
 });
 
-describe("the page's tools among the names the server lists", () => {
-  it("are every name but the server's own tools, sorted", () => {
+describe("the names an arm with Ayme must not be offered", () => {
+  it("are every name but a Page Object Tool and page_objects: snapshot, a Browser Tool, goal, a Peek Tool and the server's own tools", () => {
     expect(
-      pageToolNames([
+      otherToolNames([
         "ayme_connect",
         "ayme_list_tools",
         "ayme_call",
         "ayme_inspect",
         "snapshot",
         "click",
+        "goal",
+        "peek.cart",
+        "page_objects",
         "SignInPage.logIn",
       ])
-    ).toEqual(["SignInPage.logIn", "click", "snapshot"]);
+    ).toEqual([
+      "ayme_connect",
+      "ayme_list_tools",
+      "ayme_call",
+      "ayme_inspect",
+      "snapshot",
+      "click",
+      "goal",
+      "peek.cart",
+    ]);
+  });
+
+  it("are none when the server lists the screen's Page Object Tools and page_objects alone", () => {
+    expect(
+      otherToolNames([
+        "SignInPage.logIn",
+        "SignInPage.readError",
+        "page_objects",
+      ])
+    ).toEqual([]);
   });
 });
 
@@ -263,36 +293,6 @@ describe("the Page Object Tools among a page's tools", () => {
   });
 });
 
-describe("a start page without page objects, looked at again after pairing", () => {
-  const settled = {
-    tools: ["click", "snapshot"],
-    screenTool: "snapshot",
-    pairedAddress: "ws://127.0.0.1:9350",
-    storedAddress: "ws://127.0.0.1:9350",
-    pageUrl: "http://localhost:3000/auth/login",
-    startUrl: "http://localhost:3000/auth/login",
-  };
-
-  it("passes with its screen tool, no goal, the pairing and the start URL", () => {
-    expect(settledStartPageProblem(settled)).toBeNull();
-  });
-
-  it.each([
-    ["a Page Object Tool", { tools: [...settled.tools, "SignInPage.logIn"] }],
-    ["no tools, as during a reload", { tools: [] }],
-    ["goal", { tools: [...settled.tools, "goal"] }],
-    ["a lost pairing", { storedAddress: null }],
-    [
-      "a query the start URL lacks",
-      { pageUrl: `${settled.startUrl}?callbackUrl=/setup/intro` },
-    ],
-    ["another origin", { pageUrl: "http://localhost:3001/auth/login" }],
-    ["another path", { pageUrl: "http://localhost:3000/setup/intro" }],
-  ])("fails with %s", (_, change) => {
-    expect(settledStartPageProblem({ ...settled, ...change })).not.toBeNull();
-  });
-});
-
 describe("the proxy", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "ayme-eval-proxy-"));
   afterAll(() => rmSync(directory, { recursive: true, force: true }));
@@ -327,221 +327,9 @@ describe("the proxy", () => {
       server.close();
     }
   });
-});
 
-/**
- * The proxy offering the Page Object Tools alone, against a stand-in server
- * on the socket that answers tools/list with every kind of tool, echoes any
- * other request as its result, and sends a list_changed notification when
- * asked to.
- */
-describe("the proxy offering the Page Object Tools alone", () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "ayme-eval-filter-"));
-  afterAll(() => rmSync(directory, { recursive: true, force: true }));
-
-  const listed = [
-    { name: "ayme_connect", inputSchema: { type: "object" } },
-    { name: "ayme_list_tools", inputSchema: { type: "object" } },
-    { name: "ayme_call", inputSchema: { type: "object" } },
-    { name: "ayme_inspect", inputSchema: { type: "object" } },
-    { name: "snapshot", inputSchema: { type: "object" } },
-    { name: "click", inputSchema: { type: "object" } },
-    { name: "fill_form", inputSchema: { type: "object" } },
-    { name: "navigate", inputSchema: { type: "object" } },
-    { name: "goal", inputSchema: { type: "object" } },
-    { name: "peek.cart", inputSchema: { type: "object" } },
-    {
-      name: "SurveyEditorPage.setSurveyName",
-      description: "Sets the name.",
-      inputSchema: { type: "object", properties: { name: { type: "string" } } },
-    },
-    { name: "Question.setHeadline", inputSchema: { type: "object" } },
-  ];
-  const listChanged = JSON.stringify({
-    jsonrpc: "2.0",
-    method: "notifications/tools/list_changed",
-  });
-
-  async function startProxy(name: string) {
-    const socketPath = path.join(directory, `${name}.sock`);
-    const script = path.join(directory, `${name}.cjs`);
-    writeFileSync(script, proxyScript({ pageObjectToolsOnly: true }));
-    const received: unknown[] = [];
-    let client: net.Socket | undefined;
-    const server = net.createServer((socket) => {
-      client = socket;
-      let rest = "";
-      socket.on("data", (chunk) => {
-        rest += String(chunk);
-        const lines = rest.split("\n");
-        rest = lines.pop() ?? "";
-        for (const line of lines) {
-          const message = JSON.parse(line) as {
-            id?: number;
-            method: string;
-            params?: unknown;
-          };
-          received.push(message);
-          if (message.method === "tools/list")
-            socket.write(
-              `${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { tools: listed, nextCursor: "n" } })}\n`
-            );
-          else if (message.id !== undefined)
-            socket.write(
-              `${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { echoed: message.params } })}\n`
-            );
-        }
-      });
-    });
-    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
-    const proxy = spawn(process.execPath, [script, socketPath]);
-    let output = "";
-    proxy.stdout.on("data", (chunk) => (output += String(chunk)));
-    const lines = () =>
-      output
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line) as Record<string, unknown>);
-    return {
-      proxy,
-      received,
-      lines,
-      notify: () => client!.write(`${listChanged}\n`),
-      close: async () => {
-        proxy.stdin.end();
-        await new Promise((resolve) => proxy.once("exit", resolve));
-        server.close();
-      },
-    };
-  }
-
-  it("keeps the Page Object Tools of a tools/list answer and drops every other tool, leaving the rest of the answer", async () => {
-    const { proxy, received, lines, close } = await startProxy("list");
-    try {
-      proxy.stdin.write(
-        '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n'
-      );
-      await expect.poll(() => lines().length).toBe(1);
-      expect(lines()[0]).toEqual({
-        jsonrpc: "2.0",
-        id: 1,
-        result: {
-          tools: [listed[10], listed[11]],
-          nextCursor: "n",
-        },
-      });
-      expect(received).toEqual([
-        { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
-      ]);
-    } finally {
-      await close();
-    }
-  });
-
-  it("forwards a call of a Page Object Tool and its result", async () => {
-    const { proxy, received, lines, close } = await startProxy("call");
-    try {
-      proxy.stdin.write(
-        `${JSON.stringify({ jsonrpc: "2.0", id: "c1", method: "tools/call", params: { name: "SurveyEditorPage.setSurveyName", arguments: { name: "x" } } })}\n`
-      );
-      await expect.poll(() => lines().length).toBe(1);
-      expect(lines()[0]).toEqual({
-        jsonrpc: "2.0",
-        id: "c1",
-        result: {
-          echoed: {
-            name: "SurveyEditorPage.setSurveyName",
-            arguments: { name: "x" },
-          },
-        },
-      });
-      expect(received).toHaveLength(1);
-    } finally {
-      await close();
-    }
-  });
-
-  it.each(["click", "snapshot", "ayme_call", "goal", "peek.cart"])(
-    "answers a call of %s with a JSON-RPC error and never forwards it",
-    async (name) => {
-      const { proxy, received, lines, close } = await startProxy(
-        `refuse-${name}`
-      );
-      try {
-        proxy.stdin.write(
-          `${JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name, arguments: {} } })}\n`
-        );
-        await expect.poll(() => lines().length).toBe(1);
-        expect(lines()[0]).toEqual({
-          jsonrpc: "2.0",
-          id: 7,
-          error: { code: -32602, message: `Unknown tool "${name}".` },
-        });
-        // A later request still reaches the server, after nothing of the refused one did.
-        proxy.stdin.write('{"jsonrpc":"2.0","id":8,"method":"ping"}\n');
-        await expect.poll(() => lines().length).toBe(2);
-        expect(received).toEqual([{ jsonrpc: "2.0", id: 8, method: "ping" }]);
-      } finally {
-        await close();
-      }
-    }
-  );
-
-  it("passes notifications and other messages through unchanged, both ways", async () => {
-    const { proxy, received, lines, notify, close } = await startProxy("pass");
-    try {
-      proxy.stdin.write(
-        '{"jsonrpc":"2.0","method":"notifications/initialized"}\n'
-      );
-      proxy.stdin.write(
-        '{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"capabilities":{}}}\n'
-      );
-      await expect.poll(() => lines().length).toBe(1);
-      notify();
-      await expect.poll(() => lines().length).toBe(2);
-      expect(received).toEqual([
-        { jsonrpc: "2.0", method: "notifications/initialized" },
-        {
-          jsonrpc: "2.0",
-          id: 2,
-          method: "initialize",
-          params: { capabilities: {} },
-        },
-      ]);
-      expect(lines()[1]).toEqual(JSON.parse(listChanged));
-    } finally {
-      await close();
-    }
-  });
-
-  it("reads messages whole however they are chunked", async () => {
-    const { proxy, lines, close } = await startProxy("chunks");
-    try {
-      const list = '{"jsonrpc":"2.0","id":3,"method":"tools/list"}\n';
-      const call =
-        '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"click","arguments":{}}}\n';
-      const text = list + call;
-      for (let at = 0; at < text.length; at += 7) {
-        proxy.stdin.write(text.slice(at, at + 7));
-        await new Promise((resolve) => setTimeout(resolve, 2));
-      }
-      await expect.poll(() => lines().length).toBe(2);
-      const byId = Object.fromEntries(lines().map((line) => [line.id, line]));
-      expect(
-        (byId[3] as { result: { tools: { name: string }[] } }).result.tools.map(
-          (tool) => tool.name
-        )
-      ).toEqual(["SurveyEditorPage.setSurveyName", "Question.setHeadline"]);
-      expect(byId[4]).toHaveProperty("error");
-    } finally {
-      await close();
-    }
-  });
-
-  it("is written with the filter off for the Ayme arms", () => {
-    expect(proxyScript()).toContain("const pageObjectToolsOnly = false;");
-    expect(proxyScript({ pageObjectToolsOnly: true })).toContain(
-      "const pageObjectToolsOnly = true;"
-    );
+  it("reads no message: what the agent is offered is the server's own doing", () => {
+    expect(proxyScript()).not.toContain("JSON.parse");
+    expect(proxyScript()).not.toContain("tools/list");
   });
 });

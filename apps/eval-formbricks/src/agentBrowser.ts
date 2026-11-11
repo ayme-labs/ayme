@@ -4,10 +4,11 @@
  * Code configuration folder, and a session attached over CDP to the browser
  * the harness launched on the mission's start page. agent-browser never
  * launches or downloads a browser of its own, and the measured agent
- * installs nothing. The baseline's page is Formbricks as it is. The arm with
- * Ayme's Page Object Tools through WebMCP gets them served into its page by
- * the run's `ayme mcp`, and has agent-browser's WebMCP support on, which is
- * off for the baseline.
+ * installs nothing. The baseline's page is Formbricks as it is. The arms with
+ * Ayme's Page Object Tools get them served into their page by the run's
+ * `ayme mcp`: the one through WebMCP has agent-browser's WebMCP support on,
+ * which is off for the baseline, and the one through the `ayme` server
+ * leaves it off and gets that server beside the command.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -17,7 +18,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import { launchStartPage, setUpWebMcpPage } from "./ayme.ts";
+import { launchStartPage, setUpAymePage, setUpWebMcpPage } from "./ayme.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -190,40 +191,50 @@ async function setUpPlainPage(
   };
 }
 
+/** What an agent-browser arm adds to the baseline, if anything. */
+type AymeTools = "none" | "webmcp" | "server";
+
 /**
- * The setup of both agent-browser arms: the start page on a Chrome the
+ * The setup of every agent-browser arm: the start page on a Chrome the
  * harness launches with the WebMCP flag and a remote-debugging port, then
  * the run's session attached to that browser. The baseline's page is
- * Formbricks as it is (`setUpPlainPage`); the twin's is the page of the arms
- * with the page's tools through WebMCP (`setUpWebMcpPage`: the lab app's
- * Page Objects served with `--webmcp` by the run's `ayme mcp`, which no
- * agent is given). The session starts with `get url`, which attaches and
- * adopts the open tab without navigating it; `open` would load the page
- * again. The URL it reports must be the start page. After the run every
- * session in the run's socket folder is closed, which detaches without
- * closing the browser, and then the browser is.
+ * Formbricks as it is (`setUpPlainPage`); the twin through WebMCP gets the
+ * page of the arms with the page's tools through WebMCP (`setUpWebMcpPage`:
+ * the lab app's Page Objects served with `--webmcp` by the run's `ayme mcp`,
+ * which no agent is given), and the twin with the `ayme` server the page of
+ * the arms with that server (`setUpAymePage`: the same Page Objects served
+ * with `--only-page-object-tools` by a server the agent gets), with
+ * agent-browser's WebMCP support off as for the baseline. The session
+ * starts with `get url`, which attaches and adopts the open tab without
+ * navigating it; `open` would load the page again. The URL it reports must
+ * be the start page. After the run every session in the run's socket folder
+ * is closed, which detaches without closing the browser, and then the
+ * browser is.
  */
 async function setUpAgentBrowser(
   context: ArmContext,
-  options: { webmcp: boolean }
+  options: { ayme: AymeTools }
 ): Promise<ArmSetup> {
+  const webmcp = options.ayme === "webmcp";
   const port = await freeLoopbackPort();
   const skillDir = await installCliAndSkill(context);
   const socketDir = await mkdtemp(socketDirectoryPrefix());
   const environment = agentBrowserEnvironment(context, undefined, {
     cdpPort: port,
     socketDir,
-    webmcp: options.webmcp,
+    webmcp,
   });
   const browserArgs = [`--remote-debugging-port=${port}`];
   let page: Awaited<ReturnType<typeof setUpPlainPage>>;
   try {
-    page = options.webmcp
+    page = webmcp
       ? await setUpWebMcpPage(context, {
           browserArgs,
           browserFeatures: agentBrowserWebMcpFeatures,
         })
-      : await setUpPlainPage(context, browserArgs);
+      : options.ayme === "server"
+        ? await setUpAymePage(context, { browserArgs })
+        : await setUpPlainPage(context, browserArgs);
   } catch (error) {
     await rm(socketDir, { recursive: true, force: true });
     throw error;
@@ -241,7 +252,7 @@ async function setUpAgentBrowser(
   };
   try {
     context.log(
-      `Attaching the agent-browser session "${environment.AGENT_BROWSER_SESSION}" over CDP on port ${port}, its WebMCP support ${options.webmcp ? "on" : "off"}.`
+      `Attaching the agent-browser session "${environment.AGENT_BROWSER_SESSION}" over CDP on port ${port}, its WebMCP support ${webmcp ? "on" : "off"}.`
     );
     const pageUrl = (await runCli(context, environment, ["get", "url"])).trim();
     if (
@@ -261,8 +272,8 @@ async function setUpAgentBrowser(
     evidence: {
       ...page.evidence,
       remoteDebuggingPort: port,
-      agentBrowserWebMcp: options.webmcp,
-      browserFeatures: options.webmcp ? agentBrowserWebMcpFeatures : [],
+      agentBrowserWebMcp: webmcp,
+      browserFeatures: webmcp ? agentBrowserWebMcpFeatures : [],
     },
     dispose,
   };
@@ -272,12 +283,23 @@ async function setUpAgentBrowser(
 export function setUpAgentBrowserBaseline(
   context: ArmContext
 ): Promise<ArmSetup> {
-  return setUpAgentBrowser(context, { webmcp: false });
+  return setUpAgentBrowser(context, { ayme: "none" });
 }
 
 /** The twin with the served Page Objects' tools through agent-browser's WebMCP support. */
 export function setUpAgentBrowserWithAymeWebMcp(
   context: ArmContext
 ): Promise<ArmSetup> {
-  return setUpAgentBrowser(context, { webmcp: true });
+  return setUpAgentBrowser(context, { ayme: "webmcp" });
+}
+
+/**
+ * The twin with the served Page Objects' tools through the `ayme` server:
+ * the server and the page of `setUpAymePage`, and agent-browser as for the
+ * baseline, its WebMCP support off.
+ */
+export function setUpAgentBrowserWithAymePageObjects(
+  context: ArmContext
+): Promise<ArmSetup> {
+  return setUpAgentBrowser(context, { ayme: "server" });
 }
