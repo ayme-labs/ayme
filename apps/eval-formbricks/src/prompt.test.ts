@@ -247,7 +247,7 @@ describe("the interface lines", () => {
     expect(
       arms["playwright-mcp-with-ayme-page-objects"].interfaceLine(mission.start)
     ).toBe(
-      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool."
+      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool."
     );
   });
 
@@ -262,7 +262,7 @@ describe("the interface lines", () => {
     expect(
       arms["playwright-cli-with-ayme-page-objects"].interfaceLine(mission.start)
     ).toBe(
-      "Use the `playwright-cli` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool."
+      "Use the `playwright-cli` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool."
     );
   });
 
@@ -276,13 +276,13 @@ describe("the interface lines", () => {
       );
     }
     expect(webMcpToolsSentence).toBe(
-      "The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool."
+      "The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool."
     );
     expect(webMcpToolsSentence).not.toContain("ayme");
     expect(
       arms["playwright-mcp-with-ayme-webmcp"].interfaceLine(mission.start)
     ).toBe(
-      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction. The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool."
+      "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction. The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool."
     );
   });
 
@@ -304,7 +304,7 @@ describe("the interface lines", () => {
         `${arms["agent-browser"].interfaceLine(start)} ${agentBrowserWebMcpToolsSentence}`
       );
     expect(agentBrowserWebMcpToolsSentence).toBe(
-      "The page's own tools, which `agent-browser webmcp list` lists and `agent-browser webmcp invoke` calls, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool."
+      "The page's own tools, which `agent-browser webmcp list` lists and `agent-browser webmcp invoke` calls, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool."
     );
     expect(agentBrowserWebMcpToolsSentence).not.toContain("ayme");
     expect(agentBrowserWebMcpToolsSentence).not.toContain("Playwright");
@@ -323,7 +323,7 @@ describe("the interface lines", () => {
     expect(
       arms["agent-browser-with-ayme-page-objects"].interfaceLine(mission.start)
     ).toBe(
-      "Use the `agent-browser` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `agent-browser snapshot`. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool."
+      "Use the `agent-browser` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `agent-browser snapshot`. The `ayme` MCP server offers the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool."
     );
   });
 
