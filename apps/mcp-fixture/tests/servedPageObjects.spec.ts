@@ -10,7 +10,9 @@ import {
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
 import {
+  executePublishedTool,
   publishedToolNames,
+  publishedToolSchema,
   recordPublishedTools,
 } from "@ayme-dev/webmcp/testing";
 
@@ -124,6 +126,81 @@ test("with --webmcp, the page publishes the served Page Object Tools through Web
       .poll(() => publishedToolNames(page), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
     expect(await agent.pageToolNames()).toContain(PLAIN_PAGE_TOOL);
+  } finally {
+    await agent.close();
+  }
+});
+
+test("with --only-page-object-tools, ayme mcp lists the served Page Object Tools and page_objects alone, described and answered as WebMCP publishes them", async ({
+  context,
+  page,
+  baseURL,
+  scanReaches,
+}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  // In the range a page scans: the server lists no `ayme_connect`, so the
+  // page pairs by itself. `--webmcp` too, to compare the two ways.
+  const agent = await startAgent(
+    { cwd: project },
+    "--only-page-object-tools",
+    "--webmcp"
+  );
+  try {
+    const initScript = join(project, ".ayme", "init-script.js");
+    const port = /http:\/\/127\.0\.0\.1:(\d+)\//.exec(
+      await readFile(initScript, "utf8")
+    );
+    expect(port, agent.log).not.toBeNull();
+    scanReaches.add(Number(port![1]));
+    await context.addInitScript({ path: initScript });
+    await recordPublishedTools(context);
+
+    // Before a page pairs the server lists nothing, its own tools included.
+    expect(await agent.toolNames()).toEqual([]);
+    await page.goto(`${baseURL}/plain.html`);
+    await expect
+      .poll(() => agent.toolNames(), { message: agent.log })
+      .toEqual([PLAIN_PAGE_TOOL, "page_objects"]);
+    await expect
+      .poll(() => publishedToolNames(page), { message: agent.log })
+      .toEqual([PLAIN_PAGE_TOOL, "page_objects"]);
+
+    // The same names, descriptions and input schemas both ways.
+    const { tools } = await agent.client.listTools();
+    for (const { name, description, inputSchema } of tools)
+      expect({ name, description, inputSchema }).toEqual(
+        await publishedToolSchema(page, name)
+      );
+
+    // An action's result is the one WebMCP publishes, with no note after it.
+    const action = await agent.call(PLAIN_PAGE_TOOL);
+    expect(action.isError, action.text).toBe(false);
+    expect(action.note).toBeUndefined();
+    expect(JSON.parse(action.text)).toEqual({
+      settled: true,
+      result: "A document of the app's origin that does not run Ayme.",
+    });
+    expect(JSON.parse(action.text)).toEqual(
+      await executePublishedTool(page, PLAIN_PAGE_TOOL)
+    );
+
+    // page_objects answers the Page Object Screen's text, as over WebMCP.
+    const screen = await agent.call("page_objects");
+    expect(screen.isError, screen.text).toBe(false);
+    expect(screen.note).toBeUndefined();
+    expect(screen.text).toMatch(/^PlainPage\n {2}note: /);
+    expect(await executePublishedTool(page, "page_objects")).toEqual({
+      content: [{ type: "text", text: screen.text }],
+    });
+
+    // What the server leaves out is unknown to it, and it says only that.
+    for (const name of ["snapshot", "ayme_list_tools", "ayme_call"])
+      expect(await agent.call(name)).toEqual({
+        text: `Unknown tool "${name}".`,
+        isError: true,
+        note: undefined,
+      });
   } finally {
     await agent.close();
   }
@@ -304,6 +381,32 @@ test("--webmcp without a Page Objects entry to serve stops ayme mcp with the rea
 
   expect(exitCode, stderr).toBe(1);
   expect(stderr).toContain("--webmcp needs a Page Objects entry to serve");
+});
+
+// Playwright reads a test's fixtures from this pattern.
+// eslint-disable-next-line no-empty-pattern
+test("--only-page-object-tools without a Page Objects entry to serve stops ayme mcp with the reason", async ({}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await mkdir(project, { recursive: true });
+  const server = spawn(
+    process.execPath,
+    [aymeCommand, "mcp", "--only-page-object-tools"],
+    {
+      cwd: project,
+      stdio: ["pipe", "pipe", "pipe"],
+    }
+  );
+  let stderr = "";
+  server.stderr.on("data", (chunk: Buffer) => (stderr += String(chunk)));
+
+  const exitCode = await new Promise<number | null>((resolve) =>
+    server.once("exit", resolve)
+  );
+
+  expect(exitCode, stderr).toBe(1);
+  expect(stderr).toContain(
+    "--only-page-object-tools needs a Page Objects entry to serve"
+  );
 });
 
 // Playwright reads a test's fixtures from this pattern.
