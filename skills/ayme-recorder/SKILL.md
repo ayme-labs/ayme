@@ -19,9 +19,10 @@ a Playwright test that replays the flow.
    `package.json`, the project pins its version: run `npx ayme-recorder` in
    place of `npx @ayme-dev/cli@latest`, here and for every `trace` command.
    Check first that it is installed, with `npm ls @ayme-dev/cli`. When that
-   lists no version, ask the user to install the project's dependencies and
-   wait: without the local copy, `npx ayme-recorder` looks on npm for a
-   package of that name, which is not this CLI.
+   fails, lists no version or marks the version `invalid`, ask the user to
+   install the project's dependencies and wait: without the pinned copy,
+   `npx ayme-recorder` runs a different version, or looks on npm for a package
+   of that name, which is not this CLI.
 
 2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
