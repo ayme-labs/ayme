@@ -636,7 +636,6 @@ export function createAymeOn(
       readScreen: () =>
         takeTurn(() => target.registry().readRegisteredPomScreen()),
       url: () => target.rawPage().url(),
-      page: () => target.rawPage(),
     };
   }
 

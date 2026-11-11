@@ -135,12 +135,12 @@ const playwrightMcpInterfaceLine =
   "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.";
 
 /**
- * Spike: a Page Object Tool's answer shows the screen it leads to, after the
- * wait Playwright's tools take after an action, so every Ayme arm reads
- * `page_objects` only where no such answer covers the screen.
+ * Spike: a Page Object Tool's answer reports the screen it ran on, not the
+ * one it leads to, so every Ayme arm asks for `page_objects` at once rather
+ * than in a turn of its own.
  */
 export const snapshotAfterPageToolSentence =
-  "A Page Object Tool's answer shows how the Page Objects changed, a new screen included. Read `page_objects` only after an answer that says `loading` or after a step done with the browser tool; take a snapshot only when the next step has no Page Object Tool.";
+  "A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool.";
 
 /**
  * What an arm with Ayme's Page Object Tools through the `ayme` server adds

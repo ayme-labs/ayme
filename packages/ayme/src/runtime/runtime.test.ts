@@ -48,14 +48,7 @@ vi.mock("../page-objects/infrastructure/inPageDriver", async () =>
 vi.mock("../page-objects/infrastructure/browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
-// What a Run through publication asks of the page besides its URL: the
-// request listener and the timeouts of the wait after an action.
-const page = {
-  url: () => "factory page",
-  on: () => {},
-  off: () => {},
-  waitForTimeout: async () => {},
-} as unknown as AymePage;
+const page = { url: () => "factory page" } as unknown as AymePage;
 const sessions: ReturnType<typeof createAyme>[] = [];
 const stops: (() => void)[] = [];
 type StartWebMcpPublication = Awaited<
