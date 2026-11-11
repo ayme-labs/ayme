@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { buildFailure } from "./buildFailure";
+import { buildErrorLine, buildFailure } from "./buildFailure";
 
 const entry = "/project/.ayme/page-objects.ts";
 
@@ -49,5 +49,16 @@ it("says there is no build to serve when none built yet, and gives an error with
       "The Page Objects entry /project/.ayme/page-objects.ts did not build. No build of it has succeeded, so none is served.",
       "  The service was stopped",
     ].join("\n")
+  );
+});
+
+it("names the file of an error that has no line, without one", () => {
+  expect(
+    buildErrorLine({
+      text: "Could not read TypeScript project configuration",
+      location: { file: "/project/.ayme/pom/PlainPage.ts", line: 0, column: 0 },
+    })
+  ).toBe(
+    "/project/.ayme/pom/PlainPage.ts: Could not read TypeScript project configuration"
   );
 });

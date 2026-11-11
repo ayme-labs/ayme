@@ -118,15 +118,38 @@ export function imageToolResult(
 }
 
 /**
- * The answer of a page tool or fallback tool while no page is paired, with
- * the version gap the server refused the last page for, if it did.
+ * The Page Objects entry this server serves, while no build of it has
+ * succeeded, and the first error of its last build.
  */
-export function notConnectedResult(versionGap?: string): ToolResult {
-  return errorResult(
-    versionGap === undefined
-      ? "No page is connected."
-      : `No page is connected: ${versionGap}`
-  );
+export type FailedPageObjects = { entry: string; error: string };
+
+/**
+ * What an agent is told while no build of the served Page Objects entry
+ * has succeeded: that it did not build, its first error, and how to fix it.
+ */
+export function pageObjectsNotBuilt({ entry, error }: FailedPageObjects) {
+  return [
+    `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
+    `Fix it and save: the server rebuilds the entry when a file it read changes. If the error says no inputs were found in a tsconfig.json, make that file's "include" cover the entry, such as ".ayme/**/*.ts".`,
+  ].join("\n");
+}
+
+/**
+ * The answer of a page tool or fallback tool while no page is paired, with
+ * the version gap the server refused the last page for, if it did, else
+ * why the served Page Objects did not build, if they did not.
+ */
+export function notConnectedResult(
+  versionGap?: string,
+  failedPageObjects?: FailedPageObjects
+): ToolResult {
+  if (versionGap !== undefined)
+    return errorResult(`No page is connected: ${versionGap}`);
+  if (failedPageObjects !== undefined)
+    return errorResult(
+      `No page is connected. ${pageObjectsNotBuilt(failedPageObjects)}`
+    );
+  return errorResult("No page is connected.");
 }
 
 /**

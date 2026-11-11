@@ -24,10 +24,35 @@ export function buildFailure({
     : "No build of it has succeeded, so none is served.";
   return [
     `The Page Objects entry ${entry} did not build. ${served}`,
-    ...errors.map(({ text, location }) =>
-      location === null
-        ? `  ${text}`
-        : `  ${location.file}:${location.line}:${location.column}: ${text}`
-    ),
+    ...errors.map((error) => `  ${buildErrorLine(error)}`),
   ].join("\n");
+}
+
+/**
+ * A build error on one line: its file, if it has one, with the line and
+ * column, if it has them (esbuild counts lines from 1), and its text.
+ */
+export function buildErrorLine({ text, location }: BuildError): string {
+  if (location === null) return text;
+  if (location.line === 0) return `${location.file}: ${text}`;
+  return `${location.file}:${location.line}:${location.column}: ${text}`;
+}
+
+/**
+ * Why a build of the Page Objects `entry` failed: its message is
+ * `buildFailure`'s, and it keeps the errors, in esbuild's order.
+ */
+export class PageObjectsBuildError extends Error {
+  readonly entry: string;
+  readonly errors: readonly BuildError[];
+
+  constructor(options: {
+    entry: string;
+    errors: readonly BuildError[];
+    lastGood: boolean;
+  }) {
+    super(buildFailure(options));
+    this.entry = options.entry;
+    this.errors = options.errors;
+  }
 }

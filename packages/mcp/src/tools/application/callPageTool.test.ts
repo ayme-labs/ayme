@@ -5,7 +5,11 @@ import {
   RECONNECT_WAIT_MS,
   type PageSession,
 } from "../../connection";
-import { errorResult, textResult } from "../domain/toolResult";
+import {
+  errorResult,
+  notConnectedResult,
+  textResult,
+} from "../domain/toolResult";
 import { callPageTool } from "./callPageTool";
 
 const unknown = (name: string) => errorResult(`Unknown tool "${name}".`);
@@ -39,6 +43,32 @@ it("answers that no page is connected while nothing is paired", async () => {
   expect(result.isError).toBe(true);
   expect(result.content).toEqual([
     { type: "text", text: expect.stringContaining("No page is connected") },
+  ]);
+});
+
+it("answers that no page is connected and that the served Page Objects did not build, while no build has succeeded", async () => {
+  const failed = {
+    entry: "/work/.ayme/page-objects.ts",
+    error: "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file",
+  };
+
+  const result = await callPageTool(
+    new AgentConnection(),
+    "snapshot",
+    {},
+    unknown,
+    saveImage,
+    async () => failed
+  );
+
+  expect(result).toEqual(notConnectedResult(undefined, failed));
+  expect(result.content).toEqual([
+    {
+      type: "text",
+      text: expect.stringMatching(
+        /^No page is connected\. The Page Objects entry \/work\/\.ayme\/page-objects\.ts did not build.*The first error: \/work\/\.ayme\/pom\/PlainPage\.ts:3:0: Unexpected end of file\nFix it and save/
+      ),
+    },
   ]);
 });
 

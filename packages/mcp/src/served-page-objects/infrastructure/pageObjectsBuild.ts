@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import * as esbuild from "esbuild";
 
-import { buildFailure } from "../domain/buildFailure";
+import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
 
 /** The built modules, by their path under the served path. */
@@ -110,9 +110,20 @@ function pageObjectModels(
       build.onStart(() => compiler.invalidate());
       build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
         if (path.split(sep).includes("node_modules")) return;
-        const pom = compiler.compile(path, await readFile(path, "utf8"), {
-          emit: "js",
-        });
+        let pom;
+        try {
+          pom = compiler.compile(path, await readFile(path, "utf8"), {
+            emit: "js",
+          });
+        } catch (error) {
+          // Thrown, it would point at esbuild's own code, not at the file.
+          return {
+            errors: [
+              { text: (error as Error).message, location: { file: path } },
+            ],
+            watchFiles: [path],
+          };
+        }
         if (pom === null) return;
         return {
           contents: pom.code,
@@ -164,20 +175,18 @@ function buildOutcomes({
           );
           for (const listener of listeners) listener(good);
         } else {
-          failure = new Error(
-            buildFailure({
-              entry,
-              lastGood: good !== undefined,
-              errors: errors.map(({ text, location }) => ({
-                text,
-                location: location && {
-                  file: resolve(folder, location.file),
-                  line: location.line,
-                  column: location.column,
-                },
-              })),
-            })
-          );
+          failure = new PageObjectsBuildError({
+            entry,
+            lastGood: good !== undefined,
+            errors: errors.map(({ text, location }) => ({
+              text,
+              location: location && {
+                file: resolve(folder, location.file),
+                line: location.line,
+                column: location.column,
+              },
+            })),
+          });
           log(failure.message);
         }
         firstEnded();
@@ -196,6 +205,30 @@ function buildOutcomes({
       return () => void listeners.delete(listener);
     },
   };
+}
+
+/**
+ * Why `build` serves nothing while no build of `entry` has succeeded: the
+ * first error of the last build, or why the build could not start. It
+ * waits for the first build to end, and resolves with `undefined` once a
+ * build has succeeded.
+ */
+export async function failedPageObjects(
+  entry: string,
+  build: Promise<PageObjectsBuild>
+): Promise<{ entry: string; error: string } | undefined> {
+  try {
+    await (await build).modules();
+    return undefined;
+  } catch (error) {
+    return {
+      entry,
+      error:
+        error instanceof PageObjectsBuildError && error.errors[0]
+          ? buildErrorLine(error.errors[0])
+          : (error as Error).message,
+    };
+  }
 }
 
 /** The runtime's entry: a module that re-exports `@ayme-dev/ayme` from `folder`. */
