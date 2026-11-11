@@ -18,6 +18,10 @@ a Playwright test that replays the flow.
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
    `package.json`, the project pins its version: run `npx ayme-recorder` in
    place of `npx @ayme-dev/cli@latest`, here and for every `trace` command.
+   Check first that it is installed, with `npm ls @ayme-dev/cli`. When that
+   lists no version, ask the user to install the project's dependencies and
+   wait: without the local copy, `npx ayme-recorder` looks on npm for a
+   package of that name, which is not this CLI.
 
 2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
