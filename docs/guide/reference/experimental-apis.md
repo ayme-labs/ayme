@@ -19,4 +19,6 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 
 ## Page Objects that `ayme mcp` serves
 
-The `--page-objects <file>` option of `ayme mcp` in `@ayme-dev/mcp`, and the `.ayme/page-objects.ts` entry it reads by default: `ayme mcp` builds the entry, serves it, and writes `.ayme/init-script.js`, which loads it into a page that doesn't ship Ayme. The `--webmcp` option of `ayme mcp` makes that init script turn WebMCP publication on as well. The usage text of `ayme mcp` marks both options experimental. See [Page Objects on a page without Ayme](../guides/page-objects-without-ayme.md).
+The `--page-objects <file>` option of `ayme mcp` in `@ayme-dev/mcp`, and the `.ayme/page-objects.ts` entry it reads by default: `ayme mcp` builds the entry, serves it, and writes `.ayme/init-script.js`, which loads it into a page that doesn't ship Ayme. The `--webmcp` option of `ayme mcp` makes that init script turn WebMCP publication on as well. The `--only-page-object-tools` option makes `ayme mcp` list the page's Page Object Tools and `page_objects` alone, answered as WebMCP publishes them. The usage text of `ayme mcp` marks all three options experimental. See [Page Objects on a page without Ayme](../guides/page-objects-without-ayme.md).
+
+- `agentConnection.tools` in `@ayme-dev/ayme`: the session option the init script of `ayme mcp --only-page-object-tools` sets, in [Offer the Page Object Tools alone](../guides/page-objects-without-ayme.md#offer-the-page-object-tools-alone).

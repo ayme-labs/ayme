@@ -45,11 +45,28 @@ Add `--webmcp` after `mcp` in the registration, and each start writes an init sc
 
 Install `@ayme-dev/webmcp` beside `@ayme-dev/ayme`, and give the page a WebMCP driver, as [Publish tools](publish-tools.md#give-the-page-webmcp) describes. `ayme mcp` refuses to start with `--webmcp` when it has no entry to serve.
 
+## Offer the Page Object Tools alone
+
+Add `--only-page-object-tools` after `mcp` in the registration when the agent keeps its own browser tool for everything else. `ayme mcp` then lists the Page Object Tools of the screen the page is on and the read tool `page_objects`, and nothing else: no `snapshot`, no [Browser Tool](../reference/browser-tools.md), and none of its own tools. It is off unless set, and `ayme mcp` refuses to start with it when it has no entry to serve.
+
+Each tool has the name, description and input schema it has when [published through WebMCP](publish-tools.md), and the same answer:
+
+- A Page Object action answers `{ settled, result?, url?, loading?, changes? }`: whether the page settled, what the action returned, the new URL when it changed, what was still loading, and under `changes` how the Page Object instances on the screen changed. It carries no Change Record.
+- `page_objects` answers with the Page Object instances on the screen as text. A tool of a Page Object with several instances takes the `po<n>` ref that text shows.
+- A refused call says why, and nothing else.
+
+The init script sets this with the session option `agentConnection: { tools: "page-objects" }`, so the page hands `ayme mcp` the tools its WebMCP publication has. `--webmcp` can be set beside it.
+
+- The agent has no `ayme_connect`, so the page has to pair by itself: on `localhost` or `127.0.0.1`, with exactly one Ayme MCP server running.
+- The agent's tool list changes with the screen. An agent that reads its tool list once sees the tools of the screen it started on only.
+- The tools of an [App Process](server-rendering.md#server-state) are not listed.
+- A page whose app ships Ayme itself hands `ayme mcp` the tools its own session was started with, whatever the init script says.
+
 ## What to expect
 
 - Playwright MCP and Playwright CLI refuse to start while the init script is missing, so start `ayme mcp` first in a fresh clone.
 - The browser reads the init script when it starts. If it can start before `ayme mcp`, or outlive a restart on another port, add `--port <port>` to the `ayme mcp` registration so every start writes the same init script, then restart the browser once.
 - After an edit, `ayme mcp` rebuilds and the open page swaps in the new Page Objects. A failed build is logged to `ayme mcp`'s standard error, and the page keeps the last good one.
 - Chromium-based browsers only.
-- Navigating to another origin needs a new `ayme_connect` link.
+- Navigating to another origin needs a new `ayme_connect` link, which an agent started with `--only-page-object-tools` cannot ask for.
 - On a page whose app already ships Ayme, the app's own tools win over the served ones.
