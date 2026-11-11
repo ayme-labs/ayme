@@ -15,6 +15,9 @@ a Playwright test that replays the flow.
    on that page; the user performs the flow and presses Finish. The command
    then prints `Recording package: <path>`.
 2. **Read** the package, as [Read the package](#read-the-package) describes.
+   Leave every discarded entry out of the page objects and the test. A package
+   with no kept entry has no flow to implement: tell the user whether it
+   captured nothing or every entry is a stub, and stop.
 3. **Propose** the page objects and the test to the user before you write any
    file, following
    [Write page objects from the recording](#write-page-objects-from-the-recording)
@@ -29,6 +32,7 @@ a Playwright test that replays the flow.
    user.
 
 Done when the test passes against the app and replays the flow you agreed.
+A package with no kept entry is done when you have told the user and stopped.
 
 ## Read the package
 
@@ -46,8 +50,9 @@ visits:                         # one per page load
     timelineEntries:            # in order
       - kind: interaction       # or `change`
         timestamp
-        interaction:            # id, type, targetRef, values
-        changeTree:             # only when something changed
+        discarded: true         # a stub only; absent on a kept entry
+        interaction:            # stub: id, type. Kept adds targetRef, values
+        changeTree:             # a kept entry, only when something changed
 traceActionPoints:              # the interactions the trace holds
 ```
 
@@ -78,8 +83,9 @@ below it.
 ```
 
 An interaction names its target by `targetRef`, a node in the visit's baseline
-tree or one `<added>` earlier in the same visit. Its other fields, such as a
-fill's `text`, are the values the user entered.
+tree or one `<added>` earlier in the same visit, or a node a discarded change
+added; [Discarded entries](#discarded-entries) says how to read that one. Its
+other fields, such as a fill's `text`, are the values the user entered.
 
 ```text
 interaction:
@@ -97,6 +103,32 @@ it, because the recorder can see the page change before it records the click
 behind the change. A change no recorded action explains can also come from a
 hover, or from anything the page does on its own in between, such as an async
 update. Read it together with the steps around it.
+
+## Discarded entries
+
+The user can discard a whole interaction or unassigned change. It stays in the
+timeline, in order, as a stub:
+
+```text
+- kind: interaction
+  timestamp: 100
+  discarded: true
+  interaction:
+    id: interaction_1
+    type: fill
+- kind: change
+  timestamp: 150
+  discarded: true
+```
+
+A stub has no target, entered value or `changeTree`. When a kept step depends
+on one, ask the user how the flow should reach it.
+
+A kept `targetRef` can name an element a discarded change added. The trace still
+has the discarded interaction's action, under its `interaction.id`: open it
+with `trace action <interaction.id>` and `trace snapshot <interaction.id>`, as
+[Use the trace](#use-the-trace) describes. A discarded `kind: change` has no
+action: use a snapshot already in the trace, or the next visit's baseline.
 
 ## Write page objects from the recording
 
