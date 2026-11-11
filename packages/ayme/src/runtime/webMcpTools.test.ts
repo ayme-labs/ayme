@@ -3,6 +3,7 @@ import type { ScreenObject } from "../page-objects/domain";
 import { ACTION_RESULT_NOTE } from "../page-state/domain";
 import type { ToolInfo } from "../shared";
 import {
+  pageObjectToolSource,
   publishedInfo,
   webMcpToolSource,
   type WebMcpSession,
@@ -151,5 +152,43 @@ describe("the session's tools as WebMCP publishes them", () => {
     expect(await webMcpToolSource(source).run("snapshot", {})).toEqual({
       structure: "- main",
     });
+  });
+});
+
+describe("the Page Object Tools as the Agent Connection hands them to ayme mcp", () => {
+  it("lists what WebMCP publishes, described the same", () => {
+    expect(pageObjectToolSource(session()).list()).toEqual(
+      webMcpToolSource(session()).list()
+    );
+  });
+
+  it("answers page_objects with the Page Object Screen's own text", async () => {
+    expect(await pageObjectToolSource(session()).run("page_objects", {})).toBe(
+      'SurveyEditorPage\n  surveyName: textbox "Survey name": Draft'
+    );
+  });
+
+  it("answers an action as WebMCP publishes it", async () => {
+    const action = ["SurveyEditorPage.setSurveyName", {}] as const;
+    expect(await pageObjectToolSource(session()).run(...action)).toEqual(
+      await webMcpToolSource(session()).run(...action)
+    );
+  });
+
+  it("throws a failed action's error without the Change Record left on it", async () => {
+    const source = session();
+    const failure = Object.assign(new Error("save is unavailable."), {
+      name: "RuntimeStateError",
+      page_changed: true,
+      changes_before: "- e2 status: Saved",
+      changes: '- e5 textbox "Survey name": Final',
+    });
+    source.run.mockRejectedValueOnce(failure);
+    const thrown = await pageObjectToolSource(source)
+      .run("SurveyEditorPage.save", {})
+      .catch((error: unknown) => error);
+    expect(thrown).toBe(failure);
+    expect(Object.keys(failure)).toEqual(["name"]);
+    expect(failure.message).toBe("save is unavailable.");
   });
 });

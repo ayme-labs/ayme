@@ -410,6 +410,59 @@ it("starts the Agent Connection while a session with agentConnection is started"
   expect(startAgentConnection).toHaveBeenCalledOnce();
 });
 
+it("hands the Agent Connection the Page Object Tools alone when its tools option asks for them", async () => {
+  const startAgentConnection = vi.fn(() => ({
+    dispose: vi.fn(),
+    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+    status: {
+      get: () => ({ state: "not-connected" as const }),
+      subscribe: () => () => {},
+    },
+  }));
+  vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
+  const runtime = createAyme({
+    pageFactory: () => page,
+    agentConnection: { tools: "page-objects" },
+    webMCP: { enabled: true },
+  });
+  sessions.push(runtime);
+  start(runtime);
+  await flush();
+  await publicationStarts();
+  const [{ tools }] = startAgentConnection.mock.calls[0] as unknown as [
+    { tools: Ayme["tools"] },
+  ];
+  class Saver {
+    save() {}
+  }
+  registerCompiledPom(Saver, {
+    className: "Saver",
+    components: [],
+    members: [],
+    tools: [{ methodName: "save", toolName: "Saver.save", parameters: [] }],
+  });
+  const heard = vi.fn();
+  tools.subscribe(heard);
+  runtime.pom.register(Saver);
+  await registryModule.probeRegisteredPomMembers();
+  // The session's own list holds the Browser Tools too; the page client
+  // gets what WebMCP publishes, described and typed the same.
+  expect(runtime.tools.list().map(({ name }) => name)).toContain("snapshot");
+  expect(tools.list().map(({ name }) => name)).toEqual([
+    "Saver.save",
+    "page_objects",
+  ]);
+  expect(tools.list()).toEqual(published().tools.list());
+  expect(heard).toHaveBeenLastCalledWith(tools.list());
+  runtime.pom.unregister(Saver);
+  // A call is the session's Run for ayme-mcp, where WebMCP's is webmcp's.
+  const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
+  await expect(tools.run("Saver.save", {})).resolves.toBe("ran");
+  expect(run).toHaveBeenLastCalledWith("Saver.save", {}, { by: "ayme-mcp" });
+  await published().tools.run("Saver.save", {});
+  expect(run).toHaveBeenLastCalledWith("Saver.save", {}, { by: "webmcp" });
+});
+
 it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnoreOf");
   try {

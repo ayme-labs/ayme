@@ -68,7 +68,12 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
-import { webMcpToolSource } from "./webMcpTools";
+import {
+  pageObjectToolSource,
+  webMcpToolSource,
+  type WebMcpSession,
+  type WebMcpToolInfo,
+} from "./webMcpTools";
 import {
   callers,
   checkedToolInput,
@@ -256,15 +261,27 @@ export type AymeOptions = {
 };
 
 /**
- * Where an App Process finds the agent's Ayme MCP server. Without either,
- * it pairs with the one server that answers on the ports from 9350 to 9365.
- * A page ignores them.
+ * Where an App Process finds the agent's Ayme MCP server, and which of a
+ * page's tools the server gets. Without `link` or `port`, an App Process
+ * pairs with the one server that answers on the ports from 9350 to 9365; a
+ * page ignores both. An App Process ignores `tools`.
  */
 export type AgentConnectionOptions = {
   /** A connect link from the agent's `ayme_connect`, which names one server. */
   link?: string;
   /** The one port to look for a server on, as for `ayme mcp --port`. */
   port?: number;
+  /**
+   * `"page-objects"` hands the server the page's Page Object Tools and the
+   * read tool `page_objects` alone, described and answered as WebMCP
+   * publishes them: an action's result says how the Page Object Screen
+   * changed, and carries no Change Record. For an agent whose own browser
+   * tool does the rest; `ayme mcp --only-page-object-tools` sets it in the
+   * init script it writes. Without it, the server gets every tool of the
+   * session.
+   * @experimental
+   */
+  tools?: "page-objects";
 };
 
 /** WebMCP publication, decided where the runtime starts (ADR-0030). */
@@ -607,15 +624,20 @@ export function createAymeOn(
    * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
    * calls as `webmcp` Runs. The package decides which of them it publishes.
    */
-  const webMcpTools = webMcpToolSource({
-    list: () => ayme.tools.list(),
-    subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
-    run: (name: string, input: unknown) =>
-      ayme.tools.run(name, input as never, { by: callers.webmcp }),
-    readScreen: () =>
-      takeTurn(() => target.registry().readRegisteredPomScreen()),
-    url: () => target.rawPage().url(),
-  });
+  const webMcpTools = webMcpToolSource(pageObjectSession(callers.webmcp));
+
+  /** What the Page Object Tools read of the session, their Runs `by`'s. */
+  function pageObjectSession(by: Caller): WebMcpSession {
+    return {
+      list: () => ayme.tools.list(),
+      subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
+      run: (name: string, input: unknown) =>
+        ayme.tools.run(name, input as never, { by }),
+      readScreen: () =>
+        takeTurn(() => target.registry().readRegisteredPomScreen()),
+      url: () => target.rawPage().url(),
+    };
+  }
 
   /**
    * Loads the WebMCP package and starts publication, until `signal` aborts,
@@ -852,6 +874,28 @@ export function createAymeOn(
       ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
   };
 
+  /**
+   * The page's tools as its page client reaches them: every tool of the
+   * session, or, when the `agentConnection` option asks for
+   * `tools: "page-objects"`, the Page Object Tools and `page_objects` as
+   * WebMCP publishes them, from the same source, their Runs `ayme-mcp`'s.
+   */
+  function agentConnectionTools() {
+    const { agentConnection } = options;
+    if (
+      typeof agentConnection !== "object" ||
+      agentConnection.tools !== "page-objects"
+    )
+      return aymeMcpTools;
+    const source = pageObjectToolSource(pageObjectSession(callers.aymeMcp));
+    return {
+      list: source.list,
+      subscribe: (listener: (tools: readonly WebMcpToolInfo[]) => void) =>
+        source.subscribe(() => listener(source.list())),
+      run: source.run,
+    };
+  }
+
   const pom: AymePom = {
     get<T extends object>(model: PageObjectConstructor<T>): T {
       let instance = instances.get(model) as T | undefined;
@@ -974,7 +1018,7 @@ export function createAymeOn(
                 external ? surfaces.loadExternalInspectorPort() : undefined,
               ]).then(([{ startAgentConnection }, inspectorPort]) => () => {
                 const connection = startAgentConnection({
-                  tools: aymeMcpTools,
+                  tools: agentConnectionTools(),
                   recordAgentImage: recordAgentImageRun,
                   inspector: inspectorPort,
                 });

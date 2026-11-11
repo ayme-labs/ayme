@@ -1,16 +1,18 @@
 // The session's tools as WebMCP publishes them (ADR-0030): the screen is
 // described through its Page Objects, not through structural snapshots and
 // diffs. `page_objects` reads the Page Object Screen; an action's result
-// carries how that screen changed. `ayme mcp` and the Goal Loop read the
-// session's own results.
+// carries how that screen changed. The Agent Connection hands `ayme mcp` the
+// same tools with the same results when its `tools` option asks for the
+// Page Object Tools alone; otherwise `ayme mcp`, like the Goal Loop, reads
+// the session's own results.
 import {
   renderPomScreen,
   renderScreenChanges,
   requiredDescription,
   type ScreenObject,
 } from "../page-objects/domain";
-import { ACTION_RESULT_NOTE } from "../page-state/domain";
-import type { JsonValue, ToolInfo } from "../shared";
+import { ACTION_RESULT_NOTE, type ActionFailure } from "../page-state/domain";
+import type { JsonSchema, JsonValue, ToolInfo } from "../shared";
 
 /** The read-only tool WebMCP adds: the Page Object Screen. */
 export const PAGE_OBJECTS_TOOL = "page_objects";
@@ -25,7 +27,7 @@ const INSTANCE_REF_DESCRIPTION =
 export type WebMcpToolInfo = Readonly<{
   name: string;
   description: string;
-  inputSchema: object;
+  inputSchema: JsonSchema;
   group: string;
   available: boolean;
 }>;
@@ -90,7 +92,7 @@ export function publishedInfo(tool: ToolInfo): WebMcpToolInfo {
   };
 }
 
-function withInstanceRef(schema: object): object {
+function withInstanceRef(schema: JsonSchema): JsonSchema {
   const properties = (schema as { properties?: Record<string, object> })
     .properties;
   if (!properties?.ref) return schema;
@@ -112,12 +114,15 @@ const pageObjectsTool: WebMcpToolInfo = {
 };
 
 /**
- * The session's tools as `@ayme-dev/webmcp` reaches them: its Page Object
- * Tools and `page_objects`, an action's result reshaped as
- * `WebMcpActionResult`. The Browser Tools, Custom Tools, `snapshot`, `goal`
- * and the Peek Tools are not published.
+ * The session's Page Object Tools and `page_objects`, for an agent whose
+ * browser tool does the rest: `page_objects` answers the Page Object Screen
+ * as text, and an action's result is reshaped as `WebMcpActionResult`. A
+ * failed action throws its error without the Change Record the session left
+ * on it. The Browser Tools, Custom Tools, `snapshot`, `goal` and the Peek
+ * Tools are not listed. WebMCP publication and the Agent Connection's Page
+ * Object Tools share it, each with its own Caller in `session.run`.
  */
-export function webMcpToolSource(session: WebMcpSession) {
+export function pageObjectToolSource(session: WebMcpSession) {
   return {
     list: (): readonly WebMcpToolInfo[] => [
       ...session
@@ -129,18 +134,45 @@ export function webMcpToolSource(session: WebMcpSession) {
     subscribe: (listener: () => void) => session.subscribe(listener),
     async run(name: string, input: unknown): Promise<unknown> {
       if (name === PAGE_OBJECTS_TOOL)
-        return {
-          content: [
-            { type: "text", text: renderPomScreen(await session.readScreen()) },
-          ],
-        };
+        return renderPomScreen(await session.readScreen());
       const before = await session.readScreen().catch(() => undefined);
       const url = session.url();
-      const result = await session.run(name, input);
+      const result = await session.run(name, input).catch((error: unknown) => {
+        throw withoutChangeRecord(error);
+      });
       if (!isActionResult(result)) return result;
       return publishedResult(session, result, before, url);
     },
   };
+}
+
+/**
+ * The session's tools as `@ayme-dev/webmcp` reaches them: those of
+ * `pageObjectToolSource`, with the text `page_objects` answers as an MCP
+ * text result, which is what a WebMCP driver hands on as text.
+ */
+export function webMcpToolSource(session: WebMcpSession) {
+  const source = pageObjectToolSource(session);
+  return {
+    ...source,
+    async run(name: string, input: unknown): Promise<unknown> {
+      const result = await source.run(name, input);
+      return name === PAGE_OBJECTS_TOOL
+        ? { content: [{ type: "text", text: result }] }
+        : result;
+    },
+  };
+}
+
+/**
+ * A failed action's error without the Change Record the session attached to
+ * it: the same error, since the Run log has recorded the failure by now.
+ */
+function withoutChangeRecord(error: unknown): unknown {
+  if (error instanceof Error)
+    for (const part of ["page_changed", "changes_before", "changes"] as const)
+      delete (error as Partial<ActionFailure>)[part];
+  return error;
 }
 
 async function publishedResult(
