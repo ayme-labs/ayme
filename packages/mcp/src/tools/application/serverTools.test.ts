@@ -105,11 +105,11 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
 
 it("ayme_list_tools and ayme_call say the Page Objects did not build while no page is connected, until a build succeeds", async () => {
   const { context, fix } = failingBuild();
-  const failed = await context.failedPageObjects();
 
   for (const tool of [listToolsTool(context), callTool(context)]) {
     const result = await tool.call({ tool: "peek" });
-    expect(result).toEqual(notConnectedResult(undefined, failed));
+    expect(result.isError).toBe(true);
+    expect(result.content).toHaveLength(1);
     expect(result.content[0]).toEqual({
       type: "text",
       text: expect.stringMatching(
@@ -119,10 +119,12 @@ it("ayme_list_tools and ayme_call say the Page Objects did not build while no pa
   }
 
   fix();
-  expect(await listToolsTool(context).call({})).toEqual(notConnectedResult());
-  expect(await callTool(context).call({ tool: "peek" })).toEqual(
-    notConnectedResult()
-  );
+  const noPage = {
+    content: [{ type: "text", text: "No page is connected." }],
+    isError: true,
+  };
+  expect(await listToolsTool(context).call({})).toEqual(noPage);
+  expect(await callTool(context).call({ tool: "peek" })).toEqual(noPage);
 });
 
 it("ayme_list_tools and ayme_call say no page is connected while nothing is paired", async () => {

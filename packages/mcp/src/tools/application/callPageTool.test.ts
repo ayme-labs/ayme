@@ -5,11 +5,7 @@ import {
   RECONNECT_WAIT_MS,
   type PageSession,
 } from "../../connection";
-import {
-  errorResult,
-  notConnectedResult,
-  textResult,
-} from "../domain/toolResult";
+import { errorResult, textResult } from "../domain/toolResult";
 import { callPageTool } from "./callPageTool";
 
 const unknown = (name: string) => errorResult(`Unknown tool "${name}".`);
@@ -71,7 +67,7 @@ it("answers that no page is connected and that the served Page Objects did not b
     async () => failed
   );
 
-  expect(result).toEqual(notConnectedResult(undefined, failed));
+  expect(result.isError).toBe(true);
   expect(result.content).toEqual([
     {
       type: "text",
