@@ -43,7 +43,6 @@ export function buildErrorLine({ text, location }: BuildError): string {
  * `buildFailure`'s, and it keeps the errors, in esbuild's order.
  */
 export class PageObjectsBuildError extends Error {
-  readonly entry: string;
   readonly errors: readonly BuildError[];
 
   constructor(options: {
@@ -52,7 +51,6 @@ export class PageObjectsBuildError extends Error {
     lastGood: boolean;
   }) {
     super(buildFailure(options));
-    this.entry = options.entry;
     this.errors = options.errors;
   }
 }

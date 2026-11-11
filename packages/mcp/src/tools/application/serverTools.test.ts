@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import { AgentConnection } from "../../connection";
 import {
   errorResult,
+  type FailedPageObjects,
   notConnectedResult,
   textResult,
 } from "../domain/toolResult";
@@ -56,10 +57,11 @@ it("ayme_connect names the init script of the Page Objects the server serves", a
  * A context whose served Page Objects have no good build until `fix()`.
  */
 const failingBuild = () => {
-  let failed: { entry: string; error: string } | undefined = {
+  let failed: FailedPageObjects | undefined = {
     entry: "/work/.ayme/page-objects.ts",
     error:
       "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
+    watching: true,
   };
   return {
     context: {

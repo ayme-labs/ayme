@@ -209,16 +209,23 @@ function buildOutcomes({
 
 /**
  * Why `build` serves nothing while no build of `entry` has succeeded: the
- * first error of the last build, or why the build could not start. It
+ * first error of the last build, or why the build could not start, and
+ * whether it watches the entry's files, which it does once started. It
  * waits for the first build to end, and resolves with `undefined` once a
  * build has succeeded.
  */
 export async function failedPageObjects(
   entry: string,
   build: Promise<PageObjectsBuild>
-): Promise<{ entry: string; error: string } | undefined> {
+): Promise<{ entry: string; error: string; watching: boolean } | undefined> {
+  let started: PageObjectsBuild;
   try {
-    await (await build).modules();
+    started = await build;
+  } catch (error) {
+    return { entry, error: (error as Error).message, watching: false };
+  }
+  try {
+    await started.modules();
     return undefined;
   } catch (error) {
     return {
@@ -227,6 +234,7 @@ export async function failedPageObjects(
         error instanceof PageObjectsBuildError && error.errors[0]
           ? buildErrorLine(error.errors[0])
           : (error as Error).message,
+      watching: true,
     };
   }
 }

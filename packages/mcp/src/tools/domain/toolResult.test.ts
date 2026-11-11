@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ImageResult } from "../../contract";
-import { imageOf, imageToolResult } from "./toolResult";
+import { imageOf, imageToolResult, pageObjectsNotBuilt } from "./toolResult";
 
 const image: ImageResult = {
   type: "image",
@@ -98,5 +98,47 @@ describe("imageToolResult", () => {
       ],
       isError: true,
     });
+  });
+});
+
+describe("pageObjectsNotBuilt", () => {
+  const entry = "/work/.ayme/page-objects.ts";
+
+  it("says to save the fix while the build watches the entry's files, with no tsconfig advice for another error", () => {
+    const text = pageObjectsNotBuilt({
+      entry,
+      error: "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file",
+      watching: true,
+    });
+
+    expect(text.split("\n")[1]).toBe(
+      "Fix it and save: the server rebuilds the entry when a file it read changes."
+    );
+    expect(text).not.toContain("tsconfig.json");
+  });
+
+  it("says to cover the entry in the tsconfig include when TypeScript found no inputs", () => {
+    expect(
+      pageObjectsNotBuilt({
+        entry,
+        error:
+          "/work/.ayme/pom/PlainPage.ts: Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
+        watching: true,
+      }).split("\n")[1]
+    ).toBe(
+      'Fix it and save: the server rebuilds the entry when a file it read changes. Make the "include" of that tsconfig.json cover the entry, such as ".ayme/**/*.ts".'
+    );
+  });
+
+  it("says to restart ayme mcp when the build could not start", () => {
+    expect(
+      pageObjectsNotBuilt({
+        entry,
+        error: "needs @ayme-dev/ayme/compiler, which does not resolve",
+        watching: false,
+      }).split("\n")[1]
+    ).toBe(
+      "Fix it and restart ayme mcp: the build could not start, so no file is watched."
+    );
   });
 });

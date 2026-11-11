@@ -119,18 +119,33 @@ export function imageToolResult(
 
 /**
  * The Page Objects entry this server serves, while no build of it has
- * succeeded, and the first error of its last build.
+ * succeeded, the first error of its last build, and whether its build
+ * watches the entry's files, which it does unless it could not start.
  */
-export type FailedPageObjects = { entry: string; error: string };
+export type FailedPageObjects = {
+  entry: string;
+  error: string;
+  watching: boolean;
+};
 
 /**
  * What an agent is told while no build of the served Page Objects entry
  * has succeeded: that it did not build, its first error, and how to fix it.
  */
-export function pageObjectsNotBuilt({ entry, error }: FailedPageObjects) {
+export function pageObjectsNotBuilt({
+  entry,
+  error,
+  watching,
+}: FailedPageObjects) {
+  const fix = watching
+    ? "Fix it and save: the server rebuilds the entry when a file it read changes."
+    : "Fix it and restart ayme mcp: the build could not start, so no file is watched.";
+  const include = error.includes("No inputs were found")
+    ? ` Make the "include" of that tsconfig.json cover the entry, such as ".ayme/**/*.ts".`
+    : "";
   return [
     `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
-    `Fix it and save: the server rebuilds the entry when a file it read changes. If the error says no inputs were found in a tsconfig.json, make that file's "include" cover the entry, such as ".ayme/**/*.ts".`,
+    fix + include,
   ].join("\n");
 }
 

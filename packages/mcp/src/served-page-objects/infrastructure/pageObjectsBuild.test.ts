@@ -34,6 +34,7 @@ it("gives the first error of a build of the entry that has never succeeded", asy
   expect(await failedPageObjects(entry, failing)).toEqual({
     entry,
     error: "/project/.ayme/pom/PlainPage.ts:22:0: Unexpected end of file",
+    watching: true,
   });
 });
 
@@ -45,6 +46,7 @@ it("gives why the build could not start", async () => {
   expect(await failedPageObjects(entry, unstarted)).toEqual({
     entry,
     error: "needs @ayme-dev/ayme/compiler, which does not resolve",
+    watching: false,
   });
 });
 
