@@ -17,7 +17,10 @@ type PomCompilerEntry = {
     compile(
       fileName: string,
       source: string,
-      options: { emit: "js" }
+      options: {
+        emit: "js";
+        onDependencies?: (dependencies: readonly string[]) => void;
+      }
     ): { code: string; dependencies: readonly string[] } | null;
     invalidate(): void;
   };
@@ -110,10 +113,13 @@ export function pageObjectModels(
       build.onStart(() => compiler.invalidate());
       build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
         if (path.split(sep).includes("node_modules")) return;
+        // What the compile read before it threw, such as a tsconfig.json.
+        let read: readonly string[] = [];
         let pom;
         try {
           pom = compiler.compile(path, await readFile(path, "utf8"), {
             emit: "js",
+            onDependencies: (dependencies) => (read = dependencies),
           });
         } catch (error) {
           // Thrown, it would point at esbuild's own code, not at the file.
@@ -121,7 +127,7 @@ export function pageObjectModels(
             errors: [
               { text: (error as Error).message, location: { file: path } },
             ],
-            watchFiles: [path],
+            watchFiles: [path, ...read],
           };
         }
         if (pom === null) return;

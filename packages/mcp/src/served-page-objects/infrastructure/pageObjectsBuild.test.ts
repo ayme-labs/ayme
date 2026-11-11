@@ -112,14 +112,18 @@ it("loads a Page Object Model as the compiler compiles it, watching its dependen
     loader: "js",
     watchFiles: [file, "/dep.ts"],
   });
-  expect(compile).toHaveBeenCalledWith(file, "class Page {}", { emit: "js" });
+  expect(compile).toHaveBeenCalledWith(file, "class Page {}", {
+    emit: "js",
+    onDependencies: expect.any(Function),
+  });
 });
 
-it("reports a compiler error against the file it compiled, and keeps watching that file", async () => {
+it("reports a compiler error against the file it compiled, and keeps watching it and what the compile read", async () => {
   const file = await pomFile("class Page {}");
   const { onLoad } = setUp(
     pageObjectModels({
-      compile: () => {
+      compile: (_file, _source, { onDependencies }) => {
+        onDependencies?.(["/project/tsconfig.json"]);
         throw new Error("Could not read TypeScript project configuration");
       },
       invalidate: () => {},
@@ -133,7 +137,7 @@ it("reports a compiler error against the file it compiled, and keeps watching th
         location: { file },
       },
     ],
-    watchFiles: [file],
+    watchFiles: [file, "/project/tsconfig.json"],
   });
 });
 
