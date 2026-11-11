@@ -100,7 +100,7 @@ export async function watchPageObjects(
  * `node_modules`, with the project's own compiler; every other module
  * builds as esbuild builds it.
  */
-function pageObjectModels(
+export function pageObjectModels(
   compiler: ReturnType<PomCompilerEntry["createPomCompiler"]>
 ): esbuild.Plugin {
   return {
@@ -141,7 +141,7 @@ function pageObjectModels(
  * Keeps the last good build and logs each build's outcome, from the end of
  * every build.
  */
-function buildOutcomes({
+export function buildOutcomes({
   entry,
   folder,
   outdir,
