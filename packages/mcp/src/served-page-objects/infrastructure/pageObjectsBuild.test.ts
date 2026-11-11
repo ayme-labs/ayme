@@ -221,3 +221,17 @@ it("keeps the last good build after a later build fails, and says so in the log"
     undefined
   );
 });
+
+it("watches only the file it compiled when the compile throws before it reads anything", async () => {
+  const file = await pomFile("class Page {}");
+  const { onLoad } = setUp(
+    pageObjectModels({
+      compile: () => {
+        throw new Error("The service was stopped");
+      },
+      invalidate: () => {},
+    })
+  );
+
+  expect(await onLoad({ path: file })).toMatchObject({ watchFiles: [file] });
+});
