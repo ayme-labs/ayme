@@ -3,17 +3,34 @@ import type { Locator, Page } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
 
-const canSave = async (self: SurveyEditorPage) =>
-  (await self.saveButton.isVisible()) ||
-  "Formbricks shows Save only for a survey that is no longer a draft, and not in the editor a first survey opens in.";
+// Formbricks shows each save button only in some editors. An unavailable
+// action reads which of this page's own buttons are there, and names the
+// action that saves in their place.
 
-const canSaveAndClose = async (self: SurveyEditorPage) =>
-  (await self.saveAndCloseButton.isVisible()) ||
-  "Formbricks shows Save & Close for a published survey, and for a draft only in the editor a first survey opens in.";
+const canSave = async (self: SurveyEditorPage) => {
+  if (await self.saveButton.isVisible()) return true;
+  if (await self.saveAsDraftButton.isVisible())
+    return "This survey is a draft, and Formbricks shows Save only for a survey that is no longer one. Use SurveyEditorPage.saveAsDraft.";
+  if (await self.saveAndCloseButton.isVisible())
+    return "The editor a first survey opens in has no Save, only Save & Close. Use SurveyEditorPage.saveAndClose.";
+  return "Formbricks shows Save only for a survey that is no longer a draft, and not in the editor a first survey opens in.";
+};
 
-const canSaveAsDraft = async (self: SurveyEditorPage) =>
-  (await self.saveAsDraftButton.isVisible()) ||
-  "Formbricks shows Save as draft only for a draft, and not in the editor a first survey opens in.";
+const canSaveAndClose = async (self: SurveyEditorPage) => {
+  if (await self.saveAndCloseButton.isVisible()) return true;
+  if (await self.saveAsDraftButton.isVisible())
+    return "This survey is a draft, which has Save & Close only in the editor a first survey opens in. Use SurveyEditorPage.saveAsDraft.";
+  return "Formbricks shows Save & Close for a published survey, and for a draft only in the editor a first survey opens in.";
+};
+
+const canSaveAsDraft = async (self: SurveyEditorPage) => {
+  if (await self.saveAsDraftButton.isVisible()) return true;
+  if (await self.saveButton.isVisible())
+    return "This survey is no longer a draft, and Formbricks shows Save as draft only for a draft. Use SurveyEditorPage.save, or SurveyEditorPage.saveAndClose to also leave the editor.";
+  if (await self.saveAndCloseButton.isVisible())
+    return "The editor a first survey opens in has no Save as draft, only Save & Close. Use SurveyEditorPage.saveAndClose.";
+  return "Formbricks shows Save as draft only for a draft, and not in the editor a first survey opens in.";
+};
 
 @ayme({
   description:
@@ -27,13 +44,6 @@ export class SurveyEditorPage extends AppPage {
   /** The text of the question open in the editor, the first one when the editor opens. */
   @ayme.child
   readonly questionTextEditor: Locator;
-  /**
-   * Tells a draft from a survey that is no longer one: "Auto-save on" or
-   * "Progress saved" on a draft, "Auto-save disabled" on a published, paused
-   * or completed survey.
-   */
-  @ayme.child
-  readonly autoSaveStatus: Locator;
   @ayme.child
   readonly saveButton: Locator;
   @ayme.child
@@ -57,10 +67,6 @@ export class SurveyEditorPage extends AppPage {
       .locator("..")
       .locator("..")
       .locator(".editor-input");
-    // The badge has no role, name or test id, so it is found by the texts it shows.
-    this.autoSaveStatus = page.getByText(
-      /^(Auto-save on|Progress saved|Auto-save disabled)$/
-    );
     this.saveButton = page.getByRole("button", { name: "Save", exact: true });
     this.saveAndCloseButton = page.getByRole("button", {
       name: "Save & Close",

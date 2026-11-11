@@ -163,9 +163,6 @@ async function createdSurveyId(page: Page): Promise<string> {
   return String(body.data?.id);
 }
 
-/** What the editor's auto-save badge reads on a draft; "Progress saved" for three seconds after each auto-save. */
-const DRAFT_STATUS = /^(Auto-save on|Progress saved)$/;
-
 /** The editor as a survey opens in it from the survey list, not as a first survey does (`?mode=cx`). */
 const editorPath = (workspaceId: string, surveyId: string) =>
   `/workspaces/${workspaceId}/surveys/${surveyId}/edit`;
@@ -309,25 +306,23 @@ test("each page object locator resolves exactly once in its intended state, and 
     "SurveyEditorPage.saveAndClose",
     "SurveyEditorPage.saveAsDraft",
   ]);
-  // The badge tells a draft from a published survey.
-  await expectExactlyOnce(surveyEditorPage.autoSaveStatus);
-  await expect(surveyEditorPage.autoSaveStatus).toHaveText(DRAFT_STATUS);
 
   const call = async (name: string, input: Record<string, unknown> = {}) => {
     const result = await agent.call(name, input);
     expect(result.isError, `${name}: ${result.text}`).toBe(false);
   };
 
-  // The editor a first survey opens in has no Save as draft, and the action says so.
+  // The editor a first survey opens in has no Save as draft, and the action
+  // says so and names the one that saves there.
   await expect(surveyEditorPage.saveAsDraftButton).toHaveCount(0);
   const refused = await agent.call("SurveyEditorPage.saveAsDraft");
   expect(refused.isError, refused.text).toBe(true);
-  expect(refused.text).toContain("only for a draft");
+  expect(refused.text).toContain("Use SurveyEditorPage.saveAndClose.");
   // Nor a Save, which a draft has nowhere.
   await expect(surveyEditorPage.saveButton).toHaveCount(0);
   const noSaveYet = await agent.call("SurveyEditorPage.save");
   expect(noSaveYet.isError, noSaveYet.text).toBe(true);
-  expect(noSaveYet.text).toContain("no longer a draft");
+  expect(noSaveYet.text).toContain("Use SurveyEditorPage.saveAndClose.");
 
   // The editor a draft opens in from the survey list has it.
   await page.goto(editorPath(user.workspaceId, surveyId));
@@ -338,16 +333,14 @@ test("each page object locator resolves exactly once in its intended state, and 
     "SurveyEditorPage.saveAndClose",
     "SurveyEditorPage.saveAsDraft",
   ]);
-  // It has no Save & Close, and that action says so.
+  // It has no Save & Close, and that action says so and names Save as draft's.
   const noSaveAndClose = await agent.call("SurveyEditorPage.saveAndClose");
   expect(noSaveAndClose.isError, noSaveAndClose.text).toBe(true);
-  expect(noSaveAndClose.text).toContain("for a draft only in the editor");
-  await expectExactlyOnce(surveyEditorPage.autoSaveStatus);
-  await expect(surveyEditorPage.autoSaveStatus).toHaveText(DRAFT_STATUS);
+  expect(noSaveAndClose.text).toContain("Use SurveyEditorPage.saveAsDraft.");
   await expect(surveyEditorPage.saveButton).toHaveCount(0);
   const noSave = await agent.call("SurveyEditorPage.save");
   expect(noSave.isError, noSave.text).toBe(true);
-  expect(noSave.text).toContain("no longer a draft");
+  expect(noSave.text).toContain("Use SurveyEditorPage.saveAsDraft.");
   const draftName = `Ayme lab draft ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: draftName });
   await call("SurveyEditorPage.saveAsDraft");
@@ -400,10 +393,8 @@ test("each page object locator resolves exactly once in its intended state, and 
   );
   await expect(reopened.surveyNameInput).toHaveValue(surveyName);
 
-  // The editor of a published survey says so, and has Save and Save & Close
-  // and no Save as draft.
-  await expectExactlyOnce(reopened.autoSaveStatus);
-  await expect(reopened.autoSaveStatus).toHaveText("Auto-save disabled");
+  // The editor of a published survey has Save and Save & Close and no Save
+  // as draft, whose action names the two that save there.
   await expectExactlyOnce(reopened.saveButton);
   await expectExactlyOnce(reopened.saveAndCloseButton);
   await expect(reopened.saveAsDraftButton).toHaveCount(0);
@@ -413,7 +404,9 @@ test("each page object locator resolves exactly once in its intended state, and 
   ]);
   const notADraft = await agent.call("SurveyEditorPage.saveAsDraft");
   expect(notADraft.isError, notADraft.text).toBe(true);
-  expect(notADraft.text).toContain("only for a draft");
+  expect(notADraft.text).toContain(
+    "Use SurveyEditorPage.save, or SurveyEditorPage.saveAndClose"
+  );
   const publishedName = `Ayme lab published ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: publishedName });
   await call("SurveyEditorPage.save");
