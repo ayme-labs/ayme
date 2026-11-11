@@ -39,11 +39,17 @@ export const ENTRY_MODULE = "entry.js";
  * Inspector's window. It is a classic script, as an init script runs.
  *
  * With `webMCP`, the runtime it starts also publishes its tools through
- * WebMCP; without it, the runtime's WebMCP publication stays off.
+ * WebMCP; without it, the runtime's WebMCP publication stays off. With
+ * `onlyPageObjectTools`, the runtime hands its Agent Connection the Page
+ * Object Tools and `page_objects` alone, as WebMCP publishes them; without
+ * it, every tool of the session.
  */
 export function initScript(
   port: number,
-  { webMCP = false }: { webMCP?: boolean } = {}
+  {
+    webMCP = false,
+    onlyPageObjectTools = false,
+  }: { webMCP?: boolean; onlyPageObjectTools?: boolean } = {}
 ): string {
   const served = `http://127.0.0.1:${port}${SERVED_PATH}`;
   const events = `ws://127.0.0.1:${port}${EVENTS_PATH}`;
@@ -92,7 +98,7 @@ export function initScript(
           ]);
           if (!same(stamp, wanted)) continue;
           ayme = createAyme({
-            agentConnection: true,
+            agentConnection: ${onlyPageObjectTools ? '{ tools: "page-objects" }' : "true"},
             inspector: { placement: "external" },
             pageObjects,${webMCP ? "\n            webMCP: { enabled: true }," : ""}
           });

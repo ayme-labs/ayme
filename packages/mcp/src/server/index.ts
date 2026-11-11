@@ -49,23 +49,41 @@ const log = (message: string) =>
  * which loads it into a page that doesn't ship Ayme. With `webMCP`, the
  * runtime that init script starts also publishes its tools through WebMCP;
  * without an entry to serve, `webMCP` is refused. Experimental (ADR-0037).
+ *
+ * With `onlyPageObjectTools`, the server is for an agent whose own browser
+ * tool drives the page: the runtime that init script starts hands the
+ * server the Page Object Tools and `page_objects` alone, as WebMCP
+ * publishes them, and the server lists those and nothing else, neither its
+ * own tools nor an App Process's, and adds no tool change note to a
+ * result. A page then pairs only by itself, since nothing returns a
+ * connect link. Refused without an entry to serve, as `webMCP` is: a page
+ * that starts Ayme itself would hand the server every tool of its session.
+ * Experimental too.
  */
 export async function startMcpServer({
   port: pinnedPort,
   pageObjects,
   webMCP,
+  onlyPageObjectTools = false,
 }: {
   port?: number;
   pageObjects?: string;
   webMCP?: boolean;
+  onlyPageObjectTools?: boolean;
 } = {}): Promise<void> {
   const folder = process.cwd();
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
-  if (webMCP && entry === undefined)
-    throw new Error(
-      `--webmcp needs a Page Objects entry to serve: name one with --page-objects, or add ${ENTRY_FILE} to ${folder}.`
-    );
-  const connection = new AgentConnection();
+  for (const [option, set] of [
+    ["--webmcp", webMCP],
+    ["--only-page-object-tools", onlyPageObjectTools],
+  ] as const)
+    if (set && entry === undefined)
+      throw new Error(
+        `${option} needs a Page Objects entry to serve: name one with --page-objects, or add ${ENTRY_FILE} to ${folder}.`
+      );
+  const connection = new AgentConnection({
+    onlyPageTools: onlyPageObjectTools,
+  });
   const token = randomUUID();
   // The MCP server starts after the page's: a page may say hello before it.
   let agentName = (): string | undefined => undefined;
@@ -108,12 +126,21 @@ export async function startMcpServer({
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
   let initScript: string | undefined;
   if (entry !== undefined)
-    await writeInitScript({ folder, port, webMCP }).then(
+    await writeInitScript({
+      folder,
+      port,
+      webMCP,
+      onlyPageObjectTools,
+    }).then(
       (written) => {
         initScript = written;
         log(
           `Serving ${entry} to pages that load ${written}${webMCP ? ", which also publish its tools through WebMCP" : ""}.`
         );
+        if (onlyPageObjectTools)
+          log(
+            "Listing only the Page Object Tools and page_objects of the page that loads it."
+          );
       },
       (error: unknown) =>
         log(
@@ -127,7 +154,8 @@ export async function startMcpServer({
   const mcp = createMcpToolServer({
     name: "ayme",
     version,
-    serverTools,
+    serverTools: onlyPageObjectTools ? [] : serverTools,
+    toolChangeNotes: !onlyPageObjectTools,
     context: {
       connection,
       pairing,

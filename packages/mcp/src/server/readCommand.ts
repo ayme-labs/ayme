@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 
 export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>] [--webmcp]
+                [--only-page-object-tools]
        ayme inspect [--port <port>]
 
   mcp            Start the Ayme MCP server for a coding agent, over stdio.
@@ -17,6 +18,16 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>] [-
   --webmcp       Experimental: pages that load .ayme/init-script.js also
                  publish the tools of the Page Objects the server serves
                  through WebMCP. Needs an entry to serve.
+  --only-page-object-tools
+                 Experimental: for an agent that drives the browser with a
+                 tool of its own. The server lists only what a page that
+                 loads .ayme/init-script.js offers of the Page Objects the
+                 server serves: the Page Object Tools of the screen the
+                 page is on and the read tool page_objects, described and
+                 answered as WebMCP publishes them. It lists none of its
+                 own tools, such as ayme_connect, so a page pairs only by
+                 itself, on localhost, and it adds no note of tool changes
+                 to a result. Needs an entry to serve.
   -h, --help     Print this usage text.
 `;
 
@@ -25,7 +36,13 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>] [-
  * print help, or fail with a message.
  */
 export type Command =
-  | { kind: "start"; port?: number; pageObjects?: string; webMCP?: true }
+  | {
+      kind: "start";
+      port?: number;
+      pageObjects?: string;
+      webMCP?: true;
+      onlyPageObjectTools?: true;
+    }
   | { kind: "inspect"; port?: number }
   | { kind: "help"; text: string }
   | { kind: "error"; text: string };
@@ -37,6 +54,7 @@ export function readCommand(args: string[]): Command {
     port?: string;
     "page-objects"?: string;
     webmcp?: boolean;
+    "only-page-object-tools"?: boolean;
     help?: boolean;
   };
   try {
@@ -47,6 +65,7 @@ export function readCommand(args: string[]): Command {
         port: { type: "string" },
         "page-objects": { type: "string" },
         webmcp: { type: "boolean" },
+        "only-page-object-tools": { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
     }));
@@ -80,9 +99,17 @@ export function readCommand(args: string[]): Command {
       kind: "error",
       text: `--webmcp is an option of \`ayme mcp\` only.\n\n${USAGE}`,
     };
+  if (values["only-page-object-tools"] && kind !== "start")
+    return {
+      kind: "error",
+      text: `--only-page-object-tools is an option of \`ayme mcp\` only.\n\n${USAGE}`,
+    };
   const served = {
     ...(pageObjects === undefined ? {} : { pageObjects }),
     ...(values.webmcp ? { webMCP: true as const } : {}),
+    ...(values["only-page-object-tools"]
+      ? { onlyPageObjectTools: true as const }
+      : {}),
   };
   if (values.port === undefined) return { kind, ...served };
   const port = Number(values.port);

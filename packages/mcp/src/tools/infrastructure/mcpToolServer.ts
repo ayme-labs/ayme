@@ -31,21 +31,24 @@ import {
  * the agent listed before. One server serves one agent, so that view says
  * when the agent hears `notifications/tools/list_changed`, and every tool
  * result carries its tool change note, if any, as a text item after the
- * tool's own. A server tool's input is checked against its input schema
- * before the tool runs, with arguments left out taken as `{}`; a page
- * tool's input is the page's to check.
+ * tool's own, unless `toolChangeNotes` is false: a result then holds what
+ * its tool answered and nothing of the server's. A server tool's input is
+ * checked against its input schema before the tool runs, with arguments
+ * left out taken as `{}`; a page tool's input is the page's to check.
  */
 export function createMcpToolServer({
   name,
   version,
   serverTools: serverToolFactories,
   context,
+  toolChangeNotes = true,
 }: {
   name: string;
   version: string;
   serverTools: readonly ServerToolFactory[];
   /** What the server tools may use, besides what the agent was shown. */
   context: Omit<ServerToolContext, "wasOffered">;
+  toolChangeNotes?: boolean;
 }): Server {
   const { connection, saveImage } = context;
   const server = new Server(
@@ -105,6 +108,7 @@ export function createMcpToolServer({
     async (request): Promise<ToolResult> => {
       const { name, arguments: input = {} } = request.params;
       const result = await run(name, input);
+      if (!toolChangeNotes) return result;
       // Taken once the result is ready.
       const note = view.resultReturned({
         tools: connection.tools,

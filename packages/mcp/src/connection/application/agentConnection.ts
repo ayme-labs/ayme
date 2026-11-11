@@ -27,9 +27,16 @@ export type ConnectionEvent =
 
 type Answer = (outcome: ToolCallOutcome) => void;
 
-/** Answers every call in `calls` for a page that left as `exit` says. */
-function answerUnanswered(calls: Map<string, Answer>, exit: PageExit) {
-  const error = unansweredCallText(exit);
+/**
+ * Answers every call in `calls` for a page that left as `exit` says, with
+ * the reconnected page's tool names unless `namesTools` is false.
+ */
+function answerUnanswered(
+  calls: Map<string, Answer>,
+  exit: PageExit,
+  namesTools = true
+) {
+  const error = unansweredCallText(exit, namesTools);
   for (const [callId, answer] of calls) answer({ callId, ok: false, error });
 }
 
@@ -164,8 +171,14 @@ type ToolHolder = PageSession | ProcessSession;
  * `unansweredCallText`). While the page's tab is navigating, disconnected
  * or reconnected, a call for the page waits for the new page (see
  * `TabLifecycle`).
+ *
+ * With `onlyPageTools` (experimental, `ayme mcp --only-page-object-tools`),
+ * the agent sees the page's tools alone and none of an App Process's, which
+ * the page's Inspector still shows and runs, and the answer to a call the
+ * page left unanswered names no tools.
  */
 export class AgentConnection {
+  readonly #onlyPageTools: boolean;
   #page: PageSession | undefined;
   /** In the order they connected, which decides who keeps a name. */
   readonly #processes = new Map<string, ProcessSession>();
@@ -183,9 +196,15 @@ export class AgentConnection {
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
   #versionGap: string | undefined;
 
+  constructor({ onlyPageTools = false }: { onlyPageTools?: boolean } = {}) {
+    this.#onlyPageTools = onlyPageTools;
+  }
+
   /** The tools the agent sees: the page's, then the App Processes'. */
   get tools(): readonly PageTool[] {
-    return this.#merged().shown.map(({ tool }) => tool);
+    return this.#merged()
+      .shown.filter(({ holder }) => this.#agentSees(holder))
+      .map(({ tool }) => tool);
   }
 
   /**
@@ -237,7 +256,7 @@ export class AgentConnection {
 
   /** Whether the agent sees a tool `name`. */
   offers(name: string): boolean {
-    return this.#holderOf(name) !== undefined;
+    return this.#agentHolderOf(name) !== undefined;
   }
 
   /**
@@ -354,10 +373,10 @@ export class AgentConnection {
   call(name: string, input: unknown): Promise<ToolCallOutcome | undefined> {
     const callId = String(this.#nextCallId++);
     const send = async () =>
-      this.#holderOf(name)?.call({ callId, name, input });
+      this.#agentHolderOf(name)?.call({ callId, name, input });
     if (
       !tabLifecycle.holdsPageCalls(this.#lifecycle) ||
-      this.#holderOf(name) instanceof ProcessSession
+      this.#agentHolderOf(name) instanceof ProcessSession
     )
       return send();
     return new Promise<HeldCallExit | undefined>((resolve) => {
@@ -511,6 +530,17 @@ export class AgentConnection {
     return this.#merged().shown.find(({ tool }) => tool.name === name)?.holder;
   }
 
+  /** Whether the agent sees the tools `holder` keeps. */
+  #agentSees(holder: ToolHolder): boolean {
+    return !this.#onlyPageTools || holder instanceof PageSession;
+  }
+
+  /** The connection an agent's call of the tool `name` goes to, if it sees one. */
+  #agentHolderOf(name: string): ToolHolder | undefined {
+    const holder = this.#holderOf(name);
+    return holder && this.#agentSees(holder) ? holder : undefined;
+  }
+
   /**
    * Moves the tab's lifecycle on: answers the previous document's calls and
    * the held calls as `transition` says, lets the held calls go out once
@@ -521,7 +551,7 @@ export class AgentConnection {
     if (left) {
       const calls = this.#leftCalls;
       this.#leftCalls = new Map();
-      answerUnanswered(calls, left);
+      answerUnanswered(calls, left, !this.#onlyPageTools);
     }
     if (held || !tabLifecycle.holdsPageCalls(lifecycle))
       for (const release of [...this.#held]) release(held);

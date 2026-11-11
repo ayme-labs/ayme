@@ -446,3 +446,51 @@ describe("AgentConnection's App Process tools, as the page reads and runs them",
     expect(await sentCalls(page)).toEqual([]);
   });
 });
+
+describe("AgentConnection that shows its agent the page's tools alone", () => {
+  it("lists and calls the page's tools and none of an App Process's, which the page still reads and runs", async () => {
+    const connection = new AgentConnection({ onlyPageTools: true });
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("SignInPage.logIn")]);
+    const server = connection.attachProcess({ process: "server" });
+    server.publishTools([tool("peek.node.jobs")]);
+
+    expect(connection.tools.map(({ name }) => name)).toEqual([
+      "SignInPage.logIn",
+    ]);
+    expect(connection.offers("peek.node.jobs")).toBe(false);
+    expect(await connection.call("peek.node.jobs", {})).toBeUndefined();
+    void connection.call("SignInPage.logIn", {});
+    expect(await sentCalls(page)).toEqual(["SignInPage.logIn"]);
+    expect(await sentCalls(server)).toEqual([]);
+
+    expect(connection.processTools.map(({ name }) => name)).toEqual([
+      "peek.node.jobs",
+    ]);
+    void connection.callProcess("peek.node.jobs", {});
+    expect(await sentCalls(server)).toEqual(["peek.node.jobs"]);
+  });
+
+  it("answers a call its page left unanswered without the tools of the page that came back", async () => {
+    const connection = new AgentConnection({ onlyPageTools: true });
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("SignInPage.logIn")]);
+    const call = connection.call("SignInPage.logIn", {});
+    connection.navigating(page, {
+      url: "http://127.0.0.1:5173/surveys",
+      reload: false,
+    });
+    connection.detach(page);
+
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/surveys"), () => {})!
+      .publishTools([tool("SurveyNavigationPage.open")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page navigated to http://127.0.0.1:5173/surveys before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/surveys",
+    });
+  });
+});

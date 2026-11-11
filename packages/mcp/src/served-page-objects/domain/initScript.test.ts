@@ -127,8 +127,24 @@ it("with webMCP, starts the same runtime with WebMCP publication on too", async 
   expect(page.registered).toEqual(["A"]);
 });
 
+it("with onlyPageObjectTools, starts the same runtime with the Agent Connection's tools narrowed to the Page Objects'", async () => {
+  const page = await started({ onlyPageObjectTools: true });
+
+  expect(page.startedWith).toEqual([
+    {
+      agentConnection: { tools: "page-objects" },
+      inspector: { placement: "external" },
+      pageObjects: [{ name: "A" }],
+    },
+  ]);
+  expect(page.registered).toEqual(["A"]);
+});
+
 it("writes the same script without the option as with it off", () => {
   expect(initScript(4720, { webMCP: false })).toBe(initScript(4720));
+  expect(initScript(4720, { onlyPageObjectTools: false })).toBe(
+    initScript(4720)
+  );
   expect(initScript(4720, {})).toBe(initScript(4720));
 });
 

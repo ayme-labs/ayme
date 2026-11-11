@@ -22,3 +22,19 @@ it("gives the reconnected page's tools with a call its page left by reloading", 
     tools: ["a"],
   });
 });
+
+it("leaves the reconnected page's tools out when asked to name none", () => {
+  expect(
+    JSON.parse(
+      unansweredCallText(
+        { type: "navigated", url: "http://x/", tools: ["a"] },
+        false
+      )
+    )
+  ).toEqual({
+    error:
+      "The page navigated to http://x/ before it answered, so the call's outcome is unknown.",
+    settled: false,
+    loading: "http://x/",
+  });
+});

@@ -30,24 +30,34 @@ afterEach(async () => {
   for (const close of closers.splice(0)) await close();
 });
 
-/** A server with a paired page, and an agent connected to it over memory. */
-async function connectAgent() {
-  const connection = new AgentConnection();
+/**
+ * A server with a paired page, and an agent connected to it over memory.
+ * With `onlyPageObjectTools`, the server as `ayme mcp
+ * --only-page-object-tools` composes it: none of its own tools, no tool
+ * change notes, and a connection that shows the page's tools alone.
+ */
+async function connectAgent({ onlyPageObjectTools = false } = {}) {
+  const connection = new AgentConnection({
+    onlyPageTools: onlyPageObjectTools,
+  });
   const page = connection.attach({ tab: "a", url: "http://x/" }, () => {})!;
   const server = createMcpToolServer({
     name: "ayme",
     version: "0.0.0",
-    serverTools: [
-      connectTool,
-      listToolsTool,
-      callTool,
-      () => ({
-        name: "ayme_noop",
-        description: "Does nothing.",
-        inputSchema: { type: "object" },
-        call: async () => textResult("ok"),
-      }),
-    ],
+    toolChangeNotes: !onlyPageObjectTools,
+    serverTools: onlyPageObjectTools
+      ? []
+      : [
+          connectTool,
+          listToolsTool,
+          callTool,
+          () => ({
+            name: "ayme_noop",
+            description: "Does nothing.",
+            inputSchema: { type: "object" },
+            call: async () => textResult("ok"),
+          }),
+        ],
     context: {
       connection,
       pairing: { address: "ws://x", token: "t" },
@@ -85,7 +95,20 @@ async function connectAgent() {
     };
   };
   const call = async (name: string) => (await answer(name, {})).texts;
-  return { client, publish, call, answer, listChanges: () => listChanges };
+  /** Waits for the page's next call; resolves with what answers it. */
+  const pageCalled = async () => {
+    for await (const { callId } of page.calls(undefined))
+      return (result: unknown) => page.answer({ callId, ok: true, result });
+    throw new Error("The page got no call.");
+  };
+  return {
+    client,
+    publish,
+    call,
+    answer,
+    pageCalled,
+    listChanges: () => listChanges,
+  };
 }
 
 it("announces a changed tool list on presence only, and lists an unavailable tool without its availability", async () => {
@@ -301,6 +324,47 @@ it("tells a tool that went from one never offered, called directly or through ay
     await agent.answer("ayme_call", { tool: "Panel.paste" })
   ).toMatchObject({
     texts: ['No connected page or App Process offers a tool "Panel.paste".'],
+    isError: true,
+  });
+});
+
+it("lists the page's tools alone and adds no tool change note, composed for --only-page-object-tools", async () => {
+  const agent = await connectAgent({ onlyPageObjectTools: true });
+  await agent.publish([tool("SignInPage.logIn"), tool("page_objects")]);
+  expect(agent.listChanges()).toBe(1);
+  expect(
+    (await agent.client.listTools()).tools.map(({ name }) => name)
+  ).toEqual(["SignInPage.logIn", "page_objects"]);
+
+  // The screen changes during the call: the list is announced, and the
+  // result holds what the page answered and nothing else.
+  const called = agent.answer("SignInPage.logIn", {});
+  const answerLogIn = await agent.pageCalled();
+  await agent.publish([tool("SurveyListPage.open"), tool("page_objects")]);
+  answerLogIn({ settled: true, url: "http://x/surveys" });
+  expect(await called).toEqual({
+    texts: ['{"settled":true,"url":"http://x/surveys"}'],
+    isError: false,
+  });
+  expect(agent.listChanges()).toBe(2);
+
+  // The Page Object Screen's text passes through as it is.
+  const read = agent.answer("page_objects", {});
+  (await agent.pageCalled())("SurveyListPage\n  surveys: []");
+  expect(await read).toEqual({
+    texts: ["SurveyListPage\n  surveys: []"],
+    isError: false,
+  });
+
+  // A refusal says why, and the server's own tools are not there to call.
+  expect(await agent.answer("SignInPage.logIn", {})).toEqual({
+    texts: [
+      'The tool "SignInPage.logIn" is gone: the page or App Process that offered it no longer does.',
+    ],
+    isError: true,
+  });
+  expect(await agent.answer("ayme_list_tools", {})).toEqual({
+    texts: ['Unknown tool "ayme_list_tools".'],
     isError: true,
   });
 });

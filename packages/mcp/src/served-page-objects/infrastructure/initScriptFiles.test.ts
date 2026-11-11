@@ -43,6 +43,14 @@ it("with webMCP, writes an init script that turns WebMCP publication on", async 
   expect(await read("init-script.js")).toContain("webMCP: { enabled: true }");
 });
 
+it("with onlyPageObjectTools, writes an init script that narrows the Agent Connection's tools", async () => {
+  await writeInitScript({ folder, port: 9411, onlyPageObjectTools: true });
+
+  expect(await read("init-script.js")).toContain(
+    'agentConnection: { tools: "page-objects" }'
+  );
+});
+
 it("creates a .gitignore that ignores the init script", async () => {
   await writeInitScript({ folder, port: 9411 });
 

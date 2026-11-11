@@ -92,6 +92,38 @@ describe("readCommand", () => {
     expect(USAGE).toMatch(/--webmcp\s+Experimental:/);
   });
 
+  it("starts the server listing only the Page Object Tools for --only-page-object-tools", () => {
+    expect(readCommand(["mcp", "--only-page-object-tools"])).toEqual({
+      kind: "start",
+      onlyPageObjectTools: true,
+    });
+    expect(
+      readCommand([
+        "mcp",
+        "--only-page-object-tools",
+        "--webmcp",
+        "--port",
+        "9400",
+      ])
+    ).toEqual({
+      kind: "start",
+      port: 9400,
+      webMCP: true,
+      onlyPageObjectTools: true,
+    });
+  });
+
+  it("rejects --only-page-object-tools for `inspect`", () => {
+    expect(readCommand(["inspect", "--only-page-object-tools"])).toEqual({
+      kind: "error",
+      text: `--only-page-object-tools is an option of \`ayme mcp\` only.\n\n${USAGE}`,
+    });
+  });
+
+  it("marks --only-page-object-tools experimental in the usage text", () => {
+    expect(USAGE).toMatch(/--only-page-object-tools\s+Experimental:/);
+  });
+
   it("prints the Inspector's URL for `inspect`, on the given port if any", () => {
     expect(readCommand(["inspect"])).toEqual({ kind: "inspect" });
     expect(readCommand(["inspect", "--port", "9400"])).toEqual({

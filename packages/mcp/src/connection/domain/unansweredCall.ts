@@ -24,13 +24,19 @@ const UNKNOWN = "so the call's outcome is unknown";
  * The text the server answers a call with when its page left before
  * answering: a JSON object with `error` saying what happened, and, when the
  * page was loading a new document, `settled: false`, the URL in `loading`
- * and the reconnected page's `tools`.
+ * and the reconnected page's `tools`, unless `namesTools` is false.
  */
-export function unansweredCallText(exit: PageExit): string {
-  return JSON.stringify(unansweredCall(exit));
+export function unansweredCallText(exit: PageExit, namesTools = true): string {
+  const { tools, ...call } = unansweredCall(exit);
+  return JSON.stringify(namesTools && tools ? { ...call, tools } : call);
 }
 
-function unansweredCall(exit: PageExit) {
+function unansweredCall(exit: PageExit): {
+  error: string;
+  settled?: false;
+  loading?: string;
+  tools?: readonly string[];
+} {
   switch (exit.type) {
     case "closed":
       return {
