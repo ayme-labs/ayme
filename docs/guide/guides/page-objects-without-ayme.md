@@ -8,7 +8,7 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 
 ## Set it up
 
-1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, with a `tsconfig.json` that covers `.ayme/`; no build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
+1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, with a `tsconfig.json` whose `include` covers `.ayme/`, such as `".ayme/**/*.ts"`; plain `".ayme"` fails with TS18003, no inputs found. No build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
 
    ```ts
    import type { AymeOptions } from "@ayme-dev/ayme";
@@ -35,7 +35,7 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 
    Pass it to Playwright MCP with `--config <file>` in its registration, or to Playwright CLI with `playwright-cli open --config <file> <url>`.
 
-4. Ask the agent to call `ayme_connect` with the page's URL and open the link. The answer adds a line naming the init script, and your Page Objects' tools become the agent's tools.
+4. Ask the agent to call `ayme_connect` with the page's URL and open the link. The answer adds a line naming the init script, and your Page Objects' tools become the agent's tools. While no build of the entry has succeeded, that line, and the answer to a page tool while no page is connected, give the build's first error instead.
 
 `bypassCSP` lets a page with a Content Security Policy connect to `ayme mcp`. The `local-network-access` permission lets a page on a public site reach `127.0.0.1`; without it, Chrome blocks the connection when headless and waits on a permission prompt when headed.
 

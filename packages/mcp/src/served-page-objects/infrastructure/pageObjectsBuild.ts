@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import * as esbuild from "esbuild";
 
-import { buildFailure } from "../domain/buildFailure";
+import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
 
 /** The built modules, by their path under the served path. */
@@ -17,7 +17,10 @@ type PomCompilerEntry = {
     compile(
       fileName: string,
       source: string,
-      options: { emit: "js" }
+      options: {
+        emit: "js";
+        onDependencies?: (dependencies: readonly string[]) => void;
+      }
     ): { code: string; dependencies: readonly string[] } | null;
     invalidate(): void;
   };
@@ -100,7 +103,7 @@ export async function watchPageObjects(
  * `node_modules`, with the project's own compiler; every other module
  * builds as esbuild builds it.
  */
-function pageObjectModels(
+export function pageObjectModels(
   compiler: ReturnType<PomCompilerEntry["createPomCompiler"]>
 ): esbuild.Plugin {
   return {
@@ -110,9 +113,23 @@ function pageObjectModels(
       build.onStart(() => compiler.invalidate());
       build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
         if (path.split(sep).includes("node_modules")) return;
-        const pom = compiler.compile(path, await readFile(path, "utf8"), {
-          emit: "js",
-        });
+        // What the compile read before it threw, such as a tsconfig.json.
+        let read: readonly string[] = [];
+        let pom;
+        try {
+          pom = compiler.compile(path, await readFile(path, "utf8"), {
+            emit: "js",
+            onDependencies: (dependencies) => (read = dependencies),
+          });
+        } catch (error) {
+          // Thrown, it would point at esbuild's own code, not at the file.
+          return {
+            errors: [
+              { text: (error as Error).message, location: { file: path } },
+            ],
+            watchFiles: [path, ...read],
+          };
+        }
         if (pom === null) return;
         return {
           contents: pom.code,
@@ -130,7 +147,7 @@ function pageObjectModels(
  * Keeps the last good build and logs each build's outcome, from the end of
  * every build.
  */
-function buildOutcomes({
+export function buildOutcomes({
   entry,
   folder,
   outdir,
@@ -164,20 +181,18 @@ function buildOutcomes({
           );
           for (const listener of listeners) listener(good);
         } else {
-          failure = new Error(
-            buildFailure({
-              entry,
-              lastGood: good !== undefined,
-              errors: errors.map(({ text, location }) => ({
-                text,
-                location: location && {
-                  file: resolve(folder, location.file),
-                  line: location.line,
-                  column: location.column,
-                },
-              })),
-            })
-          );
+          failure = new PageObjectsBuildError({
+            entry,
+            lastGood: good !== undefined,
+            errors: errors.map(({ text, location }) => ({
+              text,
+              location: location && {
+                file: resolve(folder, location.file),
+                line: location.line,
+                column: location.column,
+              },
+            })),
+          });
           log(failure.message);
         }
         firstEnded();
@@ -196,6 +211,38 @@ function buildOutcomes({
       return () => void listeners.delete(listener);
     },
   };
+}
+
+/**
+ * Why `build` serves nothing while no build of `entry` has succeeded: the
+ * first error of the last build, or why the build could not start, and
+ * whether it watches the entry's files, which it does once started. It
+ * waits for the first build to end, and resolves with `undefined` once a
+ * build has succeeded.
+ */
+export async function failedPageObjects(
+  entry: string,
+  build: Promise<PageObjectsBuild>
+): Promise<{ entry: string; error: string; watching: boolean } | undefined> {
+  let started: PageObjectsBuild;
+  try {
+    started = await build;
+  } catch (error) {
+    return { entry, error: (error as Error).message, watching: false };
+  }
+  try {
+    await started.modules();
+    return undefined;
+  } catch (error) {
+    return {
+      entry,
+      error:
+        error instanceof PageObjectsBuildError && error.errors[0]
+          ? buildErrorLine(error.errors[0])
+          : (error as Error).message,
+      watching: true,
+    };
+  }
 }
 
 /** The runtime's entry: a module that re-exports `@ayme-dev/ayme` from `folder`. */

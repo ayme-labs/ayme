@@ -20,6 +20,7 @@ import {
   type Pairing,
 } from "../pairing";
 import {
+  failedPageObjects,
   findPageObjectsEntry,
   servedPageObjectsServer,
   watchPageObjects,
@@ -119,6 +120,10 @@ export async function startMcpServer({
       pairing,
       saveImage: saveToScreenshotFolder,
       initScript,
+      failedPageObjects: async () =>
+        entry === undefined || build === undefined
+          ? undefined
+          : failedPageObjects(entry, build),
       inspector: {
         url: inspectorUrl(SERVER_HOST, port),
         installed: async () => (await readExternalBuild()) !== undefined,

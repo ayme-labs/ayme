@@ -47,7 +47,7 @@ export function createMcpToolServer({
   /** What the server tools may use, besides what the agent was shown. */
   context: Omit<ServerToolContext, "wasOffered">;
 }): Server {
-  const { connection, saveImage } = context;
+  const { connection, saveImage, failedPageObjects } = context;
   const server = new Server(
     { name, version },
     { capabilities: { tools: { listChanged: true } } }
@@ -96,7 +96,8 @@ export function createMcpToolServer({
         wasOffered(name)
           ? goneToolResult(name)
           : errorResult(`Unknown tool "${name}".`),
-      saveImage
+      saveImage,
+      failedPageObjects
     );
   };
 

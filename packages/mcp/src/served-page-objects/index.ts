@@ -1,5 +1,8 @@
 export { ENTRY_FILE } from "./domain/servedPageObjects";
-export { watchPageObjects } from "./infrastructure/pageObjectsBuild";
+export {
+  failedPageObjects,
+  watchPageObjects,
+} from "./infrastructure/pageObjectsBuild";
 export type {
   BuiltModules,
   PageObjectsBuild,

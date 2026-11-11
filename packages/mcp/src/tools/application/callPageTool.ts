@@ -1,6 +1,7 @@
 import type { AgentConnection } from "../../connection";
 import {
   errorText,
+  type FailedPageObjects,
   imageOf,
   imageToolResult,
   notConnectedResult,
@@ -18,8 +19,9 @@ export type SaveImage = (filename: string, data: string) => Promise<string>;
  * App Process is paired; otherwise, or while only an App Process is paired
  * after the server refused a page's Ayme, it answers that no page is
  * connected, and why, since the name may be a page tool the agent listed
- * before. A call for the
- * page waits while its tab loads a new document (see `AgentConnection.call`).
+ * before. While the served Page Objects have no good build, that answer
+ * says why (`failedPageObjects`). A call for the page waits while its tab
+ * loads a new document (see `AgentConnection.call`).
  * An image the tool returns is saved with `saveImage` too.
  */
 export async function callPageTool(
@@ -27,14 +29,15 @@ export async function callPageTool(
   name: string,
   input: unknown,
   unknown: (name: string) => ToolResult,
-  saveImage: SaveImage
+  saveImage: SaveImage,
+  failedPageObjects: () => Promise<FailedPageObjects | undefined>
 ): Promise<ToolResult> {
   const outcome = await connection.call(name, input);
   if (!outcome)
     return connection.paired ||
       (connection.connected && connection.versionGap === undefined)
       ? unknown(name)
-      : notConnectedResult(connection.versionGap);
+      : notConnectedResult(connection.versionGap, await failedPageObjects());
   const image = imageOf(outcome);
   if (!image) return pageToolResult(outcome);
   let saved: SavedImage;

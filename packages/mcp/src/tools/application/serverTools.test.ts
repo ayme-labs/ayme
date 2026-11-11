@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import { AgentConnection } from "../../connection";
 import {
   errorResult,
+  type FailedPageObjects,
   notConnectedResult,
   textResult,
 } from "../domain/toolResult";
@@ -16,6 +17,7 @@ const context = () => ({
   pairing: { address: "ws://127.0.0.1:9351", token: "f00d" },
   saveImage: async (filename: string) => `/tmp/${filename}`,
   wasOffered: () => false,
+  failedPageObjects: async () => undefined,
   inspector: {
     url: "http://127.0.0.1:9351/inspector",
     installed: async () => true,
@@ -49,6 +51,80 @@ it("ayme_connect names the init script of the Page Objects the server serves", a
       },
     ],
   });
+});
+
+/**
+ * A context whose served Page Objects have no good build until `fix()`.
+ */
+const failingBuild = () => {
+  let failed: FailedPageObjects | undefined = {
+    entry: "/work/.ayme/page-objects.ts",
+    error:
+      "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
+    watching: true,
+  };
+  return {
+    context: {
+      ...context(),
+      initScript: "/work/.ayme/init-script.js",
+      failedPageObjects: async () => failed,
+    },
+    fix: () => (failed = undefined),
+  };
+};
+
+it("ayme_connect says the Page Objects did not build, with the first error, until a build succeeds", async () => {
+  const { context, fix } = failingBuild();
+  const connect = connectTool(context);
+
+  const { content, isError } = await connect.call({
+    url: "http://localhost:5173/",
+  });
+
+  expect(isError).toBeUndefined();
+  expect(content[0]).toEqual({
+    type: "text",
+    text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d",
+  });
+  const note = (content[1] as { text: string }).text;
+  expect(note).toContain(
+    "The Page Objects entry /work/.ayme/page-objects.ts did not build"
+  );
+  expect(note).toContain("No inputs were found in config file.");
+  expect(note).toContain('".ayme/**/*.ts"');
+  expect(note).not.toMatch(/^This server serves Page Objects/);
+
+  fix();
+  expect(
+    (await connect.call({ url: "http://localhost:5173/" })).content[1]
+  ).toEqual({
+    type: "text",
+    text: "This server serves Page Objects to pages that load /work/.ayme/init-script.js.",
+  });
+});
+
+it("ayme_list_tools and ayme_call say the Page Objects did not build while no page is connected, until a build succeeds", async () => {
+  const { context, fix } = failingBuild();
+
+  for (const tool of [listToolsTool(context), callTool(context)]) {
+    const result = await tool.call({ tool: "peek" });
+    expect(result.isError).toBe(true);
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0]).toEqual({
+      type: "text",
+      text: expect.stringMatching(
+        /^No page is connected\. The Page Objects entry \/work\/\.ayme\/page-objects\.ts did not build.*No inputs were found/
+      ),
+    });
+  }
+
+  fix();
+  const noPage = {
+    content: [{ type: "text", text: "No page is connected." }],
+    isError: true,
+  };
+  expect(await listToolsTool(context).call({})).toEqual(noPage);
+  expect(await callTool(context).call({ tool: "peek" })).toEqual(noPage);
 });
 
 it("ayme_list_tools and ayme_call say no page is connected while nothing is paired", async () => {

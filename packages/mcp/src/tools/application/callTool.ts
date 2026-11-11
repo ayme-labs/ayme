@@ -10,6 +10,7 @@ export const callTool: ServerToolFactory = ({
   connection,
   saveImage,
   wasOffered,
+  failedPageObjects,
 }) => ({
   name: "ayme_call",
   description:
@@ -40,6 +41,7 @@ export const callTool: ServerToolFactory = ({
           : errorResult(
               `No connected page or App Process offers a tool "${name}".`
             ),
-      saveImage
+      saveImage,
+      failedPageObjects
     ),
 });
