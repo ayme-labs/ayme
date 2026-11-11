@@ -136,11 +136,11 @@ const playwrightMcpInterfaceLine =
 
 /**
  * Spike: a Page Object Tool's answer reports the screen it ran on, not the
- * one it leads to, so every Ayme arm asks for the snapshot at once rather
+ * one it leads to, so every Ayme arm asks for `page_objects` at once rather
  * than in a turn of its own.
  */
 export const snapshotAfterPageToolSentence =
-  "A Page Object Tool's answer does not show the screen it leads to, so take a snapshot right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message.";
+  "A Page Object Tool's answer does not show the screen it leads to, so read `page_objects` right after calling one: in the same command where the browser tool is a command, otherwise as a second tool call in the same message. Take a snapshot only when the next step has no Page Object Tool.";
 
 /**
  * What an arm with Ayme's Page Object Tools through the `ayme` server adds
