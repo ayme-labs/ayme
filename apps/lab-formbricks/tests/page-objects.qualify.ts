@@ -313,16 +313,20 @@ test("each page object locator resolves exactly once in its intended state, and 
   };
 
   // The editor a first survey opens in has no Save as draft, and the action
-  // says so and names the one that saves there.
+  // says so.
   await expect(surveyEditorPage.saveAsDraftButton).toHaveCount(0);
   const refused = await agent.call("SurveyEditorPage.saveAsDraft");
   expect(refused.isError, refused.text).toBe(true);
-  expect(refused.text).toContain("Use SurveyEditorPage.saveAndClose.");
+  expect(refused.text).toContain(
+    "The editor a first survey opens in has no Save as draft, only Save & Close."
+  );
   // Nor a Save, which a draft has nowhere.
   await expect(surveyEditorPage.saveButton).toHaveCount(0);
   const noSaveYet = await agent.call("SurveyEditorPage.save");
   expect(noSaveYet.isError, noSaveYet.text).toBe(true);
-  expect(noSaveYet.text).toContain("Use SurveyEditorPage.saveAndClose.");
+  expect(noSaveYet.text).toContain(
+    "The editor a first survey opens in has no Save, only Save & Close."
+  );
 
   // The editor a draft opens in from the survey list has it.
   await page.goto(editorPath(user.workspaceId, surveyId));
@@ -333,14 +337,18 @@ test("each page object locator resolves exactly once in its intended state, and 
     "SurveyEditorPage.saveAndClose",
     "SurveyEditorPage.saveAsDraft",
   ]);
-  // It has no Save & Close, and that action says so and names Save as draft's.
+  // It has no Save & Close, and that action says why.
   const noSaveAndClose = await agent.call("SurveyEditorPage.saveAndClose");
   expect(noSaveAndClose.isError, noSaveAndClose.text).toBe(true);
-  expect(noSaveAndClose.text).toContain("Use SurveyEditorPage.saveAsDraft.");
+  expect(noSaveAndClose.text).toContain(
+    "This survey is a draft, which has Save & Close only in the editor a first survey opens in."
+  );
   await expect(surveyEditorPage.saveButton).toHaveCount(0);
   const noSave = await agent.call("SurveyEditorPage.save");
   expect(noSave.isError, noSave.text).toBe(true);
-  expect(noSave.text).toContain("Use SurveyEditorPage.saveAsDraft.");
+  expect(noSave.text).toContain(
+    "This survey is a draft, and Formbricks shows Save only for a survey that is no longer one."
+  );
   const draftName = `Ayme lab draft ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: draftName });
   await call("SurveyEditorPage.saveAsDraft");
@@ -394,7 +402,7 @@ test("each page object locator resolves exactly once in its intended state, and 
   await expect(reopened.surveyNameInput).toHaveValue(surveyName);
 
   // The editor of a published survey has Save and Save & Close and no Save
-  // as draft, whose action names the two that save there.
+  // as draft, whose action says the survey is no longer a draft.
   await expectExactlyOnce(reopened.saveButton);
   await expectExactlyOnce(reopened.saveAndCloseButton);
   await expect(reopened.saveAsDraftButton).toHaveCount(0);
@@ -405,7 +413,7 @@ test("each page object locator resolves exactly once in its intended state, and 
   const notADraft = await agent.call("SurveyEditorPage.saveAsDraft");
   expect(notADraft.isError, notADraft.text).toBe(true);
   expect(notADraft.text).toContain(
-    "Use SurveyEditorPage.save, or SurveyEditorPage.saveAndClose"
+    "This survey is no longer a draft, and Formbricks shows Save as draft only for a draft."
   );
   const publishedName = `Ayme lab published ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: publishedName });

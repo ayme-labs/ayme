@@ -4,31 +4,31 @@ import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
 
 // Formbricks shows each save button only in some editors. An unavailable
-// action reads which of this page's own buttons are there, and names the
-// action that saves in their place.
+// action reads which of this page's own buttons are there, and says what
+// that makes of the survey and its editor.
 
 const canSave = async (self: SurveyEditorPage) => {
   if (await self.saveButton.isVisible()) return true;
   if (await self.saveAsDraftButton.isVisible())
-    return "This survey is a draft, and Formbricks shows Save only for a survey that is no longer one. Use SurveyEditorPage.saveAsDraft.";
+    return "This survey is a draft, and Formbricks shows Save only for a survey that is no longer one.";
   if (await self.saveAndCloseButton.isVisible())
-    return "The editor a first survey opens in has no Save, only Save & Close. Use SurveyEditorPage.saveAndClose.";
+    return "The editor a first survey opens in has no Save, only Save & Close.";
   return "Formbricks shows Save only for a survey that is no longer a draft, and not in the editor a first survey opens in.";
 };
 
 const canSaveAndClose = async (self: SurveyEditorPage) => {
   if (await self.saveAndCloseButton.isVisible()) return true;
   if (await self.saveAsDraftButton.isVisible())
-    return "This survey is a draft, which has Save & Close only in the editor a first survey opens in. Use SurveyEditorPage.saveAsDraft.";
+    return "This survey is a draft, which has Save & Close only in the editor a first survey opens in.";
   return "Formbricks shows Save & Close for a published survey, and for a draft only in the editor a first survey opens in.";
 };
 
 const canSaveAsDraft = async (self: SurveyEditorPage) => {
   if (await self.saveAsDraftButton.isVisible()) return true;
   if (await self.saveButton.isVisible())
-    return "This survey is no longer a draft, and Formbricks shows Save as draft only for a draft. Use SurveyEditorPage.save, or SurveyEditorPage.saveAndClose to also leave the editor.";
+    return "This survey is no longer a draft, and Formbricks shows Save as draft only for a draft.";
   if (await self.saveAndCloseButton.isVisible())
-    return "The editor a first survey opens in has no Save as draft, only Save & Close. Use SurveyEditorPage.saveAndClose.";
+    return "The editor a first survey opens in has no Save as draft, only Save & Close.";
   return "Formbricks shows Save as draft only for a draft, and not in the editor a first survey opens in.";
 };
 
