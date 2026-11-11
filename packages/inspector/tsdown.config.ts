@@ -11,6 +11,10 @@ const shared = {
   // that means nothing in this browser-only bundle.
   suppressWarnings: [/module level directive "use client"/],
   plugins: [inspectorCss()],
+  // lucide-react has no exports map, so the bundler would take its "main":
+  // one CommonJS file that holds every icon and can't be tree-shaken. Its ES
+  // build keeps each icon in a module of its own, so only those used stay.
+  alias: { "lucide-react": "lucide-react/dist/esm/lucide-react.mjs" },
 };
 
 export default defineConfig([
