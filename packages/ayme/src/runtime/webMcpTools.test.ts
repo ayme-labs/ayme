@@ -49,6 +49,13 @@ const clickTool: ToolInfo = {
   available: true,
 };
 
+/** A page that starts no request and whose timeouts pass at once, counted. */
+const page = {
+  on: vi.fn(),
+  off: vi.fn(),
+  waitForTimeout: vi.fn(async () => {}),
+};
+
 function session(overrides: Partial<Omit<WebMcpSession, "run">> = {}) {
   const screens = [screen("Draft"), screen("Final")];
   let url = "http://app/edit";
@@ -64,6 +71,7 @@ function session(overrides: Partial<Omit<WebMcpSession, "run">> = {}) {
     })),
     readScreen: vi.fn(async () => screens.shift() ?? screen("Final")),
     url: () => url,
+    page: () => page,
     moveTo: (next: string) => {
       url = next;
     },
@@ -113,6 +121,27 @@ describe("the session's tools as WebMCP publishes them", () => {
     });
   });
 
+  it("reads the screen an action led to only after the wait Playwright's tools take after an action", async () => {
+    const source = session();
+    const order: string[] = [];
+    source.run.mockImplementationOnce(async () => {
+      order.push("run");
+      return { settled: true, page_changed: true };
+    });
+    page.waitForTimeout.mockImplementationOnce(async () => {
+      order.push("wait");
+    });
+    const tools = webMcpToolSource({
+      ...source,
+      readScreen: async () => {
+        order.push("screen");
+        return screen("Draft");
+      },
+    });
+    await tools.run("SurveyEditorPage.setSurveyName", {});
+    expect(order).toEqual(["screen", "run", "wait", "screen"]);
+  });
+
   it("adds the URL only when the action changed it, and leaves changes out when the screen did not change", async () => {
     const source = session({ readScreen: async () => screen("Draft") });
     source.run.mockImplementationOnce(async () => {
@@ -139,11 +168,14 @@ describe("the session's tools as WebMCP publishes them", () => {
       next: "Read the page again.",
     } as never);
     const tools = webMcpToolSource(source);
+    page.waitForTimeout.mockClear();
     expect(await tools.run("click", {})).toEqual({
       settled: false,
       loading: "http://app/next",
     });
     expect(source.readScreen).toHaveBeenCalledOnce();
+    // The document is ending: nothing waits in it.
+    expect(page.waitForTimeout).not.toHaveBeenCalled();
   });
 
   it("passes a result that is not an action's through", async () => {

@@ -13,6 +13,7 @@ import {
 } from "../page-objects/domain";
 import { ACTION_RESULT_NOTE, type ActionFailure } from "../page-state/domain";
 import type { JsonSchema, JsonValue, ToolInfo } from "../shared";
+import { waitForCompletion, type CompletionPage } from "./waitForCompletion";
 
 /** The read-only tool WebMCP adds: the Page Object Screen. */
 export const PAGE_OBJECTS_TOOL = "page_objects";
@@ -41,6 +42,8 @@ export type WebMcpSession = {
   readScreen(): Promise<ScreenObject[]>;
   /** The page's URL now. */
   url(): string;
+  /** The page, for the wait after an action. */
+  page(): CompletionPage;
 };
 
 /** An action's result as WebMCP publishes it. */
@@ -116,7 +119,10 @@ const pageObjectsTool: WebMcpToolInfo = {
 /**
  * The session's Page Object Tools and `page_objects`, for an agent whose
  * browser tool does the rest: `page_objects` answers the Page Object Screen
- * as text, and an action's result is reshaped as `WebMcpActionResult`. A
+ * as text, and an action's result is reshaped as `WebMcpActionResult`,
+ * after the wait Playwright's tools take after an action
+ * (`waitForCompletion`), so its `changes` show the screen the action led
+ * to, a Page Object that appeared in full. A
  * failed action throws its error without the Change Record the session left
  * on it. The Browser Tools, Custom Tools, `snapshot`, `goal` and the Peek
  * Tools are not listed. WebMCP publication and the Agent Connection's Page
@@ -137,9 +143,17 @@ export function pageObjectToolSource(session: WebMcpSession) {
         return renderPomScreen(await session.readScreen());
       const before = await session.readScreen().catch(() => undefined);
       const url = session.url();
-      const result = await session.run(name, input).catch((error: unknown) => {
-        throw withoutChangeRecord(error);
-      });
+      // The action and the session's own settle wait, then Playwright's
+      // wait around both, so the screen read after it is the one the
+      // action led to. A full page load ends the document: no wait then.
+      const result = await waitForCompletion(
+        session.page(),
+        () =>
+          session.run(name, input).catch((error: unknown) => {
+            throw withoutChangeRecord(error);
+          }),
+        (answer) => isActionResult(answer) && answer.loading !== undefined
+      );
       if (!isActionResult(result)) return result;
       return publishedResult(session, result, before, url);
     },
