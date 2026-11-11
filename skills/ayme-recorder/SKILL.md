@@ -10,8 +10,10 @@ writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction. From the package you write page objects and
 a Playwright test that replays the flow.
 
-1. **Record.** Run `npx @ayme-dev/cli codegen <url>`, with the URL where the
-   user wants to start, somewhere it can keep running. A recorder window opens
+1. **Record.** Check the CLI version once first, as
+   [Check the CLI version](#check-the-cli-version) describes. Then run
+   `npx @ayme-dev/cli codegen <url>`, with the URL where the user wants to
+   start, somewhere it can keep running. A recorder window opens
    on that page; the user performs the flow and presses Finish. The command
    then prints `Recording package: <path>`.
 2. **Read** the package, as [Read the package](#read-the-package) describes.
@@ -33,6 +35,22 @@ a Playwright test that replays the flow.
 
 Done when the test passes against the app and replays the flow you agreed.
 A package with no kept entry is done when you have told the user and stopped.
+
+## Check the CLI version
+
+Do this once, before you record. Compare the installed CLI with the newest
+release: `npx @ayme-dev/cli --version` against `npm view @ayme-dev/cli version`.
+
+- If the project has `@ayme-dev/cli` installed and it is older, tell the user
+  and offer `npm install -D @ayme-dev/cli@latest`. Do not update it yourself.
+- If `--version` answers `Unsupported command`, the CLI is older than 0.1.3:
+  treat it as older and offer the same update.
+- If the project does not have it installed, run every command of the session
+  with the version you just looked up, such as
+  `npx @ayme-dev/cli@0.1.3 codegen <url>` and the same prefix for `trace`.
+
+In every case, use one and the same CLI for the recording and for its `trace`
+commands.
 
 ## Read the package
 
