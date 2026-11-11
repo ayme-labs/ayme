@@ -152,8 +152,9 @@ tell the outcomes apart, ask the user before writing a return that depends on
 the outcome.
 
 Target selectors, and `/locator:` lines in older packages, are candidates.
-Check each by [Locator strategy](references/page-object-design.md#locator-strategy),
-and look for a better one in the trace.
+Check each by [Locator strategy](references/page-object-design.md#locator-strategy)
+and keep one that meets it. Look in the trace for an element that has no
+candidate, or whose candidate does not meet the strategy.
 
 ## Write the test
 
@@ -189,14 +190,35 @@ did, or to find a locator for an element. Each element carries its package ref a
 
 ```sh
 npx @ayme-dev/cli trace open latest      # or a recording id, or the trace.zip path
-npx @ayme-dev/cli trace actions     # numbered actions with their locators
-npx @ayme-dev/cli trace snapshot <number> --name after \
-  eval "document.querySelector('[__playwright_aria_ref__=\"e45\"]').outerHTML"
+npx @ayme-dev/cli trace snapshot interaction_3 --name after \
+  eval "Object.fromEntries(['e44', 'e45'].map(ref => [ref, document.querySelector('[__playwright_aria_ref__=\"' + ref + '\"]')?.cloneNode(false).outerHTML ?? null]))" \
+  | sed -n '/^### Result/,/^### Ran/{//!p;}'
 npx @ayme-dev/cli trace close
 ```
 
-Find an interaction's action number in `trace actions` by its type and
-locator. A snapshot holds the refs of its own visit, written as the package
+```json
+{
+  "e44": "<a __playwright_aria_ref__=\"e44\" data-testid=\"project-link\" href=\"/projects/7\"></a>",
+  "e45": "<span __playwright_aria_ref__=\"e45\" class=\"label\"></span>"
+}
+```
+
+Name the snapshot by the interaction's `id`, and pass `--name after`: an
+action's `before` snapshot cannot be read. `eval` prints a page report, with
+the value between `### Result` and `### Ran Playwright code`; the `sed` keeps
+only the value.
+
+Each `trace snapshot` call takes several seconds. List every ref you need from
+one snapshot and read them in a single call, as above. `cloneNode(false)`
+returns an element's own tag and attributes without its content; read
+`outerHTML` directly when you need what is inside. A ref absent from the
+snapshot comes back as `null`.
+
+A `targetRef` can name a node inside the control the user acted on, such as
+the `<span>` inside a link. Add its parent's ref from the tree to the same
+call.
+
+A snapshot holds the refs of its own visit, written as the package
 writes them, such as `[__playwright_aria_ref__="f1e45"]`. A click that leaves
 the page has no `after` snapshot: its result is the next visit's baseline. An
 `s_*` ref is the recorder's own and is not in the trace: reach that element
