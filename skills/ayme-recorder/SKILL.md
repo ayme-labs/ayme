@@ -12,13 +12,12 @@ a Playwright test that replays the flow.
 
 1. **Record.** Run `npx @ayme-dev/cli codegen <url>`, with the URL where the
    user wants to start, somewhere it can keep running. A recorder window opens
-   on that page. The user performs the flow, reviews it while paused, as
-   [Review](#review) describes, and presses Finish. The command then prints
-   `Recording package: <path>`.
+   on that page; the user performs the flow and presses Finish. The command
+   then prints `Recording package: <path>`.
 2. **Read** the package, as [Read the package](#read-the-package) describes.
-   Read a discarded entry as [Review](#review) describes. A package with no
-   kept entry has no flow to implement: tell the user whether it captured
-   nothing or every entry is a stub, and stop before you propose anything.
+   Leave every discarded entry out of the page objects and the test. A package
+   with no kept entry has no flow to implement: tell the user whether it
+   captured nothing or every entry is a stub, and stop.
 3. **Propose** the page objects and the test to the user before you write any
    file, following
    [Write page objects from the recording](#write-page-objects-from-the-recording)
@@ -84,10 +83,9 @@ below it.
 ```
 
 An interaction names its target by `targetRef`, a node in the visit's baseline
-tree or one `<added>` earlier in the same visit. A kept entry can also name a
-node added by a change that was discarded; [Review](#review) says how to read
-that ref from the trace. The interaction's other fields, such as a fill's
-`text`, are the values the user entered.
+tree or one `<added>` earlier in the same visit, or a node a discarded change
+added; [Discarded entries](#discarded-entries) says how to read that one. Its
+other fields, such as a fill's `text`, are the values the user entered.
 
 ```text
 interaction:
@@ -106,22 +104,10 @@ behind the change. A change no recorded action explains can also come from a
 hover, or from anything the page does on its own in between, such as an async
 update. Read it together with the steps around it.
 
-## Review
+## Discarded entries
 
-The user reviews only while the recording is paused. Discard and restore apply
-to one whole entry: an interaction, including an `assert*` check, or an
-unassigned `kind: change` entry. A node inside a `changeTree` is kept or
-dropped with that entry. The changes recorded with an interaction follow it,
-so a discarded interaction's stub has no `changeTree`. An unassigned change, a
-later entry and a later visit each keep their own decision. The page stays as
-the user left it.
-
-Resume keeps the decisions already made. What the user does after resume is
-captured and kept until they discard it. Clear, or starting a new recording,
-drops every decision. Finish applies any decision still queued, then saves, so
-the package you read already includes those decisions.
-
-A discarded entry stays in the timeline, in order, as a stub:
+The user can discard a whole interaction or unassigned change. It stays in the
+timeline, in order, as a stub:
 
 ```text
 - kind: interaction
@@ -135,37 +121,20 @@ A discarded entry stays in the timeline, in order, as a stub:
   discarded: true
 ```
 
-A stub has `kind`, `timestamp` and `discarded: true`. An interaction stub also
-has `interaction.id` and `interaction.type`, and leaves out the target, the
-entered value and the `changeTree`. A kept entry has its ordinary fields and
-no `discarded` field. The YAML package has no `analysisItemId`. A JSON form of
-the same recording includes that id on each entry.
+A stub has no target, entered value or `changeTree`. When a kept step depends
+on one, ask the user how the flow should reach it.
 
-The Playwright trace keeps the captured action: its row, the title captured
-with it, its parameters, timing, id and any snapshot or action point it has.
-The stub records that the user left that step out of the flow. Use the trace
-to place a ref or to see the page around a step, and leave the discarded step
-out of the page objects and the test. When a kept step depends on a discarded
-one, ask the user how the flow should reach it.
-
-A kept `targetRef` can name an element added by a change the package no longer
-spells out. The trace still has that action, under the discarded interaction's
-`id`, with its original title and parameters and any snapshot it captured.
-Read the ref from an available snapshot with the commands in
-[Use the trace](#use-the-trace). When that action has no `after` snapshot, use
-its `before` snapshot or the next visit's baseline, as that section describes.
-A discarded `kind: change` entry has no action of its own: use a snapshot the
-trace already has, or the next visit's baseline.
-
-A package whose entries are all stubs is still valid, trace included, and it
-names no flow to implement. A package with no timeline entries captured
-nothing.
+A kept `targetRef` can name an element a discarded change added. The trace still
+has the discarded interaction's action, under its `interaction.id`: open it
+with `trace action <interaction.id>` and `trace snapshot <interaction.id>`, as
+[Use the trace](#use-the-trace) describes. A discarded `kind: change` has no
+action: use a snapshot already in the trace, or the next visit's baseline.
 
 ## Write page objects from the recording
 
-Draft the test from the kept entries first, then the smallest set of page
-objects that can express it. When a step or a check cannot be expressed,
-change the page objects, never the check. Design them by
+Draft the test from the timeline first, then the smallest set of page objects
+that can express it. When a step or a check cannot be expressed, change the
+page objects, never the check. Design them by
 [Page object design](references/page-object-design.md); the package shows its
 evidence:
 
@@ -188,13 +157,13 @@ and look for a better one in the trace.
 
 ## Write the test
 
-One test replays the kept entries in recorded order, with no steps the user
-did not take and no branching. Every step goes through a page object action or one of its named locators, and
+One test replays the flow in recorded order, with no steps the user did not
+take and no branching. Every step goes through a page object action or one of its named locators, and
 every check through a page object locator or method. When an action returns one of
 several page objects, assert the one the recorded flow reached, such as
 `assert(page instanceof ProjectPage)` from `node:assert`, rather than branching on it.
 
-Turn the kept entries into assertions:
+Turn the timeline into assertions:
 
 - Assert what a step caused beyond the element it acted on: something appears,
   disappears or is replaced, a count changes, a page opens.
@@ -203,9 +172,9 @@ Turn the kept entries into assertions:
 - Leave out the acted element's own change, such as a filled value, focus or a
   checked box, what the page already showed, and changes unrelated to the
   flow, such as animations or clocks.
-- A kept `assert*` interaction, such as `assertVisible`, marks a point where
-  the user checked something: from its target and the changes around it, work
-  out what they meant to check, and assert that.
+- An `assert*` interaction, such as `assertVisible`, marks a point where the
+  user checked something: from its target and the changes around it, work out
+  what they meant to check, and assert that.
 - Each assertion checks one fact. A replaced element is two facts: the old one
   is gone and the new one is visible.
 - Steps that only change their own element, such as filling the fields of one form, need no
@@ -232,5 +201,4 @@ writes them, such as `[__playwright_aria_ref__="f1e45"]`. A click that leaves
 the page has no `after` snapshot: its result is the next visit's baseline. An
 `s_*` ref is the recorder's own and is not in the trace: reach that element
 from its nearest ancestor with an `e` ref, such as
-`[__playwright_aria_ref__="e58"] img`. Resolve a `targetRef` added by a
-discarded change as [Review](#review) describes.
+`[__playwright_aria_ref__="e58"] img`.
