@@ -10,12 +10,15 @@ writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction. From the package you write page objects and
 a Playwright test that replays the flow.
 
-1. **Record.** Check the CLI version once first, as
-   [Check the CLI version](#check-the-cli-version) describes. Then run
-   `npx @ayme-dev/cli codegen <url>`, with the URL where the user wants to
-   start, somewhere it can keep running. A recorder window opens
-   on that page; the user performs the flow and presses Finish. The command
-   then prints `Recording package: <path>`.
+1. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
+   the user wants to start, somewhere it can keep running. A recorder window
+   opens on that page; the user performs the flow and presses Finish. The
+   command then prints `Recording package: <path>`.
+
+   `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
+   `package.json`, the project pins its version: run `npx ayme-recorder` in
+   place of `npx @ayme-dev/cli@latest`, here and for every `trace` command.
+
 2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
    with no kept entry has no flow to implement: tell the user whether it
@@ -35,22 +38,6 @@ a Playwright test that replays the flow.
 
 Done when the test passes against the app and replays the flow you agreed.
 A package with no kept entry is done when you have told the user and stopped.
-
-## Check the CLI version
-
-Do this once, before you record. Compare the installed CLI with the newest
-release: `npx @ayme-dev/cli --version` against `npm view @ayme-dev/cli version`.
-
-- If the project has `@ayme-dev/cli` installed and it is older, tell the user
-  and offer `npm install -D @ayme-dev/cli@latest`. Do not update it yourself.
-- If `--version` answers `Unsupported command`, the CLI is older than 0.1.3:
-  treat it as older and offer the same update.
-- If the project does not have it installed, run every command of the session
-  with the version you just looked up, such as
-  `npx @ayme-dev/cli@0.1.3 codegen <url>` and the same prefix for `trace`.
-
-In every case, use one and the same CLI for the recording and for its `trace`
-commands.
 
 ## Read the package
 
@@ -207,11 +194,11 @@ did, or to find a locator for an element. Each element carries its package ref a
 `__playwright_aria_ref__`, so you can look up a node from the timeline:
 
 ```sh
-npx @ayme-dev/cli trace open latest      # or a recording id, or the trace.zip path
-npx @ayme-dev/cli trace snapshot interaction_3 --name after \
+npx @ayme-dev/cli@latest trace open latest   # or a recording id, or the trace.zip path
+npx @ayme-dev/cli@latest trace snapshot interaction_3 --name after \
   eval "Object.fromEntries(['e44', 'e45'].map(ref => [ref, document.querySelector('[__playwright_aria_ref__=\"' + ref + '\"]')?.cloneNode(false).outerHTML ?? null]))" \
   | sed -n '/^### Result/,/^### Ran/{//!p;}'
-npx @ayme-dev/cli trace close
+npx @ayme-dev/cli@latest trace close
 ```
 
 ```json
