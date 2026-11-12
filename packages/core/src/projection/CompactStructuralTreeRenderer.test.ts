@@ -408,6 +408,43 @@ describe("CompactStructuralTreeRenderer", () => {
     );
   });
 
+  it("keeps a frame-prefixed ref apart from the unprefixed ref with the same number", () => {
+    // Playwright's AI snapshot nests an iframe's content under the iframe
+    // node, with refs prefixed by the frame: `f1e2` next to the top
+    // document's `e2`.
+    const factory = new SyntheticAriaRefFactory();
+    const before = StructuralTree.fromAriaSnapshotYaml(
+      '- generic [ref=e1]:\n  - button "Save" [ref=e2]\n  - iframe [ref=e3]:\n    - generic [ref=f1e1]:\n      - button "Pay" [ref=f1e2]',
+      factory
+    );
+    const after = StructuralTree.fromAriaSnapshotYaml(
+      '- generic [ref=e1]:\n  - button "Save" [ref=e2]\n  - iframe [ref=e3]:\n    - generic [ref=f1e1]:\n      - button "Pay" [ref=f1e2] [disabled]',
+      factory
+    );
+
+    expect(before.getNode(AriaRefSchema.parse("e2"))?.name).toBe("Save");
+    expect(before.getNode(AriaRefSchema.parse("f1e2"))?.name).toBe("Pay");
+    expect(before.findDuplicateRef()).toBeNull();
+    expect(renderBase(before)).toBe(
+      '- [ref=e1]:\n  - [ref=e2] button "Save"\n  - [ref=e3] iframe:\n    - [ref=f1e1]:\n      - [ref=f1e2] button "Pay"'
+    );
+
+    const reconciled = StructuralTree.reconcile(before, after);
+
+    expect(
+      reconciled.getBeforeNodeForAfterRef(AriaRefSchema.parse("f1e2"))?.name
+    ).toBe("Pay");
+    expect(reconciled.getNode(AriaRefSchema.parse("e2"))?.status?.kind).toBe(
+      "unchanged"
+    );
+    expect(reconciled.getNode(AriaRefSchema.parse("f1e2"))?.status?.kind).toBe(
+      "updated"
+    );
+    expect(renderIncremental(reconciled, AriaRefSchema.parse("f1e2"))).toBe(
+      '- [ref=e1]:\n  - [ref=e2]\n  - [ref=e3] iframe:\n    - [ref=f1e1]:\n      - <trigger> <changed> [ref=f1e2] button "Pay" [disabled]'
+    );
+  });
+
   it("keeps adjacent text children and roots left by an exploded node separate", () => {
     const tree = parse(
       "- paragraph [ref=e1]:\n" +
