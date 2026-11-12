@@ -84,9 +84,17 @@ test("a page without Ayme gets the Page Objects ayme mcp serves through the init
       .poll(() => agent.pageToolNames(), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
 
-    const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
+    // The short answer an agent gets from a Page Object Tool, and nothing
+    // of the server's.
+    const { text, isError, note } = await agent.call(PLAIN_PAGE_TOOL);
     expect(isError, text).toBe(false);
-    expect(text).toContain("does not run Ayme");
+    const answer = JSON.parse(text) as Record<string, unknown>;
+    expect(answer).toMatchObject({
+      settled: true,
+      result: expect.stringContaining("does not run Ayme"),
+    });
+    expect(Object.keys(answer)).toEqual(["settled", "result"]);
+    expect(note).toBeUndefined();
   } finally {
     await agent.close();
   }

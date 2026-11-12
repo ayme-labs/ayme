@@ -27,10 +27,21 @@ export type ConnectionEvent =
 
 type Answer = (outcome: ToolCallOutcome) => void;
 
-/** Answers every call in `calls` for a page that left as `exit` says. */
-function answerUnanswered(calls: Map<string, Answer>, exit: PageExit) {
-  const error = unansweredCallText(exit);
-  for (const [callId, answer] of calls) answer({ callId, ok: false, error });
+/**
+ * Answers every call in `calls` for a page that left as `exit` says, naming
+ * the reconnected page's tools unless the call is in `pageObjectCalls`.
+ */
+function answerUnanswered(
+  calls: Map<string, Answer>,
+  exit: PageExit,
+  pageObjectCalls: ReadonlySet<string> = new Set()
+) {
+  for (const [callId, answer] of calls)
+    answer({
+      callId,
+      ok: false,
+      error: unansweredCallText(exit, !pageObjectCalls.has(callId)),
+    });
 }
 
 /**
@@ -172,6 +183,8 @@ export class AgentConnection {
   #lifecycle: tabLifecycle.TabLifecycle = tabLifecycle.unpaired;
   /** The calls in flight of the tab's previous document; see `TabLifecycle`. */
   #leftCalls = new Map<string, Answer>();
+  /** The calls in flight of a Page Object Tool. */
+  readonly #pageObjectCalls = new Set<string>();
   /**
    * The calls held for the page: each goes out when called without an
    * exit, or is answered without running.
@@ -353,22 +366,30 @@ export class AgentConnection {
    */
   call(name: string, input: unknown): Promise<ToolCallOutcome | undefined> {
     const callId = String(this.#nextCallId++);
+    // A Page Object Tool's answer names no tools, even one the server gives.
+    if (
+      this.tools.some(
+        (tool) => tool.name === name && tool.group === "pageObject"
+      )
+    )
+      this.#pageObjectCalls.add(callId);
     const send = async () =>
       this.#holderOf(name)?.call({ callId, name, input });
-    if (
+    const outcome =
       !tabLifecycle.holdsPageCalls(this.#lifecycle) ||
       this.#holderOf(name) instanceof ProcessSession
-    )
-      return send();
-    return new Promise<HeldCallExit | undefined>((resolve) => {
-      const release = (exit?: HeldCallExit) => {
-        this.#held.delete(release);
-        resolve(exit);
-      };
-      this.#held.add(release);
-    }).then((exit) =>
-      exit ? { callId, ok: false, error: heldCallText(exit) } : send()
-    );
+        ? send()
+        : new Promise<HeldCallExit | undefined>((resolve) => {
+            const release = (exit?: HeldCallExit) => {
+              this.#held.delete(release);
+              resolve(exit);
+            };
+            this.#held.add(release);
+          }).then(
+            (exit): Promise<ToolCallOutcome | undefined> | ToolCallOutcome =>
+              exit ? { callId, ok: false, error: heldCallText(exit) } : send()
+          );
+    return outcome.finally(() => this.#pageObjectCalls.delete(callId));
   }
 
   /**
@@ -521,7 +542,7 @@ export class AgentConnection {
     if (left) {
       const calls = this.#leftCalls;
       this.#leftCalls = new Map();
-      answerUnanswered(calls, left);
+      answerUnanswered(calls, left, this.#pageObjectCalls);
     }
     if (held || !tabLifecycle.holdsPageCalls(lifecycle))
       for (const release of [...this.#held]) release(held);

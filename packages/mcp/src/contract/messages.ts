@@ -6,7 +6,8 @@ import * as z from "zod/mini";
  */
 
 /**
- * A tool the page offers, as the page names and describes it, and whether
+ * A tool the page offers, as the page names and describes it, its group
+ * (`pageObject` for a Page Object Tool) when the page gives one, and whether
  * a call can run it now: a Page Object Tool is listed while its Page Object
  * is on the page, and `reason` says why an unavailable one cannot run, when
  * the page knows (ADR-0035). A Page Object Tool whose action says nothing
@@ -17,6 +18,7 @@ export const PageToolSchema = z.object({
   name: z.string().check(z.minLength(1)),
   description: z.optional(z.string()),
   inputSchema: z.record(z.string(), z.unknown()),
+  group: z.optional(z.string()),
   available: z.boolean(),
   reason: z.optional(z.string()),
 });

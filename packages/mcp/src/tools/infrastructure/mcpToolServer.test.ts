@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { AgentConnection } from "../../connection";
 import type { PageTool } from "../../contract";
@@ -86,7 +86,25 @@ async function connectAgent() {
     };
   };
   const call = async (name: string) => (await answer(name, {})).texts;
-  return { client, publish, call, answer, listChanges: () => listChanges };
+  /** Answers every call the page gets with `outcome`, until the test ends. */
+  const answerCalls = (
+    outcome: { ok: true; result: unknown } | { ok: false; error: string }
+  ) => {
+    const ending = new AbortController();
+    closers.push(async () => ending.abort());
+    void (async () => {
+      for await (const sent of page.calls(ending.signal))
+        page.answer({ callId: sent.callId, ...outcome });
+    })();
+  };
+  return {
+    client,
+    publish,
+    call,
+    answer,
+    answerCalls,
+    listChanges: () => listChanges,
+  };
 }
 
 it("announces a changed tool list on presence only, and lists an unavailable tool without its availability", async () => {
@@ -303,5 +321,71 @@ it("tells a tool that went from one never offered, called directly or through ay
   ).toMatchObject({
     texts: ['No connected page or App Process offers a tool "Panel.paste".'],
     isError: true,
+  });
+});
+
+describe("a Page Object Tool's answer", () => {
+  const pageObjectTool = (name: string): PageTool => ({
+    ...tool(name),
+    group: "pageObject",
+  });
+
+  it("is the page's short answer, with no note of tools that appeared or went away", async () => {
+    const agent = await connectAgent();
+    await agent.publish([pageObjectTool("ListPage.add")]);
+    await agent.client.listTools();
+    const short = {
+      settled: true,
+      result: 2,
+      changes: "ListPage\n  items:\n    + Item po2\n        name: text: Eggs",
+    };
+    agent.answerCalls({ ok: true, result: short });
+    await agent.publish([
+      pageObjectTool("ListPage.add"),
+      pageObjectTool("Item.archive"),
+    ]);
+
+    expect(await agent.answer("ListPage.add", {})).toEqual({
+      texts: [JSON.stringify(short)],
+      isError: false,
+    });
+    expect(
+      await agent.answer("ayme_call", { tool: "ListPage.add", input: {} })
+    ).toEqual({ texts: [JSON.stringify(short)], isError: false });
+    // A later call of another tool still notes what changed.
+    const [, note] = await agent.call("ayme_noop");
+    expect(note).toContain("Appeared: Item.archive.");
+  });
+
+  it("is the refusal's reason or the failure alone", async () => {
+    const agent = await connectAgent();
+    await agent.publish([pageObjectTool("Item.archive")]);
+    await agent.client.listTools();
+    agent.answerCalls({
+      ok: false,
+      error: "RuntimeStateError: Item.archive is unavailable: it is archived.",
+    });
+    await agent.publish([
+      pageObjectTool("Item.archive"),
+      pageObjectTool("Item.restore"),
+    ]);
+
+    expect(await agent.answer("Item.archive", { id: "po1" })).toEqual({
+      texts: [
+        "RuntimeStateError: Item.archive is unavailable: it is archived.",
+      ],
+      isError: true,
+    });
+  });
+
+  it("leaves the note on any other page tool's answer", async () => {
+    const agent = await connectAgent();
+    await agent.publish([tool("click")]);
+    await agent.client.listTools();
+    agent.answerCalls({ ok: true, result: { settled: true } });
+    await agent.publish([tool("click"), tool("Panel.copy")]);
+
+    const [, note] = await agent.call("click");
+    expect(note).toContain("Appeared: Panel.copy.");
   });
 });

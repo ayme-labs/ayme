@@ -37,9 +37,11 @@ test("an unavailable Page Object Tool is listed with its reason, refuses its cal
 
   const refused = await agent.call("ayme_call", { tool: CLEAR_TOOL });
   expect(refused.isError).toBe(true);
-  expect(refused.text).toContain(
-    `${CLEAR_TOOL} is unavailable: The basket is empty.`
+  // The reason alone: no Change Record, note or advice.
+  expect(refused.text).toBe(
+    `RuntimeStateError: ${CLEAR_TOOL} is unavailable: The basket is empty.`
   );
+  expect(refused.note).toBeUndefined();
 
   // Availability changes the listing and the note, not the MCP tool list.
   const changes = agent.toolListChanges();
@@ -58,8 +60,10 @@ test("an unavailable Page Object Tool is listed with its reason, refuses its cal
 
   const cleared = await agent.call(CLEAR_TOOL);
   expect(cleared.isError, cleared.text).toBe(false);
-  // Clearing empties the basket, so the call's own result notes the change.
-  expect(cleared.note).toContain(
+  // Clearing empties the basket. A Page Object Tool's answer carries no
+  // note of it; the next answer of another tool does.
+  expect(cleared.note).toBeUndefined();
+  expect((await agent.call("ayme_list_tools")).note).toContain(
     `Became unavailable: ${CLEAR_TOOL} (The basket is empty).`
   );
 });

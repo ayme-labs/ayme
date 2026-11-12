@@ -75,8 +75,8 @@ does not churn. Calling an unavailable tool is refused before anything runs,
 with an error result that carries its reason, such as `RuntimeStateError:
 Panel.remove is unavailable: No item is selected.`
 
-When the page's tools changed since the agent's previous call, the result ends
-with a separate text item such as `The connected tools changed since your
+When the page's tools changed since the agent's previous call, the result of
+any tool but a Page Object Tool ends with a separate text item such as `The connected tools changed since your
 previous call. Appeared: Basket.readHeading. Became unavailable: Panel.remove
 (No item is selected). ayme_list_tools lists the current tools; ayme_call runs
 any of them.` It lists the tools that appeared or disappeared, the ones that
