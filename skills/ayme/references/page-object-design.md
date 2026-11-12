@@ -104,15 +104,17 @@ When that boundary is not a component yet, make it one rather than lifting the
 action higher.
 
 A dialog has no `open()` of its own, since the button that opens it lives
-outside the dialog. The page owns that button, so the page owns the action:
+outside the dialog. The page owns that button, so the page owns the action,
+and holds the dialog as its child:
 
 ```ts
 // On ProjectsPage:
+readonly newProjectDialog = new NewProjectDialog(this.page.getByRole("dialog"));
+
 async openNewProjectDialog() {
   await this.newProjectButton.click();
-  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
-  await dialog.root.waitFor();
-  return dialog;
+  await this.newProjectDialog.root.waitFor();
+  return this.newProjectDialog;
 }
 ```
 
@@ -128,9 +130,8 @@ locator.
 // ✅ An action: it moves the user to another boundary.
 async openNewProjectDialog() {
   await this.newProjectButton.click();
-  const dialog = new NewProjectDialog(this.page.getByRole("dialog"));
-  await dialog.root.waitFor();
-  return dialog;
+  await this.newProjectDialog.root.waitFor();
+  return this.newProjectDialog;
 }
 
 // On NewProjectDialog:
@@ -235,12 +236,61 @@ export class NewProjectDialog extends AppComponent {
 }
 ```
 
-## Finish in the target state
+## Know only yourself and your children
 
-An action ensures a state and returns once that state holds, observed on its
-own root and children. `openSettings()` clicks only when the panel isn't
-already open; a dialog's `create()` returns once the dialog has closed or
-shown its error, not when Create was clicked.
+A page object uses its own members and its children: the components it holds
+as members. The page or component an action leads to is named only as the
+action's return value; its locators and its actions belong to whoever
+continues there.
+
+```ts
+// On NewProjectDialog:
+// ❌ Reaches into the page that follows.
+async create() {
+  await this.createButton.click();
+  const projectPage = new ProjectPage(this.root.page());
+  await projectPage.heading.waitFor();
+  await projectPage.dismissWelcomeTip();
+  return projectPage;
+}
+
+// ✅ Uses only the dialog's own button, and names where the user continues.
+async create() {
+  await this.createButton.click();
+  return new ProjectPage(this.root.page());
+}
+```
+
+## Wait only for the action's own outcome
+
+An action returns once its own outcome shows on its own root and children:
+its dialog closed, its error message appeared, its button stopped spinning.
+`openSettings()` clicks only when its panel isn't already open, and returns
+once the panel is. An action that leaves the page returns after its last
+interaction; waiting for the navigation and the next page belongs to whoever
+drives the browser, such as a test's next assertion.
+
+```ts
+// On SignInPage:
+// ❌ Waits for the page that follows.
+async logIn(email: string, password: string) {
+  await this.fillCredentials(email, password);
+  await this.logInButton.click();
+  await this.page.waitForURL("/projects");
+  return new ProjectsPage(this.page);
+}
+
+// ✅ Waits for its own error message, the one outcome this page shows.
+async logIn(email: string, password: string): Promise<ProjectsPage | this> {
+  await this.fillCredentials(email, password);
+  await this.logInButton.click();
+  const refused = await this.errorMessage.waitFor({ timeout: 1_000 }).then(
+    () => true,
+    () => false
+  );
+  return refused ? this : new ProjectsPage(this.page);
+}
+```
 
 ## Return where the user continues
 
@@ -248,26 +298,32 @@ An action promises the boundary the user's next interaction happens in, and
 promises only what always holds:
 
 - When it always leads to the same place, return that page or component.
-- When the page shows one of several outcomes, such as a created project or a
-  validation error, wait for whichever appears and return the matching one.
-  The return type is their union, and a test asserts which one it got.
+- When it has one of several outcomes, such as a created project or a
+  validation error, wait for whichever of its own outcomes appears and return
+  the matching page or component. The return type is their union, and a test
+  asserts which one it got.
 - Otherwise, such as when it closes back to whichever page opened it, return
   `this`, and let the caller continue.
 
-When none of the outcomes appears, let the action fail rather than returning
-one of them anyway.
+When none of its own outcomes appears, let the action fail rather than
+returning one of them anyway.
 
 ```ts
 // On NewProjectDialog:
 async create(): Promise<ProjectPage | this> {
   await this.createButton.click();
-  const projectPage = new ProjectPage(this.root.page());
-  await projectPage.heading.or(this.nameError).first().waitFor();
-  return (await this.nameError.isVisible()) ? this : projectPage;
+  // The dialog's own outcomes: it closed, or it shows its error. With
+  // neither, both waits time out and the action fails.
+  const closed = await Promise.any([
+    this.root.waitFor({ state: "hidden" }).then(() => true),
+    this.nameError.waitFor().then(() => false),
+  ]);
+  return closed ? new ProjectPage(this.root.page()) : this;
 }
 ```
 
-A test asserts the outcome the flow should reach, rather than branching on it:
+A test asserts the outcome the flow should reach, rather than branching on it.
+Its web-first assertion is what waits for the next page:
 
 ```ts
 const created = await dialog.create();
@@ -280,11 +336,40 @@ assert(rejected === dialog);
 await expect(rejected.nameError).toBeVisible();
 ```
 
+## State facts in descriptions and reasons
+
+When a page object is marked for Ayme, an agent reads its descriptions and,
+for an action that cannot run now, the reason. Each states a fact about the
+page object: what the action causes, who may do it, why it cannot run. The
+agent decides its next step itself.
+
+```ts
+// ❌ Each tells the agent what to do.
+const canSave = async (self: ProjectEditor) =>
+  (await self.saveButton.isVisible()) ||
+  "This project is archived. Call restore first, then save.";
+
+@ayme.action({
+  available: canSave,
+  description: "Saves the project. Leave out the fields that stay as they are.",
+})
+
+// ✅ Each states a fact.
+const canSave = async (self: ProjectEditor) =>
+  (await self.saveButton.isVisible()) ||
+  "This project is archived, and an archived project has no Save.";
+
+@ayme.action({
+  available: canSave,
+  description: "Saves the project and keeps the editor open.",
+})
+```
+
 ## Compose actions
 
-An action can call the actions of its children and of the components it opens.
-A call that moves the user out of the action's boundary comes last, and the
-action returns what that call returns:
+An action can call the actions of its children. A call that moves the user
+out of the action's boundary comes last, and the action returns what that call
+returns:
 
 ```ts
 // On ProjectsPage:

@@ -81,7 +81,7 @@ Leave helper methods that only read the page unmarked, such as ones that return 
 
 The method's parameters are the tool's inputs. Plain data works: strings, numbers, booleans, unions of literals, arrays, tuples and plain objects. A function, a class instance such as `Date`, an object with methods, `any`, `unknown` or an open generic fails the build, which names the parameter.
 
-**`description`** tells an agent what it needs to use the action well that its name and parameters cannot: what it causes, who may do it, and how to use it. An action whose description would only restate its name needs none.
+**`description`** tells an agent what its name and parameters cannot: what the action causes and who may do it. It states facts about the action and leaves the next step to the agent. An action whose description would only restate its name needs none.
 
 ```ts
 @ayme.action({
@@ -94,7 +94,7 @@ async archive() {
 }
 ```
 
-**`available`** declares when an action can run, for an action whose control shows only in some states or to some users. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not. While it fails, the tool stays listed but unavailable, an agent sees the string as the reason, and a call is refused with it before anything runs. Like `present`, it runs whenever Ayme observes the page, so keep it to reads.
+**`available`** declares when an action can run, for an action whose control shows only in some states or to some users. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not. While it fails, the tool stays listed but unavailable, an agent sees the string as the reason, and a call is refused with it before anything runs. The string states why the action cannot run, and nothing about what to do next. Like `present`, it runs whenever Ayme observes the page, so keep it to reads.
 
 ```ts
 const canRemove = async (self: ProjectRow) =>
