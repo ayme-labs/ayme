@@ -260,44 +260,42 @@ export function specsOfElementToolSchema(
 }
 
 /**
- * A rooted Page Object Tool takes `{ ref, args }` from the Goal Loop: the ref
- * addresses one present instance of its path, the action's own parameters sit
- * inside `args` and are classified like any other parameter. The Page Object
- * id the tool takes instead of the ref is not an argument of the loop's.
+ * A rooted Page Object Tool takes `{ id, args }`: the Page Object id names
+ * one present instance of its class, the action's own parameters sit inside
+ * `args` and are classified like any other parameter.
  */
 export function specsOfRootedTool(
   parameters: readonly NamedToolParameter[],
   roots: readonly RootedToolInstance[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) =>
-    parameter.name === "ref"
+    parameter.name === "id"
       ? [
           {
-            name: "ref",
-            path: ["ref"],
-            optional: false,
+            name: "id",
+            path: ["id"],
+            optional: parameter.optional,
             closedSet: { kind: "instance", roots } as const,
           },
         ]
-      : parameter.name === "id"
-        ? []
-        : specsOfObjectSchema(parameter.schema, [parameter.name])
+      : specsOfObjectSchema(parameter.schema, [parameter.name])
   );
 }
 
 /**
- * The parameters a caller must pass, by name: for a rooted tool, its `ref` and the required ones inside `args`, dotted.
+ * The parameters a caller must pass, by name: for a rooted tool, its `id` and the required ones inside `args`, dotted.
  */
 export function requiredParamsOf(
   parameters: readonly NamedToolParameter[],
   rooted: boolean
 ): string[] {
-  return parameters.flatMap((parameter) => {
-    if (!rooted) return parameter.optional ? [] : [parameter.name];
-    if (parameter.name === "ref") return ["ref"];
-    if (parameter.name === "id") return [];
-    return parametersOfObjectSchema(parameter.schema)
-      .filter((inner) => !inner.optional)
-      .map((inner) => `${parameter.name}.${inner.name}`);
-  });
+  return parameters.flatMap((parameter) =>
+    rooted && parameter.name !== "id"
+      ? parametersOfObjectSchema(parameter.schema)
+          .filter((inner) => !inner.optional)
+          .map((inner) => `${parameter.name}.${inner.name}`)
+      : parameter.optional
+        ? []
+        : [parameter.name]
+  );
 }

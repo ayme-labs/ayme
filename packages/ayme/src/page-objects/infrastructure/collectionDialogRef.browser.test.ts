@@ -7,7 +7,7 @@ import { ayme } from "../domain/decorators";
 import { callers, type PomManifest } from "../../shared";
 import {
   ayme as agent,
-  rootRef,
+  rootId,
 } from "../../test-utils/agentCalls.testSupport";
 import { RootedComponent } from "../../test-utils/pomRoot.testSupport";
 import { startSession } from "../../test-utils/session.testSupport";
@@ -136,16 +136,16 @@ function projectsFixture(rootedDialog: boolean) {
   return { page, session, ProjectsPage };
 }
 
-it("#966 targets a shared portaled collection child's own root and refuses a row ref", async () => {
+it("#966 targets a shared portaled collection child's own root and refuses a row's id", async () => {
   const { page, session, ProjectsPage } = projectsFixture(true);
   const call = (name: string, input: Record<string, unknown>) =>
     session.ayme.tools.run(name, input, { by: callers.webmcp });
   try {
     session.register(ProjectsPage);
     await probeRegisteredPomMembers();
-    const mobileRef = await rootRef("ProjectsPage.projects[1]");
-    const billingRef = await rootRef("ProjectsPage.projects[4]");
-    await call("ProjectRow.openRename", { ref: mobileRef });
+    const mobileId = await rootId("ProjectsPage.projects[1]");
+    const billingId = await rootId("ProjectsPage.projects[4]");
+    await call("ProjectRow.openRename", { id: mobileId });
     await probeRegisteredPomMembers();
 
     expect(
@@ -156,10 +156,10 @@ it("#966 targets a shared portaled collection child's own root and refuses a row
         .sort()
     ).toEqual(["ProjectRow.openRename", "RenameDialog.confirm"]);
     const state = await agent.getPageState();
-    const dialogRef = state.text.match(
-      /(e\d+) RenameDialog po\d+ "Rename project":/
+    const dialogId = state.text.match(
+      /e\d+ RenameDialog (po\d+) "Rename project":/
     )?.[1];
-    expect(dialogRef, state.text).toBeDefined();
+    expect(dialogId, state.text).toBeDefined();
     expect(state.text.match(/RenameDialog/g)).toHaveLength(1);
     expect(state.text).not.toContain("renameDialog");
 
@@ -174,7 +174,7 @@ it("#966 targets a shared portaled collection child's own root and refuses a row
       roots: [{}],
     });
     await call("RenameDialog.confirm", {
-      ref: dialogRef,
+      id: dialogId,
       args: { name: "Mobile v2" },
     });
     expect(document.querySelector('[role="status"]')!.textContent).toBe(
@@ -187,16 +187,16 @@ it("#966 targets a shared portaled collection child's own root and refuses a row
       "Billing migration"
     );
 
-    // Reopen it so the wrong ref is refused while the action is available.
-    await call("ProjectRow.openRename", { ref: mobileRef });
+    // Reopen it so the row's id is refused while the action is available.
+    await call("ProjectRow.openRename", { id: mobileId });
     await probeRegisteredPomMembers();
     await expect(
       call("RenameDialog.confirm", {
-        ref: billingRef,
+        id: billingId,
         args: { name: "Wrong project" },
       })
     ).rejects.toThrow(
-      `Cannot call RenameDialog.confirm on ref "${billingRef}": it is not a root of RenameDialog.`
+      `Cannot call RenameDialog.confirm on Page Object "${billingId}": it is not a RenameDialog on the page.`
     );
     expect(document.querySelector("#project-1 span")!.textContent).toBe(
       "Mobile v2"

@@ -161,8 +161,13 @@ export type InspectorTarget = Readonly<{
   ref?: string;
 }>;
 
-/** A collection tool's item on the page, whether the tool would run on it and why not. */
+/**
+ * A rooted tool's item on the page, whether the tool would run on it and why
+ * not: `id` is its Page Object id, which the tool takes, and `ref` the
+ * Structural Ref of its root in the look, when the page state holds it.
+ */
 export type InspectorRootedInstance = Readonly<{
+  id: string;
   ref?: string;
   available: boolean;
   reason?: string;

@@ -41,8 +41,8 @@ const addMilk = aRun({
 const archiveGone = aRun({
   toolName: "ListItem.archive",
   className: "ListItem",
-  item: anItem("ListPage.items[0]", { ref: "e3", label: "Milk" }),
-  arguments: { ref: "e3", args: {} },
+  item: anItem("ListPage.items[0]", { id: "po3", ref: "e3", label: "Milk" }),
+  arguments: { id: "po3", args: {} },
   status: "failed",
   error: 'Ref "e3" does not match a present instance.',
 });

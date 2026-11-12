@@ -45,6 +45,7 @@ const failedOnItem: Run = {
     path: "ListPage.items[1]",
     name: "[1]",
     pathBelowPage: "items[1]",
+    id: "po2",
     ref: "e4",
     label: "Eggs",
   },

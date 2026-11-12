@@ -265,7 +265,8 @@ function describeNode(node: StructuralNode): string {
 
 /**
  * One option per present rooted instance, keyed by the ref the registry
- * observed for that root. A root the tool is unavailable on would be refused,
+ * observed for that root, which the page shown to the model names it by;
+ * choosing it passes the instance's Page Object id. A root the tool is unavailable on would be refused,
  * and a root the capture holds no node for cannot be targeted; both are left
  * out, each with why.
  */
@@ -307,7 +308,7 @@ function instanceOptions(
     options.push({
       key: ref,
       description: `${label} (${describeNode(node)})${text ? `: ${clip(text)}` : ""}`,
-      value: ref,
+      value: root.id,
     });
   }
   return { options, leftOut };

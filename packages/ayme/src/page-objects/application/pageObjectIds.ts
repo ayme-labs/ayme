@@ -26,13 +26,14 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
 
   return {
     /**
-     * The id of each Page Object Root `rootRefs` name by Structural Ref, in
-     * the order given: a root read for the first time gets the next id, and
-     * one whose element is not on the page has none.
+     * Each Page Object Root `rootRefs` name by Structural Ref, in the order
+     * given, as its id and the ref its element has now: a root read for the
+     * first time gets the next id, and one whose element is not on the page
+     * is undefined.
      */
-    async idsOf(
+    async rootsOf(
       rootRefs: readonly string[]
-    ): Promise<(PageObjectId | undefined)[]> {
+    ): Promise<({ id: PageObjectId; ref: string } | undefined)[]> {
       const byRoot = await current();
       const now = await driver.currentRefs(rootRefs);
       return now.map((ref) => {
@@ -43,7 +44,7 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
           roots.set(id, ref);
           byRoot.set(ref, id);
         }
-        return id;
+        return { id, ref };
       });
     },
     /**

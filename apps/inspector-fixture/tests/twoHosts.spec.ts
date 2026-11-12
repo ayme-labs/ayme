@@ -114,7 +114,7 @@ function mainOf(changes: string) {
   const lines = changes.split("\n");
   const start = lines.findIndex((line) => / main(:| |$)/.test(line));
   const end = lines.findIndex(
-    (line, index) => index > start && /complementary/.test(line)
+    (line, index) => index > start && /complementary|PanelShell/.test(line)
   );
   return lines
     .slice(start, end === -1 ? undefined : end)
@@ -224,8 +224,8 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
       if (step % BATCH === 0) {
         const cleared = await agent.call("ListPage.clear");
         expect(cleared.isError, cleared.text).toBe(false);
-        const runs = /(e\d+) region "Runs"/.exec(await agentSees())?.[1];
-        const forgotten = await agent.call("RunsView.clear", { ref: runs });
+        const runs = /RunsView (po\d+)/.exec(await agentSees())?.[1];
+        const forgotten = await agent.call("RunsView.clear", { id: runs });
         expect(forgotten.isError, forgotten.text).toBe(false);
       }
     }

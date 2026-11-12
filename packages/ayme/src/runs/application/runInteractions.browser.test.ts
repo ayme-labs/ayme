@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 import { expect as expectOnPage } from "@ayme-dev/playwright-lite";
@@ -117,7 +117,7 @@ describe("a Run's Interactions, in Chromium", () => {
     const before = ayme.runs.list();
 
     await ayme.tools.run("ListPage.add", {
-      ref: await rootRef("ListPage"),
+      id: await rootId("ListPage"),
       args: { value: "Milk" },
     });
 
@@ -137,7 +137,7 @@ describe("a Run's Interactions, in Chromium", () => {
     const before = ayme.runs.list();
 
     await ayme.tools.run("ListPage.check", {
-      ref: await rootRef("ListPage"),
+      id: await rootId("ListPage"),
       args: {},
     });
 
@@ -156,12 +156,12 @@ describe("a Run's Interactions, in Chromium", () => {
     await Promise.all([
       ayme.tools.run(
         "ListPage.add",
-        { ref: await rootRef("ListPage"), args: { value: "Eggs" } },
+        { id: await rootId("ListPage"), args: { value: "Eggs" } },
         { by: "assistant" }
       ),
       ayme.tools.run(
         "ListPage.save",
-        { ref: await rootRef("ListPage"), args: {} },
+        { id: await rootId("ListPage"), args: {} },
         { by: callers.inspector }
       ),
     ]);
@@ -189,7 +189,7 @@ describe("a Run's Interactions, in Chromium", () => {
         const list = ayme.pom.get(ListPage);
         await list.item.fill("Tea");
         await run("ListPage.save", {
-          ref: await rootRef("ListPage"),
+          id: await rootId("ListPage"),
           args: {},
         });
         await list.addButton.hover();
@@ -227,10 +227,10 @@ describe("a Run's Interactions, in Chromium", () => {
       async execute(_target, { run }) {
         await Promise.all([
           run("ListPage.add", {
-            ref: await rootRef("ListPage"),
+            id: await rootId("ListPage"),
             args: { value: "Milk" },
           }),
-          run("ListPage.save", { ref: await rootRef("ListPage"), args: {} }),
+          run("ListPage.save", { id: await rootId("ListPage"), args: {} }),
         ]);
         return null;
       },
@@ -271,7 +271,7 @@ describe("a Run's Interactions, in Chromium", () => {
     });
 
     await ayme.tools.run("ListPage.add", {
-      ref: await rootRef("ListPage"),
+      id: await rootId("ListPage"),
       args: { value: "Milk" },
     });
     unsubscribe();

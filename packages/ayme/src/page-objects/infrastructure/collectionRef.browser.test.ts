@@ -19,18 +19,13 @@ const action = (methodName: string, description: string) => ({
   returnPoms: [],
 });
 
-function refInPageState(text: string, mark: string, index = 0): string {
-  const escaped = mark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = [
-    ...text.matchAll(
-      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
-    ),
-  ][index];
-  if (!match?.[1]) throw new Error(`No ref found for "${mark}" in page state.`);
-  return match[1];
+function idInPageState(text: string, mark: string, index = 0): string {
+  const id = [...text.matchAll(new RegExp(` ${mark} (po\\d+)`, "g"))][index]?.[1];
+  if (!id) throw new Error(`No id found for "${mark}" in page state.`);
+  return id;
 }
 
-describe("collection instances targeted by ref", () => {
+describe("collection instances targeted by Page Object id", () => {
   afterEach(() => {
     document.body.innerHTML = "";
   });
@@ -76,13 +71,13 @@ describe("collection instances targeted by ref", () => {
       )!;
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
-      const ref = refInPageState(
+      const id = idInPageState(
         (await getPageStateForDocument(document)).text,
         "Item"
       );
       archive = currentArchive;
       document.querySelector("button")!.textContent = "Archive current";
-      await tool.execute({ ref }, runContext());
+      await tool.execute({ id }, runContext());
       expect(currentArchive).toHaveBeenCalledOnce();
       expect(oldArchive).not.toHaveBeenCalled();
     } finally {
@@ -90,7 +85,7 @@ describe("collection instances targeted by ref", () => {
     }
   });
 
-  it("targets the second of three instances by ref", async () => {
+  it("targets the second of three instances by id", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="item-0"><button>Archive item-0</button></li>
@@ -144,9 +139,9 @@ describe("collection instances targeted by ref", () => {
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "Item", 1);
+      const id = idInPageState(state.text, "Item", 1);
 
-      await archiveTool.execute({ ref, args: {} }, runContext());
+      await archiveTool.execute({ id, args: {} }, runContext());
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
       expect(archiveFns[1]).toHaveBeenCalledOnce();
@@ -158,7 +153,7 @@ describe("collection instances targeted by ref", () => {
     }
   });
 
-  it("resolves an earlier ref after a re-render removes the first instance", async () => {
+  it("resolves an earlier id after a re-render removes the first instance", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="item-0"><button>Archive item-0</button></li>
@@ -207,17 +202,17 @@ describe("collection instances targeted by ref", () => {
       const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
-      // Capture state and get ref for item-1.
+      // Capture state and get the id of item-1.
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "Item", 1);
+      const id = idInPageState(state.text, "Item", 1);
 
       // Remove item-0 (the first instance) between look and act.
       document.querySelector("#item-0")?.remove();
 
-      // The earlier ref should still resolve to item-1's element (ADR-0028).
-      await archiveTool.execute({ ref, args: {} }, runContext());
+      // The earlier id should still resolve to item-1's element (ADR-0028).
+      await archiveTool.execute({ id, args: {} }, runContext());
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
       expect(archiveFns[1]).toHaveBeenCalledOnce();
@@ -229,7 +224,7 @@ describe("collection instances targeted by ref", () => {
     }
   });
 
-  it("fails with a clear error for a stale ref whose instance was removed", async () => {
+  it("fails with a clear error for an id whose instance was removed", async () => {
     document.body.innerHTML = `
       <ul>
         <li id="item-0"><button>Archive item-0</button></li>
@@ -277,19 +272,19 @@ describe("collection instances targeted by ref", () => {
       const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
-      // Capture state and get ref for item-1.
+      // Capture state and get the id of item-1.
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "Item", 1);
+      const id = idInPageState(state.text, "Item", 1);
 
       // Remove item-1 entirely from the DOM.
       document.querySelector("#item-1")?.remove();
 
       await expect(
-        archiveTool.execute({ ref, args: {} }, runContext())
+        archiveTool.execute({ id, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call Item.archive on ref "${ref}": it is no longer on the page.`
+        `Cannot call Item.archive on Page Object "${id}": it is not on the page.`
       );
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
@@ -301,7 +296,7 @@ describe("collection instances targeted by ref", () => {
     }
   });
 
-  it("refuses a ref that is not a Structural Ref, and one outside the collection", async () => {
+  it("refuses an id that is not a Page Object id, the item's Structural Ref among them, and the id of no Page Object", async () => {
     document.body.innerHTML = `
       <h1>Items</h1>
       <ul>
@@ -344,24 +339,23 @@ describe("collection instances targeted by ref", () => {
       if (!archiveTool) throw new Error("Expected archive tool.");
 
       await expect(
-        archiveTool.execute({ ref: "button.save", args: {} }, runContext())
+        archiveTool.execute({ id: "button.save", args: {} }, runContext())
       ).rejects.toThrow(
-        'Cannot call Item.archive on ref "button.save": not a Structural Ref.'
+        'Input property id is not a Page Object id, written po<n>: "button.save".'
       );
-      await expect(
-        archiveTool.execute({ ref: "[ref=e7]", args: {} }, runContext())
-      ).rejects.toThrow(
-        'Cannot call Item.archive on ref "[ref=e7]": not a Structural Ref. It writes the Structural Ref e7 another way.'
-      );
-
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const headingRef = refInPageState(state.text, "heading");
+      const itemRef = state.text.match(/(e\d+) Item po\d+/)?.[1];
       await expect(
-        archiveTool.execute({ ref: headingRef, args: {} }, runContext())
+        archiveTool.execute({ id: itemRef, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call Item.archive on ref "${headingRef}": it is not a root of Item.`
+        `Input property id is not a Page Object id, written po<n>: "${itemRef}".`
+      );
+      await expect(
+        archiveTool.execute({ id: "po999999", args: {} }, runContext())
+      ).rejects.toThrow(
+        'Cannot call Item.archive on Page Object "po999999": it is not on the page.'
       );
 
       expect(archive).not.toHaveBeenCalled();
@@ -413,10 +407,10 @@ describe("collection instances targeted by ref", () => {
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "Item");
-      expect(ref).toMatch(/^s_/);
+      expect(state.text).toMatch(/s_\w+ Item po\d+/);
+      const id = idInPageState(state.text, "Item");
 
-      await archiveTool.execute({ ref, args: {} }, runContext());
+      await archiveTool.execute({ id, args: {} }, runContext());
       expect(archive).toHaveBeenCalledOnce();
 
       session.unregister(ItemsPage);
@@ -425,7 +419,7 @@ describe("collection instances targeted by ref", () => {
     }
   });
 
-  it("targets an instance in a nested collection with a single ref", async () => {
+  it("targets an instance in a nested collection with a single id", async () => {
     document.body.innerHTML = `
       <div id="group-0">
         <ul>
@@ -498,13 +492,13 @@ describe("collection instances targeted by ref", () => {
       const doActionTool = tools.find((t) => t.name === "Item.doAction");
       if (!doActionTool) throw new Error("Expected doAction tool.");
 
-      // Capture state and get ref for the second item in the first group.
+      // Capture state and get the id of the second item in the first group.
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "Item", 1);
+      const id = idInPageState(state.text, "Item", 1);
 
-      await doActionTool.execute({ ref, args: {} }, runContext());
+      await doActionTool.execute({ id, args: {} }, runContext());
 
       expect(actionFns[0]![0]).not.toHaveBeenCalled();
       expect(actionFns[0]![1]).toHaveBeenCalledOnce();
@@ -581,9 +575,9 @@ describe("collection instances targeted by ref", () => {
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
-      const ref = refInPageState(state.text, "Child", 1);
+      const id = idInPageState(state.text, "Child", 1);
 
-      await openTool.execute({ ref, args: {} }, runContext());
+      await openTool.execute({ id, args: {} }, runContext());
 
       expect(openFns[0]).not.toHaveBeenCalled();
       expect(openFns[1]).toHaveBeenCalledOnce();

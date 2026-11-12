@@ -311,8 +311,8 @@ describe("a Step Decision", () => {
       ).toMatchObject({
         kind: "stop",
         reason: "needs_value",
-        next: 'The operation "List.archive" acts on a collection instance, and the current page holds more of them than one decision can offer. Read the page again, pick "ref" yourself and call the operation directly, or try a different approach.',
-        needs: { tool: "List.archive", parameters: ["ref"] },
+        next: 'The operation "List.archive" acts on a collection instance, and the current page holds more of them than one decision can offer. Read the page again, pick "id" yourself and call the operation directly, or try a different approach.',
+        needs: { tool: "List.archive", parameters: ["id"] },
       });
     });
 
@@ -327,7 +327,7 @@ describe("a Step Decision", () => {
         kind: "stop",
         reason: "needs_value",
         next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: List (unavailable: already archived). Try a different approach.',
-        needs: { tool: "List.archive", parameters: ["ref"] },
+        needs: { tool: "List.archive", parameters: ["id"] },
       });
     });
 
@@ -355,7 +355,7 @@ describe("a Step Decision", () => {
         kind: "stop",
         reason: "needs_value",
         next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: List (no ref in the page state), List on ref "e1" (unavailable: already archived). Try a different approach.',
-        needs: { tool: "List.archive", parameters: ["ref"] },
+        needs: { tool: "List.archive", parameters: ["id"] },
       });
       expect(requests).toHaveLength(1);
     });
@@ -479,15 +479,15 @@ describe("a Step Decision", () => {
       });
 
       // The one item it can offer, then none of these.
-      expect(questionsOf(requests[1]).ref!.criteria).toEqual({
+      expect(questionsOf(requests[1]).id!.criteria).toEqual({
         e2: 'List on ref "e2" (button "Item 2")',
         [NONE_OF_THESE_KEY]: "None of these; the item is not offered.",
       });
-      expect(criteriaKeys(requests[1], "ref")).toEqual([
+      expect(criteriaKeys(requests[1], "id")).toEqual([
         "e2",
         NONE_OF_THESE_KEY,
       ]);
-      expect(questionsOf(requests[1]).ref!.instructions).toContain(
+      expect(questionsOf(requests[1]).id!.instructions).toContain(
         `Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`
       );
       expect(verdict).toMatchObject({

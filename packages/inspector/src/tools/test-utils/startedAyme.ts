@@ -159,7 +159,12 @@ export type PageFixture = {
   rootedInstances?: Readonly<
     Record<
       string,
-      readonly { element: Element; available: boolean; reason?: string }[]
+      readonly {
+        id: string;
+        element: Element;
+        available: boolean;
+        reason?: string;
+      }[]
     >
   >;
 };
@@ -199,9 +204,10 @@ export function lookOf({
     rootedInstances: Object.fromEntries(
       Object.entries(rootedInstances).map(([name, instances]) => [
         name,
-        instances.map(({ element, available, reason }) => {
+        instances.map(({ id, element, available, reason }) => {
           const ref = refOf(element);
           return {
+            id,
             ...(ref === undefined ? {} : { ref }),
             available,
             ...(reason === undefined ? {} : { reason }),

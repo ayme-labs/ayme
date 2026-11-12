@@ -142,17 +142,19 @@ describe("tool failures an agent gets, in Chromium", () => {
     );
   });
 
-  it("returns a collection tool's ref that matches no element as a RefResolutionError", async () => {
+  it("returns a rooted tool's id that names no Page Object on the page as a RefResolutionError", async () => {
     // The overlay blocks the item, which leaves its tool unavailable.
     document.querySelector("div")!.remove();
     await expect.poll(() => agentTools().names()).toContain("Item.archive");
 
     expect(
       await agentCall("Item.archive", {
-        ref: "e404",
+        id: "po404404",
         args: {},
       }).catch(errorText)
-    ).toMatch(/^RefResolutionError: .*"e404"/);
+    ).toBe(
+      'RefResolutionError: Cannot call Item.archive on Page Object "po404404": it is not on the page.'
+    );
   });
 
   it.each([
