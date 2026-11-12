@@ -152,7 +152,8 @@ export async function startAgent(
 /**
  * Asks the agent's server for a connect link to `url`, opens it in `page`
  * and waits until the page's tools are MCP tools: until the server lists
- * `snapshot`, a tool every page offers. Returns the link.
+ * `page_objects`, a tool every page offers, with or without
+ * `--browser-tools`. Returns the link.
  */
 export async function connectPage(
   agent: Agent,
@@ -164,7 +165,7 @@ export async function connectPage(
   if (isError) throw new Error(`ayme_connect failed: ${link}`);
   await page.goto(link);
   const deadline = Date.now() + timeout;
-  while (!(await agent.pageToolNames()).includes("snapshot")) {
+  while (!(await agent.pageToolNames()).includes("page_objects")) {
     if (Date.now() > deadline)
       throw new Error(
         `The page's tools never reached the agent. Server log:\n${agent.log}`

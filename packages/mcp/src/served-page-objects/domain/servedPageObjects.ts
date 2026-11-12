@@ -45,8 +45,14 @@ export const ENTRY_MODULE = "entry.js";
  * Inspector contract every started browser runtime publishes on the
  * document's global (ADR-0049). A page that starts Ayme only later still
  * gets both.
+ *
+ * With `webMCP`, the runtime it starts also publishes its tools through
+ * WebMCP; without it, the runtime's WebMCP publication stays off.
  */
-export function initScript(port: number): string {
+export function initScript(
+  port: number,
+  { webMCP = false }: { webMCP?: boolean } = {}
+): string {
   const served = `http://127.0.0.1:${port}${SERVED_PATH}`;
   const events = `ws://127.0.0.1:${port}${EVENTS_PATH}`;
   return `// Written by ayme mcp (experimental) when it started on port ${port}.
@@ -96,7 +102,7 @@ export function initScript(port: number): string {
           ayme = createAyme({
             agentConnection: true,
             inspector: { placement: "external" },
-            pageObjects,
+            pageObjects,${webMCP ? "\n            webMCP: { enabled: true }," : ""}
           });
           ayme.start();
           registered = pageObjects;

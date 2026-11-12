@@ -8,6 +8,16 @@ version. Diagnose with the "The agent cannot reach the page" section of
 For using the page's tools once it is connected, such as a ref that fails to
 resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
 
+- Start command, after `npx -y @ayme-dev/mcp@<version>`:
+  - `mcp` beside another browser automation, such as Playwright MCP,
+    Playwright CLI or agent-browser: it lists the Page Object Tools,
+    `page_objects`, Peek Tools and its own tools, and none of Ayme's own
+    browser driving.
+  - `mcp --browser-tools` when Ayme is your only browser automation: it also
+    lists `snapshot`, the Browser Tools, the app's Custom Tools and `goal`.
+  - `mcp --webmcp` with [served Page Objects](#a-page-that-doesnt-ship-ayme)
+    whose page should also publish them through WebMCP, such as for
+    Playwright CLI. It refuses to start without Page Objects to serve.
 - The server's tools reach you only after your client restarts. When you
   cannot register the server or restart yourself, give the user the
   registration for your client and ask them to restart you.
@@ -22,8 +32,8 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
   If they don't come back, or no tab was paired, call `ayme_connect` again
   and open the new link.
 - When a call answers that the page reloaded or navigated before it
-  answered, the call's outcome is unknown: read the page with `snapshot`
-  before deciding whether to call it again. When it answers that the tab
+  answered, the call's outcome is unknown: read the page, with
+  `page_objects` or a snapshot, before deciding whether to call it again. When it answers that the tab
   closed, call `ayme_connect` again and open the new link.
 - When a tool answers that no page reconnected in its place, the page the tab
   loaded did not pair within a few seconds. A slow page of the app pairs
@@ -42,7 +52,7 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
   dev server's output. A page that loads after the refusal does not pair, and
   the tools answer that no page is connected; a page already paired can keep
   its earlier tools after a refused hot update. Once the build succeeds
-  again, `reload` that page before relying on its tools: it can keep running
+  again, reload that page before relying on its tools: it can keep running
   the Page Objects from before the refusal.
 - Check the connection end to end: invoke the exposed action through Ayme's
   MCP server and confirm its visible effect in the app. A direct Ayme call or

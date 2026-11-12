@@ -233,7 +233,11 @@ export const test = base.extend<
   // the range pages scan, so no other test's page pairs with it.
   agent: async ({ placement }, use) => {
     if (placement !== "external") return use(undefined);
-    const agent = await startAgent("--port", String(await freePort()));
+    const agent = await startAgent(
+      "--port",
+      String(await freePort()),
+      "--browser-tools"
+    );
     await use(agent);
     await agent.close();
   },

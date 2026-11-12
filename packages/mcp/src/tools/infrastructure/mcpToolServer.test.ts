@@ -31,8 +31,10 @@ afterEach(async () => {
 });
 
 /** A server with a paired page, and an agent connected to it over memory. */
-async function connectAgent() {
-  const connection = new AgentConnection();
+async function connectAgent({
+  browserTools = false,
+}: { browserTools?: boolean } = {}) {
+  const connection = new AgentConnection({ browserTools });
   const page = connection.attach({ tab: "a", url: "http://x/" }, () => {})!;
   const server = createMcpToolServer({
     name: "ayme",
@@ -86,7 +88,14 @@ async function connectAgent() {
     };
   };
   const call = async (name: string) => (await answer(name, {})).texts;
-  return { client, publish, call, answer, listChanges: () => listChanges };
+  return {
+    client,
+    connection,
+    publish,
+    call,
+    answer,
+    listChanges: () => listChanges,
+  };
 }
 
 it("announces a changed tool list on presence only, and lists an unavailable tool without its availability", async () => {
@@ -304,4 +313,85 @@ it("tells a tool that went from one never offered, called directly or through ay
     texts: ['No connected page or App Process offers a tool "Panel.paste".'],
     isError: true,
   });
+});
+
+/** A tool of `group`, as a page that ships Ayme or loads served Page Objects reports it. */
+const grouped = (name: string, group: string): PageTool => ({
+  ...tool(name),
+  group,
+});
+
+/** One page tool of each group the runtime reports. */
+const everyGroup = [
+  grouped("Panel.remove", "pageObject"),
+  grouped("snapshot", "agent"),
+  grouped("page_objects", "agent"),
+  grouped("click", "browser"),
+  grouped("read_text", "custom"),
+  grouped("peek.basket", "peek"),
+  grouped("goal", "agent"),
+];
+
+const listedNames = async (agent: Awaited<ReturnType<typeof connectAgent>>) =>
+  (await agent.client.listTools()).tools.map(({ name }) => name);
+
+it("lists the page's Page Object Tools, page_objects and Peek Tools, an App Process's tools and its own tools, and no Browser Tool, snapshot, goal or Custom Tool", async () => {
+  const agent = await connectAgent();
+  agent.connection
+    .attachProcess({ process: "worker" })
+    .publishTools([grouped("peek.node.jobs", "peek"), tool("reindex")]);
+  await agent.publish(everyGroup);
+
+  expect(await listedNames(agent)).toEqual([
+    "ayme_connect",
+    "ayme_list_tools",
+    "ayme_call",
+    "ayme_noop",
+    "Panel.remove",
+    "page_objects",
+    "peek.basket",
+    "peek.node.jobs",
+    "reindex",
+  ]);
+  expect(
+    JSON.parse((await agent.call("ayme_list_tools"))[0]!).map(
+      ({ name }: { name: string }) => name
+    )
+  ).toEqual([
+    "Panel.remove",
+    "page_objects",
+    "peek.basket",
+    "peek.node.jobs",
+    "reindex",
+  ]);
+});
+
+it("refuses a Browser Tool it does not list as unknown, called directly or through ayme_call", async () => {
+  const agent = await connectAgent();
+  await agent.publish(everyGroup);
+
+  const direct = await agent.answer("click", {});
+  const throughCall = await agent.answer("ayme_call", { tool: "snapshot" });
+
+  expect([direct.isError, direct.texts[0]]).toEqual([
+    true,
+    'Unknown tool "click".',
+  ]);
+  expect([throughCall.isError, throughCall.texts[0]]).toEqual([
+    true,
+    'No connected page or App Process offers a tool "snapshot".',
+  ]);
+});
+
+it("lists every tool of the page with Ayme's own Browser Tools on", async () => {
+  const agent = await connectAgent({ browserTools: true });
+  await agent.publish(everyGroup);
+
+  expect(await listedNames(agent)).toEqual([
+    "ayme_connect",
+    "ayme_list_tools",
+    "ayme_call",
+    "ayme_noop",
+    ...everyGroup.map(({ name }) => name),
+  ]);
 });

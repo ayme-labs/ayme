@@ -65,6 +65,13 @@ export const test = base.extend<{
   /** Whether the `agent` fixture's server listens in the scanned range. */
   inScanRange: boolean;
   /**
+   * Whether the `agent` fixture's server starts with `--browser-tools`, so
+   * it lists the page's Browser Tools, `snapshot`, `goal` and Custom Tools;
+   * on unless a spec turns it off, since most specs drive the page with
+   * them.
+   */
+  browserTools: boolean;
+  /**
    * Asks the agent's server for a connect link to `path` on the fixture app,
    * opens it in the page and waits until the page's tools are MCP tools.
    * Returns the link.
@@ -101,10 +108,12 @@ export const test = base.extend<{
     }
   },
   inScanRange: [false, { option: true }],
-  agent: async ({ inScanRange }, use) => {
+  browserTools: [true, { option: true }],
+  agent: async ({ inScanRange, browserTools }, use) => {
+    const options = browserTools ? ["--browser-tools"] : [];
     const agent = await (inScanRange
-      ? startAgent()
-      : startAgent("--port", String(await freePort())));
+      ? startAgent(...options)
+      : startAgent("--port", String(await freePort()), ...options));
     try {
       await use(agent);
     } finally {
@@ -142,12 +151,14 @@ export async function serverAddress(agent: Agent) {
  * Starts `ayme mcp` in a project of its own under the test's output folder,
  * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
  * Objects, and runs the init script it writes in every page of `context`.
- * Returns the agent and the origin of its server, where a page fetches the
- * served code from.
+ * `options` are more options of `ayme mcp`, such as `--webmcp`. Returns the
+ * agent and the origin of its server, where a page fetches the served code
+ * from.
  */
 export async function startServingAgent(
   context: BrowserContext,
-  testInfo: TestInfo
+  testInfo: TestInfo,
+  ...options: string[]
 ) {
   // Beside the fixture's own packages, as a project's `.ayme` sits beside its
   // installed `@ayme-dev/ayme`.
@@ -158,7 +169,12 @@ export async function startServingAgent(
     { recursive: true }
   );
   const port = await freePort();
-  const agent = await startAgent({ cwd: project }, "--port", String(port));
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(port),
+    ...options
+  );
   await context.addInitScript({
     path: join(project, ".ayme", "init-script.js"),
   });

@@ -14,6 +14,13 @@ the command `ayme mcp` from this package, pinned to the version you install:
 npx -y @ayme-dev/mcp@<version> mcp
 ```
 
+It adds your Page Objects to the browser automation your agent already uses.
+Add `--browser-tools` after `mcp` when Ayme is the agent's only browser
+automation: the server then also lists Ayme's own Browser Tools, `snapshot`,
+`goal` and the app's Custom Tools. `--webmcp` makes the page the server serves
+Page Objects to also publish them through WebMCP. `ayme mcp --help` lists the
+options.
+
 Install the package beside `@ayme-dev/ayme`, which declares it as an optional
 peer dependency, and turn the page side on with `agentConnection: true` where
 Ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React,
@@ -60,9 +67,10 @@ another tab. The server hands an auto-paired tab its token, which the tab keeps
 and reconnects with like a link's. If another server has taken that port since,
 it does not know the token: the tab forgets the pairing and looks again.
 
-After pairing, the page's built-in tools and Custom Tools are MCP tools under
-the names the page gives them, and calling one runs it on the page and returns
-its result. The server's own tools stay in the server: the page never publishes
+After pairing, the page's Page Object Tools, `page_objects` and Peek Tools
+are MCP tools under the names the page gives them, and with `--browser-tools`
+its Browser Tools, `snapshot`, `goal` and Custom Tools too; calling one runs it
+on the page and returns its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
 
 Page Object Tools appear and disappear as MCP tools while the page registers

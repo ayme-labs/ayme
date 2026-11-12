@@ -320,7 +320,9 @@ class HarnessedServer {
     this.context = context;
     this.process = spawn(
       process.execPath,
-      [aymeMcpCliPath, "mcp", "--port", String(port)],
+      // Ayme is the arm's only browser automation, so it lists its own
+      // Browser Tools, snapshot and goal.
+      [aymeMcpCliPath, "mcp", "--port", String(port), "--browser-tools"],
       {
         // Scrubbed, so the server carries none of the launcher's Claude Code variables or token.
         env: withoutClaudeVariables(process.env),
