@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        color: var(--foreground);
+        font-family: var(--font-sans);
+      }
+      p {
+        font-size: 13px;
+        color: var(--muted-foreground);
+        line-height: 1.5;
+        margin: 8px 0;
+      }
+      .legend {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+      .key {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <p>
+      Same button, same 1000 ms action budget, 1400 ms of work after the click
+      effect.
+    </p>
+    <svg
+      role="img"
+      aria-label="The click effect precedes the timeout response in all four paths"
+      viewBox="0 0 728 330"
+      style="
+        display: block;
+        width: 100%;
+        height: 330px;
+        font: 13px var(--font-sans);
+        color: var(--foreground);
+      "
+    >
+      <line x1="145" x2="145" y1="24" y2="275" stroke="var(--border)" />
+      <text x="145" y="297" text-anchor="middle" fill="currentColor">0 ms</text>
+      <line x1="275" x2="275" y1="24" y2="275" stroke="var(--border)" />
+      <text x="275" y="297" text-anchor="middle" fill="currentColor">
+        500 ms
+      </text>
+      <line
+        x1="405"
+        x2="405"
+        y1="24"
+        y2="275"
+        stroke="var(--border)"
+        stroke-dasharray="5 4"
+      />
+      <text x="405" y="297" text-anchor="middle" fill="currentColor">
+        1000 ms
+      </text>
+      <line x1="535" x2="535" y1="24" y2="275" stroke="var(--border)" />
+      <text x="535" y="297" text-anchor="middle" fill="currentColor">
+        1500 ms
+      </text>
+      <line x1="665" x2="665" y1="24" y2="275" stroke="var(--border)" />
+      <text x="665" y="297" text-anchor="middle" fill="currentColor">
+        2000 ms
+      </text>
+      <text x="0" y="57" fill="currentColor">Browser Tool</text>
+      <rect
+        x="178.25399999985473"
+        y="43"
+        width="364"
+        height="18"
+        rx="3"
+        fill="var(--chart-2)"
+        opacity=".65"
+      />
+      <circle cx="178.25399999985473" cy="52" r="5" fill="var(--success)" />
+      <circle cx="609.7759999999032" cy="52" r="5" fill="var(--destructive)" />
+      <text
+        x="609.7759999999032"
+        y="81"
+        text-anchor="middle"
+        fill="currentColor"
+      >
+        1788 ms timeout
+      </text>
+      <text x="0" y="120" fill="currentColor">Page Object</text>
+      <rect
+        x="160.88599999990313"
+        y="106"
+        width="364"
+        height="18"
+        rx="3"
+        fill="var(--chart-2)"
+        opacity=".65"
+      />
+      <circle cx="160.88599999990313" cy="115" r="5" fill="var(--success)" />
+      <circle cx="590.8739999998547" cy="115" r="5" fill="var(--destructive)" />
+      <text
+        x="590.8739999998547"
+        y="144"
+        text-anchor="middle"
+        fill="currentColor"
+      >
+        1715 ms timeout
+      </text>
+      <text x="0" y="183" fill="currentColor">Raw Lite</text>
+      <rect
+        x="160.21"
+        y="169"
+        width="364"
+        height="18"
+        rx="3"
+        fill="var(--chart-2)"
+        opacity=".65"
+      />
+      <circle cx="160.21" cy="178" r="5" fill="var(--success)" />
+      <circle cx="524.7819999998063" cy="178" r="5" fill="var(--destructive)" />
+      <text
+        x="524.7819999998063"
+        y="207"
+        text-anchor="middle"
+        fill="currentColor"
+      >
+        1461 ms timeout
+      </text>
+      <text x="0" y="246" fill="currentColor">Host Playwright</text>
+      <rect
+        x="156.986025390625"
+        y="232"
+        width="364"
+        height="18"
+        rx="3"
+        fill="var(--chart-2)"
+        opacity=".65"
+      />
+      <circle cx="156.986025390625" cy="241" r="5" fill="var(--success)" />
+      <circle cx="405.0642959199998" cy="241" r="5" fill="var(--destructive)" />
+      <text
+        x="405.0642959199998"
+        y="270"
+        text-anchor="middle"
+        fill="currentColor"
+      >
+        1000 ms timeout
+      </text>
+    </svg>
+    <div class="legend">
+      <span
+        ><i class="key" style="background: var(--success)"></i>DOM effect</span
+      ><span
+        ><i
+          class="key"
+          style="background: var(--chart-2); border-radius: 2px"
+        ></i
+        >Main thread occupied</span
+      ><span
+        ><i class="key" style="background: var(--destructive)"></i>Timeout
+        response</span
+      >
+    </div>
+    <p>
+      Fast controls succeeded in all four paths. Host Playwright can return
+      while the renderer is still busy; Lite and Ayme run inside that renderer.
+      Source: retained matrix.json on a55e9d15.
+    </p>
+  </body>
+</html>
