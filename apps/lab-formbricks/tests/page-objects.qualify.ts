@@ -82,9 +82,10 @@ async function expectTools(agent: Agent, names: string[]): Promise<void> {
 
 /**
  * How a call names the one Page Object of `className` on the page, as the
- * input of a rooted Page Object Tool: by the Structural Ref of its Page
- * Object Root, which `snapshot` prints before the class name. Every call of a
- * rooted tool below names its Page Object through here.
+ * input of a rooted Page Object Tool: by its Page Object id, which `snapshot`
+ * prints on its Page Object Root, after the class name or, on a root of
+ * several classes, under `id` beside `pom`. Every call of a rooted tool below
+ * names its Page Object through here.
  */
 async function named(
   agent: Agent,
@@ -93,9 +94,14 @@ async function named(
   const snapshot = await agent.call("snapshot");
   expect(snapshot.isError, snapshot.text).toBe(false);
   const { structure } = JSON.parse(snapshot.text) as { structure: string };
-  const ref = new RegExp(`((?:e|s_)\\w+) ${className}\\b`).exec(structure)?.[1];
-  expect(ref, `no ${className} in:\n${structure}`).toBeDefined();
-  return { ref };
+  const id = (new RegExp(`(?:e|s_)\\w+ ${className} (po\\d+)`).exec(
+    structure
+  ) ??
+    new RegExp(
+      `/pom: \\[[^\\]]*"${className}"[^\\]]*\\]\\s+- /id: (po\\d+)`
+    ).exec(structure))?.[1];
+  expect(id, `no ${className} in:\n${structure}`).toBeDefined();
+  return { id };
 }
 
 /**
