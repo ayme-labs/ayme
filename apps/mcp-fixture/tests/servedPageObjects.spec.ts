@@ -233,6 +233,9 @@ test("a Page Object that fails to compile is reported with its file, and the pag
       .toMatch(
         /did not build\. The page gets the last good build\.\n[^\n]*pom[\\/]PlainPage\.ts\b/
       );
+    // The one error, where it is in the file as written.
+    expect(agent.log).toMatch(/pom[\\/]PlainPage\.ts:22:1: '}' expected\.\n/);
+    expect(agent.log.match(/PlainPage\.ts:\d+:\d+: /g)).toHaveLength(1);
     await page.reload();
 
     await expect
@@ -277,6 +280,11 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
       `The Page Objects entry ${entry} did not build`
     );
     expect(failing.note).toContain("No inputs were found in config file");
+    expect(failing.note).toContain(
+      "The server is watching for changes: it rebuilds the entry when a file it read changes."
+    );
+    expect(failing.note).not.toContain("Fix it");
+    expect(failing.note).not.toContain("Make the");
     expect(failing.note).not.toMatch(/^This server serves Page Objects/);
     for (const tool of ["ayme_list_tools", "snapshot"]) {
       const { text, isError } = await agent.call(tool);
@@ -285,6 +293,11 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
         /^No page is connected\. The Page Objects entry .* did not build/
       );
       expect(text).toContain("No inputs were found in config file");
+      expect(text).toContain(
+        "The server is watching for changes: it rebuilds the entry when a file it read changes."
+      );
+      expect(text).not.toContain("Fix it");
+      expect(text).not.toContain("Make the");
     }
 
     await writeFile(tsconfig, withInclude(".ayme/**/*.ts"));

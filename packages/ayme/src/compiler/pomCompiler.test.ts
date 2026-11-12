@@ -78,6 +78,26 @@ describe("createPomCompiler", () => {
     expect(compiled?.code).not.toContain("registerCompiledPom");
   });
 
+  it("names a syntax error where it is in the source, not in the compiled module", () => {
+    const fileName = fixture("twoPagesPom");
+    const broken = source(fileName).replace(
+      "return new ResultsPage();",
+      "return new ResultsPage(;"
+    );
+
+    expect(() =>
+      createPomCompiler({ include: true, tsconfigPath }).compile(
+        fileName,
+        broken,
+        { emit: "js" }
+      )
+    ).toThrow(
+      new Error(
+        `Could not transpile Ayme POM ${fileName}:\n${fileName}:16:28: ')' expected.`
+      )
+    );
+  });
+
   it("leaves a module that declares no Page Object Model alone", () => {
     expect(
       createPomCompiler({ include: true }).compile(
