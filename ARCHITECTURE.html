@@ -822,7 +822,7 @@
       },
       {
         "name": "Browser automation",
-        "provides": "the browser a coding agent drives, such as Playwright MCP, Playwright CLI or a Playwright script, and loads the init script `ayme mcp` writes into every page it opens. The script continues only in a top-level http(s) document, and returns at once in a frame, in a document such as `about:blank`, and on a page of `ayme mcp` itself",
+        "provides": "the tool that drives the browser, such as Playwright MCP, Playwright CLI or a Playwright script. It loads the init script `ayme mcp` writes into every page it opens",
         "evidence": {
           "text": "verified: `docs/guide/guides/page-objects-without-ayme.md`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `apps/mcp-fixture/tests/servedPageObjects.spec.ts`",
           "inferred": false,
@@ -833,8 +833,8 @@
     "containers": [
       {
         "name": "Browser runtime",
-        "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection, which with the external Inspector hands the Inspector contract to the MCP server as plain data instead of mounting the panel. It installs the document's In-page Module, or binds to it when another host installed it first, and through that module captures the page and runs its actions",
-        "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`, or, with served Page Objects, by the init script, with the Agent Connection on and the external Inspector; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
+        "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection. It captures the page and runs its actions through the document's In-page Module, which it installs unless another host already has",
+        "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`), by `createAyme` or, with served Page Objects, by the init script; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
         "evidence": {
           "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `packages/ayme/src/page-state/infrastructure/browserInPage.ts`, `packages/ayme/src/in-page/`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
           "inferred": false,
@@ -843,7 +843,7 @@
       },
       {
         "name": "Build plugin",
-        "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries Ayme at all. Without it, the runtime's root and internal entries and the framework packages resolve to absent entries and each Page Object Model compiles to a stand-in. A build prints one line saying which it is, except a Next.js build that compiles no Page Object Model",
+        "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries Ayme at all",
         "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only `compiler` entry, which runs the project's own TypeScript compiler",
         "evidence": {
           "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/ayme/src/compiler/pomCompiler.ts`, `packages/ayme/src/compiler/derivePomManifests.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
@@ -853,7 +853,7 @@
       },
       {
         "name": "Ayme MCP server",
-        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools, and serves the external Inspector: its page and script over the same loopback HTTP server, and a WebSocket per window whose requests it relays to the paired page and whose answers and events it relays back; experimentally, when the project has a Page Objects entry, it also builds that entry with esbuild and the project's own Page Object compiler, rebuilding it as the files change, and serves the build with the project's runtime as ES modules over the same HTTP server, and on each such start writes `.ayme/init-script.js` for the browser automation to load. The init script stands aside on a page whose own runtime has started by load and idle, whether or not that runtime has the Agent Connection. A known gap: an app that starts Ayme only later still gets a second runtime (#1238)",
+        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools beside its own. It serves the external Inspector and relays between its windows and the paired page. Experimentally, when the project has a Page Objects entry, it also builds and serves that entry with the project's runtime, and writes the init script the browser automation loads. The init script starts no runtime on a page whose app has already started Ayme. Known gap: an app that starts Ayme late still gets a second runtime (issue #1238)",
         "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for served Page Objects",
         "evidence": {
           "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `packages/mcp/src/served-page-objects/infrastructure/initScriptFiles.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
@@ -1077,7 +1077,7 @@
           },
           {
             "dir": "←",
-            "text": "with served Page Objects, the runtime and the Page Objects as ES modules over HTTP, and a stamp of each rebuild over a WebSocket at `/page-objects/events`, after which the page swaps in the new Page Objects"
+            "text": "with served Page Objects, the runtime and the Page Objects as ES modules over HTTP, and a stamp of each rebuild over a WebSocket at `/page-objects/events`"
           }
         ],
         "evidence": {
@@ -1226,7 +1226,7 @@
         },
         "containers": {
           "Browser runtime": {
-            "how": "the app's development build, with `inspector` and `agentConnection` on under the framework's development flag",
+            "how": "the app's development build, with `inspector` and `agentConnection` on under the framework's development flag; or, with served Page Objects, the runtime the init script starts in a page the browser automation opened, whose app need not ship Ayme",
             "node": "the host app's page in the developer's browser",
             "nodeKey": "the host app's page in the developer's browser",
             "runs": true,
@@ -1239,7 +1239,7 @@
             }
           },
           "Build plugin": {
-            "how": "runs inside the dev server's bundler on every transform; the dev server needs `include: true` too, or the page gets a build without Ayme",
+            "how": "runs inside the dev server's bundler on every transform, when its configuration has `include: true`",
             "node": "the host app's dev server process",
             "nodeKey": "the host app's dev server process",
             "runs": true,
@@ -1809,7 +1809,7 @@
             }
           },
           "Ayme MCP server": {
-            "how": "does not run here; the hosted builds leave out the Agent Connection and the coding-agent wizard, and the workflow fails if the wizard is in the output",
+            "how": "does not run here; the hosted builds leave out the Agent Connection",
             "node": "",
             "nodeKey": "",
             "runs": false,
@@ -1861,7 +1861,7 @@
             }
           },
           "Playground": {
-            "how": "the static Vite build plus the Jekyll-rendered docs under `/docs`; the build is made twice, once for each base path, and only the `/playground/` copy loads the landing's Google Tag Manager container",
+            "how": "the static Vite build plus the Jekyll-rendered docs under `/docs`, built once for each base path",
             "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
             "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
             "runs": true,
