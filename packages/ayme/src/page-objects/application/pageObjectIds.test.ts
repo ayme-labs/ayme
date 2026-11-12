@@ -94,4 +94,14 @@ describe("Page Object ids", () => {
     expect(await idsOf(ids, ["e1"])).toEqual(["po4"]);
     expect(await ids.rootOf("po1")).toBeUndefined();
   });
+
+  it("gives a root one id when two reads ask for it at once", async () => {
+    const { driver } = page("e1");
+    const ids = createPageObjectIds(driver);
+
+    const reads = await Promise.all([idsOf(ids, ["e1"]), idsOf(ids, ["e1"])]);
+
+    expect(reads).toEqual([["po1"], ["po1"]]);
+    expect(await idsOf(ids, ["e1"])).toEqual(["po1"]);
+  });
 });

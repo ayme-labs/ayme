@@ -11,6 +11,14 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
   // Each id given and the Structural Ref its root's element had when last read.
   const roots = new Map<PageObjectId, string>();
   let given = 0;
+  // One read at a time: two reads that both found a root unread would each
+  // give it an id.
+  let last: Promise<unknown> = Promise.resolve();
+  function inTurn<T>(read: () => Promise<T>): Promise<T> {
+    const ran = last.then(read);
+    last = ran.catch(() => {});
+    return ran;
+  }
 
   /** The id of each root still on the page, by the ref its element has now. */
   async function current(): Promise<Map<string, PageObjectId>> {
@@ -31,30 +39,34 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
      * first time gets the next id, and one whose element is not on the page
      * is undefined.
      */
-    async rootsOf(
+    rootsOf(
       rootRefs: readonly string[]
     ): Promise<({ id: PageObjectId; ref: string } | undefined)[]> {
-      const byRoot = await current();
-      const now = await driver.currentRefs(rootRefs);
-      return now.map((ref) => {
-        if (!ref) return undefined;
-        let id = byRoot.get(ref);
-        if (!id) {
-          id = pageObjectIdOf(++given);
-          roots.set(id, ref);
-          byRoot.set(ref, id);
-        }
-        return { id, ref };
+      return inTurn(async () => {
+        const byRoot = await current();
+        const now = await driver.currentRefs(rootRefs);
+        return now.map((ref) => {
+          if (!ref) return undefined;
+          let id = byRoot.get(ref);
+          if (!id) {
+            id = pageObjectIdOf(++given);
+            roots.set(id, ref);
+            byRoot.set(ref, id);
+          }
+          return { id, ref };
+        });
       });
     },
     /**
      * The Structural Ref the element of `id`'s root has now; undefined once
      * it left the page, or for an id never given.
      */
-    async rootOf(id: string): Promise<string | undefined> {
-      if (!roots.has(id as PageObjectId)) return undefined;
-      await current();
-      return roots.get(id as PageObjectId);
+    rootOf(id: string): Promise<string | undefined> {
+      return inTurn(async () => {
+        if (!roots.has(id as PageObjectId)) return undefined;
+        await current();
+        return roots.get(id as PageObjectId);
+      });
     },
   };
 }
