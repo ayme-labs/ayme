@@ -108,24 +108,8 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
-/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
-const aymeTools = [
-  "snapshot",
-  "click",
-  "hover",
-  "type",
-  "fill",
-  "check",
-  "uncheck",
-  "select_option",
-  "fill_form",
-  "press_key",
-  "generate_locator",
-  "navigate",
-  "navigate_back",
-  "navigate_forward",
-  "reload",
-];
+/** Ayme's own tool WebMCP publishes: every page that runs Ayme has it. */
+const aymeTools = ["page_objects"];
 
 /**
  * Opens the counter page with the recording driver and waits for publication.

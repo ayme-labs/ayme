@@ -60,7 +60,7 @@ test("a checked checkbox reads as checked in its node's What the model sees, as 
   await page.getByRole("checkbox", { name: "Urgent" }).check();
 
   await expect(modelSees.pageState).toContainText("[checked]");
-  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
+  const { structure } = (await new AgentView(page).run("snapshot", {})) as {
     structure: string;
   };
   const agentLines = structure.split("\n").map((line) => line.trim());

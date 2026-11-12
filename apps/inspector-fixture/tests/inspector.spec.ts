@@ -230,15 +230,19 @@ test("the header's menu and switches work by mouse inside the closed shadow root
   await expect(inspector.panel).toBeVisible();
 });
 
-test("with the tools published and no Agent Connection, the header says no agent and WebMCP is published", async ({
-  inspector,
-}) => {
-  const { connections } = inspector.header;
+test.describe("with no agent connected", () => {
+  test.use({ pairAgent: false });
 
-  await expect(connections.pill).toHaveText("No agent");
-  await connections.open();
-  await expect(connections.agent.state).toHaveText("Off");
-  await expect(connections.webMCP.state).toHaveText("Published");
+  test("with the tools published and no Agent Connection, the header says no agent and WebMCP is published", async ({
+    inspector,
+  }) => {
+    const { connections } = inspector.header;
+
+    await expect(connections.pill).toHaveText("No agent");
+    await connections.open();
+    await expect(connections.agent.state).toHaveText("Off");
+    await expect(connections.webMCP.state).toHaveText("Published");
+  });
 });
 
 test("with WebMCP publishing off, the Connections popover says so and offers the option that turns it on", async ({

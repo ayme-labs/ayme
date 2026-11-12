@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { executePublishedTool } from "@ayme-dev/webmcp/testing";
+import { AgentView } from "./agentView";
 
 import { expect, openFixture, outline, test } from "./fixtures";
 
@@ -10,11 +10,11 @@ import { expect, openFixture, outline, test } from "./fixtures";
 test.use({ fixturePath: "/models.html" });
 
 /**
- * The Page Object Models snapshot describes, called over WebMCP the
- * way an agent calls it.
+ * The Page Object Models snapshot describes, called through the page's Ayme
+ * MCP server the way an agent calls it.
  */
 async function modelsAnAgentIsTold(page: Page) {
-  const { pomDefinitions } = (await executePublishedTool(page, "snapshot")) as {
+  const { pomDefinitions } = (await new AgentView(page).run("snapshot")) as {
     pomDefinitions: string;
   };
   const names = [...pomDefinitions.matchAll(/^(\S+)/gm)].map(
