@@ -110,7 +110,8 @@ test("an app that ships Ayme keeps its own runtime, and ayme mcp's init script s
   const agent = await startAgent(
     { cwd: project },
     "--port",
-    String(await freePort())
+    String(await freePort()),
+    "--browser-tools"
   );
   try {
     await context.addInitScript({

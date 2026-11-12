@@ -37,6 +37,8 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 
 4. Ask the agent to call `ayme_connect` with the page's URL and open the link. The answer adds a line naming the init script, and your Page Objects' tools become the agent's tools. While no build of the entry has succeeded, that line, and the answer to a page tool while no page is connected, give the build's first error instead.
 
+To have the page also publish your Page Objects' tools through WebMCP, for a browser tool that calls a page's WebMCP tools such as Playwright CLI, add `--webmcp` after `mcp` in the registration, such as `npx -y @ayme-dev/mcp@<version> mcp --webmcp`. It is off by default, and `ayme mcp` refuses to start with it when there are no Page Objects to serve.
+
 `bypassCSP` lets a page with a Content Security Policy connect to `ayme mcp`. The `local-network-access` permission lets a page on a public site reach `127.0.0.1`; without it, Chrome blocks the connection when headless and waits on a permission prompt when headed.
 
 ## What to expect

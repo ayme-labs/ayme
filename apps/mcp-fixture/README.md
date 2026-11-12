@@ -28,7 +28,11 @@ it through an MCP SDK client over stdio, as a coding agent does. The `connect`
 fixture calls `ayme_connect`, opens the link in the Playwright page and waits
 until the page's tools are MCP tools. Assertions go through the MCP client, and
 through the page only for what the page itself shows, such as its address bar.
-Add a spec file for a new concern and reuse `fixtures.ts`.
+The `agent` fixture starts the server with `--browser-tools`, since most specs
+drive the page with its Browser Tools, `snapshot` and Custom Tools; a spec that
+sets `browserTools: false` gets the default tool list. `toolLists.spec.ts`
+covers what the server lists without and with `--browser-tools`, and
+`--webmcp`. Add a spec file for a new concern and reuse `fixtures.ts`.
 
 `servedPageObjects.spec.ts` copies `outside/.ayme` into its test's output
 folder, starts `ayme mcp` there, and opens `plain.html` in a context whose

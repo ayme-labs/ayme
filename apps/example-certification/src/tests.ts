@@ -564,7 +564,11 @@ export function agentConnectionTests({
         const scripts = loadedScripts(page);
         // Outside the range a page's auto-pair scan probes, so another
         // example's page running beside this one never pairs with it.
-        const agent = await startAgent("--port", String(await freePort()));
+        const agent = await startAgent(
+          "--port",
+          String(await freePort()),
+          "--browser-tools"
+        );
         try {
           // A dev server may compile the page on its first request, which
           // takes over 10 s on CI.

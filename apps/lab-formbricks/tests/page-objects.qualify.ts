@@ -42,7 +42,7 @@ const test = base.extend<{
   agent: Agent;
 }>({
   agent: async ({ context }, use) => {
-    const agent = await startAgent({ cwd: LAB_DIR });
+    const agent = await startAgent({ cwd: LAB_DIR }, "--browser-tools");
     try {
       // The server wrote it as it started, naming its port.
       await context.addInitScript({

@@ -3,7 +3,7 @@ import { ImageResultSchema } from "../../contract";
 import { errorText } from "../domain/toolResult";
 
 /**
- * Reports the page's tools, with each one's group and availability, when
+ * Reports the page's tools, with each one's availability and group, when
  * the channel opens and after every change.
  */
 export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
@@ -11,13 +11,13 @@ export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
     void channel
       .publishTools(
         list.map(
-          ({ name, description, inputSchema, group, available, reason }) => ({
+          ({ name, description, inputSchema, available, reason, group }) => ({
             name,
             description,
             inputSchema,
-            group,
             available,
             reason,
+            group,
           })
         )
       )

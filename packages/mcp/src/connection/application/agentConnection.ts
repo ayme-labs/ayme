@@ -6,6 +6,7 @@ import type {
   ToolCall,
   ToolCallOutcome,
 } from "../../contract";
+import { listsPageTool } from "../domain/listedPageTools";
 import * as tabLifecycle from "../domain/tabLifecycle";
 import { InspectorLink } from "./inspectorLink";
 import {
@@ -130,12 +131,21 @@ export class PageSession extends ChannelSession {
   /** The requests and events of an external Inspector, relayed to this page. */
   readonly inspector = new InspectorLink();
 
+  readonly #lists: (tool: PageTool) => boolean;
+
+  /** The page's tools are those it reports that `lists` keeps. */
   constructor(
     disconnect: () => void,
-    onToolsChanged: (tools: readonly PageTool[]) => void
+    onToolsChanged: (tools: readonly PageTool[]) => void,
+    lists: (tool: PageTool) => boolean = () => true
   ) {
     super(onToolsChanged);
     this.disconnect = disconnect;
+    this.#lists = lists;
+  }
+
+  override publishTools(tools: readonly PageTool[]) {
+    super.publishTools(tools.filter(this.#lists));
   }
 }
 
@@ -175,8 +185,13 @@ type ToolHolder = PageSession | ProcessSession;
  * `unansweredCallText`). While the page's tab is navigating, disconnected
  * or reconnected, a call for the page waits for the new page (see
  * `TabLifecycle`).
+ *
+ * Of the page's tools it keeps only those the server lists: without
+ * `browserTools`, none of Ayme's own browser driving (see `listsPageTool`).
+ * An App Process's tools it keeps all.
  */
 export class AgentConnection {
+  readonly #browserTools: boolean;
   #page: PageSession | undefined;
   /** In the order they connected, which decides who keeps a name. */
   readonly #processes = new Map<string, ProcessSession>();
@@ -195,6 +210,10 @@ export class AgentConnection {
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
   #versionGap: string | undefined;
+
+  constructor({ browserTools = false }: { browserTools?: boolean } = {}) {
+    this.#browserTools = browserTools;
+  }
 
   /** The tools the agent sees: the page's, then the App Processes'. */
   get tools(): readonly PageTool[] {
@@ -292,16 +311,20 @@ export class AgentConnection {
     }
 
     this.#versionGap = undefined;
-    const page = new PageSession(disconnect, (tools) => {
-      if (this.#page !== page) return;
-      this.#apply(
-        tabLifecycle.reported(
-          this.#lifecycle,
-          tools.map((tool) => tool.name)
-        )
-      );
-      this.#emit({ type: "toolsChanged", tools: this.tools });
-    });
+    const page = new PageSession(
+      disconnect,
+      (tools) => {
+        if (this.#page !== page) return;
+        this.#apply(
+          tabLifecycle.reported(
+            this.#lifecycle,
+            tools.map((tool) => tool.name)
+          )
+        );
+        this.#emit({ type: "toolsChanged", tools: this.tools });
+      },
+      (tool) => listsPageTool(tool, { browserTools: this.#browserTools })
+    );
     this.#page = page;
     this.#apply(transition);
     this.#emit({ type: "paired" });
