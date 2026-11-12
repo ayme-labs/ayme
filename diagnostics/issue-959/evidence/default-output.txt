@@ -1,0 +1,8 @@
+• turbo 2.11.3
+{"driver":"host","mode":"hover","iteration":0,"rows":7,"gap":8,"openMs":60,"ms":303,"status":"completed"}
+{"driver":"lite","mode":"hover","iteration":0,"rows":7,"gap":8,"openMs":37,"ms":270,"status":"completed"}
+{"driver":"ayme","mode":"hover","iteration":0,"rows":7,"gap":8,"openMs":423,"ms":535,"status":"completed"}
+{"driver":"host","mode":"click","iteration":0,"rows":7,"gap":8,"openMs":43,"ms":79,"status":"completed"}
+{"driver":"lite","mode":"click","iteration":0,"rows":7,"gap":8,"openMs":36,"ms":151,"status":"completed"}
+{"driver":"ayme","mode":"click","iteration":0,"rows":7,"gap":8,"openMs":410,"ms":407,"status":"completed"}
+PASS 6 real Radix submenu selections
