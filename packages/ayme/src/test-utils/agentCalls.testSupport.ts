@@ -23,8 +23,12 @@ import {
   getPomDefinitions,
   createPage,
   pageObjectIdsOf,
+  browserRegistry,
 } from "../page-objects/infrastructure";
-import type { PageObjectId } from "../page-objects/domain";
+import {
+  renderPageObjectTree,
+  type PageObjectId,
+} from "../page-objects/domain";
 import { resolveTools, sessionReach } from "../runtime";
 import { callers } from "../shared";
 import type { RunContext } from "../runs/application";
@@ -74,6 +78,8 @@ export function runContext(
     navigation: documentNavigation(globalThis.document),
     ...(routerNavigate() ? { routerNavigate: routerNavigate() } : {}),
     pomDefinitions: getPomDefinitions,
+    pageObjectTree: async () =>
+      renderPageObjectTree(await browserRegistry().readPageObjectTree()),
     get pageStateSession() {
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },

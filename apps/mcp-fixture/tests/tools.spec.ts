@@ -15,7 +15,7 @@ test("the page's built-in tools and Custom Tools are MCP tools under the page's 
 
   const names = await agent.toolNames();
   expect(names).toEqual(
-    expect.arrayContaining(["snapshot", "click", "read_text"])
+    expect.arrayContaining(["snapshot", "page_objects", "click", "read_text"])
   );
   expect(names.filter((name) => SERVER_TOOLS.includes(name))).toEqual(
     SERVER_TOOLS
@@ -68,6 +68,7 @@ test("the server's own tools are never published to the page's WebMCP tools", as
   await connect("/?webmcp");
 
   await expect.poll(() => publishedToolNames(page)).toContain("snapshot");
+  expect(await publishedToolNames(page)).toContain("page_objects");
   for (const name of SERVER_TOOLS)
     expect(await publishedToolNames(page)).not.toContain(name);
 });

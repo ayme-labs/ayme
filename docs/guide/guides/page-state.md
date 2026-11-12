@@ -33,6 +33,20 @@ A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-obj
 
 A Page Object Tool of such a class takes the id as `id`, for a page, a single child and a collection item alike: `ListItem.archive({ id: "po3" })`. An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ListItem.archive on Page Object "po3": it is not on the page.` So does the id of a Page Object of another class: `it is not a ListItem on the page`.
 
+An agent reads the ids without the whole page state from `page_objects`, which answers the Page Objects on the page as a tree: each one's class, its declared children with their values (an element child as its accessibility subtree), and the id of each Page Object of a class with a root. It carries no tool names, schemas or Page Object definitions:
+
+```text
+ShoppingListPage
+  title: heading "Groceries" [level=1]
+  items:
+    - Item po1
+        name: text: Milk
+    - Item po2
+        name: text: Eggs
+```
+
+Every id it prints is one that Page Object's tools take. It answers `No Page Object is on the page.` when none is.
+
 In TypeScript the id is a `PageObjectId`, exported from `@ayme-dev/ayme`. It is a type of its own: a Structural Ref (`AriaRef`) is not assignable to it, nor it to a Structural Ref.
 
 ## Keep parts of the page out

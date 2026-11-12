@@ -673,6 +673,7 @@ it("runs goal as the application while publication is unavailable", async () => 
       page: expect.any(Object),
       navigation: expect.any(Object),
       pomDefinitions: expect.any(Function),
+      pageObjectTree: expect.any(Function),
       pageStateSession: getPageStateSession(document),
       // A session handed no Reach measures Chromium's geometry.
       reach: pageState.geometryReach,

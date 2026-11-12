@@ -89,6 +89,8 @@ export function standInPageDriver(deps: {
 
   const driver: StandInPageDriver = {
     isLocator: (value): value is Locator => deps.isLocator(value),
+    // A stand-in locator may not render an aria snapshot; one that cannot rejects.
+    ariaSnapshot: async (locator) => locator.ariaSnapshot(),
     async probe(locator): Promise<RootState> {
       const refs = await refsOf(locator);
       const element = deps.elementsOf(locator)[0];

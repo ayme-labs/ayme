@@ -33,14 +33,15 @@ Every built-in tool Ayme publishes, with its input.
 - An option a tool does not declare is rejected with an error naming it; it is never ignored.
 - Every Browser Tool except `generate_locator` and `screenshot` returns the action result: `page_changed`, `settled`, `changes_before` and `changes` when they have a change, and, when it has one, the action's own `result`. [Page state](../guides/page-state.md) explains the two parts of the Change Record. An action that starts a [full page load](../guides/page-state.md#full-page-loads) answers with `loading` and `next` as well.
 
-## snapshot and goal
+## snapshot, page_objects and goal
 
-| Tool       | Input                         |
-| ---------- | ----------------------------- |
-| `snapshot` | `names?`                      |
-| `goal`     | `goal`, `maxSteps`, `values?` |
+| Tool           | Input                         |
+| -------------- | ----------------------------- |
+| `snapshot`     | `names?`                      |
+| `page_objects` | none                          |
+| `goal`         | `goal`, `maxSteps`, `values?` |
 
-`snapshot` returns the page state, as [Page state](../guides/page-state.md) describes; `names` limits the Page Object Model definitions it includes. `goal` runs the Goal Loop and is published only when the Goal Loop is configured.
+`snapshot` returns the page state, as [Page state](../guides/page-state.md) describes; `names` limits the Page Object Model definitions it includes. `page_objects` returns the Page Objects on the page as a tree of class names, declared children with their values, and [Page Object ids](../guides/page-state.md#page-object-ids), as text. `goal` runs the Goal Loop and is published only when the Goal Loop is configured.
 
 ## In the Goal Loop
 

@@ -9,7 +9,10 @@ import {
   type PageObjectConstructor,
 } from "../page-objects/application";
 import { getPomDefinitionsOf } from "../page-objects/infrastructure";
-import { requiredDescription } from "../page-objects/domain";
+import {
+  renderPageObjectTree,
+  requiredDescription,
+} from "../page-objects/domain";
 import {
   configureCustomToolsOf,
   configureRouterNavigateOf,
@@ -18,6 +21,7 @@ import {
 import type { peeksOf } from "../tools/infrastructure";
 import {
   getPageContextTool,
+  pageObjectsTool,
   peekToolName,
   recordAgentImageRun,
   type CustomTool,
@@ -762,6 +766,7 @@ export function createAymeOn(
         {
           reads:
             tool === getPageContextTool ||
+            tool === pageObjectsTool ||
             (target.peeks()?.isPeekTool(tool) ?? false),
         },
         () =>
@@ -832,6 +837,8 @@ export function createAymeOn(
         ...(routerNavigate ? { routerNavigate } : {}),
         pomDefinitions: (...names) =>
           getPomDefinitionsOf(target.registry(), ...names),
+        pageObjectTree: async () =>
+          renderPageObjectTree(await target.registry().readPageObjectTree()),
         pageStateSession: target.pageState().session,
         reach,
       });

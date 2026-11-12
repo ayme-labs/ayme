@@ -341,6 +341,7 @@ const highlight: CustomTool = {
 /** Every tool of the fixture session, in publication order, with its group. */
 const EXPECTED_TOOLS: [string, PublishedToolGroup][] = [
   ["snapshot", "agent"],
+  ["page_objects", "agent"],
   ["click", "browser"],
   ["hover", "browser"],
   ["type", "browser"],

@@ -50,6 +50,8 @@ import {
 } from "./compiledPoms";
 import type { PageDriver } from "./pageDriver";
 import { createPageObjectIds, type PageObjectIds } from "./pageObjectIds";
+import { readPageObjectTree as readTree } from "./pageObjectTree";
+import type { PageObjectTreeNode } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
 
@@ -430,6 +432,16 @@ export function createPomRegistry(
   }
 
   /**
+   * Package-internal: the Page Object Tree of the page now, after a probe
+   * run that began after this call: each present Page Object, nested as
+   * the models nest, with the Page Object id of each one with a root.
+   */
+  async function readPageObjectTree(): Promise<PageObjectTreeNode[]> {
+    await probeRegisteredPomMembers();
+    return readTree(driver, [...registeredPoms], pageObjectIds);
+  }
+
+  /**
    * Package-internal: every element the registered Page Objects' members
    * hold now, as its Structural Ref, one target per element and concrete
    * member path, in
@@ -591,6 +603,7 @@ export function createPomRegistry(
     listRegisteredPoms,
     pageObjectIdsOf,
     probeRegisteredPomMembers,
+    readPageObjectTree,
     registerPageObject,
     resetRegisteredPoms,
     subscribeToRegisteredPoms,
