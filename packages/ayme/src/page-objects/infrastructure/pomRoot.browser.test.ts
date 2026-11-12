@@ -105,8 +105,7 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     for (const name of ["Shell.open", "Child.open"])
       expect(listed(name)?.inputSchema).toMatchObject({
-        required: expect.arrayContaining(["ref"]),
-        properties: { ref: { type: "string" } },
+        properties: { id: { type: "string" }, ref: { type: "string" } },
       });
     const state = await agent.getPageState();
     const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
@@ -530,7 +529,7 @@ describe("Page Object Root by option", () => {
     session.pom.register(SideDrawer);
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["SideDrawer.open"]);
-    expect((await agent.getPageState()).text).toContain("SideDrawer: Menu");
+    expect((await agent.getPageState()).text).toMatch(/SideDrawer po\d+: Menu/);
     expect(observedMembers()).toEqual(["root"]);
 
     document.getElementById("drawer")!.remove();

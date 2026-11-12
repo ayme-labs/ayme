@@ -37,6 +37,7 @@ import {
 import {
   PageStateSession,
   type PageAction,
+  type RootIds,
 } from "../application/pageStateSession";
 
 /**
@@ -82,6 +83,8 @@ export type PageStateHost = {
 type CaptureSources = {
   /** What a capture waits for before it reads the page: a completed probe run. */
   probe?: () => Promise<void>;
+  /** The id of each Page Object Root, which the page state text prints on it. */
+  rootIds?: RootIds;
   /** The filter of the elements the app leaves out, and everything under them. */
   ignore?: SessionFilter;
   /** The Custom Tools' filters, whose accepted refs every capture carries. */
@@ -144,6 +147,18 @@ export function providePageObjectProbeOf(
   probe: (() => Promise<void>) | undefined
 ): void {
   sourcesOf(page).probe = probe;
+}
+
+/**
+ * Package-internal: what the page state text of `page` reads the id of each
+ * Page Object Root from, by Structural Ref, set while the registry observes
+ * it. Unset, the text prints no id.
+ */
+export function providePageObjectIdsOf(
+  page: Page,
+  rootIds: RootIds | undefined
+): void {
+  sourcesOf(page).rootIds = rootIds;
 }
 
 /**
@@ -271,7 +286,9 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
     newHistory(url),
     captureWith,
     { begin: () => host.begin(elementInputs) },
-    newHistory
+    newHistory,
+    async (rootRefs) =>
+      (await read.rootIds?.(rootRefs)) ?? rootRefs.map(() => undefined)
   );
   let bound: DocumentToken | undefined;
   host.bind((visit) => {

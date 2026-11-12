@@ -18,6 +18,7 @@ export {
   renderPomDefinitions,
   renderSchema,
 } from "./pomDefinitionText";
+export type { PageObjectId } from "./pageObjectId";
 export { rootTargetPath } from "./pomTree";
 export type { RegisteredPomTarget } from "./pomTree";
 export { rootlessClassRefusals } from "./pomClasses";

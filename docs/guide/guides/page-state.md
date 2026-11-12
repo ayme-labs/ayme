@@ -6,13 +6,15 @@ What an agent sees of your page: the Structural Page State, the Structural Refs 
 
 Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ListItem`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
 
+The state an agent reads also prints each Page Object's id on its root, after the class: `e9 ListItem po3`. On a root of several classes it is the `id` property beside `pom`. See [Page Object ids](#page-object-ids).
+
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
 Page state works without WebMCP publication. An agent reads it with the `snapshot` tool, which returns the state as `structure` and the definitions of the registered Page Object Models as `pomDefinitions`. Your own code runs the same tool with `ayme.tools.run("snapshot", {})`.
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks a rooted Page Object instance, including a page or single child. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
+Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks a rooted Page Object instance, including a page or single child, in place of its [id](#page-object-ids). A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -24,6 +26,14 @@ Each node in the state carries a Structural Ref, such as `e5`. An agent passes i
 Refs restart with each document, so a ref from before a full load can resolve to a different node that the new document numbered the same, and the call succeeds on that node; only a ref the new document never issued fails, with the first reason.
 
 In each case, take a `snapshot` and use the ref it prints for the node. When an input writes a ref another way, such as `[ref=e36]`, the message names the ref it writes, `e36`, and the tool takes that ref alone.
+
+## Page Object ids
+
+A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The page numbers its Page Objects in the order it first shows them. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
+
+A Page Object Tool of such a class takes the id as `id`: `ListItem.archive({ id: "po3" })`. An `id` that is not written `po<n>` is refused with a `ToolInputError`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ListItem.archive on Page Object "po3": it is not on the page.`
+
+In TypeScript the id is a `PageObjectId`, exported from `@ayme-dev/ayme`. It is a type of its own: a Structural Ref (`AriaRef`) is not assignable to it, nor it to a Structural Ref.
 
 ## Keep parts of the page out
 

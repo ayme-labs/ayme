@@ -17,9 +17,11 @@ import {
 } from "../../page-state/domain";
 import { assertLocatorReachable } from "../../page-state/infrastructure";
 import {
+  asSentence,
   RefResolutionError,
   refuseViolations,
   RuntimeStateError,
+  ToolInputError,
 } from "../../shared";
 import {
   availabilityOf,
@@ -48,6 +50,8 @@ import {
   type PageObjectConstructor,
 } from "./compiledPoms";
 import type { PageDriver } from "./pageDriver";
+import { createPageObjectIds, type PageObjectIds } from "./pageObjectIds";
+import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
 
 /**
@@ -121,11 +125,22 @@ export type PomPageStates = {
    * registry observes it; cleared when it stops.
    */
   providePageObjectProbe(probe: (() => Promise<void>) | undefined): void;
+  /**
+   * What the page's state text reads the id of each Page Object Root from,
+   * by Structural Ref, set while the registry observes it; cleared when it
+   * stops.
+   */
+  providePageObjectIds(
+    idsOf:
+      | ((rootRefs: readonly string[]) => Promise<(string | undefined)[]>)
+      | undefined
+  ): void;
 };
 
 const noPageStates: PomPageStates = {
   onPageStateRecorded: () => () => {},
   providePageObjectProbe: () => {},
+  providePageObjectIds: () => {},
 };
 
 /**
@@ -144,6 +159,9 @@ export function createPomRegistry(
   const subscribers = new Set<() => void>();
   let stopWatchingPage: (() => void) | undefined;
   let stopWatchingPageStates: (() => void) | undefined;
+  // The ids of this page's Page Objects, which outlive a registration: an id
+  // is never given to another Page Object.
+  const pageObjectIds = createPageObjectIds(driver);
 
   /**
    * Package-internal: unregisters every Page Object, as a runtime session
@@ -253,6 +271,7 @@ export function createPomRegistry(
     );
     // A capture waits for the roots of a completed probe run.
     pageStates.providePageObjectProbe(probeRegisteredPomMembers);
+    pageStates.providePageObjectIds(pageObjectIdsOf);
   }
 
   function stopObservingPage() {
@@ -261,6 +280,7 @@ export function createPomRegistry(
     stopWatchingPageStates?.();
     stopWatchingPageStates = undefined;
     pageStates.providePageObjectProbe(undefined);
+    pageStates.providePageObjectIds(undefined);
   }
 
   /**
@@ -363,7 +383,8 @@ export function createPomRegistry(
             driver,
             pomToolFacts(component.className, rooted, action),
             action,
-            instancesOf
+            instancesOf,
+            pageObjectIds
           )
         )
       );
@@ -392,6 +413,17 @@ export function createPomRegistry(
     return found.flatMap(({ mark }, index) =>
       current[index] ? [{ mark, ref: current[index]! }] : []
     );
+  }
+
+  /**
+   * Package-internal: the Page Object id of each Page Object Root `rootRefs`
+   * name by Structural Ref, in the order given. A root read for the first
+   * time gets the next id; one whose element is not on the page has none.
+   */
+  function pageObjectIdsOf(
+    rootRefs: readonly string[]
+  ): Promise<(PageObjectId | undefined)[]> {
+    return pageObjectIds.idsOf(rootRefs);
   }
 
   /**
@@ -553,6 +585,7 @@ export function createPomRegistry(
     listRegisteredPomTargets,
     listRegisteredPomTools,
     listRegisteredPoms,
+    pageObjectIdsOf,
     probeRegisteredPomMembers,
     registerPageObject,
     resetRegisteredPoms,
@@ -616,12 +649,16 @@ function reachableClasses(manifest: PomManifest) {
   return classes.values();
 }
 
-/** Runs a rooted instance by ref, or the sole root-less instance directly. */
+/**
+ * Runs a rooted instance by its Page Object id or the Structural Ref of its
+ * root, or the sole root-less instance directly.
+ */
 function createTool(
   driver: PageDriver,
   facts: RegisteredPomTool,
   action: ToolManifest,
-  instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[]
+  instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[],
+  pageObjectIds: PageObjectIds
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
     ...facts,
@@ -644,16 +681,22 @@ function createTool(
       const instances = instancesOf(tool);
       let observed: PomInstanceObservation | undefined = instances[0];
       if (tool.rooted) {
-        const { ref, args: actionArgs = {} } = input as {
-          ref: string;
-          args?: object;
-        };
+        const {
+          id,
+          ref,
+          args: actionArgs = {},
+        } = input as { id?: unknown; ref?: string; args?: object };
         args = actionArgs;
         const label = `call ${tool.name} on`;
-        const { ref: resolved } = await context.pageStateSession.resolveRef(
-          ref,
-          label
-        );
+        const named = namedPageObject(id, ref);
+        const resolved =
+          "ref" in named
+            ? (await context.pageStateSession.resolveRef(named.ref, label)).ref
+            : await pageObjectIds.rootOf(named.id);
+        if (resolved === undefined)
+          throw new RefResolutionError(
+            pageObjectFailure(label, named, "it is not on the page")
+          );
         const previous = await rootedAt(driver, instances, resolved);
         observed = await rootedAt(driver, instancesOf(tool), resolved);
         // Ref resolution captures the page and may observe a replacement
@@ -662,9 +705,18 @@ function createTool(
           observed = previous;
         if (!observed)
           throw new RefResolutionError(
-            refFailure(label, ref, `it is not a root of ${tool.className}`)
+            pageObjectFailure(
+              label,
+              named,
+              "ref" in named
+                ? `it is not a root of ${tool.className}`
+                : `it is not of the class ${tool.className}`
+            )
           );
-        targetName = `${tool.className} on ref "${ref}"`;
+        targetName =
+          "ref" in named
+            ? `${tool.className} on ref "${named.ref}"`
+            : `${tool.className} "${named.id}"`;
         assertAvailable(
           targetName,
           availabilityNow(driver, observed, tool.methodName)
@@ -675,6 +727,44 @@ function createTool(
     },
   };
   return tool;
+}
+
+/** How a call names the Page Object it runs on. */
+type NamedPageObject = { id: PageObjectId } | { ref: string };
+
+/**
+ * How a rooted tool's input names its Page Object: by `id` or by `ref`, one
+ * of the two. Refused as wrong input otherwise, as is an `id` that is not
+ * written as one.
+ */
+function namedPageObject(
+  id: unknown,
+  ref: string | undefined
+): NamedPageObject {
+  if (id === undefined) {
+    if (ref === undefined)
+      throw new ToolInputError("Input property id is required.");
+    return { ref };
+  }
+  if (ref !== undefined)
+    throw new ToolInputError("Input takes id or ref, not both.");
+  const parsed = parsePageObjectId(id);
+  if (parsed === undefined)
+    throw new ToolInputError(
+      `Input property id is not a Page Object id, written po<n>: ${JSON.stringify(id)}.`
+    );
+  return { id: parsed };
+}
+
+/** The message for a Page Object a call cannot run on, with the reason alone. */
+function pageObjectFailure(
+  label: string,
+  named: NamedPageObject,
+  reason: string
+): string {
+  return "ref" in named
+    ? refFailure(label, named.ref, reason)
+    : asSentence(`Cannot ${label} Page Object "${named.id}": ${reason}`);
 }
 
 /**

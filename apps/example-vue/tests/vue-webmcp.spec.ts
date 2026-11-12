@@ -66,8 +66,9 @@ async function getInstanceRef(
   return ref;
 }
 
-/** Subtree from `main "Playground"` with refs renumbered from e1. Identical
- *  across platforms; only the ancestors above main differ. */
+/** Subtree from `main "Playground"` with refs renumbered from e1 and Page
+ *  Object ids from po1. Identical across platforms; only the ancestors above
+ *  main differ. */
 function normalizeAppSubtree(pageState: string): string {
   const lines = pageState.split("\n");
   const root = lines.findIndex((l) => l.includes('main "Playground"'));
@@ -84,12 +85,16 @@ function normalizeAppSubtree(pageState: string): string {
     .filter((l) => l.trim())
     .map((l) => l.slice(indent))
     .join("\n");
-  const refs = new Map<string, string>();
-  let n = 0;
-  return sub.replace(
-    /\be\d+\b/g,
-    (r) => refs.get(r) ?? (refs.set(r, `e${++n}`), `e${n}`)
-  );
+  const renumbered = (prefix: string) => {
+    const seen = new Map<string, string>();
+    return (found: string) => {
+      if (!seen.has(found)) seen.set(found, `${prefix}${seen.size + 1}`);
+      return seen.get(found)!;
+    };
+  };
+  return sub
+    .replace(/\be\d+\b/g, renumbered("e"))
+    .replace(/\bpo\d+\b/g, renumbered("po"));
 }
 
 // The dev server mounts a Decision Endpoint when it has a model key, and then
@@ -496,10 +501,15 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
       inputSchema: {
         type: "object",
         properties: {
+          id: {
+            type: "string",
+            description:
+              "The Page Object's id, written po<n>, as the page state prints it on its Page Object Root. Given instead of ref.",
+          },
           ref: {
             type: "string",
             description:
-              "Structural Ref of the instance's Page Object Root, as marked in the page state.",
+              "Structural Ref of the instance's Page Object Root, as marked in the page state. Given instead of id.",
           },
           args: {
             type: "object",
@@ -508,7 +518,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
             additionalProperties: false,
           },
         },
-        required: ["ref"],
+        required: [],
         additionalProperties: false,
       },
     },
@@ -518,10 +528,15 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
       inputSchema: {
         type: "object",
         properties: {
+          id: {
+            type: "string",
+            description:
+              "The Page Object's id, written po<n>, as the page state prints it on its Page Object Root. Given instead of ref.",
+          },
           ref: {
             type: "string",
             description:
-              "Structural Ref of the instance's Page Object Root, as marked in the page state.",
+              "Structural Ref of the instance's Page Object Root, as marked in the page state. Given instead of id.",
           },
           args: {
             type: "object",
@@ -532,7 +547,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
             additionalProperties: false,
           },
         },
-        required: ["ref", "args"],
+        required: ["args"],
         additionalProperties: false,
       },
     },

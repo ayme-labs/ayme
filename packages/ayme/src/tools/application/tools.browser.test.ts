@@ -503,6 +503,49 @@ describe("the session's tools in Chromium", () => {
     expect(agentTools().names()).not.toContain("ListItem.archive");
   });
 
+  it("prints each Page Object's id on its root in the snapshot, which a rooted tool takes, for an agent's call too", async () => {
+    document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
+    await startSession();
+    cleanups.push(registered(ListPage));
+    await expect.poll(() => agentTools().names()).toContain("ListItem.archive");
+
+    const { structure } = (await agentCall("snapshot", {})) as {
+      structure: string;
+    };
+
+    const id = structure.match(/e\d+ ListItem (po\d+)/)?.[1];
+    if (!id) throw new Error(`Expected an id on ListItem in:\n${structure}`);
+    // A second read prints the same id.
+    expect((await ayme.tools.run("snapshot", {})).structure).toContain(
+      `ListItem ${id}`
+    );
+    expect(await agentCall("ListItem.archive", { id })).toMatchObject({
+      result: "archived",
+    });
+  });
+
+  it("refuses a malformed Page Object id as wrong input, and fails for one no Page Object has", async () => {
+    document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
+    await startSession();
+    cleanups.push(registered(ListPage));
+    await expect.poll(() => agentTools().names()).toContain("ListItem.archive");
+
+    await expect(
+      ayme.tools.run("ListItem.archive", { id: "e1" })
+    ).rejects.toMatchObject({
+      name: "ToolInputError",
+      message:
+        'Input property id is not a Page Object id, written po<n>: "e1".',
+    });
+    await expect(
+      ayme.tools.run("ListItem.archive", { id: "po999999" })
+    ).rejects.toMatchObject({
+      name: "RefResolutionError",
+      message:
+        'Cannot call ListItem.archive on Page Object "po999999": it is not on the page.',
+    });
+  });
+
   it("leaves out a Page Object Tool whose Page Object is not on the page, refuses to run it, and lists it once the Page Object is", async () => {
     document.body.innerHTML = `<ul><li id="item" hidden>Draft</li></ul>`;
     await startSession();

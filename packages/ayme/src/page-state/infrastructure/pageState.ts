@@ -31,6 +31,7 @@ import {
   existingPageState,
   latestRefOfLocator,
   pageStateOf,
+  providePageObjectIdsOf,
   providePageObjectProbeOf,
   type PageStateHost,
 } from "./pageStates";
@@ -84,6 +85,16 @@ export function providePageObjectProbe(
   probe: (() => Promise<void>) | undefined
 ): void {
   providePageObjectProbeOf(pageOfDocument(document), probe);
+}
+
+/**
+ * Package-internal: what the document's page state text reads the id of each
+ * Page Object Root from, set while the registry observes it.
+ */
+export function providePageObjectIds(
+  rootIds: Parameters<typeof providePageObjectIdsOf>[1]
+): void {
+  providePageObjectIdsOf(pageOfDocument(document), rootIds);
 }
 
 /** Package-internal: set while a runtime session is active, as the session registered it. */
