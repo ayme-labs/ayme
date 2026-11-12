@@ -57,14 +57,63 @@ function session({
   let read = 0;
   let at = 0;
   const run = vi.fn<PageObjectToolSession["run"]>(() => answer());
+  const readPageObjectTree = vi.fn(
+    async () => trees[Math.min(read++, trees.length - 1)]!
+  );
   const stub: PageObjectToolSession = {
     list: () => TOOLS,
     subscribe: () => () => {},
     run,
-    readPageObjectTree: async () => trees[Math.min(read++, trees.length - 1)]!,
-    url: () => urls[Math.min(at++, urls.length - 1)]!,
+    inTurn: (turn) =>
+      turn({
+        run,
+        readPageObjectTree,
+        url: () => urls[Math.min(at++, urls.length - 1)]!,
+      }),
   };
-  return { stub, run };
+  return { stub, run, readPageObjectTree };
+}
+
+/**
+ * A page whose `ListPage` shows a count, its runs one turn at a time as the
+ * session's queue takes them: `ListPage.add` adds one to the count a moment
+ * after it starts and returns the new count.
+ */
+function countingPage() {
+  let count = 0;
+  let last: Promise<unknown> = Promise.resolve();
+  const takeTurn = <T>(turn: () => Promise<T>): Promise<T> => {
+    const ran = last.then(turn);
+    last = ran.catch(() => {});
+    return ran;
+  };
+  const tree = (): PageObjectTreeNode[] => [
+    {
+      className: "ListPage",
+      children: [
+        { kind: "elements", name: "count", lines: [`text: ${count}`] },
+      ],
+    },
+  ];
+  const add = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    count += 1;
+    return { settled: true, result: count };
+  };
+  const stub: PageObjectToolSession = {
+    list: () => TOOLS,
+    subscribe: () => () => {},
+    run: () => takeTurn(add),
+    inTurn: (turn) =>
+      takeTurn(() =>
+        turn({
+          run: add,
+          readPageObjectTree: async () => tree(),
+          url: () => "http://app/list",
+        })
+      ),
+  };
+  return stub;
 }
 
 const FULL_RECORD = {
@@ -112,8 +161,7 @@ describe("a Page Object Tool's answer to an agent", () => {
   });
 
   it("says the document is loading, with the URL it loads, and reads no tree of the old document", async () => {
-    const readPageObjectTree = vi.fn(async () => [list("Milk")]);
-    const { stub } = session({
+    const { stub, readPageObjectTree } = session({
       answer: async () => ({
         settled: false,
         page_changed: false,
@@ -122,10 +170,7 @@ describe("a Page Object Tool's answer to an agent", () => {
       }),
     });
 
-    const answer = await pageObjectToolSource({
-      ...stub,
-      readPageObjectTree,
-    }).run("ListPage.add", {});
+    const answer = await pageObjectToolSource(stub).run("ListPage.add", {});
 
     expect(answer).toEqual({
       settled: false,
@@ -203,5 +248,27 @@ describe("a Page Object Tool's answer to an agent", () => {
     expect(await pageObjectToolSource(stub).run("page_objects", {})).toBe(
       "ListPage"
     );
+  });
+
+  it("carries the change its own action made when two calls run at once", async () => {
+    const source = pageObjectToolSource(countingPage());
+
+    const answers = await Promise.all([
+      source.run("ListPage.add", {}),
+      source.run("ListPage.add", {}),
+    ]);
+
+    expect(answers).toEqual([
+      {
+        settled: true,
+        result: 1,
+        changes: ["ListPage", "  count: text: 0 → 1"].join("\n"),
+      },
+      {
+        settled: true,
+        result: 2,
+        changes: ["ListPage", "  count: text: 1 → 2"].join("\n"),
+      },
+    ]);
   });
 });

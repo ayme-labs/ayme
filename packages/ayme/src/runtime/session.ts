@@ -618,9 +618,15 @@ export function createAymeOn(
       list: () => ayme.tools.list(),
       subscribe: (listener) => ayme.tools.subscribe(listener),
       run: (name, input) => ayme.tools.run(name, input as never, { by }),
-      readPageObjectTree: () =>
-        takeTurn(() => target.registry().readPageObjectTree()),
-      url: () => target.rawPage().url(),
+      inTurn: (turn) =>
+        takeTurn(() =>
+          turn({
+            run: (name, input) =>
+              recordTopLevelRun(name, input, by, probeAfterAction),
+            readPageObjectTree: () => target.registry().readPageObjectTree(),
+            url: () => target.rawPage().url(),
+          })
+        ),
     });
 
   /**
@@ -746,14 +752,15 @@ export function createAymeOn(
     input: unknown,
     by: Caller
   ): Promise<unknown> {
-    return takeTurn(() =>
-      recordTopLevelRun(name, input, by, () =>
-        target
-          .registry()
-          .probeRegisteredPomMembers()
-          .catch(() => {})
-      )
-    );
+    return takeTurn(() => recordTopLevelRun(name, input, by, probeAfterAction));
+  }
+
+  /** A probe of the Page Objects after an action, which never fails the Run. */
+  function probeAfterAction(): Promise<void> {
+    return target
+      .registry()
+      .probeRegisteredPomMembers()
+      .catch(() => {});
   }
 
   /**
