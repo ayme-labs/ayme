@@ -15,6 +15,18 @@ import type { JsonValue, ToolInfo } from "../shared";
 export type PageObjectToolSession = {
   list(): readonly ToolInfo[];
   subscribe(listener: () => void): () => void;
+  /** Runs the tool `name` in a turn of its own on the page's queue. */
+  run(name: string, input: unknown): Promise<unknown>;
+  /**
+   * Runs `turn` in one turn on the page's queue, so no other Run acts on the
+   * page between what `turn` reads and runs.
+   */
+  inTurn<T>(turn: (page: PageObjectToolTurn) => Promise<T>): Promise<T>;
+};
+
+/** The page as one turn on its queue reaches it. */
+export type PageObjectToolTurn = {
+  /** Runs the tool `name` inside this turn, as a top-level Run that does not queue. */
   run(name: string, input: unknown): Promise<unknown>;
   /** The Page Object Tree now. */
   readPageObjectTree(): Promise<readonly PageObjectTreeNode[]>;
@@ -68,12 +80,16 @@ export function pageObjectToolSource(
     async run(name, input) {
       const tool = session.list().find((listed) => listed.name === name);
       if (!tool || !isPageObjectTool(tool)) return session.run(name, input);
-      const before = await session.readPageObjectTree().catch(() => undefined);
-      const url = session.url();
-      const result = await session.run(name, input).catch((error: unknown) => {
-        throw withoutChangeRecord(error);
+      // The tree before, the action and the tree after in the action's own
+      // turn: the changes are that action's alone.
+      return session.inTurn(async (page) => {
+        const before = await page.readPageObjectTree().catch(() => undefined);
+        const url = page.url();
+        const result = await page.run(name, input).catch((error: unknown) => {
+          throw withoutChangeRecord(error);
+        });
+        return answerOf(page, result as ActionResult, before, url);
       });
-      return answerOf(session, result as ActionResult, before, url);
     },
   };
 }
@@ -90,7 +106,7 @@ function withoutChangeRecord(error: unknown): unknown {
 }
 
 async function answerOf(
-  session: PageObjectToolSession,
+  session: PageObjectToolTurn,
   { settled, result, loading }: ActionResult,
   before: readonly PageObjectTreeNode[] | undefined,
   url: string
