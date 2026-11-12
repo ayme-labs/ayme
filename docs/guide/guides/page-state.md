@@ -85,7 +85,7 @@ Ayme records what happens in the document for the length of its Page State Sessi
 
 Each Caller name, the agent calling through WebMCP or the Ayme MCP server, the Inspector, and your application's `ayme.tools.run` under `app` or the name it passes as `by`, has its own cursor: the page state it last received, through `snapshot` or as the Settled Page after its last action. Two Callers under one name share one. Every action returns a result with `page_changed` and `settled`, and its Change Record in two parts, each present only when it has a change: `changes_before`, what changed between the state the Caller had last received and the page right before the action, on its own or by another Caller; and `changes`, what the action changed, from that page to the Settled Page after it. `settled` says whether the page went quiet after the action, and `page_changed` is true when either part has a change. A change that lands while the page settles counts as the action's. So an agent's next action also reports what your application or another Caller changed in between, under `changes_before`, and a Custom Tool's Change Record covers what the tools it ran through its `run` changed. A Goal Loop run reads with a fork of its Caller's cursor and leaves the cursor alone until it hands over.
 
-An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling through WebMCP or the Ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone. The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
+An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling a Browser Tool or Custom Tool through WebMCP or the Ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone, and so does an agent's failed Page Object Tool call (see [A Page Object Tool's answer to an agent](#a-page-object-tools-answer-to-an-agent)). The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
 
 ## Full page loads
 
@@ -102,4 +102,33 @@ A tool call whose action starts loading a new document, such as a click on a pla
 }
 ```
 
-This holds for Browser Tools, Custom Tools and Page Object Tools alike. A navigation that stays in the document, such as your client router's route change, a fragment change, or going back to an entry of the same document, waits for a Settled Page like any other action. A Goal Loop step that starts a full load is the run's last; its Handover has the reason `page_loading` and names the URL in `loading`.
+This holds for Browser Tools, Custom Tools and Page Object Tools alike; an agent reads a Page Object Tool's as [its short answer](#a-page-object-tools-answer-to-an-agent). A navigation that stays in the document, such as your client router's route change, a fragment change, or going back to an entry of the same document, waits for a Settled Page like any other action. A Goal Loop step that starts a full load is the run's last; its Handover has the reason `page_loading` and names the URL in `loading`.
+
+## A Page Object Tool's answer to an agent
+
+An agent that calls a Page Object Tool through WebMCP or through the Ayme MCP server gets a short answer instead of the action result, the same in both:
+
+```ts
+{
+  settled: boolean;   // whether the page settled after the action
+  result?: unknown;   // what the action returned, when it returned something
+  url?: string;       // the page's URL, when the action changed it
+  loading?: true;     // the action started loading a new document
+  changes?: string;   // how the Page Objects on the page changed
+}
+```
+
+`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `url` is the URL it loads and `changes` is absent.
+
+```ts
+{
+  settled: true,
+  result: 2,
+  changes: `ShoppingListPage
+  items:
+    + Item po4
+        name: text: Eggs`,
+}
+```
+
+A refused call answers with its reason alone, such as `RuntimeStateError: Item.archive is unavailable: The item is archived.`, and a failed one with its error alone, without the Change Record. Ayme adds no wait of its own after the action beyond its Settled Page wait; waiting for a navigation the action started is the browser automation's. `ayme.tools.run` in your code, the Inspector and the Goal Loop keep reading the full action result.
