@@ -29,6 +29,8 @@ Tool.
   The snapshot is what makes Playwright refresh its list of the page's tools.
 - **After a navigation:** on either [error](#errors-after-a-navigation), run
   the same chained command again.
+- **Through the `ayme` server instead:** start `mcp`. After a Page Object Tool,
+  read `page_objects` as the next call.
 
 ## Playwright MCP
 

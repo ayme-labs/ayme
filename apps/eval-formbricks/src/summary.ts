@@ -1,6 +1,6 @@
 /**
  * The suite summary: stored run results in, per-arm pass counts and
- * median/lowest/highest of wall time, tokens and combined cost out, with the
+ * median/lowest/highest of wall time, tokens and cost out, with the
  * versions a rerun has to match. Pure; reading the stored runs and writing the
  * files are the callers' job.
  */
@@ -16,12 +16,10 @@ export type SummarizedRun = Pick<
   | "pass"
   | "wallTimeMs"
   | "tokens"
-  | "combinedCostUsd"
+  | "costUsd"
   | "timeoutSeconds"
   | "labCheckoutDirty"
 > & {
-  /** The Goal Loop's calls and cost; a run with calls but no cost has an unknown combined cost. */
-  goalLoop: Pick<NormalizedResult["goalLoop"], "calls" | "costUsd">;
   /** The agent's tool calls in the task turn; `null` for a result stored without them. */
   toolCallTotal: number | null;
   versions: Pick<
@@ -58,14 +56,14 @@ export type ArmSummary = {
   inputOutputTokens: Spread | null;
   /** The agent's tool calls in the task turn. */
   toolCalls: Spread | null;
-  combinedCostUsd: Spread | null;
+  costUsd: Spread | null;
   runList: {
     runId: string;
     pass: boolean;
     wallTimeMs: number | null;
     usage: TokenUsage | null;
     totalTokens: number | null;
-    combinedCostUsd: number | null;
+    costUsd: number | null;
   }[];
 };
 
@@ -140,14 +138,14 @@ export function buildSummary(input: {
         )
       ),
       toolCalls: spread(runs.map((run) => run.toolCallTotal)),
-      combinedCostUsd: spread(runs.map((run) => run.combinedCostUsd)),
+      costUsd: spread(runs.map((run) => run.costUsd)),
       runList: runs.map((run) => ({
         runId: run.runId,
         pass: run.pass,
         wallTimeMs: run.wallTimeMs,
         usage: run.tokens,
         totalTokens: run.tokens ? totalTokens(run.tokens) : null,
-        combinedCostUsd: run.combinedCostUsd,
+        costUsd: run.costUsd,
       })),
     };
   });
@@ -183,7 +181,7 @@ export function buildSummary(input: {
       ["wall time", arm.wallTimeMs],
       ["tokens", arm.tokens],
       ["tool calls", arm.toolCalls],
-      ["combined cost", arm.combinedCostUsd],
+      ["cost", arm.costUsd],
     ] as const) {
       if (arm.runs > 0 && value !== null && value.n < arm.runs)
         notes.push(
@@ -192,16 +190,6 @@ export function buildSummary(input: {
       if (arm.runs > 0 && value === null)
         notes.push(`${arm.arm}: no run has ${label}.`);
     }
-    const unknownGoalLoopCost = results.filter(
-      (run) =>
-        run.arm === arm.arm &&
-        run.goalLoop.calls > 0 &&
-        run.goalLoop.costUsd === null
-    ).length;
-    if (unknownGoalLoopCost > 0)
-      notes.push(
-        `${arm.arm}: the Goal Loop's cost is unknown in ${unknownGoalLoopCost} of ${arm.runs} runs, so their combined cost is unknown.`
-      );
   }
   const mixed = [
     ["Claude Code versions", versions.claudeCode],
@@ -261,7 +249,7 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
       range(arm.toolCalls, count, arm.runs),
       range(arm.inputOutputTokens, count, arm.runs),
       range(arm.tokens, count, arm.runs),
-      range(arm.combinedCostUsd, dollars, arm.runs),
+      range(arm.costUsd, dollars, arm.runs),
     ].join(" | ")
   );
   const { versions } = summary;
@@ -270,9 +258,9 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
     "",
     `Suite \`${summary.suiteId}\`. Mission: ${list(summary.missions)}. Timeout: ${list(summary.timeoutSeconds.map((s) => `${s} s`))}.`,
     "",
-    "Passes are out of the runs stored for the arm. Each cell is the median, then the lowest and highest in parentheses. Wall time, tokens and cost are the task turn's alone: the setup turn before it, where Claude Code starts up and loads the arm's skill, is not counted. Input and output tokens are the agent's own, without the prompt cache; all tokens add the cache's reads and writes, which Claude Code bills at a fraction and a premium of the input price. Combined cost is the agent's cost plus the Goal Loop's where it ran.",
+    "Passes are out of the runs stored for the arm. Each cell is the median, then the lowest and highest in parentheses. Wall time, tokens and cost are the task turn's alone: the setup turn before it, where Claude Code starts up and loads the arm's skill, is not counted. Input and output tokens are the agent's own, without the prompt cache; all tokens add the cache's reads and writes, which Claude Code bills at a fraction and a premium of the input price.",
     "",
-    "| Arm | Passes | Wall time | Tool calls | Input and output tokens | All tokens | Combined cost |",
+    "| Arm | Passes | Wall time | Tool calls | Input and output tokens | All tokens | Cost |",
     "| --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map((row) => `| ${row} |`),
     "",

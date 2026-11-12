@@ -85,9 +85,9 @@ Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme
 
    Playwright MCP and Playwright CLI take the same three settings in their config file, as [the guide](../../docs/guide/guides/page-objects-without-ayme.md#set-it-up) shows.
 
-4. In the page, the init script loads Ayme's runtime and the Page Objects from the server and turns the [Agent Connection](../../docs/guide/guides/connect-an-agent.md) on. On `localhost` the tab then pairs with the server by itself when exactly one Ayme MCP server runs, and otherwise through the link `ayme_connect` returns. The page's tools, `snapshot`, the Browser Tools and the screen's Page Object Tools, are then the agent's MCP tools.
+4. In the page, the init script loads Ayme's runtime and the Page Objects from the server and turns the [Agent Connection](../../docs/guide/guides/connect-an-agent.md) on. On `localhost` the tab then pairs with the server by itself when exactly one Ayme MCP server runs, and otherwise through the link `ayme_connect` returns. The screen's Page Object Tools and `page_objects` are then among the agent's MCP tools; `snapshot` and the Browser Tools are too when the server was started with `--browser-tools`.
 
-The served runtime starts with the Agent Connection only. It publishes nothing over WebMCP, so `document.modelContext` lists no Ayme tool.
+Started with `--webmcp`, the served runtime also publishes the Page Object Tools and `page_objects` through WebMCP, with `@ayme-dev/webmcp`, which the lab app depends on for this. Without it, it publishes nothing over WebMCP, so `document.modelContext` lists no Ayme tool.
 
 ### Page Objects
 
