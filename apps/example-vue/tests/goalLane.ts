@@ -1,9 +1,6 @@
-import { test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import {
-  recordPublishedTools,
-  type RecordingDriver,
-} from "@ayme-dev/webmcp/testing";
+import { connectPage, freePort, startAgent } from "@ayme-dev/mcp/testing";
 
 import { readDecisionProvider } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";
@@ -16,9 +13,42 @@ export type Handover = {
 };
 
 /**
+ * The `ayme mcp --browser-tools` servers the goal specs started, by the page
+ * each one is paired with. WebMCP publishes no `goal`, so a spec pursues a
+ * goal through its server, as a coding agent does.
+ */
+const agents = new Map<Page, Awaited<ReturnType<typeof startAgent>>>();
+test.afterEach(async () => {
+  await Promise.all([...agents.values()].map((agent) => agent.close()));
+  agents.clear();
+});
+
+/** Opens `path`, paired with an `ayme mcp --browser-tools` server. */
+export async function openPaired(page: Page, path: string) {
+  const agent = await startAgent(
+    "--port",
+    String(await freePort()),
+    "--browser-tools"
+  );
+  agents.set(page, agent);
+  const baseURL = test.info().project.use.baseURL!;
+  await connectPage(agent, page, new URL(path, baseURL).href, {
+    timeout: 45_000,
+  });
+}
+
+/** Waits until the page's server lists the tool `name`, such as `goal`. */
+export async function waitForAgentTool(page: Page, name: string) {
+  const agent = agents.get(page)!;
+  await expect
+    .poll(() => agent.pageToolNames(), { message: agent.log })
+    .toContain(name);
+}
+
+/**
  * Skip the calling spec file without a model key: the same key the dev
  * server's Decision Endpoint reads, since anyone running a goal brings their
- * own. Otherwise record the published tools, so `pursueGoal` can call one.
+ * own.
  */
 export function useGoalLane(lane: string) {
   const skipReason = `${lane} skipped: set AYME_TYPESAFE_API_KEY or AYME_OPENROUTER_API_KEY to your own model key to run it.`;
@@ -26,7 +56,6 @@ export function useGoalLane(lane: string) {
   // The list reporter prints no skip reason, so say it once before the run.
   if (!modelKey) console.log(`\n${skipReason}\n`);
   test.skip(!modelKey, skipReason);
-  test.beforeEach(({ context }) => recordPublishedTools(context));
 }
 
 export function activeItems(page: Page) {
@@ -72,16 +101,11 @@ export async function pursueGoal(
     test.info(),
     { goal, expectedSteps, expectedTargets },
     async () => {
-      return (await page.evaluate(
-        async (input) => {
-          const tool = (
-            document.modelContext as unknown as RecordingDriver
-          ).tools.find((candidate) => candidate.name === "goal");
-          if (!tool) throw new Error("goal tool was not published.");
-          return await tool.execute(input);
-        },
-        { goal, maxSteps, values }
-      )) as Handover;
+      const { text, isError } = await agents
+        .get(page)!
+        .call("goal", { goal, maxSteps, ...(values && { values }) });
+      if (isError) throw new Error(`goal failed: ${text}`);
+      return JSON.parse(text) as Handover;
     }
   );
 }
