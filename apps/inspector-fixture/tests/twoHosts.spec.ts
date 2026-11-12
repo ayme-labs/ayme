@@ -105,26 +105,6 @@ function refOf(structure: string, text: string) {
   return ref;
 }
 
-/**
- * What a Change Record says of the page's own `main`, with its refs and the
- * item's text left out. Whether the list or the focused button shows depends
- * on what the other side did before, not on who acted.
- */
-function mainOf(changes: string) {
-  const lines = changes.split("\n");
-  const start = lines.findIndex((line) => / main(:| |$)/.test(line));
-  const end = lines.findIndex(
-    (line, index) => index > start && /complementary|PanelShell/.test(line)
-  );
-  return lines
-    .slice(start, end === -1 ? undefined : end)
-    .filter((line) => !/ list "Items"| <changed> button "Add item"/.test(line))
-    .map((line) => line.trim())
-    .join("\n")
-    .replace(/\be\d+\b/g, "eN")
-    .replace(/(Item|Node) \d+/g, "X");
-}
-
 test("a Node host and the page's own runtime share one ref world over a hundred additions", async ({
   page,
   context,
@@ -184,7 +164,7 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
         const { changes } = (await node.tools.run("ListPage.addItem", {
           text: `Node ${step}`,
         })) as unknown as Run;
-        records.node.push(mainOf(changes));
+        records.node.push(changes);
       };
       const addByAgent = async () => {
         await agentSees();
@@ -192,7 +172,7 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
           text: `Item ${step}`,
         });
         expect(isError, text).toBe(false);
-        records.agent.push(mainOf((JSON.parse(text) as Run).changes));
+        records.agent.push((JSON.parse(text) as Run).changes);
       };
       if (nodeFirst) {
         await addByNode();
@@ -235,8 +215,18 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
     }
 
     expect(records.node).toHaveLength(ADDITIONS_PER_SIDE);
-    // The same action leaves the same Change Record on either side.
-    expect(records.node).toEqual(records.agent);
+    // The Node host's answer is the full Change Record and the agent's the
+    // short answer's Page Object tree, so they differ in form. What both
+    // share is that each names the item its own action added, and not the
+    // other side's.
+    records.node.forEach((changes, index) => {
+      expect(changes).toContain(`Node ${index + 1}`);
+      expect(changes).not.toContain(`Item ${index + 1}`);
+    });
+    records.agent.forEach((changes, index) => {
+      expect(changes).toContain(`Item ${index + 1}`);
+      expect(changes).not.toContain(`Node ${index + 1}`);
+    });
     expect(records.agent).toHaveLength(ADDITIONS_PER_SIDE);
     stop();
   } finally {

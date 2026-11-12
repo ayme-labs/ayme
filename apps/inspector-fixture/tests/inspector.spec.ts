@@ -198,7 +198,7 @@ test("the Inspector's looks at the page leave the agent's view of it alone", asy
   });
   const result = await executePublishedTool(page, "ListPage.countItems");
 
-  expect(result).toMatchObject({ page_changed: false });
+  expect(result).not.toHaveProperty("changes");
 });
 
 test("the header's menu and switches work by mouse inside the closed shadow root", async ({

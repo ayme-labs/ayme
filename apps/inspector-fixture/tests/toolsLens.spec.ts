@@ -79,7 +79,7 @@ test("reading What the model sees leaves the agent's view of the page alone", as
   });
   const result = await new AgentView(page).call("ListPage.countItems", {});
 
-  expect(result).toMatchObject({ page_changed: false });
+  expect(result).not.toHaveProperty("changes");
 });
 
 test("with publication off, the Tools lens still lists the live tools", async ({

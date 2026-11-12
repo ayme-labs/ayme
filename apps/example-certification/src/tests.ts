@@ -24,6 +24,9 @@ import {
 
 import { agentPort, counterPath, render, server } from "./config";
 
+/** The server `startAgent` starts. */
+type AgentServer = Awaited<ReturnType<typeof startAgent>>;
+
 /**
  * Whether a console error is Chromium reporting a refused probe of the Agent
  * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
@@ -143,43 +146,38 @@ async function openCounter(
 }
 
 /**
- * Calls the published tool `name` with `input` as an agent, for a call that
- * starts a full page load, and resolves with its answer once `loaded` shows
- * on the new page. Playwright rejects an evaluate still running when the page
- * navigates, even once the page has the answer, so the old document keeps the
- * answer where the new one can read it. The call starts a task after the
- * evaluate returns: a load that needs no network, such as going back to a
- * page the browser kept in its back/forward cache, can otherwise replace the
- * document before the evaluate's own result arrives.
+ * Pairs the counter page with an `ayme mcp --browser-tools` server, as a
+ * coding agent's client does: WebMCP publishes no Browser Tool.
+ */
+async function pairAgent(page: Page, baseURL: string | undefined) {
+  const agent = await startAgent(
+    "--port",
+    String(await freePort()),
+    "--browser-tools"
+  );
+  await connectPage(agent, page, new URL(counterPath(), baseURL).href, {
+    timeout: 45_000,
+  });
+  return agent;
+}
+
+/**
+ * Calls the tool `name` with `input` through the paired server, for a call
+ * that starts a full page load, and resolves with its answer once `loaded`
+ * shows on the new page.
  */
 async function answerAcrossFullLoad(
-  page: Page,
+  agent: AgentServer,
   name: string,
-  input: object,
+  input: Record<string, unknown>,
   loaded: Locator
 ): Promise<unknown> {
-  await page.evaluate(
-    ({ name, input }) => {
-      const { modelContext } = document as unknown as {
-        modelContext: RecordingDriver;
-      };
-      const tool = modelContext.tools.find((tool) => tool.name === name);
-      if (!tool) throw new Error(`Tool ${name} was not published.`);
-      setTimeout(() => {
-        void tool
-          .execute(input)
-          .then((answer) =>
-            sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
-          );
-      });
-    },
-    { name, input }
-  );
+  const answer = agent.call(name, input);
   await expect(loaded).toBeVisible();
-  const answer = await page.evaluate(() =>
-    sessionStorage.getItem("full-load-answer")
-  );
-  return JSON.parse(answer ?? "null");
+  // The call is answered, never left hanging: by the page before its
+  // document goes, or by the server once the page has gone. Either way the
+  // answer says the page has not settled and where it is loading.
+  return JSON.parse((await answer).text);
 }
 
 /** The schemas the compiler derives from the counter's Page Object Model. */
@@ -255,8 +253,15 @@ export function counterTests({
   CounterPage,
   navigation,
   inspector,
+  agentConnection,
 }: {
   CounterPage: new (page: Page) => { increment(): Promise<void> };
+  /**
+   * Whether the run's app turns the Agent Connection on for the counter page;
+   * the tests that call Browser Tools pair a coding agent with it, since
+   * WebMCP publishes none. Read inside each test.
+   */
+  agentConnection: () => boolean;
   /** Whether this page mounts the Inspector. The tests wait for it to mount. */
   inspector?: boolean;
   navigation?: { away: string; awayText: string; back: string };
@@ -333,83 +338,100 @@ export function counterTests({
       await expect(count(page)).toHaveText("1");
     });
 
+    /** Pairs the page with an agent's server for the test, closed after it. */
+    const agents: AgentServer[] = [];
+    test.afterEach(async ({ page }) => {
+      // The page leaves first, or it reconnects to a server that has gone and
+      // logs the refusal.
+      if (agents.length) await page.goto("about:blank");
+      await Promise.all(agents.splice(0).map((agent) => agent.close()));
+    });
+    const paired = async (page: Page, baseURL: string | undefined) => {
+      test.skip(
+        !agentConnection(),
+        "The app turns the Agent Connection off here."
+      );
+      const agent = await pairAgent(page, baseURL);
+      agents.push(agent);
+      return agent;
+    };
+
     test("answers a click on a full page load link before the new page loads", async ({
       page,
+      baseURL,
     }) => {
+      const agent = await paired(page, baseURL);
       const loading = new URL("/other", page.url()).href;
       const answer = await answerAcrossFullLoad(
-        page,
+        agent,
         "click",
         { target: "role=link[name='Full page load']" },
         otherPage(page)
       );
       expect(page.url()).toBe(loading);
-      expect(answer).toEqual({
-        page_changed: true,
-        settled: false,
-        changes: expect.stringContaining('link "Full page load"'),
-        loading,
-        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
-      });
+      expect(answer).toMatchObject({ settled: false, loading });
     });
 
     test("answers navigate to the other page before it loads, and the other page publishes its tools", async ({
       page,
+      baseURL,
     }) => {
+      const agent = await paired(page, baseURL);
       const loading = new URL("/other", page.url()).href;
       const answer = await answerAcrossFullLoad(
-        page,
+        agent,
         "navigate",
         { url: "/other" },
         otherPage(page)
       );
       expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({
-        settled: false,
-        loading,
-        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
-      });
+      expect(answer).toMatchObject({ settled: false, loading });
       await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
     });
 
     test("answers navigate_back to the previous document before it loads", async ({
       page,
+      baseURL,
     }) => {
+      const agent = await paired(page, baseURL);
       const loading = page.url();
       await page.getByRole("link", { name: "Full page load" }).click();
+      await expect(otherPage(page)).toBeVisible();
       await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
+      // The page pairs again with the server after the load.
+      await expect
+        .poll(async () => (await agent.call("snapshot")).text, {
+          message: agent.log,
+        })
+        .toContain("Other page without Page Objects.");
       const answer = await answerAcrossFullLoad(
-        page,
+        agent,
         "navigate_back",
         {},
         count(page)
       );
       expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({
-        settled: false,
-        loading,
-        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
-      });
+      expect(answer).toMatchObject({ settled: false, loading });
     });
 
-    test("answers reload before the page loads anew", async ({ page }) => {
+    test("answers reload before the page loads anew", async ({
+      page,
+      baseURL,
+    }) => {
+      const agent = await paired(page, baseURL);
       await page
         .getByRole("button", { name: "Increment", exact: true })
         .click();
       await expect(count(page)).toHaveText("1");
       const loading = page.url();
       const answer = await answerAcrossFullLoad(
-        page,
+        agent,
         "reload",
         {},
         count(page).filter({ hasText: /^0$/ })
       );
       expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({
-        settled: false,
-        loading,
-        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
-      });
+      expect(answer).toMatchObject({ settled: false, loading });
     });
 
     test("removes the page's tools on navigation and restores them on return", async ({
