@@ -10,7 +10,10 @@ export default defineFastLaneConfig(
   defineConfig({
     test: {
       projects: [
-        { test: { ...unitConfig.test, name: "unit" } },
+        {
+          plugins: unitConfig.plugins,
+          test: { ...unitConfig.test, name: "unit" },
+        },
         ...(browserConfig.test?.projects ?? []),
       ],
     },
