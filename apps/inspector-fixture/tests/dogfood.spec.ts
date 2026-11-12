@@ -114,7 +114,7 @@ test("the page state an agent reads includes the panel", async ({
   inspector,
 }) => {
   await expect(inspector.panel).toBeVisible();
-  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
+  const { structure } = (await new AgentView(page).run("snapshot", {})) as {
     structure: string;
   };
   expect(structure).toMatch(/PanelShell po\d+ "ayme"/);
@@ -126,7 +126,7 @@ test("the panel's renderings of the page stay out of the page state", async ({
 }) => {
   const agent = new AgentView(page);
   const snapshot = async () =>
-    ((await agent.call("snapshot", {})) as { structure: string }).structure;
+    ((await agent.run("snapshot", {})) as { structure: string }).structure;
 
   await inspector.navigator.showLens("Structure");
   await expect(inspector.structure.tree).toBeVisible();

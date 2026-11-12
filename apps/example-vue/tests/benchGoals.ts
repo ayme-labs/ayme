@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
+import { openPaired } from "./goalLane";
+
 /**
  * The bench goal set: goals on the bench pages (`src/bench/`), generic app
  * screens without Page Objects, so the Goal Loop acts only through the
@@ -484,7 +486,7 @@ export function expectedTargetsOf(bench: BenchGoal) {
 
 /** Open the goal's page and wait until it shows its heading. */
 export async function openBenchPage(page: Page, bench: BenchGoal) {
-  await page.goto(bench.path);
+  await openPaired(page, bench.path);
   await expect(
     page.getByRole("heading", { level: 1, name: bench.heading })
   ).toBeVisible();

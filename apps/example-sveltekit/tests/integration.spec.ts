@@ -14,6 +14,7 @@ import { CounterPage } from "../src/lib/pom/CounterPage";
 serverRenderTests();
 counterTests({
   CounterPage,
+  agentConnection: () => server === "dev",
   inspector: server === "dev",
   navigation: {
     away: "Other",

@@ -67,8 +67,7 @@ test("the server's own tools are never published to the page's WebMCP tools", as
   await recordPublishedTools(context);
   await connect("/?webmcp");
 
-  await expect.poll(() => publishedToolNames(page)).toContain("snapshot");
-  expect(await publishedToolNames(page)).toContain("page_objects");
+  await expect.poll(() => publishedToolNames(page)).toContain("page_objects");
   for (const name of SERVER_TOOLS)
     expect(await publishedToolNames(page)).not.toContain(name);
 });

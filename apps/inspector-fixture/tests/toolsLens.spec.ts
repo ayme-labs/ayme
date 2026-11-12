@@ -1,12 +1,9 @@
 import { AgentView, panelDescription } from "./agentView";
 import { expect, openFixture, test } from "./fixtures";
 
-// E2E: the panel shows exactly what an agent gets over WebMCP, but for a bare
-// action's description, which it shows as Ayme MCP does. The expected values
-// come from the page's WebMCP tool list and snapshot, never from the panel.
-
-// Live, but never published to WebMCP: its result is an image.
-const NOT_ON_WEBMCP = ["screenshot"];
+// E2E: the panel shows exactly what a coding agent gets from the page's Ayme
+// MCP server. The expected values come from that server's tool list and the
+// page's snapshot, never from the panel.
 
 test("the Tools lens lists exactly the tools an agent gets", async ({
   page,
@@ -22,7 +19,7 @@ test("the Tools lens lists exactly the tools an agent gets", async ({
         .flat()
         .sort()
     )
-    .toEqual([...agentTools.map(({ name }) => name), ...NOT_ON_WEBMCP].sort());
+    .toEqual(agentTools.map(({ name }) => name).sort());
 });
 
 test("each tool's page shows the description and schema an agent gets", async ({
@@ -82,15 +79,16 @@ test("reading What the model sees leaves the agent's view of the page alone", as
   });
   const result = await new AgentView(page).call("ListPage.countItems", {});
 
-  expect(result).toMatchObject({ page_changed: false });
+  expect(result).not.toHaveProperty("changes");
 });
 
 test("with publication off, the Tools lens still lists the live tools", async ({
   page,
+  agent,
 }) => {
-  // The same list app with publication on: every live tool but screenshot is
-  // published, so its WebMCP tool list and screenshot are the live set.
-  await openFixture(page, "/");
+  // The same list app with publication on: its Ayme MCP server lists the
+  // live set.
+  await openFixture(page, "/", { paired: { agent: agent! } });
   const liveTools = (await new AgentView(page).tools()).map(({ name }) => name);
 
   const { inspector } = await openFixture(page, "/unpublished.html");
@@ -102,5 +100,5 @@ test("with publication off, the Tools lens still lists the live tools", async ({
         .flat()
         .sort()
     )
-    .toEqual([...liveTools, ...NOT_ON_WEBMCP].sort());
+    .toEqual(liveTools.sort());
 });
