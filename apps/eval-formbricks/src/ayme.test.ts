@@ -11,13 +11,16 @@ import {
   aymeMcpCliPath,
   aymeMcpServer,
   aymeSkillDirectory,
+  aymeMcpArgs,
   aymeSkillSource,
-  mcpToolTimeoutMs,
-  pageObjectToolNames,
+  aymeStartArgs,
+  browserLaunchArgs,
+  initScriptProblem,
+  isPageObjectToolName,
   proxyScript,
   proxyScriptPath,
   serverPorts,
-  settledStartPageProblem,
+  unexpectedToolNames,
 } from "./ayme.ts";
 import { evalRoot, repoRoot } from "./paths.ts";
 
@@ -53,7 +56,7 @@ describe("the agent's MCP server entry", () => {
 
   it("keeps the socket path short enough for macOS and apart per run", () => {
     const socket = agentSocketPath(
-      "2026-10-05T10-00-00-000Z-ayme-goal-loop-on-abc123"
+      "2026-10-05T10-00-00-000Z-playwright-mcp-with-ayme-webmcp-abc123"
     );
     expect(socket.startsWith(os.tmpdir())).toBe(true);
     expect(socket.endsWith("ayme-eval-abc123.sock")).toBe(true);
@@ -63,60 +66,100 @@ describe("the agent's MCP server entry", () => {
   it("names the built ayme command and the ports a page scans", () => {
     expect(aymeMcpCliPath).toMatch(/\/packages\/mcp\/dist\/cli\.mjs$/);
     expect(serverPorts).toEqual({ first: 9350, last: 9365 });
-    expect(mcpToolTimeoutMs).toBeGreaterThan(300_000);
+  });
+});
+
+describe("the ayme mcp command", () => {
+  it("is `mcp` for the ayme server and `mcp --webmcp` for WebMCP, on the run's port", () => {
+    expect(aymeStartArgs("mcp")).toEqual(["mcp"]);
+    expect(aymeStartArgs("webmcp")).toEqual(["mcp", "--webmcp"]);
+    expect(aymeMcpArgs("webmcp", 9350)).toEqual([
+      "mcp",
+      "--webmcp",
+      "--port",
+      "9350",
+    ]);
+  });
+});
+
+describe("the harness's browser", () => {
+  it("gets WebMCP and the arm's features in one --enable-features switch", () => {
+    expect(
+      browserLaunchArgs(["--remote-debugging-port=9222"], ["A", "B"])
+    ).toEqual(["--remote-debugging-port=9222", "--enable-features=WebMCP,A,B"]);
+    expect(browserLaunchArgs()).toEqual(["--enable-features=WebMCP"]);
   });
 });
 
 describe("the Page Object Tools among a page's tools", () => {
-  it("are the names with a dot, so neither snapshot, a Browser Tool nor goal counts", () => {
+  it("are the names with one dot, outside the peek family", () => {
     expect(
-      pageObjectToolNames([
+      [
         "SignInPage.logIn",
-        "click",
-        "fill_form",
-        "goal",
-        "snapshot",
         "Question.setHeadline",
-      ])
+        "peek.store",
+        "page_objects",
+        "snapshot",
+        "goal",
+        "click",
+      ].filter(isPageObjectToolName)
     ).toEqual(["SignInPage.logIn", "Question.setHeadline"]);
   });
 });
 
-describe("a start page without page objects, looked at again after pairing", () => {
-  const settled = {
-    tools: ["click", "goal", "snapshot"],
-    screenTool: "snapshot",
-    goalLoop: true,
-    pairedAddress: "ws://127.0.0.1:9350",
-    storedAddress: "ws://127.0.0.1:9350",
-    pageUrl: "http://localhost:3000/auth/login",
-    startUrl: "http://localhost:3000/auth/login",
-  };
+describe("the tools a channel must not list", () => {
+  const listed = [
+    "SignInPage.logIn",
+    "page_objects",
+    "ayme_connect",
+    "ayme_inspect",
+    "ayme_list_tools",
+    "ayme_call",
+    "snapshot",
+    "goal",
+    "click",
+  ];
 
-  it("passes with its screen tool, goal as the Goal Loop says, the pairing and the start URL", () => {
-    expect(settledStartPageProblem(settled)).toBeNull();
+  it("are, through the ayme server, all but Page Object Tools, page_objects and its own tools", () => {
+    expect(unexpectedToolNames(listed, "mcp")).toEqual([
+      "snapshot",
+      "goal",
+      "click",
+    ]);
+  });
+
+  it("are, through WebMCP, all but Page Object Tools and page_objects", () => {
+    expect(unexpectedToolNames(listed, "webmcp")).toEqual([
+      "ayme_connect",
+      "ayme_inspect",
+      "ayme_list_tools",
+      "ayme_call",
+      "snapshot",
+      "goal",
+      "click",
+    ]);
+  });
+});
+
+describe("the init script the run's server writes", () => {
+  const script = (port: number, webmcp: boolean) =>
+    `const base = "http://127.0.0.1:${port}/"; start({ webMCP: { enabled: ${webmcp} } });`;
+
+  it("passes when it names the run's port and publishes through WebMCP exactly for that channel", () => {
     expect(
-      settledStartPageProblem({
-        ...settled,
-        tools: ["click", "snapshot"],
-        goalLoop: false,
-      })
+      initScriptProblem(script(9350, true), { port: 9350, channel: "webmcp" })
+    ).toBeNull();
+    expect(
+      initScriptProblem(script(9350, false), { port: 9350, channel: "mcp" })
     ).toBeNull();
   });
 
   it.each([
-    ["a Page Object Tool", { tools: [...settled.tools, "SignInPage.logIn"] }],
-    ["no tools, as during a reload", { tools: [] }],
-    ["goal with the Goal Loop off", { goalLoop: false }],
-    ["a lost pairing", { storedAddress: null }],
-    [
-      "a query the start URL lacks",
-      { pageUrl: `${settled.startUrl}?callbackUrl=/setup/intro` },
-    ],
-    ["another origin", { pageUrl: "http://localhost:3001/auth/login" }],
-    ["another path", { pageUrl: "http://localhost:3000/setup/intro" }],
-  ])("fails with %s", (_, change) => {
-    expect(settledStartPageProblem({ ...settled, ...change })).not.toBeNull();
+    ["another port", script(9351, true), "webmcp"],
+    ["WebMCP off for the webmcp channel", script(9350, false), "webmcp"],
+    ["WebMCP on for the mcp channel", script(9350, true), "mcp"],
+  ] as const)("fails with %s", (_, text, channel) => {
+    expect(initScriptProblem(text, { port: 9350, channel })).not.toBeNull();
   });
 });
 

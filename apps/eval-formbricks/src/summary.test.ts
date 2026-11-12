@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { noGoalLoop } from "./goalLoop.ts";
 import { normalizeRun } from "./normalize.ts";
 import { parseStoredRun, parseSuiteManifest } from "./store.ts";
 import {
@@ -27,8 +26,7 @@ function run(overrides: Partial<SummarizedRun>): SummarizedRun {
     pass: true,
     wallTimeMs: 100_000,
     tokens: { input: 10, cacheCreation: 1000, cacheRead: 9000, output: 90 },
-    combinedCostUsd: 0.1,
-    goalLoop: { calls: 0, costUsd: null },
+    costUsd: 0.1,
     toolCallTotal: 10,
     timeoutSeconds: 600,
     labCheckoutDirty: false,
@@ -66,14 +64,14 @@ const odd = [
     runId: "b",
     wallTimeMs: 200_000,
     tokens: { input: 20, cacheCreation: 2000, cacheRead: 18000, output: 180 },
-    combinedCostUsd: 0.3,
+    costUsd: 0.3,
     toolCallTotal: 14,
   }),
   run({
     runId: "c",
     wallTimeMs: 150_000,
     tokens: { input: 15, cacheCreation: 1500, cacheRead: 13500, output: 135 },
-    combinedCostUsd: 0.2,
+    costUsd: 0.2,
     toolCallTotal: 12,
   }),
 ];
@@ -110,7 +108,7 @@ describe("the spread of a metric", () => {
 describe("a suite of three runs", () => {
   const [arm] = summarize(odd).arms;
 
-  it("takes the median, lowest and highest of wall time, tokens and combined cost", () => {
+  it("takes the median, lowest and highest of wall time, tokens and cost", () => {
     expect(arm?.wallTimeMs).toEqual({
       n: 3,
       median: 150_000,
@@ -123,7 +121,7 @@ describe("a suite of three runs", () => {
       min: 10_100,
       max: 20_200,
     });
-    expect(arm?.combinedCostUsd).toEqual({
+    expect(arm?.costUsd).toEqual({
       n: 3,
       median: 0.2,
       min: 0.1,
@@ -153,7 +151,7 @@ describe("a suite of four runs", () => {
     run({
       runId: `e${index}`,
       wallTimeMs: seconds * 1000,
-      combinedCostUsd: (index + 1) / 10,
+      costUsd: (index + 1) / 10,
     })
   );
   const [arm] = summarize(even).arms;
@@ -165,9 +163,9 @@ describe("a suite of four runs", () => {
       min: 10_000,
       max: 40_000,
     });
-    expect(arm?.combinedCostUsd?.median).toBeCloseTo(0.25);
-    expect(arm?.combinedCostUsd?.min).toBeCloseTo(0.1);
-    expect(arm?.combinedCostUsd?.max).toBeCloseTo(0.4);
+    expect(arm?.costUsd?.median).toBeCloseTo(0.25);
+    expect(arm?.costUsd?.min).toBeCloseTo(0.1);
+    expect(arm?.costUsd?.max).toBeCloseTo(0.4);
   });
 });
 
@@ -200,11 +198,11 @@ describe("failed runs", () => {
 describe("a run without usage data", () => {
   const results = [
     run({ runId: "u1" }),
-    run({ runId: "u2", tokens: null, combinedCostUsd: null, pass: false }),
+    run({ runId: "u2", tokens: null, costUsd: null, pass: false }),
     run({
       runId: "u3",
       tokens: { input: 20, cacheCreation: 2000, cacheRead: 18000, output: 180 },
-      combinedCostUsd: 0.3,
+      costUsd: 0.3,
     }),
   ];
   const summary = summarize(results);
@@ -219,12 +217,12 @@ describe("a run without usage data", () => {
       min: 10_100,
       max: 20_200,
     });
-    expect(arm?.combinedCostUsd?.n).toBe(2);
+    expect(arm?.costUsd?.n).toBe(2);
     expect(arm?.runList[1]).toMatchObject({
       runId: "u2",
       usage: null,
       totalTokens: null,
-      combinedCostUsd: null,
+      costUsd: null,
     });
   });
 
@@ -238,46 +236,9 @@ describe("a run without usage data", () => {
   });
 
   it("shows unknown when no run has the figure", () => {
-    const none = summarize([run({ tokens: null, combinedCostUsd: null })]);
+    const none = summarize([run({ tokens: null, costUsd: null })]);
     expect(none.arms[0]?.tokens).toBeNull();
     expect(renderSummaryMarkdown(none)).toContain("| unknown | unknown |");
-  });
-});
-
-describe("a run whose Goal Loop cost is unknown", () => {
-  const results = [
-    run({
-      runId: "g1",
-      arm: "ayme-goal-loop-on",
-      combinedCostUsd: null,
-      goalLoop: { calls: 12, costUsd: null },
-    }),
-    run({
-      runId: "g2",
-      arm: "ayme-goal-loop-on",
-      combinedCostUsd: 0.15,
-      goalLoop: { calls: 9, costUsd: 0.05 },
-    }),
-  ];
-  const summary = summarize(results, ["ayme-goal-loop-on"]);
-
-  it("has an unknown combined cost, shown as such, and the summary says why", () => {
-    expect(summary.arms[0]?.combinedCostUsd).toEqual({
-      n: 1,
-      median: 0.15,
-      min: 0.15,
-      max: 0.15,
-    });
-    expect(renderSummaryMarkdown(summary)).toContain(
-      "$0.150 ($0.150 to $0.150), 1 of 2 runs"
-    );
-    expect(summary.notes).toContain(
-      "ayme-goal-loop-on: the Goal Loop's cost is unknown in 1 of 2 runs, so their combined cost is unknown."
-    );
-  });
-
-  it("is not noted for arms whose Goal Loop made no call", () => {
-    expect(summarize(odd).notes).toEqual([]);
   });
 });
 
@@ -407,7 +368,6 @@ describe("reading stored files", () => {
       formbricksCommit: "8abe0b42",
       aymeCommit: "4cdac8dd",
     },
-    goalLoop: noGoalLoop,
     setup: null,
     labCheckout: { movedFiles: [], modifiedFiles: [] },
   });
@@ -420,19 +380,9 @@ describe("reading stored files", () => {
     // Recorded in the fixture's task turn: 120 + 3000 + 45000 + 800 tokens, $0.4633 cumulative after a $0.0312 setup turn.
     const [arm] = summarize([parsed]).arms;
     expect(arm?.tokens?.median).toBe(48_920);
-    expect(arm?.combinedCostUsd?.median).toBeCloseTo(0.4321, 10);
+    expect(arm?.costUsd?.median).toBeCloseTo(0.4321, 10);
     expect(arm?.wallTimeMs?.median).toBe(190_000);
     expect(parsed.versions.claudeCode).toBe("2.1.281");
-    expect(parsed.goalLoop).toEqual({ calls: 0, costUsd: null });
-  });
-
-  it("reads a result stored before the Goal Loop was measured as one without calls", () => {
-    // JSON drops the undefined field, as an older result.json never had it.
-    const parsed = parseStoredRun(
-      JSON.parse(JSON.stringify({ ...stored, goalLoop: undefined })),
-      "result.json"
-    );
-    expect(parsed.goalLoop).toEqual({ calls: 0, costUsd: null });
   });
 
   it("names the file and field of a result it cannot read", () => {
