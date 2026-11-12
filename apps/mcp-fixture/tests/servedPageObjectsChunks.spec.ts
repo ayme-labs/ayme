@@ -8,7 +8,11 @@ test("a served page fetches the screenshot renderer only when screenshot is firs
   page,
   baseURL,
 }, testInfo) => {
-  const { agent, server } = await startServingAgent(context, testInfo);
+  const { agent, server } = await startServingAgent(
+    context,
+    testInfo,
+    "--browser-tools"
+  );
   try {
     // The code the page fetches from ayme mcp, in the order it asks.
     const fetched: string[] = [];

@@ -132,7 +132,11 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
 }) => {
   test.setTimeout(600_000);
   await ignoreAutoPairScan(context);
-  const agent = await startAgent("--port", String(await freePort()));
+  const agent = await startAgent(
+    "--port",
+    String(await freePort()),
+    "--browser-tools"
+  );
   try {
     await connectPage(agent, page, `${baseURL}/dogfood.html`);
     // Where a click lands: the text of the element it reached.

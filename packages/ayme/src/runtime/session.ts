@@ -73,6 +73,7 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
+import { pageObjectToolSource } from "./pageObjectToolSource";
 import {
   callers,
   checkedToolInput,
@@ -608,9 +609,26 @@ export function createAymeOn(
     for (const listener of toolListeners) listener(tools);
   };
   /**
-   * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
-   * calls as `webmcp` Runs. The package decides which of them it publishes.
+   * The Page Object Tools and their answers as the agent channels take them,
+   * their calls made by `by`: the one source WebMCP publication and the
+   * Ayme MCP server share.
    */
+  const pageObjectToolsFor = (by: Caller) =>
+    pageObjectToolSource({
+      list: () => ayme.tools.list(),
+      subscribe: (listener) => ayme.tools.subscribe(listener),
+      run: (name, input) => ayme.tools.run(name, input as never, { by }),
+      readPageObjectTree: () =>
+        takeTurn(() => target.registry().readPageObjectTree()),
+      url: () => target.rawPage().url(),
+    });
+
+  /**
+   * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
+   * calls as `webmcp` Runs, a Page Object Tool's answered as the agent
+   * channels answer it. The package decides which of them it publishes.
+   */
+  const webMcpPageObjectTools = pageObjectToolsFor(callers.webmcp);
   const webMcpTools = {
     list: () =>
       ayme.tools.list().map((tool) => ({
@@ -618,8 +636,7 @@ export function createAymeOn(
         description: requiredDescription(tool),
       })),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
-    run: (name: string, input: unknown) =>
-      ayme.tools.run(name, input as never, { by: callers.webmcp }),
+    run: webMcpPageObjectTools.run,
   };
 
   /**
@@ -850,14 +867,15 @@ export function createAymeOn(
 
   /**
    * The session's tools as the Ayme MCP server's client reaches them: its
-   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller.
+   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller, and a Page
+   * Object Tool's answered as the agent channels answer it.
    */
+  const aymeMcpPageObjectTools = pageObjectToolsFor(callers.aymeMcp);
   const aymeMcpTools = {
     list: () => ayme.tools.list().map(forAymeMcp),
     subscribe: (listener: (tools: readonly AymeMcpTool[]) => void) =>
       ayme.tools.subscribe((tools) => listener(tools.map(forAymeMcp))),
-    run: (name: string, input: unknown) =>
-      ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
+    run: aymeMcpPageObjectTools.run,
   };
 
   const pom: AymePom = {

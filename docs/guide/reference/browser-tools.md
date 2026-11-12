@@ -2,6 +2,8 @@
 
 Every built-in tool Ayme publishes, with its input.
 
+`ayme mcp` lists the Browser Tools, `snapshot` and `goal` only when started with `--browser-tools`; see [Connect an agent](../guides/connect-an-agent.md#options).
+
 ## Browser Tools
 
 | Tool               | Input                                             |

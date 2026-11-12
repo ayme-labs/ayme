@@ -30,8 +30,9 @@ import {
  * other name answers that no page is connected, since it may be a page tool
  * the agent listed before. One server serves one agent, so that view says
  * when the agent hears `notifications/tools/list_changed`, and every tool
- * result carries its tool change note, if any, as a text item after the
- * tool's own. A server tool's input is checked against its input schema
+ * result but a Page Object Tool's carries its tool change note, if any, as
+ * a text item after the tool's own: a Page Object Tool answers with what
+ * the page answered alone. A server tool's input is checked against its input schema
  * before the tool runs, with arguments left out taken as `{}`; a page
  * tool's input is the page's to check.
  */
@@ -105,7 +106,16 @@ export function createMcpToolServer({
     CallToolRequestSchema,
     async (request): Promise<ToolResult> => {
       const { name, arguments: input = {} } = request.params;
+      // `ayme_call` answers what the tool it names answers.
+      const called =
+        name === "ayme_call" && typeof input.tool === "string"
+          ? input.tool
+          : name;
+      const pageObjectTool = connection.tools.some(
+        (tool) => tool.name === called && tool.group === "pageObject"
+      );
       const result = await run(name, input);
+      if (pageObjectTool) return result;
       // Taken once the result is ready.
       const note = view.resultReturned({
         tools: connection.tools,

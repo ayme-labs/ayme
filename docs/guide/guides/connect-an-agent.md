@@ -86,6 +86,25 @@ Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every 
 
 Any other MCP client takes the same command, `npx`, with the arguments `-y @ayme-dev/mcp@<version> mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
 
+### Options
+
+Options go after `mcp`, in the command or the client's `args` list:
+
+| Option                  | What it adds                                                                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--browser-tools`       | Ayme's own browser driving: the [Browser Tools](../reference/browser-tools.md), `snapshot`, `goal` and your Custom Tools. Use it when Ayme is your agent's only browser automation. Without it, see [What the agent sees](#what-the-agent-sees). |
+| `--webmcp`              | The page `ayme mcp` serves Page Objects to also publishes them through WebMCP; see [Page Objects on a page without Ayme](page-objects-without-ayme.md). Without Page Objects to serve, the server refuses to start.                              |
+| `--port <port>`         | Listens on that port only; see [Ports](#ports).                                                                                                                                                                                                  |
+| `--page-objects <file>` | Experimental: serves that entry's Page Objects; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).                                                                                                                         |
+
+For an agent that drives the browser with Ayme alone, Claude Code:
+
+```sh
+claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp --browser-tools
+```
+
+`ayme mcp --help` prints the options and what each adds.
+
 Your app already installs `@ayme-dev/mcp`, so a client that starts its servers in the app's folder can run that copy instead, which always matches the page client: the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` keeps `npx` from downloading anything, so started from any other folder the server fails to start rather than running another version.
 
 ## Connect a tab
@@ -99,11 +118,15 @@ Run your dev server and ask the agent to connect to the page, giving it the URL,
 
 ## What the agent sees
 
-Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: `snapshot`, `page_objects`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, the Page Object Tools of every Page Object on the page, the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`, and `goal` when the Goal Loop is configured. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
+Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: the Page Object Tools of every Page Object on the page, `page_objects`, and the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. The agent clicks, types and reads the page with its own browser automation, such as Playwright MCP, Playwright CLI or agent-browser, and Ayme adds your Page Objects to it.
+
+With `--browser-tools`, the agent also gets Ayme's own browser driving: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, and `goal` when the Goal Loop is configured. The page lists the same tools either way and your app's code does not change: the server decides which of them the agent sees.
+
+A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now, because a click would not reach its Page Object Root or its [availability predicate](ayme-page-objects.md#aymeaction) says so, stays listed, and calling it is refused with its reason before anything runs. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now, because a click would not reach its Page Object Root or its [availability predicate](ayme-page-objects.md#aymeaction) says so, stays listed, and calling it is refused with its reason before anything runs. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason. A Page Object Tool's result says none of this: it is [its short answer](page-state.md#a-page-object-tools-answer-to-an-agent) alone, and the next result of another tool says what changed.
 
 `ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
 

@@ -107,7 +107,7 @@ test("a localhost tab opened before its server started pairs when it gains focus
   await page.goto("/");
   // The scan at load probed every port of the range, and found no server.
   await expect.poll(() => probes.length).toBe(16);
-  const agent = await startAgent();
+  const agent = await startAgent("--browser-tools");
   try {
     const { port } = await serverAddress(agent);
     scanReaches.add(port);
@@ -137,7 +137,7 @@ test("a tab paired by link does not scan when it gains focus", async ({
   scanReaches,
 }) => {
   await connect("/");
-  const other = await startAgent();
+  const other = await startAgent("--browser-tools");
   try {
     scanReaches.add((await serverAddress(other)).port);
     const probes = await probesOf(page, scanReaches);
@@ -194,9 +194,9 @@ test("an auto-paired tab whose server another one replaced on its port stays unp
   await expect
     .poll(() => agent.pageToolNames(), { message: agent.log })
     .toContain("snapshot");
-  const second = await startAgent();
+  const second = await startAgent("--browser-tools");
   await agent.close();
-  const third = await startAgent("--port", String(port));
+  const third = await startAgent("--port", String(port), "--browser-tools");
   try {
     const secondPort = (await serverAddress(second)).port;
     scanReaches.add(secondPort);
@@ -291,7 +291,7 @@ test("with two servers running, an open localhost page stays unpaired, and each 
   baseURL,
   scanReaches,
 }) => {
-  const other = await startAgent();
+  const other = await startAgent("--browser-tools");
   try {
     const ports = [
       (await serverAddress(agent)).port,

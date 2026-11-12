@@ -105,6 +105,30 @@ describe("AgentConnection", () => {
     });
   });
 
+  it("names no tools in the answer to a Page Object Tool's call that a new document left unanswered", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
+    const call = connection.call("ListPage.open", {});
+    connection.navigating(page, {
+      url: "http://127.0.0.1:5173/counter",
+      reload: false,
+    });
+    connection.detach(page);
+
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/counter"), () => {})!
+      .publishTools([tool("snapshot")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/counter",
+    });
+  });
+
   it("stays busy with a tab that went away, calls or not, until the wait ends", () => {
     vi.useFakeTimers();
     const connection = new AgentConnection();
