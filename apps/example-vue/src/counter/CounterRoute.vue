@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { AymeProvider } from "@ayme-dev/vue";
+import CounterPageView from "./CounterPageView.vue";
 
 // The certification pairs a coding agent with the page, in dev only.
 const dev = import.meta.env.DEV;
-import CounterPageView from "./CounterPageView.vue";
 </script>
 
 <!--
