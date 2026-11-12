@@ -57,6 +57,10 @@ _Avoid_: label, POM label, Page Object label
 The name a caller gives a Page Object of a class with a Page Object Root when it calls one of its Page Object Tools, written `po<n>`. The page numbers its Page Objects in the order it first shows them. The id belongs to the element of the Page Object Root: it is kept while that element stays on the page and is never given to another Page Object. It is not a Structural Ref and neither can stand in for the other. A Structural Page State an agent reads shows it on the Page Object Root beside the Page Object Root Mark.
 _Avoid_: Instance Ref, instance id, Page Object ref
 
+**Page Object Tree**:
+The Page Objects on a page, as an agent reads them through `page_objects`: each present Page Object under its class name, nested as its model nests its Page Object Children, each declared child shown with its value, and each Page Object of a class with a Page Object Root with its Page Object Id. It names no tool, carries no schema or Page Object definition, and shows no Structural Ref. A Page Object Tool's answer to an agent reports how it changed: the Page Objects that appeared, in full, those that went away, and the values that changed.
+_Avoid_: Page Object Screen, POM screen, instance tree, Page Object snapshot
+
 **Page Object Presence**:
 Whether a Page Object can be associated with rendered UI in the current layout's normally scroll-reachable area, independently of modal blocking or obstruction. A Page Object Model may declare its own presence predicate, which narrows the default.
 
@@ -70,20 +74,20 @@ Whether a Page Object Action can run right now. An action is available when its 
 The one fact that makes a Page Object Action, or a Browser Tool call on a single element, unavailable, as a string. The runtime writes it when a click would not reach the root or the element, or when an element a tool types into cannot take focus, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
 
 **Browser Tool**:
-A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects.
+A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches a coding agent only through an Ayme MCP server started with `--browser-tools`, for an agent whose only browser automation is Ayme; WebMCP never publishes it.
 
 **Locator Recommendation**:
 A Playwright locator string derived for one element, optionally relative to a container element. It matches exactly that element and never contains a Structural Ref. It is code for a Page Object Model, not an address for a later tool call.
 _Avoid_: selector suggestion
 
 **Custom Tool**:
-An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose.
+An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches a coding agent through an Ayme MCP server started with `--browser-tools`, and application code through `ayme.tools`; WebMCP never publishes it.
 
 **Settled Page**:
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.
 
 **Change Record**:
-What changed around an action: the difference between the Structural Page State the caller last received and the Settled Page after the action. It is read in two parts: what changed before the action, and what the action changed.
+What changed around an action: the difference between the Structural Page State the caller last received and the Settled Page after the action. It is read in two parts: what changed before the action, and what the action changed. An agent's answer from a Page Object Tool carries none; it reports how the Page Object Tree changed instead.
 
 **Run**:
 One execution of a tool, from its start to its outcome. It is started by a Caller, or inside another Run, which is then its parent. A goal Run's children are the Runs its Goal Loop's steps executed; a Custom Tool's children are the Runs it starts.
@@ -125,7 +129,7 @@ The Inspector's setting for showing people what an agent does: it pauses briefly
 _Avoid_: slow mode, demo trace
 
 **Agent Connection**:
-The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools.
+The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools. The server decides which of the page's tools the agent sees: by default its Page Object Tools, `page_objects` and Peek Tools, and also its Browser Tools, `snapshot`, `goal` and Custom Tools when started with `--browser-tools`.
 
 **Peek**:
 A named view of application state that a coding agent can read on demand while the app runs, from the browser or from the app's own server process. Reading it changes nothing.

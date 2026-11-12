@@ -1,5 +1,6 @@
 ---
 status: accepted
+amended-by: ADR-0055
 ---
 
 # Use structural POMs and explicit WebMCP exposure
