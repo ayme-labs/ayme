@@ -260,9 +260,10 @@ export function specsOfElementToolSchema(
 }
 
 /**
- * A rooted Page Object Tool takes `{ ref, args }`: the ref
+ * A rooted Page Object Tool takes `{ ref, args }` from the Goal Loop: the ref
  * addresses one present instance of its path, the action's own parameters sit
- * inside `args` and are classified like any other parameter.
+ * inside `args` and are classified like any other parameter. The Page Object
+ * id the tool takes instead of the ref is not an argument of the loop's.
  */
 export function specsOfRootedTool(
   parameters: readonly NamedToolParameter[],
@@ -274,11 +275,13 @@ export function specsOfRootedTool(
           {
             name: "ref",
             path: ["ref"],
-            optional: parameter.optional,
+            optional: false,
             closedSet: { kind: "instance", roots } as const,
           },
         ]
-      : specsOfObjectSchema(parameter.schema, [parameter.name])
+      : parameter.name === "id"
+        ? []
+        : specsOfObjectSchema(parameter.schema, [parameter.name])
   );
 }
 
@@ -289,13 +292,12 @@ export function requiredParamsOf(
   parameters: readonly NamedToolParameter[],
   rooted: boolean
 ): string[] {
-  return parameters.flatMap((parameter) =>
-    rooted && parameter.name !== "ref"
-      ? parametersOfObjectSchema(parameter.schema)
-          .filter((inner) => !inner.optional)
-          .map((inner) => `${parameter.name}.${inner.name}`)
-      : parameter.optional
-        ? []
-        : [parameter.name]
-  );
+  return parameters.flatMap((parameter) => {
+    if (!rooted) return parameter.optional ? [] : [parameter.name];
+    if (parameter.name === "ref") return ["ref"];
+    if (parameter.name === "id") return [];
+    return parametersOfObjectSchema(parameter.schema)
+      .filter((inner) => !inner.optional)
+      .map((inner) => `${parameter.name}.${inner.name}`);
+  });
 }

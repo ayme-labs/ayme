@@ -1729,20 +1729,187 @@ describe("live Page Object registry", () => {
     const archiveTool = tool("Item.archive");
     const renameTool = tool("Item.rename");
 
-    expect(archiveTool.inputSchema.required).toEqual(["ref"]);
+    expect(archiveTool.inputSchema.required).toEqual([]);
     await expect(
       archiveTool.execute({ ref: "e2" }, pomRunContext())
     ).resolves.toMatchObject({ result: "archived" });
     expect(archive).toHaveBeenCalledOnce();
 
-    expect(tool("Item.pin").inputSchema.required).toEqual(["ref"]);
+    expect(tool("Item.pin").inputSchema.required).toEqual([]);
 
-    expect(renameTool.inputSchema.required).toEqual(["ref", "args"]);
+    expect(renameTool.inputSchema.required).toEqual(["args"]);
     // The runtime checks a Run's input against this schema before execute.
     expect(() =>
       checkedToolInput(renameTool.inputSchema, { ref: "e2" })
     ).toThrow("Input property args is required.");
 
     pageStateResolutions.clear();
+  });
+
+  describe("a rooted tool called by Page Object id", () => {
+    /** Two items on the page, named `e1` and `e2`, each with its own archive. */
+    async function twoItems() {
+      const { registry, session, rooted } = await setup();
+      const elements = [
+        { isConnected: true } as Element,
+        { isConnected: true } as Element,
+      ];
+      const archives = [vi.fn(() => "first"), vi.fn(() => "second")];
+      let present = [1, 1];
+      resolvesTo("e1", elements[0]!);
+      resolvesTo("e2", elements[1]!);
+      class ItemsPage {
+        readonly items = elements.map((element, index) =>
+          rooted(
+            brandedLocator({ count: async () => present[index]! }, element),
+            { archive: archives[index]! }
+          )
+        );
+      }
+      registry.registerCompiledPom(ItemsPage, {
+        className: "ItemsPage",
+        tools: [],
+        members: [
+          {
+            memberName: "items",
+            kind: "component",
+            access: "field",
+            componentClassName: "Item",
+            collection: true,
+          },
+        ],
+        components: [
+          {
+            className: "Item",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("Item.archive")],
+          },
+        ],
+      });
+      session.register(ItemsPage);
+      await vi.runOnlyPendingTimersAsync();
+      const tool = registry.listAvailablePomTools()[0];
+      if (!tool) throw new Error("Expected the collection tool.");
+      return {
+        registry,
+        tool,
+        archives,
+        /** The item at `index` leaves the page. */
+        async remove(index: number) {
+          present = present.map((count, at) => (at === index ? 0 : count));
+          pageChanges();
+          await vi.runOnlyPendingTimersAsync();
+        },
+      };
+    }
+
+    afterEach(() => pageStateResolutions.clear());
+
+    it("runs on the Page Object the id names", async () => {
+      const { registry, tool, archives } = await twoItems();
+      expect(await registry.pageObjectIdsOf(["e1", "e2"])).toEqual([
+        "po1",
+        "po2",
+      ]);
+
+      await expect(
+        tool.execute({ id: "po2" }, pomRunContext())
+      ).resolves.toMatchObject({ result: "second" });
+      await expect(
+        tool.execute({ id: "po1", args: {} }, pomRunContext())
+      ).resolves.toMatchObject({ result: "first" });
+
+      expect(archives[0]).toHaveBeenCalledOnce();
+      expect(archives[1]).toHaveBeenCalledOnce();
+    });
+
+    it("still runs on the Page Object whose root a Structural Ref names", async () => {
+      const { tool, archives } = await twoItems();
+
+      await expect(
+        tool.execute({ ref: "e2", args: {} }, pomRunContext())
+      ).resolves.toMatchObject({ result: "second" });
+      expect(archives[0]).not.toHaveBeenCalled();
+    });
+
+    it("offers id and ref in its schema, and requires neither", async () => {
+      const { tool } = await twoItems();
+
+      expect(Object.keys(tool.inputSchema.properties ?? {})).toEqual([
+        "id",
+        "ref",
+        "args",
+      ]);
+      expect(tool.inputSchema.required).toEqual([]);
+    });
+
+    it.each(["e1", "po0", "PO1", "po1 ", ""])(
+      "refuses the malformed id %j as wrong input",
+      async (id) => {
+        const { registry, tool, archives } = await twoItems();
+        await registry.pageObjectIdsOf(["e1", "e2"]);
+
+        const call = tool.execute({ id }, pomRunContext());
+
+        await expect(call).rejects.toMatchObject({
+          name: "ToolInputError",
+          message: `Input property id is not a Page Object id, written po<n>: ${JSON.stringify(id)}.`,
+        });
+        expect(archives[0]).not.toHaveBeenCalled();
+      }
+    );
+
+    it("refuses an input with both an id and a ref, or with neither, as wrong input", async () => {
+      const { registry, tool, archives } = await twoItems();
+      await registry.pageObjectIdsOf(["e1", "e2"]);
+
+      await expect(
+        tool.execute({ id: "po1", ref: "e1" }, pomRunContext())
+      ).rejects.toMatchObject({
+        name: "ToolInputError",
+        message: "Input takes id or ref, not both.",
+      });
+      await expect(
+        tool.execute({ args: {} }, pomRunContext())
+      ).rejects.toMatchObject({
+        name: "ToolInputError",
+        message: "Input property id is required.",
+      });
+      expect(archives[0]).not.toHaveBeenCalled();
+    });
+
+    it("fails with the reason alone once the Page Object is gone", async () => {
+      const { registry, tool, archives, remove } = await twoItems();
+      await registry.pageObjectIdsOf(["e1", "e2"]);
+      await remove(0);
+      // The element left the page: nothing names it any more.
+      latestStandIn()!.currentRefs = async (refs) =>
+        refs.map((ref) => (ref === "e1" ? undefined : ref));
+
+      const call = tool.execute({ id: "po1" }, pomRunContext());
+
+      await expect(call).rejects.toMatchObject({
+        name: "RefResolutionError",
+        message:
+          'Cannot call Item.archive on Page Object "po1": it is not on the page.',
+      });
+      expect(archives[0]).not.toHaveBeenCalled();
+      // The Page Object that stayed keeps its id.
+      await expect(
+        tool.execute({ id: "po2" }, pomRunContext())
+      ).resolves.toMatchObject({ result: "second" });
+    });
+
+    it("fails with the reason alone for an id no Page Object was given", async () => {
+      const { tool } = await twoItems();
+
+      await expect(
+        tool.execute({ id: "po7" }, pomRunContext())
+      ).rejects.toMatchObject({
+        name: "RefResolutionError",
+        message:
+          'Cannot call Item.archive on Page Object "po7": it is not on the page.',
+      });
+    });
   });
 });

@@ -36,6 +36,7 @@ import {
   type PageStateCapture,
   type RefResolution,
 } from "../domain/structuralPageState";
+import type { PomRootIds } from "../domain/pomRootMarks";
 import { resolveRequestedRef } from "./refResolution";
 
 /**
@@ -60,6 +61,11 @@ export type CaptureAsk = {
 export type ActionPage = {
   begin(): Promise<PageAction>;
 };
+
+/** The id of each Page Object Root `rootRefs` name, in the order given. */
+export type RootIds = (
+  rootRefs: readonly string[]
+) => Promise<(string | undefined)[]>;
 
 /** An action begun on the page: the page right before it, and the action. */
 export type PageAction = {
@@ -104,12 +110,18 @@ export class PageStateSession {
    * loaded. Each document has its own history, identity ledger and refs, as
    * the browser runtime's has by starting over at a full load. Without it,
    * the session keeps one document's.
+   *
+   * `rootIds`: what the page state text a reader receives prints on each
+   * Page Object Root beside its marks, by the root's Structural Ref, in the
+   * order asked; undefined for a root that has none. Without it, the text
+   * prints none.
    */
   constructor(
     history: InteractionHistory,
     private readonly captureDocument: CapturePage,
     private readonly actionPage: ActionPage,
-    private readonly restart?: (url: string) => InteractionHistory
+    private readonly restart?: (url: string) => InteractionHistory,
+    private readonly rootIds?: RootIds
   ) {
     this.current = history;
   }
@@ -160,7 +172,25 @@ export class PageStateSession {
   }
 
   async getPageState(cursor?: Cursor): Promise<PageState> {
-    return this.pageStateFor(await this.capture(cursor));
+    const capture = await this.capture(cursor);
+    return this.pageStateFor(capture, await this.rootIdsOf(capture));
+  }
+
+  /** The id of each Page Object Root of `capture` that has one, by ref. */
+  private async rootIdsOf(capture: PageCapture): Promise<PomRootIds> {
+    // In the order the tree shows them, which is the order a root new to
+    // the page gets its id in.
+    const roots = capture.tree
+      .getAllRefs()
+      .filter((ref) => capture.pomRootMarks.has(ref));
+    if (!this.rootIds || roots.length === 0) return new Map();
+    const ids = await this.rootIds(roots);
+    return new Map(
+      roots.flatMap((root, index) => {
+        const id = ids[index];
+        return id === undefined ? [] : [[root, id] as const];
+      })
+    );
   }
 
   async getPageStateCapture(
@@ -558,9 +588,9 @@ export class PageStateSession {
     }
   }
 
-  private pageStateFor(capture: PageCapture): PageState {
+  private pageStateFor(capture: PageCapture, rootIds: PomRootIds): PageState {
     return Object.freeze({
-      text: renderPageState(capture).text,
+      text: renderPageState(capture, rootIds).text,
       resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
     });
   }

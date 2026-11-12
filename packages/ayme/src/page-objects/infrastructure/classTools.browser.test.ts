@@ -278,8 +278,10 @@ it("uses a class instance from a later registration when the first has none", as
     session.register(Second);
     await probeRegisteredPomMembers();
     expect(
-      session.ayme.tools.list().find(({ name }) => name === "LaterItem.open")
-        ?.inputSchema.required
+      Object.keys(
+        session.ayme.tools.list().find(({ name }) => name === "LaterItem.open")
+          ?.inputSchema.properties ?? {}
+      )
     ).toContain("ref");
     await session.ayme.tools.run(
       "LaterItem.open",

@@ -157,7 +157,7 @@ it("#966 targets a shared portaled collection child's own root and refuses a row
     ).toEqual(["ProjectRow.openRename", "RenameDialog.confirm"]);
     const state = await agent.getPageState();
     const dialogRef = state.text.match(
-      /(e\d+) RenameDialog "Rename project":/
+      /(e\d+) RenameDialog po\d+ "Rename project":/
     )?.[1];
     expect(dialogRef, state.text).toBeDefined();
     expect(state.text.match(/RenameDialog/g)).toHaveLength(1);
