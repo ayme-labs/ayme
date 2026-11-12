@@ -819,15 +819,24 @@
           "inferred": false,
           "mixed": false
         }
+      },
+      {
+        "name": "Browser automation",
+        "provides": "the browser a coding agent drives, such as Playwright MCP, Playwright CLI or a Playwright script, and loads the init script `ayme mcp` writes into every page it opens. The script continues only in a top-level http(s) document, and returns at once in a frame, in a document such as `about:blank`, and on a page of `ayme mcp` itself",
+        "evidence": {
+          "text": "verified: `docs/guide/guides/page-objects-without-ayme.md`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `apps/mcp-fixture/tests/servedPageObjects.spec.ts`",
+          "inferred": false,
+          "mixed": false
+        }
       }
     ],
     "containers": [
       {
         "name": "Browser runtime",
-        "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection, which with the external Inspector hands the Inspector contract to the MCP server as plain data instead of mounting the panel",
-        "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
+        "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection, which with the external Inspector hands the Inspector contract to the MCP server as plain data instead of mounting the panel. It installs the document's In-page Module, or binds to it when another host installed it first, and through that module captures the page and runs its actions",
+        "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`) or `createAyme`, or, with served Page Objects, by the init script, with the Agent Connection on and the external Inspector; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
         "evidence": {
-          "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
+          "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `packages/ayme/src/page-state/infrastructure/browserInPage.ts`, `packages/ayme/src/in-page/`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
           "inferred": false,
           "mixed": false
         }
@@ -844,10 +853,10 @@
       },
       {
         "name": "Ayme MCP server",
-        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools, and serves the external Inspector: its page and script over the same loopback HTTP server, and a WebSocket per window whose requests it relays to the paired page and whose answers and events it relays back; experimentally, for a page whose app does not ship Ayme, it also builds the project's Page Objects with esbuild and the project's own Page Object compiler, rebuilding them as they change, and serves them with the project's runtime as ES modules over the same HTTP server, for the browser automation's init script to load",
+        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools, with `ayme_connect`, `ayme_list_tools` and `ayme_call` as its own tools, and serves the external Inspector: its page and script over the same loopback HTTP server, and a WebSocket per window whose requests it relays to the paired page and whose answers and events it relays back; experimentally, when the project has a Page Objects entry, it also builds that entry with esbuild and the project's own Page Object compiler, rebuilding it as the files change, and serves the build with the project's runtime as ES modules over the same HTTP server, and on each such start writes `.ayme/init-script.js` for the browser automation to load. The init script stands aside on a page whose own runtime has started by load and idle, whether or not that runtime has the Agent Connection. A known gap: an app that starts Ayme only later still gets a second runtime (#1238)",
         "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for served Page Objects",
         "evidence": {
-          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
+          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `packages/mcp/src/served-page-objects/infrastructure/initScriptFiles.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
           "inferred": false,
           "mixed": false
         }
@@ -1068,7 +1077,7 @@
           },
           {
             "dir": "←",
-            "text": "with served Page Objects, the runtime and the Page Objects as ES modules over HTTP, and a stamp of each rebuild, after which the page swaps in the new Page Objects"
+            "text": "with served Page Objects, the runtime and the Page Objects as ES modules over HTTP, and a stamp of each rebuild over a WebSocket at `/page-objects/events`, after which the page swaps in the new Page Objects"
           }
         ],
         "evidence": {
@@ -1112,6 +1121,21 @@
         }
       },
       {
+        "from": "Browser automation",
+        "to": "Host application",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "the init script, loaded into each page before the page's own scripts"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `docs/guide/guides/page-objects-without-ayme.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
         "from": "Browser runtime",
         "to": "Host application",
         "flows": [
@@ -1125,7 +1149,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `packages/core/src/capture/`",
+          "text": "verified: `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `packages/ayme/src/page-state/infrastructure/browserInPage.ts`, `packages/ayme/src/in-page/page/capture.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -1317,6 +1341,15 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Browser automation": {
+            "how": "Playwright MCP, Playwright CLI or a Playwright script pointed at `.ayme/init-script.js`; optional, present only with served Page Objects",
+            "evidence": {
+              "text": "verified: `docs/guide/guides/page-objects-without-ayme.md`",
+              "inferred": false,
+              "mixed": false
+            },
+            "optional": true
           }
         }
       },
@@ -1445,6 +1478,14 @@
             "how": "whatever the user's browser or the app's polyfill supplies",
             "evidence": {
               "text": "verified: `docs/guide/guides/publish-tools.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Browser automation": {
+            "how": "not used; served Page Objects are served by `ayme mcp`, which does not run here",
+            "evidence": {
+              "text": "verified: `docs/guide/guides/connect-an-agent.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1579,6 +1620,14 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Browser automation": {
+            "how": "not part of the playground and example setup",
+            "evidence": {
+              "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
           }
         }
       },
@@ -1710,6 +1759,14 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Browser automation": {
+            "how": "the Playwright context of the served Page Objects specs, which loads the `.ayme/init-script.js` the test's `ayme mcp` wrote",
+            "evidence": {
+              "text": "verified: `apps/mcp-fixture/README.md`, `apps/mcp-fixture/tests/servedPageObjects.spec.ts`",
+              "inferred": false,
+              "mixed": false
+            }
           }
         }
       },
@@ -1838,6 +1895,14 @@
             "how": "the `@mcp-b/webmcp-polyfill` initialized before the Vue app",
             "evidence": {
               "text": "verified: `apps/example-vue/src/main.ts`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Browser automation": {
+            "how": "not used; the site is static and `ayme mcp` does not run",
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
               "inferred": false,
               "mixed": false
             }
