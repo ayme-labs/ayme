@@ -102,6 +102,7 @@ async function connectAgent({
   return {
     client,
     connection,
+    page,
     publish,
     call,
     answer,
@@ -379,6 +380,38 @@ describe("a Page Object Tool's answer", () => {
       ],
       isError: true,
     });
+  });
+
+  it("has no note when the call was held while the tab reconnected", async () => {
+    const agent = await connectAgent();
+    await agent.publish([pageObjectTool("ListPage.add")]);
+    await agent.client.listTools();
+    const short = { settled: true, result: 2 };
+    agent.connection.detach(agent.page);
+    const answer = agent.answer("ListPage.add", {});
+    await settle();
+
+    const next = agent.connection.attach(
+      { tab: "a", url: "http://x/" },
+      () => {}
+    )!;
+    const ending = new AbortController();
+    closers.push(async () => ending.abort());
+    void (async () => {
+      for await (const sent of next.calls(ending.signal))
+        next.answer({ callId: sent.callId, ok: true, result: short });
+    })();
+    next.publishTools([
+      pageObjectTool("ListPage.add"),
+      pageObjectTool("Item.archive"),
+    ]);
+
+    expect(await answer).toEqual({
+      texts: [JSON.stringify(short)],
+      isError: false,
+    });
+    const [, note] = await agent.call("ayme_noop");
+    expect(note).toContain("Appeared: Item.archive.");
   });
 
   it("leaves the note on any other page tool's answer", async () => {
