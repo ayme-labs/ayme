@@ -3,7 +3,8 @@
 Map a user flow into a POM against the running app, in this order:
 
 1. **Connect** to the app's page, as [Browser setup](browser-setup.md)
-   describes.
+   describes, with `ayme mcp` started with `--browser-tools`: the steps below
+   use its `snapshot`, Browser Tools and `generate_locator`.
 2. **Discover** the flow with the built-in tools: `snapshot`, `click`, `fill`,
    as [Page tools](page-tools.md) describes. Note each surface's root, portaled
    content, which states change what's possible, and each step's visible

@@ -5,19 +5,21 @@ describes: `agentConnection` on behind the app's dev flag, and Ayme's MCP
 server registered in your agent, pinned to the project's `@ayme-dev/mcp`
 version. Diagnose with the "The agent cannot reach the page" section of
 [Troubleshooting](https://github.com/ayme-labs/ayme/blob/main/docs/guide/troubleshooting.md).
-For using the page's tools once it is connected, such as a ref that fails to
-resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
+For using the page's tools once it is connected, such as naming a Page Object
+by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
 
 - Start command, after `npx -y @ayme-dev/mcp@<version>`:
   - `mcp` beside another browser automation, such as Playwright MCP,
     Playwright CLI or agent-browser: it lists the Page Object Tools,
     `page_objects`, Peek Tools and its own tools, and none of Ayme's own
-    browser driving.
+    browser driving. [Browser automation tools](browser-automation-tools.md)
+    names the start command for each.
   - `mcp --browser-tools` when Ayme is your only browser automation: it also
     lists `snapshot`, the Browser Tools, the app's Custom Tools and `goal`.
   - `mcp --webmcp` with [served Page Objects](#a-page-that-doesnt-ship-ayme)
     whose page should also publish them through WebMCP, such as for
-    Playwright CLI. It refuses to start without Page Objects to serve.
+    Playwright CLI, with `@ayme-dev/webmcp` installed beside
+    `@ayme-dev/ayme`. It refuses to start without Page Objects to serve.
 - The server's tools reach you only after your client restarts. When you
   cannot register the server or restart yourself, give the user the
   registration for your client and ask them to restart you.
