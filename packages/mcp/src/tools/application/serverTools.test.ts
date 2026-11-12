@@ -91,7 +91,11 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
     "The Page Objects entry /work/.ayme/page-objects.ts did not build"
   );
   expect(note).toContain("No inputs were found in config file.");
-  expect(note).toContain('".ayme/**/*.ts"');
+  expect(note).toContain(
+    "The server is watching for changes: it rebuilds the entry when a file it read changes."
+  );
+  expect(note).not.toContain("Fix it");
+  expect(note).not.toContain("Make the");
   expect(note).not.toMatch(/^This server serves Page Objects/);
 
   fix();

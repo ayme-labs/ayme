@@ -103,6 +103,20 @@ it("reports invalid TypeScript instead of returning broken JavaScript", () => {
   ).toThrow("Could not transpile Ayme POM");
 });
 
+it("names a Page Object Model's syntax error where it is in the source", () => {
+  const { context } = loaderContext();
+  expect(() =>
+    turbopackLoader.call(
+      context,
+      readFileSync(resourcePath, "utf8").replace(/\n\}\n$/, "\n}}\n")
+    )
+  ).toThrow(
+    new Error(
+      `Could not transpile Ayme POM ${resourcePath}:\n${resourcePath}:26:2: Declaration or statement expected.`
+    )
+  );
+});
+
 it("compiles a Page Object Model to a stand-in in a build without Ayme, the default", () => {
   const { context } = loaderContext();
   const code = turbopackLoader.call(

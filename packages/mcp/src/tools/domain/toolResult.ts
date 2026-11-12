@@ -130,22 +130,20 @@ export type FailedPageObjects = {
 
 /**
  * What an agent is told while no build of the served Page Objects entry
- * has succeeded: that it did not build, its first error, and how to fix it.
+ * has succeeded: that it did not build, its first error, whether a build
+ * ever succeeded, and whether the server is watching for changes.
  */
 export function pageObjectsNotBuilt({
   entry,
   error,
   watching,
 }: FailedPageObjects) {
-  const fix = watching
-    ? "Fix it and save: the server rebuilds the entry when a file it read changes."
-    : "Fix it and restart ayme mcp: the build could not start, so no file is watched.";
-  const include = error.includes("No inputs were found")
-    ? ` Make the "include" of that tsconfig.json cover the entry, such as ".ayme/**/*.ts".`
-    : "";
+  const state = watching
+    ? "The server is watching for changes: it rebuilds the entry when a file it read changes."
+    : "The server is not watching for changes: the build could not start, so no file is watched.";
   return [
     `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
-    fix + include,
+    state,
   ].join("\n");
 }
 

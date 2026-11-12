@@ -114,7 +114,11 @@ export function createPomCompiler(
       return {
         code:
           emit === "js"
-            ? transpilePomModule(transformed.code, fileName.split("?")[0]!)
+            ? transpileCompiled(
+                transformed.code,
+                source,
+                fileName.split("?")[0]!
+              )
             : transformed.code,
         dependencies: transformed.dependencies,
       };
@@ -125,4 +129,18 @@ export function createPomCompiler(
     derivePomManifests: (fileName) =>
       derivePomManifests(fileName, { tsconfigPath }),
   };
+}
+
+/**
+ * `compiled`, the compiler's output for `source`, transpiled to JavaScript.
+ * When it does not transpile, the error is the one `source` gives, if it
+ * gives one: its lines and columns are those of the file as written.
+ */
+function transpileCompiled(compiled: string, source: string, fileName: string) {
+  try {
+    return transpilePomModule(compiled, fileName);
+  } catch (error) {
+    transpilePomModule(source, fileName);
+    throw error;
+  }
 }

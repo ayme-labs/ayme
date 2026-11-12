@@ -103,42 +103,45 @@ describe("imageToolResult", () => {
 
 describe("pageObjectsNotBuilt", () => {
   const entry = "/work/.ayme/page-objects.ts";
+  const failed = `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects.`;
+  const watching =
+    "The server is watching for changes: it rebuilds the entry when a file it read changes.";
 
-  it("says to save the fix while the build watches the entry's files, with no tsconfig advice for another error", () => {
-    const text = pageObjectsNotBuilt({
-      entry,
-      error: "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file",
-      watching: true,
-    });
+  it("states that the server is watching, and gives no advice", () => {
+    const error = "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file";
+    const text = pageObjectsNotBuilt({ entry, error, watching: true });
 
-    expect(text.split("\n")[1]).toBe(
-      "Fix it and save: the server rebuilds the entry when a file it read changes."
+    expect(text).toBe(
+      [`${failed} The first error: ${error}`, watching].join("\n")
     );
+    expect(text).not.toContain("Fix it");
+    expect(text).not.toContain("Make the");
     expect(text).not.toContain("tsconfig.json");
   });
 
-  it("says to cover the entry in the tsconfig include when TypeScript found no inputs", () => {
-    expect(
-      pageObjectsNotBuilt({
-        entry,
-        error:
-          "/work/.ayme/pom/PlainPage.ts: Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
-        watching: true,
-      }).split("\n")[1]
-    ).toBe(
-      'Fix it and save: the server rebuilds the entry when a file it read changes. Make the "include" of that tsconfig.json cover the entry, such as ".ayme/**/*.ts".'
+  it("keeps TypeScript's no-inputs error and does not say how to cover the entry", () => {
+    const error =
+      "/work/.ayme/pom/PlainPage.ts: Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.";
+    const text = pageObjectsNotBuilt({ entry, error, watching: true });
+
+    expect(text).toBe(
+      [`${failed} The first error: ${error}`, watching].join("\n")
     );
+    expect(text).not.toContain("Fix it");
+    expect(text).not.toContain("Make the");
   });
 
-  it("says to restart ayme mcp when the build could not start", () => {
-    expect(
-      pageObjectsNotBuilt({
-        entry,
-        error: "needs @ayme-dev/ayme/compiler, which does not resolve",
-        watching: false,
-      }).split("\n")[1]
-    ).toBe(
-      "Fix it and restart ayme mcp: the build could not start, so no file is watched."
+  it("states that the server is not watching when the build could not start", () => {
+    const error = "needs @ayme-dev/ayme/compiler, which does not resolve";
+    const text = pageObjectsNotBuilt({ entry, error, watching: false });
+
+    expect(text).toBe(
+      [
+        `${failed} The first error: ${error}`,
+        "The server is not watching for changes: the build could not start, so no file is watched.",
+      ].join("\n")
     );
+    expect(text).not.toContain("Fix it");
+    expect(text).not.toContain("Make the");
   });
 });

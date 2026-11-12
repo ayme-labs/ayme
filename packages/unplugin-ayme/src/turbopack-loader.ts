@@ -44,5 +44,11 @@ export default function turbopackLoader(this: LoaderContext, source: string) {
 
   // Turbopack's custom loaders must return JavaScript, including when a content
   // filter matched a comment or string rather than a decorated POM class.
-  return compiler.transpile(this.resourcePath, compiled?.code ?? source);
+  try {
+    return compiler.transpile(this.resourcePath, compiled?.code ?? source);
+  } catch (error) {
+    // The source's own error, if it has one, names the lines as written.
+    compiler.transpile(this.resourcePath, source);
+    throw error;
+  }
 }
