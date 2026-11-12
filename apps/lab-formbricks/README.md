@@ -55,7 +55,7 @@ pnpm lab:smoke
 
 An action returns without waiting for the screen it leads to, so the test waits for each screen itself. Before that walk, a throwaway user walks the same screens with Playwright alone, because Turbopack compiles each route and each server action on its first use, which takes longer than `save` and `saveAsDraft` wait for theirs (see [Timeouts](#timeouts)).
 
-A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: today by the Structural Ref of the Page Object Root, read from `snapshot`.
+A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: by its Page Object Id, which `snapshot` prints on the Page Object Root.
 
 `lab:smoke` runs Formbricks's own start-from-scratch Playwright scenario against the running app, with Formbricks's own Playwright. At the pinned revision it can fail at sign-in: the scenario writes its user to Postgres and signs in at once, while Formbricks's background worker copies the user into the authorization store a second or more later. When it is sent to "create organization", that race is the cause, not the lab app. Formbricks's own CI runs the scenario against a production build. `lab:qualify` waits for that copy before it signs in.
 
