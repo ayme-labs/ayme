@@ -140,7 +140,15 @@ const playwrightMcpInterfaceLine =
  * than in a turn of its own.
  */
 export const snapshotAfterPageToolSentence =
-  "After a Page Object Tool, read `page_objects` and the tool list right away: together they show the screen it led to and what can be called there. Where the browser tool is a command, chain them in the same command; otherwise read `page_objects` as the next call. Take a snapshot only when the next step has no Page Object Tool.";
+  "After a Page Object Tool, read `page_objects` right away, as the next call: it shows the screen the tool led to. Take a snapshot only when the next step has no Page Object Tool.";
+
+/** The same for Playwright through WebMCP, whose tool list is only as fresh as its last snapshot. */
+export const playwrightAfterPageToolSentence =
+  "After a Page Object Tool, read `page_objects` and take a snapshot limited to depth 1 right away: `page_objects` shows the screen the tool led to, and the snapshot refreshes the page's tool list and shows it. With the CLI, chain both in the same command; with the MCP tools, make them the next calls. Take a full snapshot only when the next step has no Page Object Tool.";
+
+/** The same for agent-browser through WebMCP, whose tool list is read live. */
+export const agentBrowserAfterPageToolSentence =
+  "After a Page Object Tool, read `page_objects` and `agent-browser webmcp list` right away, in the same command: together they show the screen the tool led to and what can be called there. Take a snapshot only when the next step has no Page Object Tool.";
 
 /**
  * What an arm with Ayme's Page Object Tools through the `ayme` server adds
@@ -157,7 +165,7 @@ export const pageObjectToolsSentence = `The \`${aymeServerName}\` MCP server off
  * skill already says to prefer a page's tools, so this stays one sentence
  * for both arms.
  */
-export const webMcpToolsSentence = `The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. ${snapshotAfterPageToolSentence}`;
+export const webMcpToolsSentence = `The page's own tools, which Playwright lists as WebMCP tools, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. ${playwrightAfterPageToolSentence}`;
 
 const playwrightMcpInterface = () => ({
   name: "@playwright/mcp",
@@ -234,7 +242,7 @@ const agentBrowserInterfaceLine = (start: Mission["start"]) =>
  * before the session started, agent-browser announces none of them in its
  * output, so the sentence names the command that lists them.
  */
-export const agentBrowserWebMcpToolsSentence = `The page's own tools, which \`agent-browser webmcp list\` lists and \`agent-browser webmcp invoke\` calls, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. ${snapshotAfterPageToolSentence}`;
+export const agentBrowserWebMcpToolsSentence = `The page's own tools, which \`agent-browser webmcp list\` lists and \`agent-browser webmcp invoke\` calls, include the Page Object Tools of the screen the browser is on; prefer one of them whenever it does the step. ${agentBrowserAfterPageToolSentence}`;
 
 /**
  * An agent-browser arm: the Playwright CLI arm's counterpart with Vercel's
