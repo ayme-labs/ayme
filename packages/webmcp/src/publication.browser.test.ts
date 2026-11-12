@@ -63,11 +63,10 @@ it("publishes a session's Page Object Tool, and an agent's call runs it as a web
   const output: unknown = await context().executeTool!(tool!, {
     title: "Milk",
   });
-  const result = (typeof output === "string" ? JSON.parse(output) : output) as {
-    page_changed: boolean;
-  };
+  const result: unknown =
+    typeof output === "string" ? JSON.parse(output) : output;
 
-  expect(result.page_changed).toBe(true);
+  expect(result).toMatchObject({ settled: true });
   expect(document.querySelector("#todos")!.textContent).toBe("Milk");
   expect(ayme.runs.list().at(-1)).toMatchObject({
     tool: "TodoPage.addTodo",
