@@ -127,7 +127,12 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     pass: boolean(run, "pass", what),
     wallTimeMs: nullableNumber(run, "wallTimeMs", what),
     tokens: tokenUsage(run, what),
-    costUsd: nullableNumber(run, "costUsd", what),
+    // A run stored while the eval measured the Goal Loop kept the agent's and
+    // the Goal Loop's cost together, unknown when either was.
+    costUsd:
+      "combinedCostUsd" in run
+        ? nullableNumber(run, "combinedCostUsd", what)
+        : nullableNumber(run, "costUsd", what),
     toolCallTotal:
       typeof run.toolCalls === "object" &&
       run.toolCalls !== null &&

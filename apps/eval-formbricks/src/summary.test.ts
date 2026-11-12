@@ -385,6 +385,15 @@ describe("reading stored files", () => {
     expect(parsed.versions.claudeCode).toBe("2.1.281");
   });
 
+  it("reads a run stored with the Goal Loop's cost by its combined cost, unknown when that was", () => {
+    const withGoalLoop = { ...stored, costUsd: 0.1, combinedCostUsd: 0.15 };
+    expect(parseStoredRun(withGoalLoop, "result.json").costUsd).toBe(0.15);
+    expect(
+      parseStoredRun({ ...withGoalLoop, combinedCostUsd: null }, "result.json")
+        .costUsd
+    ).toBeNull();
+  });
+
   it("names the file and field of a result it cannot read", () => {
     expect(() =>
       parseStoredRun({ ...stored, pass: "yes" }, "runs/x/result.json")
