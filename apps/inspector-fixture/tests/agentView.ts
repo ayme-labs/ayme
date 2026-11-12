@@ -69,6 +69,25 @@ export class AgentView {
     return ref;
   }
 
+  /**
+   * The Page Object id snapshot gives the Page Object Root of this class,
+   * such as `Navigator`, whether the root is marked with the class alone or
+   * lists it among several.
+   */
+  async id(className: string): Promise<string> {
+    const { structure } = (await this.call("snapshot", {})) as {
+      structure: string;
+    };
+    const id = (structure.match(new RegExp(`e\\d+ ${className} (po\\d+)`)) ??
+      structure.match(
+        new RegExp(
+          `/pom: \\[[^\\]]*"${className}"[^\\]]*\\]\\s+- /id: (po\\d+)`
+        )
+      ))?.[1];
+    if (!id) throw new Error(`No ${className} in:\n${structure}`);
+    return id;
+  }
+
   /** The Page Object definitions snapshot returns for these models. */
   async pomDefinitions(...names: string[]): Promise<string> {
     const { pomDefinitions } = (await this.call("snapshot", {

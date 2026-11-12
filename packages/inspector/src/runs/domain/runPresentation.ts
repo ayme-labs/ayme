@@ -32,7 +32,7 @@ export function runPresentation(run: ChildRun): {
       delete args.text;
   }
   if (primary?.value === args.key) delete args.key;
-  if (run.item?.ref === args.ref) delete args.ref;
+  if (run.item?.id === args.id) delete args.id;
   if (run.toolName === "fill_form" && Array.isArray(args.fields)) {
     // One input per field, in order; a failed tail keeps its unresolved targets.
     args.fields = args.fields.map((field, index) =>

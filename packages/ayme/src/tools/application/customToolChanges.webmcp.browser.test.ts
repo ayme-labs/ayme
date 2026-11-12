@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../test-utils/agentCalls.testSupport";
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -69,7 +69,7 @@ const addMilk: CustomTool = {
   description: "Add Milk to the list.",
   async execute(_target, { run }) {
     return run("ListPage.addItem", {
-      ref: await rootRef("ListPage"),
+      id: await rootId("ListPage"),
       args: { text: "Milk" },
     });
   },

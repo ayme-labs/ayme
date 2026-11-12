@@ -63,7 +63,7 @@ export function anInteraction(
  */
 export function anItem(
   path: string,
-  fields: Pick<CollectionItem, "ref" | "label">
+  fields: Pick<CollectionItem, "id" | "ref" | "label">
 ): CollectionItem {
   return {
     path,

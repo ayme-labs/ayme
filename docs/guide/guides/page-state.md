@@ -1,6 +1,6 @@
 # Page state
 
-What an agent sees of your page: the Structural Page State, the Structural Refs it acts through, and the interaction history Ayme keeps.
+What an agent sees of your page: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history Ayme keeps.
 
 ## Structural Page State
 
@@ -14,7 +14,7 @@ Page state works without WebMCP publication. An agent reads it with the `snapsho
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks a rooted Page Object instance, including a page or single child, in place of its [id](#page-object-ids). A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
+Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool or as the `ref` of a Custom Tool. A ref names an element only: a Page Object Tool takes the [Page Object id](#page-object-ids) instead. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -31,7 +31,7 @@ In each case, take a `snapshot` and use the ref it prints for the node. When an 
 
 A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The page numbers its Page Objects in the order it first shows them. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
 
-A Page Object Tool of such a class takes the id as `id`: `ListItem.archive({ id: "po3" })`. An `id` that is not written `po<n>` is refused with a `ToolInputError`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ListItem.archive on Page Object "po3": it is not on the page.`
+A Page Object Tool of such a class takes the id as `id`, for a page, a single child and a collection item alike: `ListItem.archive({ id: "po3" })`. An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ListItem.archive on Page Object "po3": it is not on the page.` So does the id of a Page Object of another class: `it is not a ListItem on the page`.
 
 In TypeScript the id is a `PageObjectId`, exported from `@ayme-dev/ayme`. It is a type of its own: a Structural Ref (`AriaRef`) is not assignable to it, nor it to a Structural Ref.
 

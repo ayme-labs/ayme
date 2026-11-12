@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
@@ -121,7 +121,7 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
 
   const run = async (tool: string) =>
     (await agentTools().call(tool, {
-      ref: await rootRef(tool.slice(0, tool.lastIndexOf("."))),
+      id: await rootId(tool.slice(0, tool.lastIndexOf("."))),
       args: {},
     })) as ActionResultShape;
 

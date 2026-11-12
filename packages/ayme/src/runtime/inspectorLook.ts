@@ -24,8 +24,9 @@ import { listElementToolTargets } from "./publishedTools";
 /**
  * One unrecorded look at the document, as plain data for the Inspector
  * contract: the projected Structural Page State with its refs, each
- * registered target and rooted tool's item named by the ref of its element,
- * and the native controls' states. Records nothing and moves no cursor.
+ * registered target named by the ref of its element, each rooted tool's item
+ * by its Page Object id and that ref, and the native controls' states.
+ * Records nothing and moves no cursor.
  */
 export async function lookAtInspectorState(): Promise<InspectorLook> {
   const state = await lookAtPageStateForDocument(document);
@@ -61,9 +62,10 @@ export async function lookAtInspectorState(): Promise<InspectorLook> {
 
   const rootedInstances: Record<string, InspectorRootedInstance[]> = {};
   for (const [name, instances] of rooted)
-    rootedInstances[name] = instances.map(({ ref, available, reason }) => {
+    rootedInstances[name] = instances.map(({ id, ref, available, reason }) => {
       const named = refOf(ref);
       return {
+        id,
         ...(named === undefined ? {} : { ref: named }),
         available,
         ...(reason === undefined ? {} : { reason }),

@@ -2421,7 +2421,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "AddItemBar.addItem",
           goal_met: 0.1,
-          arguments: { ref: { nth: 0 } },
+          arguments: { id: { nth: 0 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -2432,7 +2432,7 @@ describe("Goal Loop goal in Chromium", () => {
     await tool.execute({ goal: "add an item", maxSteps: 5 });
 
     const [rootRef] = Object.keys(
-      offeredElements(criteriaOf(requests[1]!).ref!)
+      offeredElements(criteriaOf(requests[1]!).id!)
     );
     expect(rootRef).toBeDefined();
     const generics: { ref?: string; pom?: unknown }[] = [];
@@ -2984,7 +2984,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "Item.archive",
           goal_met: 0.1,
-          arguments: { ref: { nth: 1 } },
+          arguments: { id: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -3003,8 +3003,8 @@ describe("Goal Loop goal in Chromium", () => {
 
     // One question, over the present roots of the tool's collection path.
     const stageTwo = criteriaOf(requests[1]!);
-    expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    const descriptions = Object.values(offeredElements(stageTwo.ref!));
+    expect(Object.keys(stageTwo)).toEqual(["id"]);
+    const descriptions = Object.values(offeredElements(stageTwo.id!));
     expect(descriptions).toHaveLength(3);
     descriptions.forEach((description, index) => {
       // Label, role and name: what tells one instance from another.
@@ -3016,17 +3016,17 @@ describe("Goal Loop goal in Chromium", () => {
     });
     // The option keys are the refs the page state gave the model.
     expect(refsInPage(requests[1]!.state)).toEqual(
-      expect.arrayContaining(Object.keys(offeredElements(stageTwo.ref!)))
+      expect.arrayContaining(Object.keys(offeredElements(stageTwo.id!)))
     );
     expect(archived).toEqual([1]);
     expect(result.reason).toBe("done");
     // The step record names the qualified tool and the instance chosen, as
     // offered.
-    const [chosenKey, chosenDescription] = Object.entries(stageTwo.ref!)[1]!;
+    const [chosenKey, chosenDescription] = Object.entries(stageTwo.id!)[1]!;
     const record = {
       operation: "Item.archive",
       chosen: {
-        ref: { key: chosenKey, description: chosenDescription },
+        id: { key: chosenKey, description: chosenDescription },
       },
       result: "ok",
       page_changed: false,
@@ -3066,7 +3066,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "Item.archive",
           goal_met: 0.1,
-          arguments: { ref: { nth: 1 } },
+          arguments: { id: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -3112,7 +3112,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     // The instance options come from the full capture and still resolve.
     const instanceRefs = Object.keys(
-      offeredElements(criteriaOf(requests[1]!).ref!)
+      offeredElements(criteriaOf(requests[1]!).id!)
     );
     expect(instanceRefs).toHaveLength(count);
     const resolutions = await getPageStateSession(document).resolveRefs(
@@ -3129,9 +3129,9 @@ describe("Goal Loop goal in Chromium", () => {
       expect.objectContaining({
         operation: "Item.archive",
         chosen: {
-          ref: {
+          id: {
             key: instanceRefs[1],
-            description: criteriaOf(requests[1]!).ref![instanceRefs[1]!],
+            description: criteriaOf(requests[1]!).id![instanceRefs[1]!],
           },
         },
         result: "ok",
@@ -3173,7 +3173,7 @@ describe("Goal Loop goal in Chromium", () => {
       next: expect.stringContaining(
         "acts on a collection instance, and the current page holds more of them than one decision can offer."
       ),
-      needs: { tool: "Item.archive", parameters: ["ref"] },
+      needs: { tool: "Item.archive", parameters: ["id"] },
     });
     expect(result.next).not.toContain("one element");
     expect(requests).toHaveLength(1);
@@ -3227,7 +3227,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "Item.open",
           goal_met: 0.1,
-          arguments: { ref: { nth: 1 } },
+          arguments: { id: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -3239,8 +3239,8 @@ describe("Goal Loop goal in Chromium", () => {
 
     const stageTwo = criteriaOf(requests[1]!);
     // One question, over the innermost roots only.
-    expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    expect(Object.values(offeredElements(stageTwo.ref!))).toEqual([
+    expect(Object.keys(stageTwo)).toEqual(["id"]);
+    expect(Object.values(offeredElements(stageTwo.id!))).toEqual([
       expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): A$/),
       expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): B$/),
       expect.stringMatching(/^Item on ref "(?:e|s_)\w+" \(listitem\): C$/),
@@ -3299,7 +3299,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "Child.open",
           goal_met: 0.1,
-          arguments: { ref: { nth: 1 } },
+          arguments: { id: { nth: 1 } },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -3311,7 +3311,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     // The instance is addressed through the singular child's own root.
     const descriptions = Object.values(
-      offeredElements(criteriaOf(requests[1]!).ref!)
+      offeredElements(criteriaOf(requests[1]!).id!)
     );
     expect(descriptions).toEqual([
       expect.stringContaining("Child on ref"),
@@ -3407,7 +3407,7 @@ describe("Goal Loop goal in Chromium", () => {
           },
         };
       }
-      const options = criteria.ref!;
+      const options = criteria.id!;
       stageTwoOptions.push(options);
       const keys = Object.keys(options);
       const wanted =
@@ -3416,7 +3416,7 @@ describe("Goal Loop goal in Chromium", () => {
         keys[0]!;
       return {
         model: "typesafe/jev-1.13",
-        answers: { ref: choiceAnswer(options, wanted) },
+        answers: { id: choiceAnswer(options, wanted) },
       };
     });
     const tool = await getPublishedPursueGoal(decide);
@@ -3496,7 +3496,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(requests).toHaveLength(1);
     expect(result).toMatchObject({
       reason: "needs_value",
-      needs: { tool: "Item.archive", parameters: ["ref"] },
+      needs: { tool: "Item.archive", parameters: ["id"] },
     });
     expect(result.next).toBe(
       'The operation "Item.archive" acts on a collection instance, and the loop could offer none of its items. Left out: Item (no ref in the page state). Try a different approach.'
@@ -3511,7 +3511,7 @@ describe("Goal Loop goal in Chromium", () => {
           operation: "Item.configure",
           goal_met: 0.1,
           arguments: {
-            ref: { nth: 1 },
+            id: { nth: 1 },
             "args.mode": "full",
             "args.confirm": "true",
           },
@@ -3543,7 +3543,7 @@ describe("Goal Loop goal in Chromium", () => {
     // One request carries every question the chosen operation still needs.
     expect(requests).toHaveLength(3);
     expect(Object.keys(criteriaOf(requests[1]!))).toEqual([
-      "ref",
+      "id",
       "args.mode",
       "args.confirm",
     ]);
@@ -3572,7 +3572,7 @@ describe("Goal Loop goal in Chromium", () => {
       history: [],
       needs: {
         tool: "Item.rename",
-        parameters: ["ref", "args.value"],
+        parameters: ["id", "args.value"],
       },
     });
     expect(requests).toHaveLength(1);
@@ -3584,7 +3584,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         operation: "Item.archive",
         goal_met: 0.1,
-        arguments: { ref: { raw: "e999" } },
+        arguments: { id: { raw: "e999" } },
       },
     ]);
     const tool = await registerItemsPom(

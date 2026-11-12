@@ -21,7 +21,7 @@ _Avoid_: Page Object Collection, collection child
 A public method of a Page Object marked `@ayme.action`.
 
 **Page Object Tool**:
-A tool generated from a Page Object Action of a class, named after the class; one per action, whatever the number of instances. The Goal Loop may choose it, and WebMCP publication offers it to agents.
+A tool generated from a Page Object Action of a class, named after the class; one per action, whatever the number of instances. A tool of a class with a Page Object Root is told which Page Object to run on by its Page Object Id; the action's own arguments sit beside it. The Goal Loop may choose it, and WebMCP publication offers it to agents.
 
 **Agent Description**:
 The text an agent reads about a tool, beside its name and input schema. A Page Object Tool's is the description its author wrote, followed by the Page Objects the page shows afterwards; any other tool's is its own description. A Page Object Tool that says nothing beyond its name and schema has none; WebMCP publication and the Goal Loop, which need one, name the action instead.
@@ -31,7 +31,7 @@ _Avoid_: computed description, composed description
 A model-facing observation of the currently presented page structure and its Page Object Root Marks. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 
 **Structural Ref**:
-A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, which Playwright may prefix with a frame as `f…e…`, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element.
+A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, which Playwright may prefix with a frame as `f…e…`, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element. A ref names an element, for a Browser Tool or a Custom Tool; it does not name a Page Object, which has a Page Object Id.
 
 **Page State Session**:
 The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused. Each Host keeps its own over one document.
@@ -52,6 +52,10 @@ The element the model's `root` names: the one that anchors a Page Object instanc
 **Page Object Root Mark**:
 The class name a Structural Page State shows on a node that is the Page Object Root of a present Page Object. A node that is the root of several Page Objects carries one mark per class. Only roots are marked; the nodes nested under a root belong to its Page Object.
 _Avoid_: label, POM label, Page Object label
+
+**Page Object Id**:
+The name a caller gives a Page Object of a class with a Page Object Root when it calls one of its Page Object Tools, written `po<n>`. The page numbers its Page Objects in the order it first shows them. The id belongs to the element of the Page Object Root: it is kept while that element stays on the page and is never given to another Page Object. It is not a Structural Ref and neither can stand in for the other. A Structural Page State an agent reads shows it on the Page Object Root beside the Page Object Root Mark.
+_Avoid_: Instance Ref, instance id, Page Object ref
 
 **Page Object Presence**:
 Whether a Page Object can be associated with rendered UI in the current layout's normally scroll-reachable area, independently of modal blocking or obstruction. A Page Object Model may declare its own presence predicate, which narrows the default.

@@ -98,7 +98,7 @@ Your own code runs the same loop with `ayme.tools.run("goal", { goal, maxSteps, 
 
 The model decides each step on the current Structural Page State as JSON, one object per node, pruned of what it cannot target: a `generic` node with no name, props, state or pointer cursor is replaced by its children, so wrapper chains vanish and the text of their leaves is kept. The pruning affects only what the model reads; the options it is offered and the Change Record come from the full capture.
 
-A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
+A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, a Page Object instance, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
 
 The first request also asks which [Goal Value](#goal-values) the next operation would enter, before the operation is known: one question per required text or number parameter, shared by the single-element tools whose parameter has the same name and kind, at most eight. Only the answers that cover the chosen operation are read; one that names a Goal Value fills its parameter, and the second request then picks the element that should receive that value. Past eight, or when the answer names no Goal Value, the parameter is asked in the second request as below.
 
@@ -106,7 +106,7 @@ The first request also asks which [Goal Value](#goal-values) the next operation 
 - A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
 - A required choice of a rooted Page Object instance ends with "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A Browser Tool ref within the cap has no such option.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
-- Every rooted Page Object instance, including a single child or page, is offered while its action is available on it and the page state gives it a ref. Items are labelled by class and ref. A root-less Page Object Tool offers no items. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
+- Every rooted Page Object instance, including a single child or page, is offered while its action is available on it and the page state gives it a ref. Items are labelled by class and ref, and the operation runs on the chosen item by its [Page Object id](page-state.md#page-object-ids). A root-less Page Object Tool offers no items. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
 - The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
 
@@ -193,7 +193,7 @@ A step repeats to no effect when it has the same operation and chosen arguments 
       page_changed: true, changes: '- e12 <removed> dialog "Archive invoice"',
       did: "InboxPage.closeDialog()" },
     { operation: "Invoice.archive",
-      chosen: { ref: { key: "e5",
+      chosen: { id: { key: "e5",
         description: 'Invoice on ref "e5" (listitem "Invoice 7")' } },
       result: "ok", page_changed: true,
       changes: `- e2 main:

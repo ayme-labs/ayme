@@ -50,7 +50,7 @@ export function press(card: {
   if (!target) return { kind: "blocked", why: "no-item" };
   return {
     kind: "run",
-    input: { ref: target.ref, args: card.args },
+    input: { id: target.id, args: card.args },
     item: target,
   };
 }

@@ -11,20 +11,11 @@ export function pomToolFacts(
     ? [
         {
           name: "id",
-          optional: true,
+          optional: false,
           schema: {
             type: "string",
             description:
-              "The Page Object's id, written po<n>, as the page state prints it on its Page Object Root. Given instead of ref.",
-          } satisfies JsonSchema,
-        },
-        {
-          name: "ref",
-          optional: true,
-          schema: {
-            type: "string",
-            description:
-              "Structural Ref of the instance's Page Object Root, as marked in the page state. Given instead of id.",
+              "The Page Object's id, written po<n>. The page state shows it on the Page Object Root.",
           } satisfies JsonSchema,
         },
         {

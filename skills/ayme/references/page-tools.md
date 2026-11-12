@@ -48,16 +48,21 @@ explains the two. A tool's own return value is in `result`.
 
 - When a ref fails to resolve, call `snapshot` and use the ref it prints for
   that node; if that ref fails the same way, use a Browser Tool with a selector such as
-  `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
-  rooted Page Object Tool the ref of that instance's own Page Object Root,
-  including a page or single child. Pass its action arguments under `args`.
-  A root-less Page Object Tool takes its arguments directly.
+  `role=button[name="Save"]`. Pass a ref alone, such as `e36`. A ref names
+  an element; a Page Object has an id of its own.
   [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
-- The page state marks each Page Object Root with its class. Call a nested
-  item marked `e9 ListItem` through its class's tool: `ListItem.archive({ ref: "e9" })`.
+- The page state marks each Page Object Root with its class and the Page
+  Object's id, such as `e9 ListItem po3`; a root of several classes lists
+  them under `pom`, with the id under `id`. A rooted Page Object Tool takes
+  that id, for a page, a single child and a collection item alike:
+  `ListItem.archive({ id: "po3" })`. Pass its action arguments under `args`.
+  A root-less Page Object Tool takes its arguments directly. An id stays
+  with its Page Object while the root's element is on the page; when a call
+  answers that the Page Object is not on the page, `snapshot` prints the
+  ids there are now.
   [Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-page-objects.md#aymechild)
   has the example.
 - When a tool answers that it is unavailable, read the reason. A runtime

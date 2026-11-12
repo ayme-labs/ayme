@@ -43,9 +43,9 @@ type ListActions = {
   renameItem(index: number, text: string): Promise<void>;
 };
 
-async function getInstanceRef(
+async function getInstanceId(
   page: Page,
-  label: string,
+  className: string,
   index = 0
 ): Promise<string> {
   const pageState = await page.evaluate(async () => {
@@ -56,14 +56,11 @@ async function getInstanceRef(
     const result = (await tool.execute({})) as { structure: string };
     return result.structure;
   });
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const ref = [
-    ...pageState.matchAll(
-      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
-    ),
-  ][index]?.[1];
-  if (!ref) throw new Error(`No ref found for instance label "${label}".`);
-  return ref;
+  const id = [...pageState.matchAll(new RegExp(` ${className} (po\\d+)`, "g"))][
+    index
+  ]?.[1];
+  if (!id) throw new Error(`No Page Object id found for "${className}".`);
+  return id;
 }
 
 /** Subtree from `main "Playground"` with refs renumbered from e1 and Page
@@ -313,7 +310,7 @@ test("scrolls the app back into view when a tool acts on it from the code view",
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
-  const ref = await getInstanceRef(page, "ListItem");
+  const id = await getInstanceId(page, "ListItem");
   const appView = page.getByRole("button", { name: "App", exact: true });
 
   await page.getByRole("button", { name: "Page Object code" }).click();
@@ -325,7 +322,7 @@ test("scrolls the app back into view when a tool acts on it from the code view",
   expect(await recordedToolNames(page)).toEqual(initialToolNames);
 
   await executePublishedTool(page, "ListItem.rename", {
-    ref,
+    id,
     args: { text: "Renamed from the code view" },
   });
   await expect(appView).toHaveAttribute("aria-pressed", "true");
@@ -399,13 +396,13 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
       addItem: async (text) =>
         await executePublishedTool(page, "ListPage.addItem", { text }),
       archiveItem: async (index) => {
-        const ref = await getInstanceRef(page, "ListItem", index);
-        await executePublishedTool(page, "ListItem.archive", { ref });
+        const id = await getInstanceId(page, "ListItem", index);
+        await executePublishedTool(page, "ListItem.archive", { id });
       },
       renameItem: async (index, text) => {
-        const ref = await getInstanceRef(page, "ListItem", index);
+        const id = await getInstanceId(page, "ListItem", index);
         await executePublishedTool(page, "ListItem.rename", {
-          ref,
+          id,
           args: { text },
         });
       },
@@ -422,14 +419,14 @@ test("publishes collection tools only while a component root is live", async ({
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
 
-  const firstRef = await getInstanceRef(page, "ListItem");
+  const firstId = await getInstanceId(page, "ListItem");
   await executePublishedTool(page, "ListItem.archive", {
-    ref: firstRef,
+    id: firstId,
     args: {},
   });
-  const remainingRef = await getInstanceRef(page, "ListItem");
+  const remainingId = await getInstanceId(page, "ListItem");
   await executePublishedTool(page, "ListItem.archive", {
-    ref: remainingRef,
+    id: remainingId,
     args: {},
   });
   await expect
@@ -504,12 +501,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           id: {
             type: "string",
             description:
-              "The Page Object's id, written po<n>, as the page state prints it on its Page Object Root. Given instead of ref.",
-          },
-          ref: {
-            type: "string",
-            description:
-              "Structural Ref of the instance's Page Object Root, as marked in the page state. Given instead of id.",
+              "The Page Object's id, written po<n>. The page state shows it on the Page Object Root.",
           },
           args: {
             type: "object",
@@ -518,7 +510,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
             additionalProperties: false,
           },
         },
-        required: [],
+        required: ["id"],
         additionalProperties: false,
       },
     },
@@ -531,12 +523,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           id: {
             type: "string",
             description:
-              "The Page Object's id, written po<n>, as the page state prints it on its Page Object Root. Given instead of ref.",
-          },
-          ref: {
-            type: "string",
-            description:
-              "Structural Ref of the instance's Page Object Root, as marked in the page state. Given instead of id.",
+              "The Page Object's id, written po<n>. The page state shows it on the Page Object Root.",
           },
           args: {
             type: "object",
@@ -547,7 +534,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
             additionalProperties: false,
           },
         },
-        required: ["args"],
+        required: ["id", "args"],
         additionalProperties: false,
       },
     },
@@ -597,7 +584,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
       document.modelContext as unknown as RecordingDriver
     ).tools.find((candidate) => candidate.name === "ListItem.archive");
     if (!tool) throw new Error("Archive WebMCP tool was not published.");
-    return tool.execute({ ref: "e99999", args: { unexpected: true } });
+    return tool.execute({ id: "po99999", args: { unexpected: true } });
   });
 
   expect(invalidToolInputResult).toEqual({
@@ -612,9 +599,9 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     isError: true,
   });
 
-  const firstItemRef = await getInstanceRef(page, "ListItem");
+  const firstItemId = await getInstanceId(page, "ListItem");
   await executePublishedTool(page, "ListItem.archive", {
-    ref: firstItemRef,
+    id: firstItemId,
     args: {},
   });
   await expect(
@@ -652,7 +639,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   await expect(page.locator("[data-demo-click-cue]")).toHaveCount(0);
 
   await executePublishedTool(page, "ListItem.rename", {
-    ref: await getInstanceRef(page, "ListItem"),
+    id: await getInstanceId(page, "ListItem"),
     args: { text: "Renamed through a tool" },
   });
   await expect(
@@ -660,7 +647,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   ).toBeVisible();
 
   await executePublishedTool(page, "ListItem.archive", {
-    ref: await getInstanceRef(page, "ListItem"),
+    id: await getInstanceId(page, "ListItem"),
     args: {},
   });
   await expect(page.locator("[data-archived-label]")).toHaveCount(2);
