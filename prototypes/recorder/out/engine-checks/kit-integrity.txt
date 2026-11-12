@@ -1,0 +1,1 @@
+PASS kit layout; latest.yaml equals package.yaml; skill prefix and every reference byte-identical; reader check not run

@@ -1,0 +1,43 @@
+
+Running 1 test using 1 worker
+
+  ✘  1 output/replay.spec.ts:5:1 › recorded repository flow (20.1s)
+
+
+  1) output/replay.spec.ts:5:1 › recorded repository flow ──────────────────────────────────────────
+
+    Test timeout of 20000ms exceeded.
+
+    ReferenceError: require is not defined
+
+      2 | import {RepositoryPage} from './pages';
+      3 | import {data} from './data';
+    > 4 | test.afterEach(async({page})=>{ await page.locator('body').innerText().then(t=>require('node:fs').writeFileSync(new URL('./live.txt',import.meta.url),t)); });
+        |                                                                                                   ^
+      5 | test('recorded repository flow',async({page})=>{
+      6 |  await page.route('**/*', route => new URL(route.request().url()).hostname === 'github.com' ? route.continue() : route.abort());
+      7 |  await page.goto(data.url);
+        at <repo>/prototypes/recorder/reader-kit-github/output/replay.spec.ts:4:99
+        at <repo>/prototypes/recorder/reader-kit-github/output/replay.spec.ts:4:33
+
+    Error: locator.click: Test timeout of 20000ms exceeded.
+    Call log:
+      - waiting for getByRole('link', { name: 'Releases', exact: true })
+
+
+       at pages.ts:10
+
+       8 |   readonly code = this.page.getByRole('button',{name:'Code',exact:true});
+       9 |   async openPulls() { await this.page.getByRole('navigation',{name:'Repository',exact:true}).getByRole('link',{name:/^Pull requests/}).click(); const next=new PullsPage(this.page); await next.page.waitForURL('**/pulls'); return next; }
+    > 10 |   async openReleases() { await this.page.getByRole('link',{name:'Releases',exact:true}).click(); const next=new ReleasesPage(this.page); await next.results.waitFor(); return next; }
+         |                                                                                         ^
+      11 |   async openCode() { const menu=new CloneMenu(this.page.locator('div.tmp-m-3').filter({has:this.page.getByRole('list',{name:'Remote URL selector'})})); if(!await menu.root.isVisible()) await this.code.click(); await menu.root.waitFor(); return menu; }
+      12 | }
+      13 | export class PullRow extends AppComponent { readonly title=this.root.getByTestId('listitem-title-link'); }
+        at RepositoryPage.openReleases (<repo>/prototypes/recorder/reader-kit-github/output/pages.ts:10:89)
+        at <repo>/prototypes/recorder/reader-kit-github/output/replay.spec.ts:13:28
+
+    Error Context: output/test-results/replay-recorded-repository-flow/error-context.md
+
+  1 failed
+    output/replay.spec.ts:5:1 › recorded repository flow ───────────────────────────────────────────

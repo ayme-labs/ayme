@@ -1,0 +1,544 @@
+recordingId: rec_20261112T124333552Z
+mode: structural
+createdAt: 2026-11-12T12:43:33.552Z
+url: http://127.0.0.1:50985/
+tracePath: .ayme/recordings/rec_20261112T124333552Z/trace.zip
+visits:
+  - visitId: visit_1
+    url: http://127.0.0.1:50985/
+    cause: initial
+    baselineTree:
+      - [ref=e2] main:
+        - [ref=e3] heading "Recorder fixture" [level=1]
+        - [ref=e4] region "Late data":
+          - [ref=e5] button "Load orders"
+          - [ref=e6] table "Orders":
+            - [ref=e7] rowgroup:
+              - [ref=e8] row:
+                - [ref=e9] cell "Order 1"
+        - [ref=e10] region "Lookalike rows":
+          - [ref=e11] button "Insert task"
+          - [ref=e12] button "Insert task later"
+          - [ref=e13] list "Tasks":
+            - [ref=e14] listitem: Task
+            - [ref=e15] listitem: Task
+            - [ref=e16] listitem: Task
+        - [ref=e17] region "Toast":
+          - [ref=e18] button "Notify later"
+          - [ref=e19] button "Other"
+          - text: 0
+        - [ref=e20] region "Form":
+          - [ref=e22]:
+            - text: Name
+            - [ref=e23] textbox "Name"
+          - [ref=s_1] paragraph
+          - [ref=e24]:
+            - [ref=e25] checkbox "Subscribe"
+            - text: Subscribe
+          - text: not subscribed
+          - [ref=e26]:
+            - text: Color
+            - [ref=e27] combobox "Color":
+              - [ref=s_2] option "red" [selected]
+              - [ref=s_3] option "green"
+              - [ref=s_4] option "blue"
+          - text: "Color: red"
+        - [ref=e28] region "Pointerdown menu":
+          - [ref=e29] button "Menu"
+        - [ref=e30] region "Missing target":
+          - [ref=e33] paragraph: cart closed
+        - [ref=e34] region "Shadow":
+          - [ref=e35]:
+            - [ref=e36] button "Shadow button"
+            - text: 0
+        - [ref=e37] region "Frame":
+          - [ref=e38] iframe:
+            - [ref=f1e1]:
+              - [ref=f1e2] button "Inner button"
+              - text: 0
+    timelineEntries:
+      - kind: change
+        timestamp: 1511.508
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e17] region "Toast":
+              - <changed> [ref=e19] button "Other" [active]
+      - kind: interaction
+        timestamp: 1519.508
+        interaction:
+          id: interaction_1
+          type: click
+          targetRef: e19
+          targetSelector: internal:role=button[name="Other"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e17] region "Toast": 1
+      - kind: change
+        timestamp: 2827.083
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e4] region "Late data":
+              - <changed> [ref=e5] button "Load orders" [active]
+            - [ref=e17] region "Toast":
+              - <changed> [ref=e19] button "Other"
+      - kind: interaction
+        timestamp: 2833.083
+        interaction:
+          id: interaction_2
+          type: click
+          targetRef: e5
+          targetSelector: internal:role=button[name="Load orders"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e4] region "Late data": Loading
+      - kind: change
+        timestamp: 5543.969
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e4] region "Late data":
+              - <changed> [ref=e5] button "Load orders"
+              - [ref=e6] table "Orders":
+                - [ref=e7] rowgroup:
+                  - <added> [ref=e39] row:
+                    - <added> [ref=e40] cell "Order 2"
+            - [ref=e17] region "Toast":
+              - <changed> [ref=e19] button "Other" [active]
+      - kind: interaction
+        timestamp: 5548.969
+        interaction:
+          id: interaction_3
+          type: click
+          targetRef: e19
+          targetSelector: internal:role=button[name="Other"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e17] region "Toast": 2
+      - kind: change
+        timestamp: 6861.951
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e10] region "Lookalike rows":
+              - <changed> [ref=e11] button "Insert task" [active]
+            - [ref=e17] region "Toast":
+              - <changed> [ref=e19] button "Other"
+      - kind: interaction
+        timestamp: 6866.951
+        interaction:
+          id: interaction_4
+          type: click
+          targetRef: e11
+          targetSelector: internal:role=button[name="Insert task"s]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e10] region "Lookalike rows":
+              - [ref=e13] list "Tasks":
+                - <added> [ref=e41] listitem: Task
+      - kind: change
+        timestamp: 8177.022
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e10] region "Lookalike rows":
+              - <changed> [ref=e11] button "Insert task"
+              - <changed> [ref=e12] button "Insert task later" [active]
+      - kind: interaction
+        timestamp: 8182.022
+        interaction:
+          id: interaction_5
+          type: click
+          targetRef: e12
+          targetSelector: internal:role=button[name="Insert task later"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: 10876.577
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e10] region "Lookalike rows":
+              - <changed> [ref=e12] button "Insert task later"
+              - [ref=e13] list "Tasks":
+                - <added> [ref=e42] listitem: Task
+            - [ref=e17] region "Toast":
+              - <changed> [ref=e18] button "Notify later" [active]
+      - kind: interaction
+        timestamp: 10882.577
+        interaction:
+          id: interaction_6
+          type: click
+          targetRef: e18
+          targetSelector: internal:role=button[name="Notify later"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: 13574.858
+        changeTree:
+          - <added> [ref=e1]:
+            - [ref=e2] main:
+              - [ref=e17] region "Toast":
+                - <changed> [ref=e18] button "Notify later"
+            - <added> [ref=e43] status:
+              - text: Saved
+              - <added> [ref=e44] button "Dismiss" [active]
+      - kind: interaction
+        timestamp: 13580.858
+        interaction:
+          id: interaction_7
+          type: click
+          targetRef: e44
+          targetSelector: internal:role=button[name="Dismiss"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - <removed> [ref=e1]:
+            - <removed> [ref=e43] status:
+              - text: Saved
+              - <removed> [ref=e44] button "Dismiss" [active]
+      - kind: change
+        timestamp: 14876.647
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e20] region "Form":
+              - [ref=e22]:
+                - <changed> [ref=e23] textbox "Name" [active]
+      - kind: interaction
+        timestamp: 14882.647
+        interaction:
+          id: interaction_8
+          type: click
+          targetRef: e23
+          targetSelector: internal:role=textbox[name="Name"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: interaction
+        timestamp: 16085.935
+        interaction:
+          id: interaction_9
+          type: fill
+          targetRef: e23
+          targetSelector: internal:role=textbox[name="Name"i]
+          text: Ada
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e20] region "Form":
+              - [ref=e22]:
+                - <changed> [ref=e23] textbox "Name" [active]: Ada
+      - kind: interaction
+        timestamp: 17545.201
+        interaction:
+          id: interaction_10
+          type: press
+          targetRef: e23
+          targetSelector: internal:role=textbox[name="Name"i]
+          modifiers: 0
+          key: Enter
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e20] region "Form":
+              - <added> [ref=e45] paragraph: "Hello, Ada"
+              - <removed> [ref=s_167] paragraph
+      - kind: change
+        timestamp: 18908.323
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e20] region "Form":
+              - [ref=e22]:
+                - <changed> [ref=e23] textbox "Name": Ada
+              - [ref=e24]:
+                - <changed> [ref=e25] checkbox "Subscribe" [active]
+      - kind: interaction
+        timestamp: 18913.323
+        interaction:
+          id: interaction_11
+          type: check
+          targetRef: e25
+          targetSelector: internal:role=checkbox[name="Subscribe"i]
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e20] region "Form":
+              - [ref=e24]:
+                - <changed> [ref=e25] checkbox "Subscribe" [checked] [active]
+              - text: subscribed
+              - text: "Color: red"
+      - kind: change
+        timestamp: 20128.709
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e20] region "Form":
+              - [ref=e24]:
+                - <changed> [ref=e25] checkbox "Subscribe" [checked]
+              - [ref=e26]:
+                - <changed> [ref=e27] combobox "Color" [active]
+      - kind: interaction
+        timestamp: 20137.709
+        interaction:
+          id: interaction_12
+          type: press
+          targetRef: e27
+          targetSelector: internal:label="Color redgreenblue"i
+          modifiers: 0
+          key: g
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e20] region "Form":
+              - text: subscribed
+              - [ref=e26]:
+                - [ref=e27] combobox "Color" [active]:
+                  - <changed> [ref=s_187] option "red"
+                  - <changed> [ref=s_188] option "green" [selected]
+              - text: "Color: green"
+      - kind: interaction
+        timestamp: 20150.189
+        interaction:
+          id: interaction_13
+          type: select
+          targetRef: e27
+          targetSelector: internal:label="Color redgreenblue"i
+          options:
+            - green
+      - kind: change
+        timestamp: 21476.901
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e20] region "Form":
+              - [ref=e26]:
+                - <changed> [ref=e27] combobox "Color"
+            - [ref=e28] region "Pointerdown menu":
+              - <changed> [ref=e29] button "Menu" [active]
+              - <added> [ref=e46] menu:
+                - <added> [ref=e47] menuitem "Rename"
+      - kind: interaction
+        timestamp: 21482.901
+        interaction:
+          id: interaction_14
+          type: click
+          targetRef: e29
+          targetSelector: internal:role=button[name="Menu"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: 22794.143
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e28] region "Pointerdown menu":
+              - <changed> [ref=e29] button "Menu"
+      - kind: interaction
+        timestamp: 22799.143
+        interaction:
+          id: interaction_15
+          type: click
+          targetRef: e47
+          targetSelector: internal:role=menuitem[name="Rename"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e28] region "Pointerdown menu":
+              - text: renamed
+              - <removed> [ref=e46] menu:
+                - <removed> [ref=e47] menuitem "Rename"
+      - kind: interaction
+        timestamp: 24120.869
+        interaction:
+          id: interaction_16
+          type: click
+          targetRef: e30
+          targetSelector: '[data-test="cart-link"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e30] region "Missing target":
+              - <changed> [ref=e33] paragraph: cart open
+      - kind: change
+        timestamp: 25408.94
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e34] region "Shadow":
+              - <changed> [ref=e35] [active]: 0
+      - kind: interaction
+        timestamp: 25413.94
+        interaction:
+          id: interaction_17
+          type: click
+          targetRef: e36
+          targetSelector: internal:role=button[name="Shadow button"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e34] region "Shadow":
+              - <changed> [ref=e35] [active]: 1
+      - kind: change
+        timestamp: 26709.405
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e34] region "Shadow":
+              - <changed> [ref=e35]: 1
+            - [ref=e37] region "Frame":
+              - <changed> [ref=e38] iframe [active]:
+                - [ref=f1e1]:
+                  - <changed> [ref=f1e2] button "Inner button" [active]
+      - kind: interaction
+        timestamp: 26714.405
+        interaction:
+          id: interaction_18
+          type: click
+          targetRef: f1e2
+          targetSelector: iframe[title="Inner frame"] >> internal:control=enter-frame >> internal:role=button[name="Inner button"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e37] region "Frame":
+              - [ref=e38] iframe [active]:
+                - <changed> [ref=f1e1]: 1
+      - kind: interaction
+        timestamp: 27918.15
+        interaction:
+          id: interaction_19
+          type: press
+          targetRef: f1e2
+          targetSelector: iframe[title="Inner frame"] >> internal:control=enter-frame >> internal:role=button[name="Inner button"i]
+          modifiers: 0
+          key: Tab
+        changeTree:
+          - [ref=e2] main:
+            - [ref=e37] region "Frame":
+              - <changed> [ref=e38] iframe:
+                - [ref=f1e1]:
+                  - <changed> [ref=f1e2] button "Inner button"
+traceActionPoints:
+  - interactionId: interaction_1
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@90
+    afterSnapshotId: after@tayy@90
+    startedAt: 1519.508
+    endedAt: 1727.296
+  - interactionId: interaction_2
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@138
+    afterSnapshotId: after@tayy@138
+    startedAt: 2833.083
+    endedAt: 3001.086
+  - interactionId: interaction_3
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@186
+    afterSnapshotId: after@tayy@186
+    startedAt: 5548.969
+    endedAt: 5717.84
+  - interactionId: interaction_4
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@234
+    afterSnapshotId: after@tayy@234
+    startedAt: 6866.951
+    endedAt: 7037.017
+  - interactionId: interaction_5
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@282
+    afterSnapshotId: after@tayy@282
+    startedAt: 8182.022
+    endedAt: 8351.697
+  - interactionId: interaction_6
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@330
+    afterSnapshotId: after@tayy@330
+    startedAt: 10882.577
+    endedAt: 11051.508
+  - interactionId: interaction_7
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@378
+    afterSnapshotId: after@tayy@378
+    startedAt: 13580.858
+    endedAt: 13751.726
+  - interactionId: interaction_8
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@426
+    afterSnapshotId: after@tayy@426
+    startedAt: 14882.647
+    endedAt: 15051.821
+  - interactionId: interaction_9
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@504
+    afterSnapshotId: after@tayy@504
+    startedAt: 16085.935
+    endedAt: 16576.385
+  - interactionId: interaction_10
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@538
+    afterSnapshotId: after@tayy@538
+    startedAt: 17545.201
+    endedAt: 17708.147
+  - interactionId: interaction_11
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@587
+    afterSnapshotId: after@tayy@587
+    startedAt: 18913.323
+    endedAt: 19085.53
+  - interactionId: interaction_12
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@624
+    afterSnapshotId: after@tayy@624
+    startedAt: 20137.709
+    endedAt: 20314.459
+  - interactionId: interaction_13
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@644
+    afterSnapshotId: after@tayy@644
+    startedAt: 20150.189
+    endedAt: 20481.517
+  - interactionId: interaction_14
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@692
+    afterSnapshotId: after@tayy@692
+    startedAt: 21482.901
+    endedAt: 21670.464
+  - interactionId: interaction_15
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@740
+    afterSnapshotId: after@tayy@740
+    startedAt: 22799.143
+    endedAt: 22967.137
+  - interactionId: interaction_16
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@788
+    afterSnapshotId: after@tayy@788
+    startedAt: 24120.869
+    endedAt: 24298.875
+  - interactionId: interaction_17
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@836
+    afterSnapshotId: after@tayy@836
+    startedAt: 25413.94
+    endedAt: 25583.382
+  - interactionId: interaction_18
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@892
+    afterSnapshotId: after@tayy@892
+    startedAt: 26714.405
+    endedAt: 26887.834
+  - interactionId: interaction_19
+    pageId: page@cedaaa20ca45f5658255b88564103de8
+    beforeSnapshotId: before@tayy@928
+    afterSnapshotId: after@tayy@928
+    startedAt: 27918.15
+    endedAt: 28085.284

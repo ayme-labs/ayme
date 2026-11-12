@@ -1,0 +1,266 @@
+{
+ "mode": "before",
+ "playwright": "1.65.0",
+ "recorderApi": "_startRecording",
+ "settleRule": "after load, no DOM mutation in any frame for 150 ms, deadline 2000 ms",
+ "gateCyclesWithoutRecordedAction": null,
+ "gateLagsMs": null
+}
+
+#0 navigate    [none]
+   code: await page.goto('http://127.0.0.1:58634/');
+
+#1 click  internal:role=button[name="Other"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Other' }).click();
+   target: in tree ref=e19 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - <changed> [ref=e17] region "Toast":
+         - <target> <changed> [ref=e19] button "Other" [active]
+         - text: 1
+
+#2 click  internal:role=button[name="Load orders"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Load orders' }).click();
+   target: in tree ref=e5 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - <changed> [ref=e4] region "Late data":
+         - <target> <changed> [ref=e5] button "Load orders" [active]
+         - text: Loading
+       - [ref=e17] region "Toast":
+         - <changed> [ref=e19] button "Other"
+
+#3 click  internal:role=button[name="Other"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Other' }).click();
+   target: in tree ref=e19 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2] main:
+       - <changed> [ref=e4] region "Late data":
+         - [ref=e6] table "Orders":
+           - [ref=e7] rowgroup:
+             - <added> [ref=e39] row:
+               - <added> [ref=e40] cell "Order 2"
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e4] region "Late data":
+         - <changed> [ref=e5] button "Load orders"
+       - <changed> [ref=e17] region "Toast":
+         - <target> <changed> [ref=e19] button "Other" [active]
+         - text: 2
+
+#4 click  internal:role=button[name="Insert task"s]  [free-before]
+   code: await page.getByRole('button', { name: 'Insert task', exact: true }).click();
+   target: in tree ref=e11 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e10] region "Lookalike rows":
+         - <target> <changed> [ref=e11] button "Insert task" [active]
+         - [ref=e13] list "Tasks":
+           - <added> [ref=e41] listitem: Task
+       - [ref=e17] region "Toast":
+         - <changed> [ref=e19] button "Other"
+
+#5 click  internal:role=button[name="Insert task later"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Insert task later' }).click();
+   target: in tree ref=e12 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e10] region "Lookalike rows":
+         - <changed> [ref=e11] button "Insert task"
+         - <target> <changed> [ref=e12] button "Insert task later" [active]
+
+#6 click  internal:role=button[name="Notify later"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Notify later' }).click();
+   target: in tree ref=e18 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2] main:
+       - [ref=e10] region "Lookalike rows":
+         - [ref=e13] list "Tasks":
+           - <added> [ref=e42] listitem: Task
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e10] region "Lookalike rows":
+         - <changed> [ref=e12] button "Insert task later"
+       - [ref=e17] region "Toast":
+         - <target> <changed> [ref=e18] button "Notify later" [active]
+
+#7 click  internal:role=button[name="Dismiss"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Dismiss' }).click();
+   target: in tree ref=s_62 (via event snapshot)
+   changed before the interaction (unassigned):
+     - <added> [ref=s_63]:
+       - <added> [ref=s_61] status:
+         - text: Saved
+         - <added> [ref=s_62] button "Dismiss"
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e17] region "Toast":
+         - <changed> [ref=e18] button "Notify later"
+     - <removed> [ref=s_63]:
+       - <removed> [ref=s_61] status:
+         - text: Saved
+         - <target> <removed> [ref=s_62] button "Dismiss"
+
+#8 click  internal:role=textbox[name="Name"i]  [free-before]
+   code: await page.getByRole('textbox', { name: 'Name' }).click();
+   target: in tree ref=e23 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e22]:
+           - <target> <changed> [ref=e23] textbox "Name" [active]
+
+#9 fill "Ada"  internal:role=textbox[name="Name"i]  [free-before]
+   code: await page.getByRole('textbox', { name: 'Name' }).fill('Ada');
+   target: in tree ref=e23 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e22]:
+           - <target> <changed> [ref=e23] textbox "Name" [active]: Ada
+
+#10 press Enter  internal:role=textbox[name="Name"i]  [free-before]
+   code: await page.getByRole('textbox', { name: 'Name' }).press('Enter');
+   target: in tree ref=e23 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e22]:
+           - <target> [ref=e23] textbox "Name" [active]: Ada
+         - <added> [ref=e43] paragraph: "Hello, Ada"
+         - <removed> [ref=s_88] paragraph
+
+#11 check  internal:role=checkbox[name="Subscribe"i]  [free-before]
+   code: await page.getByRole('checkbox', { name: 'Subscribe' }).check();
+   target: in tree ref=e25 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - <changed> [ref=e20] region "Form":
+         - [ref=e22]:
+           - <changed> [ref=e23] textbox "Name": Ada
+         - [ref=e24]:
+           - <target> <changed> [ref=e25] checkbox "Subscribe" [checked] [active]
+         - text: subscribed
+         - text: "Color: red"
+
+#12 press g  internal:label="Color redgreenblue"i  [free-before]
+   code: await page.getByLabel('Color redgreenblue').press('g');
+   target: in tree ref=e27 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - <changed> [ref=e20] region "Form":
+         - [ref=e24]:
+           - <changed> [ref=e25] checkbox "Subscribe" [checked]
+         - text: subscribed
+         - [ref=e26]:
+           - <target> <changed> [ref=e27] combobox "Color" [active]:
+             - <changed> [ref=s_103] option "red"
+             - <changed> [ref=s_104] option "green" [selected]
+         - text: "Color: green"
+
+#13 select ["green"]  internal:label="Color redgreenblue"i  [free-before]
+   code: await page.getByLabel('Color redgreenblue').selectOption('green');
+   target: in tree ref=e27 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e26]:
+           - <target> [ref=e27] combobox "Color" [active]
+
+#14 click  internal:role=button[name="Menu"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Menu' }).click();
+   target: in tree ref=e29 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2] main:
+       - [ref=e28] region "Pointerdown menu":
+         - <added> [ref=e44] menu:
+           - <added> [ref=e45] menuitem "Rename"
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e26]:
+           - <changed> [ref=e27] combobox "Color"
+       - [ref=e28] region "Pointerdown menu":
+         - <target> <changed> [ref=e29] button "Menu" [active]
+
+#15 click  internal:role=menuitem[name="Rename"i]  [free-before]
+   code: await page.getByRole('menuitem', { name: 'Rename' }).click();
+   target: in tree ref=e45 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - <changed> [ref=e28] region "Pointerdown menu":
+         - <changed> [ref=e29] button "Menu"
+         - text: renamed
+         - <removed> [ref=e44] menu:
+           - <target> <removed> [ref=e45] menuitem "Rename"
+
+#16 click  [data-test="cart-link"]  [free-before]
+   code: await page.locator('[data-test="cart-link"]').click();
+   target: NOT in tree, marked on nearest ancestor ref=e30 (via event snapshot, nearest ancestor at the moment of the action)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - <target-inside> [ref=e30] region "Missing target":
+         - <changed> [ref=e33] paragraph: cart open
+
+#17 click  internal:role=button[name="Shadow button"i]  [free-before]
+   code: await page.getByRole('button', { name: 'Shadow button' }).click();
+   target: in tree ref=e36 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e34] region "Shadow":
+         - <changed> [ref=e35] [active]:
+           - <target> [ref=e36] button "Shadow button"
+           - text: 1
+
+#18 click  iframe[title="Inner frame"] >> internal:control=enter-frame >> internal:role=button[name="Inner button"i]  [free-before]
+   code: await page.locator('iframe[title="Inner frame"]').contentFrame().getByRole('button', { name: 'Inner button' }).click();
+   target: in tree ref=f1e2 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e34] region "Shadow":
+         - <changed> [ref=e35]: 1
+       - [ref=e37] region "Frame":
+         - <changed> [ref=e38] iframe [active]:
+           - <changed> [ref=f1e1]:
+             - <target> <changed> [ref=f1e2] button "Inner button" [active]
+             - text: 1
+
+#19 press Tab  iframe[title="Inner frame"] >> internal:control=enter-frame >> internal:role=button[name="Inner button"i]  [free-before]
+   code: await page.locator('iframe[title="Inner frame"]').contentFrame().getByRole('button', { name: 'Inner button' }).press('Tab');
+   target: in tree ref=f1e2 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e37] region "Frame":
+         - <changed> [ref=e38] iframe:
+           - [ref=f1e1]:
+             - <target> <changed> [ref=f1e2] button "Inner button"

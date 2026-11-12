@@ -1,0 +1,158 @@
+#0 navigate    [none]
+   code: await page.goto('https://www.saucedemo.com/');
+
+#1 click  [data-test="username"]  [gate]
+   code: await page.locator('[data-test="username"]').click();
+   target: in tree ref=e11 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <changed> [ref=e11] textbox "Username" [active]
+   Change Tree:
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <target> [ref=e11] textbox "Username" [active]
+
+#2 fill "standard_user"  [data-test="username"]  [free-before]
+   code: await page.locator('[data-test="username"]').fill('standard_user');
+   target: in tree ref=e11 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <target> <changed> [ref=e11] textbox "Username" [active]: standard_user
+
+#3 click  [data-test="password"]  [gate]
+   code: await page.locator('[data-test="password"]').click();
+   target: in tree ref=e13 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <changed> [ref=e11] textbox "Username": standard_user
+           - <changed> [ref=e13] textbox "Password" [active]
+   Change Tree:
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <target> [ref=e13] textbox "Password" [active]
+
+#4 fill "secret_sauce"  [data-test="password"]  [free-before]
+   code: await page.locator('[data-test="password"]').fill('secret_sauce');
+   target: in tree ref=e13 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <target> <changed> [ref=e13] textbox "Password" [active]: secret_sauce
+
+#5 click  [data-test="login-button"]  [gate]
+   code: await page.locator('[data-test="login-button"]').click();
+   navigated to: https://www.saucedemo.com/inventory.html
+   target: in tree ref=e15 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <changed> [ref=e13] textbox "Password": secret_sauce
+           - <changed> [ref=e15] button "Login" [active] [cursor=pointer]
+   Change Tree:
+     - [ref=e3]:
+       - [ref=e5] main:
+         - [ref=e9] form "Login":
+           - <target> [ref=e15] button "Login" [active] [cursor=pointer]
+
+#6 click  [data-test="add-to-cart-sauce-labs-backpack"]  [gate]
+   code: await page.locator('[data-test="add-to-cart-sauce-labs-backpack"]').click();
+   target: in tree ref=e65 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e22]:
+       - [ref=e23]:
+         - [ref=e24] banner:
+           - [ref=e25]:
+             - <removed> [ref=s_1]:
+               - <removed> [ref=s_2]:
+                 - <removed> [ref=e29]:
+                   - <removed> [ref=e31] navigation:
+                     - <removed> [ref=e32] button [cursor=pointer]: All Items
+                     - <removed> [ref=e33] button [cursor=pointer]: Dynamic Catalog
+                     - <removed> [ref=e35] link [cursor=pointer]:
+                       - /url: "https://saucelabs.com/"
+                       - text: About
+                     - <removed> [ref=e36] button [cursor=pointer]: Logout
+                     - <removed> [ref=e37] button [cursor=pointer]: Reset App State
+                   - <removed> [ref=e39] button [cursor=pointer]: Close Menu
+         - [ref=e51] main:
+           - [ref=e54]:
+             - [ref=e55]:
+               - [ref=e58]:
+                 - [ref=e63]:
+                   - <changed> [ref=e65] button "Add to cart" [active] [cursor=pointer]
+   Change Tree:
+     - [ref=e22]:
+       - [ref=e23]:
+         - [ref=e24] banner:
+           - [ref=e25]:
+             - <added> [ref=e136] button "Cart, 1 items":
+               - <added> [ref=e137]: 1
+             - <removed> [ref=e44] button "Cart, empty"
+         - [ref=e51] main:
+           - [ref=e54]:
+             - [ref=e55]:
+               - [ref=e58]:
+                 - [ref=e63]:
+                   - <added> [ref=e138] button "Remove" [cursor=pointer]
+                   - <target> <removed> [ref=e65] button "Add to cart" [active] [cursor=pointer]
+
+#7 click  [data-test="shopping-cart-link"]  [gate]
+   code: await page.locator('[data-test="shopping-cart-link"]').click();
+   navigated to: https://www.saucedemo.com/cart.html
+   target: in tree ref=e136 (via event snapshot)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e22]:
+       - [ref=e23]:
+         - [ref=e24] banner:
+           - [ref=e25]:
+             - <target> [ref=e136] button "Cart, 1 items"
+
+#8 click  [data-test="remove-sauce-labs-backpack"]  [gate]
+   code: await page.locator('[data-test="remove-sauce-labs-backpack"]').click();
+   target: in tree ref=e166 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e139]:
+       - [ref=e140]:
+         - [ref=e153] main:
+           - [ref=e154]:
+             - [ref=e155]:
+               - [ref=e158]:
+                 - [ref=e160]:
+                   - [ref=e164]:
+                     - <changed> [ref=e166] button "Remove" [active] [cursor=pointer]
+   Change Tree:
+     - [ref=e139]:
+       - [ref=e140]:
+         - [ref=e141] banner:
+           - [ref=e142]:
+             - <added> [ref=e179] button "Cart, empty"
+             - <removed> [ref=e149] button "Cart, 1 items":
+               - <removed> [ref=e150]: 1
+         - [ref=e153] main:
+           - [ref=e154]:
+             - [ref=e155]:
+               - <removed> [ref=e158]:
+                 - <removed> [ref=e159]: 1
+                 - <removed> [ref=e160]:
+                   - <removed> [ref=e161] button "View details for Sauce Labs Backpack" [cursor=pointer]:
+                     - <removed> [ref=e162]: Sauce Labs Backpack
+                   - <removed> [ref=e163]: "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                   - <removed> [ref=e164]:
+                     - <removed> [ref=e165]: $29.99
+                     - <target> <removed> [ref=e166] button "Remove" [active] [cursor=pointer]

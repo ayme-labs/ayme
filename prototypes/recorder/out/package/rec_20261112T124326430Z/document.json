@@ -1,0 +1,4600 @@
+{
+ "mode": "structural",
+ "visits": [
+  {
+   "visitId": "visit_1",
+   "url": "https://www.saucedemo.com/",
+   "cause": "initial",
+   "baselineTree": {
+    "children": [
+     {
+      "ref": "e3",
+      "role": "generic",
+      "children": [
+       {
+        "ref": "e4",
+        "role": "generic",
+        "children": [
+         "Swag Labs"
+        ]
+       },
+       {
+        "ref": "e5",
+        "role": "main",
+        "children": [
+         {
+          "ref": "e9",
+          "role": "form",
+          "name": "Login",
+          "children": [
+           {
+            "ref": "e11",
+            "role": "textbox",
+            "name": "Username"
+           },
+           {
+            "ref": "e13",
+            "role": "textbox",
+            "name": "Password"
+           },
+           {
+            "ref": "e15",
+            "role": "button",
+            "name": "Login"
+           }
+          ]
+         },
+         {
+          "ref": "e17",
+          "role": "generic",
+          "children": [
+           {
+            "ref": "e18",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "e19",
+              "role": "heading",
+              "name": "Accepted usernames are:"
+             },
+             "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+            ]
+           },
+           {
+            "ref": "e20",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "e21",
+              "role": "heading",
+              "name": "Password for all users:"
+             },
+             "secret_sauce"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "timelineEntries": [
+    {
+     "analysisItemId": "item_1",
+     "timestamp": 1860.182,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "updated"
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "unchanged"
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "change"
+    },
+    {
+     "analysisItemId": "item_2",
+     "timestamp": 1863.182,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "unchanged"
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "unchanged"
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_1",
+      "type": "click",
+      "targetRef": "e11",
+      "targetSelector": "[data-test=\"username\"]",
+      "button": "left",
+      "modifiers": 0,
+      "clickCount": 1
+     }
+    },
+    {
+     "analysisItemId": "item_3",
+     "timestamp": 3069.805,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "updated",
+              "children": [
+               "standard_user"
+              ]
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "unchanged"
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_2",
+      "type": "fill",
+      "targetRef": "e11",
+      "targetSelector": "[data-test=\"username\"]",
+      "text": "standard_user"
+     }
+    },
+    {
+     "analysisItemId": "item_4",
+     "timestamp": 5115.947,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "updated",
+              "children": [
+               "standard_user"
+              ]
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "updated"
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "change"
+    },
+    {
+     "analysisItemId": "item_5",
+     "timestamp": 5118.947,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "unchanged",
+              "children": [
+               "standard_user"
+              ]
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "unchanged"
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_3",
+      "type": "click",
+      "targetRef": "e13",
+      "targetSelector": "[data-test=\"password\"]",
+      "button": "left",
+      "modifiers": 0,
+      "clickCount": 1
+     }
+    },
+    {
+     "analysisItemId": "item_6",
+     "timestamp": 6325.412,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "unchanged",
+              "children": [
+               "standard_user"
+              ]
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "updated",
+              "children": [
+               "secret_sauce"
+              ]
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_4",
+      "type": "fill",
+      "targetRef": "e13",
+      "targetSelector": "[data-test=\"password\"]",
+      "text": "secret_sauce"
+     }
+    },
+    {
+     "analysisItemId": "item_7",
+     "timestamp": 8296.09,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "unchanged",
+              "children": [
+               "standard_user"
+              ]
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "updated",
+              "children": [
+               "secret_sauce"
+              ]
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "updated"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "change"
+    },
+    {
+     "analysisItemId": "item_8",
+     "timestamp": 8299.09,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e3",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e4",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           "Swag Labs"
+          ]
+         },
+         {
+          "ref": "e5",
+          "role": "main",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e9",
+            "role": "form",
+            "name": "Login",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e11",
+              "role": "textbox",
+              "name": "Username",
+              "status": "unchanged",
+              "children": [
+               "standard_user"
+              ]
+             },
+             {
+              "ref": "e13",
+              "role": "textbox",
+              "name": "Password",
+              "status": "unchanged",
+              "children": [
+               "secret_sauce"
+              ]
+             },
+             {
+              "ref": "e15",
+              "role": "button",
+              "name": "Login",
+              "status": "unchanged"
+             }
+            ]
+           },
+           {
+            "ref": "e17",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e18",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e19",
+                "role": "heading",
+                "name": "Accepted usernames are:",
+                "status": "unchanged"
+               },
+               "standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user"
+              ]
+             },
+             {
+              "ref": "e20",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e21",
+                "role": "heading",
+                "name": "Password for all users:",
+                "status": "unchanged"
+               },
+               "secret_sauce"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_5",
+      "type": "click",
+      "targetRef": "e15",
+      "targetSelector": "[data-test=\"login-button\"]",
+      "button": "left",
+      "modifiers": 0,
+      "clickCount": 1
+     }
+    }
+   ]
+  },
+  {
+   "visitId": "visit_2",
+   "url": "https://www.saucedemo.com/inventory.html",
+   "cause": "navigate",
+   "baselineTree": {
+    "children": [
+     {
+      "ref": "e22",
+      "role": "generic",
+      "children": [
+       {
+        "ref": "e23",
+        "role": "generic",
+        "children": [
+         {
+          "ref": "e24",
+          "role": "banner",
+          "children": [
+           {
+            "ref": "e25",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "s_1",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "s_2",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e26",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e27",
+                    "role": "button",
+                    "name": "Open Menu"
+                   },
+                   {
+                    "ref": "e28",
+                    "role": "img",
+                    "name": "Open Menu"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e29",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e31",
+                    "role": "navigation",
+                    "children": [
+                     {
+                      "ref": "e32",
+                      "role": "button",
+                      "children": [
+                       "All Items"
+                      ]
+                     },
+                     {
+                      "ref": "e33",
+                      "role": "button",
+                      "children": [
+                       "Dynamic Catalog"
+                      ]
+                     },
+                     {
+                      "ref": "e35",
+                      "role": "link",
+                      "children": [
+                       "About"
+                      ]
+                     },
+                     {
+                      "ref": "e36",
+                      "role": "button",
+                      "children": [
+                       "Logout"
+                      ]
+                     },
+                     {
+                      "ref": "e37",
+                      "role": "button",
+                      "children": [
+                       "Reset App State"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e39",
+                    "role": "button",
+                    "children": [
+                     "Close Menu"
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e41",
+              "role": "generic",
+              "children": [
+               "Swag Labs"
+              ]
+             },
+             {
+              "ref": "e44",
+              "role": "button",
+              "name": "Cart, empty"
+             }
+            ]
+           },
+           {
+            "ref": "e45",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "e46",
+              "role": "generic",
+              "children": [
+               "Products"
+              ]
+             },
+             {
+              "ref": "e48",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e49",
+                "role": "generic",
+                "children": [
+                 "Name (A to Z)"
+                ]
+               },
+               {
+                "ref": "e50",
+                "role": "combobox",
+                "name": "Sort products",
+                "children": [
+                 {
+                  "ref": "s_3",
+                  "role": "option",
+                  "name": "Name (A to Z)"
+                 },
+                 {
+                  "ref": "s_4",
+                  "role": "option",
+                  "name": "Name (Z to A)"
+                 },
+                 {
+                  "ref": "s_5",
+                  "role": "option",
+                  "name": "Price (low to high)"
+                 },
+                 {
+                  "ref": "s_6",
+                  "role": "option",
+                  "name": "Price (high to low)"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e51",
+          "role": "main",
+          "children": [
+           {
+            "ref": "e54",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "e55",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e57",
+                "role": "button",
+                "name": "View details for Sauce Labs Backpack",
+                "children": [
+                 {
+                  "ref": "s_7",
+                  "role": "img",
+                  "name": "Sauce Labs Backpack"
+                 }
+                ]
+               },
+               {
+                "ref": "e58",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e59",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e60",
+                    "role": "button",
+                    "name": "View details for Sauce Labs Backpack",
+                    "children": [
+                     {
+                      "ref": "e61",
+                      "role": "generic",
+                      "children": [
+                       "Sauce Labs Backpack"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e62",
+                    "role": "generic",
+                    "children": [
+                     "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e63",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e64",
+                    "role": "generic",
+                    "children": [
+                     "$29.99"
+                    ]
+                   },
+                   {
+                    "ref": "e65",
+                    "role": "button",
+                    "name": "Add to cart"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e66",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e68",
+                "role": "button",
+                "name": "View details for Sauce Labs Bike Light",
+                "children": [
+                 {
+                  "ref": "e69",
+                  "role": "img",
+                  "name": "Sauce Labs Bike Light"
+                 }
+                ]
+               },
+               {
+                "ref": "e70",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e71",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e72",
+                    "role": "button",
+                    "name": "View details for Sauce Labs Bike Light",
+                    "children": [
+                     {
+                      "ref": "e73",
+                      "role": "generic",
+                      "children": [
+                       "Sauce Labs Bike Light"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e74",
+                    "role": "generic",
+                    "children": [
+                     "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included."
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e75",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e76",
+                    "role": "generic",
+                    "children": [
+                     "$9.99"
+                    ]
+                   },
+                   {
+                    "ref": "e77",
+                    "role": "button",
+                    "name": "Add to cart"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e78",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e80",
+                "role": "button",
+                "name": "View details for Sauce Labs Bolt T-Shirt",
+                "children": [
+                 {
+                  "ref": "e81",
+                  "role": "img",
+                  "name": "Sauce Labs Bolt T-Shirt"
+                 }
+                ]
+               },
+               {
+                "ref": "e82",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e83",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e84",
+                    "role": "button",
+                    "name": "View details for Sauce Labs Bolt T-Shirt",
+                    "children": [
+                     {
+                      "ref": "e85",
+                      "role": "generic",
+                      "children": [
+                       "Sauce Labs Bolt T-Shirt"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e86",
+                    "role": "generic",
+                    "children": [
+                     "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt."
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e87",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e88",
+                    "role": "generic",
+                    "children": [
+                     "$15.99"
+                    ]
+                   },
+                   {
+                    "ref": "e89",
+                    "role": "button",
+                    "name": "Add to cart"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e90",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e92",
+                "role": "button",
+                "name": "View details for Sauce Labs Fleece Jacket",
+                "children": [
+                 {
+                  "ref": "e93",
+                  "role": "img",
+                  "name": "Sauce Labs Fleece Jacket"
+                 }
+                ]
+               },
+               {
+                "ref": "e94",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e95",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e96",
+                    "role": "button",
+                    "name": "View details for Sauce Labs Fleece Jacket",
+                    "children": [
+                     {
+                      "ref": "e97",
+                      "role": "generic",
+                      "children": [
+                       "Sauce Labs Fleece Jacket"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e98",
+                    "role": "generic",
+                    "children": [
+                     "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office."
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e99",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e100",
+                    "role": "generic",
+                    "children": [
+                     "$49.99"
+                    ]
+                   },
+                   {
+                    "ref": "e101",
+                    "role": "button",
+                    "name": "Add to cart"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e102",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e104",
+                "role": "button",
+                "name": "View details for Sauce Labs Onesie",
+                "children": [
+                 {
+                  "ref": "e105",
+                  "role": "img",
+                  "name": "Sauce Labs Onesie"
+                 }
+                ]
+               },
+               {
+                "ref": "e106",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e107",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e108",
+                    "role": "button",
+                    "name": "View details for Sauce Labs Onesie",
+                    "children": [
+                     {
+                      "ref": "e109",
+                      "role": "generic",
+                      "children": [
+                       "Sauce Labs Onesie"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e110",
+                    "role": "generic",
+                    "children": [
+                     "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel."
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e111",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e112",
+                    "role": "generic",
+                    "children": [
+                     "$7.99"
+                    ]
+                   },
+                   {
+                    "ref": "e113",
+                    "role": "button",
+                    "name": "Add to cart"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e114",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e116",
+                "role": "button",
+                "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                "children": [
+                 {
+                  "ref": "e117",
+                  "role": "img",
+                  "name": "Test.allTheThings() T-Shirt (Red)"
+                 }
+                ]
+               },
+               {
+                "ref": "e118",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e119",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e120",
+                    "role": "button",
+                    "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                    "children": [
+                     {
+                      "ref": "e121",
+                      "role": "generic",
+                      "children": [
+                       "Test.allTheThings() T-Shirt (Red)"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e122",
+                    "role": "generic",
+                    "children": [
+                     "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton."
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e123",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e124",
+                    "role": "generic",
+                    "children": [
+                     "$15.99"
+                    ]
+                   },
+                   {
+                    "ref": "e125",
+                    "role": "button",
+                    "name": "Add to cart"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "ref": "e126",
+        "role": "contentinfo",
+        "children": [
+         {
+          "ref": "e127",
+          "role": "list",
+          "children": [
+           {
+            "ref": "e128",
+            "role": "listitem",
+            "children": [
+             {
+              "ref": "e129",
+              "role": "link",
+              "name": "X"
+             }
+            ]
+           },
+           {
+            "ref": "e130",
+            "role": "listitem",
+            "children": [
+             {
+              "ref": "e131",
+              "role": "link",
+              "name": "Facebook"
+             }
+            ]
+           },
+           {
+            "ref": "e132",
+            "role": "listitem",
+            "children": [
+             {
+              "ref": "e133",
+              "role": "link",
+              "name": "LinkedIn"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e134",
+          "role": "generic",
+          "children": [
+           "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "timelineEntries": [
+    {
+     "analysisItemId": "item_9",
+     "timestamp": 10913.554,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e22",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e23",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e24",
+            "role": "banner",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e25",
+              "role": "generic",
+              "status": "updated",
+              "children": [
+               {
+                "ref": "e26",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e27",
+                  "role": "button",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e28",
+                  "role": "img",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 }
+                ]
+               },
+               {
+                "ref": "s_1",
+                "role": "generic",
+                "status": "removed",
+                "children": [
+                 {
+                  "ref": "s_2",
+                  "role": "generic",
+                  "status": "removed",
+                  "children": [
+                   {
+                    "ref": "e29",
+                    "role": "generic",
+                    "status": "removed",
+                    "children": [
+                     {
+                      "ref": "e31",
+                      "role": "navigation",
+                      "status": "removed",
+                      "children": [
+                       {
+                        "ref": "e32",
+                        "role": "button",
+                        "status": "removed",
+                        "children": [
+                         "All Items"
+                        ]
+                       },
+                       {
+                        "ref": "e33",
+                        "role": "button",
+                        "status": "removed",
+                        "children": [
+                         "Dynamic Catalog"
+                        ]
+                       },
+                       {
+                        "ref": "e35",
+                        "role": "link",
+                        "status": "removed",
+                        "children": [
+                         "About"
+                        ]
+                       },
+                       {
+                        "ref": "e36",
+                        "role": "button",
+                        "status": "removed",
+                        "children": [
+                         "Logout"
+                        ]
+                       },
+                       {
+                        "ref": "e37",
+                        "role": "button",
+                        "status": "removed",
+                        "children": [
+                         "Reset App State"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e39",
+                      "role": "button",
+                      "status": "removed",
+                      "children": [
+                       "Close Menu"
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e41",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Swag Labs"
+                ]
+               },
+               {
+                "ref": "e44",
+                "role": "button",
+                "name": "Cart, empty",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e45",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e46",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Products"
+                ]
+               },
+               {
+                "ref": "e48",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e49",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "Name (A to Z)"
+                  ]
+                 },
+                 {
+                  "ref": "e50",
+                  "role": "combobox",
+                  "name": "Sort products",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "s_3",
+                    "role": "option",
+                    "name": "Name (A to Z)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_4",
+                    "role": "option",
+                    "name": "Name (Z to A)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_5",
+                    "role": "option",
+                    "name": "Price (low to high)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_6",
+                    "role": "option",
+                    "name": "Price (high to low)",
+                    "status": "unchanged"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e51",
+            "role": "main",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e54",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e55",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e57",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Backpack",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e135",
+                    "role": "img",
+                    "name": "Sauce Labs Backpack",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e58",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e59",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e60",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Backpack",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e61",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Backpack"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e62",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e63",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e64",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$29.99"
+                      ]
+                     },
+                     {
+                      "ref": "e65",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "updated"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e66",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e68",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Bike Light",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e69",
+                    "role": "img",
+                    "name": "Sauce Labs Bike Light",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e70",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e71",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e72",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Bike Light",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e73",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Bike Light"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e74",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e75",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e76",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$9.99"
+                      ]
+                     },
+                     {
+                      "ref": "e77",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e78",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e80",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Bolt T-Shirt",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e81",
+                    "role": "img",
+                    "name": "Sauce Labs Bolt T-Shirt",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e82",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e83",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e84",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Bolt T-Shirt",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e85",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Bolt T-Shirt"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e86",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e87",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e88",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$15.99"
+                      ]
+                     },
+                     {
+                      "ref": "e89",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e90",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e92",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Fleece Jacket",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e93",
+                    "role": "img",
+                    "name": "Sauce Labs Fleece Jacket",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e94",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e95",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e96",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Fleece Jacket",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e97",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Fleece Jacket"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e98",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e99",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e100",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$49.99"
+                      ]
+                     },
+                     {
+                      "ref": "e101",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e102",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e104",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Onesie",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e105",
+                    "role": "img",
+                    "name": "Sauce Labs Onesie",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e106",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e107",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e108",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Onesie",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e109",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Onesie"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e110",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e111",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e112",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$7.99"
+                      ]
+                     },
+                     {
+                      "ref": "e113",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e114",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e116",
+                  "role": "button",
+                  "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e117",
+                    "role": "img",
+                    "name": "Test.allTheThings() T-Shirt (Red)",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e118",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e119",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e120",
+                      "role": "button",
+                      "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e121",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Test.allTheThings() T-Shirt (Red)"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e122",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e123",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e124",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$15.99"
+                      ]
+                     },
+                     {
+                      "ref": "e125",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e126",
+          "role": "contentinfo",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e127",
+            "role": "list",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e128",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e129",
+                "role": "link",
+                "name": "X",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e130",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e131",
+                "role": "link",
+                "name": "Facebook",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e132",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e133",
+                "role": "link",
+                "name": "LinkedIn",
+                "status": "unchanged"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e134",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "change"
+    },
+    {
+     "analysisItemId": "item_10",
+     "timestamp": 10921.554,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e22",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e23",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e24",
+            "role": "banner",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e25",
+              "role": "generic",
+              "status": "updated",
+              "children": [
+               {
+                "ref": "e26",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e27",
+                  "role": "button",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e28",
+                  "role": "img",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 }
+                ]
+               },
+               {
+                "ref": "e41",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Swag Labs"
+                ]
+               },
+               {
+                "ref": "e136",
+                "role": "button",
+                "name": "Cart, 1 items",
+                "status": "added",
+                "children": [
+                 {
+                  "ref": "e137",
+                  "role": "generic",
+                  "status": "added",
+                  "children": [
+                   "1"
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e44",
+                "role": "button",
+                "name": "Cart, empty",
+                "status": "removed"
+               }
+              ]
+             },
+             {
+              "ref": "e45",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e46",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Products"
+                ]
+               },
+               {
+                "ref": "e48",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e49",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "Name (A to Z)"
+                  ]
+                 },
+                 {
+                  "ref": "e50",
+                  "role": "combobox",
+                  "name": "Sort products",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "s_15",
+                    "role": "option",
+                    "name": "Name (A to Z)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_16",
+                    "role": "option",
+                    "name": "Name (Z to A)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_17",
+                    "role": "option",
+                    "name": "Price (low to high)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_18",
+                    "role": "option",
+                    "name": "Price (high to low)",
+                    "status": "unchanged"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e51",
+            "role": "main",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e54",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e55",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e57",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Backpack",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e135",
+                    "role": "img",
+                    "name": "Sauce Labs Backpack",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e58",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e59",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e60",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Backpack",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e61",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Backpack"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e62",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e63",
+                    "role": "generic",
+                    "status": "updated",
+                    "children": [
+                     {
+                      "ref": "e64",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$29.99"
+                      ]
+                     },
+                     {
+                      "ref": "e138",
+                      "role": "button",
+                      "name": "Remove",
+                      "status": "added"
+                     },
+                     {
+                      "ref": "e65",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "removed"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e66",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e68",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Bike Light",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e69",
+                    "role": "img",
+                    "name": "Sauce Labs Bike Light",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e70",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e71",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e72",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Bike Light",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e73",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Bike Light"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e74",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e75",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e76",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$9.99"
+                      ]
+                     },
+                     {
+                      "ref": "e77",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e78",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e80",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Bolt T-Shirt",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e81",
+                    "role": "img",
+                    "name": "Sauce Labs Bolt T-Shirt",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e82",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e83",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e84",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Bolt T-Shirt",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e85",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Bolt T-Shirt"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e86",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e87",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e88",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$15.99"
+                      ]
+                     },
+                     {
+                      "ref": "e89",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e90",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e92",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Fleece Jacket",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e93",
+                    "role": "img",
+                    "name": "Sauce Labs Fleece Jacket",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e94",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e95",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e96",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Fleece Jacket",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e97",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Fleece Jacket"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e98",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e99",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e100",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$49.99"
+                      ]
+                     },
+                     {
+                      "ref": "e101",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e102",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e104",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Onesie",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e105",
+                    "role": "img",
+                    "name": "Sauce Labs Onesie",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e106",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e107",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e108",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Onesie",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e109",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Onesie"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e110",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e111",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e112",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$7.99"
+                      ]
+                     },
+                     {
+                      "ref": "e113",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e114",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e116",
+                  "role": "button",
+                  "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e117",
+                    "role": "img",
+                    "name": "Test.allTheThings() T-Shirt (Red)",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e118",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e119",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e120",
+                      "role": "button",
+                      "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e121",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Test.allTheThings() T-Shirt (Red)"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e122",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e123",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e124",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$15.99"
+                      ]
+                     },
+                     {
+                      "ref": "e125",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e126",
+          "role": "contentinfo",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e127",
+            "role": "list",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e128",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e129",
+                "role": "link",
+                "name": "X",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e130",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e131",
+                "role": "link",
+                "name": "Facebook",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e132",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e133",
+                "role": "link",
+                "name": "LinkedIn",
+                "status": "unchanged"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e134",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_6",
+      "type": "click",
+      "targetRef": "e65",
+      "targetSelector": "[data-test=\"add-to-cart-sauce-labs-backpack\"]",
+      "button": "left",
+      "modifiers": 0,
+      "clickCount": 1
+     }
+    },
+    {
+     "analysisItemId": "item_11",
+     "timestamp": 12239.651,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e22",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e23",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e24",
+            "role": "banner",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e25",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e26",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e27",
+                  "role": "button",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e28",
+                  "role": "img",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 }
+                ]
+               },
+               {
+                "ref": "e41",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Swag Labs"
+                ]
+               },
+               {
+                "ref": "e136",
+                "role": "button",
+                "name": "Cart, 1 items",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e137",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "1"
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e45",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e46",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Products"
+                ]
+               },
+               {
+                "ref": "e48",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e49",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "Name (A to Z)"
+                  ]
+                 },
+                 {
+                  "ref": "e50",
+                  "role": "combobox",
+                  "name": "Sort products",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "s_27",
+                    "role": "option",
+                    "name": "Name (A to Z)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_28",
+                    "role": "option",
+                    "name": "Name (Z to A)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_29",
+                    "role": "option",
+                    "name": "Price (low to high)",
+                    "status": "unchanged"
+                   },
+                   {
+                    "ref": "s_30",
+                    "role": "option",
+                    "name": "Price (high to low)",
+                    "status": "unchanged"
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e51",
+            "role": "main",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e54",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e55",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e57",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Backpack",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e135",
+                    "role": "img",
+                    "name": "Sauce Labs Backpack",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e58",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e59",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e60",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Backpack",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e61",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Backpack"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e62",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e63",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e64",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$29.99"
+                      ]
+                     },
+                     {
+                      "ref": "e138",
+                      "role": "button",
+                      "name": "Remove",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e66",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e68",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Bike Light",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e69",
+                    "role": "img",
+                    "name": "Sauce Labs Bike Light",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e70",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e71",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e72",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Bike Light",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e73",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Bike Light"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e74",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e75",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e76",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$9.99"
+                      ]
+                     },
+                     {
+                      "ref": "e77",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e78",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e80",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Bolt T-Shirt",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e81",
+                    "role": "img",
+                    "name": "Sauce Labs Bolt T-Shirt",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e82",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e83",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e84",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Bolt T-Shirt",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e85",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Bolt T-Shirt"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e86",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e87",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e88",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$15.99"
+                      ]
+                     },
+                     {
+                      "ref": "e89",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e90",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e92",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Fleece Jacket",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e93",
+                    "role": "img",
+                    "name": "Sauce Labs Fleece Jacket",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e94",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e95",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e96",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Fleece Jacket",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e97",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Fleece Jacket"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e98",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e99",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e100",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$49.99"
+                      ]
+                     },
+                     {
+                      "ref": "e101",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e102",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e104",
+                  "role": "button",
+                  "name": "View details for Sauce Labs Onesie",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e105",
+                    "role": "img",
+                    "name": "Sauce Labs Onesie",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e106",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e107",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e108",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Onesie",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e109",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Onesie"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e110",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e111",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e112",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$7.99"
+                      ]
+                     },
+                     {
+                      "ref": "e113",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e114",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e116",
+                  "role": "button",
+                  "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e117",
+                    "role": "img",
+                    "name": "Test.allTheThings() T-Shirt (Red)",
+                    "status": "unchanged"
+                   }
+                  ]
+                 },
+                 {
+                  "ref": "e118",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e119",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e120",
+                      "role": "button",
+                      "name": "View details for Test.allTheThings() T-Shirt (Red)",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e121",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Test.allTheThings() T-Shirt (Red)"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e122",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton."
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e123",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e124",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "$15.99"
+                      ]
+                     },
+                     {
+                      "ref": "e125",
+                      "role": "button",
+                      "name": "Add to cart",
+                      "status": "unchanged"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e126",
+          "role": "contentinfo",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e127",
+            "role": "list",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e128",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e129",
+                "role": "link",
+                "name": "X",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e130",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e131",
+                "role": "link",
+                "name": "Facebook",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e132",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e133",
+                "role": "link",
+                "name": "LinkedIn",
+                "status": "unchanged"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e134",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_7",
+      "type": "click",
+      "targetRef": "e136",
+      "targetSelector": "[data-test=\"shopping-cart-link\"]",
+      "button": "left",
+      "modifiers": 0,
+      "clickCount": 1
+     }
+    }
+   ]
+  },
+  {
+   "visitId": "visit_3",
+   "url": "https://www.saucedemo.com/cart.html",
+   "cause": "navigate",
+   "baselineTree": {
+    "children": [
+     {
+      "ref": "e139",
+      "role": "generic",
+      "children": [
+       {
+        "ref": "e140",
+        "role": "generic",
+        "children": [
+         {
+          "ref": "e141",
+          "role": "banner",
+          "children": [
+           {
+            "ref": "e142",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "e143",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e144",
+                "role": "button",
+                "name": "Open Menu"
+               },
+               {
+                "ref": "e145",
+                "role": "img",
+                "name": "Open Menu"
+               }
+              ]
+             },
+             {
+              "ref": "e146",
+              "role": "generic",
+              "children": [
+               "Swag Labs"
+              ]
+             },
+             {
+              "ref": "e149",
+              "role": "button",
+              "name": "Cart, 1 items",
+              "children": [
+               {
+                "ref": "e150",
+                "role": "generic",
+                "children": [
+                 "1"
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e151",
+            "role": "generic",
+            "children": [
+             "Your Cart"
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e153",
+          "role": "main",
+          "children": [
+           {
+            "ref": "e154",
+            "role": "generic",
+            "children": [
+             {
+              "ref": "e155",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e156",
+                "role": "generic",
+                "children": [
+                 "QTY"
+                ]
+               },
+               {
+                "ref": "e157",
+                "role": "generic",
+                "children": [
+                 "Description"
+                ]
+               },
+               {
+                "ref": "e158",
+                "role": "generic",
+                "children": [
+                 {
+                  "ref": "e159",
+                  "role": "generic",
+                  "children": [
+                   "1"
+                  ]
+                 },
+                 {
+                  "ref": "e160",
+                  "role": "generic",
+                  "children": [
+                   {
+                    "ref": "e161",
+                    "role": "button",
+                    "name": "View details for Sauce Labs Backpack",
+                    "children": [
+                     {
+                      "ref": "e162",
+                      "role": "generic",
+                      "children": [
+                       "Sauce Labs Backpack"
+                      ]
+                     }
+                    ]
+                   },
+                   {
+                    "ref": "e163",
+                    "role": "generic",
+                    "children": [
+                     "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                    ]
+                   },
+                   {
+                    "ref": "e164",
+                    "role": "generic",
+                    "children": [
+                     {
+                      "ref": "e165",
+                      "role": "generic",
+                      "children": [
+                       "$29.99"
+                      ]
+                     },
+                     {
+                      "ref": "e166",
+                      "role": "button",
+                      "name": "Remove"
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e167",
+              "role": "generic",
+              "children": [
+               {
+                "ref": "e168",
+                "role": "button",
+                "name": "Continue Shopping"
+               },
+               {
+                "ref": "e169",
+                "role": "button",
+                "name": "Checkout"
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "ref": "e170",
+        "role": "contentinfo",
+        "children": [
+         {
+          "ref": "e171",
+          "role": "list",
+          "children": [
+           {
+            "ref": "e172",
+            "role": "listitem",
+            "children": [
+             {
+              "ref": "e173",
+              "role": "link",
+              "name": "X"
+             }
+            ]
+           },
+           {
+            "ref": "e174",
+            "role": "listitem",
+            "children": [
+             {
+              "ref": "e175",
+              "role": "link",
+              "name": "Facebook"
+             }
+            ]
+           },
+           {
+            "ref": "e176",
+            "role": "listitem",
+            "children": [
+             {
+              "ref": "e177",
+              "role": "link",
+              "name": "LinkedIn"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e178",
+          "role": "generic",
+          "children": [
+           "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "timelineEntries": [
+    {
+     "analysisItemId": "item_12",
+     "timestamp": 14845.267,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e139",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e140",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e141",
+            "role": "banner",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e142",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e143",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e144",
+                  "role": "button",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e145",
+                  "role": "img",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 }
+                ]
+               },
+               {
+                "ref": "e146",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Swag Labs"
+                ]
+               },
+               {
+                "ref": "e149",
+                "role": "button",
+                "name": "Cart, 1 items",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e150",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "1"
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e151",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               "Your Cart"
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e153",
+            "role": "main",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e154",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e155",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e156",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "QTY"
+                  ]
+                 },
+                 {
+                  "ref": "e157",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "Description"
+                  ]
+                 },
+                 {
+                  "ref": "e158",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   {
+                    "ref": "e159",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     "1"
+                    ]
+                   },
+                   {
+                    "ref": "e160",
+                    "role": "generic",
+                    "status": "unchanged",
+                    "children": [
+                     {
+                      "ref": "e161",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Backpack",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e162",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "Sauce Labs Backpack"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e163",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                      ]
+                     },
+                     {
+                      "ref": "e164",
+                      "role": "generic",
+                      "status": "unchanged",
+                      "children": [
+                       {
+                        "ref": "e165",
+                        "role": "generic",
+                        "status": "unchanged",
+                        "children": [
+                         "$29.99"
+                        ]
+                       },
+                       {
+                        "ref": "e166",
+                        "role": "button",
+                        "name": "Remove",
+                        "status": "updated"
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e167",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e168",
+                  "role": "button",
+                  "name": "Continue Shopping",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e169",
+                  "role": "button",
+                  "name": "Checkout",
+                  "status": "unchanged"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e170",
+          "role": "contentinfo",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e171",
+            "role": "list",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e172",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e173",
+                "role": "link",
+                "name": "X",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e174",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e175",
+                "role": "link",
+                "name": "Facebook",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e176",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e177",
+                "role": "link",
+                "name": "LinkedIn",
+                "status": "unchanged"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e178",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "change"
+    },
+    {
+     "analysisItemId": "item_13",
+     "timestamp": 14849.267,
+     "changeTree": {
+      "children": [
+       {
+        "ref": "e139",
+        "role": "generic",
+        "status": "unchanged",
+        "children": [
+         {
+          "ref": "e140",
+          "role": "generic",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e141",
+            "role": "banner",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e142",
+              "role": "generic",
+              "status": "updated",
+              "children": [
+               {
+                "ref": "e143",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e144",
+                  "role": "button",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e145",
+                  "role": "img",
+                  "name": "Open Menu",
+                  "status": "unchanged"
+                 }
+                ]
+               },
+               {
+                "ref": "e146",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 "Swag Labs"
+                ]
+               },
+               {
+                "ref": "e179",
+                "role": "button",
+                "name": "Cart, empty",
+                "status": "added"
+               },
+               {
+                "ref": "e149",
+                "role": "button",
+                "name": "Cart, 1 items",
+                "status": "removed",
+                "children": [
+                 {
+                  "ref": "e150",
+                  "role": "generic",
+                  "status": "removed",
+                  "children": [
+                   "1"
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "ref": "e151",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               "Your Cart"
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e153",
+            "role": "main",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e154",
+              "role": "generic",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e155",
+                "role": "generic",
+                "status": "updated",
+                "children": [
+                 {
+                  "ref": "e156",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "QTY"
+                  ]
+                 },
+                 {
+                  "ref": "e157",
+                  "role": "generic",
+                  "status": "unchanged",
+                  "children": [
+                   "Description"
+                  ]
+                 },
+                 {
+                  "ref": "e158",
+                  "role": "generic",
+                  "status": "removed",
+                  "children": [
+                   {
+                    "ref": "e159",
+                    "role": "generic",
+                    "status": "removed",
+                    "children": [
+                     "1"
+                    ]
+                   },
+                   {
+                    "ref": "e160",
+                    "role": "generic",
+                    "status": "removed",
+                    "children": [
+                     {
+                      "ref": "e161",
+                      "role": "button",
+                      "name": "View details for Sauce Labs Backpack",
+                      "status": "removed",
+                      "children": [
+                       {
+                        "ref": "e162",
+                        "role": "generic",
+                        "status": "removed",
+                        "children": [
+                         "Sauce Labs Backpack"
+                        ]
+                       }
+                      ]
+                     },
+                     {
+                      "ref": "e163",
+                      "role": "generic",
+                      "status": "removed",
+                      "children": [
+                       "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                      ]
+                     },
+                     {
+                      "ref": "e164",
+                      "role": "generic",
+                      "status": "removed",
+                      "children": [
+                       {
+                        "ref": "e165",
+                        "role": "generic",
+                        "status": "removed",
+                        "children": [
+                         "$29.99"
+                        ]
+                       },
+                       {
+                        "ref": "e166",
+                        "role": "button",
+                        "name": "Remove",
+                        "status": "removed"
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               },
+               {
+                "ref": "e167",
+                "role": "generic",
+                "status": "unchanged",
+                "children": [
+                 {
+                  "ref": "e168",
+                  "role": "button",
+                  "name": "Continue Shopping",
+                  "status": "unchanged"
+                 },
+                 {
+                  "ref": "e169",
+                  "role": "button",
+                  "name": "Checkout",
+                  "status": "unchanged"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "ref": "e170",
+          "role": "contentinfo",
+          "status": "unchanged",
+          "children": [
+           {
+            "ref": "e171",
+            "role": "list",
+            "status": "unchanged",
+            "children": [
+             {
+              "ref": "e172",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e173",
+                "role": "link",
+                "name": "X",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e174",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e175",
+                "role": "link",
+                "name": "Facebook",
+                "status": "unchanged"
+               }
+              ]
+             },
+             {
+              "ref": "e176",
+              "role": "listitem",
+              "status": "unchanged",
+              "children": [
+               {
+                "ref": "e177",
+                "role": "link",
+                "name": "LinkedIn",
+                "status": "unchanged"
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "ref": "e178",
+            "role": "generic",
+            "status": "unchanged",
+            "children": [
+             "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "kind": "interaction",
+     "interaction": {
+      "id": "interaction_8",
+      "type": "click",
+      "targetRef": "e166",
+      "targetSelector": "[data-test=\"remove-sauce-labs-backpack\"]",
+      "button": "left",
+      "modifiers": 0,
+      "clickCount": 1
+     }
+    }
+   ]
+  }
+ ],
+ "traceActionPoints": [
+  {
+   "interactionId": "interaction_1",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "beforeSnapshotId": "before@bnbi@193",
+   "afterSnapshotId": "after@bnbi@193",
+   "startedAt": 1863.182,
+   "endedAt": 2035.969
+  },
+  {
+   "interactionId": "interaction_2",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "beforeSnapshotId": "before@bnbi@399",
+   "afterSnapshotId": "after@bnbi@399",
+   "startedAt": 3069.805,
+   "endedAt": 4085.652
+  },
+  {
+   "interactionId": "interaction_3",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "beforeSnapshotId": "before@bnbi@491",
+   "afterSnapshotId": "after@bnbi@491",
+   "startedAt": 5118.947,
+   "endedAt": 5283.333
+  },
+  {
+   "interactionId": "interaction_4",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "beforeSnapshotId": "before@bnbi@691",
+   "afterSnapshotId": "after@bnbi@691",
+   "startedAt": 6325.412,
+   "endedAt": 7276.34
+  },
+  {
+   "interactionId": "interaction_5",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "startedAt": 8299.09,
+   "endedAt": 8317.09
+  },
+  {
+   "interactionId": "interaction_6",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "beforeSnapshotId": "before@bnbi@1563",
+   "afterSnapshotId": "after@bnbi@1563",
+   "startedAt": 10921.554,
+   "endedAt": 11099.441
+  },
+  {
+   "interactionId": "interaction_7",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "startedAt": 12239.651,
+   "endedAt": 12254.651
+  },
+  {
+   "interactionId": "interaction_8",
+   "pageId": "page@72708d652687e43e50d1724e6cbf334e",
+   "beforeSnapshotId": "before@bnbi@1915",
+   "afterSnapshotId": "after@bnbi@1915",
+   "startedAt": 14849.267,
+   "endedAt": 15019.929
+  }
+ ],
+ "recordingId": "rec_20261112T124326430Z",
+ "createdAt": "2026-11-12T12:43:26.430Z",
+ "url": "https://www.saucedemo.com/",
+ "tracePath": ".ayme/recordings/rec_20261112T124326430Z/trace.zip"
+}

@@ -1,0 +1,18 @@
+# Recorder
+
+TLC reached more states than the chart budget of 500, so the chart draws only the bug paths: 8 states and 7 arrows.
+
+## Q1_ClickLandsWhereItWasMade breaks
+The shortest path has 7 steps:
+0. Not recording | gate off in the page
+1. you click (click 1): it reaches the page untouched and starts a navigation: Not recording | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+2. you press Record: Recording | gate off in the page (switch-on on its way) | navigation under way | click 1: reached the page; no report; not in the timeline
+3. the page switches the gate on: Recording | gate ON in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+4. you click (click 2): the gate holds it back: Recording | gate ON in the page | navigation under way | click 1: reached the page; no report; not in the timeline | click 2: held back, no 'before' yet; no report; not in the timeline
+5. the recorder takes the 'before' of click 2: Recording | gate ON in the page | navigation under way | click 1: reached the page; no report; not in the timeline | click 2: held back, 'before' taken; no report; not in the timeline
+6. the new page loads: Recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, 'before' taken; no report; not in the timeline
+7. the recorder passes click 2 on to the page (the NEW page): Recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: reached the NEW page; report on its way; not in the timeline
+
+## Rules not checked
+NoDeadlock
+After the first break, each TLC run stops at 100,000 distinct states. A run reached that bound before it checked this rule in every state.

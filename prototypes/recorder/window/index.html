@@ -1,0 +1,152 @@
+<!doctype html><meta charset="utf-8" /><title>Ayme recorder trial</title>
+<style>
+  body {
+    margin: 0;
+    background: #f6f7f8;
+    color: #18232e;
+    font: 14px system-ui;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    background: white;
+    padding: 16px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  main {
+    max-width: 900px;
+    margin: 24px auto;
+  }
+  section {
+    display: flex;
+    flex-direction: column;
+  }
+  h2 {
+    order: -1;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+  article {
+    padding: 14px;
+    background: white;
+    border: 1px solid #ddd;
+    margin: 8px 0;
+    border-radius: 8px;
+  }
+  button {
+    cursor: pointer;
+    padding: 6px 10px;
+  }
+  small {
+    color: #667;
+  }
+  .badge {
+    border: 1px solid #acd5d0;
+    background: #edf9f7;
+    border-radius: 5px;
+    font: 12px monospace;
+    margin: 3px;
+  }
+  p {
+    margin: 5px 0;
+  }
+</style>
+<header>
+  <strong>Ayme recorder</strong><span id="state">Connecting…</span
+  ><button id="assert">Assert visibility</button
+  ><button id="finish">Finish</button><small id="status"></small>
+</header>
+<main id="timeline"></main>
+<script type="module">
+  const groups = new Map(),
+    entries = new Map();
+  const command = async (command, args = {}) => {
+    const response = await fetch("/command", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ command, ...args }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw Error(result.error);
+    return result;
+  };
+  const run = (c, a) =>
+    command(c, a)
+      .then((r) => {
+        if (r.status) document.querySelector("#status").textContent = r.status;
+      })
+      .catch(
+        (e) => (document.querySelector("#status").textContent = e.message)
+      );
+  document.querySelector("#assert").onclick = () => run("assert");
+  document.querySelector("#finish").onclick = () => run("finish");
+  function badge(target, visit) {
+    const b = document.createElement("button");
+    b.className = "badge";
+    b.textContent = target.role
+      ? `${target.role} "${target.text}"${target.exact === false ? " (ancestor)" : ""}`
+      : target.selector || target.ref || "Unknown target";
+    b.onmouseenter = () =>
+      run("highlight", {
+        visitId: visit.id,
+        ref: target.ref,
+        selector: target.exact === false ? target.selector : undefined,
+      });
+    b.onmouseleave = () => run("highlight");
+    return b;
+  }
+  const events = new EventSource("/events");
+  events.onmessage = ({ data }) => {
+    const e = JSON.parse(data);
+    if (e.type === "state") {
+      document.querySelector("#state").textContent = `${e.phase} · ${e.mode}`;
+      document.querySelector("#assert").disabled = document.querySelector(
+        "#finish"
+      ).disabled = e.phase !== "recording";
+      return;
+    }
+    if (e.type === "remove") {
+      entries.get(e.id)?.remove();
+      entries.delete(e.id);
+      return;
+    }
+    const v = e.visit;
+    if (!groups.has(v.id)) {
+      const section = document.createElement("section"),
+        h = document.createElement("h2");
+      h.textContent = v.url;
+      section.append(h);
+      document.querySelector("main").append(section);
+      groups.set(v.id, section);
+    }
+    let article = entries.get(e.id);
+    if (!article) {
+      article = document.createElement("article");
+      article.dataset.id = e.id;
+      entries.set(e.id, article);
+      groups.get(v.id).append(article);
+    }
+    article.style.order = e.order ?? 10000000;
+    article.replaceChildren();
+    const title = document.createElement("strong");
+    title.textContent = e.title;
+    article.append(title);
+    if (e.target) article.append(badge(e.target, v));
+    for (const row of e.rows) {
+      const p = document.createElement("p");
+      p.append(
+        badge(row.element, v),
+        document.createTextNode(" " + row.text + " ")
+      );
+      if (row.context) p.append(badge(row.context, v));
+      else p.append("page");
+      article.append(p);
+    }
+  };
+  events.onerror = () =>
+    (document.querySelector("#status").textContent =
+      "Connection lost; reconnecting…");
+</script>

@@ -1,0 +1,83 @@
+Preparing pnpm@11.24.0 for immediate activation...
+== public snapshot ==
+- main [ref=e2]:
+  - heading "Recorder fixture" [level=1] [ref=e3]
+  - region "Late data" [ref=e4]:
+    - button "Load orders" [ref=e5]
+    - table "Orders" [ref=e6]:
+      - rowgroup [ref=e7]:
+        - row [ref=e8]:
+          - cell "Order 1" [ref=e9]
+  - region "Lookalike rows" [ref=e10]:
+    - button "Insert task" [ref=e11]
+    - button "Insert task later" [ref=e12]
+    - list "Tasks" [ref=e13]:
+      - listitem [ref=e14]: Task
+      - listitem [ref=e15]: Task
+      - listitem [ref=e16]: Task
+  - region "Toast" [ref=e17]:
+    - button "Notify later" [ref=e18]
+    - button "Other" [ref=e19]
+    - text: "0"
+  - region "Form" [ref=e20]:
+    - generic [ref=e22]:
+      - text: Name
+      - textbox "Name" [ref=e23]
+    - paragraph
+    - generic [ref=e24]:
+      - checkbox "Subscribe" [ref=e25]
+      - text: Subscribe
+    - text: not subscribed
+    - generic [ref=e26]:
+      - text: Color
+      - combobox "Color" [ref=e27]:
+        - option "red" [selected]
+        - option "green"
+        - option "blue"
+    - text: "Color: red"
+  - region "Pointerdown menu" [ref=e28]:
+    - button "Menu" [ref=e29]
+  - region "Missing target" [ref=e30]:
+    - paragraph [ref=e33]: cart closed
+  - region "Shadow" [ref=e34]:
+    - generic [ref=e35]:
+      - button "Shadow button" [ref=e36]
+      - text: "0"
+  - region "Frame" [ref=e37]:
+    - iframe [ref=e38]:
+      - generic [ref=f1e1]:
+        - button "Inner button" [ref=f1e2]
+        - text: "0"
+== change tree: iframe click + shadow click, public before vs after ==
+- [ref=e2] main:
+  - [ref=e34] region "Shadow":
+    - <changed> [ref=e35] [active]: 1
+  - [ref=e37] region "Frame":
+    - [ref=e38] iframe:
+      - <changed> [ref=f1e1]: 1
+{
+ "version": "1.64.1",
+ "api": "_startRecording",
+ "frame-prefixed refs in the public snapshot": [
+  "f1e1",
+  "f1e2"
+ ],
+ "core parseStructuralRef on a frame ref (the grammar issue #1208)": "rejected (undefined)",
+ "core parses the public snapshot unpatched": true,
+ "nodes carrying frame refs in the parsed tree": 2,
+ "shadow button in parsed tree": true,
+ "frame refs resolve": "<body style=\"margin:4px;font:14px system-ui\">\n<button id=\"in",
+ "main frame: event snapshot vs public snapshot (iframe content dropped)": {
+  "identical": true,
+  "onlyInEvent": [],
+  "onlyInPublic": []
+ },
+ "iframe: action selector": "iframe[title=\"Inner frame\"] >> internal:control=enter-frame >> internal:role=button[name=\"Inner button\"i]",
+ "iframe: event snapshot vs the iframe's subtree in the public snapshot": {
+  "identical": true,
+  "onlyInEvent": [],
+  "onlyInPublic": []
+ },
+ "iframe: event snapshot": "- generic [ref=e1]:\n  - button \"Inner button\" [active] [ref=e2]\n  - text: \"2\""
+}
+PASS 1.64.1: event/public shape matches in main frame and iframe

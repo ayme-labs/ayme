@@ -1,0 +1,34 @@
+# Recorder
+
+TLC reached more states than the chart budget of 500, so the chart draws only the bug paths: 15 states and 14 arrows.
+
+## T1_ClickThenTypingInTimeOrder breaks
+The shortest path has 9 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. the page switches the gate on: Recording | gate ON in the page
+3. you click (click 1): the gate holds it back: Recording | gate ON in the page | click 1: held back, no 'before' yet; no report; not in the timeline
+4. the recorder takes the 'before' of click 1: Recording | gate ON in the page | click 1: held back, 'before' taken; no report; not in the timeline
+5. the recorder passes click 1 on to the page: Recording | gate ON in the page | click 1: reached the page; report on its way; not in the timeline
+6. you type (typing 2): it reaches the page at once: Recording | gate ON in the page | click 1: reached the page; report on its way; not in the timeline | typing 2: reached the page; report on its way; not in the timeline
+7. Playwright's report for 1 arrives: added to the timeline: Recording | gate ON in the page | click 1: reached the page; report in; in the timeline (before 2, after -) | typing 2: reached the page; report on its way; not in the timeline
+8. Playwright's report for 2 arrives: added to the timeline: Recording | gate ON in the page | click 1: reached the page; report in; in the timeline (before 2, after -) | typing 2: reached the page; report in; in the timeline (before 2, after -)
+9. the page settles: the recorder takes the 'after' of 1: Recording | gate ON in the page | click 1: reached the page; report in; in the timeline (before 2, after 3) | typing 2: reached the page; report in; in the timeline (before 2, after -)
+
+## T2_ClickThenAssertionInTimeOrder breaks
+The shortest path has 10 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. the page switches the gate on: Recording | gate ON in the page
+3. you click (click 1): the gate holds it back: Recording | gate ON in the page | click 1: held back, no 'before' yet; no report; not in the timeline
+4. the recorder takes the 'before' of click 1: Recording | gate ON in the page | click 1: held back, 'before' taken; no report; not in the timeline
+5. the recorder passes click 1 on to the page: Recording | gate ON in the page | click 1: reached the page; report on its way; not in the timeline
+6. you press Assert visibility: Recording, Playwright is picking | gate ON in the page | click 1: reached the page; report on its way; not in the timeline
+7. you click (click 2): Playwright's picker swallows it: Recording | gate ON in the page | click 1: reached the page; report on its way; not in the timeline | click 2: picked for an assertion; report on its way; not in the timeline
+8. Playwright's report for 1 arrives: added to the timeline: Recording | gate ON in the page | click 1: reached the page; report in; in the timeline (before 2, after -) | click 2: picked for an assertion; report on its way; not in the timeline
+9. Playwright's report for 2 arrives: added to the timeline: Recording | gate ON in the page | click 1: reached the page; report in; in the timeline (before 2, after -) | click 2: picked for an assertion; report in; in the timeline (before 2, after 2)
+10. the page settles: the recorder takes the 'after' of 1: Recording | gate ON in the page | click 1: reached the page; report in; in the timeline (before 2, after 3) | click 2: picked for an assertion; report in; in the timeline (before 2, after 2)
+
+## Rules not checked
+NoDeadlock
+After the first break, each TLC run stops at 100,000 distinct states. A run reached that bound before it checked this rule in every state.

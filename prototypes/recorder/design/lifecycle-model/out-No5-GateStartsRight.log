@@ -1,0 +1,57 @@
+Info: New devbox available: 0.19.0 -> v0.20.0. Please run `devbox version update`.
+Info: Running script "sh" on <repo>
+Preparing pnpm@11.24.0 for immediate activation...
+# Recorder
+
+TLC reached more states than the chart budget of 500, so the chart draws only the bug paths: 19 states and 19 arrows.
+
+## X4_WrapUpNeverGetsStuck breaks
+The shortest path has 4 steps:
+0. Not recording | gate off in the page
+1. you click (click 1): it reaches the page untouched and starts a navigation: Not recording | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+2. you press Record: Recording | gate off in the page (switch-on on its way) | navigation under way | click 1: reached the page; no report; not in the timeline
+3. you press Stop: Wrapping up to pause | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+4. the new page loads: Wrapping up to pause | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline
+
+## R03a_StoppedClicksAreUntouched breaks
+The shortest path has 6 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Stop: Wrapping up to pause | gate off in the page
+3. the recorder finishes wrapping up: Paused | gate off in the page
+4. you click (click 1): it reaches the page untouched and starts a navigation: Paused | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+5. the new page loads: Paused | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline
+6. you click (click 2): the gate holds it back: Paused | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, no 'before' yet; no report; not in the timeline
+
+## R01_HeldClickReachesThePageOnce breaks
+The shortest path has 7 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Clear: Wrapping up to clear | gate off in the page
+3. the recorder finishes wrapping up: Not recording | gate off in the page
+4. you click (click 1): it reaches the page untouched and starts a navigation: Not recording | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+5. the new page loads: Not recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline
+6. you click (click 2): the gate holds it back: Not recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, no 'before' yet; no report; not in the timeline
+7. you stop the recorder from the terminal: Ended: nothing to save | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, no 'before' yet; no report; not in the timeline
+
+## R03b_StoppedAddsNothing breaks
+The shortest path has 10 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Stop: Wrapping up to pause | gate off in the page
+3. the recorder finishes wrapping up: Paused | gate off in the page
+4. you click (click 1): it reaches the page untouched and starts a navigation: Paused | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+5. the new page loads: Paused | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline
+6. you click (click 2): the gate holds it back: Paused | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, no 'before' yet; no report; not in the timeline
+7. you press Continue: Recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, no 'before' yet; no report; not in the timeline
+8. the recorder takes the 'before' of click 2: Recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: held back, 'before' taken; no report; not in the timeline
+9. the recorder passes click 2 on to the page: Recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: reached the page; report on its way; not in the timeline
+10. Playwright's report for 2 arrives: added to the timeline: Recording | gate ON in the page | on the new page | click 1: reached the page; no report; not in the timeline | click 2: reached the page; report in; in the timeline (before 2, after -)
+
+## Rules not checked
+R02_OneBeforeOneAfter, R03c_TracingRunsThroughPause, R04_FinishSavesEverything, R05_ClearLeavesNothing, R06_ReviewOnlyWhilePaused, R07_AssertionCarriesNoChanges, R09_NeverHalfWritten, R10_SavesOnce, X1_NothingOvertakesAHeldClick, X2_SnapshotsInTimeOrder, X3_NothingYouDidIsDropped, NoDeadlock
+After the first break, each TLC run stops at 100,000 distinct states. A run reached that bound before it checked these rules in every state.
+
+Wrote out/No5-GateStartsRight
+Error: error running script "sh" in Devbox: exit status 1
+

@@ -1,0 +1,408 @@
+{
+  "meta": {
+    "mode": "gate-b",
+    "playwright": "1.65.0",
+    "recorderApi": "_startRecording",
+    "settleRule": "after load, no DOM mutation in any frame for 150 ms, deadline 2000 ms",
+    "gateCyclesWithoutRecordedAction": 0,
+    "gateLagsMs": [
+      {
+        "kind": "click",
+        "click": 6.099999964237213,
+        "press": 0
+      },
+      {
+        "kind": "click",
+        "click": 11.399999976158142,
+        "press": 0
+      },
+      {
+        "kind": "click",
+        "click": 8.900000035762787,
+        "press": 0
+      },
+      {
+        "kind": "click",
+        "click": 23.600000023841858,
+        "press": 0
+      },
+      {
+        "kind": "click",
+        "click": 16.5,
+        "press": 0
+      }
+    ]
+  },
+  "entries": [
+    {
+      "index": 0,
+      "at": 1137,
+      "label": "click Username",
+      "action": {
+        "name": "navigate",
+        "url": "https://www.saucedemo.com/"
+      },
+      "code": "await page.goto('https://www.saucedemo.com/');",
+      "updates": 0,
+      "signals": [],
+      "source": "none",
+      "gate": null
+    },
+    {
+      "index": 1,
+      "at": 1756,
+      "label": "click Username",
+      "action": {
+        "name": "click",
+        "selector": "[data-test=\"username\"]",
+        "ref": "e11",
+        "button": "left",
+        "modifiers": 0,
+        "clickCount": 1
+      },
+      "code": "await page.locator('[data-test=\"username\"]').click();",
+      "updates": 0,
+      "signals": [],
+      "source": "gate",
+      "gate": [
+        {
+          "kind": "click",
+          "waitedMs": 0,
+          "snapshotMs": 4,
+          "replayMs": 9
+        }
+      ],
+      "target": {
+        "selector": "[data-test=\"username\"]",
+        "ref": "e11",
+        "exact": true,
+        "via": "event snapshot"
+      },
+      "changeTree": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <target> [ref=e11] textbox \"Username\" [active]",
+      "unassigned": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <changed> [ref=e11] textbox \"Username\" [active]",
+      "counts": {
+        "interaction": {
+          "added": 0,
+          "removed": 0,
+          "changed": 0
+        },
+        "unassigned": {
+          "added": 0,
+          "removed": 0,
+          "changed": 1
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 155
+      },
+      "classifier": null,
+      "navigatedTo": null,
+      "tree": "- generic [ref=e3]:\n  - generic [ref=e4]: Swag Labs\n  - main [ref=e5]:\n    - form \"Login\" [ref=e9]:\n      - textbox \"Username\" [active] [ref=e11]\n      - textbox \"Password\" [ref=e13]\n      - button \"Login\" [ref=e15] [cursor=pointer]\n    - generic [ref=e17]:\n      - generic [ref=e18]:\n        - heading \"Accepted usernames are:\" [level=4] [ref=e19]\n        - text: standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user\n      - generic [ref=e20]:\n        - heading \"Password for all users:\" [level=4] [ref=e21]\n        - text: secret_sauce"
+    },
+    {
+      "index": 2,
+      "at": 2448,
+      "label": "type standard_user",
+      "action": {
+        "name": "fill",
+        "ref": "e11",
+        "selector": "[data-test=\"username\"]",
+        "text": "standard_user"
+      },
+      "code": "await page.locator('[data-test=\"username\"]').fill('standard_user');",
+      "updates": 12,
+      "signals": [],
+      "source": "free-before",
+      "gate": null,
+      "target": {
+        "selector": "[data-test=\"username\"]",
+        "ref": "e11",
+        "exact": true,
+        "via": "event snapshot"
+      },
+      "changeTree": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <target> <changed> [ref=e11] textbox \"Username\" [active]: standard_user",
+      "unassigned": "",
+      "counts": {
+        "interaction": {
+          "added": 0,
+          "removed": 0,
+          "changed": 1
+        },
+        "unassigned": {
+          "added": 0,
+          "removed": 0,
+          "changed": 0
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 156
+      },
+      "classifier": {
+        "matched": 12,
+        "eventOnly": 0,
+        "notInEvent": 0,
+        "targetVia": "event match"
+      },
+      "navigatedTo": null,
+      "tree": "- generic [ref=e3]:\n  - generic [ref=e4]: Swag Labs\n  - main [ref=e5]:\n    - form \"Login\" [ref=e9]:\n      - textbox \"Username\" [active] [ref=e11]: standard_user\n      - textbox \"Password\" [ref=e13]\n      - button \"Login\" [ref=e15] [cursor=pointer]\n    - generic [ref=e17]:\n      - generic [ref=e18]:\n        - heading \"Accepted usernames are:\" [level=4] [ref=e19]\n        - text: standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user\n      - generic [ref=e20]:\n        - heading \"Password for all users:\" [level=4] [ref=e21]\n        - text: secret_sauce"
+    },
+    {
+      "index": 3,
+      "at": 5094,
+      "label": "click Password",
+      "action": {
+        "name": "click",
+        "selector": "[data-test=\"password\"]",
+        "ref": "e13",
+        "button": "left",
+        "modifiers": 0,
+        "clickCount": 1
+      },
+      "code": "await page.locator('[data-test=\"password\"]').click();",
+      "updates": 0,
+      "signals": [],
+      "source": "gate",
+      "gate": [
+        {
+          "kind": "click",
+          "waitedMs": 0,
+          "snapshotMs": 5,
+          "replayMs": 9
+        }
+      ],
+      "target": {
+        "selector": "[data-test=\"password\"]",
+        "ref": "e13",
+        "exact": true,
+        "via": "event snapshot"
+      },
+      "changeTree": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <target> [ref=e13] textbox \"Password\" [active]",
+      "unassigned": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <changed> [ref=e11] textbox \"Username\": standard_user\n      - <changed> [ref=e13] textbox \"Password\" [active]",
+      "counts": {
+        "interaction": {
+          "added": 0,
+          "removed": 0,
+          "changed": 0
+        },
+        "unassigned": {
+          "added": 0,
+          "removed": 0,
+          "changed": 2
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 154
+      },
+      "classifier": null,
+      "navigatedTo": null,
+      "tree": "- generic [ref=e3]:\n  - generic [ref=e4]: Swag Labs\n  - main [ref=e5]:\n    - form \"Login\" [ref=e9]:\n      - textbox \"Username\" [ref=e11]: standard_user\n      - textbox \"Password\" [active] [ref=e13]\n      - button \"Login\" [ref=e15] [cursor=pointer]\n    - generic [ref=e17]:\n      - generic [ref=e18]:\n        - heading \"Accepted usernames are:\" [level=4] [ref=e19]\n        - text: standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user\n      - generic [ref=e20]:\n        - heading \"Password for all users:\" [level=4] [ref=e21]\n        - text: secret_sauce"
+    },
+    {
+      "index": 4,
+      "at": 5793,
+      "label": "type secret_sauce",
+      "action": {
+        "name": "fill",
+        "ref": "e13",
+        "selector": "[data-test=\"password\"]",
+        "text": "secret_sauce"
+      },
+      "code": "await page.locator('[data-test=\"password\"]').fill('secret_sauce');",
+      "updates": 11,
+      "signals": [],
+      "source": "free-before",
+      "gate": null,
+      "target": {
+        "selector": "[data-test=\"password\"]",
+        "ref": "e13",
+        "exact": true,
+        "via": "event snapshot"
+      },
+      "changeTree": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <target> <changed> [ref=e13] textbox \"Password\" [active]: secret_sauce",
+      "unassigned": "",
+      "counts": {
+        "interaction": {
+          "added": 0,
+          "removed": 0,
+          "changed": 1
+        },
+        "unassigned": {
+          "added": 0,
+          "removed": 0,
+          "changed": 0
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 156
+      },
+      "classifier": {
+        "matched": 12,
+        "eventOnly": 0,
+        "notInEvent": 0,
+        "targetVia": "event match"
+      },
+      "navigatedTo": null,
+      "tree": "- generic [ref=e3]:\n  - generic [ref=e4]: Swag Labs\n  - main [ref=e5]:\n    - form \"Login\" [ref=e9]:\n      - textbox \"Username\" [ref=e11]: standard_user\n      - textbox \"Password\" [active] [ref=e13]: secret_sauce\n      - button \"Login\" [ref=e15] [cursor=pointer]\n    - generic [ref=e17]:\n      - generic [ref=e18]:\n        - heading \"Accepted usernames are:\" [level=4] [ref=e19]\n        - text: standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user\n      - generic [ref=e20]:\n        - heading \"Password for all users:\" [level=4] [ref=e21]\n        - text: secret_sauce"
+    },
+    {
+      "index": 5,
+      "at": 8355,
+      "label": "click Login",
+      "action": {
+        "name": "click",
+        "selector": "[data-test=\"login-button\"]",
+        "ref": "e15",
+        "button": "left",
+        "modifiers": 0,
+        "clickCount": 1
+      },
+      "code": "await page.locator('[data-test=\"login-button\"]').click();",
+      "updates": 0,
+      "signals": [],
+      "source": "gate",
+      "gate": [
+        {
+          "kind": "click",
+          "waitedMs": 0,
+          "snapshotMs": 2,
+          "replayMs": 13
+        }
+      ],
+      "target": {
+        "selector": "[data-test=\"login-button\"]",
+        "ref": "e15",
+        "exact": true,
+        "via": "event snapshot"
+      },
+      "changeTree": "- [ref=e22]:\n  - <added> [ref=e23]:\n    - <added> [ref=e24] banner:\n      - <added> [ref=e25]:\n        - <added> [ref=s_1]:\n          - <added> [ref=s_2]:\n            - <added> [ref=e26]:\n              - <added> [ref=e27] button \"Open Menu\" [cursor=pointer]\n              - <added> [ref=e28] img \"Open Menu\"\n            - <added> [ref=e29]:\n              - <added> [ref=e31] navigation:\n                - <added> [ref=e32] button [cursor=pointer]: All Items\n                - <added> [ref=e33] button [cursor=pointer]: Dynamic Catalog\n                - <added> [ref=e35] link [cursor=pointer]:\n                  - /url: \"https://saucelabs.com/\"\n                  - text: About\n                - <added> [ref=e36] button [cursor=pointer]: Logout\n                - <added> [ref=e37] button [cursor=pointer]: Reset App State\n              - <added> [ref=e39] button [cursor=pointer]: Close Menu\n        - <added> [ref=e41]: Swag Labs\n        - <added> [ref=e44] button \"Cart, empty\"\n      - <added> [ref=e45]:\n        - <added> [ref=e46]: Products\n        - <added> [ref=e48] [cursor=pointer]:\n          - <added> [ref=e49]: Name (A to Z)\n          - <added> [ref=e50] combobox \"Sort products\":\n            - <added> [ref=s_3] option \"Name (A to Z)\" [selected]\n            - <added> [ref=s_4] option \"Name (Z to A)\"\n            - <added> [ref=s_5] option \"Price (low to high)\"\n            - <added> [ref=s_6] option \"Price (high to low)\"\n    - <added> [ref=e51] main:\n      - <added> [ref=e54]:\n        - <added> [ref=e55]:\n          - <added> [ref=e57] button \"View details for Sauce Labs Backpack\" [cursor=pointer]:\n            - <added> [ref=e58] img \"Sauce Labs Backpack\"\n          - <added> [ref=e59]:\n            - <added> [ref=e60]:\n              - <added> [ref=e61] button \"View details for Sauce Labs Backpack\" [cursor=pointer]:\n                - <added> [ref=e62]: Sauce Labs Backpack\n              - <added> [ref=e63]: \"carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.\"\n            - <added> [ref=e64]:\n              - <added> [ref=e65]: $29.99\n              - <added> [ref=e66] button \"Add to cart\" [cursor=pointer]\n        - <added> [ref=e67]:\n          - <added> [ref=e69] button \"View details for Sauce Labs Bike Light\" [cursor=pointer]:\n            - <added> [ref=e70] img \"Sauce Labs Bike Light\"\n          - <added> [ref=e71]:\n            - <added> [ref=e72]:\n              - <added> [ref=e73] button \"View details for Sauce Labs Bike Light\" [cursor=pointer]:\n                - <added> [ref=e74]: Sauce Labs Bike Light\n              - <added> [ref=e75]: \"A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included.\"\n            - <added> [ref=e76]:\n              - <added> [ref=e77]: $9.99\n              - <added> [ref=e78] button \"Add to cart\" [cursor=pointer]\n        - <added> [ref=e79]:\n          - <added> [ref=e81] button \"View details for Sauce Labs Bolt T-Shirt\" [cursor=pointer]:\n            - <added> [ref=e82] img \"Sauce Labs Bolt T-Shirt\"\n          - <added> [ref=e83]:\n            - <added> [ref=e84]:\n              - <added> [ref=e85] button \"View details for Sauce Labs Bolt T-Shirt\" [cursor=pointer]:\n                - <added> [ref=e86]: Sauce Labs Bolt T-Shirt\n              - <added> [ref=e87]: \"Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt.\"\n            - <added> [ref=e88]:\n              - <added> [ref=e89]: $15.99\n              - <added> [ref=e90] button \"Add to cart\" [cursor=pointer]\n        - <added> [ref=e91]:\n          - <added> [ref=e93] button \"View details for Sauce Labs Fleece Jacket\" [cursor=pointer]:\n            - <added> [ref=e94] img \"Sauce Labs Fleece Jacket\"\n          - <added> [ref=e95]:\n            - <added> [ref=e96]:\n              - <added> [ref=e97] button \"View details for Sauce Labs Fleece Jacket\" [cursor=pointer]:\n                - <added> [ref=e98]: Sauce Labs Fleece Jacket\n              - <added> [ref=e99]: \"It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office.\"\n            - <added> [ref=e100]:\n              - <added> [ref=e101]: $49.99\n              - <added> [ref=e102] button \"Add to cart\" [cursor=pointer]\n        - <added> [ref=e103]:\n          - <added> [ref=e105] button \"View details for Sauce Labs Onesie\" [cursor=pointer]:\n            - <added> [ref=e106] img \"Sauce Labs Onesie\"\n          - <added> [ref=e107]:\n            - <added> [ref=e108]:\n              - <added> [ref=e109] button \"View details for Sauce Labs Onesie\" [cursor=pointer]:\n                - <added> [ref=e110]: Sauce Labs Onesie\n              - <added> [ref=e111]: \"Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel.\"\n            - <added> [ref=e112]:\n              - <added> [ref=e113]: $7.99\n              - <added> [ref=e114] button \"Add to cart\" [cursor=pointer]\n        - <added> [ref=e115]:\n          - <added> [ref=e117] button \"View details for Test.allTheThings() T-Shirt (Red)\" [cursor=pointer]:\n            - <added> [ref=e118] img \"Test.allTheThings() T-Shirt (Red)\"\n          - <added> [ref=e119]:\n            - <added> [ref=e120]:\n              - <added> [ref=e121] button \"View details for Test.allTheThings() T-Shirt (Red)\" [cursor=pointer]:\n                - <added> [ref=e122]: Test.allTheThings() T-Shirt (Red)\n              - <added> [ref=e123]: This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.\n            - <added> [ref=e124]:\n              - <added> [ref=e125]: $15.99\n              - <added> [ref=e126] button \"Add to cart\" [cursor=pointer]\n  - <added> [ref=e127] contentinfo:\n    - <added> [ref=e128] list:\n      - <added> [ref=e129] listitem:\n        - <added> [ref=e130] link \"X\" [cursor=pointer]:\n          - /url: \"https://x.com/saucelabs\"\n      - <added> [ref=e131] listitem:\n        - <added> [ref=e132] link \"Facebook\" [cursor=pointer]:\n          - /url: \"https://www.facebook.com/saucelabs\"\n      - <added> [ref=e133] listitem:\n        - <added> [ref=e134] link \"LinkedIn\" [cursor=pointer]:\n          - /url: \"https://www.linkedin.com/company/sauce-labs/\"\n    - <added> [ref=e135]: \"© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy\"\n  - <removed> [ref=e4]: Swag Labs\n  - <removed> [ref=e5] main:\n    - <removed> [ref=e9] form \"Login\":\n      - <removed> [ref=e11] textbox \"Username\": standard_user\n      - <removed> [ref=e13] textbox \"Password\": secret_sauce\n      - <target> <removed> [ref=e15] button \"Login\" [active] [cursor=pointer]\n    - <removed> [ref=e17]:\n      - <removed> [ref=e18]:\n        - <removed> [ref=e19] heading \"Accepted usernames are:\" [level=4]\n        - text: standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user\n      - <removed> [ref=e20]:\n        - <removed> [ref=e21] heading \"Password for all users:\" [level=4]\n        - text: secret_sauce",
+      "unassigned": "- [ref=e3]:\n  - [ref=e5] main:\n    - [ref=e9] form \"Login\":\n      - <changed> [ref=e13] textbox \"Password\": secret_sauce\n      - <changed> [ref=e15] button \"Login\" [active] [cursor=pointer]",
+      "counts": {
+        "interaction": {
+          "added": 2,
+          "removed": 2,
+          "changed": 0
+        },
+        "unassigned": {
+          "added": 0,
+          "removed": 0,
+          "changed": 2
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 177
+      },
+      "classifier": null,
+      "navigatedTo": "https://www.saucedemo.com/inventory.html",
+      "tree": "- generic [ref=e22]:\n  - generic [ref=e23]:\n    - banner [ref=e24]:\n      - generic [ref=e25]:\n        - generic:\n          - generic:\n            - generic [ref=e26]:\n              - button \"Open Menu\" [ref=e27] [cursor=pointer]\n              - img \"Open Menu\" [ref=e28]\n            - generic [aria-hidden] [ref=e29]:\n              - navigation [ref=e31]:\n                - button [ref=e32] [cursor=pointer]: All Items\n                - button [ref=e33] [cursor=pointer]: Dynamic Catalog\n                - link [ref=e35] [cursor=pointer]:\n                  - /url: https://saucelabs.com/\n                  - text: About\n                - button [ref=e36] [cursor=pointer]: Logout\n                - button [ref=e37] [cursor=pointer]: Reset App State\n              - button [ref=e39] [cursor=pointer]: Close Menu\n        - generic [ref=e41]: Swag Labs\n        - button \"Cart, empty\" [ref=e44]\n      - generic [ref=e45]:\n        - generic [ref=e46]: Products\n        - generic [ref=e48] [cursor=pointer]:\n          - generic [ref=e49]: Name (A to Z)\n          - combobox \"Sort products\" [ref=e50]:\n            - option \"Name (A to Z)\" [selected]\n            - option \"Name (Z to A)\"\n            - option \"Price (low to high)\"\n            - option \"Price (high to low)\"\n    - main [ref=e51]:\n      - generic [ref=e54]:\n        - generic [ref=e55]:\n          - button \"View details for Sauce Labs Backpack\" [ref=e57] [cursor=pointer]:\n            - img \"Sauce Labs Backpack\" [ref=e58]\n          - generic [ref=e59]:\n            - generic [ref=e60]:\n              - button \"View details for Sauce Labs Backpack\" [ref=e61] [cursor=pointer]:\n                - generic [ref=e62]: Sauce Labs Backpack\n              - generic [ref=e63]: carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.\n            - generic [ref=e64]:\n              - generic [ref=e65]: $29.99\n              - button \"Add to cart\" [ref=e66] [cursor=pointer]\n        - generic [ref=e67]:\n          - button \"View details for Sauce Labs Bike Light\" [ref=e69] [cursor=pointer]:\n            - img \"Sauce Labs Bike Light\" [ref=e70]\n          - generic [ref=e71]:\n            - generic [ref=e72]:\n              - button \"View details for Sauce Labs Bike Light\" [ref=e73] [cursor=pointer]:\n                - generic [ref=e74]: Sauce Labs Bike Light\n              - generic [ref=e75]: A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included.\n            - generic [ref=e76]:\n              - generic [ref=e77]: $9.99\n              - button \"Add to cart\" [ref=e78] [cursor=pointer]\n        - generic [ref=e79]:\n          - button \"View details for Sauce Labs Bolt T-Shirt\" [ref=e81] [cursor=pointer]:\n            - img \"Sauce Labs Bolt T-Shirt\" [ref=e82]\n          - generic [ref=e83]:\n            - generic [ref=e84]:\n              - button \"View details for Sauce Labs Bolt T-Shirt\" [ref=e85] [cursor=pointer]:\n                - generic [ref=e86]: Sauce Labs Bolt T-Shirt\n              - generic [ref=e87]: Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt.\n            - generic [ref=e88]:\n              - generic [ref=e89]: $15.99\n              - button \"Add to cart\" [ref=e90] [cursor=pointer]\n        - generic [ref=e91]:\n          - button \"View details for Sauce Labs Fleece Jacket\" [ref=e93] [cursor=pointer]:\n            - img \"Sauce Labs Fleece Jacket\" [ref=e94]\n          - generic [ref=e95]:\n            - generic [ref=e96]:\n              - button \"View details for Sauce Labs Fleece Jacket\" [ref=e97] [cursor=pointer]:\n                - generic [ref=e98]: Sauce Labs Fleece Jacket\n              - generic [ref=e99]: It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office.\n            - generic [ref=e100]:\n              - generic [ref=e101]: $49.99\n              - button \"Add to cart\" [ref=e102] [cursor=pointer]\n        - generic [ref=e103]:\n          - button \"View details for Sauce Labs Onesie\" [ref=e105] [cursor=pointer]:\n            - img \"Sauce Labs Onesie\" [ref=e106]\n          - generic [ref=e107]:\n            - generic [ref=e108]:\n              - button \"View details for Sauce Labs Onesie\" [ref=e109] [cursor=pointer]:\n                - generic [ref=e110]: Sauce Labs Onesie\n              - generic [ref=e111]: Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel.\n            - generic [ref=e112]:\n              - generic [ref=e113]: $7.99\n              - button \"Add to cart\" [ref=e114] [cursor=pointer]\n        - generic [ref=e115]:\n          - button \"View details for Test.allTheThings() T-Shirt (Red)\" [ref=e117] [cursor=pointer]:\n            - img \"Test.allTheThings() T-Shirt (Red)\" [ref=e118]\n          - generic [ref=e119]:\n            - generic [ref=e120]:\n              - button \"View details for Test.allTheThings() T-Shirt (Red)\" [ref=e121] [cursor=pointer]:\n                - generic [ref=e122]: Test.allTheThings() T-Shirt (Red)\n              - generic [ref=e123]: This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.\n            - generic [ref=e124]:\n              - generic [ref=e125]: $15.99\n              - button \"Add to cart\" [ref=e126] [cursor=pointer]\n  - contentinfo [ref=e127]:\n    - list [ref=e128]:\n      - listitem [ref=e129]:\n        - link \"X\" [ref=e130] [cursor=pointer]:\n          - /url: https://x.com/saucelabs\n      - listitem [ref=e131]:\n        - link \"Facebook\" [ref=e132] [cursor=pointer]:\n          - /url: https://www.facebook.com/saucelabs\n      - listitem [ref=e133]:\n        - link \"LinkedIn\" [ref=e134] [cursor=pointer]:\n          - /url: https://www.linkedin.com/company/sauce-labs/\n    - generic [ref=e135]: © 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+    },
+    {
+      "index": 6,
+      "at": 10996,
+      "label": "click Add to cart (Backpack)",
+      "action": {
+        "name": "click",
+        "selector": "[data-test=\"add-to-cart-sauce-labs-backpack\"]",
+        "ref": "e54",
+        "button": "left",
+        "modifiers": 0,
+        "clickCount": 1
+      },
+      "code": "await page.locator('[data-test=\"add-to-cart-sauce-labs-backpack\"]').click();",
+      "updates": 0,
+      "signals": [],
+      "source": "gate",
+      "gate": [
+        {
+          "kind": "click",
+          "waitedMs": 0,
+          "snapshotMs": 11,
+          "replayMs": 23
+        }
+      ],
+      "target": {
+        "selector": "[data-test=\"add-to-cart-sauce-labs-backpack\"]",
+        "ref": "e66",
+        "exact": true,
+        "via": "event snapshot"
+      },
+      "changeTree": "- [ref=e22]:\n  - [ref=e23]:\n    - [ref=e24] banner:\n      - [ref=e25]:\n        - <added> [ref=e136] button \"Cart, 1 items\":\n          - <added> [ref=e137]: 1\n        - <removed> [ref=e44] button \"Cart, empty\"\n    - [ref=e51] main:\n      - [ref=e54]:\n        - [ref=e55]:\n          - [ref=e59]:\n            - [ref=e64]:\n              - <added> [ref=e138] button \"Remove\" [cursor=pointer]\n              - <target> <removed> [ref=e66] button \"Add to cart\" [active] [cursor=pointer]",
+      "unassigned": "- [ref=e22]:\n  - [ref=e23]:\n    - [ref=e24] banner:\n      - [ref=e25]:\n        - <removed> [ref=s_1]:\n          - <removed> [ref=s_2]:\n            - <removed> [ref=e29]:\n              - <removed> [ref=e31] navigation:\n                - <removed> [ref=e32] button [cursor=pointer]: All Items\n                - <removed> [ref=e33] button [cursor=pointer]: Dynamic Catalog\n                - <removed> [ref=e35] link [cursor=pointer]:\n                  - /url: \"https://saucelabs.com/\"\n                  - text: About\n                - <removed> [ref=e36] button [cursor=pointer]: Logout\n                - <removed> [ref=e37] button [cursor=pointer]: Reset App State\n              - <removed> [ref=e39] button [cursor=pointer]: Close Menu\n    - [ref=e51] main:\n      - [ref=e54]:\n        - [ref=e55]:\n          - [ref=e59]:\n            - [ref=e64]:\n              - <changed> [ref=e66] button \"Add to cart\" [active] [cursor=pointer]",
+      "counts": {
+        "interaction": {
+          "added": 2,
+          "removed": 2,
+          "changed": 0
+        },
+        "unassigned": {
+          "added": 0,
+          "removed": 1,
+          "changed": 1
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 154
+      },
+      "classifier": null,
+      "navigatedTo": null,
+      "tree": "- generic [ref=e22]:\n  - generic [ref=e23]:\n    - banner [ref=e24]:\n      - generic [ref=e25]:\n        - generic [ref=e26]:\n          - button \"Open Menu\" [ref=e27] [cursor=pointer]\n          - img \"Open Menu\" [ref=e28]\n        - generic [ref=e41]: Swag Labs\n        - button \"Cart, 1 items\" [ref=e136]:\n          - generic [ref=e137]: \"1\"\n      - generic [ref=e45]:\n        - generic [ref=e46]: Products\n        - generic [ref=e48] [cursor=pointer]:\n          - generic [ref=e49]: Name (A to Z)\n          - combobox \"Sort products\" [ref=e50]:\n            - option \"Name (A to Z)\" [selected]\n            - option \"Name (Z to A)\"\n            - option \"Price (low to high)\"\n            - option \"Price (high to low)\"\n    - main [ref=e51]:\n      - generic [ref=e54]:\n        - generic [ref=e55]:\n          - button \"View details for Sauce Labs Backpack\" [ref=e57] [cursor=pointer]:\n            - img \"Sauce Labs Backpack\" [ref=e58]\n          - generic [ref=e59]:\n            - generic [ref=e60]:\n              - button \"View details for Sauce Labs Backpack\" [ref=e61] [cursor=pointer]:\n                - generic [ref=e62]: Sauce Labs Backpack\n              - generic [ref=e63]: carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.\n            - generic [ref=e64]:\n              - generic [ref=e65]: $29.99\n              - button \"Remove\" [ref=e138] [cursor=pointer]\n        - generic [ref=e67]:\n          - button \"View details for Sauce Labs Bike Light\" [ref=e69] [cursor=pointer]:\n            - img \"Sauce Labs Bike Light\" [ref=e70]\n          - generic [ref=e71]:\n            - generic [ref=e72]:\n              - button \"View details for Sauce Labs Bike Light\" [ref=e73] [cursor=pointer]:\n                - generic [ref=e74]: Sauce Labs Bike Light\n              - generic [ref=e75]: A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included.\n            - generic [ref=e76]:\n              - generic [ref=e77]: $9.99\n              - button \"Add to cart\" [ref=e78] [cursor=pointer]\n        - generic [ref=e79]:\n          - button \"View details for Sauce Labs Bolt T-Shirt\" [ref=e81] [cursor=pointer]:\n            - img \"Sauce Labs Bolt T-Shirt\" [ref=e82]\n          - generic [ref=e83]:\n            - generic [ref=e84]:\n              - button \"View details for Sauce Labs Bolt T-Shirt\" [ref=e85] [cursor=pointer]:\n                - generic [ref=e86]: Sauce Labs Bolt T-Shirt\n              - generic [ref=e87]: Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt.\n            - generic [ref=e88]:\n              - generic [ref=e89]: $15.99\n              - button \"Add to cart\" [ref=e90] [cursor=pointer]\n        - generic [ref=e91]:\n          - button \"View details for Sauce Labs Fleece Jacket\" [ref=e93] [cursor=pointer]:\n            - img \"Sauce Labs Fleece Jacket\" [ref=e94]\n          - generic [ref=e95]:\n            - generic [ref=e96]:\n              - button \"View details for Sauce Labs Fleece Jacket\" [ref=e97] [cursor=pointer]:\n                - generic [ref=e98]: Sauce Labs Fleece Jacket\n              - generic [ref=e99]: It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office.\n            - generic [ref=e100]:\n              - generic [ref=e101]: $49.99\n              - button \"Add to cart\" [ref=e102] [cursor=pointer]\n        - generic [ref=e103]:\n          - button \"View details for Sauce Labs Onesie\" [ref=e105] [cursor=pointer]:\n            - img \"Sauce Labs Onesie\" [ref=e106]\n          - generic [ref=e107]:\n            - generic [ref=e108]:\n              - button \"View details for Sauce Labs Onesie\" [ref=e109] [cursor=pointer]:\n                - generic [ref=e110]: Sauce Labs Onesie\n              - generic [ref=e111]: Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel.\n            - generic [ref=e112]:\n              - generic [ref=e113]: $7.99\n              - button \"Add to cart\" [ref=e114] [cursor=pointer]\n        - generic [ref=e115]:\n          - button \"View details for Test.allTheThings() T-Shirt (Red)\" [ref=e117] [cursor=pointer]:\n            - img \"Test.allTheThings() T-Shirt (Red)\" [ref=e118]\n          - generic [ref=e119]:\n            - generic [ref=e120]:\n              - button \"View details for Test.allTheThings() T-Shirt (Red)\" [ref=e121] [cursor=pointer]:\n                - generic [ref=e122]: Test.allTheThings() T-Shirt (Red)\n              - generic [ref=e123]: This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.\n            - generic [ref=e124]:\n              - generic [ref=e125]: $15.99\n              - button \"Add to cart\" [ref=e126] [cursor=pointer]\n  - contentinfo [ref=e127]:\n    - list [ref=e128]:\n      - listitem [ref=e129]:\n        - link \"X\" [ref=e130] [cursor=pointer]:\n          - /url: https://x.com/saucelabs\n      - listitem [ref=e131]:\n        - link \"Facebook\" [ref=e132] [cursor=pointer]:\n          - /url: https://www.facebook.com/saucelabs\n      - listitem [ref=e133]:\n        - link \"LinkedIn\" [ref=e134] [cursor=pointer]:\n          - /url: https://www.linkedin.com/company/sauce-labs/\n    - generic [ref=e135]: © 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+    },
+    {
+      "index": 7,
+      "at": 12318,
+      "label": "click the cart link (role and aria-label removed first)",
+      "action": {
+        "name": "click",
+        "selector": "[data-test=\"shopping-cart-link\"]",
+        "ref": "e124",
+        "button": "left",
+        "modifiers": 0,
+        "clickCount": 1
+      },
+      "code": "await page.locator('[data-test=\"shopping-cart-link\"]').click();",
+      "updates": 0,
+      "signals": [],
+      "source": "gate",
+      "gate": [
+        {
+          "kind": "click",
+          "waitedMs": 0,
+          "snapshotMs": 10,
+          "replayMs": 14
+        }
+      ],
+      "target": {
+        "selector": "[data-test=\"shopping-cart-link\"]",
+        "ref": "e43",
+        "exact": false,
+        "via": "event snapshot, nearest ancestor at the moment of the action"
+      },
+      "changeTree": "- [ref=e140]:\n  - [ref=e141]:\n    - [ref=e142] banner:\n      - <added> [ref=e143]:\n        - <added> [ref=e144]:\n          - <added> [ref=e145] button \"Open Menu\" [cursor=pointer]\n          - <added> [ref=e146] img \"Open Menu\"\n        - <added> [ref=e147]: Swag Labs\n        - <added> [ref=e150] button \"Cart, 1 items\":\n          - <added> [ref=e151]: 1\n      - <added> [ref=e152]: Your Cart\n      - <removed> [ref=e25]:\n        - <removed> [ref=e26]:\n          - <removed> [ref=e27] button \"Open Menu\" [cursor=pointer]\n          - <removed> [ref=e28] img \"Open Menu\"\n        - <removed> [ref=e41]: Swag Labs\n        - <target-inside> <removed> [ref=e43]: 1\n      - <removed> [ref=e45]:\n        - <removed> [ref=e46]: Products\n        - <removed> [ref=e48] [cursor=pointer]:\n          - <removed> [ref=e49]: Name (A to Z)\n          - <removed> [ref=e50] combobox \"Sort products\":\n            - <removed> [ref=s_19] option \"Name (A to Z)\" [selected]\n            - <removed> [ref=s_20] option \"Name (Z to A)\"\n            - <removed> [ref=s_21] option \"Price (low to high)\"\n            - <removed> [ref=s_22] option \"Price (high to low)\"\n    - [ref=e154] main:\n      - [ref=e155]:\n        - <added> [ref=e156]:\n          - <added> [ref=e157]: QTY\n          - <added> [ref=e158]: Description\n          - <added> [ref=e159]:\n            - <added> [ref=e160]: 1\n            - <added> [ref=e161]:\n              - <added> [ref=e162] button \"View details for Sauce Labs Backpack\" [cursor=pointer]:\n                - <added> [ref=e163]: Sauce Labs Backpack\n              - <added> [ref=e164]: \"carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.\"\n              - <added> [ref=e165]:\n                - <added> [ref=e166]: $29.99\n                - <added> [ref=e167] button \"Remove\" [cursor=pointer]\n        - <added> [ref=e168]:\n          - <added> [ref=e169] button \"Continue Shopping\" [cursor=pointer]\n          - <added> [ref=e170] button \"Checkout\" [cursor=pointer]\n        - <removed> [ref=e55]:\n          - <removed> [ref=e57] button \"View details for Sauce Labs Backpack\" [cursor=pointer]:\n            - <removed> [ref=e58] img \"Sauce Labs Backpack\"\n          - <removed> [ref=e59]:\n            - <removed> [ref=e60]:\n              - <removed> [ref=e61] button \"View details for Sauce Labs Backpack\" [cursor=pointer]:\n                - <removed> [ref=e62]: Sauce Labs Backpack\n              - <removed> [ref=e63]: \"carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.\"\n            - <removed> [ref=e64]:\n              - <removed> [ref=e65]: $29.99\n              - <removed> [ref=e138] button \"Remove\" [cursor=pointer]\n        - <removed> [ref=e67]:\n          - <removed> [ref=e69] button \"View details for Sauce Labs Bike Light\" [cursor=pointer]:\n            - <removed> [ref=e70] img \"Sauce Labs Bike Light\"\n          - <removed> [ref=e71]:\n            - <removed> [ref=e72]:\n              - <removed> [ref=e73] button \"View details for Sauce Labs Bike Light\" [cursor=pointer]:\n                - <removed> [ref=e74]: Sauce Labs Bike Light\n              - <removed> [ref=e75]: \"A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included.\"\n            - <removed> [ref=e76]:\n              - <removed> [ref=e77]: $9.99\n              - <removed> [ref=e78] button \"Add to cart\" [cursor=pointer]\n        - <removed> [ref=e79]:\n          - <removed> [ref=e81] button \"View details for Sauce Labs Bolt T-Shirt\" [cursor=pointer]:\n            - <removed> [ref=e82] img \"Sauce Labs Bolt T-Shirt\"\n          - <removed> [ref=e83]:\n            - <removed> [ref=e84]:\n              - <removed> [ref=e85] button \"View details for Sauce Labs Bolt T-Shirt\" [cursor=pointer]:\n                - <removed> [ref=e86]: Sauce Labs Bolt T-Shirt\n              - <removed> [ref=e87]: \"Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt.\"\n            - <removed> [ref=e88]:\n              - <removed> [ref=e89]: $15.99\n              - <removed> [ref=e90] button \"Add to cart\" [cursor=pointer]\n        - <removed> [ref=e91]:\n          - <removed> [ref=e93] button \"View details for Sauce Labs Fleece Jacket\" [cursor=pointer]:\n            - <removed> [ref=e94] img \"Sauce Labs Fleece Jacket\"\n          - <removed> [ref=e95]:\n            - <removed> [ref=e96]:\n              - <removed> [ref=e97] button \"View details for Sauce Labs Fleece Jacket\" [cursor=pointer]:\n                - <removed> [ref=e98]: Sauce Labs Fleece Jacket\n              - <removed> [ref=e99]: \"It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office.\"\n            - <removed> [ref=e100]:\n              - <removed> [ref=e101]: $49.99\n              - <removed> [ref=e102] button \"Add to cart\" [cursor=pointer]\n        - <removed> [ref=e103]:\n          - <removed> [ref=e105] button \"View details for Sauce Labs Onesie\" [cursor=pointer]:\n            - <removed> [ref=e106] img \"Sauce Labs Onesie\"\n          - <removed> [ref=e107]:\n            - <removed> [ref=e108]:\n              - <removed> [ref=e109] button \"View details for Sauce Labs Onesie\" [cursor=pointer]:\n                - <removed> [ref=e110]: Sauce Labs Onesie\n              - <removed> [ref=e111]: \"Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel.\"\n            - <removed> [ref=e112]:\n              - <removed> [ref=e113]: $7.99\n              - <removed> [ref=e114] button \"Add to cart\" [cursor=pointer]\n        - <removed> [ref=e115]:\n          - <removed> [ref=e117] button \"View details for Test.allTheThings() T-Shirt (Red)\" [cursor=pointer]:\n            - <removed> [ref=e118] img \"Test.allTheThings() T-Shirt (Red)\"\n          - <removed> [ref=e119]:\n            - <removed> [ref=e120]:\n              - <removed> [ref=e121] button \"View details for Test.allTheThings() T-Shirt (Red)\" [cursor=pointer]:\n                - <removed> [ref=e122]: Test.allTheThings() T-Shirt (Red)\n              - <removed> [ref=e123]: This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.\n            - <removed> [ref=e124]:\n              - <removed> [ref=e125]: $15.99\n              - <removed> [ref=e126] button \"Add to cart\" [cursor=pointer]",
+      "unassigned": "- [ref=e22]:\n  - [ref=e23]:\n    - [ref=e24] banner:\n      - [ref=e25]:\n        - <added> [ref=e43]: 1\n        - <removed> [ref=e136] button \"Cart, 1 items\":\n          - <removed> [ref=e137]: 1",
+      "counts": {
+        "interaction": {
+          "added": 4,
+          "removed": 8,
+          "changed": 0
+        },
+        "unassigned": {
+          "added": 1,
+          "removed": 1,
+          "changed": 0
+        }
+      },
+      "settle": {
+        "stable": true,
+        "ms": 156
+      },
+      "classifier": null,
+      "navigatedTo": "https://www.saucedemo.com/cart.html",
+      "tree": "- generic [ref=e140]:\n  - generic [ref=e141]:\n    - banner [ref=e142]:\n      - generic [ref=e143]:\n        - generic [ref=e144]:\n          - button \"Open Menu\" [ref=e145] [cursor=pointer]\n          - img \"Open Menu\" [ref=e146]\n        - generic [ref=e147]: Swag Labs\n        - button \"Cart, 1 items\" [ref=e150]:\n          - generic [ref=e151]: \"1\"\n      - generic [ref=e152]: Your Cart\n    - main [ref=e154]:\n      - generic [ref=e155]:\n        - generic [ref=e156]:\n          - generic [ref=e157]: QTY\n          - generic [ref=e158]: Description\n          - generic [ref=e159]:\n            - generic [ref=e160]: \"1\"\n            - generic [ref=e161]:\n              - button \"View details for Sauce Labs Backpack\" [ref=e162] [cursor=pointer]:\n                - generic [ref=e163]: Sauce Labs Backpack\n              - generic [ref=e164]: carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.\n              - generic [ref=e165]:\n                - generic [ref=e166]: $29.99\n                - button \"Remove\" [ref=e167] [cursor=pointer]\n        - generic [ref=e168]:\n          - button \"Continue Shopping\" [ref=e169] [cursor=pointer]\n          - button \"Checkout\" [ref=e170] [cursor=pointer]\n  - contentinfo [ref=e171]:\n    - list [ref=e172]:\n      - listitem [ref=e173]:\n        - link \"X\" [ref=e174] [cursor=pointer]:\n          - /url: https://x.com/saucelabs\n      - listitem [ref=e175]:\n        - link \"Facebook\" [ref=e176] [cursor=pointer]:\n          - /url: https://www.facebook.com/saucelabs\n      - listitem [ref=e177]:\n        - link \"LinkedIn\" [ref=e178] [cursor=pointer]:\n          - /url: https://www.linkedin.com/company/sauce-labs/\n    - generic [ref=e179]: © 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+Preparing pnpm@11.24.0 for immediate activation...
+PASS 1.65 interaction_1 before: position 21, marker call, URL http://localhost:58479/snapshot/cbru%4076?phase=after, no stamped refs
+PASS 1.65 interaction_1 after: position 31, marker call, URL http://localhost:58490/snapshot/cbru%40101?phase=after, no stamped refs
+PASS 1.65 interaction_2 before: position 31, marker call, URL http://localhost:58502/snapshot/cbru%40101?phase=after, no stamped refs
+PASS 1.65 interaction_2 after: position 41, marker call, URL http://localhost:58512/snapshot/cbru%40207?phase=after, no stamped refs
+PASS 1.65 interaction_3 before: position 46, marker call, URL http://localhost:58525/snapshot/cbru%40230?phase=after, no stamped refs
+PASS 1.65 interaction_3 after: position 56, marker call, URL http://localhost:58536/snapshot/cbru%40255?phase=after, no stamped refs
+PASS 1.65 interaction_4 before: position 56, marker call, URL http://localhost:58548/snapshot/cbru%40255?phase=after, no stamped refs
+PASS 1.65 interaction_4 after: position 66, marker call, URL http://localhost:58561/snapshot/cbru%40355?phase=after, no stamped refs
+PASS 1.65 interaction_5 before: position 71, marker call, URL http://localhost:58572/snapshot/cbru%40378?phase=after, no stamped refs
+PASS 1.65 interaction_6 before: position 97, marker call, URL http://localhost:58583/snapshot/cbru%40452?phase=after, no stamped refs
+PASS 1.65 interaction_6 after: position 107, marker call, URL http://localhost:58604/snapshot/cbru%40477?phase=after, no stamped refs
+PASS 1.65 interaction_7 before: position 114, marker call, URL http://localhost:58622/snapshot/cbru%40504?phase=after, no stamped refs
+PASS 1.65 interaction_8 before: position 134, marker call, URL http://localhost:58639/snapshot/cbru%40566?phase=after, no stamped refs
+PASS 1.65 interaction_8 after: position 144, marker call, URL http://localhost:58649/snapshot/cbru%40591?phase=after, no stamped refs
+PASS 1.65: 14 snapshot lookups; deterministic positions; before/after cart state; trace SHA256 unchanged f143084b3dabf6e87f6050e4dd99060e52cbfe099a9d3489bfbd08c789f6b6d2

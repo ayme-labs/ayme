@@ -1,0 +1,58 @@
+---
+title: "The recording, from Record to the saved package (proposed design)"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Recording
+    lg1: Busy, the buttons wait
+    lg2: Paused
+    lg3: Not started
+    lg4: Ended
+  }
+  class lg0 teal
+  class lg1 yellow
+  class lg2 blue
+  class lg3 tan
+  class lg4 purple
+  s0: Not recording, nothing recorded
+  s1: Ended with 'empty', nothing to save
+  state "Recording" as s2 {
+    s3: Listening
+    s4: Waiting for you to pick an element
+  }
+  s5: Wrapping up, then clear
+  s6: Wrapping up, then pause
+  s7: Wrapping up, then save
+  s8: Paused (you can discard and restore entries)
+  s9: Saving the package
+  s10: Wrapping up, then clear and end
+  s11: Ended with a complete package
+  [*] --> s0
+  s0 --> s1: you close the last page, or stop the recorder from the terminal
+  s0 --> s3: you press Record
+  s3 --> s4: you press Assert visibility
+  s4 --> s3: you click the element (recorded as an assertion)
+  s5 --> s0: the gate is confirmed off, held clicks are passed on, Playwright's reports are in
+  s5 --> s10: you close the last page, or stop the recorder from the terminal
+  s6 --> s7: you close the last page, or stop the recorder from the terminal
+  s6 --> s8: the gate is confirmed off, held clicks are passed on, Playwright's reports are in
+  s7 --> s9: the gate is confirmed off, held clicks are passed on, Playwright's reports are in
+  s8 --> s3: you press Continue
+  s8 --> s5: you press Clear
+  s8 --> s7: you close the last page, or stop the recorder from the terminal or you press Finish
+  s10 --> s1: the gate is confirmed off, held clicks are passed on, Playwright's reports are in
+  s9 --> s11: the package is written
+  s2 --> s5: you press Clear
+  s2 --> s6: you press Stop
+  s2 --> s7: you close the last page, or stop the recorder from the terminal or you press Finish
+  class s0 tan
+  class s1 purple
+  class s3 teal
+  class s4 teal
+  class s5 yellow
+  class s6 yellow
+  class s7 yellow
+  class s8 blue
+  class s9 yellow
+  class s10 yellow
+  class s11 purple

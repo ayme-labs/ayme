@@ -1,0 +1,162 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks P1_NeverSavesTwoEntries or P2_NeverSavesADiscard or P3_NeverRecordsAnAssertionAfterAClick or P4_NeverRecordsANavigation or P5_NeverCutsASettleShort or P7_NeverHoldsAClickDuringWrapUp or P8_NeverEndsEmptyAfterRecording or P9_NeverSavesWithPageClosed
+    lg1: Breaks P6_NeverClearsThenRecordsAgain in some cases
+    lg2: Path to the P1_NeverSavesTwoEntries or P2_NeverSavesADiscard or P3_NeverRecordsAnAssertionAfterAClick or P4_NeverRecordsANavigation or P5_NeverCutsASettleShort or P6_NeverClearsThenRecordsAgain or P7_NeverHoldsAClickDuringWrapUp or P8_NeverEndsEmptyAfterRecording or P9_NeverSavesWithPageClosed bug
+  }
+  class lg0 breaks
+  class lg1 mayBreak
+  class lg2 bugPath
+  s0: Not recording | gate off in the page
+  s1: Recording | gate off in the page (switch-on on its way)
+  s2: Recording | gate ON in the page
+  s3: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report on its way#59; not in the timeline
+  s4: Wrapping up to clear | gate off in the page
+  s5: Wrapping up to pause | gate off in the page
+  s6: Wrapping up to save | gate off in the page
+  s7: Recording | gate ON in the page | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s8: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s9: Wrapping up to pause | gate ON in the page (switch-off on its way)
+  s10: Wrapping up to clear and end | page closed
+  s11: Wrapping up to pause | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s12: Wrapping up to save | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s13: Wrapping up to save | gate off in the page | navigation under way | click 1: reached the page#59; report on its way#59; not in the timeline
+  s14: Ended: nothing to save | page closed
+  s15: Recording | gate ON in the page | click 1: held back, 'before' taken#59; no report#59; not in the timeline
+  s16: Wrapping up to save | page closed | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s17: Wrapping up to pause | gate ON in the page (switch-off on its way) | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s18: Wrapping up to pause | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s19: Wrapping up to save | gate off in the page | navigation under way | click 1: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s20: Wrapping up to save | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline | click 2: reached the page#59; report on its way#59; not in the timeline
+  s21: Paused | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2)
+  s22: Recording | gate ON in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s23: Saving | page closed | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s24: Wrapping up to save | gate off in the page | on the new page | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s25: Wrapping up to save | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: reached the page#59; report on its way#59; not in the timeline
+  s26: Paused | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2), discarded
+  s27: Recording, Playwright is picking | gate ON in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s28: Recording | gate ON in the page | click 1: reached the page#59; report on its way#59; not in the timeline | typing 2: reached the page#59; report on its way#59; not in the timeline
+  s29: Saving | page closed | package writing | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s30: Saving | gate off in the page | on the new page | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s31: Wrapping up to save | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after 1) | click 2: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s32: Recording | gate ON in the page | click 1: reached the page#59; report in#59; in the timeline (before 2, after -) | typing 2: reached the page#59; report on its way#59; not in the timeline
+  s33: Recording | gate ON in the page | click 1: reached the page#59; report on its way#59; not in the timeline | click 2: picked for an assertion#59; report on its way#59; not in the timeline
+  s34: Ended: package saved | page closed | package complete | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s35: Saving | gate off in the page | on the new page | package writing | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s36: Saving | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after 1) | click 2: reached the page#59; report in#59; in the timeline (before 1, after 2)
+  s37: Wrapping up to save | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2), discarded
+  s38: Recording | gate ON in the page | click 1: reached the page#59; report in#59; in the timeline (before 2, after 2) | typing 2: reached the page#59; report in#59; in the timeline (before 2, after -)
+  s39: Recording | gate ON in the page | click 1: reached the page#59; report in#59; in the timeline (before 2, after -) | click 2: picked for an assertion#59; report on its way#59; not in the timeline
+  s40: Ended: package saved | gate off in the page | on the new page | package complete | click 1: reached the page#59; report in#59; in the timeline (before 1, after none: left the page)
+  s41: Saving | gate off in the page | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2), discarded
+  s42: Saving | gate off in the page | package writing | click 1: reached the page#59; report in#59; in the timeline (before 1, after 1) | click 2: reached the page#59; report in#59; in the timeline (before 1, after 2)
+  s43: Recording | gate ON in the page | click 1: reached the page#59; report in#59; in the timeline (before 2, after 2) | click 2: picked for an assertion#59; report in#59; in the timeline (before 2, after 2)
+  s44: Ended: package saved | gate off in the page | package complete | click 1: reached the page#59; report in#59; in the timeline (before 1, after 1) | click 2: reached the page#59; report in#59; in the timeline (before 1, after 2)
+  s45: Saving | gate off in the page | package writing | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2), discarded
+  s46: Ended: package saved | gate off in the page | package complete | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2), discarded
+  [*] --> s0
+  s0 --> s1: you press Record
+  s1 --> s2: the page switches the gate on
+  s1 --> s3: you click (click 1): it reaches the page untouched
+  s1 --> s4: you press Clear
+  s1 --> s5: you press Stop
+  s1 --> s6: you press Finish
+  s2 --> s7: you click (click 1): the gate holds it back
+  s2 --> s9: you press Stop
+  s3 --> s8: Playwright's report for 1 arrives: added to the timeline
+  s4 --> s0: the recorder finishes wrapping up
+  s4 --> s10: the last page closes
+  s5 --> s11: you click (click 1): it reaches the page untouched
+  s6 --> s12: you click (click 1): it reaches the page untouched
+  s6 --> s13: you click (click 1): it reaches the page untouched and starts a navigation
+  s7 --> s15: the recorder takes the 'before' of click 1
+  s8 --> s16: the last page closes
+  s9 --> s17: you click (click 1): the gate holds it back
+  s10 --> s14: the recorder finishes wrapping up
+  s11 --> s18: Playwright's report for 1 arrives: added to the timeline
+  s12 --> s20: you click (click 2): it reaches the page untouched
+  s13 --> s19: Playwright's report for 1 arrives: added to the timeline
+  s15 --> s22: the recorder passes click 1 on to the page
+  s16 --> s23: the recorder finishes wrapping up
+  s18 --> s21: the recorder finishes wrapping up
+  s19 --> s24: the new page loads
+  s20 --> s25: Playwright's report for 1 arrives: added to the timeline
+  s21 --> s26: you discard an entry
+  s22 --> s27: you press Assert visibility
+  s22 --> s28: you type (typing 2): it reaches the page at once
+  s23 --> s29: the recorder starts writing the package
+  s24 --> s30: the recorder finishes wrapping up
+  s25 --> s31: Playwright's report for 2 arrives: added to the timeline
+  s26 --> s37: you press Finish
+  s27 --> s33: you click (click 2): Playwright's picker swallows it
+  s28 --> s32: Playwright's report for 1 arrives: added to the timeline
+  s29 --> s34: the package is written
+  s30 --> s35: the recorder starts writing the package
+  s31 --> s36: the recorder finishes wrapping up
+  s32 --> s38: Playwright's report for 2 arrives: added to the timeline
+  s33 --> s39: Playwright's report for 1 arrives: added to the timeline
+  s35 --> s40: the package is written
+  s36 --> s42: the recorder starts writing the package
+  s37 --> s41: the recorder finishes wrapping up
+  s39 --> s43: Playwright's report for 2 arrives: added to the timeline
+  s41 --> s45: the recorder starts writing the package
+  s42 --> s44: the package is written
+  s45 --> s46: the package is written
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  classDef mayBreak fill:#fff3e6,stroke:#e8730c,stroke-width:2.5px,color:#b85a06
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 bugPath
+  class s8 mayBreak
+  class s8 bugPath
+  class s9 bugPath
+  class s10 bugPath
+  class s11 bugPath
+  class s12 bugPath
+  class s13 bugPath
+  class s14 breaks
+  class s14 bugPath
+  class s15 bugPath
+  class s16 bugPath
+  class s17 breaks
+  class s17 bugPath
+  class s18 bugPath
+  class s19 bugPath
+  class s20 bugPath
+  class s21 bugPath
+  class s22 bugPath
+  class s23 bugPath
+  class s24 bugPath
+  class s25 bugPath
+  class s26 bugPath
+  class s27 bugPath
+  class s28 bugPath
+  class s29 bugPath
+  class s30 bugPath
+  class s31 bugPath
+  class s32 bugPath
+  class s33 bugPath
+  class s34 breaks
+  class s34 bugPath
+  class s35 bugPath
+  class s36 bugPath
+  class s37 bugPath
+  class s38 breaks
+  class s38 bugPath
+  class s39 bugPath
+  class s40 breaks
+  class s40 bugPath
+  class s41 bugPath
+  class s42 bugPath
+  class s43 breaks
+  class s43 bugPath
+  class s44 breaks
+  class s44 bugPath
+  class s45 bugPath
+  class s46 breaks
+  class s46 bugPath

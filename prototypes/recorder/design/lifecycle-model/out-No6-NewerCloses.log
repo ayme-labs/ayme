@@ -1,0 +1,35 @@
+Info: New devbox available: 0.19.0 -> v0.20.0. Please run `devbox version update`.
+Info: Running script "sh" on <repo>
+Preparing pnpm@11.24.0 for immediate activation...
+# Recorder
+
+TLC reached more states than the chart budget of 500, so the chart draws only the bug paths: 13 states and 12 arrows.
+
+## X2_SnapshotsInTimeOrder breaks
+The shortest path has 6 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you click (click 1): it reaches the page untouched: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline
+3. you click (click 2): it reaches the page untouched: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline | click 2: reached the page; report on its way; not in the timeline
+4. Playwright's report for 1 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after -) | click 2: reached the page; report on its way; not in the timeline
+5. Playwright's report for 2 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after -) | click 2: reached the page; report in; in the timeline (before 1, after -)
+6. the page settles: the recorder takes the 'after' of 1: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after 2) | click 2: reached the page; report in; in the timeline (before 1, after -)
+
+## R07_AssertionCarriesNoChanges breaks
+The shortest path has 7 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Assert visibility: Recording, Playwright is picking | gate off in the page (switch-on on its way)
+3. you type (typing 1): it reaches the page at once: Recording, Playwright is picking | gate off in the page (switch-on on its way) | typing 1: reached the page; report on its way; not in the timeline
+4. you click (click 2): Playwright's picker swallows it: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report on its way; not in the timeline | click 2: picked for an assertion; report on its way; not in the timeline
+5. Playwright's report for 1 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report in; in the timeline (before 1, after -) | click 2: picked for an assertion; report on its way; not in the timeline
+6. Playwright's report for 2 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report in; in the timeline (before 1, after -) | click 2: picked for an assertion; report in; in the timeline (before 1, after 1)
+7. the page settles: the recorder takes the 'after' of 1: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report in; in the timeline (before 1, after 2) | click 2: picked for an assertion; report in; in the timeline (before 1, after 1)
+
+## Rules not checked
+R01_HeldClickReachesThePageOnce, R02_OneBeforeOneAfter, R03a_StoppedClicksAreUntouched, R03b_StoppedAddsNothing, R03c_TracingRunsThroughPause, R04_FinishSavesEverything, R05_ClearLeavesNothing, R06_ReviewOnlyWhilePaused, R09_NeverHalfWritten, R10_SavesOnce, X1_NothingOvertakesAHeldClick, X3_NothingYouDidIsDropped, X4_WrapUpNeverGetsStuck, NoDeadlock
+After the first break, each TLC run stops at 100,000 distinct states. A run reached that bound before it checked these rules in every state.
+
+Wrote out/No6-NewerCloses
+Error: error running script "sh" in Devbox: exit status 1
+

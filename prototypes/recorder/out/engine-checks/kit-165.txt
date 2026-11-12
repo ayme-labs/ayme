@@ -1,0 +1,29 @@
+Preparing pnpm@11.24.0 for immediate activation...
+== saucedemo-cart in gate-b on Playwright 1.65.0, stamp: none
+  step: click Username
+  step: type standard_user
+  step: click Password
+  step: type secret_sauce
+  step: click Login
+  step: click Add to cart (Backpack)
+  step: click the cart link
+  step: click Remove (Backpack) in the cart
+released code loaded from <scratchpad>/ayme-private-dev
+ok   released RecordingPackageSchema accepts the document
+ok   the schema dropped no field of the document
+ok   released store reads latest.yaml as the structural package
+ok   released store reads the package by id
+ok   released code reads the recording id off the first line
+ok   released store lists the recording id
+ok   released store finds the trace archive
+ok   tracePath is what the released store would write: .ayme/recordings/rec_20261112T145047604Z/trace.zip
+ok   tracePath resolves to the stored trace.zip
+ok   released `trace open latest` resolves to the stored trace: ["open","<repo>/prototypes/recorder/reader-kit/.ayme/recordings/rec_20261112T145047604Z/trace.zip"]
+ok   released `trace open <id>` resolves to the stored trace: ["open","<repo>/prototypes/recorder/reader-kit/.ayme/recordings/rec_20261112T145047604Z/trace.zip"]
+ok   same recording files as the released store writes: released: .gitignore, recordings/latest.yaml, recordings/rec_20261112T145047604Z/package.yaml, recordings/rec_20261112T145047604Z/trace.zip | prototype: recordings/latest.yaml, recordings/rec_20261112T145047604Z/package.yaml, recordings/rec_20261112T145047604Z/trace.zip
+ok   every targetRef names a node of the baseline or one added earlier in its visit (8 interactions, 3 visits)
+ok   the released text renderer writes the same package text, byte for byte: 17154 bytes
+ok   the released document renderer builds the same JSON document
+all checks passed
+Recording package: <repo>/prototypes/recorder/reader-kit/.ayme/recordings/rec_20261112T145047604Z/package.yaml
+check inputs: <repo>/prototypes/recorder/out/package/rec_20261112T145047604Z

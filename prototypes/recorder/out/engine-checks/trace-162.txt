@@ -1,0 +1,16 @@
+Preparing pnpm@11.24.0 for immediate activation...
+PASS 1.62 interaction_1 before: position 21, marker call, URL http://localhost:58480/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%4076, no stamped refs
+PASS 1.62 interaction_1 after: position 31, marker call, URL http://localhost:58491/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40101, no stamped refs
+PASS 1.62 interaction_2 before: position 31, marker call, URL http://localhost:58501/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40101, no stamped refs
+PASS 1.62 interaction_2 after: position 41, marker call, URL http://localhost:58513/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40207, no stamped refs
+PASS 1.62 interaction_3 before: position 46, marker call, URL http://localhost:58524/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40230, no stamped refs
+PASS 1.62 interaction_3 after: position 56, marker call, URL http://localhost:58537/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40255, no stamped refs
+PASS 1.62 interaction_4 before: position 56, marker call, URL http://localhost:58549/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40255, no stamped refs
+PASS 1.62 interaction_4 after: position 66, marker call, URL http://localhost:58562/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40355, no stamped refs
+PASS 1.62 interaction_5 before: position 71, marker call, URL http://localhost:58573/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40378, no stamped refs
+PASS 1.62 interaction_6 before: position 97, marker call, URL http://localhost:58584/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40452, no stamped refs
+PASS 1.62 interaction_6 after: position 107, marker call, URL http://localhost:58605/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40477, no stamped refs
+PASS 1.62 interaction_7 before: position 114, marker call, URL http://localhost:58623/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40504, no stamped refs
+PASS 1.62 interaction_8 before: position 134, marker call, URL http://localhost:58640/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40566, no stamped refs
+PASS 1.62 interaction_8 after: position 144, marker call, URL http://localhost:58650/snapshot/page@ee77a60057c3c886c92622f5f8f35d9c?name=after%40call%40591, no stamped refs
+PASS 1.62: 14 snapshot lookups; deterministic positions; before/after cart state; trace SHA256 unchanged 388ce6712d15e45a57069638e16752f00ecb1727e4da38a2146763c282d3fc35

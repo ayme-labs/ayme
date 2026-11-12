@@ -1,0 +1,70 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks R01_HeldClickReachesThePageOnce or R03a_StoppedClicksAreUntouched or R03b_StoppedAddsNothing or X4_WrapUpNeverGetsStuck
+    lg1: Path to the R01_HeldClickReachesThePageOnce or R03a_StoppedClicksAreUntouched or R03b_StoppedAddsNothing or X4_WrapUpNeverGetsStuck bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Not recording | gate off in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s2: Recording | gate off in the page (switch-on on its way)
+  s3: Recording | gate off in the page (switch-on on its way) | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s4: Wrapping up to clear | gate off in the page
+  s5: Wrapping up to pause | gate off in the page
+  s6: Paused | gate off in the page
+  s7: Wrapping up to pause | gate off in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s8: Paused | gate off in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s9: Wrapping up to pause | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline
+  s10: Not recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline
+  s11: Paused | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline
+  s12: Not recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, no 'before' yet#59; no report#59; not in the timeline
+  s13: Paused | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, no 'before' yet#59; no report#59; not in the timeline
+  s14: Ended: nothing to save | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, no 'before' yet#59; no report#59; not in the timeline
+  s15: Recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, no 'before' yet#59; no report#59; not in the timeline
+  s16: Recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, 'before' taken#59; no report#59; not in the timeline
+  s17: Recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: reached the page#59; report on its way#59; not in the timeline
+  s18: Recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: reached the page#59; report in#59; in the timeline (before 2, after -)
+  [*] --> s0
+  s0 --> s1: you click (click 1): it reaches the page untouched and starts a navigation
+  s0 --> s2: you press Record
+  s1 --> s3: you press Record
+  s2 --> s4: you press Clear
+  s2 --> s5: you press Stop
+  s3 --> s7: you press Stop
+  s4 --> s0: the recorder finishes wrapping up
+  s5 --> s6: the recorder finishes wrapping up
+  s6 --> s8: you click (click 1): it reaches the page untouched and starts a navigation
+  s7 --> s9: the new page loads
+  s1 --> s10: the new page loads
+  s8 --> s11: the new page loads
+  s10 --> s12: you click (click 2): the gate holds it back
+  s11 --> s13: you click (click 2): the gate holds it back
+  s12 --> s14: you stop the recorder from the terminal
+  s13 --> s15: you press Continue
+  s15 --> s16: the recorder takes the 'before' of click 2
+  s16 --> s17: the recorder passes click 2 on to the page
+  s17 --> s18: Playwright's report for 2 arrives: added to the timeline
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 bugPath
+  class s8 bugPath
+  class s9 breaks
+  class s9 bugPath
+  class s10 bugPath
+  class s11 bugPath
+  class s12 bugPath
+  class s13 breaks
+  class s13 bugPath
+  class s14 breaks
+  class s14 bugPath
+  class s15 bugPath
+  class s16 bugPath
+  class s17 bugPath
+  class s18 breaks
+  class s18 bugPath

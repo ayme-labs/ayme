@@ -1,0 +1,252 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 0 and seed -5039887765783813980 with 1 worker on 10 cores with 4096MB heap and 64MB offheap memory [pid: 8196] (Mac OS X 26.6.2 aarch64, Eclipse Adoptium 25.0.5 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file <scratchpad>/lifecycle-model/Recorder.tla
+Parsing file /private/var/folders/t8/cckklcns24lgfgrj10hkppt80000gn/T/statechart-aj8uED/statechart-cIyb79/tmp-verdict-1/Naturals.tla
+Parsing file /private/var/folders/t8/cckklcns24lgfgrj10hkppt80000gn/T/statechart-aj8uED/statechart-cIyb79/tmp-verdict-1/FiniteSets.tla
+Parsing file /private/var/folders/t8/cckklcns24lgfgrj10hkppt80000gn/T/statechart-aj8uED/statechart-cIyb79/tmp-verdict-1/Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module Recorder
+Starting... (2026-11-12 21:22:54)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-12 21:22:54.
+Error: Invariant X4_WrapUpNeverGetsStuck is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ phase = "off"
+/\ overtook = FALSE
+/\ made = << [phase |-> "none", gen |-> 0, doc |-> 0],
+   [phase |-> "none", gen |-> 0, doc |-> 0] >>
+/\ tbAsk = FALSE
+/\ at = <<"notyet", "notyet">>
+/\ doc = 1
+/\ stops = 0
+/\ finishAgain = FALSE
+/\ mode = "none"
+/\ clock = 1
+/\ goal = "none"
+/\ bef = <<0, 0>>
+/\ win = "off"
+/\ told = "off"
+/\ navs = <<FALSE, FALSE>>
+/\ pkgDis = {}
+/\ gateEver = FALSE
+/\ navFlying = FALSE
+/\ kind = <<"none", "none">>
+/\ ev = <<"none", "none">>
+/\ wrong = <<FALSE, FALSE>>
+/\ tbPush = "none"
+/\ left = <<FALSE, FALSE>>
+/\ kept = {}
+/\ hits = <<0, 0>>
+/\ tb = "off"
+/\ evStamp = <<0, 0>>
+/\ tl = {}
+/\ winBehind = FALSE
+/\ tbReply = "none"
+/\ dis = {}
+/\ page = "open"
+/\ tracing = "off"
+/\ gateOn = FALSE
+/\ pkgHas = {}
+/\ gateMsg = "none"
+/\ gen = 0
+/\ touched = <<FALSE, FALSE>>
+/\ heldEver = <<FALSE, FALSE>>
+/\ aft = <<0, 0>>
+/\ pkg = "none"
+/\ saves = 0
+/\ tlAtPause = {}
+
+State 2: <YouClick line 193, col 3 to line 221, col 80 of module Recorder>
+/\ phase = "off"
+/\ overtook = FALSE
+/\ made = << [phase |-> "off", gen |-> 0, doc |-> 1],
+   [phase |-> "none", gen |-> 0, doc |-> 0] >>
+/\ tbAsk = FALSE
+/\ at = <<"page", "notyet">>
+/\ doc = 1
+/\ stops = 0
+/\ finishAgain = FALSE
+/\ mode = "none"
+/\ clock = 1
+/\ goal = "none"
+/\ bef = <<0, 0>>
+/\ win = "off"
+/\ told = "off"
+/\ navs = <<FALSE, FALSE>>
+/\ pkgDis = {}
+/\ gateEver = FALSE
+/\ navFlying = TRUE
+/\ kind = <<"click", "none">>
+/\ ev = <<"none", "none">>
+/\ wrong = <<FALSE, FALSE>>
+/\ tbPush = "none"
+/\ left = <<FALSE, FALSE>>
+/\ kept = {}
+/\ hits = <<1, 0>>
+/\ tb = "off"
+/\ evStamp = <<1, 0>>
+/\ tl = {}
+/\ winBehind = FALSE
+/\ tbReply = "none"
+/\ dis = {}
+/\ page = "open"
+/\ tracing = "off"
+/\ gateOn = FALSE
+/\ pkgHas = {}
+/\ gateMsg = "none"
+/\ gen = 0
+/\ touched = <<FALSE, FALSE>>
+/\ heldEver = <<FALSE, FALSE>>
+/\ aft = <<0, 0>>
+/\ pkg = "none"
+/\ saves = 0
+/\ tlAtPause = {}
+
+State 3: <YouPressRecord line 126, col 3 to line 129, col 94 of module Recorder>
+/\ phase = "recording"
+/\ overtook = FALSE
+/\ made = << [phase |-> "off", gen |-> 0, doc |-> 1],
+   [phase |-> "none", gen |-> 0, doc |-> 0] >>
+/\ tbAsk = FALSE
+/\ at = <<"page", "notyet">>
+/\ doc = 1
+/\ stops = 0
+/\ finishAgain = FALSE
+/\ mode = "rec"
+/\ clock = 1
+/\ goal = "none"
+/\ bef = <<0, 0>>
+/\ win = "off"
+/\ told = "off"
+/\ navs = <<FALSE, FALSE>>
+/\ pkgDis = {}
+/\ gateEver = TRUE
+/\ navFlying = TRUE
+/\ kind = <<"click", "none">>
+/\ ev = <<"none", "none">>
+/\ wrong = <<FALSE, FALSE>>
+/\ tbPush = "none"
+/\ left = <<FALSE, FALSE>>
+/\ kept = {}
+/\ hits = <<1, 0>>
+/\ tb = "off"
+/\ evStamp = <<1, 0>>
+/\ tl = {}
+/\ winBehind = FALSE
+/\ tbReply = "none"
+/\ dis = {}
+/\ page = "open"
+/\ tracing = "on"
+/\ gateOn = FALSE
+/\ pkgHas = {}
+/\ gateMsg = "on"
+/\ gen = 0
+/\ touched = <<FALSE, FALSE>>
+/\ heldEver = <<FALSE, FALSE>>
+/\ aft = <<0, 0>>
+/\ pkg = "none"
+/\ saves = 0
+/\ tlAtPause = {}
+
+State 4: <YouPressStop line 132, col 3 to line 136, col 46 of module Recorder>
+/\ phase = "wrap"
+/\ overtook = FALSE
+/\ made = << [phase |-> "off", gen |-> 0, doc |-> 1],
+   [phase |-> "none", gen |-> 0, doc |-> 0] >>
+/\ tbAsk = FALSE
+/\ at = <<"page", "notyet">>
+/\ doc = 1
+/\ stops = 0
+/\ finishAgain = FALSE
+/\ mode = "rec"
+/\ clock = 1
+/\ goal = "pause"
+/\ bef = <<0, 0>>
+/\ win = "off"
+/\ told = "off"
+/\ navs = <<FALSE, FALSE>>
+/\ pkgDis = {}
+/\ gateEver = TRUE
+/\ navFlying = TRUE
+/\ kind = <<"click", "none">>
+/\ ev = <<"none", "none">>
+/\ wrong = <<FALSE, FALSE>>
+/\ tbPush = "none"
+/\ left = <<FALSE, FALSE>>
+/\ kept = {}
+/\ hits = <<1, 0>>
+/\ tb = "off"
+/\ evStamp = <<1, 0>>
+/\ tl = {}
+/\ winBehind = FALSE
+/\ tbReply = "none"
+/\ dis = {}
+/\ page = "open"
+/\ tracing = "on"
+/\ gateOn = FALSE
+/\ pkgHas = {}
+/\ gateMsg = "none"
+/\ gen = 0
+/\ touched = <<FALSE, FALSE>>
+/\ heldEver = <<FALSE, FALSE>>
+/\ aft = <<0, 0>>
+/\ pkg = "none"
+/\ saves = 0
+/\ tlAtPause = {}
+
+State 5: <NavCommits line 315, col 3 to line 326, col 33 of module Recorder>
+/\ phase = "wrap"
+/\ overtook = FALSE
+/\ made = << [phase |-> "off", gen |-> 0, doc |-> 1],
+   [phase |-> "none", gen |-> 0, doc |-> 0] >>
+/\ tbAsk = FALSE
+/\ at = <<"page", "notyet">>
+/\ doc = 2
+/\ stops = 0
+/\ finishAgain = FALSE
+/\ mode = "rec"
+/\ clock = 1
+/\ goal = "pause"
+/\ bef = <<0, 0>>
+/\ win = "off"
+/\ told = "off"
+/\ navs = <<FALSE, FALSE>>
+/\ pkgDis = {}
+/\ gateEver = TRUE
+/\ navFlying = FALSE
+/\ kind = <<"click", "none">>
+/\ ev = <<"none", "none">>
+/\ wrong = <<FALSE, FALSE>>
+/\ tbPush = "none"
+/\ left = <<TRUE, FALSE>>
+/\ kept = {}
+/\ hits = <<1, 0>>
+/\ tb = "off"
+/\ evStamp = <<1, 0>>
+/\ tl = {}
+/\ winBehind = FALSE
+/\ tbReply = "none"
+/\ dis = {}
+/\ page = "open"
+/\ tracing = "on"
+/\ gateOn = TRUE
+/\ pkgHas = {}
+/\ gateMsg = "none"
+/\ gen = 0
+/\ touched = <<FALSE, FALSE>>
+/\ heldEver = <<FALSE, FALSE>>
+/\ aft = <<0, 0>>
+/\ pkg = "none"
+/\ saves = 0
+/\ tlAtPause = {}
+
+842 states generated, 538 distinct states found, 416 states left on queue.
+The depth of the complete state graph search is 5.
+The average outdegree of the complete state graph is 4 (minimum is 0, the maximum 11 and the 95th percentile is 10).
+Finished in 00s at (2026-11-12 21:22:54)
+

@@ -1,0 +1,27 @@
+---
+title: "One click through the gate, while recording"
+---
+stateDiagram-v2
+  s0: Waiting for your click
+  s1: Click held back
+  s2: 'Before' taken, click still held
+  s3: The page is gone, the click is dropped
+  s4: Click passed on, page still changing
+  s5: Page still changing, entry already in the timeline
+  s6: 'After' taken, waiting for Playwright's report
+  s7: On the new page, waiting for Playwright's report
+  s8: Done, the entry has a 'before' and an 'after'
+  s9: Done, the entry has a 'before' only (the click left the page)
+  [*] --> s0
+  s0 --> s1: you click
+  s1 --> s2: the recorder takes the 'before' snapshot
+  s1 --> s3: the page closes
+  s2 --> s4: the recorder sends your click on to the page
+  s2 --> s3: the page closes
+  s4 --> s5: Playwright's report arrives
+  s4 --> s6: the page finishes changing (quiet for 150 ms, or 2 s pass) and the recorder takes the 'after' snapshot
+  s4 --> s7: the click leaves the page and a new page loads
+  s5 --> s8: the page finishes changing (quiet for 150 ms, or 2 s pass) and the recorder takes the 'after' snapshot
+  s5 --> s9: the click leaves the page and a new page loads
+  s6 --> s8: Playwright's report arrives
+  s7 --> s9: Playwright's report arrives

@@ -1,0 +1,18 @@
+ok   released RecordingPackageSchema accepts the document
+ok   the schema dropped no field of the document
+ok   released store reads latest.yaml as the structural package
+ok   released store reads the package by id
+ok   released code reads the recording id off the first line
+ok   released store lists the recording id
+ok   released store finds the trace archive
+ok   tracePath is what the released store would write: .ayme/recordings/rec_20261112T124317390Z/trace.zip
+ok   tracePath resolves to the stored trace.zip
+ok   released `trace open latest` resolves to the stored trace: ["open","<scratchpad>/pw162/.ayme/recordings/rec_20261112T124317390Z/trace.zip"]
+ok   released `trace open <id>` resolves to the stored trace: ["open","<scratchpad>/pw162/.ayme/recordings/rec_20261112T124317390Z/trace.zip"]
+ok   same recording files as the released store writes: released: .gitignore, recordings/latest.yaml, recordings/rec_20261112T124317390Z/package.yaml, recordings/rec_20261112T124317390Z/trace.zip | prototype: recordings/latest.yaml, recordings/rec_20261112T124317390Z/package.yaml, recordings/rec_20261112T124317390Z/trace.zip
+ok   every targetRef names a node of the baseline or one added earlier in its visit (8 interactions, 3 visits)
+ok   the released text renderer writes the same package text, byte for byte: 17215 bytes
+ok   the released document renderer builds the same JSON document
+
+all checks passed
+stubbed while bundling the released code (not used by it here): @ayme/playwright-tracing/playwright-server-bridge, @ayme/playwright/runtime, @ayme/playwright/source/isomorphic/locatorGenerators, @ayme/playwright/source/isomorphic/locatorParser, @ayme/playwright/source/isomorphic/time, @ayme/playwright/source/isomorphic/trace/snapshotServer, @ayme/playwright/source/isomorphic/trace/snapshotStorage, @ayme/playwright/source/isomorphic/trace/traceLoader, @trpc/server, @trpc/server/adapters/ws, ayme-recorder-toolbar, sharp, ws, yauzl

@@ -1,0 +1,67 @@
+{
+ "mode": "gate-b",
+ "playwright": "1.65.0",
+ "recorderApi": "_startRecording",
+ "settleRule": "after load, no DOM mutation in any frame for 150 ms, deadline 2000 ms",
+ "gateCyclesWithoutRecordedAction": 0,
+ "gateLagsMs": [
+  {
+   "kind": "click",
+   "click": 63.19999998807907,
+   "press": 0
+  },
+  {
+   "kind": "click",
+   "click": 82.19999998807907,
+   "press": 0
+  }
+ ]
+}
+
+#0 navigate    [none]
+   code: await page.goto('http://127.0.0.1:60863/');
+
+#1 click  internal:role=button[name="Load orders"i]  [gate]
+   code: await page.getByRole('button', { name: 'Load orders' }).click();
+   target: in tree ref=e5 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2] main:
+       - [ref=e4] region "Late data":
+         - <changed> [ref=e5] button "Load orders" [active]
+   Change Tree:
+     - [ref=e2] main:
+       - <changed> [ref=e4] region "Late data":
+         - <target> [ref=e5] button "Load orders" [active]
+         - text: Loading
+
+#2 click  internal:role=textbox[name="Name"i]  [gate]
+   code: await page.getByRole('textbox', { name: 'Name' }).click();
+   target: in tree ref=e23 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2] main:
+       - [ref=e4] region "Late data":
+         - <changed> [ref=e5] button "Load orders"
+       - [ref=e20] region "Form":
+         - [ref=e22]:
+           - <changed> [ref=e23] textbox "Name" [active]
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e22]:
+           - <target> [ref=e23] textbox "Name" [active]
+
+#3 fill "Ada"  internal:role=textbox[name="Name"i]  [free-before]
+   code: await page.getByRole('textbox', { name: 'Name' }).fill('Ada');
+   target: in tree ref=e23 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2] main:
+       - <changed> [ref=e4] region "Late data":
+         - [ref=e6] table "Orders":
+           - [ref=e7] rowgroup:
+             - <added> [ref=e39] row:
+               - <added> [ref=e40] cell "Order 2"
+   Change Tree:
+     - [ref=e2] main:
+       - [ref=e20] region "Form":
+         - [ref=e22]:
+           - <target> <changed> [ref=e23] textbox "Name" [active]: Ada

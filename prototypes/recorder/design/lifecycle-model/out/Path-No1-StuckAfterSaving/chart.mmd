@@ -1,0 +1,33 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks T3_NoClickStuckAfterSaving
+    lg1: Path to the T3_NoClickStuckAfterSaving bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Recording | gate off in the page (switch-on on its way)
+  s2: Recording | gate ON in the page
+  s3: Wrapping up to save | gate ON in the page (switch-off on its way)
+  s4: Saving | gate ON in the page (switch-off on its way)
+  s5: Saving | gate ON in the page (switch-off on its way) | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s6: Saving | gate ON in the page (switch-off on its way) | package writing | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s7: Ended: package saved | gate ON in the page | package complete | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  [*] --> s0
+  s0 --> s1: you press Record
+  s1 --> s2: the page switches the gate on
+  s2 --> s3: you press Finish
+  s3 --> s4: the recorder finishes wrapping up
+  s4 --> s5: you click (click 1): the gate holds it back
+  s5 --> s6: the recorder starts writing the package
+  s6 --> s7: the package is written
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 breaks
+  class s7 bugPath

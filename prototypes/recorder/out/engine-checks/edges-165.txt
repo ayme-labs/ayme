@@ -1,0 +1,119 @@
+Preparing pnpm@11.24.0 for immediate activation...
+recordingId: rec_probe
+mode: structural
+createdAt: "-"
+url: http://probe
+tracePath: null
+visits:
+  - visitId: visit_1
+    url: http://probe/
+    cause: initial
+    baselineTree:
+      - [ref=e2] main:
+        - [ref=e3] button "Swap"
+        - [ref=e5] button "Save"
+        - [ref=e6] link "Next page" [cursor=pointer]
+        - [ref=s_1] region "Stable":
+          - [ref=s_2] paragraph
+        - [ref=s_3] paragraph
+    timelineEntries:
+      - kind: interaction
+        timestamp: 1489.741
+        interaction:
+          id: interaction_1
+          type: press
+          targetSelector: body
+          modifiers: 0
+          key: F8
+      - kind: change
+        timestamp: 3157.992
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e3] button "Swap" [active]
+      - kind: interaction
+        timestamp: 3160.992
+        interaction:
+          id: interaction_2
+          type: click
+          targetRef: e3
+          targetSelector: internal:role=button[name="Swap"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: 4763.25
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e3] button "Swap"
+            - <changed> [ref=e5] button "Save" [active]
+      - kind: interaction
+        timestamp: 4764.25
+        interaction:
+          id: interaction_3
+          type: click
+          targetRef: e5
+          targetSelector: internal:role=button[name="Save"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e2] main:
+            - <added> [ref=e9] paragraph: saved
+            - <removed> [ref=s_3] paragraph
+      - kind: change
+        timestamp: 6381.657
+        changeTree:
+          - [ref=e2] main:
+            - <changed> [ref=e5] button "Save"
+            - <changed> [ref=e6] link "Next page" [active] [cursor=pointer]
+      - kind: interaction
+        timestamp: 6383.657
+        interaction:
+          id: interaction_4
+          type: click
+          targetRef: e6
+          targetSelector: internal:role=link[name="Next page"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+  - visitId: visit_2
+    url: http://probe/two
+    cause: navigate
+    baselineTree:
+      - [ref=f1e2] main:
+        - [ref=f1e3] heading "Second page" [level=1]
+        - [ref=f1e4] button "Only button"
+    timelineEntries:
+      - kind: change
+        timestamp: 7995.836
+        changeTree:
+          - [ref=f1e2] main:
+            - <changed> [ref=f1e4] button "Only button" [active]
+      - kind: interaction
+        timestamp: 7997.836
+        interaction:
+          id: interaction_5
+          type: click
+          targetRef: f1e4
+          targetSelector: internal:role=button[name="Only button"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: 10363.09
+        changeTree:
+          - [ref=f1e2] main:
+            - <added> [ref=f1e5] heading "Late at finish" [level=1]
+            - <removed> [ref=f1e3] heading "Second page" [level=1]
+traceActionPoints: []
+
+{
+ "visits": 2,
+ "interactions": 5,
+ "unresolved": [],
+ "ancestorOnly": []
+}
+PASS recreated Save keeps e5; stable paragraph keeps s_2; unfocused F8 omits targetRef and keeps body; initial cause; navigation has no Change Tree
+PASS finish samples the trailing change once; released text renderer matches missing-target text byte for byte
+PASS released store reads omitted targetRef; released JSON schema REJECTS omission and accepts null (format finding)
+LIMIT core ledger: one ref-less paragraph becoming two identical siblings has ambiguous lineage; reported, not patched in core

@@ -1,0 +1,16 @@
+Preparing pnpm@11.24.0 for immediate activation...
+released code loaded from <scratchpad>/ayme-private-dev
+ok   released RecordingPackageSchema accepts the document
+ok   the schema dropped no field of the document
+ok   released store reads latest.yaml as the structural package
+ok   released store reads the package by id
+ok   released code reads the recording id off the first line
+ok   released store lists the recording id
+ok   released store finds the trace archive
+ok   tracePath is what the released store would write: .ayme/recordings/rec_20261112T145048060Z/trace.zip
+ok   tracePath resolves to the stored trace.zip
+ok   released `trace open latest` resolves to the stored trace: ["open","<repo>/prototypes/recorder/out/stock-162/.ayme/recordings/rec_20261112T145048060Z/trace.zip"]
+ok   released `trace open <id>` resolves to the stored trace: ["open","<repo>/prototypes/recorder/out/stock-162/.ayme/recordings/rec_20261112T145048060Z/trace.zip"]
+ok   same recording files as the released store writes: released: .gitignore, recordings/latest.yaml, recordings/rec_20261112T145048060Z/package.yaml, recordings/rec_20261112T145048060Z/trace.zip | prototype: recordings/latest.yaml, recordings/rec_20261112T145048060Z/package.yaml, recordings/rec_20261112T145048060Z/trace.zip
+ok   every targetRef names a node of the baseline or one added earlier in its visit (8 interactions, 3 visits)
+all checks passed

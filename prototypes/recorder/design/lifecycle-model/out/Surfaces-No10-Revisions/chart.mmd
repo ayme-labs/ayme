@@ -1,0 +1,32 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks R08_SurfacesAgree
+    lg1: Path to the R08_SurfacesAgree bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Not recording | gate off in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s2: Not recording | gate off in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | toolbar shows loading, window shows off
+  s3: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page#59; no report#59; not in the timeline | toolbar shows loading, window shows off
+  s4: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page#59; no report#59; not in the timeline | toolbar shows recording, window shows off
+  s5: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page#59; no report#59; not in the timeline
+  s6: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page#59; no report#59; not in the timeline | toolbar shows off, window shows recording
+  [*] --> s0
+  s0 --> s1: you click (click 1): it reaches the page untouched and starts a navigation
+  s1 --> s2: the new page loads
+  s2 --> s2: the recorder answers the new page's question about the state
+  s2 --> s3: you press Record
+  s3 --> s3: the recorder announces its new state
+  s3 --> s4: the announcement reaches the toolbar
+  s4 --> s5: that answer reaches the toolbar
+  s5 --> s6: the window catches up
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 breaks
+  class s6 bugPath

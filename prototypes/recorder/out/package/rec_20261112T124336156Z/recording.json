@@ -1,0 +1,1757 @@
+{
+ "flow": "fixture",
+ "root": "<scratchpad>/fixture162",
+ "packagePath": "<scratchpad>/fixture162/.ayme/recordings/rec_20261112T124336156Z/package.yaml",
+ "meta": {
+  "mode": "gate-b",
+  "playwright": "1.62.1",
+  "recorderApi": "_enableRecorder",
+  "settleRule": "after load, no DOM mutation in any frame for 150 ms, deadline 2000 ms",
+  "gateCyclesWithoutRecordedAction": 0,
+  "gateLagsMs": [
+   {
+    "kind": "click",
+    "click": 21.69999998807907,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 11,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 9.199999988079071,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 10.099999964237213,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 9.899999976158142,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 12.199999988079071,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 11.599999964237213,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 12.100000023841858,
+    "press": 0
+   },
+   {
+    "kind": "key",
+    "click": 6.400000035762787,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 9.800000011920929,
+    "press": 0
+   },
+   {
+    "kind": "key",
+    "click": 8.699999988079071,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 23.700000047683716,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 8.800000011920929,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 12.399999976158142,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 9.5,
+    "press": 0
+   },
+   {
+    "kind": "click",
+    "click": 21.19999998807907,
+    "press": 0
+   },
+   {
+    "kind": "key",
+    "click": 11.300000011920929,
+    "press": 0
+   }
+  ],
+  "stamp": "private",
+  "traceMarkMs": [
+   7,
+   6,
+   5,
+   5,
+   5,
+   6,
+   4,
+   6,
+   5,
+   7,
+   6,
+   5,
+   5,
+   6,
+   6,
+   5,
+   7,
+   5,
+   8,
+   5,
+   6,
+   5
+  ]
+ },
+ "traceError": null,
+ "traceStats": {
+  "events": 1758,
+  "actions": 323,
+  "frameSnapshots": 905,
+  "version": 8
+ },
+ "traceLookup": {
+  "interaction_1": {
+   "groupCallId": "call@88",
+   "callId": "call@90",
+   "callStart": 1364.909,
+   "callEnd": 1365.942,
+   "groups": 1
+  },
+  "interaction_2": {
+   "groupCallId": "call@136",
+   "callId": "call@138",
+   "callStart": 2616.418,
+   "callEnd": 2617.4,
+   "groups": 1
+  },
+  "interaction_3": {
+   "groupCallId": "call@184",
+   "callId": "call@186",
+   "callStart": 5322.175,
+   "callEnd": 5323.191,
+   "groups": 1
+  },
+  "interaction_4": {
+   "groupCallId": "call@232",
+   "callId": "call@234",
+   "callStart": 6624.639,
+   "callEnd": 6625.656,
+   "groups": 1
+  },
+  "interaction_5": {
+   "groupCallId": "call@280",
+   "callId": "call@282",
+   "callStart": 7921.604,
+   "callEnd": 7922.613,
+   "groups": 1
+  },
+  "interaction_6": {
+   "groupCallId": "call@328",
+   "callId": "call@330",
+   "callStart": 10619.283,
+   "callEnd": 10620.125,
+   "groups": 1
+  },
+  "interaction_7": {
+   "groupCallId": "call@376",
+   "callId": "call@378",
+   "callStart": 13330.835,
+   "callEnd": 13332.381,
+   "groups": 1
+  },
+  "interaction_8": {
+   "groupCallId": "call@424",
+   "callId": "call@426",
+   "callStart": 14624.442,
+   "callEnd": 14625.599,
+   "groups": 1
+  },
+  "interaction_9": {
+   "groupCallId": "call@502",
+   "callId": "call@504",
+   "callStart": 16159.482,
+   "callEnd": 16160.548,
+   "groups": 3
+  },
+  "interaction_10": {
+   "groupCallId": "call@536",
+   "callId": "call@538",
+   "callStart": 17288.451,
+   "callEnd": 17289.439,
+   "groups": 1
+  },
+  "interaction_11": {
+   "groupCallId": "call@585",
+   "callId": "call@587",
+   "callStart": 18631.639,
+   "callEnd": 18632.65,
+   "groups": 1
+  },
+  "interaction_12": {
+   "groupCallId": "call@622",
+   "callId": "call@624",
+   "callStart": 19845.023,
+   "callEnd": 19846.031,
+   "groups": 1
+  },
+  "interaction_13": {
+   "groupCallId": "call@642",
+   "callId": "call@644",
+   "callStart": 20007.95,
+   "callEnd": 20009.173,
+   "groups": 1
+  },
+  "interaction_14": {
+   "groupCallId": "call@690",
+   "callId": "call@692",
+   "callStart": 21200.495,
+   "callEnd": 21201.783,
+   "groups": 1
+  },
+  "interaction_15": {
+   "groupCallId": "call@738",
+   "callId": "call@740",
+   "callStart": 22489.218,
+   "callEnd": 22490.342,
+   "groups": 1
+  },
+  "interaction_16": {
+   "groupCallId": "call@786",
+   "callId": "call@788",
+   "callStart": 23793.872,
+   "callEnd": 23795.003,
+   "groups": 1
+  },
+  "interaction_17": {
+   "groupCallId": "call@834",
+   "callId": "call@836",
+   "callStart": 25096.347,
+   "callEnd": 25097.324,
+   "groups": 1
+  },
+  "interaction_18": {
+   "groupCallId": "call@890",
+   "callId": "call@892",
+   "callStart": 26414.726,
+   "callEnd": 26415.851,
+   "groups": 1
+  },
+  "interaction_19": {
+   "groupCallId": "call@926",
+   "callId": "call@928",
+   "callStart": 27604.898,
+   "callEnd": 27605.911,
+   "groups": 1
+  }
+ },
+ "tracePoints": [
+  {
+   "interactionId": "interaction_1",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_1",
+   "stamped": {
+    "how": "private",
+    "wanted": 36,
+    "stamped": 36,
+    "ms": 1
+   },
+   "startedAt": 1147.139,
+   "endedAt": 1360.822
+  },
+  {
+   "interactionId": "interaction_2",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_2",
+   "stamped": {
+    "how": "private",
+    "wanted": 36,
+    "stamped": 36,
+    "ms": 1
+   },
+   "startedAt": 2446.42,
+   "endedAt": 2613.609
+  },
+  {
+   "interactionId": "interaction_3",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_3",
+   "stamped": {
+    "how": "private",
+    "wanted": 38,
+    "stamped": 38,
+    "ms": 0
+   },
+   "startedAt": 5153.157,
+   "endedAt": 5319.404
+  },
+  {
+   "interactionId": "interaction_4",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_4",
+   "stamped": {
+    "how": "private",
+    "wanted": 39,
+    "stamped": 39,
+    "ms": 1
+   },
+   "startedAt": 6454.403,
+   "endedAt": 6622.004
+  },
+  {
+   "interactionId": "interaction_5",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_5",
+   "stamped": {
+    "how": "private",
+    "wanted": 39,
+    "stamped": 39,
+    "ms": 1
+   },
+   "startedAt": 7751.014,
+   "endedAt": 7919.018
+  },
+  {
+   "interactionId": "interaction_6",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_6",
+   "stamped": {
+    "how": "private",
+    "wanted": 40,
+    "stamped": 40,
+    "ms": 0
+   },
+   "startedAt": 10448.435,
+   "endedAt": 10617.883
+  },
+  {
+   "interactionId": "interaction_7",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_7",
+   "stamped": {
+    "how": "private",
+    "wanted": 40,
+    "stamped": 40,
+    "ms": 1
+   },
+   "startedAt": 13150.562,
+   "endedAt": 13325.922
+  },
+  {
+   "interactionId": "interaction_8",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_8",
+   "stamped": {
+    "how": "private",
+    "wanted": 40,
+    "stamped": 40,
+    "ms": 1
+   },
+   "startedAt": 14449.234,
+   "endedAt": 14621.843
+  },
+  {
+   "interactionId": "interaction_9",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 3,
+   "group": "interaction_9",
+   "stamped": {
+    "how": "private",
+    "wanted": 40,
+    "stamped": 40,
+    "ms": 1
+   },
+   "startedAt": 15658.655,
+   "endedAt": 16157.793
+  },
+  {
+   "interactionId": "interaction_10",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_10",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 1
+   },
+   "startedAt": 17121.023,
+   "endedAt": 17286.674
+  },
+  {
+   "interactionId": "interaction_11",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_11",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 1
+   },
+   "startedAt": 18460.866,
+   "endedAt": 18629.497
+  },
+  {
+   "interactionId": "interaction_12",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_12",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 1
+   },
+   "startedAt": 19671.199,
+   "endedAt": 19841.043
+  },
+  {
+   "interactionId": "interaction_13",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_13",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 1
+   },
+   "startedAt": 19683.671,
+   "endedAt": 20006.982
+  },
+  {
+   "interactionId": "interaction_14",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_14",
+   "stamped": {
+    "how": "private",
+    "wanted": 43,
+    "stamped": 43,
+    "ms": 1
+   },
+   "startedAt": 21014.87,
+   "endedAt": 21197.461
+  },
+  {
+   "interactionId": "interaction_15",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_15",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 0
+   },
+   "startedAt": 22320.638,
+   "endedAt": 22486.843
+  },
+  {
+   "interactionId": "interaction_16",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_16",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 3
+   },
+   "startedAt": 23618.01,
+   "endedAt": 23789.911
+  },
+  {
+   "interactionId": "interaction_17",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_17",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 1
+   },
+   "startedAt": 24927.813,
+   "endedAt": 25094.586
+  },
+  {
+   "interactionId": "interaction_18",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_18",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 1
+   },
+   "startedAt": 26228.114,
+   "endedAt": 26410.839
+  },
+  {
+   "interactionId": "interaction_19",
+   "pageId": "page@5437c625c6aa1a21911363379719ec4b",
+   "marks": 1,
+   "group": "interaction_19",
+   "stamped": {
+    "how": "private",
+    "wanted": 41,
+    "stamped": 41,
+    "ms": 0
+   },
+   "startedAt": 27435.85,
+   "endedAt": 27601.037
+  }
+ ],
+ "interactions": [
+  {
+   "visitId": "visit_1",
+   "id": "interaction_1",
+   "type": "click",
+   "targetRef": "e19",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_2",
+   "type": "click",
+   "targetRef": "e5",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_3",
+   "type": "click",
+   "targetRef": "e19",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_4",
+   "type": "click",
+   "targetRef": "e11",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_5",
+   "type": "click",
+   "targetRef": "e12",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_6",
+   "type": "click",
+   "targetRef": "e18",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_7",
+   "type": "click",
+   "targetRef": "e44",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_8",
+   "type": "click",
+   "targetRef": "e23",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_9",
+   "type": "fill",
+   "targetRef": "e23",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_10",
+   "type": "press",
+   "targetRef": "e23",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_11",
+   "type": "check",
+   "targetRef": "e25",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_12",
+   "type": "press",
+   "targetRef": "e27",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_13",
+   "type": "select",
+   "targetRef": "e27",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_14",
+   "type": "click",
+   "targetRef": "e29",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_15",
+   "type": "click",
+   "targetRef": "e47",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_16",
+   "type": "click",
+   "targetRef": "e30",
+   "targetExact": false,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_17",
+   "type": "click",
+   "targetRef": "e36",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_18",
+   "type": "click",
+   "targetRef": "f1e2",
+   "targetExact": true,
+   "leftVisit": false
+  },
+  {
+   "visitId": "visit_1",
+   "id": "interaction_19",
+   "type": "press",
+   "targetRef": "f1e2",
+   "targetExact": true,
+   "leftVisit": false
+  }
+ ],
+ "entries": [
+  {
+   "index": 0,
+   "at": 47,
+   "label": null,
+   "action": {
+    "name": "navigate",
+    "url": "http://127.0.0.1:50988/",
+    "signals": []
+   },
+   "code": "await page.goto('http://127.0.0.1:50988/');",
+   "updates": 0,
+   "signals": [],
+   "source": "none",
+   "gate": null
+  },
+  {
+   "index": 1,
+   "at": 714,
+   "label": "click Other",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Other\"i]",
+    "ref": "e19",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Other' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 5,
+     "replayMs": 55
+    }
+   ],
+   "interactionId": "interaction_1",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Other\"i]",
+    "ref": "e19",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <changed> [ref=e17] region \"Toast\":\n    - <target> [ref=e19] button \"Other\" [active]\n    - text: 1",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e17] region \"Toast\":\n    - <changed> [ref=e19] button \"Other\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [active] [ref=e19]\n    - text: \"1\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 2,
+   "at": 1997,
+   "label": "click Load orders (a row arrives 1.5 s later)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Load orders\"i]",
+    "ref": "e5",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Load orders' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 5,
+     "replayMs": 10
+    }
+   ],
+   "interactionId": "interaction_2",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Load orders\"i]",
+    "ref": "e5",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <changed> [ref=e4] region \"Late data\":\n    - <target> [ref=e5] button \"Load orders\" [active]\n    - text: Loading",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e4] region \"Late data\":\n    - <changed> [ref=e5] button \"Load orders\" [active]\n  - [ref=e17] region \"Toast\":\n    - <changed> [ref=e19] button \"Other\"",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [active] [ref=e5]\n    - text: Loading\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"1\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 3,
+   "at": 4703,
+   "label": "click Other again (the late row is on the page by now)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Other\"i]",
+    "ref": "e19",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Other' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 10
+    }
+   ],
+   "interactionId": "interaction_3",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Other\"i]",
+    "ref": "e19",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <changed> [ref=e17] region \"Toast\":\n    - <target> [ref=e19] button \"Other\" [active]\n    - text: 2",
+   "unassigned": "- [ref=e2] main:\n  - <changed> [ref=e4] region \"Late data\":\n    - <changed> [ref=e5] button \"Load orders\"\n    - [ref=e6] table \"Orders\":\n      - [ref=e7] rowgroup:\n        - <added> [ref=e39] row:\n          - <added> [ref=e40] cell \"Order 2\"\n  - [ref=e17] region \"Toast\":\n    - <changed> [ref=e19] button \"Other\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 1,
+     "removed": 0,
+     "changed": 3
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [active] [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 4,
+   "at": 6004,
+   "label": "click Insert task (a lookalike row is inserted by the click)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Insert task\"s]",
+    "ref": "e11",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Insert task', exact: true }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 5,
+     "replayMs": 10
+    }
+   ],
+   "interactionId": "interaction_4",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Insert task\"s]",
+    "ref": "e11",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e10] region \"Lookalike rows\":\n    - <target> [ref=e11] button \"Insert task\" [active]\n    - [ref=e13] list \"Tasks\":\n      - <added> [ref=e41] listitem: Task",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e10] region \"Lookalike rows\":\n    - <changed> [ref=e11] button \"Insert task\" [active]\n  - [ref=e17] region \"Toast\":\n    - <changed> [ref=e19] button \"Other\"",
+   "counts": {
+    "interaction": {
+     "added": 1,
+     "removed": 0,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [active] [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 5,
+   "at": 7301,
+   "label": "click Insert task later (a lookalike row arrives 1.5 s later)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Insert task later\"i]",
+    "ref": "e12",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Insert task later' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 10
+    }
+   ],
+   "interactionId": "interaction_5",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Insert task later\"i]",
+    "ref": "e12",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e10] region \"Lookalike rows\":\n    - <target> [ref=e12] button \"Insert task later\" [active]",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e10] region \"Lookalike rows\":\n    - <changed> [ref=e11] button \"Insert task\"\n    - <changed> [ref=e12] button \"Insert task later\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [active] [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 6,
+   "at": 10000,
+   "label": "click Notify later (a toast appears on its own 1.5 s later)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Notify later\"i]",
+    "ref": "e18",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Notify later' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 5,
+     "replayMs": 12
+    }
+   ],
+   "interactionId": "interaction_6",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Notify later\"i]",
+    "ref": "e18",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e17] region \"Toast\":\n    - <target> [ref=e18] button \"Notify later\" [active]",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e10] region \"Lookalike rows\":\n    - <changed> [ref=e12] button \"Insert task later\"\n    - [ref=e13] list \"Tasks\":\n      - <added> [ref=e42] listitem: Task\n  - [ref=e17] region \"Toast\":\n    - <changed> [ref=e18] button \"Notify later\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 1,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [active] [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 7,
+   "at": 12702,
+   "label": "click Dismiss in the toast (the click removes the toast)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Dismiss\"i]",
+    "ref": "e44",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Dismiss' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 5,
+     "replayMs": 11
+    }
+   ],
+   "interactionId": "interaction_7",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Dismiss\"i]",
+    "ref": "e44",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- <removed> [ref=e1]:\n  - <removed> [ref=e43] status:\n    - text: Saved\n    - <target> <removed> [ref=e44] button \"Dismiss\" [active]",
+   "unassigned": "- <added> [ref=e1]:\n  - [ref=e2] main:\n    - [ref=e17] region \"Toast\":\n      - <changed> [ref=e18] button \"Notify later\"\n  - <added> [ref=e43] status:\n    - text: Saved\n    - <added> [ref=e44] button \"Dismiss\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 1,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 1,
+     "removed": 0,
+     "changed": 1
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 8,
+   "at": 14002,
+   "label": "click the Name field",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=textbox[name=\"Name\"i]",
+    "ref": "e23",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('textbox', { name: 'Name' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 14
+    }
+   ],
+   "interactionId": "interaction_8",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=textbox[name=\"Name\"i]",
+    "ref": "e23",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e22]:\n      - <target> [ref=e23] textbox \"Name\" [active]",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e22]:\n      - <changed> [ref=e23] textbox \"Name\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [active] [ref=e23]\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 9,
+   "at": 15201,
+   "label": "type Ada",
+   "action": {
+    "name": "fill",
+    "ref": "e23",
+    "selector": "internal:role=textbox[name=\"Name\"i]",
+    "signals": [],
+    "text": "Ada"
+   },
+   "code": "await page.getByRole('textbox', { name: 'Name' }).fill('Ada');",
+   "updates": 2,
+   "signals": [],
+   "source": "free-before",
+   "gate": null,
+   "interactionId": "interaction_9",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=textbox[name=\"Name\"i]",
+    "ref": "e23",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e22]:\n      - <target> <changed> [ref=e23] textbox \"Name\" [active]: Ada",
+   "unassigned": "",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": {
+    "matched": 42,
+    "eventOnly": 0,
+    "notInEvent": 0,
+    "targetVia": "event match"
+   },
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [active] [ref=e23]: Ada\n    - paragraph\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 10,
+   "at": 16669,
+   "label": "press Enter (submits the form)",
+   "action": {
+    "name": "press",
+    "selector": "internal:role=textbox[name=\"Name\"i]",
+    "ref": "e23",
+    "signals": [],
+    "key": "Enter",
+    "modifiers": 0
+   },
+   "code": "await page.getByRole('textbox', { name: 'Name' }).press('Enter');",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "key",
+     "waitedMs": 0,
+     "snapshotMs": 3,
+     "replayMs": 8
+    }
+   ],
+   "interactionId": "interaction_10",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=textbox[name=\"Name\"i]",
+    "ref": "e23",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e22]:\n      - <target> [ref=e23] textbox \"Name\" [active]: Ada\n    - <added> [ref=e45] paragraph: \"Hello, Ada\"\n    - <removed> [ref=s_167] paragraph",
+   "unassigned": "",
+   "counts": {
+    "interaction": {
+     "added": 1,
+     "removed": 1,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [active] [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [ref=e25]\n      - text: Subscribe\n    - text: not subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 11,
+   "at": 18011,
+   "label": "click the Subscribe checkbox",
+   "action": {
+    "name": "check",
+    "selector": "internal:role=checkbox[name=\"Subscribe\"i]",
+    "ref": "e25",
+    "signals": []
+   },
+   "code": "await page.getByRole('checkbox', { name: 'Subscribe' }).check();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 11
+    }
+   ],
+   "interactionId": "interaction_11",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=checkbox[name=\"Subscribe\"i]",
+    "ref": "e25",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <changed> [ref=e20] region \"Form\":\n    - [ref=e24]:\n      - <target> <changed> [ref=e25] checkbox \"Subscribe\" [checked] [active]\n    - text: subscribed\n    - text: \"Color: red\"",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e22]:\n      - <changed> [ref=e23] textbox \"Name\": Ada\n    - [ref=e24]:\n      - <changed> [ref=e25] checkbox \"Subscribe\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [active] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\" [selected]\n        - option \"green\"\n        - option \"blue\"\n    - text: \"Color: red\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 12,
+   "at": 19221,
+   "label": "choose green in the native select",
+   "action": {
+    "name": "press",
+    "selector": "internal:label=\"Color redgreenblue\"i",
+    "ref": "e27",
+    "signals": [],
+    "key": "g",
+    "modifiers": 0
+   },
+   "code": "await page.getByLabel('Color redgreenblue').press('g');",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "key",
+     "waitedMs": 0,
+     "snapshotMs": 5,
+     "replayMs": 15
+    }
+   ],
+   "interactionId": "interaction_12",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:label=\"Color redgreenblue\"i",
+    "ref": "e27",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <changed> [ref=e20] region \"Form\":\n    - text: subscribed\n    - [ref=e26]:\n      - <target> [ref=e27] combobox \"Color\" [active]:\n        - <changed> [ref=s_187] option \"red\"\n        - <changed> [ref=s_188] option \"green\" [selected]\n    - text: \"Color: green\"",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e24]:\n      - <changed> [ref=e25] checkbox \"Subscribe\" [checked]\n    - [ref=e26]:\n      - <changed> [ref=e27] combobox \"Color\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 3
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [active] [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 13,
+   "at": 19226,
+   "label": "choose green in the native select",
+   "action": {
+    "name": "select",
+    "selector": "internal:label=\"Color redgreenblue\"i",
+    "ref": "e27",
+    "options": [
+     "green"
+    ],
+    "signals": []
+   },
+   "code": "await page.getByLabel('Color redgreenblue').selectOption('green');",
+   "updates": 0,
+   "signals": [],
+   "source": "free-before",
+   "gate": null,
+   "interactionId": "interaction_13",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:label=\"Color redgreenblue\"i",
+    "ref": "e27",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e26]:\n      - <target> [ref=e27] combobox \"Color\" [active]",
+   "unassigned": "",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": {
+    "matched": 39,
+    "eventOnly": 0,
+    "notInEvent": 0,
+    "targetVia": "event match"
+   },
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [active] [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 14,
+   "at": 20577,
+   "label": "click Menu (the menu opens on pointerdown)",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Menu\"i]",
+    "ref": "e29",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Menu' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 6,
+     "replayMs": 22
+    }
+   ],
+   "interactionId": "interaction_14",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Menu\"i]",
+    "ref": "e29",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e28] region \"Pointerdown menu\":\n    - <target> [ref=e29] button \"Menu\" [active]",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e20] region \"Form\":\n    - [ref=e26]:\n      - <changed> [ref=e27] combobox \"Color\"\n  - [ref=e28] region \"Pointerdown menu\":\n    - <changed> [ref=e29] button \"Menu\" [active]\n    - <added> [ref=e46] menu:\n      - <added> [ref=e47] menuitem \"Rename\"",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    },
+    "unassigned": {
+     "added": 1,
+     "removed": 0,
+     "changed": 2
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 157
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [active] [ref=e29]\n    - menu [ref=e46]:\n      - menuitem \"Rename\" [ref=e47]\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 15,
+   "at": 21869,
+   "label": "click Rename in the menu",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=menuitem[name=\"Rename\"i]",
+    "ref": "e47",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('menuitem', { name: 'Rename' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 9
+    }
+   ],
+   "interactionId": "interaction_15",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=menuitem[name=\"Rename\"i]",
+    "ref": "e47",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <changed> [ref=e28] region \"Pointerdown menu\":\n    - text: renamed\n    - <removed> [ref=e46] menu:\n      - <target> <removed> [ref=e47] menuitem \"Rename\"",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e28] region \"Pointerdown menu\":\n    - <changed> [ref=e29] button \"Menu\"",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 1,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n    - text: renamed\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart closed\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 16,
+   "at": 23173,
+   "label": "click the cart (the target is not in the tree)",
+   "action": {
+    "name": "click",
+    "selector": "[data-test=\"cart-link\"]",
+    "ref": "e32",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.locator('[data-test=\"cart-link\"]').click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 3,
+     "replayMs": 13
+    }
+   ],
+   "interactionId": "interaction_16",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "[data-test=\"cart-link\"]",
+    "ref": "e30",
+    "exact": false,
+    "via": "event snapshot, nearest ancestor at the moment of the action"
+   },
+   "changeTree": "- [ref=e2] main:\n  - <target-inside> [ref=e30] region \"Missing target\":\n    - <changed> [ref=e33] paragraph: cart open",
+   "unassigned": "",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n    - text: renamed\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart open\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"0\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 17,
+   "at": 24478,
+   "label": "click the button in the open shadow root",
+   "action": {
+    "name": "click",
+    "selector": "internal:role=button[name=\"Shadow button\"i]",
+    "ref": "e36",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.getByRole('button', { name: 'Shadow button' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 10
+    }
+   ],
+   "interactionId": "interaction_17",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "internal:role=button[name=\"Shadow button\"i]",
+    "ref": "e36",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e34] region \"Shadow\":\n    - <changed> [ref=e35] [active]:\n      - <target> [ref=e36] button \"Shadow button\"\n      - text: 1",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e34] region \"Shadow\":\n    - <changed> [ref=e35] [active]: 0",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 153
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n    - text: renamed\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart open\n  - region \"Shadow\" [ref=e34]:\n    - generic [active] [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"1\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"0\""
+  },
+  {
+   "index": 18,
+   "at": 25797,
+   "label": "click the button in the iframe",
+   "action": {
+    "name": "click",
+    "selector": "iframe[title=\"Inner frame\"] >> internal:control=enter-frame >> internal:role=button[name=\"Inner button\"i]",
+    "ref": "e2",
+    "signals": [],
+    "button": "left",
+    "modifiers": 0,
+    "clickCount": 1
+   },
+   "code": "await page.locator('iframe[title=\"Inner frame\"]').contentFrame().getByRole('button', { name: 'Inner button' }).click();",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "click",
+     "waitedMs": 0,
+     "snapshotMs": 4,
+     "replayMs": 23
+    }
+   ],
+   "interactionId": "interaction_18",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "iframe[title=\"Inner frame\"] >> internal:control=enter-frame >> internal:role=button[name=\"Inner button\"i]",
+    "ref": "f1e2",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e37] region \"Frame\":\n    - [ref=e38] iframe [active]:\n      - <changed> [ref=f1e1]:\n        - <target> [ref=f1e2] button \"Inner button\" [active]\n        - text: 1",
+   "unassigned": "- [ref=e2] main:\n  - [ref=e34] region \"Shadow\":\n    - <changed> [ref=e35]: 1\n  - [ref=e37] region \"Frame\":\n    - <changed> [ref=e38] iframe [active]:\n      - [ref=f1e1]:\n        - <changed> [ref=f1e2] button \"Inner button\" [active]",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 1
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 3
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 155
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n    - text: renamed\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart open\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"1\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [active] [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [active] [ref=f1e2]\n        - text: \"1\""
+  },
+  {
+   "index": 19,
+   "at": 26986,
+   "label": "press Tab in the iframe",
+   "action": {
+    "name": "press",
+    "selector": "iframe[title=\"Inner frame\"] >> internal:control=enter-frame >> internal:role=button[name=\"Inner button\"i]",
+    "ref": "e2",
+    "signals": [],
+    "key": "Tab",
+    "modifiers": 0
+   },
+   "code": "await page.locator('iframe[title=\"Inner frame\"]').contentFrame().getByRole('button', { name: 'Inner button' }).press('Tab');",
+   "updates": 0,
+   "signals": [],
+   "source": "gate",
+   "gate": [
+    {
+     "kind": "key",
+     "waitedMs": 0,
+     "snapshotMs": 7,
+     "replayMs": 9
+    }
+   ],
+   "interactionId": "interaction_19",
+   "visitId": "visit_1",
+   "target": {
+    "selector": "iframe[title=\"Inner frame\"] >> internal:control=enter-frame >> internal:role=button[name=\"Inner button\"i]",
+    "ref": "f1e2",
+    "exact": true,
+    "via": "event snapshot"
+   },
+   "changeTree": "- [ref=e2] main:\n  - [ref=e37] region \"Frame\":\n    - <changed> [ref=e38] iframe:\n      - [ref=f1e1]:\n        - <target> <changed> [ref=f1e2] button \"Inner button\"",
+   "unassigned": "",
+   "counts": {
+    "interaction": {
+     "added": 0,
+     "removed": 0,
+     "changed": 2
+    },
+    "unassigned": {
+     "added": 0,
+     "removed": 0,
+     "changed": 0
+    }
+   },
+   "settle": {
+    "stable": true,
+    "ms": 154
+   },
+   "classifier": null,
+   "navigatedTo": null,
+   "leftVisit": false,
+   "tree": "- main [ref=e2]:\n  - heading \"Recorder fixture\" [level=1] [ref=e3]\n  - region \"Late data\" [ref=e4]:\n    - button \"Load orders\" [ref=e5]\n    - table \"Orders\" [ref=e6]:\n      - rowgroup [ref=e7]:\n        - row [ref=e8]:\n          - cell \"Order 1\" [ref=e9]\n        - row [ref=e39]:\n          - cell \"Order 2\" [ref=e40]\n  - region \"Lookalike rows\" [ref=e10]:\n    - button \"Insert task\" [ref=e11]\n    - button \"Insert task later\" [ref=e12]\n    - list \"Tasks\" [ref=e13]:\n      - listitem [ref=e14]: Task\n      - listitem [ref=e42]: Task\n      - listitem [ref=e41]: Task\n      - listitem [ref=e15]: Task\n      - listitem [ref=e16]: Task\n  - region \"Toast\" [ref=e17]:\n    - button \"Notify later\" [ref=e18]\n    - button \"Other\" [ref=e19]\n    - text: \"2\"\n  - region \"Form\" [ref=e20]:\n    - generic [ref=e22]:\n      - text: Name\n      - textbox \"Name\" [ref=e23]: Ada\n    - paragraph [ref=e45]: Hello, Ada\n    - generic [ref=e24]:\n      - checkbox \"Subscribe\" [checked] [ref=e25]\n      - text: Subscribe\n    - text: subscribed\n    - generic [ref=e26]:\n      - text: Color\n      - combobox \"Color\" [ref=e27]:\n        - option \"red\"\n        - option \"green\" [selected]\n        - option \"blue\"\n    - text: \"Color: green\"\n  - region \"Pointerdown menu\" [ref=e28]:\n    - button \"Menu\" [ref=e29]\n    - text: renamed\n  - region \"Missing target\" [ref=e30]:\n    - paragraph [ref=e33]: cart open\n  - region \"Shadow\" [ref=e34]:\n    - generic [ref=e35]:\n      - button \"Shadow button\" [ref=e36]\n      - text: \"1\"\n  - region \"Frame\" [ref=e37]:\n    - iframe [ref=e38]:\n      - generic [ref=f1e1]:\n        - button \"Inner button\" [ref=f1e2]\n        - text: \"1\""
+  }
+ ]
+}

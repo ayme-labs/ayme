@@ -1,0 +1,12 @@
+{
+  "version": "1.62",
+  "asserts": 2,
+  "cycles": 7,
+  "events": 51,
+  "typingIds": ["interaction_1", "interaction_5", "interaction_5"],
+  "removedHighlight": "gone",
+  "iframeHighlight": true,
+  "shadowHighlight": true,
+  "focusPreserved": true,
+  "layoutPreserved": true
+}

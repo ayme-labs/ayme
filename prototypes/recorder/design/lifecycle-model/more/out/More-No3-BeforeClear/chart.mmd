@@ -1,0 +1,28 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks M2_ClickBeforeClearNeverComesBack
+    lg1: Path to the M2_ClickBeforeClearNeverComesBack bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Recording | gate off in the page (switch-on on its way)
+  s2: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report on its way#59; not in the timeline
+  s3: Wrapping up to clear | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s4: Not recording | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s5: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -)
+  [*] --> s0
+  s0 --> s1: you press Record
+  s1 --> s2: you click (click 1): it reaches the page untouched
+  s2 --> s3: you press Clear
+  s3 --> s4: the recorder finishes wrapping up
+  s4 --> s2: you press Record
+  s2 --> s5: Playwright's report for 1 arrives: added to the timeline
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 breaks
+  class s5 bugPath

@@ -1,0 +1,127 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks R01_HeldClickReachesThePageOnce or R03a_StoppedClicksAreUntouched or R04_FinishSavesEverything or R07_AssertionCarriesNoChanges or R09_NeverHalfWritten or X1_NothingOvertakesAHeldClick or X2_SnapshotsInTimeOrder or X3_NothingYouDidIsDropped
+    lg1: Breaks R03b_StoppedAddsNothing or R05_ClearLeavesNothing in some cases
+    lg2: Path to the R01_HeldClickReachesThePageOnce or R03a_StoppedClicksAreUntouched or R03b_StoppedAddsNothing or R04_FinishSavesEverything or R05_ClearLeavesNothing or R07_AssertionCarriesNoChanges or R09_NeverHalfWritten or X1_NothingOvertakesAHeldClick or X2_SnapshotsInTimeOrder or X3_NothingYouDidIsDropped bug
+  }
+  class lg0 breaks
+  class lg1 mayBreak
+  class lg2 bugPath
+  s0: Not recording | gate off in the page
+  s1: Not recording | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s2: Recording | gate off in the page (switch-on on its way)
+  s3: Recording, Playwright is picking | gate off in the page (switch-on on its way)
+  s4: Recording | gate ON in the page
+  s5: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report on its way#59; not in the timeline
+  s6: Wrapping up to clear | gate off in the page
+  s7: Wrapping up to save | gate off in the page
+  s8: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s9: Recording | gate ON in the page | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s10: Recording, Playwright is picking | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report on its way#59; not in the timeline
+  s11: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report on its way#59; not in the timeline | click 2: reached the page#59; report on its way#59; not in the timeline
+  s12: Saving | gate off in the page
+  s13: Wrapping up to pause, Playwright is picking | gate off in the page
+  s14: Wrapping up to pause | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s15: Wrapping up to save | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s16: Wrapping up to clear | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s17: Paused, Playwright is picking | gate off in the page
+  s18: Paused | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s19: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: reached the page#59; report on its way#59; not in the timeline
+  s20: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report on its way#59; not in the timeline | click 2: picked for an assertion#59; report on its way#59; not in the timeline
+  s21: Recording | gate ON in the page | click 1: held back, no 'before' yet#59; no report#59; not in the timeline | typing 2: reached the page#59; report on its way#59; not in the timeline
+  s22: Saving | gate off in the page | package writing
+  s23: Saving | gate off in the page | click 1: reached the page#59; report on its way#59; not in the timeline
+  s24: Wrapping up to save | gate ON in the page (switch-off on its way) | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s25: Killed | gate off in the page | package writing
+  s26: Killed | gate ON in the page | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s27: Paused | gate off in the page | click 1: picked for an assertion#59; report on its way#59; not in the timeline
+  s28: Paused | gate off in the page | click 1: reached the page#59; report in#59; not in the timeline
+  s29: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s30: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: picked for an assertion#59; report on its way#59; not in the timeline
+  s31: Saving | gate off in the page | package writing | click 1: reached the page#59; report on its way#59; not in the timeline
+  s32: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2) | click 2: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s33: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: picked for an assertion#59; report in#59; in the timeline (before 1, after 1)
+  s34: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report in#59; in the timeline (before 1, after 2) | click 2: picked for an assertion#59; report in#59; in the timeline (before 1, after 1)
+  [*] --> s0
+  s0 --> s1: you click (click 1): it reaches the page untouched
+  s0 --> s2: you press Record
+  s1 --> s5: you press Record
+  s2 --> s3: you press Assert visibility
+  s2 --> s4: the page switches the gate on
+  s2 --> s5: you click (click 1): it reaches the page untouched
+  s2 --> s6: you press Clear
+  s2 --> s7: you stop the recorder from the terminal
+  s3 --> s10: you type (typing 1): it reaches the page at once
+  s3 --> s13: you press Stop
+  s4 --> s9: you click (click 1): the gate holds it back
+  s5 --> s8: Playwright's report for 1 arrives: added to the timeline
+  s5 --> s11: you click (click 2): it reaches the page untouched
+  s5 --> s14: you press Stop
+  s5 --> s15: you press Finish
+  s6 --> s16: you click (click 1): it reaches the page untouched
+  s7 --> s12: the recorder finishes wrapping up
+  s9 --> s21: you type (typing 2): it reaches the page at once
+  s9 --> s24: you stop the recorder from the terminal
+  s10 --> s20: you click (click 2): Playwright's picker swallows it
+  s11 --> s19: Playwright's report for 1 arrives: added to the timeline
+  s12 --> s22: the recorder starts writing the package
+  s13 --> s17: the recorder finishes wrapping up
+  s14 --> s18: the recorder finishes wrapping up
+  s15 --> s23: the recorder finishes wrapping up
+  s16 --> s1: the recorder finishes wrapping up
+  s17 --> s27: you click (click 1): Playwright's picker swallows it
+  s18 --> s28: Playwright's report for 1 arrives: thrown away
+  s19 --> s29: Playwright's report for 2 arrives: added to the timeline
+  s20 --> s30: Playwright's report for 1 arrives: added to the timeline
+  s22 --> s25: you stop it from the terminal a second time
+  s23 --> s31: the recorder starts writing the package
+  s24 --> s26: you stop it from the terminal a second time
+  s29 --> s32: the page settles: the recorder takes the 'after' of 1
+  s30 --> s33: Playwright's report for 2 arrives: added to the timeline
+  s33 --> s34: the page settles: the recorder takes the 'after' of 1
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  classDef mayBreak fill:#fff3e6,stroke:#e8730c,stroke-width:2.5px,color:#b85a06
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 bugPath
+  class s8 mayBreak
+  class s8 bugPath
+  class s9 bugPath
+  class s10 bugPath
+  class s11 bugPath
+  class s12 bugPath
+  class s13 bugPath
+  class s14 bugPath
+  class s15 bugPath
+  class s16 bugPath
+  class s17 bugPath
+  class s18 bugPath
+  class s19 bugPath
+  class s20 bugPath
+  class s21 breaks
+  class s21 bugPath
+  class s22 bugPath
+  class s23 bugPath
+  class s24 bugPath
+  class s25 breaks
+  class s25 bugPath
+  class s26 breaks
+  class s26 bugPath
+  class s27 breaks
+  class s27 bugPath
+  class s28 breaks
+  class s28 bugPath
+  class s29 bugPath
+  class s30 bugPath
+  class s31 breaks
+  class s31 bugPath
+  class s32 breaks
+  class s32 bugPath
+  class s33 bugPath
+  class s34 breaks
+  class s34 bugPath

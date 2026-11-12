@@ -1,0 +1,49 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks R07_AssertionCarriesNoChanges or X2_SnapshotsInTimeOrder
+    lg1: Path to the R07_AssertionCarriesNoChanges or X2_SnapshotsInTimeOrder bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Recording | gate off in the page (switch-on on its way)
+  s2: Recording, Playwright is picking | gate off in the page (switch-on on its way)
+  s3: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report on its way#59; not in the timeline
+  s4: Recording, Playwright is picking | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report on its way#59; not in the timeline
+  s5: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report on its way#59; not in the timeline | click 2: reached the page#59; report on its way#59; not in the timeline
+  s6: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: reached the page#59; report on its way#59; not in the timeline
+  s7: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report on its way#59; not in the timeline | click 2: picked for an assertion#59; report on its way#59; not in the timeline
+  s8: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s9: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: picked for an assertion#59; report on its way#59; not in the timeline
+  s10: Recording | gate off in the page (switch-on on its way) | click 1: reached the page#59; report in#59; in the timeline (before 1, after 2) | click 2: reached the page#59; report in#59; in the timeline (before 1, after -)
+  s11: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report in#59; in the timeline (before 1, after -) | click 2: picked for an assertion#59; report in#59; in the timeline (before 1, after 1)
+  s12: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page#59; report in#59; in the timeline (before 1, after 2) | click 2: picked for an assertion#59; report in#59; in the timeline (before 1, after 1)
+  [*] --> s0
+  s0 --> s1: you press Record
+  s1 --> s2: you press Assert visibility
+  s1 --> s3: you click (click 1): it reaches the page untouched
+  s2 --> s4: you type (typing 1): it reaches the page at once
+  s3 --> s5: you click (click 2): it reaches the page untouched
+  s4 --> s7: you click (click 2): Playwright's picker swallows it
+  s5 --> s6: Playwright's report for 1 arrives: added to the timeline
+  s6 --> s8: Playwright's report for 2 arrives: added to the timeline
+  s7 --> s9: Playwright's report for 1 arrives: added to the timeline
+  s8 --> s10: the page settles: the recorder takes the 'after' of 1
+  s9 --> s11: Playwright's report for 2 arrives: added to the timeline
+  s11 --> s12: the page settles: the recorder takes the 'after' of 1
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 bugPath
+  class s8 bugPath
+  class s9 bugPath
+  class s10 breaks
+  class s10 bugPath
+  class s11 bugPath
+  class s12 breaks
+  class s12 bugPath

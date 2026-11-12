@@ -1,0 +1,105 @@
+Info: New devbox available: 0.19.0 -> v0.20.0. Please run `devbox version update`.
+Info: Running script "sh" on <repo>
+Preparing pnpm@11.24.0 for immediate activation...
+# Recorder
+
+TLC reached more states than the chart budget of 500, so the chart draws only the bug paths: 35 states and 36 arrows.
+
+## R03b_StoppedAddsNothing breaks
+The shortest path has 3 steps:
+0. Not recording | gate off in the page
+1. you click (click 1): it reaches the page untouched: Not recording | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+2. you press Record: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline
+3. Playwright's report for 1 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after -)
+
+## X1_NothingOvertakesAHeldClick breaks
+The shortest path has 4 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. the page switches the gate on: Recording | gate ON in the page
+3. you click (click 1): the gate holds it back: Recording | gate ON in the page | click 1: held back, no 'before' yet; no report; not in the timeline
+4. you type (typing 2): it reaches the page at once: Recording | gate ON in the page | click 1: held back, no 'before' yet; no report; not in the timeline | typing 2: reached the page; report on its way; not in the timeline
+
+## R01_HeldClickReachesThePageOnce breaks
+The shortest path has 5 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. the page switches the gate on: Recording | gate ON in the page
+3. you click (click 1): the gate holds it back: Recording | gate ON in the page | click 1: held back, no 'before' yet; no report; not in the timeline
+4. you stop the recorder from the terminal: Wrapping up to save | gate ON in the page (switch-off on its way) | click 1: held back, no 'before' yet; no report; not in the timeline
+5. you stop it from the terminal a second time: Killed | gate ON in the page | click 1: held back, no 'before' yet; no report; not in the timeline
+
+## R03a_StoppedClicksAreUntouched breaks
+The shortest path has 5 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Assert visibility: Recording, Playwright is picking | gate off in the page (switch-on on its way)
+3. you press Stop: Wrapping up to pause, Playwright is picking | gate off in the page
+4. the recorder finishes wrapping up: Paused, Playwright is picking | gate off in the page
+5. you click (click 1): Playwright's picker swallows it: Paused | gate off in the page | click 1: picked for an assertion; report on its way; not in the timeline
+
+## R04_FinishSavesEverything breaks
+The shortest path has 5 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you click (click 1): it reaches the page untouched: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline
+3. you press Finish: Wrapping up to save | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+4. the recorder finishes wrapping up: Saving | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+5. the recorder starts writing the package: Saving | gate off in the page | package writing | click 1: reached the page; report on its way; not in the timeline
+
+## R09_NeverHalfWritten breaks
+The shortest path has 5 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you stop the recorder from the terminal: Wrapping up to save | gate off in the page
+3. the recorder finishes wrapping up: Saving | gate off in the page
+4. the recorder starts writing the package: Saving | gate off in the page | package writing
+5. you stop it from the terminal a second time: Killed | gate off in the page | package writing
+
+## X3_NothingYouDidIsDropped breaks
+The shortest path has 5 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you click (click 1): it reaches the page untouched: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline
+3. you press Stop: Wrapping up to pause | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+4. the recorder finishes wrapping up: Paused | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+5. Playwright's report for 1 arrives: thrown away: Paused | gate off in the page | click 1: reached the page; report in; not in the timeline
+
+## R05_ClearLeavesNothing breaks
+The shortest path has 6 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Clear: Wrapping up to clear | gate off in the page
+3. you click (click 1): it reaches the page untouched: Wrapping up to clear | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+4. the recorder finishes wrapping up: Not recording | gate off in the page | click 1: reached the page; report on its way; not in the timeline
+5. you press Record: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline
+6. Playwright's report for 1 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after -)
+
+## X2_SnapshotsInTimeOrder breaks
+The shortest path has 6 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you click (click 1): it reaches the page untouched: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline
+3. you click (click 2): it reaches the page untouched: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report on its way; not in the timeline | click 2: reached the page; report on its way; not in the timeline
+4. Playwright's report for 1 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after -) | click 2: reached the page; report on its way; not in the timeline
+5. Playwright's report for 2 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after -) | click 2: reached the page; report in; in the timeline (before 1, after -)
+6. the page settles: the recorder takes the 'after' of 1: Recording | gate off in the page (switch-on on its way) | click 1: reached the page; report in; in the timeline (before 1, after 2) | click 2: reached the page; report in; in the timeline (before 1, after -)
+
+## R07_AssertionCarriesNoChanges breaks
+The shortest path has 7 steps:
+0. Not recording | gate off in the page
+1. you press Record: Recording | gate off in the page (switch-on on its way)
+2. you press Assert visibility: Recording, Playwright is picking | gate off in the page (switch-on on its way)
+3. you type (typing 1): it reaches the page at once: Recording, Playwright is picking | gate off in the page (switch-on on its way) | typing 1: reached the page; report on its way; not in the timeline
+4. you click (click 2): Playwright's picker swallows it: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report on its way; not in the timeline | click 2: picked for an assertion; report on its way; not in the timeline
+5. Playwright's report for 1 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report in; in the timeline (before 1, after -) | click 2: picked for an assertion; report on its way; not in the timeline
+6. Playwright's report for 2 arrives: added to the timeline: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report in; in the timeline (before 1, after -) | click 2: picked for an assertion; report in; in the timeline (before 1, after 1)
+7. the page settles: the recorder takes the 'after' of 1: Recording | gate off in the page (switch-on on its way) | typing 1: reached the page; report in; in the timeline (before 1, after 2) | click 2: picked for an assertion; report in; in the timeline (before 1, after 1)
+
+## Rules not checked
+R02_OneBeforeOneAfter, R03c_TracingRunsThroughPause, R06_ReviewOnlyWhilePaused, R10_SavesOnce, X4_WrapUpNeverGetsStuck, NoDeadlock
+After the first break, each TLC run stops at 100,000 distinct states. A run reached that bound before it checked these rules in every state.
+
+Wrote out/Simple
+Error: error running script "sh" in Devbox: exit status 1
+

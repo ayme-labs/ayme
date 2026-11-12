@@ -1,0 +1,104 @@
+{
+  "version": "1.65",
+  "paceMs": 2000,
+  "small fixture, gate-a": {
+    "page.ariaSnapshot({mode:'ai'}) alone, ms": {
+      "n": 5,
+      "min": 4,
+      "median": 6,
+      "max": 12
+    },
+    "click lag, ms (human click -> page gets the re-sent click)": {
+      "n": 10,
+      "min": 11,
+      "median": 12.6,
+      "max": 21.4
+    },
+    "press lag, ms (human pointerdown -> page gets a pointerdown; includes the 70 ms the simulated human holds the button)": {
+      "n": 10,
+      "min": 82.5,
+      "median": 83.7,
+      "max": 91.7
+    },
+    "key lag, ms": {
+      "n": 6,
+      "min": 5.7,
+      "median": 9.1,
+      "max": 11.5
+    },
+    "clicks counted by the page (10 sent)": "10",
+    "actions recorded": 16
+  },
+  "small fixture, gate-b": {
+    "page.ariaSnapshot({mode:'ai'}) alone, ms": {
+      "n": 5,
+      "min": 4,
+      "median": 6,
+      "max": 11
+    },
+    "click lag, ms (human click -> page gets the re-sent click)": {
+      "n": 10,
+      "min": 10.9,
+      "median": 15,
+      "max": 25.9
+    },
+    "key lag, ms": {
+      "n": 6,
+      "min": 10.8,
+      "median": 12.2,
+      "max": 21.2
+    },
+    "clicks counted by the page (10 sent)": "10",
+    "actions recorded": 16
+  },
+  "large page, gate-a": {
+    "page.ariaSnapshot({mode:'ai'}) alone, ms": {
+      "n": 5,
+      "min": 240,
+      "median": 245,
+      "max": 428
+    },
+    "click lag, ms (human click -> page gets the re-sent click)": {
+      "n": 10,
+      "min": 261.4,
+      "median": 278,
+      "max": 334.8
+    },
+    "press lag, ms (human pointerdown -> page gets a pointerdown; includes the 70 ms the simulated human holds the button)": {
+      "n": 10,
+      "min": 332.9,
+      "median": 349.2,
+      "max": 406.7
+    },
+    "key lag, ms": {
+      "n": 6,
+      "min": 261.7,
+      "median": 288.8,
+      "max": 296.5
+    },
+    "clicks counted by the page (10 sent)": "10",
+    "actions recorded": 16
+  },
+  "large page, gate-b": {
+    "page.ariaSnapshot({mode:'ai'}) alone, ms": {
+      "n": 5,
+      "min": 236,
+      "median": 238,
+      "max": 416
+    },
+    "click lag, ms (human click -> page gets the re-sent click)": {
+      "n": 10,
+      "min": 254.9,
+      "median": 279.1,
+      "max": 299
+    },
+    "key lag, ms": {
+      "n": 6,
+      "min": 256.4,
+      "median": 274.9,
+      "max": 284.6
+    },
+    "clicks counted by the page (10 sent)": "10",
+    "actions recorded": 16
+  }
+}

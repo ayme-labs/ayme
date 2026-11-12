@@ -1,0 +1,40 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks R01_HeldClickReachesThePageOnce or R09_NeverHalfWritten
+    lg1: Path to the R01_HeldClickReachesThePageOnce or R09_NeverHalfWritten bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Recording | gate off in the page (switch-on on its way)
+  s2: Recording | gate ON in the page
+  s3: Wrapping up to save | gate off in the page
+  s4: Recording | gate ON in the page | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s5: Saving | gate off in the page
+  s6: Saving | gate off in the page | package writing
+  s7: Wrapping up to save | gate ON in the page (switch-off on its way) | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  s8: Killed | gate off in the page | package writing
+  s9: Killed | gate ON in the page | click 1: held back, no 'before' yet#59; no report#59; not in the timeline
+  [*] --> s0
+  s0 --> s1: you press Record
+  s1 --> s2: the page switches the gate on
+  s1 --> s3: you stop the recorder from the terminal
+  s2 --> s4: you click (click 1): the gate holds it back
+  s3 --> s5: the recorder finishes wrapping up
+  s4 --> s7: you stop the recorder from the terminal
+  s5 --> s6: the recorder starts writing the package
+  s6 --> s8: you stop it from the terminal a second time
+  s7 --> s9: you stop it from the terminal a second time
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 bugPath
+  class s8 breaks
+  class s8 bugPath
+  class s9 breaks
+  class s9 bugPath

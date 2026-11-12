@@ -1,0 +1,31 @@
+{
+  "version": "1.65.0",
+  "1. empty cart: link element": "<a class=\"shopping_cart_link\" data-test=\"shopping-cart-link\" role=\"button\" aria-label=\"Cart, empty\"></a>",
+  "1. empty cart: public snapshot lines": [
+    "        - generic [ref=e10]: Swag Labs",
+    "        - button \"Cart, empty\" [ref=e13]"
+  ],
+  "2. one item: link element": "<a class=\"shopping_cart_link\" data-test=\"shopping-cart-link\" role=\"button\" aria-label=\"Cart, 1 items\"><span class=\"shopping_cart_badge\" data-test=\"shopping-cart-badge\">1</span></a>",
+  "2. one item: public snapshot lines": [
+    "        - generic [ref=e10]: Swag Labs",
+    "        - button \"Cart, 1 items\" [ref=e105]:"
+  ],
+  "2. one item: locator(badge).ariaSnapshot({mode:'ai'})": "- generic [ref=e106]: \"1\"",
+  "2. element under the centre of the link": "<a class=\"shopping_cart_link\" data-test=\"shopping-cart-link\" role=\"button\" aria-label=\"Car",
+  "2. click at the centre of the link: recorder action": {
+    "selector": "[data-test=\"shopping-cart-link\"]",
+    "ref": "e105",
+    "code": "await page.locator('[data-test=\"shopping-cart-link\"]').click();"
+  },
+  "2. url after": "https://www.saucedemo.com/cart.html",
+  "3. click on the badge: recorder action": {
+    "selector": "[data-test=\"shopping-cart-link\"]",
+    "ref": "e14",
+    "code": "await page.locator('[data-test=\"shopping-cart-link\"]').click();"
+  },
+  "3. event snapshot lines": [
+    "        - generic [ref=e10]: Swag Labs",
+    "        - button \"Cart, 1 items\" [ref=e13]:"
+  ],
+  "3. url after": "https://www.saucedemo.com/cart.html"
+}

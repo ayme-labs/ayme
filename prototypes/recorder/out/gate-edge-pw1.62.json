@@ -1,0 +1,451 @@
+{
+  "plain click": {
+    "before": {
+      "state": "1",
+      "recorded": ["click [free-before]"],
+      "appEvents": "pointerdown:plain mousedown:plain pointerup:plain mouseup:plain click:plain:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:plain mousedown:plain pointerup:plain mouseup:plain click:plain:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:plain mousedown:plain pointerup:plain mouseup:plain click:plain:1",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "double-click": {
+    "before": {
+      "state": "doubled",
+      "recorded": ["click x2 [free-before]"],
+      "appEvents": "pointerdown:dbl mousedown:dbl pointerup:dbl mouseup:dbl click:dbl:1 pointerdown:dbl mousedown:dbl pointerup:dbl mouseup:dbl click:dbl:2 dblclick:dbl",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "doubled",
+      "recorded": ["click x2 [gate]"],
+      "appEvents": "pointerdown:dbl mousedown:dbl pointerup:dbl mouseup:dbl click:dbl:1 pointerdown:dbl mousedown:dbl pointerup:dbl mouseup:dbl click:dbl:2 dblclick:dbl",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "doubled",
+      "recorded": ["click x2 [gate]"],
+      "appEvents": "pointerdown:dbl mousedown:dbl pointerup:dbl mouseup:dbl click:dbl:1 pointerdown:dbl mousedown:dbl pointerup:dbl mouseup:dbl click:dbl:2 dblclick:dbl",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "drag and drop (HTML5 draggable)": {
+    "before": {
+      "state": "dropped",
+      "recorded": [],
+      "appEvents": "pointerdown:drag mousedown:drag dragstart:drag drop:drop",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "drop zone",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:drag mousedown:drag pointerup:drag mouseup:drag click:drag:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "dropped",
+      "recorded": [],
+      "appEvents": "pointerdown:drag mousedown:drag dragstart:drag drop:drop",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "text selection by dragging": {
+    "before": {
+      "state": "ome selectable text for ",
+      "recorded": ["click [free-before]"],
+      "appEvents": "pointerdown:text mousedown:text pointerup:text mouseup:text click:text:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:text mousedown:text pointerup:text mouseup:text click:text:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "ome selectable text for ",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:text mousedown:text pointerup:text mouseup:text click:text:1",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "custom slider (pointer events)": {
+    "before": {
+      "state": "110",
+      "recorded": ["click [free-before]"],
+      "appEvents": "pointerdown:knob mousedown:knob pointerup:slider mouseup:slider click:slider:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "0",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:knob mousedown:knob pointerup:slider mouseup:slider click:slider:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "110",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:knob mousedown:knob pointerup:slider mouseup:slider click:knob:1",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "native range slider": {
+    "before": {
+      "state": "10",
+      "recorded": ["fill \"10\" [free-before]"],
+      "appEvents": "pointerdown:range mousedown:range input:range pointerup:range mouseup:range change:range click:range:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "10",
+      "recorded": ["fill \"10\" [free-before]"],
+      "appEvents": "pointerdown:range mousedown:range input:range pointerup:range mouseup:range change:range click:range:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "10",
+      "recorded": ["fill \"10\" [free-before]"],
+      "appEvents": "pointerdown:range mousedown:range input:range pointerup:range mouseup:range change:range click:range:1",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "native select (keyboard typeahead)": {
+    "before": {
+      "state": "c",
+      "recorded": ["press c [free-before]", "select [\"c\"] [free-before]"],
+      "appEvents": "keydown:pick:c input:pick change:pick keyup:pick:c",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "c",
+      "recorded": ["press c [gate]", "select [\"c\"] [free-before]"],
+      "appEvents": "keydown:pick:c input:pick change:pick keyup:pick:c",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "c",
+      "recorded": ["press c [gate]", "select [\"c\"] [free-before]"],
+      "appEvents": "keydown:pick:c input:pick change:pick keyup:pick:c",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "native select (mouse opens the list)": {
+    "before": {
+      "state": "mousedown:pick click:pick:1",
+      "recorded": ["press Escape [free-before]"],
+      "appEvents": "pointerdown:pick mousedown:pick pointerup:pick mouseup:pick click:pick:1 pointerup:pick mouseup:pick keydown:pick:Escape keyup:pick:Escape",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "mousedown:pick click:pick:1",
+      "recorded": ["press Escape [gate]"],
+      "appEvents": "pointerdown:pick mousedown:pick pointerup:pick mouseup:pick click:pick:1 pointerup:pick mouseup:pick keydown:pick:Escape keyup:pick:Escape",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "mousedown:pick click:pick:1",
+      "recorded": ["press Escape [gate]"],
+      "appEvents": "pointerdown:pick mousedown:pick pointerup:pick mouseup:pick click:pick:1 pointerup:pick mouseup:pick keydown:pick:Escape keyup:pick:Escape",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "file chooser": {
+    "before": {
+      "state": "C:\\fakepath\\a.txt",
+      "recorded": ["fill \"C:\\\\fakepath\\\\a.txt\" [free-before]"],
+      "appEvents": "pointerdown:file mousedown:file pointerup:file mouseup:file click:file:1 input:file change:file",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "C:\\fakepath\\a.txt",
+      "recorded": ["fill \"C:\\\\fakepath\\\\a.txt\" [free-before]"],
+      "appEvents": "pointerdown:file mousedown:file pointerup:file mouseup:file click:file:1 input:file change:file",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "C:\\fakepath\\a.txt",
+      "recorded": ["fill \"C:\\\\fakepath\\\\a.txt\" [free-before]"],
+      "appEvents": "pointerdown:file mousedown:file pointerup:file mouseup:file click:file:1 input:file change:file",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "right-click": {
+    "before": {
+      "state": "context menu",
+      "recorded": ["click right [free-before]"],
+      "appEvents": "pointerdown:ctx mousedown:ctx contextmenu:ctx pointerup:ctx mouseup:ctx auxclick:ctx",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "context menu",
+      "recorded": ["click right [free-before]"],
+      "appEvents": "pointerdown:ctx mousedown:ctx contextmenu:ctx pointerup:ctx mouseup:ctx auxclick:ctx",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "context menu",
+      "recorded": ["click right [free-before]"],
+      "appEvents": "pointerdown:ctx mousedown:ctx contextmenu:ctx pointerup:ctx mouseup:ctx auxclick:ctx",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "link that opens a new tab": {
+    "before": {
+      "state": "/two; opener still at /edge",
+      "recorded": ["click [free-before]"],
+      "appEvents": "pointerdown:blank mousedown:blank pointerup:blank mouseup:blank click:blank:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "/two; opener still at /edge",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:blank mousedown:blank pointerup:blank mouseup:blank click:blank:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "/two; opener still at /edge",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:blank mousedown:blank pointerup:blank mouseup:blank click:blank:1",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "click inside an iframe": {
+    "before": {
+      "state": "1",
+      "recorded": ["click [free-before]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "click inside an iframe, page scrolled": {
+    "before": {
+      "state": "1",
+      "recorded": ["click [free-before]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "click that navigates, then a click on the new page": {
+    "before": {
+      "state": "/two",
+      "recorded": ["click [free-before]", "click [free-before]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "/two",
+      "recorded": ["click [gate]", "click [gate]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "/two",
+      "recorded": ["click [gate]", "click [gate]"],
+      "appEvents": "",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "click on a label of a checkbox": {
+    "before": {
+      "state": "true",
+      "recorded": ["click [free-before]", "check [free-before]"],
+      "appEvents": "pointerdown:lbl mousedown:lbl pointerup:lbl mouseup:lbl click:lbl:1 click:chk:1 input:chk change:chk",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "true",
+      "recorded": ["click [gate]", "check [free-before]"],
+      "appEvents": "pointerdown:lbl mousedown:lbl pointerup:lbl mouseup:lbl click:lbl:1 click:chk:1 input:chk change:chk",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "true",
+      "recorded": ["click [gate]", "check [free-before]"],
+      "appEvents": "pointerdown:lbl mousedown:lbl pointerup:lbl mouseup:lbl click:lbl:1 click:chk:1 input:chk change:chk",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "menu that opens on pointerdown": {
+    "before": {
+      "state": "true",
+      "recorded": ["click [free-before]"],
+      "appEvents": "pointerdown:menuBtn mousedown:menuBtn pointerup:menuBtn mouseup:menuBtn click:menuBtn:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "true",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:menuBtn mousedown:menuBtn pointerup:menuBtn mouseup:menuBtn click:menuBtn:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "true",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:menuBtn mousedown:menuBtn pointerup:menuBtn mouseup:menuBtn click:menuBtn:1",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "Enter on a focused button": {
+    "before": {
+      "state": "1",
+      "recorded": ["press Enter [free-before]", "click x0 [free-before]"],
+      "appEvents": "keydown:plain:Enter click:plain:0 keyup:plain:Enter",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "1",
+      "recorded": ["press Enter [gate]", "click x0 [free-before]"],
+      "appEvents": "keydown:plain:Enter click:plain:0 keyup:plain:Enter",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "1",
+      "recorded": ["press Enter [gate]", "click x0 [free-before]"],
+      "appEvents": "keydown:plain:Enter click:plain:0 keyup:plain:Enter",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "typing, then Control+a": {
+    "before": {
+      "state": "ab",
+      "recorded": [
+        "click [free-before]",
+        "fill \"ab\" [free-before]",
+        "press a [free-before]"
+      ],
+      "appEvents": "pointerdown:field mousedown:field pointerup:field mouseup:field click:field:1 keydown:field:a input:field keyup:field:a keydown:field:b input:field keyup:field:b keydown:field:a keyup:field:a",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "ab",
+      "recorded": [
+        "click [gate]",
+        "fill \"ab\" [free-before]",
+        "press a [gate]"
+      ],
+      "appEvents": "pointerdown:field mousedown:field pointerup:field mouseup:field click:field:1 keydown:field:a input:field keyup:field:a keydown:field:b input:field keyup:field:b keydown:field:Control keydown:field:a keyup:field:a keyup:field:Control",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "ab",
+      "recorded": [
+        "click [gate]",
+        "fill \"ab\" [free-before]",
+        "press a [gate]"
+      ],
+      "appEvents": "pointerdown:field mousedown:field pointerup:field mouseup:field click:field:1 keydown:field:a input:field keyup:field:a keydown:field:b input:field keyup:field:b keydown:field:Control keydown:field:a keyup:field:a keyup:field:Control",
+      "dropped": [],
+      "error": null
+    }
+  },
+  "shift+click": {
+    "before": {
+      "state": "1",
+      "recorded": ["click [free-before]"],
+      "appEvents": "pointerdown:plain mousedown:plain pointerup:plain mouseup:plain click:plain:1",
+      "dropped": [],
+      "error": null
+    },
+    "gate-a": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "keydown:BODY:Shift pointerdown:plain mousedown:plain pointerup:plain mouseup:plain click:plain:1 keyup:plain:Shift",
+      "dropped": [],
+      "error": null
+    },
+    "gate-b": {
+      "state": "1",
+      "recorded": ["click [gate]"],
+      "appEvents": "pointerdown:plain mousedown:plain pointerup:plain mouseup:plain keydown:plain:Shift click:plain:1 keyup:plain:Shift",
+      "dropped": [],
+      "error": null
+    }
+  }
+}

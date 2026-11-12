@@ -1,0 +1,1087 @@
+{
+ "mode": "gate-b",
+ "playwright": "1.65.0",
+ "recorderApi": "_startRecording",
+ "settleRule": "after load, no DOM mutation in any frame for 150 ms, deadline 2000 ms",
+ "gateCyclesWithoutRecordedAction": 0,
+ "gateLagsMs": [
+  {
+   "kind": "click",
+   "click": 107.39999997615814,
+   "press": 0
+  },
+  {
+   "kind": "click",
+   "click": 45.10000002384186,
+   "press": 0
+  },
+  {
+   "kind": "click",
+   "click": 99.69999998807907,
+   "press": 0
+  },
+  {
+   "kind": "click",
+   "click": 117.5,
+   "press": 0
+  },
+  {
+   "kind": "click",
+   "click": 115.29999995231628,
+   "press": 0
+  },
+  {
+   "kind": "click",
+   "click": 77.09999996423721,
+   "press": 0
+  }
+ ],
+ "stamp": "none",
+ "traceMarkMs": [
+  31,
+  12,
+  79,
+  17,
+  8,
+  19,
+  6,
+  10,
+  14,
+  5,
+  5,
+  5,
+  4,
+  8,
+  8,
+  10,
+  7,
+  13,
+  11,
+  13,
+  28,
+  14,
+  11,
+  68,
+  7,
+  8,
+  11,
+  8,
+  8,
+  8,
+  7,
+  7,
+  7
+ ]
+}
+
+#0 navigate    [none]
+   code: await page.goto('https://github.com/ayme-labs/ayme');
+
+#1 click  internal:role=link[name="Pull requests  (8)"i]  [gate]
+   code: await page.getByRole('link', { name: 'Pull requests  (8)' }).click();
+   target: in tree ref=e104 (via event snapshot)
+   changed before the interaction (unassigned):
+     - [ref=e2]:
+       - [ref=e65] main:
+         - [ref=e68] "Global navigation menu":
+           - [ref=e81] navigation "Repository":
+             - [ref=e82] list:
+               - [ref=e99] listitem:
+                 - <changed> [ref=e100] link "Pull requests (8)" [active] [cursor=pointer]:
+                   - /url: /ayme-labs/ayme/pulls
+         - [ref=e150]:
+           - [ref=e181]:
+             - [ref=e184]:
+               - [ref=e216]:
+                 - [ref=e217]:
+                   - [ref=e219]:
+                     - <added> [ref=e976]:
+                       - <added> [ref=e977]:
+                         - <added> [ref=e979]:
+                           - <added> [ref=e980] img "enekesabel"
+                           - <added> [ref=e981] img "cursoragent"
+                           - <added> [ref=e982] img "claude"
+                         - <added> [ref=e983] button "Show 3 authors" [cursor=pointer]: 3 people
+                       - <added> [ref=e984]:
+                         - <added> [ref=e987] link "fix(mcp): give served Page Object build failures a location and no ad…" [cursor=pointer]:
+                           - /url: /ayme-labs/ayme/commit/e951220d5cac234556942ef03c9721946acc8c8a
+                         - <added> [ref=e988] button "Open commit details" [cursor=pointer]
+                         - <added> [ref=e991] button "success" [cursor=pointer]
+                     - <added> [ref=e222]:
+                       - <added> [ref=e995]:
+                         - <added> [ref=e996] link "Commit e951220" [cursor=pointer]:
+                           - /url: /ayme-labs/ayme/commit/e951220d5cac234556942ef03c9721946acc8c8a
+                           - text: e951220
+                         - text: ·
+                         - <added> [ref=e997] "Nov 12, 2026, 12:16 PM GMT+1": 4 hours ago
+                   - [ref=e230] table "Folders and files":
+                     - [ref=e231] rowgroup:
+                       - <added> [ref=e998] row:
+                         - <added> [ref=e999] cell:
+                           - <added> [ref=e1001]:
+                             - <added> [ref=e1002] link "feat: publish one Page Object Tool per class (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/5d4f63b27f0ae0b94a1f51e833bbec2b437c35fa
+                             - <added> [ref=e1003] link "#1019" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1019"
+                             - <added> [ref=e1004] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/5d4f63b27f0ae0b94a1f51e833bbec2b437c35fa
+                         - <added> [ref=e1005] cell "2 weeks ago"
+                       - <added> [ref=e1006] row:
+                         - <added> [ref=e1007] cell:
+                           - <added> [ref=e1009]:
+                             - <added> [ref=e1010] link "devex: let any cloud worktree run the start hook's setup (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/fd995bd1a0b237834cfc3d0ffeb6f353f804b650
+                             - <added> [ref=e1011] link "#657" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/657"
+                             - <added> [ref=e1012] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/fd995bd1a0b237834cfc3d0ffeb6f353f804b650
+                         - <added> [ref=e1013] cell "last month"
+                       - <added> [ref=e1014] row:
+                         - <added> [ref=e1015] cell:
+                           - <added> [ref=e1018] link "ci: replace the Inspector's Stryker test runners every 10 mutants so …" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/19e00f043d98fa33166a52551c02f1a36a89cc97
+                         - <added> [ref=e1019] cell "last week"
+                       - <added> [ref=e1020] row:
+                         - <added> [ref=e1021] cell:
+                           - <added> [ref=e1024] link "fix(mcp): give served Page Object build failures a location and no ad…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/e951220d5cac234556942ef03c9721946acc8c8a
+                         - <added> [ref=e1025] cell "4 hours ago"
+                       - <added> [ref=e1026] row:
+                         - <added> [ref=e1027] cell:
+                           - <added> [ref=e1029]:
+                             - <added> [ref=e1030] link "fix(mcp): say why when the served Page Objects never built (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/47838f005f8ec37ac6b39e6fbfbc85e90ab79e3c
+                             - <added> [ref=e1031] link "#1236" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1236"
+                             - <added> [ref=e1032] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/47838f005f8ec37ac6b39e6fbfbc85e90ab79e3c
+                         - <added> [ref=e1033] cell "yesterday"
+                       - <added> [ref=e1034] row:
+                         - <added> [ref=e1035] cell:
+                           - <added> [ref=e1038] link "fix(mcp): give served Page Object build failures a location and no ad…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/e951220d5cac234556942ef03c9721946acc8c8a
+                         - <added> [ref=e1039] cell "4 hours ago"
+                       - <added> [ref=e1040] row:
+                         - <added> [ref=e1041] cell:
+                           - <added> [ref=e1044] link "devex: upgrade Stryker to 10.1.1 and port the Vitest runner patch" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/525ebfcba29bac4163a04cdd8aa4c27cad4f1963
+                         - <added> [ref=e1045] cell "3 weeks ago"
+                       - <added> [ref=e1046] row:
+                         - <added> [ref=e1047] cell:
+                           - <added> [ref=e1050] link "feat(skills): add the ayme-recorder skill and share page object desig…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/860c240de4197bc59ff638cfb3e15a582c64848c
+                         - <added> [ref=e1051] cell "last week"
+                       - <added> [ref=e1052] row:
+                         - <added> [ref=e1053] cell:
+                           - <added> [ref=e1055]:
+                             - <added> [ref=e1056] link "feat(skills): run the newest recorder CLI unless the project pins one (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/c9b4802f4940a34c5e3e13ef250b42d054296ac4
+                             - <added> [ref=e1057] link "…" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1239"
+                         - <added> [ref=e1058] cell "17 hours ago"
+                       - <added> [ref=e1059] row:
+                         - <added> [ref=e1060] cell:
+                           - <added> [ref=e1062]:
+                             - <added> [ref=e1063] link "devex(test-config): put Stryker temp dirs at the repository root (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/0fb64e027ed2d262a6b96f98e46beb91c23f5d9c
+                             - <added> [ref=e1064] link "#1137" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1137"
+                             - <added> [ref=e1065] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/0fb64e027ed2d262a6b96f98e46beb91c23f5d9c
+                         - <added> [ref=e1066] cell "last week"
+                       - <added> [ref=e1067] row:
+                         - <added> [ref=e1068] cell:
+                           - <added> [ref=e1070]:
+                             - <added> [ref=e1071] link "feat: add the Formbricks lab app and agent comparison eval (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/49af516ffd54e3ee8577ab5c6d3786c3d90f3e23
+                             - <added> [ref=e1072] link "#440" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/440"
+                             - <added> [ref=e1073] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/49af516ffd54e3ee8577ab5c6d3786c3d90f3e23
+                         - <added> [ref=e1074] cell "last month"
+                       - <added> [ref=e1075] row:
+                         - <added> [ref=e1076] cell:
+                           - <added> [ref=e1079] link "chore: add formatting and pre-commit hooks" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/39cc0e273b9aae2df26bbc67902ca8f32acfbd57
+                         - <added> [ref=e1080] cell "3 months ago"
+                       - <added> [ref=e1081] row:
+                         - <added> [ref=e1082] cell:
+                           - <added> [ref=e1084]:
+                             - <added> [ref=e1085] link "feat(ayme): one in-page module per document (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b
+                             - <added> [ref=e1086] link "#1169" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/issues/1169"
+                             - <added> [ref=e1087] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b
+                         - <added> [ref=e1088] cell "5 days ago"
+                       - <added> [ref=e1089] row:
+                         - <added> [ref=e1090] cell:
+                           - <added> [ref=e1093] link "chore: add formatting and pre-commit hooks" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/39cc0e273b9aae2df26bbc67902ca8f32acfbd57
+                         - <added> [ref=e1094] cell "3 months ago"
+                       - <added> [ref=e1095] row:
+                         - <added> [ref=e1096] cell:
+                           - <added> [ref=e1098]:
+                             - <added> [ref=e1099] link "chore: release main (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/43a1fb4a280cd11ff515c8e586f005220073f59f
+                             - <added> [ref=e1100] link "#1109" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1109"
+                             - <added> [ref=e1101] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/43a1fb4a280cd11ff515c8e586f005220073f59f
+                         - <added> [ref=e1102] cell "last week"
+                       - <added> [ref=e1103] row:
+                         - <added> [ref=e1104] cell:
+                           - <added> [ref=e1106]:
+                             - <added> [ref=e1107] link "feat(ayme): one in-page module per document (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b
+                             - <added> [ref=e1108] link "#1169" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/issues/1169"
+                             - <added> [ref=e1109] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b
+                         - <added> [ref=e1110] cell "5 days ago"
+                       - <added> [ref=e1111] row:
+                         - <added> [ref=e1112] cell:
+                           - <added> [ref=e1115] link "devex: bring ARCHITECTURE.md in line with the in-page module and serv…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/690c8851f5483812f4b13fb0dd7910903b22a73d
+                         - <added> [ref=e1116] cell "5 hours ago"
+                       - <added> [ref=e1117] row:
+                         - <added> [ref=e1118] cell:
+                           - <added> [ref=e1121] link "devex: bring ARCHITECTURE.md in line with the in-page module and serv…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/690c8851f5483812f4b13fb0dd7910903b22a73d
+                         - <added> [ref=e1122] cell "5 hours ago"
+                       - <added> [ref=e1123] row:
+                         - <added> [ref=e1124] cell:
+                           - <added> [ref=e1126]:
+                             - <added> [ref=e1127] link "fix(core): accept Playwright's frame-prefixed refs in the ref grammar (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/f7dfd8240f7204918a9354d79bab063799c5d0d3
+                             - <added> [ref=e1128] link "…" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1251"
+                         - <added> [ref=e1129] cell "5 hours ago"
+                       - <added> [ref=e1130] row:
+                         - <added> [ref=e1131] cell:
+                           - <added> [ref=e1134] link "chore: relicense under FSL-1.1-ALv2" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/af9b6295b9a058f23234792981bb19b05f0be06c
+                         - <added> [ref=e1135] cell "2 months ago"
+                       - <added> [ref=e1136] row:
+                         - <added> [ref=e1137] cell:
+                           - <added> [ref=e1140] link "devex(lab-formbricks): repin a working overlay and publish the ten-ru…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/82f0fe053916826ad1189097e3f742e9efbb679f
+                         - <added> [ref=e1141] cell "3 weeks ago"
+                       - <added> [ref=e1142] row:
+                         - <added> [ref=e1143] cell:
+                           - <added> [ref=e1146] link "devex: clarify commit types for test tooling dependencies" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/276700815f7fc0cc17e127e5fb82c6dae5a82a7a
+                         - <added> [ref=e1147] cell "3 weeks ago"
+                       - <added> [ref=e1148] row:
+                         - <added> [ref=e1149] cell:
+                           - <added> [ref=e1151]:
+                             - <added> [ref=e1152] link "build: run Node 24.21 in the Devbox environment (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/61abdc417dd83c734017ae7ccefede5cbb03a108
+                             - <added> [ref=e1153] link "#298" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/298"
+                             - <added> [ref=e1154] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/61abdc417dd83c734017ae7ccefede5cbb03a108
+                         - <added> [ref=e1155] cell "last month"
+                       - <added> [ref=e1156] row:
+                         - <added> [ref=e1157] cell:
+                           - <added> [ref=e1159]:
+                             - <added> [ref=e1160] link "build: run Node 24.21 in the Devbox environment (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/61abdc417dd83c734017ae7ccefede5cbb03a108
+                             - <added> [ref=e1161] link "#298" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/298"
+                             - <added> [ref=e1162] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/61abdc417dd83c734017ae7ccefede5cbb03a108
+                         - <added> [ref=e1163] cell "last month"
+                       - <added> [ref=e1164] row:
+                         - <added> [ref=e1165] cell:
+                           - <added> [ref=e1167]:
+                             - <added> [ref=e1168] link "devex: cap the pre-commit test job at half the cores (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/303c657b36382d2cd547bc2b0212d2f91d71a372
+                             - <added> [ref=e1169] link "#745" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/745"
+                             - <added> [ref=e1170] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/303c657b36382d2cd547bc2b0212d2f91d71a372
+                         - <added> [ref=e1171] cell "last month"
+                       - <added> [ref=e1172] row:
+                         - <added> [ref=e1173] cell:
+                           - <added> [ref=e1176] link "feat(skills): add the ayme-recorder skill and share page object desig…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/860c240de4197bc59ff638cfb3e15a582c64848c
+                         - <added> [ref=e1177] cell "last week"
+                       - <added> [ref=e1178] row:
+                         - <added> [ref=e1179] cell:
+                           - <added> [ref=e1182] link "refactor: state the supported Playwright range once, in playwright-ra…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/045ac823e077f89a3a11a0257125c00d1c7319c4
+                         - <added> [ref=e1183] cell "last month"
+                       - <added> [ref=e1184] row:
+                         - <added> [ref=e1185] cell:
+                           - <added> [ref=e1188] link "feat(mcp): serve .ayme/page-objects.ts to a page that doesn't ship Ay…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/76ef1f7f93b9f2fd78820219f7b93160106ec1f0
+                         - <added> [ref=e1189] cell "4 days ago"
+                       - <added> [ref=e1190] row:
+                         - <added> [ref=e1191] cell:
+                           - <added> [ref=e1194] link "fix(ayme): pin the playwright-lite fork synced to Playwright Lite 0.9…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/c9cfa6f8d8ca983d4901af232c9d1193d1c52b9a
+                         - <added> [ref=e1195] cell "2 weeks ago"
+                       - <added> [ref=e1196] row:
+                         - <added> [ref=e1197] cell:
+                           - <added> [ref=e1199]:
+                             - <added> [ref=e1200] link "ci: bump the patch for features below 1.0.0 (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/798042cb5ae8c358be2dee20da9f5ae56f0336ee
+                             - <added> [ref=e1201] link "#1166" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/1166"
+                             - <added> [ref=e1202] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/798042cb5ae8c358be2dee20da9f5ae56f0336ee
+                         - <added> [ref=e1203] cell "last week"
+                       - <added> [ref=e1204] row:
+                         - <added> [ref=e1205] cell:
+                           - <added> [ref=e1207]:
+                             - <added> [ref=e1208] link "devex: keep dependencies current with Renovate (" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/b34e2309061cba32fd8e5f6fa6feb15badc8664b
+                             - <added> [ref=e1209] link "#455" [cursor=pointer]:
+                               - /url: "https://github.com/ayme-labs/ayme/pull/455"
+                             - <added> [ref=e1210] link ")" [cursor=pointer]:
+                               - /url: /ayme-labs/ayme/commit/b34e2309061cba32fd8e5f6fa6feb15badc8664b
+                         - <added> [ref=e1211] cell "last month"
+                       - <added> [ref=e1212] row:
+                         - <added> [ref=e1213] cell:
+                           - <added> [ref=e1216] link "refactor: state the supported Playwright range once, in playwright-ra…" [cursor=pointer]:
+                             - /url: /ayme-labs/ayme/commit/045ac823e077f89a3a11a0257125c00d1c7319c4
+                         - <added> [ref=e1217] cell "last month"
+                       - <removed> [ref=e232] row:
+                         - <removed> [ref=e241] cell
+                         - <removed> [ref=e243] cell
+                       - <removed> [ref=e246] row:
+                         - <removed> [ref=e255] cell
+                         - <removed> [ref=e257] cell
+                       - <removed> [ref=e260] row:
+                         - <removed> [ref=e269] cell
+                         - <removed> [ref=e271] cell
+                       - <removed> [ref=e274] row:
+                         - <removed> [ref=e283] cell
+                         - <removed> [ref=e285] cell
+                       - <removed> [ref=e288] row:
+                         - <removed> [ref=e297] cell
+                         - <removed> [ref=e299] cell
+                       - <removed> [ref=e302] row:
+                         - <removed> [ref=e311] cell
+                         - <removed> [ref=e313] cell
+                       - <removed> [ref=e316] row:
+                         - <removed> [ref=e325] cell
+                         - <removed> [ref=e327] cell
+                       - <removed> [ref=e330] row:
+                         - <removed> [ref=e339] cell
+                         - <removed> [ref=e341] cell
+                       - <removed> [ref=e344] row:
+                         - <removed> [ref=e353] cell
+                         - <removed> [ref=e355] cell
+                       - <removed> [ref=e358] row:
+                         - <removed> [ref=e367] cell
+                         - <removed> [ref=e369] cell
+                       - <removed> [ref=e372] row:
+                         - <removed> [ref=e381] cell
+                         - <removed> [ref=e383] cell
+                       - <removed> [ref=e386] row:
+                         - <removed> [ref=e395] cell
+                         - <removed> [ref=e397] cell
+                       - <removed> [ref=e400] row:
+                         - <removed> [ref=e409] cell
+                         - <removed> [ref=e411] cell
+                       - <removed> [ref=e414] row:
+                         - <removed> [ref=e423] cell
+                         - <removed> [ref=e425] cell
+                       - <removed> [ref=e428] row:
+                         - <removed> [ref=e437] cell
+                         - <removed> [ref=e439] cell
+                       - <removed> [ref=e442] row:
+                         - <removed> [ref=e451] cell
+                         - <removed> [ref=e453] cell
+                       - <removed> [ref=e456] row:
+                         - <removed> [ref=e465] cell
+                         - <removed> [ref=e467] cell
+                       - <removed> [ref=e470] row:
+                         - <removed> [ref=e479] cell
+                         - <removed> [ref=e481] cell
+                       - <removed> [ref=e484] row:
+                         - <removed> [ref=e493] cell
+                         - <removed> [ref=e495] cell
+                       - <removed> [ref=e498] row:
+                         - <removed> [ref=e507] cell
+                         - <removed> [ref=e509] cell
+                       - <removed> [ref=e512] row:
+                         - <removed> [ref=e521] cell
+                         - <removed> [ref=e523] cell
+                       - <removed> [ref=e526] row:
+                         - <removed> [ref=e535] cell
+                         - <removed> [ref=e537] cell
+                       - <removed> [ref=e540] row:
+                         - <removed> [ref=e549] cell
+                         - <removed> [ref=e551] cell
+                       - <removed> [ref=e554] row:
+                         - <removed> [ref=e563] cell
+                         - <removed> [ref=e565] cell
+                       - <removed> [ref=e568] row:
+                         - <removed> [ref=e577] cell
+                         - <removed> [ref=e579] cell
+                       - <removed> [ref=e582] row:
+                         - <removed> [ref=e591] cell
+                         - <removed> [ref=e593] cell
+                       - <removed> [ref=e596] row:
+                         - <removed> [ref=e605] cell
+                         - <removed> [ref=e607] cell
+                       - <removed> [ref=e610] row:
+                         - <removed> [ref=e619] cell
+                         - <removed> [ref=e621] cell
+                       - <removed> [ref=e624] row:
+                         - <removed> [ref=e633] cell
+                         - <removed> [ref=e635] cell
+                       - <removed> [ref=e638] row:
+                         - <removed> [ref=e647] cell
+                         - <removed> [ref=e649] cell
+                       - <removed> [ref=e652] row:
+                         - <removed> [ref=e661] cell
+                         - <removed> [ref=e663] cell
+                       - <removed> [ref=e666] row:
+                         - <removed> [ref=e675] cell
+                         - <removed> [ref=e677] cell
+             - [ref=e884]:
+               - <added> [ref=e1218]:
+                 - <added> [ref=e1219] heading "Releases (27)" [level=2]:
+                   - <added> [ref=e1220]:
+                     - <added> [ref=e1221] link "Releases" [cursor=pointer]:
+                       - /url: /ayme-labs/ayme/releases
+                     - <added> [ref=e1222]: 27
+                     - <added> [ref=e1223]: (27)
+                 - <added> [ref=e1224] link "webmcp: v0.2.0 Latest last week" [cursor=pointer]:
+                   - /url: /ayme-labs/ayme/releases/tag/webmcp-v0.2.0
+                   - <added> [ref=e1228]:
+                     - <added> [ref=e1229]:
+                       - <added> [ref=e1230] "webmcp: v0.2.0"
+                       - <added> [ref=e1231]: Latest
+                     - <added> [ref=e1232]: last week
+                 - <added> [ref=e1234] link "+ 26 releases" [cursor=pointer]:
+                   - /url: /ayme-labs/ayme/releases
+               - <added> [ref=e1235]:
+                 - <added> [ref=e1236] heading "Contributors (5)" [level=2]:
+                   - <added> [ref=e1237]:
+                     - <added> [ref=e1238] link "Contributors" [cursor=pointer]:
+                       - /url: /ayme-labs/ayme/graphs/contributors
+                     - <added> [ref=e1239]: 5
+                     - <added> [ref=e1240]: (5)
+                 - <added> [ref=e1241] list:
+                   - <added> [ref=e1242] listitem:
+                     - <added> [ref=e1243] link [cursor=pointer]:
+                       - /url: /enekesabel
+                       - <added> [ref=e1244] img "@enekesabel"
+                   - <added> [ref=e1245] listitem:
+                     - <added> [ref=e1246] link [cursor=pointer]:
+                       - /url: /claude
+                       - <added> [ref=e1247] img "@claude"
+                   - <added> [ref=e1248] listitem:
+                     - <added> [ref=e1249] link [cursor=pointer]:
+                       - /url: "/github-actions[bot]"
+                       - <added> [ref=e1250] img "@github-actions[bot]"
+                   - <added> [ref=e1251] listitem:
+                     - <added> [ref=e1252] link [cursor=pointer]:
+                       - /url: /cursoragent
+                       - <added> [ref=e1253] img "@cursoragent"
+                   - <added> [ref=e1254] listitem:
+                     - <added> [ref=e1255] link [cursor=pointer]:
+                       - /url: "/coderabbitai[bot]"
+                       - <added> [ref=e1256] img "@coderabbitai[bot]"
+               - <added> [ref=e1257]:
+                 - <added> [ref=e1258] heading "Languages" [level=2]
+                 - <added> [ref=e1260]:
+                   - <added> [ref=e1261] progressbar "TypeScript: 93.9%"
+                   - <added> [ref=e1262] progressbar "JavaScript: 2.5%"
+                   - <added> [ref=e1263] progressbar "HTML: 1.6%"
+                   - <added> [ref=e1264] progressbar "Vue: 1.3%"
+                   - <added> [ref=e1265] progressbar "CSS: 0.4%"
+                   - <added> [ref=e1266] progressbar "Shell: 0.2%"
+                   - <added> [ref=e1267] progressbar "Svelte: 0.1%"
+                 - <added> [ref=e1268] list:
+                   - <added> [ref=e1269] listitem:
+                     - <added> [ref=e1270] link "TypeScript 93.9%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=typescript"
+                       - <added> [ref=e1272]: TypeScript
+                       - <added> [ref=e1273]: "93.9%"
+                   - <added> [ref=e1274] listitem:
+                     - <added> [ref=e1275] link "JavaScript 2.5%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=javascript"
+                       - <added> [ref=e1277]: JavaScript
+                       - <added> [ref=e1278]: "2.5%"
+                   - <added> [ref=e1279] listitem:
+                     - <added> [ref=e1280] link "HTML 1.6%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=html"
+                       - <added> [ref=e1282]: HTML
+                       - <added> [ref=e1283]: "1.6%"
+                   - <added> [ref=e1284] listitem:
+                     - <added> [ref=e1285] link "Vue 1.3%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=vue"
+                       - <added> [ref=e1287]: Vue
+                       - <added> [ref=e1288]: "1.3%"
+                   - <added> [ref=e1289] listitem:
+                     - <added> [ref=e1290] link "CSS 0.4%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=css"
+                       - <added> [ref=e1292]: CSS
+                       - <added> [ref=e1293]: "0.4%"
+                   - <added> [ref=e1294] listitem:
+                     - <added> [ref=e1295] link "Shell 0.2%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=shell"
+                       - <added> [ref=e1297]: Shell
+                       - <added> [ref=e1298]: "0.2%"
+                   - <added> [ref=e1299] listitem:
+                     - <added> [ref=e1300] link "Svelte 0.1%" [cursor=pointer]:
+                       - /url: "/ayme-labs/ayme/search?l=svelte"
+                       - <added> [ref=e1302]: Svelte
+                       - <added> [ref=e1303]: "0.1%"
+               - <removed> [ref=e930] heading "Releases" [level=2]
+               - <removed> [ref=e934] heading "Packages" [level=2]
+               - <removed> [ref=e937] heading "Contributors" [level=2]
+               - <removed> [ref=e940] heading "Languages" [level=2]
+   Change Tree:
+     - [ref=e2]:
+       - [ref=e65] main:
+         - [ref=e68] "Global navigation menu":
+           - [ref=e81] navigation "Repository":
+             - [ref=e82] list:
+               - [ref=e99] listitem:
+                 - [ref=e100] link "Pull requests (8)" [active] [cursor=pointer]:
+                   - /url: /ayme-labs/ayme/pulls
+                   - <target> [ref=e104]: Pull requests
+
+#2 navigate    [none]
+   code: await page.goto('https://github.com/ayme-labs/ayme/pulls');
+
+#3 assertVisible  internal:role=link[name="chore: release main"i]  [free-before]
+   code: await expect(page.getByRole('link', { name: 'chore: release main' })).toBeVisible();
+   target: in tree ref=e1483 (via ancestor walk)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - <added> [ref=e1]:
+       - <changed> [ref=e2] [cursor=pointer]:
+         - <added> [ref=s_93]:
+           - <added> [ref=s_94]:
+             - <added> [ref=s_95] tooltip "Draft pull request"
+           - <added> [ref=s_96]:
+             - <added> [ref=s_97] tooltip "This user has previously committed to the ayme repository."
+           - <added> [ref=s_98]:
+             - <added> [ref=s_99] tooltip "Open pull request"
+           - <added> [ref=s_100]:
+             - <added> [ref=s_101] tooltip "This user has previously committed to the ayme repository."
+           - <added> [ref=s_102]:
+             - <added> [ref=s_103] tooltip "Open pull request"
+           - <added> [ref=s_104]:
+             - <added> [ref=s_105] tooltip "Draft pull request"
+           - <added> [ref=s_106]:
+             - <added> [ref=s_107] tooltip "This user has previously committed to the ayme repository."
+           - <added> [ref=s_108]:
+             - <added> [ref=s_109] tooltip "Draft pull request"
+           - <added> [ref=s_110]:
+             - <added> [ref=s_111] tooltip "This user has previously committed to the ayme repository."
+           - <added> [ref=s_112]:
+             - <added> [ref=s_113] tooltip "Draft pull request"
+           - <added> [ref=s_114]:
+             - <added> [ref=s_115] tooltip "This user has previously committed to the ayme repository."
+           - <added> [ref=s_116]:
+             - <added> [ref=s_117] tooltip "Draft pull request"
+           - <added> [ref=s_118]:
+             - <added> [ref=s_119] tooltip "This user has previously committed to the ayme repository."
+           - <added> [ref=s_120]:
+             - <added> [ref=s_121] tooltip "Draft pull request"
+           - <added> [ref=s_122]:
+             - <added> [ref=s_123] tooltip "This user has previously committed to the ayme repository."
+         - [ref=e3]:
+           - <changed> [ref=e4] link "Skip to content":
+             - /url: "#start-of-content"
+           - [ref=e9] banner:
+             - [ref=e11]:
+               - <changed> [ref=e14] link "Homepage":
+                 - /url: /
+               - [ref=e17]:
+                 - [ref=e18] navigation "Global":
+                   - [ref=e19] list:
+                     - [ref=e20] listitem:
+                       - <changed> [ref=e22] button "Products"
+                     - [ref=e25] listitem:
+                       - <changed> [ref=e27] button "Developers"
+                     - [ref=e30] listitem:
+                       - <changed> [ref=e32] button "Businesses"
+                     - [ref=e35] listitem:
+                       - <changed> [ref=e37] button "Resources"
+                     - [ref=e40] listitem:
+                       - <changed> [ref=e41] link "Pricing":
+                         - /url: "https://github.com/pricing"
+                 - [ref=e42]:
+                   - <changed> [ref=e44] button "Search or jump to, type / to search"
+                   - [ref=e50]:
+                     - <changed> [ref=e52] link "Sign in":
+                       - /url: "/login?return_to=https%3A%2F%2Fgithub.com%2Fayme-labs%2Fayme"
+                     - <changed> [ref=e55] link "Sign up":
+                       - /url: "/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E&source=header-repo&source_repo=ayme-labs%2Fayme"
+                     - <changed> [ref=e58] button "Appearance settings"
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e73] listitem:
+                   - <changed> [ref=e74] link "ayme-labs":
+                     - /url: /ayme-labs
+                 - [ref=e76] listitem:
+                   - <changed> [ref=e77] link "ayme":
+                     - /url: /ayme-labs/ayme
+             - [ref=e81] navigation "Repository":
+               - [ref=e82] list:
+                 - [ref=e83] listitem:
+                   - <changed> [ref=e84] link "Code":
+                     - /url: /ayme-labs/ayme
+                 - [ref=e89] listitem:
+                   - <changed> [ref=e90] link "Issues (190)":
+                     - /url: /ayme-labs/ayme/issues
+                 - [ref=e99] listitem:
+                   - <changed> [ref=e100] link "Pull requests (8)" [active]:
+                     - /url: /ayme-labs/ayme/pulls
+                 - [ref=e108] listitem:
+                   - <changed> [ref=e109] link "Discussions":
+                     - /url: /ayme-labs/ayme/discussions
+                 - [ref=e114] listitem:
+                   - <changed> [ref=e115] link "Actions":
+                     - /url: /ayme-labs/ayme/actions
+                 - [ref=e120] listitem:
+                   - <changed> [ref=e121] link "Projects":
+                     - /url: /ayme-labs/ayme/projects
+                 - [ref=e126] listitem:
+                   - <changed> [ref=e127] link "Security and quality":
+                     - /url: /ayme-labs/ayme/security
+                 - [ref=e132] listitem:
+                   - <changed> [ref=e133] link "Insights":
+                     - /url: /ayme-labs/ayme/pulse
+           - [ref=e1309]:
+             - [ref=e1313]:
+               - [ref=e1314]:
+                 - [ref=e1321]:
+                   - <changed> [ref=e1322] link "Labels (25)":
+                     - /url: /ayme-labs/ayme/labels
+                   - <changed> [ref=e1327] link "Milestones (0)":
+                     - /url: /ayme-labs/ayme/milestones
+                   - <changed> [ref=e1332] link "New pull request":
+                     - /url: /ayme-labs/ayme/compare
+               - [ref=e1335] search "Pull requests":
+                 - [ref=e1336] form "Search pull requests":
+                   - [ref=e1339]:
+                     - [ref=e1340]:
+                       - <changed> [ref=e1350] button "Clear filter"
+                     - <changed> [ref=e1353] button "Search"
+             - [ref=e1362]:
+               - [ref=e1364]:
+                 - [ref=e1365]:
+                   - <changed> [ref=e1366] link "Open (8)":
+                     - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen"
+                   - <changed> [ref=e1370] link "Closed (554)":
+                     - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aclosed"
+                 - [ref=e1374]:
+                   - [ref=e1376] toolbar "Pull request filters":
+                     - [ref=e1377]:
+                       - <changed> [ref=e1378] button "Filter by author"
+                       - <changed> [ref=e1381] button "Filter by label"
+                       - <changed> [ref=e1384] button "Filter by projects"
+                       - <changed> [ref=e1387] button "Filter by milestones"
+                       - <changed> [ref=e1390] button "Filter by reviews"
+                       - <changed> [ref=e1393] button "Filter by assignee"
+                       - <changed> [ref=e1396] button "Sort by Newest descending"
+                   - [ref=e1402] list "Pull requests display density":
+                     - [ref=e1403] listitem:
+                       - <changed> [ref=e1404] button "Comfortable display density" [pressed]
+                     - [ref=e1408] listitem:
+                       - <changed> [ref=e1409] button "Compact display density"
+               - [ref=e1413] list "Pull requests":
+                 - <added> [ref=e1692] listitem "feat: Ayme adds Page Object Tools to the browser automation a developer already uses. More information available below.":
+                   - [ref=e1416] heading [level=3]:
+                     - <changed> [ref=e1417] link "feat: Ayme adds Page Object Tools to the browser automation a developer already uses":
+                       - /url: "https://github.com/ayme-labs/ayme/pull/1265"
+                   - [ref=e1429]:
+                     - <changed> [ref=e1432]:
+                       - text: ·
+                       - <changed> [ref=e1433] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened 1 hour ago
+                     - <added> [ref=e1693]:
+                       - <added> [ref=e1694]: ·
+                       - <added> [ref=e1695] button "14/14 checks passing":
+                         - <added> [ref=e1696]: 14/14
+                     - <removed> [ref=e1437]: ·
+                     - <removed> [ref=e1440]: ·
+                 - <added> [ref=e1698] listitem "docs: show structure, page state and the exact call across the guide and skills. More information available below.":
+                   - [ref=e1448] heading [level=3]:
+                     - <changed> [ref=e1449] link "docs: show structure, page state and the exact call across the guide and skills":
+                       - /url: "https://github.com/ayme-labs/ayme/pull/1229"
+                   - [ref=e1461]:
+                     - <changed> [ref=e1464]:
+                       - text: ·
+                       - <changed> [ref=e1465] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened 4 days ago
+                     - <added> [ref=e1699]:
+                       - <added> [ref=e1700]: ·
+                       - <added> [ref=e1701] button "22/22 checks passing":
+                         - <added> [ref=e1702]: 22/22
+                     - <removed> [ref=e1469]: ·
+                     - <removed> [ref=e1472]: ·
+                   - [ref=e1474]:
+                     - <changed> [ref=e1479] button "Filter by assignee enekesabel"
+                 - <added> [ref=e1704] listitem "chore: release main. More information available below.":
+                   - [ref=e1481]:
+                     - [ref=e1482] heading [level=3]:
+                       - <target> <changed> [ref=e1483] link "chore: release main":
+                         - /url: "https://github.com/ayme-labs/ayme/pull/1168"
+                     - <changed> [ref=e1487] button "Filter by label autorelease: pending"
+                   - [ref=e1499]:
+                     - <changed> [ref=e1502]:
+                       - text: ·
+                       - <changed> [ref=e1503] link "Filter by author github-actions[bot]":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Agithub-actions%5Bbot%5D"
+                         - text: "github-actions[bot]"
+                       - text: opened last week
+                     - <added> [ref=e1705]:
+                       - <added> [ref=e1706]: ·
+                       - <added> [ref=e1707] button "1/1 checks passing":
+                         - <added> [ref=e1708]: 1/1
+                     - <removed> [ref=e1507]: ·
+                     - <removed> [ref=e1510]: ·
+                 - <added> [ref=e1710] listitem "devex: preserve Radix submenu investigation. More information available below.":
+                   - [ref=e1524] heading [level=3]:
+                     - <changed> [ref=e1525] link "devex: preserve Radix submenu investigation":
+                       - /url: "https://github.com/ayme-labs/ayme/pull/1070"
+                   - [ref=e1537]:
+                     - <changed> [ref=e1540]:
+                       - text: ·
+                       - <changed> [ref=e1541] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened 2 weeks ago
+                     - <added> [ref=e1711]:
+                       - <added> [ref=e1712]: ·
+                       - <added> [ref=e1713] button "13/13 checks passing":
+                         - <added> [ref=e1714]: 13/13
+                     - <removed> [ref=e1545]: ·
+                     - <removed> [ref=e1548]: ·
+                 - <added> [ref=e1716] listitem "devex: preserve dispatched click timeout investigation. More information available below.":
+                   - [ref=e1556] heading [level=3]:
+                     - <changed> [ref=e1557] link "devex: preserve dispatched click timeout investigation":
+                       - /url: "https://github.com/ayme-labs/ayme/pull/1069"
+                   - [ref=e1569]:
+                     - <changed> [ref=e1572]:
+                       - text: ·
+                       - <changed> [ref=e1573] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened 2 weeks ago
+                     - <added> [ref=e1717]:
+                       - <added> [ref=e1718]: ·
+                       - <added> [ref=e1719] button "13/13 checks passing":
+                         - <added> [ref=e1720]: 13/13
+                     - <removed> [ref=e1577]: ·
+                     - <removed> [ref=e1580]: ·
+                 - <added> [ref=e1722] listitem "devex: preserve collection selector cost investigation. More information available below.":
+                   - [ref=e1588] heading [level=3]:
+                     - <changed> [ref=e1589] link "devex: preserve collection selector cost investigation":
+                       - /url: "https://github.com/ayme-labs/ayme/pull/1068"
+                   - [ref=e1601]:
+                     - <changed> [ref=e1604]:
+                       - text: ·
+                       - <changed> [ref=e1605] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened 2 weeks ago
+                     - <added> [ref=e1723]:
+                       - <added> [ref=e1724]: ·
+                       - <added> [ref=e1725] button "13/13 checks passing":
+                         - <added> [ref=e1726]: 13/13
+                     - <removed> [ref=e1609]: ·
+                     - <removed> [ref=e1612]: ·
+                 - <added> [ref=e1728] listitem "feat(inspector-fixture): prototype the e2e package with Inspector flows as its test bed. More information available below.":
+                   - [ref=e1619]:
+                     - [ref=e1620] heading [level=3]:
+                       - <changed> [ref=e1621] link "feat(inspector-fixture): prototype the e2e package with Inspector flows as its test bed":
+                         - /url: "https://github.com/ayme-labs/ayme/pull/537"
+                     - <changed> [ref=e1625] button "Filter by label experiment"
+                   - [ref=e1637]:
+                     - <changed> [ref=e1640]:
+                       - text: ·
+                       - <changed> [ref=e1641] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened on Oct 7
+                     - <added> [ref=e1729]:
+                       - <added> [ref=e1730]: ·
+                       - <added> [ref=e1731] button "13/13 checks passing":
+                         - <added> [ref=e1732]: 13/13
+                     - <removed> [ref=e1645]: ·
+                     - <removed> [ref=e1648]: ·
+                 - <added> [ref=e1734] listitem "chore: add Codex interaction measurement runner. More information available below.":
+                   - [ref=e1655]:
+                     - [ref=e1656] heading [level=3]:
+                       - <changed> [ref=e1657] link "chore: add Codex interaction measurement runner":
+                         - /url: "https://github.com/ayme-labs/ayme/pull/53"
+                     - <changed> [ref=e1661] button "Filter by label experiment"
+                   - [ref=e1673]:
+                     - <changed> [ref=e1676]:
+                       - text: ·
+                       - <changed> [ref=e1677] link "Filter by author enekesabel":
+                         - /url: "/ayme-labs/ayme/pulls?q=is%3Apr+state%3Aopen+author%3Aenekesabel"
+                         - text: enekesabel
+                       - text: opened on Sep 9
+                     - <added> [ref=e1735]:
+                       - <added> [ref=e1736]: ·
+                       - <added> [ref=e1737] button "4/4 checks passing":
+                         - <added> [ref=e1738]: 4/4
+                     - <removed> [ref=e1681]: ·
+                     - <removed> [ref=e1684]: ·
+                   - [ref=e1686]:
+                     - <changed> [ref=e1691] button "Filter by assignee enekesabel"
+                 - <removed> [ref=e1414] listitem "More information available below."
+                 - <removed> [ref=e1446] listitem "More information available below."
+                 - <removed> [ref=e1480] listitem "More information available below."
+                 - <removed> [ref=e1522] listitem "More information available below."
+                 - <removed> [ref=e1554] listitem "More information available below."
+                 - <removed> [ref=e1586] listitem "More information available below."
+                 - <removed> [ref=e1618] listitem "More information available below."
+                 - <removed> [ref=e1654] listitem "More information available below."
+         - [ref=e943] contentinfo:
+           - [ref=e945]:
+             - [ref=e946]:
+               - <changed> [ref=e947] link "GitHub Homepage":
+                 - /url: "https://github.com"
+             - [ref=e951] navigation "Footer":
+               - [ref=e953] list "Footer navigation":
+                 - [ref=e954] listitem:
+                   - <changed> [ref=e955] link "Terms":
+                     - /url: "https://docs.github.com/site-policy/github-terms/github-terms-of-service"
+                 - [ref=e956] listitem:
+                   - <changed> [ref=e957] link "Privacy":
+                     - /url: "https://docs.github.com/site-policy/privacy-policies/github-privacy-statement"
+                 - [ref=e958] listitem:
+                   - <changed> [ref=e959] link "Security":
+                     - /url: "https://github.com/security"
+                 - [ref=e960] listitem:
+                   - <changed> [ref=e961] link "Status":
+                     - /url: "https://www.githubstatus.com/"
+                 - [ref=e962] listitem:
+                   - <changed> [ref=e963] link "Community":
+                     - /url: "https://github.community/"
+                 - [ref=e964] listitem:
+                   - <changed> [ref=e965] link "Docs":
+                     - /url: "https://docs.github.com/"
+                 - [ref=e966] listitem:
+                   - <changed> [ref=e967] link "Contact":
+                     - /url: "https://support.github.com?tags=dotcom-footer"
+                 - [ref=e968] listitem:
+                   - <changed> [ref=e970] button "Manage cookies"
+                 - [ref=e971] listitem:
+                   - <changed> [ref=e973] button "Do not share my personal information"
+       - <added> [ref=e974] [cursor=pointer]
+       - <added> [ref=e975] [cursor=pointer]
+
+#4 click  internal:role=link[name="ayme"s]  [gate]
+   code: await page.getByRole('link', { name: 'ayme', exact: true }).click();
+   target: NOT in tree, marked on nearest ancestor ref=e77 (via event snapshot, nearest ancestor at the moment of the action)
+   changed before the interaction (unassigned):
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e76] listitem:
+                   - <changed> [ref=e77] link "ayme" [active]:
+                     - /url: /ayme-labs/ayme
+             - [ref=e81] navigation "Repository":
+               - [ref=e82] list:
+                 - [ref=e99] listitem:
+                   - <changed> [ref=e100] link "Pull requests (8)":
+                     - /url: /ayme-labs/ayme/pulls
+   Change Tree:
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e76] listitem:
+                   - <target-inside> [ref=e77] link "ayme" [active]:
+                     - /url: /ayme-labs/ayme
+
+#5 click  internal:role=link[name="Releases"s]  [gate]
+   code: await page.getByRole('link', { name: 'Releases', exact: true }).click();
+   target: NOT in tree, marked on nearest ancestor ref=e2613 (via event snapshot, nearest ancestor at the moment of the action)
+   changed before the interaction (unassigned):
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e76] listitem:
+                   - <changed> [ref=e77] link "ayme":
+                     - /url: /ayme-labs/ayme
+           - [ref=e1750]:
+             - [ref=e1781]:
+               - [ref=e2565]:
+                 - [ref=e2610]:
+                   - [ref=e2611] heading "Releases (27)" [level=2]:
+                     - [ref=e2612]:
+                       - <changed> [ref=e2613] link "Releases" [active]:
+                         - /url: /ayme-labs/ayme/releases
+   Change Tree:
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e1750]:
+             - [ref=e1781]:
+               - [ref=e2565]:
+                 - [ref=e2610]:
+                   - [ref=e2611] heading "Releases (27)" [level=2]:
+                     - [ref=e2612]:
+                       - <target-inside> [ref=e2613] link "Releases" [active]:
+                         - /url: /ayme-labs/ayme/releases
+
+#6 assertVisible  internal:role=region[name="Releases results"i] >> internal:role=link[name="webmcp: v0.2.0"i]  [free-before]
+   code: await expect(page.getByRole('region', { name: 'Releases results' }).getByRole('link', { name: 'webmcp: v0.2.0' })).toBeVisible();
+   target: in tree ref=e2798 (via ancestor walk)
+   changed before the interaction (unassigned):
+     (nothing)
+   Change Tree:
+     - [ref=e1] [active]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e2700]:
+             - [ref=e2768]:
+               - [ref=e2785] region "Releases results":
+                 - [ref=e2787]:
+                   - [ref=e2788] region "webmcp: v0.2.0":
+                     - [ref=e2792]:
+                       - [ref=e2793]:
+                         - [ref=e2794]:
+                           - [ref=e2796]:
+                             - <target> [ref=e2798] link "webmcp: v0.2.0":
+                               - /url: /ayme-labs/ayme/releases/tag/webmcp-v0.2.0
+
+#7 click  internal:role=link[name="ayme"s]  [gate]
+   code: await page.getByRole('link', { name: 'ayme', exact: true }).click();
+   navigated to: https://github.com/ayme-labs/ayme
+   target: NOT in tree, marked on nearest ancestor ref=e77 (via event snapshot, nearest ancestor at the moment of the action)
+   changed before the interaction (unassigned):
+     - <changed> [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e76] listitem:
+                   - <changed> [ref=e77] link "ayme" [active]:
+                     - /url: /ayme-labs/ayme
+   Change Tree:
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e76] listitem:
+                   - <target-inside> [ref=e77] link "ayme" [active]:
+                     - /url: /ayme-labs/ayme
+
+#8 click  internal:role=button[name="Code"s]  [gate]
+   code: await page.getByRole('button', { name: 'Code', exact: true }).click();
+   target: NOT in tree, marked on nearest ancestor ref=e3457 (via event snapshot, nearest ancestor at the moment of the action)
+   changed before the interaction (unassigned):
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e65] main:
+           - [ref=e68] "Global navigation menu":
+             - [ref=e71] navigation "Breadcrumbs":
+               - [ref=e72] list:
+                 - [ref=e76] listitem:
+                   - <changed> [ref=e77] link "ayme":
+                     - /url: /ayme-labs/ayme
+           - [ref=e3394]:
+             - [ref=e3425]:
+               - [ref=e3428]:
+                 - [ref=e3429]:
+                   - [ref=e3448]:
+                     - <changed> [ref=e3457] button "Code" [active]
+   Change Tree:
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - <added> [ref=e4343]:
+           - <added> [ref=e4344]:
+             - <added> [ref=e4345]:
+               - <added> [ref=e4348] paragraph: Clone
+               - <added> [ref=e4349] link "Which remote URL should I use?" [active]:
+                 - /url: "https://docs.github.com/articles/which-remote-url-should-i-use"
+             - <added> [ref=e4352] list "Remote URL selector":
+               - <added> [ref=e4353] listitem:
+                 - <added> [ref=e4354] button "Clone with HTTPS" [pressed]:
+                   - <added> [ref=e4355]: HTTPS
+               - <added> [ref=e4357] listitem:
+                 - <added> [ref=e4358] button "Clone with GitHub CLI":
+                   - <added> [ref=e4359]: GitHub CLI
+             - <added> [ref=e4361]:
+               - <added> [ref=e4362]: Clone with HTTPS url
+               - <added> [ref=e4363] textbox "Clone with HTTPS url": "https://github.com/ayme-labs/ayme.git"
+               - <added> [ref=e4364] button "Copy URL to clipboard"
+             - <added> [ref=e4368] paragraph: Clone using the web URL.
+           - <added> [ref=e4369] list "Repository actions":
+             - <added> [ref=e4370] listitem:
+               - <added> [ref=e4371] button "Open in GitHub Copilot app"
+             - <added> [ref=e4375] listitem:
+               - <added> [ref=e4376] button "Open with GitHub Desktop"
+             - <added> [ref=e4379] listitem:
+               - <added> [ref=e4380] link "Download ZIP":
+                 - /url: /ayme-labs/ayme/archive/refs/heads/main.zip
+         - [ref=e65] main:
+           - [ref=e3394]:
+             - [ref=e3425]:
+               - [ref=e3428]:
+                 - [ref=e3429]:
+                   - [ref=e3448]:
+                     - <target-inside> <changed> [ref=e3457] button "Code" [expanded]
+
+#9 click  internal:role=button[name="Clone with GitHub CLI"i]  [gate]
+   code: await page.getByRole('button', { name: 'Clone with GitHub CLI' }).click();
+   target: NOT in tree, marked on nearest ancestor ref=e4359 (via event snapshot, nearest ancestor at the moment of the action)
+   changed before the interaction (unassigned):
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e4343]:
+           - [ref=e4344]:
+             - [ref=e4345]:
+               - <changed> [ref=e4349] link "Which remote URL should I use?":
+                 - /url: "https://docs.github.com/articles/which-remote-url-should-i-use"
+             - [ref=e4352] list "Remote URL selector":
+               - [ref=e4357] listitem:
+                 - <changed> [ref=e4358] button "Clone with GitHub CLI" [active]
+   Change Tree:
+     - [ref=e1]:
+       - [ref=e2] [cursor=pointer]:
+         - [ref=e4343]:
+           - [ref=e4344]:
+             - [ref=e4352] list "Remote URL selector":
+               - [ref=e4353] listitem:
+                 - <changed> [ref=e4354] button "Clone with HTTPS"
+               - [ref=e4357] listitem:
+                 - <changed> [ref=e4358] button "Clone with GitHub CLI" [active] [pressed]:
+                   - <target-inside> [ref=e4359]: GitHub CLI
+             - [ref=e4361]:
+               - <changed> [ref=e4362]: Clone with GitHub CLI command
+               - <added> [ref=e4384] textbox "Clone with GitHub CLI command": gh repo clone ayme-labs/ayme
+               - <added> [ref=e4385] button "Copy command to clipboard"
+               - <removed> [ref=e4363] textbox "Clone with HTTPS url": "https://github.com/ayme-labs/ayme.git"
+               - <removed> [ref=e4364] button "Copy URL to clipboard"
+             - <changed> [ref=e4368] paragraph:
+               - text: Work fast with our official CLI.
+               - <added> [ref=e4386] link "Learn more about the GitHub CLI":
+                 - /url: "https://cli.github.com"
+                 - text: Learn more

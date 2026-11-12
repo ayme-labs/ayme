@@ -1,0 +1,50 @@
+{
+  "methods": {
+    "newPage": 1,
+    "newCDPSession": 2,
+    "exposeBinding": 2,
+    "addInitScript": 3,
+    "evaluateExpression": 64,
+    "goto": 1,
+    "__waitInfo__": 16,
+    "ariaSnapshot": 38,
+    "tracingGroup": 18,
+    "waitForSelector": 28,
+    "mouseMove": 7,
+    "mouseDown": 7,
+    "mouseUp": 7,
+    "getAttribute": 2,
+    "queryCount": 5,
+    "frameElement": 1,
+    "boundingBox": 1
+  },
+  "groups": [
+    {
+      "title": "probe-toolbar-mode",
+      "methods": {}
+    },
+    {
+      "title": "probe-highlight",
+      "methods": {
+        "queryCount": 1,
+        "waitForSelector": 1
+      }
+    },
+    {
+      "title": "probe-highlight",
+      "methods": {
+        "queryCount": 1,
+        "waitForSelector": 1
+      }
+    },
+    {
+      "title": "probe-highlight",
+      "methods": {
+        "queryCount": 1,
+        "waitForSelector": 1
+      }
+    }
+  ],
+  "domSnapshotsContainEmptyHost": true,
+  "domSnapshotsContainToolbarText": false
+}

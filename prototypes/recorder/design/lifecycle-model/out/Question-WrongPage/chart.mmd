@@ -1,0 +1,33 @@
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks Q1_ClickLandsWhereItWasMade
+    lg1: Path to the Q1_ClickLandsWhereItWasMade bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Not recording | gate off in the page
+  s1: Not recording | gate off in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s2: Recording | gate off in the page (switch-on on its way) | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s3: Recording | gate ON in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline
+  s4: Recording | gate ON in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, no 'before' yet#59; no report#59; not in the timeline
+  s5: Recording | gate ON in the page | navigation under way | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, 'before' taken#59; no report#59; not in the timeline
+  s6: Recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: held back, 'before' taken#59; no report#59; not in the timeline
+  s7: Recording | gate ON in the page | on the new page | click 1: reached the page#59; no report#59; not in the timeline | click 2: reached the NEW page#59; report on its way#59; not in the timeline
+  [*] --> s0
+  s0 --> s1: you click (click 1): it reaches the page untouched and starts a navigation
+  s1 --> s2: you press Record
+  s2 --> s3: the page switches the gate on
+  s3 --> s4: you click (click 2): the gate holds it back
+  s4 --> s5: the recorder takes the 'before' of click 2
+  s5 --> s6: the new page loads
+  s6 --> s7: the recorder passes click 2 on to the page (the NEW page)
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s3 bugPath
+  class s4 bugPath
+  class s5 bugPath
+  class s6 bugPath
+  class s7 breaks
+  class s7 bugPath

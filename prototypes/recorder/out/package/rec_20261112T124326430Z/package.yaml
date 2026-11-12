@@ -1,0 +1,401 @@
+recordingId: rec_20261112T124326430Z
+mode: structural
+createdAt: 2026-11-12T12:43:26.430Z
+url: https://www.saucedemo.com/
+tracePath: .ayme/recordings/rec_20261112T124326430Z/trace.zip
+visits:
+  - visitId: visit_1
+    url: https://www.saucedemo.com/
+    cause: initial
+    baselineTree:
+      - [ref=e3]:
+        - [ref=e4]: Swag Labs
+        - [ref=e5] main:
+          - [ref=e9] form "Login":
+            - [ref=e11] textbox "Username"
+            - [ref=e13] textbox "Password"
+            - [ref=e15] button "Login" [cursor=pointer]
+          - [ref=e17]:
+            - [ref=e18]:
+              - [ref=e19] heading "Accepted usernames are:" [level=4]
+              - text: standard_userlocked_out_userproblem_userperformance_glitch_usererror_uservisual_user
+            - [ref=e20]:
+              - [ref=e21] heading "Password for all users:" [level=4]
+              - text: secret_sauce
+    timelineEntries:
+      - kind: change
+        timestamp: 1860.182
+        changeTree:
+          - [ref=e3]:
+            - [ref=e5] main:
+              - [ref=e9] form "Login":
+                - <changed> [ref=e11] textbox "Username" [active]
+      - kind: interaction
+        timestamp: 1863.182
+        interaction:
+          id: interaction_1
+          type: click
+          targetRef: e11
+          targetSelector: '[data-test="username"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: interaction
+        timestamp: 3069.805
+        interaction:
+          id: interaction_2
+          type: fill
+          targetRef: e11
+          targetSelector: '[data-test="username"]'
+          text: standard_user
+        changeTree:
+          - [ref=e3]:
+            - [ref=e5] main:
+              - [ref=e9] form "Login":
+                - <changed> [ref=e11] textbox "Username" [active]: standard_user
+      - kind: change
+        timestamp: 5115.947
+        changeTree:
+          - [ref=e3]:
+            - [ref=e5] main:
+              - [ref=e9] form "Login":
+                - <changed> [ref=e11] textbox "Username": standard_user
+                - <changed> [ref=e13] textbox "Password" [active]
+      - kind: interaction
+        timestamp: 5118.947
+        interaction:
+          id: interaction_3
+          type: click
+          targetRef: e13
+          targetSelector: '[data-test="password"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: interaction
+        timestamp: 6325.412
+        interaction:
+          id: interaction_4
+          type: fill
+          targetRef: e13
+          targetSelector: '[data-test="password"]'
+          text: secret_sauce
+        changeTree:
+          - [ref=e3]:
+            - [ref=e5] main:
+              - [ref=e9] form "Login":
+                - <changed> [ref=e13] textbox "Password" [active]: secret_sauce
+      - kind: change
+        timestamp: 8296.09
+        changeTree:
+          - [ref=e3]:
+            - [ref=e5] main:
+              - [ref=e9] form "Login":
+                - <changed> [ref=e13] textbox "Password": secret_sauce
+                - <changed> [ref=e15] button "Login" [active] [cursor=pointer]
+      - kind: interaction
+        timestamp: 8299.09
+        interaction:
+          id: interaction_5
+          type: click
+          targetRef: e15
+          targetSelector: '[data-test="login-button"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+  - visitId: visit_2
+    url: https://www.saucedemo.com/inventory.html
+    cause: navigate
+    baselineTree:
+      - [ref=e22]:
+        - [ref=e23]:
+          - [ref=e24] banner:
+            - [ref=e25]:
+              - [ref=s_1]:
+                - [ref=s_2]:
+                  - [ref=e26]:
+                    - [ref=e27] button "Open Menu" [cursor=pointer]
+                    - [ref=e28] img "Open Menu"
+                  - [ref=e29]:
+                    - [ref=e31] navigation:
+                      - [ref=e32] button [cursor=pointer]: All Items
+                      - [ref=e33] button [cursor=pointer]: Dynamic Catalog
+                      - [ref=e35] link [cursor=pointer]: About
+                      - [ref=e36] button [cursor=pointer]: Logout
+                      - [ref=e37] button [cursor=pointer]: Reset App State
+                    - [ref=e39] button [cursor=pointer]: Close Menu
+              - [ref=e41]: Swag Labs
+              - [ref=e44] button "Cart, empty"
+            - [ref=e45]:
+              - [ref=e46]: Products
+              - [ref=e48] [cursor=pointer]:
+                - [ref=e49]: Name (A to Z)
+                - [ref=e50] combobox "Sort products":
+                  - [ref=s_3] option "Name (A to Z)" [selected]
+                  - [ref=s_4] option "Name (Z to A)"
+                  - [ref=s_5] option "Price (low to high)"
+                  - [ref=s_6] option "Price (high to low)"
+          - [ref=e51] main:
+            - [ref=e54]:
+              - [ref=e55]:
+                - [ref=e57] button "View details for Sauce Labs Backpack" [cursor=pointer]:
+                  - [ref=s_7] img "Sauce Labs Backpack"
+                - [ref=e58]:
+                  - [ref=e59]:
+                    - [ref=e60] button "View details for Sauce Labs Backpack" [cursor=pointer]:
+                      - [ref=e61]: Sauce Labs Backpack
+                    - [ref=e62]: "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                  - [ref=e63]:
+                    - [ref=e64]: $29.99
+                    - [ref=e65] button "Add to cart" [cursor=pointer]
+              - [ref=e66]:
+                - [ref=e68] button "View details for Sauce Labs Bike Light" [cursor=pointer]:
+                  - [ref=e69] img "Sauce Labs Bike Light"
+                - [ref=e70]:
+                  - [ref=e71]:
+                    - [ref=e72] button "View details for Sauce Labs Bike Light" [cursor=pointer]:
+                      - [ref=e73]: Sauce Labs Bike Light
+                    - [ref=e74]: "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes, 1 AAA battery included."
+                  - [ref=e75]:
+                    - [ref=e76]: $9.99
+                    - [ref=e77] button "Add to cart" [cursor=pointer]
+              - [ref=e78]:
+                - [ref=e80] button "View details for Sauce Labs Bolt T-Shirt" [cursor=pointer]:
+                  - [ref=e81] img "Sauce Labs Bolt T-Shirt"
+                - [ref=e82]:
+                  - [ref=e83]:
+                    - [ref=e84] button "View details for Sauce Labs Bolt T-Shirt" [cursor=pointer]:
+                      - [ref=e85]: Sauce Labs Bolt T-Shirt
+                    - [ref=e86]: "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt."
+                  - [ref=e87]:
+                    - [ref=e88]: $15.99
+                    - [ref=e89] button "Add to cart" [cursor=pointer]
+              - [ref=e90]:
+                - [ref=e92] button "View details for Sauce Labs Fleece Jacket" [cursor=pointer]:
+                  - [ref=e93] img "Sauce Labs Fleece Jacket"
+                - [ref=e94]:
+                  - [ref=e95]:
+                    - [ref=e96] button "View details for Sauce Labs Fleece Jacket" [cursor=pointer]:
+                      - [ref=e97]: Sauce Labs Fleece Jacket
+                    - [ref=e98]: "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office."
+                  - [ref=e99]:
+                    - [ref=e100]: $49.99
+                    - [ref=e101] button "Add to cart" [cursor=pointer]
+              - [ref=e102]:
+                - [ref=e104] button "View details for Sauce Labs Onesie" [cursor=pointer]:
+                  - [ref=e105] img "Sauce Labs Onesie"
+                - [ref=e106]:
+                  - [ref=e107]:
+                    - [ref=e108] button "View details for Sauce Labs Onesie" [cursor=pointer]:
+                      - [ref=e109]: Sauce Labs Onesie
+                    - [ref=e110]: "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel."
+                  - [ref=e111]:
+                    - [ref=e112]: $7.99
+                    - [ref=e113] button "Add to cart" [cursor=pointer]
+              - [ref=e114]:
+                - [ref=e116] button "View details for Test.allTheThings() T-Shirt (Red)" [cursor=pointer]:
+                  - [ref=e117] img "Test.allTheThings() T-Shirt (Red)"
+                - [ref=e118]:
+                  - [ref=e119]:
+                    - [ref=e120] button "View details for Test.allTheThings() T-Shirt (Red)" [cursor=pointer]:
+                      - [ref=e121]: Test.allTheThings() T-Shirt (Red)
+                    - [ref=e122]: This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.
+                  - [ref=e123]:
+                    - [ref=e124]: $15.99
+                    - [ref=e125] button "Add to cart" [cursor=pointer]
+        - [ref=e126] contentinfo:
+          - [ref=e127] list:
+            - [ref=e128] listitem:
+              - [ref=e129] link "X" [cursor=pointer]
+            - [ref=e130] listitem:
+              - [ref=e131] link "Facebook" [cursor=pointer]
+            - [ref=e132] listitem:
+              - [ref=e133] link "LinkedIn" [cursor=pointer]
+          - [ref=e134]: "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+    timelineEntries:
+      - kind: change
+        timestamp: 10913.554
+        changeTree:
+          - [ref=e22]:
+            - [ref=e23]:
+              - [ref=e24] banner:
+                - [ref=e25]:
+                  - <removed> [ref=s_1]:
+                    - <removed> [ref=s_2]:
+                      - <removed> [ref=e29]:
+                        - <removed> [ref=e31] navigation:
+                          - <removed> [ref=e32] button [cursor=pointer]: All Items
+                          - <removed> [ref=e33] button [cursor=pointer]: Dynamic Catalog
+                          - <removed> [ref=e35] link [cursor=pointer]: About
+                          - <removed> [ref=e36] button [cursor=pointer]: Logout
+                          - <removed> [ref=e37] button [cursor=pointer]: Reset App State
+                        - <removed> [ref=e39] button [cursor=pointer]: Close Menu
+              - [ref=e51] main:
+                - [ref=e54]:
+                  - [ref=e55]:
+                    - [ref=e58]:
+                      - [ref=e63]:
+                        - <changed> [ref=e65] button "Add to cart" [active] [cursor=pointer]
+      - kind: interaction
+        timestamp: 10921.554
+        interaction:
+          id: interaction_6
+          type: click
+          targetRef: e65
+          targetSelector: '[data-test="add-to-cart-sauce-labs-backpack"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e22]:
+            - [ref=e23]:
+              - [ref=e24] banner:
+                - [ref=e25]:
+                  - <added> [ref=e136] button "Cart, 1 items":
+                    - <added> [ref=e137]: 1
+                  - <removed> [ref=e44] button "Cart, empty"
+              - [ref=e51] main:
+                - [ref=e54]:
+                  - [ref=e55]:
+                    - [ref=e58]:
+                      - [ref=e63]:
+                        - <added> [ref=e138] button "Remove" [cursor=pointer]
+                        - <removed> [ref=e65] button "Add to cart" [active] [cursor=pointer]
+      - kind: interaction
+        timestamp: 12239.651
+        interaction:
+          id: interaction_7
+          type: click
+          targetRef: e136
+          targetSelector: '[data-test="shopping-cart-link"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+  - visitId: visit_3
+    url: https://www.saucedemo.com/cart.html
+    cause: navigate
+    baselineTree:
+      - [ref=e139]:
+        - [ref=e140]:
+          - [ref=e141] banner:
+            - [ref=e142]:
+              - [ref=e143]:
+                - [ref=e144] button "Open Menu" [cursor=pointer]
+                - [ref=e145] img "Open Menu"
+              - [ref=e146]: Swag Labs
+              - [ref=e149] button "Cart, 1 items":
+                - [ref=e150]: 1
+            - [ref=e151]: Your Cart
+          - [ref=e153] main:
+            - [ref=e154]:
+              - [ref=e155]:
+                - [ref=e156]: QTY
+                - [ref=e157]: Description
+                - [ref=e158]:
+                  - [ref=e159]: 1
+                  - [ref=e160]:
+                    - [ref=e161] button "View details for Sauce Labs Backpack" [cursor=pointer]:
+                      - [ref=e162]: Sauce Labs Backpack
+                    - [ref=e163]: "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                    - [ref=e164]:
+                      - [ref=e165]: $29.99
+                      - [ref=e166] button "Remove" [cursor=pointer]
+              - [ref=e167]:
+                - [ref=e168] button "Continue Shopping" [cursor=pointer]
+                - [ref=e169] button "Checkout" [cursor=pointer]
+        - [ref=e170] contentinfo:
+          - [ref=e171] list:
+            - [ref=e172] listitem:
+              - [ref=e173] link "X" [cursor=pointer]
+            - [ref=e174] listitem:
+              - [ref=e175] link "Facebook" [cursor=pointer]
+            - [ref=e176] listitem:
+              - [ref=e177] link "LinkedIn" [cursor=pointer]
+          - [ref=e178]: "© 2026 Sauce Labs. All Rights Reserved. Terms of Service | Privacy Policy"
+    timelineEntries:
+      - kind: change
+        timestamp: 14845.267
+        changeTree:
+          - [ref=e139]:
+            - [ref=e140]:
+              - [ref=e153] main:
+                - [ref=e154]:
+                  - [ref=e155]:
+                    - [ref=e158]:
+                      - [ref=e160]:
+                        - [ref=e164]:
+                          - <changed> [ref=e166] button "Remove" [active] [cursor=pointer]
+      - kind: interaction
+        timestamp: 14849.267
+        interaction:
+          id: interaction_8
+          type: click
+          targetRef: e166
+          targetSelector: '[data-test="remove-sauce-labs-backpack"]'
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e139]:
+            - [ref=e140]:
+              - [ref=e141] banner:
+                - [ref=e142]:
+                  - <added> [ref=e179] button "Cart, empty"
+                  - <removed> [ref=e149] button "Cart, 1 items":
+                    - <removed> [ref=e150]: 1
+              - [ref=e153] main:
+                - [ref=e154]:
+                  - [ref=e155]:
+                    - <removed> [ref=e158]:
+                      - <removed> [ref=e159]: 1
+                      - <removed> [ref=e160]:
+                        - <removed> [ref=e161] button "View details for Sauce Labs Backpack" [cursor=pointer]:
+                          - <removed> [ref=e162]: Sauce Labs Backpack
+                        - <removed> [ref=e163]: "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection."
+                        - <removed> [ref=e164]:
+                          - <removed> [ref=e165]: $29.99
+                          - <removed> [ref=e166] button "Remove" [active] [cursor=pointer]
+traceActionPoints:
+  - interactionId: interaction_1
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    beforeSnapshotId: before@bnbi@193
+    afterSnapshotId: after@bnbi@193
+    startedAt: 1863.182
+    endedAt: 2035.969
+  - interactionId: interaction_2
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    beforeSnapshotId: before@bnbi@399
+    afterSnapshotId: after@bnbi@399
+    startedAt: 3069.805
+    endedAt: 4085.652
+  - interactionId: interaction_3
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    beforeSnapshotId: before@bnbi@491
+    afterSnapshotId: after@bnbi@491
+    startedAt: 5118.947
+    endedAt: 5283.333
+  - interactionId: interaction_4
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    beforeSnapshotId: before@bnbi@691
+    afterSnapshotId: after@bnbi@691
+    startedAt: 6325.412
+    endedAt: 7276.34
+  - interactionId: interaction_5
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    startedAt: 8299.09
+    endedAt: 8317.09
+  - interactionId: interaction_6
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    beforeSnapshotId: before@bnbi@1563
+    afterSnapshotId: after@bnbi@1563
+    startedAt: 10921.554
+    endedAt: 11099.441
+  - interactionId: interaction_7
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    startedAt: 12239.651
+    endedAt: 12254.651
+  - interactionId: interaction_8
+    pageId: page@72708d652687e43e50d1724e6cbf334e
+    beforeSnapshotId: before@bnbi@1915
+    afterSnapshotId: after@bnbi@1915
+    startedAt: 14849.267
+    endedAt: 15019.929

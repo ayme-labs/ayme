@@ -1,0 +1,22 @@
+import {test,expect} from '@playwright/test';
+import {RepositoryPage} from './pages';
+import {data} from './data';
+test('recorded repository flow',async({page})=>{
+ await page.route('**/*', route => new URL(route.request().url()).hostname === 'github.com' ? route.continue() : route.abort());
+ await page.goto(data.url);
+ let repo=new RepositoryPage(page);
+ const pulls=await repo.openPulls();
+ await expect(pulls.titles.filter({hasText:data.pull})).toBeVisible();
+ repo=await pulls.breadcrumbs.openRepository();
+ await expect(repo.code).toBeVisible();
+ const releases=await repo.openReleases();
+ await expect(releases.release(data.release)).toBeVisible();
+ repo=await releases.breadcrumbs.openRepository();
+ await expect(repo.code).toBeVisible();
+ const clone=await repo.openCode();
+ await expect(clone.https).toBeVisible();
+ await clone.cli.click();
+ await expect(clone.https).toHaveCount(0);
+ await expect(clone.command).toBeVisible();
+ await expect(clone.command).toHaveValue(data.command);
+});

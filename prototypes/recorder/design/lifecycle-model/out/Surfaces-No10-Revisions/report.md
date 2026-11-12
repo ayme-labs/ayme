@@ -1,0 +1,19 @@
+# Recorder
+
+TLC reached more states than the chart budget of 500, so the chart draws only the bug paths: 7 states and 8 arrows.
+
+## R08_SurfacesAgree breaks
+The shortest path has 8 steps:
+0. Not recording | gate off in the page
+1. you click (click 1): it reaches the page untouched and starts a navigation: Not recording | gate off in the page | navigation under way | click 1: reached the page; no report; not in the timeline
+2. the new page loads: Not recording | gate off in the page | on the new page | click 1: reached the page; no report; not in the timeline | toolbar shows loading, window shows off
+3. the recorder answers the new page's question about the state: Not recording | gate off in the page | on the new page | click 1: reached the page; no report; not in the timeline | toolbar shows loading, window shows off
+4. you press Record: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page; no report; not in the timeline | toolbar shows loading, window shows off
+5. the recorder announces its new state: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page; no report; not in the timeline | toolbar shows loading, window shows off
+6. the announcement reaches the toolbar: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page; no report; not in the timeline | toolbar shows recording, window shows off
+7. that answer reaches the toolbar: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page; no report; not in the timeline
+8. the window catches up: Recording | gate off in the page (switch-on on its way) | on the new page | click 1: reached the page; no report; not in the timeline | toolbar shows off, window shows recording
+
+## Rules not checked
+NoDeadlock
+After the first break, each TLC run stops at 100,000 distinct states. A run reached that bound before it checked this rule in every state.
