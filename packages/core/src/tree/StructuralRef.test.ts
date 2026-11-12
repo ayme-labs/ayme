@@ -17,10 +17,20 @@ describe("Structural Ref grammar", () => {
   it.each([
     ["e1", "e1"],
     ["e12", "e12"],
+    ["f1e4", "f1e4"],
+    ["f12e345", "f12e345"],
     ["s_root", "s_root"],
     ["s_1", "s_1"],
     ["s_webmcp_parse_1", "s_webmcp_parse_1"],
     ["e", undefined],
+    ["f1", undefined],
+    ["fe4", undefined],
+    ["f1e", undefined],
+    ["f1f2e4", undefined],
+    ["g1e4", undefined],
+    ["F1e4", undefined],
+    ["f1 e4", undefined],
+    ["f1s_root", undefined],
     ["x1", undefined],
     ["E1", undefined],
     ["e1 ", undefined],
@@ -36,6 +46,7 @@ describe("Structural Ref grammar", () => {
 
   it.each([
     ["e12", false],
+    ["f1e4", false],
     ["s_root", true],
     ["s_1", true],
     ["s_webmcp_parse_1", true],
@@ -45,11 +56,16 @@ describe("Structural Ref grammar", () => {
 
   it("builds the ayme-ref selector for a ref", () => {
     expect(selectorForRef(AriaRefSchema.parse("e12"))).toBe("ayme-ref=e12");
+    expect(selectorForRef(AriaRefSchema.parse("f1e4"))).toBe("ayme-ref=f1e4");
   });
 
   it.each([
     ["ayme-ref=e12", "e12"],
     ["locator('ayme-ref=e2')", "e2"],
+    ["ayme-ref=f1e4", "f1e4"],
+    ["locator('ayme-ref=f1e4')", "f1e4"],
+    ["ayme-ref=f1", undefined],
+    ["ayme-ref=xf1e4", undefined],
     ['locator("ayme-ref=s_root")', "s_root"],
     ["getByRole('button', { name: 'Save' })", undefined],
     ['role=button[name="Save"]', undefined],
@@ -64,7 +80,7 @@ describe("Structural Ref grammar", () => {
   });
 
   it("reads back the ref its own selector names", () => {
-    for (const text of ["e7", "s_root", "s_webmcp_parse_3"]) {
+    for (const text of ["e7", "f1e7", "s_root", "s_webmcp_parse_3"]) {
       const ref = AriaRefSchema.parse(text);
       expect(refFromSelector(selectorForRef(ref))).toBe(ref);
     }
@@ -96,6 +112,7 @@ describe("Structural Ref grammar", () => {
 
   it.each([
     ["ref=e12", "e12"],
+    ["ref=f1e4", "f1e4"],
     ["ref=s_root", "s_root"],
     ["ref=a", "a"],
     ["active", undefined],
@@ -106,7 +123,7 @@ describe("Structural Ref grammar", () => {
   });
 
   it("reads back the ref its own snapshot attribute names", () => {
-    for (const text of ["e7", "s_root", "s_webmcp_parse_3"]) {
+    for (const text of ["e7", "f1e7", "s_root", "s_webmcp_parse_3"]) {
       const ref = AriaRefSchema.parse(text);
       expect(refAttribute(ref)).toBe(`ref=${text}`);
       expect(refFromAttribute(refAttribute(ref))).toBe(ref);
@@ -122,6 +139,13 @@ describe("Structural Ref grammar", () => {
     [" e5 ", "e5"],
     ["e5", "e5"],
     ["  [ref=e12]\n", "e12"],
+    ["[ref=f1e4]", "f1e4"],
+    ["ref=f1e4", "f1e4"],
+    ["F1E4", "f1e4"],
+    [" f1e4 ", "f1e4"],
+    ["f1", undefined],
+    ["xf1e4", undefined],
+    ["f1 e4", undefined],
     ["#save", undefined],
     ["button.save", undefined],
     ['role=button[name="Save"]', undefined],

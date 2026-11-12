@@ -2,13 +2,16 @@ import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
 
 /**
  * The grammar of a Structural Ref, in one place. A real ref is Playwright's
- * `e<number>`; a synthetic ref is Ayme's `s_<word>` (`s_root`, `s_1`, …),
- * minted for a node Playwright's snapshot gave no ref, such as a Page Object
- * Root. The browser Page acts on either through the `ayme-ref=…` selector,
- * which Ayme's own selector engine resolves from the current capture
+ * `e<number>`, or `f<number>e<number>` where Playwright prefixes it with the
+ * frame's sequence number: in an iframe's content, and in the main frame after
+ * a cross-document navigation. The prefix is part of the ref, so `e4` and
+ * `f1e4` name different nodes. A synthetic ref is Ayme's `s_<word>` (`s_root`,
+ * `s_1`, …), minted for a node Playwright's snapshot gave no ref, such as a
+ * Page Object Root. The browser Page acts on either through the `ayme-ref=…`
+ * selector, which Ayme's own selector engine resolves from the current capture
  * (ADR-0038).
  */
-const REAL_REF = /e\d+/;
+const REAL_REF = /(?:f\d+)?e\d+/;
 const REF = new RegExp(`${REAL_REF.source}|s_\\w+`);
 const WHOLE_REF = new RegExp(`^(?:${REF.source})$`);
 // The whole selector, bare or as the one argument of a `locator(…)` string.
@@ -18,8 +21,8 @@ const SELECTOR_REF = new RegExp(
 const SYNTHETIC_PREFIX = "s_";
 // A snapshot names a node's ref in the attribute `[ref=e5]`.
 const REF_ATTRIBUTE = "ref=";
-// A real ref as Playwright MCP writes it, `[ref=e5]` or `ref=e5`, or with a
-// capital `E` or surrounding spaces.
+// A real ref as Playwright MCP writes it, `[ref=e5]` or `ref=e5`, or with
+// capital letters or surrounding spaces.
 const REF_WRITTEN_OTHERWISE = new RegExp(
   `^\\s*(?:\\[\\s*ref\\s*=\\s*(${REAL_REF.source})\\s*\\]|(?:ref\\s*=\\s*)?(${REAL_REF.source}))\\s*$`,
   "i"
@@ -32,7 +35,8 @@ export function parseStructuralRef(text: string): AriaRef | undefined {
 
 /**
  * The real ref `text` writes another way, read leniently: `[ref=e5]`,
- * `ref=e5`, `E5` and ` e5 ` all read as `e5`. Undefined when `text` writes
+ * `ref=e5`, `E5` and ` e5 ` all read as `e5`, and `[ref=F1E5]` as `f1e5`.
+ * Undefined when `text` writes
  * no ref, such as a selector.
  */
 export function refWrittenOtherwise(text: string): AriaRef | undefined {
