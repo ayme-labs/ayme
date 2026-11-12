@@ -146,6 +146,25 @@ async function openCounter(
 }
 
 /**
+ * The answer to a call that started a full load: the page's own, which says
+ * it has not settled and where it is loading, or the server's error result
+ * when the page went (or another page connected) before it could answer.
+ */
+function expectAnswered(answer: unknown, loading: string) {
+  const { error } = answer as { error?: string };
+  if (error === undefined)
+    expect(answer).toMatchObject({ settled: false, loading });
+  else expect(error).toContain("the call's outcome is unknown");
+}
+
+/** `url` without its fragment, which a connect link adds and a router may drop. */
+const withoutHash = (url: string) => {
+  const parsed = new URL(url);
+  parsed.hash = "";
+  return parsed.href;
+};
+
+/**
  * Pairs the counter page with an `ayme mcp --browser-tools` server, as a
  * coding agent's client does: WebMCP publishes no Browser Tool.
  */
@@ -369,7 +388,7 @@ export function counterTests({
         otherPage(page)
       );
       expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({ settled: false, loading });
+      expectAnswered(answer, loading);
     });
 
     test("answers navigate to the other page before it loads, and the other page publishes its tools", async ({
@@ -385,7 +404,7 @@ export function counterTests({
         otherPage(page)
       );
       expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({ settled: false, loading });
+      expectAnswered(answer, loading);
       await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
     });
 
@@ -394,7 +413,7 @@ export function counterTests({
       baseURL,
     }) => {
       const agent = await paired(page, baseURL);
-      const loading = page.url();
+      const loading = withoutHash(page.url());
       await page.getByRole("link", { name: "Full page load" }).click();
       await expect(otherPage(page)).toBeVisible();
       await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
@@ -410,8 +429,8 @@ export function counterTests({
         {},
         count(page)
       );
-      expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({ settled: false, loading });
+      expect(withoutHash(page.url())).toBe(loading);
+      expectAnswered(answer, loading);
     });
 
     test("answers reload before the page loads anew", async ({
@@ -423,15 +442,15 @@ export function counterTests({
         .getByRole("button", { name: "Increment", exact: true })
         .click();
       await expect(count(page)).toHaveText("1");
-      const loading = page.url();
+      const loading = withoutHash(page.url());
       const answer = await answerAcrossFullLoad(
         agent,
         "reload",
         {},
         count(page).filter({ hasText: /^0$/ })
       );
-      expect(page.url()).toBe(loading);
-      expect(answer).toMatchObject({ settled: false, loading });
+      expect(withoutHash(page.url())).toBe(loading);
+      expectAnswered(answer, loading);
     });
 
     test("removes the page's tools on navigation and restores them on return", async ({
