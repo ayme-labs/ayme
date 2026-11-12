@@ -2,8 +2,9 @@ import type { WebMcpDriver } from "./driver";
 
 /**
  * A tool of the session, by its unprefixed name, as `ayme.tools.list()`
- * reads it. Publication registers every listed Page Object Tool, available or
- * not; the session refuses a call to an unavailable one with its reason (ADR-0035).
+ * reads it. Publication registers every tool the source lists, available or
+ * not; the session refuses a call to an unavailable one with its reason
+ * (ADR-0035). The session lists only Page Object Tools and `page_objects`.
  */
 export type WebMcpTool = Readonly<{
   name: string;
@@ -73,21 +74,12 @@ const changeRecordText = (error: Error) =>
     })
     .join("");
 
-/**
- * Whether WebMCP publishes a tool: a Page Object Tool, or `page_objects`,
- * and nothing else. Browser Tools, `snapshot`, `goal`, Custom Tools and Peek
- * Tools stay off it; `ayme.tools.list()` and the other channels still have
- * them.
- */
-const publishable = (tool: WebMcpTool) =>
-  tool.group === "pageObject" || tool.name === "page_objects";
-
 /** What makes a published tool stale: its description or schema changed. */
 const versionOf = (tool: WebMcpTool) =>
   JSON.stringify([tool.description, tool.inputSchema]);
 
 /**
- * Keep the driver's tool set in sync with the source's publishable tools. A
+ * Keep the driver's tool set in sync with the source's tools. A
  * call of a published tool resolves only once the published set reflects the
  * page it changed, so an agent's next call sees the tools listed now; the
  * called tool itself is withdrawn just after its call, if the call made the
@@ -172,12 +164,7 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
-        const listed = new Map(
-          tools
-            .list()
-            .filter(publishable)
-            .map((tool) => [tool.name, tool])
-        );
+        const listed = new Map(tools.list().map((tool) => [tool.name, tool]));
         for (const [name, registration] of published) {
           const tool = listed.get(name);
           if (tool && versionOf(tool) === registration.version) continue;

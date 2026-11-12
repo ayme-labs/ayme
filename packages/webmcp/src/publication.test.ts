@@ -134,17 +134,8 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes only Page Object Tools and page_objects", async () => {
-    const tools = toolSource([
-      tool("snapshot", undefined, { group: "agent" }),
-      tool("goal", undefined, { group: "agent" }),
-      tool("page_objects", undefined, { group: "agent" }),
-      tool("click", undefined, { group: "browser" }),
-      tool("screenshot", undefined, { group: "browser" }),
-      tool("highlight", undefined, { group: "custom" }),
-      tool("peek.cart", undefined, { group: "peek" }),
-      tool("Dialog.close"),
-    ]);
+  it("publishes every tool its source lists", async () => {
+    const tools = toolSource([tool("page_objects"), tool("Dialog.close")]);
     await publish(tools.source).retry();
 
     expect(driver.names()).toEqual(["page_objects", "Dialog.close"]);

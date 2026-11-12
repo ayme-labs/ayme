@@ -626,12 +626,13 @@ export function createAymeOn(
   /**
    * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
    * calls as `webmcp` Runs, a Page Object Tool's answered as the agent
-   * channels answer it. The package decides which of them it publishes.
+   * channels answer it. It lists the Page Object Tools and `page_objects`
+   * only, so that is all WebMCP publishes.
    */
   const webMcpPageObjectTools = pageObjectToolsFor(callers.webmcp);
   const webMcpTools = {
     list: () =>
-      ayme.tools.list().map((tool) => ({
+      webMcpPageObjectTools.list().map((tool) => ({
         ...tool,
         description: requiredDescription(tool),
       })),
