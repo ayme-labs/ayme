@@ -2,8 +2,8 @@ import type { WebMcpDriver } from "./driver";
 
 /**
  * A tool of the session, by its unprefixed name, as `ayme.tools.list()`
- * reads it. Publication registers every listed tool, available or not; the
- * session refuses a call to an unavailable one with its reason (ADR-0035).
+ * reads it. Publication registers every listed Page Object Tool, available or
+ * not; the session refuses a call to an unavailable one with its reason (ADR-0035).
  */
 export type WebMcpTool = Readonly<{
   name: string;
@@ -74,12 +74,13 @@ const changeRecordText = (error: Error) =>
     .join("");
 
 /**
- * Whether WebMCP publishes a tool: every listed one but a Peek Tool, which
- * reads app state for a coding agent while developing, and `screenshot`,
- * whose image result WebMCP cannot carry.
+ * Whether WebMCP publishes a tool: a Page Object Tool, or `page_objects`,
+ * and nothing else. Browser Tools, `snapshot`, `goal`, Custom Tools and Peek
+ * Tools stay off it; `ayme.tools.list()` and the other channels still have
+ * them.
  */
 const publishable = (tool: WebMcpTool) =>
-  tool.group !== "peek" && tool.name !== "screenshot";
+  tool.group === "pageObject" || tool.name === "page_objects";
 
 /** What makes a published tool stale: its description or schema changed. */
 const versionOf = (tool: WebMcpTool) =>

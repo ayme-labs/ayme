@@ -10,7 +10,7 @@ Your Page Object Models run in the browser on [playwright-lite](https://github.c
 
 ## What an agent gets
 
-A coding agent such as Claude Code, Codex or Cursor connects to the page through Ayme's MCP server, which the agent starts; you turn the page side on when you start Ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. Agents that run in the browser get the same tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn publication on. An agent connected to the page sees:
+A coding agent such as Claude Code, Codex or Cursor connects to the page through Ayme's MCP server, which the agent starts; you turn the page side on when you start Ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. Agents that run in the browser get the Page Object Tools and `page_objects` through WebMCP, the browser's standard for offering tools on a page to agents, when you turn publication on. An agent connected to Ayme's MCP server to the page sees:
 
 - the Page Object Tools of every Page Object currently on the page;
 - Browser Tools, built-in operations on the page itself, such as reading the page, clicking an element or filling a field;
@@ -33,7 +33,7 @@ Your own code runs the same Page Object Actions, through the Page Object or by t
 
 ## Your data stays with you
 
-Ayme runs entirely in your app: in its page, and in its own Node processes where you start it. It has no backend and no account, and it sends nothing to Ayme. Your app's content leaves it in three ways, all set up by you: a coding agent you connect reads the page and your app's Peeks through Ayme's MCP server, which runs on your machine; with WebMCP publication on, an in-browser agent calls your Page Object, Browser and Custom Tools (never Peeks); and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
+Ayme runs entirely in your app: in its page, and in its own Node processes where you start it. It has no backend and no account, and it sends nothing to Ayme. Your app's content leaves it in three ways, all set up by you: a coding agent you connect reads the page and your app's Peeks through Ayme's MCP server, which runs on your machine; with WebMCP publication on, an in-browser agent calls your Page Object Tools (never Browser Tools, Custom Tools or Peeks); and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
 
 ## The Inspector
 
