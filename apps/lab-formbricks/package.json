@@ -8,6 +8,20 @@
     "lab:dev": "bash scripts/dev.sh",
     "lab:smoke": "bash scripts/smoke.sh",
     "lab:qualify": "bash scripts/qualify.sh",
-    "lab:stop": "bash scripts/stop.sh"
+    "lab:stop": "bash scripts/stop.sh",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.9.1",
+    "typescript": "^6.0.3"
   }
 }

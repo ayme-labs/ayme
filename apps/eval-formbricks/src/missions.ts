@@ -33,7 +33,7 @@ export const missionDefinitions: Record<string, MissionDefinition> = {
   "rename-survey-and-question": {
     id: "rename-survey-and-question",
     initial: (nonce) => ({
-      surveyName: `Onboarding draft ${nonce}`,
+      surveyName: `Onboarding survey ${nonce}`,
       questionHeadline: `What brought you here today? (${nonce})`,
     }),
     expected: (nonce) => ({

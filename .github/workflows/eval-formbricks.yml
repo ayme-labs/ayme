@@ -107,9 +107,9 @@ jobs:
         if: ${{ inputs.qualify_only }}
         working-directory: apps/lab-formbricks
         run: |
-          # The qualification runs Formbricks's own Playwright, which needs its
+          # The qualification runs this repository's Playwright, which needs its
           # own Chromium; the eval's arms use the runner's Chrome.
-          (cd formbricks && corepack "$(node -p "require('./package.json').packageManager")" exec playwright install --with-deps chromium)
+          pnpm exec playwright install --with-deps chromium
           pnpm lab:qualify
 
       - name: Run the suite
@@ -150,7 +150,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lab-formbricks-qualification
-          path: apps/lab-formbricks/formbricks/apps/web/.ayme-lab/qualification-results
+          path: apps/lab-formbricks/test-results
           include-hidden-files: true
           if-no-files-found: ignore
 
