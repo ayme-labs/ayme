@@ -5,6 +5,7 @@ import {
   launchOptions,
   outcomeLine,
   startLine,
+  windowFolder,
   windowLine,
 } from "./codegen";
 
@@ -39,6 +40,14 @@ describe("how codegen launches the browser", () => {
     expect(
       launchOptions("http://localhost", { AYME_RECORDER_DEBUG_PORT: "9333" })
     ).toEqual({ url: "http://localhost", headless: false, debugPort: 9333 });
+  });
+});
+
+describe("where the recorder window's files are", () => {
+  it("is the window folder beside the command's own file, which the build fills", () => {
+    expect(windowFolder("file:///usr/lib/node_modules/cli/dist/cli.mjs")).toBe(
+      "/usr/lib/node_modules/cli/dist/window"
+    );
   });
 });
 

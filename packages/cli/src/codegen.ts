@@ -1,5 +1,5 @@
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   RecorderStartError,
   startRecorder,
@@ -39,14 +39,13 @@ export function windowLine(url: string): string {
   return `Recorder window: ${url}\n`;
 }
 
-/** The folder of the recorder window's built files: the CLI is what knows
- * both the engine and the window, and hands the one the other. */
-const windowFolder = () =>
-  dirname(
-    createRequire(import.meta.url).resolve(
-      "@ayme-dev/recorder-window/window/index.html"
-    )
-  );
+/**
+ * The folder of the recorder window's built files: the build puts them in a
+ * `window` folder beside the command's own file, so that the packed package
+ * carries the window and needs nothing resolved where it is installed.
+ */
+export const windowFolder = (commandFile: string): string =>
+  join(dirname(fileURLToPath(commandFile)), "window");
 
 /** What the terminal is told when the recorder has ended. */
 export function outcomeLine(outcome: RecordingOutcome): string {
@@ -73,7 +72,7 @@ async function start(
     return await startRecorder({
       projectDir: process.cwd(),
       browser,
-      window: { folder: windowFolder() },
+      window: { folder: windowFolder(import.meta.url) },
     });
   } catch (error) {
     if (!(error instanceof RecorderStartError)) throw error;
