@@ -26,10 +26,20 @@ const COMMAND_TYPES = [
 ] as const satisfies readonly RecorderCommandType[];
 const CommandSchema = z.object({ type: z.enum(COMMAND_TYPES) });
 
+/** The windows' subscriptions, which the server waits for when it closes. */
+export type Subscriptions = {
+  /** Resolves when the server closes: a subscription then sends the update
+   * it still owes, and ends. */
+  readonly closing: Promise<void>;
+  /** Each open subscription, until it has ended. */
+  readonly open: Set<Promise<void>>;
+};
+
 const t = initTRPC
   .context<{
     /** The recorder, once it has started: a window may connect before. */
     readonly target: Promise<WindowTarget>;
+    readonly subscriptions: Subscriptions;
   }>()
   .create();
 
@@ -44,14 +54,23 @@ export const windowChannelRouter = t.router({
     .input(CommandSchema)
     .mutation(async ({ ctx, input }) => (await ctx.target).send(input)),
   updates: t.procedure.subscription(async function* ({ ctx, signal }) {
-    const target = await ctx.target;
+    const { open, closing } = ctx.subscriptions;
+    let ended!: () => void;
+    const subscription = new Promise<void>((resolve) => (ended = resolve));
+    open.add(subscription);
     let newest: RecorderUpdate | undefined;
+    let closed = false;
     let wake: (() => void) | undefined;
+    void closing.then(() => {
+      closed = true;
+      wake?.();
+    });
+    signal?.addEventListener("abort", () => wake?.());
+    const target = await ctx.target;
     const unsubscribe = target.subscribe((update) => {
       newest = update;
       wake?.();
     });
-    signal?.addEventListener("abort", () => wake?.());
     try {
       while (!signal?.aborted) {
         if (newest) {
@@ -60,11 +79,15 @@ export const windowChannelRouter = t.router({
           yield update;
           continue;
         }
+        // The last update is sent: there is nothing more to tell.
+        if (closed) return;
         await new Promise<void>((resolve) => (wake = resolve));
         wake = undefined;
       }
     } finally {
       unsubscribe();
+      open.delete(subscription);
+      ended();
     }
   }),
 });

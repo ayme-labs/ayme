@@ -7,7 +7,11 @@ import { getWSConnectionHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer } from "ws";
 
 import { RecorderStartError } from "../../session/domain";
-import { windowChannelRouter, type WindowTarget } from "./windowChannelRouter";
+import {
+  windowChannelRouter,
+  type Subscriptions,
+  type WindowTarget,
+} from "./windowChannelRouter";
 
 export type { WindowTarget } from "./windowChannelRouter";
 
@@ -34,6 +38,10 @@ const CONTENT_TYPES: Record<string, string> = {
 
 /** The path of the window's channel, beside its files. */
 const CHANNEL_PATH = "/channel";
+
+/** How long closing waits for a window's subscription to send what it
+ * still owes: a window that does not read its socket is not waited for. */
+const FLUSH_LIMIT_MS = 1_000;
 
 /** Whether a request is made to the loopback address the server is on, so
  * that a page which points a name of its own at it reads nothing. */
@@ -66,6 +74,11 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
   const root = resolve(folder);
   let attach!: (target: WindowTarget) => void;
   const target = new Promise<WindowTarget>((resolve) => (attach = resolve));
+  let close!: () => void;
+  const subscriptions: Subscriptions = {
+    closing: new Promise((resolve) => (close = resolve)),
+    open: new Set(),
+  };
 
   const server = createServer((request, response) => {
     const file = isLoopback(request) ? fileFor(root, request.url) : undefined;
@@ -94,7 +107,7 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
   const handleConnection = getWSConnectionHandler({
     wss: sockets,
     router: windowChannelRouter,
-    createContext: () => ({ target }),
+    createContext: () => ({ target, subscriptions }),
   });
   server.on("upgrade", (request, socket, head) => {
     const path = new URL(request.url ?? "/", "http://window").pathname;
@@ -123,13 +136,22 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
   return {
     url: `http://127.0.0.1:${port}/`,
     attach,
-    close: () =>
-      new Promise<void>((closed) => {
-        // Closed, not cut: an update already on its way still arrives.
+    async close() {
+      // Every window is told the last update first: how the recorder ended.
+      close();
+      let timer: NodeJS.Timeout | undefined;
+      await Promise.race([
+        Promise.all(subscriptions.open),
+        new Promise((resolve) => (timer = setTimeout(resolve, FLUSH_LIMIT_MS))),
+      ]);
+      clearTimeout(timer);
+      await new Promise<void>((closed) => {
+        // Closed, not cut: what was sent still arrives.
         for (const ws of sockets.clients) ws.close(1001, "The recorder ended.");
         sockets.close();
         server.close(() => closed());
         server.closeAllConnections();
-      }),
+      });
+    },
   };
 }

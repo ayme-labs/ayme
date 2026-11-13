@@ -160,6 +160,20 @@ describe("the window's server", () => {
     expect(again.updates[0]!.state.phase).toBe("recording");
   });
 
+  it("tells the window how the recorder ended before it stops serving", async () => {
+    const { recorder, windowUrl } = await startWithWindow();
+    const { updates } = channel(windowUrl);
+    await expect.poll(() => updates.length).toBe(1);
+
+    recorder.end();
+    await recorder.done;
+
+    expect(updates.at(-1)!.state).toMatchObject({
+      phase: "ended",
+      outcome: { kind: "empty" },
+    });
+  });
+
   it("stops serving once the recorder has ended", async () => {
     const { recorder, windowUrl } = await startWithWindow();
 
