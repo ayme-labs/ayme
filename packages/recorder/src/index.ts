@@ -8,6 +8,7 @@ export type {
   RecorderPhase,
   RecorderState,
   RecorderUpdate,
+  RecorderWarning,
   RecordingOutcome,
   TimelineEntry,
 } from "./contract";

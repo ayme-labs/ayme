@@ -125,12 +125,11 @@ test.describe("every kind of input", () => {
     expect(byType("select")[0]!.field("targetRef")).toBe(
       refIn(text, /combobox "Size"/)
     );
-    // The upload.
-    expect(
-      byType("fill").some((entry) =>
-        /Photo/i.test(entry.field("targetSelector") ?? "")
-      )
-    ).toBe(true);
+    // The upload, with the name of its file.
+    const [upload] = byType("setInputFiles");
+    expect(upload!.field("targetSelector")).toMatch(/Photo/i);
+    expect(upload!.block).toMatch(/files:\n\s+- photo\.png/);
+    expect(byType("fill")).toHaveLength(0);
     const clicks = byType("click");
     // The decoration is marked on the group around it, with its own selector.
     const card = refIn(text, /group "Card"/);

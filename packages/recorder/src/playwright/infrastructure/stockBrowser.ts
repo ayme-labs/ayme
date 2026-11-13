@@ -35,6 +35,7 @@ import {
 import { attachAddressRule, isAttachAddress } from "./attachAddress";
 import {
   loadProjectPlaywright,
+  placeInRange,
   projectPlaywrightCli,
   rangeText,
   type Playwright,
@@ -136,6 +137,15 @@ export const stockBrowser = (
               )
             : unavailable(cause),
       });
+      // Warnings.
+      if (placeInRange(version) === "above")
+        Queue.offerUnsafe(signals, {
+          kind: "browserWarned",
+          warning: {
+            kind: "playwrightUnverified",
+            message: `Playwright ${version} is newer than the recorder is verified on: it needs ${rangeText}. It records all the same, and may miss or misread an input.`,
+          },
+        });
       // Before its connection closes, an attached browser is put back as
       // it was found: it stays open, in someone else's hands.
       if (attach)
@@ -204,15 +214,15 @@ class NotOnePage extends Error {}
 
 /**
  * The page the recorder records in a browser it attached to: the one page
- * of its one context. With more, or none, it does not guess, as the released
- * recorder does not.
+ * open in it. A context with no page, as the default context of a browser a
+ * Playwright test started, does not count. With more pages, or none, it
+ * does not guess, as the released recorder does not.
  */
 function theOnePage(browser: Browser): Page {
-  const contexts = browser.contexts();
-  const pages = contexts.flatMap((context) => context.pages());
-  if (contexts.length === 1 && pages.length === 1) return pages[0]!;
+  const pages = browser.contexts().flatMap((context) => context.pages());
+  if (pages.length === 1) return pages[0]!;
   throw new NotOnePage(
-    `The recorder records a browser with exactly one page open, in one context, and leaves it as it is. The browser at this address has ${pages.length} ${pages.length === 1 ? "page" : "pages"} in ${contexts.length} ${contexts.length === 1 ? "context" : "contexts"}: close the others and attach again.`
+    `The recorder records a browser with exactly one page open, and leaves it as it is. The browser at this address has ${pages.length === 0 ? "no page" : `${pages.length} pages`} open: ${pages.length === 0 ? "open the page to record" : "close the others"} and attach again.`
   );
 }
 
@@ -224,6 +234,9 @@ function theOnePage(browser: Browser): Page {
 type PlaywrightRecorderMode = {
   mode(): string;
   setMode(mode: "none" | "recording"): Promise<void>;
+  /** 1.64 and later: reports a click it holds back for a while, to see
+   * whether a double click follows, at once. */
+  flushPendingActions?(): void;
 };
 
 /**
@@ -342,12 +355,15 @@ async function openPage(
   /** The latest targets each page told of. */
   const chains = new Map<Page, TargetChain[]>();
   const chainBinding = "__aymeRecorderTarget";
+  /** Who waits for a document to tell of a target. */
+  const noting = new Set<() => void>();
   await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
+    for (const heard of [...noting]) heard();
   });
   /** A report, with the ancestors of a target its picture does not list. */
   const reportFrom = (page: Page, action: PlaywrightAction) => {
-    const report = reportOf(action);
+    const report = asUpload(reportOf(action), page);
     if (!action.ariaSnapshot) return report;
     const listed = (ref: string) =>
       action.ariaSnapshot!.includes(`[ref=${ref}]`);
@@ -366,6 +382,52 @@ async function openPage(
       },
     };
   };
+  /**
+   * Files chosen in a file input, which Playwright 1.64 reports as typing
+   * of the input's value, as an upload. A file input's value is always
+   * `C:\fakepath\` and the first file's name (HTML's rule for it); the
+   * other names come from what the document told of the input, when that
+   * has arrived.
+   */
+  const asUpload = (
+    report: InteractionReport,
+    page: Page
+  ): InteractionReport => {
+    const { text, ...values } = report.values;
+    const first = firstFileOf(report);
+    if (first === undefined) return report;
+    void text;
+    const told = filesTold(page, first);
+    return {
+      ...report,
+      type: "setInputFiles",
+      values: { ...values, files: told ?? [first] },
+    };
+  };
+  /** The names of the files the document told of, if its note on the
+   * upload whose first file is `first` has arrived. */
+  const filesTold = (page: Page, first: string) => {
+    const told = (chains.get(page) ?? []).findLast(
+      (chain) => chain.type === "input"
+    )?.files;
+    return told?.[0] === first ? told : undefined;
+  };
+  /** Resolves once the document told of the upload, or after a while. */
+  const noteOf = (page: Page, first: string) =>
+    new Promise<void>((resolve) => {
+      const heard = () => {
+        if (!filesTold(page, first)) return;
+        noting.delete(heard);
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        noting.delete(heard);
+        resolve();
+      }, UPLOAD_NOTE_MS);
+      noting.add(heard);
+      heard();
+    });
   await context.addInitScript(installTargetWatch, chainBinding);
   // Every document gets the gate and the activity watch, both switched off,
   // before its own scripts run.
@@ -498,13 +560,18 @@ async function openPage(
       );
       await context.tracing.stop({ path: file });
       const cli = projectPlaywrightCli(projectDir);
-      tell({
-        kind: "traceStopped",
-        trace: {
-          file,
-          positions: cli ? await snapshotPositions(cli, file, marked) : {},
-        },
-      });
+      const positions = cli ? await snapshotPositions(cli, file, marked) : {};
+      // Warnings.
+      if (Object.keys(positions).length < marked.size)
+        tell({
+          kind: "browserWarned",
+          warning: {
+            kind: "traceWithoutPositions",
+            message:
+              "The project's `playwright trace` could not number the trace's snapshots: the package carries its trace, but not the position numbers that open them.",
+          },
+        });
+      tell({ kind: "traceStopped", trace: { file, positions } });
     });
   }
 
@@ -625,6 +692,8 @@ async function openPage(
    * Switching the mode leaves a trace that is being recorded alone.
    */
   async function reportInteractions(on: boolean) {
+    // A click made just before is reported before the answer, not after.
+    if (recorderMode && !on) recorderMode.flushPendingActions?.();
     if (recorderMode) await recorderMode.setMode(on ? "recording" : "none");
     else if (on) {
       await startPlaywrightRecorder();
@@ -637,12 +706,18 @@ async function openPage(
     await startRecording!({
       actionAdded: (reported, action) => {
         const pageId = idOf.get(reported);
-        if (pageId)
+        if (!pageId) return;
+        const told = () =>
           tell({
             kind: "interactionReported",
             page: pageId,
             report: reportFrom(reported, action),
           });
+        // Playwright's report of an upload can come before the document's
+        // note with every file's name: it waits for that, a while at most.
+        const first = firstFileOf(reportOf(action));
+        if (first === undefined || filesTold(reported, first)) return told();
+        void noteOf(reported, first).then(told);
       },
       // Playwright revises the report of typing with each key typed into
       // the same field.
@@ -708,6 +783,23 @@ async function openPage(
   }
 
   return { carryOut, letGo };
+}
+
+/** How a browser begins the value of a file input with a file chosen. */
+const FAKE_PATH = "C:\\fakepath\\";
+
+/** How long the report of an upload waits for the names of its files. */
+const UPLOAD_NOTE_MS = 200;
+
+/** The first file's name, when Playwright reports a file input's value as
+ * typing, as 1.64 does for files chosen in one. */
+function firstFileOf(report: InteractionReport): string | undefined {
+  const text = report.values["text"];
+  return report.type === "fill" &&
+    typeof text === "string" &&
+    text.startsWith(FAKE_PATH)
+    ? text.slice(FAKE_PATH.length)
+    : undefined;
 }
 
 /** The events whose target a report of each kind names. */

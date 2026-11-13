@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startRecorder, type Recorder } from "@ayme-dev/recorder";
 import {
@@ -212,6 +213,30 @@ function personAt(session: CDPSession): Person {
   return person;
 }
 
+/**
+ * The Chromium of the Playwright under test, which launches the running
+ * browser a recorder attaches to, so that each Playwright version needs only
+ * the browser build it installs. It is found in the project folder that
+ * AYME_RECORDER_PLAYWRIGHT_PROJECT names as the recorder finds Playwright;
+ * without one, the Playwright under test is this app's.
+ */
+const chromiumUnderTest = ((): typeof chromium => {
+  const project = process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT;
+  if (!project) return chromium;
+  for (const name of ["playwright", "@playwright/test", "playwright-core"])
+    for (let dir = resolve(project); ; dir = dirname(dir)) {
+      const folder = join(dir, "node_modules", name);
+      if (existsSync(folder))
+        return (
+          createRequire(import.meta.url)(folder) as {
+            chromium: typeof chromium;
+          }
+        ).chromium;
+      if (dirname(dir) === dir) break;
+    }
+  throw new Error(`No Playwright is installed in ${project}.`);
+})();
+
 /** A Chromium that runs before the recorder comes, as someone else's: the
  * test launched it, and its connection is another automation client. */
 export type RunningBrowser = {
@@ -250,23 +275,26 @@ export const test = base.extend<{
 
   // eslint-disable-next-line no-empty-pattern
   runningBrowser: async ({}, use) => {
-    const running: BrowserContext[] = [];
+    const closes: (() => Promise<unknown>)[] = [];
     await use(async (url) => {
       const debugPort = await freePort();
-      const context = await chromium.launchPersistentContext("", {
+      const cdpEndpoint = `http://127.0.0.1:${debugPort}`;
+      const launched = await chromiumUnderTest.launchPersistentContext("", {
         headless: true,
         args: [`--remote-debugging-port=${debugPort}`],
       });
-      running.push(context);
-      const page = context.pages()[0]!;
-      await page.goto(url);
-      return {
-        cdpEndpoint: `http://127.0.0.1:${debugPort}`,
-        page,
-        context,
-      };
+      closes.push(() => launched.close());
+      await launched.pages()[0]!.goto(url);
+      // The test's own connection: its page is one this Playwright's
+      // `expect` reads, whatever Playwright launched the browser.
+      const connection = await chromium.connectOverCDP(cdpEndpoint);
+      closes.unshift(() => connection.close());
+      const context = connection.contexts()[0]!;
+      const page = context.pages().find((open) => open.url() === url);
+      if (!page) throw new Error(`No page at ${url} in the running browser.`);
+      return { cdpEndpoint, page, context };
     });
-    for (const context of running) await context.close();
+    for (const close of closes) await close();
   },
 
   startRecording: async (

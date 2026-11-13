@@ -3,6 +3,7 @@ import type {
   RecorderCommand,
   RecorderCommandType,
   RecorderPhase,
+  RecorderWarning,
   RecordingOutcome,
 } from "../../contract";
 import type {
@@ -87,7 +88,10 @@ export type BrowserSignal =
   // Visits.
   /** A held input can no longer reach its page: the document it was held
    * in is gone. Told instead of "inputPassedOn". */
-  | { readonly kind: "inputGone"; readonly input: string };
+  | { readonly kind: "inputGone"; readonly input: string }
+  // Warnings.
+  /** Something a person should know about how the recording is made. */
+  | { readonly kind: "browserWarned"; readonly warning: RecorderWarning };
 
 /** What a page held back. */
 export type HeldInput =
@@ -159,7 +163,10 @@ export type Happening =
    * was nothing to save. */
   | { readonly kind: "saved"; readonly folder: string | null }
   /** The recorder cannot go on: something it was carrying out broke. */
-  | { readonly kind: "brokeDown"; readonly reason: string };
+  | { readonly kind: "brokeDown"; readonly reason: string }
+  // Warnings.
+  /** The timeline made something of the recording a person should know of. */
+  | { readonly kind: "timelineWarned"; readonly warning: RecorderWarning };
 
 /** One thing the worker carries out after a step, in the list's order. */
 export type ToDo =
@@ -179,7 +186,10 @@ export type ToDo =
   /** The recorder has ended: let the browser go and report the outcome. */
   | { readonly kind: "end"; readonly outcome: RecordingOutcome }
   /** Throw away everything recorded: the timeline starts empty again. */
-  | { readonly kind: "clear" };
+  | { readonly kind: "clear" }
+  // Warnings.
+  /** Tell every subscriber of a warning, once. */
+  | { readonly kind: "warn"; readonly warning: RecorderWarning };
 
 /**
  * How long a wrap-up may take. It is there for a report that never comes:
@@ -207,8 +217,10 @@ type Page = {
   readonly url: string;
   /** What became of it while it had no Visit at its address: it opened,
    * blank while recording or while paused, or it went elsewhere while
-   * paused. Its Visit starts when it is at an address while recording. */
-  readonly since?: "opened" | "moved";
+   * paused, or it was blank when Record started a recording that has no
+   * Visit yet, so that its Visit is the first. Its Visit starts when it is
+   * at an address while recording. */
+  readonly since?: "opened" | "moved" | "blankAtRecord";
 };
 
 /** One input the gate held back, until it is written down or dropped. */
@@ -427,6 +439,10 @@ export function step(state: LifecycleState, happening: Happening): Step {
         todo: [...answerRecord(state), { kind: "end", outcome }],
       };
     }
+    // Warnings: a person is told, whatever the recorder is doing.
+    case "browserWarned":
+    case "timelineWarned":
+      return { state, todo: [{ kind: "warn", warning: happening.warning }] };
     case "timeLimitPassed":
       return state.phase === "wrappingUp" ? giveUp(state) : stay(state);
     case "requestFailed":
@@ -491,7 +507,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             phase: "recording",
             starting: true,
             resumed: false,
-            pages: state.pages.map(visited),
+            pages: atRecord(state.pages).pages,
             inputs: [],
             snapshotsAsked: 0,
             // A page holds what follows from Record on, until its first
@@ -500,15 +516,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             reportedOnly: 0,
           },
           todo: [
-            ...state.pages.map((page, index): ToDo => ({
-              kind: "timeline",
-              add: {
-                kind: "visit",
-                page: page.id,
-                url: page.url,
-                cause: index === 0 ? "initial" : "openPage",
-              },
-            })),
+            ...atRecord(state.pages).todo,
             // Reports first: a click held before Playwright listens would
             // be passed on without ever being reported. The pages are asked
             // to hold inputs back when Playwright reports, and Record is
@@ -704,7 +712,35 @@ const visitOf = (page: string, url: string, cause: VisitCause): ToDo => ({
 });
 
 const causeOf = (page: Page): VisitCause =>
-  page.since === "opened" ? "openPage" : "navigate";
+  page.since === "opened"
+    ? "openPage"
+    : page.since === "blankAtRecord"
+      ? "initial"
+      : "navigate";
+
+/**
+ * Record starts a Visit for each page at an address, the first one
+ * "initial". A page that is still blank gets its Visit at its first real
+ * address, as a page that opens blank while recording does.
+ */
+function atRecord(pages: readonly Page[]) {
+  const first = pages.find((page) => page.url !== BLANK);
+  return {
+    pages: pages.map((page, index): Page =>
+      page.url !== BLANK
+        ? visited(page)
+        : {
+            ...visited(page),
+            since: !first && index === 0 ? "blankAtRecord" : "opened",
+          }
+    ),
+    todo: pages
+      .filter((page) => page.url !== BLANK)
+      .map((page) =>
+        visitOf(page.id, page.url, page === first ? "initial" : "openPage")
+      ),
+  };
+}
 
 /** The page, with a Visit at its address. */
 const visited = ({ id, url }: Page): Page => ({ id, url });
@@ -818,8 +854,13 @@ function during(state: Active, happening: BrowserSignal): Step {
           kind: "browser",
           ask: { kind: "holdInputs", on: true },
         });
-      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on)
+      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on) {
+        // An input known from its last reports is finished first; then
+        // Playwright's recorder is switched off once more.
+        if (state.inputs.length > 0)
+          return proceed({ ...state, switchingOff: false }, []);
         return wrappedUp(state, []);
+      }
       break;
     case "inputsHeld":
       if (state.phase === "wrappingUp" && !happening.on)
@@ -977,34 +1018,7 @@ function during(state: Active, happening: BrowserSignal): Step {
     case "interactionReported": {
       const kind = heldKindOf(happening.report);
       if (kind === null && REPORTED_ONLY.has(happening.report.type)) {
-        // It happened before every input of its page that has not reached
-        // the page yet.
-        let place = draft.inputs.findIndex(
-          (input) =>
-            input.page === happening.page &&
-            (input.stage === "waiting" || input.stage === "takingBefore")
-        );
-        if (place < 0) place = draft.inputs.length;
-        giveUpEarlier(draft, happening.page, place);
-        draft.inputs = [
-          ...draft.inputs.slice(0, place),
-          {
-            id: `reported_${++draft.reportedOnly}`,
-            page: happening.page,
-            held: { kind: "reported" },
-            revised: false,
-            joins: null,
-            unreported: false,
-            stage: "waiting",
-            asked: null,
-            // Its start is found as it carries on.
-            before: null,
-            after: null,
-            passedOnAt: null,
-            report: happening.report,
-          },
-          ...draft.inputs.slice(place),
-        ];
+        knownFromReport(draft, happening.page, happening.report);
         break;
       }
       if (kind === null) break;
@@ -1018,8 +1032,20 @@ function during(state: Active, happening: BrowserSignal): Step {
           held.report === null &&
           held.joins === null
       );
-      if (!input || input.stage === "waiting" || input.stage === "takingBefore")
+      if (!input) {
+        // A click or a key made while the recorder wraps up, once the pages
+        // no longer hold inputs back: recording ends when "Paused" shows,
+        // so it is recorded from Playwright's report alone. A click of
+        // count zero is a key's or a label's, recorded with that key.
+        if (
+          state.phase === "wrappingUp" &&
+          happening.report.values["clickCount"] !== 0 &&
+          state.pages.some((page) => page.id === happening.page)
+        )
+          knownFromReport(draft, happening.page, happening.report);
         break;
+      }
+      if (input.stage === "waiting" || input.stage === "takingBefore") break;
       // A key pressed with nothing focused has no target, whatever element
       // Playwright names for it.
       const report =
@@ -1094,6 +1120,41 @@ function carryOnReported(draft: Draft, id: string) {
   if (next || input.stage === "settling" || underWay(draft, input.page)) return;
   change(draft, id, { stage: "settling" });
   draft.todo.push(settleAfter(input));
+}
+
+/** An input known from Playwright's report only. It happened before every
+ * input of its page that has not reached the page yet. */
+function knownFromReport(
+  draft: Draft,
+  page: string,
+  report: InteractionReport
+) {
+  let place = draft.inputs.findIndex(
+    (input) =>
+      input.page === page &&
+      (input.stage === "waiting" || input.stage === "takingBefore")
+  );
+  if (place < 0) place = draft.inputs.length;
+  giveUpEarlier(draft, page, place);
+  draft.inputs = [
+    ...draft.inputs.slice(0, place),
+    {
+      id: `reported_${++draft.reportedOnly}`,
+      page,
+      held: { kind: "reported" },
+      revised: false,
+      joins: null,
+      unreported: false,
+      stage: "waiting",
+      asked: null,
+      // Its start is found as it carries on.
+      before: null,
+      after: null,
+      passedOnAt: null,
+      report,
+    },
+    ...draft.inputs.slice(place),
+  ];
 }
 
 /** Playwright reports in order: the inputs of a page held before the

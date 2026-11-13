@@ -779,7 +779,11 @@ describe("the timeline, for an input known from its report", () => {
       ].join("\n")
     );
     expect(timeline.warnings()).toEqual([
-      "Playwright's report of interaction_1 does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.",
+      {
+        kind: "reportShape",
+        message:
+          "Playwright's report of interaction_1 does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.",
+      },
     ]);
   });
 });

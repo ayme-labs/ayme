@@ -14,6 +14,7 @@ describe("what the window says the recorder is doing", () => {
         outcome: { kind: "saved", folder: "/project/.ayme/recordings/rec_1" },
         visits: [],
         commands: [],
+        warnings: [],
       })
     ).toBe("Saved /project/.ayme/recordings/rec_1/package.yaml");
     expect(
@@ -22,6 +23,7 @@ describe("what the window says the recorder is doing", () => {
         outcome: { kind: "failed", reason: "ENOSPC" },
         visits: [],
         commands: [],
+        warnings: [],
       })
     ).toBe("Failed: ENOSPC");
   });

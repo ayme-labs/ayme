@@ -4,6 +4,7 @@ import type {
   CommandResult,
   RecorderCommand,
   RecorderUpdate,
+  RecorderWarning,
   RecordingOutcome,
 } from "../../contract";
 import { Timeline, type RecordingTrace } from "../../timeline/domain";
@@ -74,9 +75,12 @@ export class RecorderSession extends Context.Service<
         /** What shows of the lifecycle from outside: the phase, and the
          * commands that apply. */
         const told = () => ({ ...shown(state), commands: offered(state) });
+        /** The warnings told so far, and how many of the timeline's. */
+        let warnings: readonly RecorderWarning[] = [];
+        let fromTimeline = 0;
         let update: RecorderUpdate = {
           revision: 0,
-          state: { ...told(), visits },
+          state: { ...told(), visits, warnings },
         };
         let toldNow = JSON.stringify(told());
         /** Tells the listeners the recorder as it is now, under a new revision. */
@@ -84,17 +88,22 @@ export class RecorderSession extends Context.Service<
           visits = timeline.visits();
           update = {
             revision: update.revision + 1,
-            state: { ...told(), visits },
+            state: { ...told(), visits, warnings },
           };
           toldNow = JSON.stringify(told());
           for (const listener of listeners) listener(update);
         };
-        /** Tells them, if the timeline has a Visit or an entry more. */
-        const publishEntries = Effect.sync(() => {
-          if (timeline.visits() !== visits) publish();
-        });
         const tell = (happening: Happening) =>
           Queue.offer(queue, { happening });
+        /** Tells them, if the timeline has a Visit or an entry more, and the
+         * lifecycle, of what the timeline warned of since. */
+        const publishEntries = Effect.gen(function* () {
+          if (timeline.visits() !== visits) publish();
+          const warned = timeline.warnings();
+          for (const warning of warned.slice(fromTimeline))
+            yield* tell({ kind: "timelineWarned", warning });
+          fromTimeline = warned.length;
+        });
         /** The answer the lifecycle keeps for a later step. */
         let deferred: Queued["reply"];
 
@@ -140,6 +149,19 @@ export class RecorderSession extends Context.Service<
               // Nothing of the old recording is kept: no Visit, no entry
               // and no element's identity.
               timeline = new Timeline();
+              fromTimeline = 0;
+              return publish();
+            case "warn":
+              // Each is told once.
+              if (
+                warnings.some(
+                  (told) =>
+                    told.kind === item.warning.kind &&
+                    told.message === item.warning.message
+                )
+              )
+                return;
+              warnings = [...warnings, item.warning];
               return publish();
           }
         });

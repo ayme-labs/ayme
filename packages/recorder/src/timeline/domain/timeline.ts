@@ -9,7 +9,11 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 
-import type { RecordedVisit, TimelineEntry } from "../../contract";
+import type {
+  RecordedVisit,
+  RecorderWarning,
+  TimelineEntry,
+} from "../../contract";
 import {
   changeText,
   interactionDetails,
@@ -101,10 +105,10 @@ export class Timeline {
   /** When each snapshot was read. */
   private readonly readAt = new Map<string, number>();
   private told: readonly RecordedVisit[] = [];
-  private readonly warned: string[] = [];
+  private readonly warned: RecorderWarning[] = [];
 
   /** What a person should know about how this recording was made. */
-  warnings(): readonly string[] {
+  warnings(): readonly RecorderWarning[] {
     return [...this.warned];
   }
 
@@ -374,9 +378,10 @@ export class Timeline {
                 changeTree: read.changedBefore,
               });
           } else
-            this.warned.push(
-              `Playwright's report of ${interaction!.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`
-            );
+            this.warned.push({
+              kind: "reportShape",
+              message: `Playwright's report of ${interaction!.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
+            });
         }
         entries.push({
           kind: "interaction",

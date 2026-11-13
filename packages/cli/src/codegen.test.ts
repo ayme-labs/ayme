@@ -6,6 +6,7 @@ import {
   outcomeLine,
   startLine,
   toolbarScript,
+  warningPrinter,
   windowFolder,
   windowLine,
 } from "./codegen";
@@ -100,6 +101,22 @@ describe("what the terminal is told at the end", () => {
     ).toBe(
       "Recording package: /project/.ayme/recordings/rec_20261112T145047604Z/package.yaml\n"
     );
+  });
+});
+
+describe("what the terminal is told of warnings", () => {
+  it("prints each new warning once, as it comes", () => {
+    const printed: string[] = [];
+    const print = warningPrinter((text) => printed.push(text));
+    const shape = { kind: "reportShape", message: "One." } as const;
+    const trace = { kind: "traceWithoutPositions", message: "Two." } as const;
+
+    print([]);
+    print([shape]);
+    print([shape]);
+    print([shape, trace]);
+
+    expect(printed).toEqual(["Warning: One.\n", "Warning: Two.\n"]);
   });
 });
 

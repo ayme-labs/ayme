@@ -97,6 +97,7 @@ describe("a recording", () => {
           },
         ],
         commands: ["finish", "stop", "clear"],
+        warnings: [],
       },
     });
     expect(browser.asked).toEqual([
@@ -511,5 +512,56 @@ describe("a recording", () => {
     });
     expect(updates.at(-1)!.state).toMatchObject({ phase: "ended", outcome });
     expect(browser.released).toBe(true);
+  });
+});
+
+describe("a recording's warnings", () => {
+  it("tells every subscriber a warning of the browser in the state, once", async () => {
+    const { recorder, browser } = await start();
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    const warning = {
+      kind: "playwrightUnverified",
+      message: "Playwright 1.99.0 is newer than the recorder is verified on.",
+    } as const;
+
+    browser.warn(warning);
+    browser.warn(warning);
+
+    await expect.poll(() => updates.at(-1)!.state.warnings).toEqual([warning]);
+    expect(updates[0]!.state.warnings).toEqual([]);
+    recorder.end();
+    await recorder.done;
+  });
+
+  it("warns when typing is recorded with its 'after' only, as its report's picture is not of a snapshot's shape", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+
+    browser.report({
+      type: "fill",
+      selector: "#name",
+      target: { ref: "e9", tree: `- document [ref=e9]: Save` },
+      values: { text: "milk" },
+    });
+    await browser.asks({
+      kind: "waitForSettled",
+      page: "page_1",
+      input: "reported_1",
+    });
+    browser.settle();
+    await recorder.send({ type: "finish" });
+    await recorder.done;
+
+    expect(updates.at(-1)!.state.warnings).toEqual([
+      {
+        kind: "reportShape",
+        message:
+          "Playwright's report of interaction_1 does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.",
+      },
+    ]);
   });
 });

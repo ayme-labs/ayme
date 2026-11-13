@@ -90,6 +90,27 @@ export type RecorderState = RecorderPhase & {
   readonly visits: readonly RecordedVisit[];
   /** The commands that apply now: any other would be answered "ignored". */
   readonly commands: readonly RecorderCommandType[];
+  /** What a person should know about how this recording is made, oldest
+   * first. Each is told once. */
+  readonly warnings: readonly RecorderWarning[];
+};
+
+/** Something a person should know about how a recording is made. */
+export type RecorderWarning = {
+  /**
+   * What it is about, stable for code to tell warnings apart:
+   * - reportShape: typing, a choice or an upload is recorded with what it
+   *   changed up to its "after" only, as Playwright's report of it was not
+   *   of the shape of a snapshot.
+   * - playwrightUnverified: the project's Playwright is newer than the
+   *   versions the recorder is verified on.
+   * - traceWithoutPositions: the package carries its trace, but not the
+   *   position numbers that open its snapshots.
+   */
+  readonly kind:
+    "reportShape" | "playwrightUnverified" | "traceWithoutPositions";
+  /** A sentence for a person. */
+  readonly message: string;
 };
 
 /** A full picture of the recorder. `revision` grows with every change: a

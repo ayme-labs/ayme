@@ -45,7 +45,12 @@ describe("a recorder", () => {
       .poll(() => updates.at(-1))
       .toEqual({
         revision: 2,
-        state: { phase: "notRecording", visits: [], commands: [] },
+        state: {
+          phase: "notRecording",
+          visits: [],
+          commands: [],
+          warnings: [],
+        },
       });
     expect(updates).toHaveLength(2);
   });
@@ -66,11 +71,13 @@ describe("a recorder", () => {
       expect.objectContaining({
         phase: "recording",
         commands: ["finish", "stop", "clear"],
+        warnings: [],
       }),
       expect.objectContaining({
         phase: "wrappingUp",
         then: "pause",
         commands: [],
+        warnings: [],
       }),
       expect.objectContaining({ phase: "wrappingUp", then: "save" }),
     ]);
@@ -96,7 +103,12 @@ describe("a recorder", () => {
     expect(updates).toEqual([
       {
         revision: 1,
-        state: { phase: "notRecording", visits: [], commands: ["record"] },
+        state: {
+          phase: "notRecording",
+          visits: [],
+          commands: ["record"],
+          warnings: [],
+        },
       },
     ]);
 
@@ -105,7 +117,12 @@ describe("a recorder", () => {
     expect(updates).toEqual([
       {
         revision: 1,
-        state: { phase: "notRecording", visits: [], commands: ["record"] },
+        state: {
+          phase: "notRecording",
+          visits: [],
+          commands: ["record"],
+          warnings: [],
+        },
       },
       {
         revision: 2,
@@ -114,6 +131,7 @@ describe("a recorder", () => {
           outcome: { kind: "empty" },
           visits: [],
           commands: [],
+          warnings: [],
         },
       },
     ]);
@@ -135,6 +153,7 @@ describe("a recorder", () => {
           outcome: { kind: "empty" },
           visits: [],
           commands: [],
+          warnings: [],
         },
       },
     ]);

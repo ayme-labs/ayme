@@ -5,7 +5,12 @@ import { newest } from "./newest";
 
 const update = (revision: number): RecorderUpdate => ({
   revision,
-  state: { phase: "notRecording", visits: [], commands: ["record"] },
+  state: {
+    phase: "notRecording",
+    visits: [],
+    commands: ["record"],
+    warnings: [],
+  },
 });
 
 describe("the state the window shows", () => {

@@ -2315,3 +2315,112 @@ describe("the lifecycle, for discard and restore", () => {
     expect(after([...stopped, finish])).toEqual([]);
   });
 });
+
+// Follow-ups to every kind of input.
+describe("the lifecycle, for a page that is blank at Record", () => {
+  const blank: Happening = {
+    kind: "pageOpened",
+    page: "page_1",
+    url: "about:blank",
+  };
+
+  it("starts no Visit for it, and starts its Visit, as the first, at its first real address", () => {
+    const { todo, state } = run([
+      blank,
+      record,
+      { kind: "pageNavigated", page: "page_1", url },
+    ]);
+
+    expect(todo.at(-2)).toEqual([
+      startTrace,
+      reportInteractions,
+      { kind: "deferReply" },
+    ]);
+    expect(todo.at(-1)).toEqual([startVisit]);
+    expect(state).toEqual({ phase: "recording" });
+  });
+});
+
+describe("the lifecycle, for a click made while the recorder wraps up", () => {
+  const clickReport = (count: number): InteractionReport => ({
+    ...click,
+    values: { button: "left", clickCount: count },
+  });
+  const reportedClick = (count: number): Happening => ({
+    kind: "interactionReported",
+    page: "page_1",
+    report: clickReport(count),
+  });
+  /** Stop, up to Playwright's recorder being switched off. */
+  const stopping = [opened, ...started, stop, gateOff, taken("snapshot_1")];
+
+  it("records a click the pages no longer held from Playwright's report alone, before the recorder is paused", () => {
+    const { todo, state } = run([
+      ...stopping,
+      reportedClick(1),
+      settled("reported_1"),
+      taken("snapshot_2"),
+      reportingOff,
+    ]);
+
+    expect(todo.slice(-4)).toEqual([
+      [waitForSettled("reported_1")],
+      [takeSnapshot("snapshot_2")],
+      [
+        keep("snapshot_2"),
+        {
+          kind: "timeline",
+          add: {
+            kind: "interaction",
+            interaction: {
+              page: "page_1",
+              report: clickReport(1),
+              before: "snapshot_1",
+              after: "snapshot_2",
+              at: 10,
+              beforeFromReport: true,
+            },
+          },
+        },
+      ],
+      [],
+    ]);
+    expect(state).toEqual({ phase: "paused" });
+  });
+
+  it("waits for such a click when Playwright's recorder is switched off before it has its 'after'", () => {
+    const { todo, state } = run([
+      ...stopping,
+      reportedClick(1),
+      reportingOff,
+      settled("reported_1"),
+      taken("snapshot_2"),
+      reportingOff,
+    ]);
+
+    expect(todo.at(-2)).toContainEqual(stopReporting);
+    expect(state).toEqual({ phase: "paused" });
+  });
+
+  it("ignores a click of count zero, which a key or a label caused", () => {
+    const { todo } = run([...stopping, reportedClick(0)]);
+
+    expect(todo.at(-1)).toEqual([]);
+  });
+});
+
+describe("the lifecycle, for a warning", () => {
+  const warning = {
+    kind: "playwrightUnverified",
+    message: "Playwright 1.99.0 is newer than the recorder is verified on.",
+  } as const;
+
+  it("passes on what the browser or the timeline warns of, whatever the phase", () => {
+    expect(run([{ kind: "browserWarned", warning }]).todo).toEqual([
+      [{ kind: "warn", warning }],
+    ]);
+    expect(
+      run([opened, ...started, { kind: "timelineWarned", warning }]).todo.at(-1)
+    ).toEqual([{ kind: "warn", warning }]);
+  });
+});

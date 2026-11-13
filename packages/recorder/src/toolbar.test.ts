@@ -34,6 +34,7 @@ describe("the toolbar's way to the recorder", () => {
       phase: "notRecording",
       visits: [],
       commands: ["record"],
+      warnings: [],
     });
   });
 

@@ -251,7 +251,11 @@ function findPublicationLeaks(
   })) {
     if (!entry.isFile()) continue;
     const file = path.join(entry.parentPath, entry.name);
-    const contents = fs.readFileSync(file, "utf8");
+    // `C:\fakepath\` is the path every browser shows for a chosen file: the
+    // recorder reads it in a page. It names no folder of the machine.
+    const contents = fs
+      .readFileSync(file, "utf8")
+      .replace(/C:\\{1,2}fakepath\\{1,2}/g, "");
     for (const pattern of patterns) {
       const match = pattern.exec(contents);
       if (match)
@@ -403,6 +407,10 @@ it("the leak check reports non-registry specifiers and local paths", () => {
     path.join(fixture, "dist", "index.mjs"),
     'const url = "file:///x"; const re = {a:/b/}; export const p = "/home/ci";\n' +
       'export const q = "D:/agent/_work/pkg";\n'
+  );
+  fs.writeFileSync(
+    path.join(fixture, "dist", "fakepath.mjs"),
+    'export const a = "C:\\\\fakepath\\\\"; export const b = `C:\\fakepath\\`;\n'
   );
   fs.writeFileSync(
     path.join(fixture, "dist", "win.mjs"),
@@ -1781,14 +1789,35 @@ it(
         .poll(() => /Recorder window: \S+\n/.test(stdout), { timeout: 30_000 })
         .toBe(true);
       const windowUrl = /Recorder window: (\S+)/.exec(stdout)![1]!;
-      const browser = await chromium.connectOverCDP(
-        `http://127.0.0.1:${debugPort}`
-      );
-      const pages = browser.contexts().flatMap((context) => context.pages());
-      const window = pages.find((page) => page.url().startsWith(windowUrl))!;
-      const page = pages.find((candidate) => candidate.url() === pageUrl)!;
-      expect(window, "the recorder's window is open").toBeDefined();
-      expect(page, "the recorded page is open").toBeDefined();
+      // The address is printed as soon as the recorder has started, which
+      // does not wait for the browser: it may not listen yet.
+      let connection: Awaited<ReturnType<typeof chromium.connectOverCDP>>;
+      await expect
+        .poll(
+          async () => {
+            connection = await chromium
+              .connectOverCDP(`http://127.0.0.1:${debugPort}`)
+              .catch(() => undefined as never);
+            return connection;
+          },
+          { timeout: 30_000 }
+        )
+        .toBeDefined();
+      const browser = connection!;
+      // The recorded page is the browser's one page at that address.
+      const recorded = () =>
+        browser
+          .contexts()
+          .flatMap((context) => context.pages())
+          .find((candidate) => candidate.url() === pageUrl);
+      await expect.poll(recorded, { timeout: 30_000 }).toBeDefined();
+      const page = recorded()!;
+      // The test opens the window itself, from the printed address, in a
+      // context of its own. The engine also opens it in the browser it
+      // launched, but without waiting for it: that page may not be there
+      // yet, and the address works either way.
+      const window = await (await browser.newContext()).newPage();
+      await window.goto(windowUrl);
 
       await window.getByRole("button", { name: "Record", exact: true }).click();
       await expect
@@ -1810,6 +1839,12 @@ it(
         true
       );
       await browser.close().catch(() => {});
+    } catch (error) {
+      // What the command printed is the first thing to look at.
+      throw new Error(
+        `${(error as Error).message}\n--- stdout ---\n${stdout}\n--- stderr ---\n${stderr}`,
+        { cause: error }
+      );
     } finally {
       command.kill();
       app.close();

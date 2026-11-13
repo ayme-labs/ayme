@@ -8,7 +8,12 @@ import { openPageRecorderChannel } from "./pageRecorderChannel";
 
 const update = (revision: number): RecorderUpdate => ({
   revision,
-  state: { phase: "recording", visits: [], commands: ["stop"] },
+  state: {
+    phase: "recording",
+    visits: [],
+    commands: ["stop"],
+    warnings: [],
+  },
 });
 
 /** The function the engine puts in the page, played by the test: it answers

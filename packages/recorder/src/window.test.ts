@@ -123,6 +123,7 @@ describe("the window's server", () => {
       phase: "notRecording",
       visits: [],
       commands: ["record"],
+      warnings: [],
     });
 
     await expect(send("record")).resolves.toBe("applied");
