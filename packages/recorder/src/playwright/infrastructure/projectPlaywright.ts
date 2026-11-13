@@ -57,7 +57,10 @@ function installedIn(projectDir: string, name: string): string | undefined {
  */
 export const loadProjectPlaywright = (
   projectDir: string
-): Effect.Effect<Playwright, RecorderStartError> =>
+): Effect.Effect<
+  { readonly playwright: Playwright; readonly version: string },
+  RecorderStartError
+> =>
   Effect.suspend(() => {
     for (const name of PLAYWRIGHT_PACKAGES) {
       const folder = installedIn(projectDir, name);
@@ -72,7 +75,10 @@ export const loadProjectPlaywright = (
             `${projectDir} has Playwright ${version}. The recorder needs ${rangeText}: update the project's Playwright, for example with "npm install -D @playwright/test@latest".`
           )
         );
-      return Effect.succeed(requireFile(folder) as Playwright);
+      return Effect.succeed({
+        playwright: requireFile(folder) as Playwright,
+        version,
+      });
     }
     return Effect.fail(
       new RecorderStartError(

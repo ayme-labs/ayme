@@ -115,14 +115,18 @@ it("uses the Playwright installed above the project folder, as in a monorepo", a
 /**
  * Installs a stand-in for Playwright whose Chromium opens one page that can
  * never be read: a snapshot of it never comes. `control.holdClick()` plays
- * the page holding a click back.
+ * the page holding a click back. Its contexts start Playwright's recorder as
+ * 1.64 does, unless `withRecorder` is false.
  */
-async function installPlaywrightWithUnreadablePage(root: string) {
+async function installPlaywrightWithUnreadablePage(
+  root: string,
+  { version = "1.64.0", withRecorder = true } = {}
+) {
   const installed = join(root, "node_modules", "playwright");
   await mkdir(installed, { recursive: true });
   await writeFile(
     join(installed, "package.json"),
-    JSON.stringify({ name: "playwright", version: "1.64.0", main: "index.js" })
+    JSON.stringify({ name: "playwright", version, main: "index.js" })
   );
   await writeFile(
     join(installed, "index.js"),
@@ -154,7 +158,7 @@ exports.chromium = {
           exports.control.holdClick = () =>
             held({ page, frame }, { x: 1, y: 1, detail: 1, modifiers: [] });
       };
-      context._startRecording = async () => {};
+      if (${withRecorder}) context._startRecording = async () => {};
       context.newPage = async () => {
         context.emit("page", page);
         return page;
@@ -196,6 +200,38 @@ it(
     await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
     expect(phases).toEqual(["notRecording", "recording", "wrappingUp"]);
 
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+  }
+);
+
+it("fails to start, naming the supported range, when Playwright's recorder is not found", async () => {
+  await installPlaywrightWithUnreadablePage(folder, {
+    version: "1.66.0",
+    withRecorder: false,
+  });
+
+  const failure = await start(folder);
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "playwright-recorder-not-found",
+    message: `The recorder could not find Playwright's own recorder in Playwright 1.66.0, in ${folder}. It needs Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}.`,
+  });
+});
+
+it(
+  "records on a Playwright newer than the verified range when it finds Playwright's recorder",
+  { timeout: 20_000 },
+  async () => {
+    await installPlaywrightWithUnreadablePage(folder, { version: "1.66.0" });
+    const recorder = await startRecorder({
+      projectDir: folder,
+      browser: { launch: { url: "http://stand-in.test/" } },
+    });
+
+    await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+
+    recorder.end();
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
   }
 );

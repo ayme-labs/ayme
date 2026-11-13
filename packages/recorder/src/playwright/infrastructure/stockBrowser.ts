@@ -20,7 +20,8 @@ import {
   installGate,
   type HeldClick,
 } from "./pageScripts";
-import { loadProjectPlaywright } from "./projectPlaywright";
+import { playwrightRecorderOf } from "./playwrightRecorder";
+import { loadProjectPlaywright, rangeText } from "./projectPlaywright";
 
 /**
  * The recorded browser on stock Playwright: Chromium, launched by the
@@ -36,7 +37,9 @@ export const stockBrowser = (options: {
   Layer.effect(
     RecordedBrowser,
     Effect.gen(function* () {
-      const playwright = yield* loadProjectPlaywright(options.projectDir);
+      const { playwright, version } = yield* loadProjectPlaywright(
+        options.projectDir
+      );
       const signals = yield* Queue.unbounded<BrowserSignal>();
       const unavailable = (cause: unknown) =>
         new RecorderStartError(
@@ -68,7 +71,13 @@ export const stockBrowser = (options: {
           openPage(browser, options.url, (signal) =>
             Queue.offerUnsafe(signals, signal)
           ),
-        catch: unavailable,
+        catch: (cause) =>
+          cause instanceof NoPlaywrightRecorder
+            ? new RecorderStartError(
+                "playwright-recorder-not-found",
+                `The recorder could not find Playwright's own recorder in Playwright ${version}, in ${options.projectDir}. It needs ${rangeText}.`
+              )
+            : unavailable(cause),
       });
       return RecordedBrowser.of({
         signals,
@@ -86,27 +95,8 @@ export const stockBrowser = (options: {
 /** Milliseconds on the clock Playwright's own times are on. */
 const now = () => Math.floor(performance.now() * 1e3) / 1e3;
 
-/** Playwright's own recorder, started on a context: a private part of
- * Playwright, as it is in 1.64. */
-type PlaywrightRecorder = {
-  _startRecording(
-    options: { language: string },
-    sink: {
-      actionAdded(page: Page, action: PlaywrightAction): void;
-      actionUpdated(page: Page, action: PlaywrightAction): void;
-      signalAdded(page: Page, signal: unknown): void;
-    }
-  ): Promise<void>;
-};
-/** What Playwright's recorder says of one action. */
-type PlaywrightAction = {
-  readonly name: string;
-  readonly selector?: string;
-  /** The target in `ariaSnapshot`, the recorder's own picture of the page. */
-  readonly ref?: string | null;
-  readonly ariaSnapshot?: string;
-  readonly signals?: unknown;
-} & Readonly<Record<string, unknown>>;
+/** This Playwright has no recorder the engine knows how to start. */
+class NoPlaywrightRecorder extends Error {}
 
 /**
  * Opens the context and its page, and returns what carries out the engine's
@@ -123,6 +113,8 @@ async function openPage(
   browser.on("disconnected", () => tell({ kind: "browserGone" }));
   // No fixed viewport: the page has the size of its window.
   const context = await browser.newContext({ viewport: null });
+  const startPlaywrightRecorder = playwrightRecorderOf(context);
+  if (!startPlaywrightRecorder) throw new NoPlaywrightRecorder();
 
   const pages = new Map<string, Page>();
   const idOf = new Map<Page, string>();
@@ -269,32 +261,25 @@ async function openPage(
   }
 
   async function reportInteractions() {
-    await (context as unknown as PlaywrightRecorder)._startRecording(
-      { language: "playwright-test" },
-      {
-        actionAdded: (reported, action) => {
-          const pageId = idOf.get(reported);
-          if (!pageId) return;
-          const { name, selector, ref, ariaSnapshot, signals, ...values } =
-            action;
-          void signals;
-          tell({
-            kind: "interactionReported",
-            page: pageId,
-            report: {
-              type: name,
-              selector: selector ?? null,
-              target: ref && ariaSnapshot ? { ref, tree: ariaSnapshot } : null,
-              values,
-            },
-          });
-        },
-        // A report that Playwright revises, as for a double click, and the
-        // signals it adds to one are not read yet.
-        actionUpdated: () => {},
-        signalAdded: () => {},
-      }
-    );
+    await startPlaywrightRecorder!({
+      actionAdded: (reported, action) => {
+        const pageId = idOf.get(reported);
+        if (!pageId) return;
+        const { name, selector, ref, ariaSnapshot, signals, ...values } =
+          action;
+        void signals;
+        tell({
+          kind: "interactionReported",
+          page: pageId,
+          report: {
+            type: name,
+            selector: selector ?? null,
+            target: ref && ariaSnapshot ? { ref, tree: ariaSnapshot } : null,
+            values,
+          },
+        });
+      },
+    });
     // A document that was open before the recorder started.
     await Promise.all(
       everyFrame().map((frame) =>
