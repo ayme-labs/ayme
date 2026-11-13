@@ -75,8 +75,9 @@ it(
       "yaml",
       "zod",
     ]);
+    // zod comes with core's wait for a Settled Page, which the adapter drives.
     expect(reachablePackages("src/playwright/infrastructure/index.ts")).toEqual(
-      ["effect", "playwright-core"]
+      ["effect", "playwright-core", "zod"]
     );
   }
 );

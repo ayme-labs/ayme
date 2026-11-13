@@ -28,6 +28,7 @@ export type Gate = {
 declare global {
   interface Window {
     __aymeRecorderGate?: Gate;
+    __aymeRecorderActivity?: ActivityWatch;
   }
 }
 
@@ -147,39 +148,38 @@ export function hidePlaywrightOverlay(): void {
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
 }
 
+/** The activity watch of one document, as the adapter reaches it. */
+export type ActivityWatch = {
+  /** Tells of every change from now on, or no longer. */
+  watch(on: boolean): void;
+};
+
 /**
- * Resolves once the document has gone `quietMs` without a change to its
- * elements, open shadow roots included, or once `deadlineMs` has passed.
+ * Installs the activity watch in a document, switched off. Switched on, it
+ * calls the binding named `changed` whenever the document's elements change,
+ * open shadow roots included. It only says that something happened: what a
+ * Settled Page is, core decides, in the adapter's process.
  */
-export function waitUntilQuiet(options: {
-  quietMs: number;
-  deadlineMs: number;
-}): Promise<void> {
-  return new Promise((resolve) => {
-    let quiet: ReturnType<typeof setTimeout> | undefined;
-    const done = () => {
+export function installActivityWatch(changed: string): void {
+  if (window.__aymeRecorderActivity) return;
+  const tell = () =>
+    void (window as unknown as Record<string, () => Promise<void>>)[changed]!();
+  const observer = new MutationObserver(tell);
+  window.__aymeRecorderActivity = {
+    watch(on) {
       observer.disconnect();
-      clearTimeout(quiet);
-      clearTimeout(deadline);
-      resolve();
-    };
-    const restart = () => {
-      clearTimeout(quiet);
-      quiet = setTimeout(done, options.quietMs);
-    };
-    const observer = new MutationObserver(restart);
-    const observe = (root: Document | ShadowRoot) => {
-      observer.observe(root, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        characterData: true,
-      });
-      for (const element of root.querySelectorAll("*"))
-        if (element.shadowRoot) observe(element.shadowRoot);
-    };
-    observe(document);
-    const deadline = setTimeout(done, options.deadlineMs);
-    restart();
-  });
+      if (!on) return;
+      const observe = (root: Document | ShadowRoot) => {
+        observer.observe(root, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          characterData: true,
+        });
+        for (const element of root.querySelectorAll("*"))
+          if (element.shadowRoot) observe(element.shadowRoot);
+      };
+      observe(document);
+    },
+  };
 }

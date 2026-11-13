@@ -17,8 +17,17 @@
         offer.textContent = "Free delivery today";
         document.body.append(offer);
       };
+      // A refresh takes its time, in steps less than a quiet window apart:
+      // the page is a Settled Page only after the last one.
       document.getElementById("refresh").addEventListener("click", () => {
-        document.getElementById("state").textContent = "Refreshed";
+        const state = document.getElementById("state");
+        state.textContent = "Refreshing";
+        setTimeout(() => {
+          state.textContent = "Still refreshing";
+          setTimeout(() => {
+            state.textContent = "Refreshed";
+          }, 200);
+        }, 200);
       });
     </script>
   </body>

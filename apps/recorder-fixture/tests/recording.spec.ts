@@ -94,7 +94,9 @@ test.describe("recording", () => {
         `      - kind: interaction`,
       ].join("\n")
     );
-    // What it rendered before the click is no change of the recording.
+    // What it rendered before the click is no change of the recording. The
+    // click's "after" is the Settled Page: the refresh ends 400 ms after the
+    // click, in steps the page's activity tells of.
     expect(text).toContain(
       [
         `          clickCount: 1`,

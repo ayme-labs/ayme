@@ -1,6 +1,9 @@
 import {
+  MonotonicTimeMsSchema,
   SETTLED_PAGE_DEADLINE_MS,
   SETTLED_PAGE_QUIET_MS,
+  waitForSettled,
+  type PageActivitySource,
 } from "@ayme-dev/core/structural-observation";
 import { Effect, Layer, Queue } from "effect";
 import type { Browser, Frame, Page } from "playwright-core";
@@ -13,8 +16,8 @@ import {
 } from "../../session/domain";
 import {
   hidePlaywrightOverlay,
+  installActivityWatch,
   installGate,
-  waitUntilQuiet,
   type HeldClick,
 } from "./pageScripts";
 import { loadProjectPlaywright } from "./projectPlaywright";
@@ -153,9 +156,52 @@ async function openPage(
       tell({ kind: "inputHeld", input, page: pageId });
     }
   );
-  // Every document gets the gate, switched off, before its own scripts run.
+  /** Who hears of a page's activity now: a wait for a Settled Page. */
+  const listening = new Map<Page, Set<() => void>>();
+  const changedBinding = "__aymeRecorderChanged";
+  await context.exposeBinding(changedBinding, ({ page }) => {
+    for (const heard of listening.get(page) ?? []) heard();
+  });
+  // Every document gets the gate and the activity watch, both switched off,
+  // before its own scripts run.
   await context.addInitScript(installGate, heldBinding);
+  await context.addInitScript(installActivityWatch, changedBinding);
   await context.addInitScript(hidePlaywrightOverlay);
+
+  /**
+   * A page's activity, for core's wait (ADR-0024): every change to the
+   * elements of any of its frames, and every document one of its frames
+   * goes to or finishes loading. It says only that something happened.
+   */
+  const activityOf = (page: Page): PageActivitySource => ({
+    subscribe(onActivity) {
+      const watch = (frame: Frame, on: boolean) =>
+        // A frame that is gone has nothing to tell.
+        void frame
+          .evaluate((on) => window.__aymeRecorderActivity?.watch(on), on)
+          .catch(() => {});
+      const onNavigated = (frame: Frame) => {
+        onActivity();
+        // Its new document starts with the watch switched off.
+        watch(frame, true);
+      };
+      const heard = listening.get(page) ?? new Set();
+      listening.set(page, heard.add(onActivity));
+      page.on("framenavigated", onNavigated);
+      page.on("domcontentloaded", onActivity);
+      page.on("load", onActivity);
+      for (const frame of page.frames()) watch(frame, true);
+      return () => {
+        heard.delete(onActivity);
+        page.off("framenavigated", onNavigated);
+        page.off("domcontentloaded", onActivity);
+        page.off("load", onActivity);
+        // Another wait on this page may still be listening.
+        if (heard.size === 0)
+          for (const frame of page.frames()) watch(frame, false);
+      };
+    },
+  });
 
   const page = await context.newPage();
   // A page that does not load is no reason to stop: the browser shows the
@@ -203,7 +249,16 @@ async function openPage(
       }
       case "waitForSettled": {
         const open = pages.get(request.page);
-        if (open) await settled(open);
+        // Core owns the quiet window, the deadline and what "settled" is.
+        if (open)
+          await waitForSettled({
+            activity: activityOf(open),
+            clock: {
+              now: () => MonotonicTimeMsSchema.parse(performance.now()),
+            },
+            quietMs: SETTLED_PAGE_QUIET_MS,
+            deadlineMs: SETTLED_PAGE_DEADLINE_MS,
+          });
         return tell({
           kind: "pageSettled",
           page: request.page,
@@ -272,36 +327,5 @@ async function passOn(frame: Frame, click: HeldClick) {
     await frame
       .evaluate(() => window.__aymeRecorderGate?.close())
       .catch(() => {});
-  }
-}
-
-/**
- * Waits until the page is a Settled Page: loaded, and every frame quiet for
- * core's quiet window, or core's deadline passed.
- */
-async function settled(page: Page) {
-  const quiet = {
-    quietMs: SETTLED_PAGE_QUIET_MS,
-    deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-  };
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page
-      .waitForLoadState("load", { timeout: SETTLED_PAGE_DEADLINE_MS })
-      .catch(() => {});
-    try {
-      await Promise.all(
-        page.frames().map((frame) =>
-          frame.evaluate(waitUntilQuiet, quiet).catch((error: unknown) => {
-            // A frame that went away while it was watched no longer changes.
-            if (!frame.isDetached()) throw error;
-          })
-        )
-      );
-      return;
-    } catch {
-      // The main frame went elsewhere under the wait: wait for the new
-      // document, or give up when the page is gone.
-      if (page.isClosed()) return;
-    }
   }
 }
