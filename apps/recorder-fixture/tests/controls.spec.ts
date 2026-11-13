@@ -91,6 +91,37 @@ test.describe("the recorder's controls", () => {
     ).toEqual(["latest.yaml", outcome.folder.split("/").at(-1)]);
   });
 
+  test("Finish resolves the outcome once, and every waiter gets the same one", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/cart.html");
+    const { recorder, page, person, projectDir } = recording;
+    // A waiter from before anything was recorded.
+    const early = recorder.done;
+    await recorder.send({ type: "record" });
+    await person.click(page.locator("#add"));
+    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.pause();
+
+    expect(await recorder.send({ type: "finish" })).toBe("applied");
+    expect(await recorder.send({ type: "finish" })).toBe("ignored");
+
+    const [first, second, late] = await Promise.all([
+      early,
+      recorder.done,
+      recorder.done,
+    ]);
+    expect(first.kind).toBe("saved");
+    expect(second).toEqual(first);
+    expect(late).toEqual(first);
+    expect(await recorder.done).toEqual(first);
+    // Saved once.
+    const recordings = await readdir(join(projectDir, ".ayme", "recordings"));
+    expect(recordings.filter((name) => name.startsWith("rec_"))).toHaveLength(
+      1
+    );
+  });
+
   test("Finish on a started recording with no Interactions ends with 'empty' and writes no package", async ({
     startRecording,
   }) => {
