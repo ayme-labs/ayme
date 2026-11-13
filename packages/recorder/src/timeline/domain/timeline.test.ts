@@ -1145,3 +1145,88 @@ describe("the timeline, for discard and restore", () => {
     );
   });
 });
+
+// Ticket #1278: an assertion is an entry like an Interaction, with one
+// snapshot that is its "before" and its "after".
+describe("the timeline, for an assertion", () => {
+  const assertion = (snapshotId: string, at: number): TimelineAddition => ({
+    kind: "interaction",
+    interaction: {
+      page: "page_1",
+      report: {
+        type: "assertVisible",
+        selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+        target: null,
+        values: {},
+      },
+      before: snapshotId,
+      after: snapshotId,
+      at,
+    },
+  });
+
+  it("writes an assertion with no Change Tree, and what changed since the last snapshot as a change before it (rule 7)", async () => {
+    const text = await packageOf(
+      [
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        snapshot("snapshot_2", 20, idle),
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+        snapshot("snapshot_3", 30, savedPage),
+        assertion("snapshot_3", 30),
+      ],
+      { snapshot_1: "11", snapshot_2: "17", snapshot_3: "23" }
+    );
+
+    expect(text).toContain(
+      [
+        `          clickCount: 1`,
+        `      - kind: change`,
+        `        timestamp: 30`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <changed> [ref=e3] paragraph: Saved`,
+        `      - kind: interaction`,
+        `        timestamp: 30`,
+        `        interaction:`,
+        `          id: interaction_2`,
+        `          type: assertVisible`,
+        `          targetRef: null`,
+        `          targetSelector: internal:role=paragraph >> internal:has-text="Saved"i`,
+        `traceActionPoints:`,
+      ].join("\n")
+    );
+    expect(text).toContain(
+      [
+        `  - interactionId: interaction_2`,
+        `    pageId: page_1`,
+        `    beforeSnapshotId: "23"`,
+        `    afterSnapshotId: "23"`,
+        `    startedAt: 30`,
+        `    endedAt: 30`,
+      ].join("\n")
+    );
+  });
+
+  it("starts a Visit whose first entry is an assertion with the page as it stood at the assertion", async () => {
+    const text = await packageOf([
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      snapshot("snapshot_2", 20, savedPage),
+      assertion("snapshot_2", 20),
+    ]);
+
+    expect(text).toContain(
+      [
+        `    baselineTree:`,
+        `      - [ref=e1]:`,
+        `        - [ref=e2] button "Save"`,
+        `        - [ref=e3] paragraph: Saved`,
+        `    timelineEntries:`,
+        `      - kind: interaction`,
+        `        timestamp: 20`,
+      ].join("\n")
+    );
+    expect(text).not.toContain("changeTree");
+  });
+});
