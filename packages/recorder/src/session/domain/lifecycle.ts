@@ -150,8 +150,10 @@ const HELD_CLICK_REPORTS = new Set(["click", "check", "uncheck"]);
 type Page = {
   readonly id: string;
   readonly url: string;
-  /** Opened blank while recording: its Visit starts where it goes first. */
-  readonly blank?: true;
+  /** What became of it while it had no Visit at its address: it opened,
+   * blank while recording or while paused, or it went elsewhere while
+   * paused. Its Visit starts when it is at an address while recording. */
+  readonly since?: "opened" | "moved";
 };
 
 /** One input the gate held back, until it is written down or dropped. */
@@ -253,39 +255,39 @@ export function step(state: LifecycleState, happening: Happening): Step {
     case "browserGone":
       return endFromOutside(state);
     case "pageOpened": {
-      const blank = isActive(state) && happening.url === BLANK;
-      const opened = {
-        ...state,
-        pages: [
-          ...state.pages,
-          {
-            id: happening.page,
-            url: happening.url,
-            ...(blank ? { blank: true as const } : {}),
-          },
-        ],
-      };
-      return isActive(opened) && !blank
-        ? proceed(opened, [visitOf(happening.page, happening.url, "openPage")])
-        : stay(opened);
+      const page: Page = { id: happening.page, url: happening.url };
+      const opened = { ...state, pages: [...state.pages, page] };
+      if (isActive(opened) && page.url !== BLANK)
+        return proceed(opened, [visitOf(page.id, page.url, "openPage")]);
+      return stay(
+        isActive(opened) || opened.phase === "paused"
+          ? { ...opened, pages: [...state.pages, { ...page, since: "opened" }] }
+          : opened
+      );
     }
     case "pageNavigated": {
       const page = state.pages.find((open) => open.id === happening.page);
-      const moved = {
+      if (!page) return stay(state);
+      const at = { ...page, url: happening.url };
+      const moved = (next: Page) => ({
         ...state,
-        pages: state.pages.map((open) =>
-          open === page ? { id: open.id, url: happening.url } : open
-        ),
-      };
-      return isActive(moved)
-        ? proceed(moved, [
-            visitOf(
-              happening.page,
-              happening.url,
-              page?.blank ? "openPage" : "navigate"
+        pages: state.pages.map((open) => (open === page ? next : open)),
+      });
+      if (isActive(state) && at.url !== BLANK)
+        return proceed(
+          {
+            ...state,
+            pages: state.pages.map((open) =>
+              open === page ? visited(at) : open
             ),
-          ])
-        : stay(moved);
+          },
+          [visitOf(at.id, at.url, causeOf(at))]
+        );
+      return stay(
+        moved(
+          state.phase === "paused" ? { ...at, since: at.since ?? "moved" } : at
+        )
+      );
     }
     case "pageClosed": {
       const without = withoutPage(state, happening.page);
@@ -356,7 +358,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             phase: "recording",
             starting: true,
             resumed: false,
-            pages: state.pages,
+            pages: state.pages.map(visited),
             inputs: [],
             snapshotsAsked: 0,
           },
@@ -387,21 +389,24 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       break;
     case "paused":
       // It starts as Record does, into the timeline that is there.
-      if (asked.type === "continue")
+      if (asked.type === "continue") {
+        const continued = continueVisits(state.pages);
         return {
           state: {
             phase: "recording",
             starting: true,
             resumed: true,
-            pages: state.pages,
+            pages: continued.pages,
             inputs: [],
             snapshotsAsked: state.snapshotsAsked,
           },
           todo: [
+            ...continued.todo,
             { kind: "browser", ask: { kind: "reportInteractions", on: true } },
             { kind: "deferReply" },
           ],
         };
+      }
       // Nothing is under way while paused: there is nothing to wrap up, and
       // no last snapshot to take, which would show what the pause changed.
       if (asked.type === "clear")
@@ -514,6 +519,24 @@ const visitOf = (page: string, url: string, cause: VisitCause): ToDo => ({
   kind: "timeline",
   add: { kind: "visit", page, url, cause },
 });
+
+const causeOf = (page: Page): VisitCause =>
+  page.since === "opened" ? "openPage" : "navigate";
+
+/** The page, with a Visit at its address. */
+const visited = ({ id, url }: Page): Page => ({ id, url });
+
+/** Continue starts a Visit for each page that went elsewhere, or opened,
+ * while paused: what it does next is done there. */
+function continueVisits(pages: readonly Page[]) {
+  const starts = (page: Page) => page.since !== undefined && page.url !== BLANK;
+  return {
+    pages: pages.map((page) => (starts(page) ? visited(page) : page)),
+    todo: pages
+      .filter(starts)
+      .map((page) => visitOf(page.id, page.url, causeOf(page))),
+  };
+}
 
 /** The state without a page that closed. An input held for it that has not
  * reached it is dropped; one that has keeps its "before" only. */

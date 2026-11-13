@@ -857,6 +857,38 @@ describe("the lifecycle", () => {
       todo: [[takeSnapshot("snapshot_2")], [keep("snapshot_2"), save]],
       state: { phase: "saving" },
     },
+    {
+      name: "a page that went elsewhere while paused starts a Visit there at Continue",
+      happened: [...stopped, navigated("http://shop.test/cart"), resume],
+      todo: [
+        [],
+        [
+          visitAt("http://shop.test/cart", "navigate"),
+          reportInteractions,
+          { kind: "deferReply" },
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page opened while paused starts a Visit of its own at Continue",
+      happened: [
+        ...stopped,
+        { kind: "pageOpened", page: "page_2", url: "about:blank" },
+        navigated("http://shop.test/help", "page_2"),
+        resume,
+      ],
+      todo: [
+        [],
+        [],
+        [
+          visitAt("http://shop.test/help", "openPage", "page_2"),
+          reportInteractions,
+          { kind: "deferReply" },
+        ],
+      ],
+      state: { phase: "recording" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
