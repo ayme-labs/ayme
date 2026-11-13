@@ -1171,6 +1171,40 @@ describe("the lifecycle, for every kind of input", () => {
       ],
       state: { phase: "recording" },
     },
+    {
+      name: "typing reported after a key press was held behind it ends where the press starts, and is written before it",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "typing" }),
+        held("input_2", { kind: "press" }),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        reportedAs(fill("m")),
+        taken("snapshot_2"),
+        passedOn("input_2", 22),
+        settled("input_2"),
+        taken("snapshot_3"),
+        reportedAs(enter),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [],
+        [keep("snapshot_1"), passOn("input_1")],
+        [takeSnapshot("snapshot_2")],
+        [],
+        [
+          keep("snapshot_2"),
+          passOn("input_2"),
+          fromReport(fill("m"), "snapshot_1", "snapshot_2"),
+        ],
+        [waitForSettled("input_2")],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3"), letThrough("input_2")],
+        [written(enter, "snapshot_2", "snapshot_3", 22)],
+      ],
+      state: { phase: "recording" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);

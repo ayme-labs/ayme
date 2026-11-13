@@ -509,10 +509,14 @@ function askSharedSnapshot(draft: Draft, earlier: Input, later: Input) {
   change(draft, later.id, { stage: "takingBefore", asked });
 }
 
-/** The input of a page that is under way: the oldest without its "after". */
+/** The held input of a page that is under way: the oldest without its
+ * "after". An input known from its report only goes its own way. */
 const underWay = (draft: Draft, page: string) =>
   draft.inputs.find(
-    (input) => input.page === page && input.stage !== "settled"
+    (input) =>
+      input.page === page &&
+      input.held.kind !== "reported" &&
+      input.stage !== "settled"
   );
 
 /** What the browser tells about an input while a recording is under way. */
@@ -683,10 +687,18 @@ function during(state: Active, happening: BrowserSignal): Step {
     case "interactionReported": {
       const kind = heldKindOf(happening.report);
       if (kind === null && REPORTED_ONLY.has(happening.report.type)) {
-        giveUpEarlier(draft, happening.page, draft.inputs.length);
+        // It happened before every input of its page that has not reached
+        // the page yet.
+        let place = draft.inputs.findIndex(
+          (input) =>
+            input.page === happening.page &&
+            (input.stage === "waiting" || input.stage === "takingBefore")
+        );
+        if (place < 0) place = draft.inputs.length;
+        giveUpEarlier(draft, happening.page, place);
         const latest = gateOf(draft, happening.page)?.latest ?? null;
         draft.inputs = [
-          ...draft.inputs,
+          ...draft.inputs.slice(0, place),
           {
             id: `reported_${++draft.reportedOnly}`,
             page: happening.page,
@@ -701,6 +713,7 @@ function during(state: Active, happening: BrowserSignal): Step {
             passedOnAt: latest?.at ?? null,
             report: happening.report,
           },
+          ...draft.inputs.slice(place),
         ];
         break;
       }
@@ -728,6 +741,46 @@ function during(state: Active, happening: BrowserSignal): Step {
     }
   }
   return proceed({ ...next, ...settle(draft) }, draft.todo);
+}
+
+/**
+ * An input known from its report only starts from its page's latest
+ * snapshot, or takes one when there is none. It ends where the next held
+ * input of its page starts; with none, once the page is settled and no
+ * held input of the page is under way.
+ */
+function carryOnReported(draft: Draft, id: string) {
+  const index = draft.inputs.findIndex((input) => input.id === id);
+  const input = draft.inputs[index]!;
+  if (input.held.kind !== "reported") return;
+  if (input.stage !== "waiting" && input.stage !== "settling") return;
+  if (!input.before) {
+    if (input.stage === "waiting")
+      change(draft, id, {
+        stage: "takingBefore",
+        asked: askSnapshot(draft, input.page),
+      });
+    return;
+  }
+  const next = draft.inputs
+    .slice(index + 1)
+    .find(
+      (later) =>
+        later.page === input.page &&
+        later.held.kind !== "typing" &&
+        later.held.kind !== "reported"
+    );
+  if (next?.before) {
+    change(draft, id, { stage: "settled", after: next.before });
+    return;
+  }
+  if (next?.stage === "takingBefore") {
+    change(draft, id, { stage: "takingAfter", asked: next.asked });
+    return;
+  }
+  if (next || input.stage === "settling" || underWay(draft, input.page)) return;
+  change(draft, id, { stage: "settling" });
+  draft.todo.push(settleAfter(input));
 }
 
 /** Playwright reports in order: the inputs of a page held before the
@@ -824,10 +877,7 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
     const next = underWay(draft, page);
     if (next?.stage !== "waiting") continue;
     // Typing needs no "before" once the page has a snapshot to start from.
-    if (next.held.kind === "reported" && next.before) {
-      change(draft, next.id, { stage: "settling" });
-      draft.todo.push(settleAfter(next));
-    } else if (next.held.kind === "typing" && gateOf(draft, page)?.latest) {
+    if (next.held.kind === "typing" && gateOf(draft, page)?.latest) {
       change(draft, next.id, { stage: "passingOn" });
       draft.todo.push({
         kind: "browser",
@@ -839,6 +889,7 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
         asked: askSnapshot(draft, page),
       });
   }
+  for (const input of draft.inputs) carryOnReported(draft, input.id);
   // Typing that reached its page is done with.
   draft.inputs = draft.inputs.filter(
     (input) => input.held.kind !== "typing" || input.stage !== "settled"
