@@ -797,6 +797,12 @@ describe("the lifecycle", () => {
       state: { phase: "wrappingUp" },
     },
     {
+      name: "the recorder is not paused before the pages confirm that they hold nothing back, whatever else is in (rule 3)",
+      happened: [opened, ...started, stop, reportingOff, taken("snapshot_1")],
+      todo: [[], []],
+      state: { phase: "wrappingUp" },
+    },
+    {
       name: "the recorder is paused once Playwright's recorder is off",
       happened: [...stopped],
       todo: [[]],
