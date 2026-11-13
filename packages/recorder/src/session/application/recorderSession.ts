@@ -106,6 +106,8 @@ export class RecorderSession extends Context.Service<
         });
         /** The answer the lifecycle keeps for a later step. */
         let deferred: Queued["reply"];
+        /** The answers the lifecycle keeps by a key of its own. */
+        const kept = new Map<string, NonNullable<Queued["reply"]>>();
 
         const carryOut = Effect.fnUntraced(function* (
           item: ToDo,
@@ -151,6 +153,22 @@ export class RecorderSession extends Context.Service<
               timeline = new Timeline();
               fromTimeline = 0;
               return publish();
+            // Highlight.
+            case "keepReply":
+              if (reply) kept.set(item.key, reply);
+              return;
+            case "replyKept": {
+              const waiting = kept.get(item.key);
+              kept.delete(item.key);
+              if (waiting) yield* Deferred.succeed(waiting, item.result);
+              return;
+            }
+            case "locate":
+              return yield* tell({
+                kind: "located",
+                highlight: item.highlight,
+                target: timeline.liveTarget(item.entry),
+              });
             case "warn":
               // Each is told once.
               if (

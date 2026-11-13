@@ -1230,3 +1230,87 @@ describe("the timeline, for an assertion", () => {
     expect(text).not.toContain("changeTree");
   });
 });
+
+// Ticket #1278: where an entry's element is now, for the hover highlight.
+describe("the timeline, for the highlight", () => {
+  const recreated = [
+    `- generic [ref=e1]:`,
+    `  - button "Save" [ref=e8]`,
+    `  - paragraph [ref=e3]: Saved`,
+  ].join("\n");
+  const without = [`- generic [ref=e1]:`, `  - paragraph [ref=e3]: Saved`].join(
+    "\n"
+  );
+  async function timelineOf(additions: readonly TimelineAddition[]) {
+    const timeline = new Timeline();
+    for (const addition of additions) await timeline.add(addition);
+    return timeline;
+  }
+  const clicked = [
+    visit,
+    snapshot("snapshot_1", 10, idle),
+    snapshot("snapshot_2", 20, savedPage),
+    click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+  ];
+
+  it("finds an Interaction's target by the ref the page's latest snapshot gives it", async () => {
+    const timeline = await timelineOf(clicked);
+
+    expect(timeline.liveTarget("interaction_1")).toEqual({
+      page: "page_1",
+      ref: "e2",
+      selector: 'internal:role=button[name="Save"i]',
+    });
+  });
+
+  it("finds an element the page re-created by its ref now, not the first one the package keeps", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      snapshot("snapshot_3", 30, recreated),
+    ]);
+
+    expect(timeline.liveTarget("interaction_1")).toMatchObject({ ref: "e8" });
+  });
+
+  it("finds nothing for an element the latest snapshot no longer has", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      snapshot("snapshot_3", 30, without),
+    ]);
+
+    expect(timeline.liveTarget("interaction_1")).toBeNull();
+  });
+
+  it("finds nothing for an entry of an earlier Visit of its page", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      {
+        kind: "visit",
+        page: "page_1",
+        url: "http://shop.test/cart",
+        cause: "navigate",
+      },
+      snapshot("snapshot_3", 30, idle),
+    ]);
+
+    expect(timeline.liveTarget("interaction_1")).toBeNull();
+  });
+
+  it("finds a target with no ref by its selector, and nothing for an entry with neither, or none at all", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      snapshot("snapshot_2", 20, idle),
+      click("snapshot_1", "snapshot_2", null),
+      snapshot("snapshot_3", 30, savedPage),
+    ]);
+
+    expect(timeline.liveTarget("interaction_1")).toEqual({
+      page: "page_1",
+      ref: null,
+      selector: 'internal:role=button[name="Save"i]',
+    });
+    expect(timeline.liveTarget("change_1")).toBeNull();
+    expect(timeline.liveTarget("interaction_9")).toBeNull();
+  });
+});

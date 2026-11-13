@@ -33,6 +33,10 @@ import { locateTarget } from "./target";
 
 export type { PackageHeader } from "./packageText";
 
+/** A ref Playwright gave an element, of the page or of a frame in it; core
+ * makes up refs of another form for nodes Playwright gave none. */
+const BROWSER_REF = /^(f\d+)*e\d+$/;
+
 /** A snapshot as the timeline keeps it. */
 type Kept = {
   readonly snapshot: PageSnapshot;
@@ -47,6 +51,8 @@ type Kept = {
 
 type Visit = {
   readonly id: string;
+  /** The page it is a Visit of. */
+  readonly page: string;
   readonly url: string;
   readonly cause: VisitCause;
   readonly snapshots: Kept[];
@@ -140,6 +146,7 @@ export class Timeline {
         if (registered.kind !== "visit-started") return;
         const visit: Visit = {
           id: registered.visit.id,
+          page: addition.page,
           url: addition.url,
           cause: addition.cause,
           snapshots: [],
@@ -218,6 +225,40 @@ export class Timeline {
       this.tell();
       return;
     }
+  }
+
+  /**
+   * Where the target of an entry is now, for the highlight: on its page,
+   * by the ref the page's latest snapshot gives it, which may not be the
+   * first ref the package keeps for it; or, for a target with no ref, by
+   * its selector. Null for an entry with no target, one of a Visit its page
+   * has left, and an element the latest snapshot no longer has.
+   */
+  liveTarget(entry: string): {
+    readonly page: string;
+    readonly ref: string | null;
+    readonly selector: string | null;
+  } | null {
+    for (const visit of this.all) {
+      const found = visit.entries.find((one) => one.id === entry);
+      if (!found) continue;
+      if (found.kind !== "interaction") return null;
+      if (this.current.get(visit.page) !== visit) return null;
+      const { targetRef, targetSelector } = found.interaction;
+      const selector = targetSelector ?? null;
+      if (targetRef === null)
+        return selector === null
+          ? null
+          : { page: visit.page, ref: null, selector };
+      const latest = visit.snapshots.at(-1);
+      const now = latest
+        ? [...latest.firstRefs].find(([, first]) => first === targetRef)?.[0]
+        : undefined;
+      // Only a ref the browser gave can name an element of the page.
+      if (!now || !BROWSER_REF.test(now)) return null;
+      return { page: visit.page, ref: now, selector };
+    }
+    return null;
   }
 
   private async keep(visit: Visit, snapshot: PageSnapshot): Promise<Kept> {

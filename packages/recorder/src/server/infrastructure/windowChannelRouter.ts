@@ -26,6 +26,8 @@ const COMMAND_TYPES = [
   // Assert visibility.
   "assertVisibility",
   "leaveAssertVisibility",
+  // Highlight.
+  "clearHighlight",
 ] as const satisfies readonly RecorderCommandType[];
 /** A command, as the window and the toolbar send it. One that names an
  * entry is told by its type: the others carry no more. */
@@ -33,6 +35,8 @@ export const CommandSchema = z.union([
   z.object({ type: z.enum(COMMAND_TYPES) }),
   z.object({ type: z.literal("discard"), entry: z.string() }),
   z.object({ type: z.literal("restore"), entry: z.string() }),
+  // Highlight.
+  z.object({ type: z.literal("highlight"), entry: z.string() }),
 ]);
 
 /** The windows' subscriptions, which the server waits for when it closes. */

@@ -184,6 +184,18 @@ describe("the window's server", () => {
     await expect(send("leaveAssertVisibility")).resolves.toBe("applied");
   });
 
+  it("takes a highlight with the entry it names, and Clear highlight, and refuses a highlight without an entry", async () => {
+    const { windowUrl } = await startWithWindow();
+    const { send, command } = channel(windowUrl);
+    await send("record");
+
+    await expect(
+      command({ type: "highlight", entry: "interaction_1" })
+    ).resolves.toBe("notFound");
+    await expect(send("clearHighlight")).resolves.toBe("applied");
+    await expect(command({ type: "highlight" })).rejects.toThrow();
+  });
+
   it("gives a window that opens again the full state as it is now", async () => {
     const { windowUrl } = await startWithWindow();
     const first = channel(windowUrl);

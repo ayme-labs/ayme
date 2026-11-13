@@ -17,6 +17,7 @@ import type {
   BrowserRequest,
   BrowserSignal,
   HeldInput,
+  HighlightTarget,
 } from "../session/domain";
 import type { InteractionReport } from "../timeline/domain";
 
@@ -88,6 +89,11 @@ export interface ScriptedBrowser {
   /** The person picks an element while Playwright is in its picking mode:
    * Playwright reports the assertion, then leaves picking by itself. */
   pick(report: InteractionReport): void;
+  // Highlight.
+  /** The element the recorder's highlight is drawn on now; null when none
+   * is. It is drawn on an element whose ref the page shows now, or that has
+   * a selector. */
+  readonly highlighted: HighlightTarget | null;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -133,6 +139,7 @@ export async function startScriptedRecorder(
   const waiting: (() => void)[] = [];
   /** Whether Playwright is in its picking mode. */
   let picking = false;
+  let highlighted: HighlightTarget | null = null;
   const tell = (signal: BrowserSignal) => {
     Queue.offerUnsafe(signals!, signal);
   };
@@ -199,6 +206,17 @@ export async function startScriptedRecorder(
         if (picking === request.on) return;
         picking = request.on;
         return tell({ kind: "picking", on: request.on });
+      // Highlight.
+      case "highlight": {
+        const { target } = request;
+        const found =
+          target !== null &&
+          (target.ref === null || tree.includes(`[ref=${target.ref}]`));
+        highlighted = found ? target : null;
+        if (target)
+          tell({ kind: "highlighted", highlight: request.highlight, found });
+        return;
+      }
     }
   };
 
@@ -245,6 +263,9 @@ export async function startScriptedRecorder(
         tell({ kind: "pageClosed", page, pagesLeft }),
       get released() {
         return released;
+      },
+      get highlighted() {
+        return highlighted;
       },
       asked,
       traces,
