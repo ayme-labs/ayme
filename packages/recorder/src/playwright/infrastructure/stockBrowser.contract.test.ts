@@ -976,3 +976,43 @@ it.runIf(attaching)(
     expect(await drawn(browser.page)).toBeNull();
   }
 );
+
+// The review of the whole recorder against the spec.
+it("holds a click behind an input that still waits to be passed on, also once the pages no longer hold inputs back: input reaches the page in the order it was given", async () => {
+  const browser = await onStockPlaywright(`${BUTTONS}
+    <script>
+      window.clicks = [];
+      document.addEventListener("click", (event) =>
+        window.clicks.push(event.target.id));
+    </script>`);
+  const clicks = () => browser.page.evaluate("window.clicks");
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.click(browser.page.locator("#first"));
+  const first = await browser.toldOf("inputHeld");
+
+  // The pages stop holding inputs back while the first click still waits.
+  await browser.ask({ kind: "holdInputs", on: false });
+  await browser.toldOf("inputsHeld", (signal) => !signal.on);
+  await browser.click(browser.page.locator("#second"));
+
+  // The second click is held behind the first: neither has reached the page.
+  const second = await browser.toldOf(
+    "inputHeld",
+    (signal) => signal.input !== first.input
+  );
+  expect(await clicks()).toEqual([]);
+  await browser.ask({ kind: "passOn", input: first.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === first.input);
+  await browser.ask({ kind: "passOn", input: second.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === second.input);
+  await expect.poll(clicks).toEqual(["first", "second"]);
+
+  // Nothing waits any more: the next click is the page's own.
+  await browser.click(browser.page.locator("#third"));
+  await expect.poll(clicks).toEqual(["first", "second", "third"]);
+  expect(
+    browser.told.filter((signal) => signal.kind === "inputHeld")
+  ).toHaveLength(2);
+});

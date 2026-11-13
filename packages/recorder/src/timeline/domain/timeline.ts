@@ -47,6 +47,9 @@ type Kept = {
   readonly firstRefs: ReadonlyMap<AriaRef, AriaRef>;
   /** The tree under first refs: what the package shows. */
   readonly stable: StructuralTree;
+  /** Recording resumes here after a pause: what changed from the snapshot
+   * before it is not the recording's. */
+  readonly resumes: boolean;
 };
 
 type Visit = {
@@ -84,7 +87,9 @@ type Visit = {
  * are its "before" and its "after", and a change of its own otherwise. An
  * Interaction's entry is produced when the Interaction is added. A change of
  * its own is produced with the next Interaction, or when the package is
- * made: until then a later Interaction may still claim it.
+ * made: until then a later Interaction may still claim it. What changed
+ * while the recorder was paused is left out: after a pause, the snapshot
+ * where recording resumes is the point to compare from.
  *
  * Additions are taken one at a time, in the order they happened: wait for
  * one before adding the next.
@@ -165,7 +170,10 @@ export class Timeline {
         this.readAt.set(addition.snapshot.id, addition.snapshot.at);
         const visit = this.current.get(addition.snapshot.page);
         if (visit)
-          visit.snapshots.push(await this.keep(visit, addition.snapshot));
+          visit.snapshots.push({
+            ...(await this.keep(visit, addition.snapshot)),
+            resumes: addition.resumes === true,
+          });
         return;
       }
       case "interaction": {
@@ -261,7 +269,10 @@ export class Timeline {
     return null;
   }
 
-  private async keep(visit: Visit, snapshot: PageSnapshot): Promise<Kept> {
+  private async keep(
+    visit: Visit,
+    snapshot: PageSnapshot
+  ): Promise<Omit<Kept, "resumes">> {
     this.latestAt = Math.max(this.latestAt, snapshot.at);
     const pageId = PageIdSchema.parse(snapshot.page);
     const tree = StructuralTree.fromAriaSnapshotYaml(snapshot.tree, this.refs);
@@ -389,16 +400,20 @@ export class Timeline {
     const { snapshots, entries } = visit;
     const before = entries.length;
     for (;;) {
-      const from = snapshots[visit.through];
-      if (!from) break;
+      const through = snapshots[visit.through];
+      if (!through) break;
+      // An Interaction starts at this snapshot. One that starts at a
+      // snapshot the entries have passed is written all the same, from its
+      // own start: no Interaction is left out for where it starts.
+      const place = (id: string | null) =>
+        snapshots.findIndex((kept) => kept.snapshot.id === id);
       const starting = visit.waiting.findIndex(
-        (interaction) => interaction.before === from.snapshot.id
+        (interaction) => place(interaction.before) <= visit.through
       );
       if (starting >= 0) {
         const [interaction] = visit.waiting.splice(starting, 1);
-        const end = snapshots.findIndex(
-          (kept) => kept.snapshot.id === interaction!.after
-        );
+        const from = snapshots[place(interaction!.before)]!;
+        const end = place(interaction!.after);
         let targetRef = locateTarget(from.tree, interaction!.report.target);
         let change =
           end < 0 ? "" : changeText(await this.change(from, snapshots[end]!));
@@ -440,7 +455,11 @@ export class Timeline {
       }
       const next = snapshots[visit.through + 1];
       if (visit.through >= upTo || !next) break;
-      const change = changeText(await this.change(from, next));
+      // What changed while the recorder was paused is left out: the
+      // snapshot where recording resumes is compared with nothing before it.
+      const change = next.resumes
+        ? ""
+        : changeText(await this.change(through, next));
       // Nothing changed: there is nothing to tell.
       if (change !== "")
         entries.push({

@@ -271,9 +271,18 @@ describe("Continue", () => {
     await expect(recorder.send({ type: "continue" })).resolves.toBe("applied");
 
     expect(updates.at(-1)!.state.phase).toBe("recording");
-    expect(browser.asked.slice(askedWhenPaused)).toEqual([
+    // The page is read once its inputs are held back: where recording
+    // resumes.
+    const resumedAt = {
+      kind: "takeSnapshot",
+      snapshot: "snapshot_4",
+      page: "page_1",
+    } as const;
+    await browser.asks(resumedAt);
+    expect(browser.asked.slice(askedWhenPaused, askedWhenPaused + 3)).toEqual([
       { kind: "reportInteractions", on: true },
       { kind: "holdInputs", on: true },
+      resumedAt,
     ]);
     // No Visit was started, and the earlier entry is still there.
     expect(updates.at(-1)!.state.visits).toHaveLength(1);
@@ -295,6 +304,54 @@ describe("Continue", () => {
     // Every update had a counter above the one before it.
     const revisions = updates.map((update) => update.revision);
     expect(revisions).toEqual([...new Set(revisions)].sort((a, b) => a - b));
+  });
+
+  it("leaves what the page changed while paused out of the recording, and records what it changes after Continue (rule 13)", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => updates.at(-1)!.state.phase).toBe("paused");
+
+    // The page gets a status while paused.
+    browser.showPage(saved);
+    await recorder.send({ type: "continue" });
+    await browser.asks({
+      kind: "letInputsThrough",
+      page: "page_1",
+      upTo: null,
+    });
+    // After Continue it gets another by itself, and then the person clicks.
+    const later = [saved, `  - status [ref=e4]: Later`].join("\n");
+    browser.showPage(later);
+    await clickOnce(browser, "input_2", later);
+    await expect
+      .poll(() => idsOf(updates.at(-1)!))
+      .toEqual(["interaction_1", "interaction_2"]);
+
+    expect(
+      entriesOf(updates.at(-1)!).map((entry) => [entry.kind, entry.changeTree])
+    ).toEqual([
+      ["interaction", null],
+      [
+        "change",
+        [`- [ref=e1]:`, `  - <added> [ref=e4] status: Later`].join("\n"),
+      ],
+      ["interaction", null],
+    ]);
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+    // Nothing of the pause is in the package, as a change of its own or as
+    // part of another.
+    expect(
+      await readFile(
+        join((outcome as { folder: string }).folder, "package.yaml"),
+        "utf8"
+      )
+    ).not.toContain("status: Saved");
   });
 
   it("is ignored unless the recorder is paused", async () => {
@@ -694,5 +751,78 @@ describe("the trace of a recording", () => {
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
     expect(browser.traces).toHaveLength(1);
     await expect(stat(browser.traces[0]!)).rejects.toThrow(/ENOENT/);
+  });
+});
+
+// The review of the whole recorder against the spec.
+describe("a wrap-up's time limit", () => {
+  it("is that wrap-up's own: the limit of an earlier Stop does not cut a later Finish short (rule 4)", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const phases = phasesOf(recorder);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    // Stop at 0 s, and the recorder pauses at once.
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => phases.at(-1)).toBe("paused");
+    await recorder.send({ type: "continue" });
+
+    // At 4.9 s a click waits for its "before", and Finish is pressed.
+    await browser.advanceTime(4_900);
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_4",
+      page: "page_1",
+    });
+    await recorder.send({ type: "finish" });
+    // 5 s after the Stop, 0.1 s after the Finish.
+    await browser.advanceTime(100);
+    // A command is answered after everything that happened before it.
+    await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
+    expect(phases.at(-1)).toBe("wrappingUp");
+
+    // The click is still within the Finish's own limit: it is saved.
+    await browser.advanceTime(4_800);
+    browser.releaseSnapshots();
+    await browser.asks({
+      kind: "waitForSettled",
+      page: "page_1",
+      input: "input_2",
+    });
+    browser.showPage(saved);
+    browser.settle();
+    browser.report(click);
+    const outcome = await recorder.done;
+
+    expect(
+      await readFile(
+        join((outcome as { folder: string }).folder, "package.yaml"),
+        "utf8"
+      )
+    ).toContain("id: interaction_2");
+  });
+
+  it("still ends a wrap-up that takes too long, also after an earlier one", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const phases = phasesOf(recorder);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => phases.at(-1)).toBe("paused");
+    await recorder.send({ type: "continue" });
+    await browser.advanceTime(4_900);
+    browser.holdSnapshots();
+    browser.holdClick();
+
+    await recorder.send({ type: "finish" });
+    await browser.advanceTime(4_999);
+    await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
+    expect(phases.at(-1)).toBe("wrappingUp");
+    await browser.advanceTime(1);
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "saved" });
   });
 });
