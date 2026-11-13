@@ -89,7 +89,9 @@ describe("what the terminal is told at the end", () => {
   });
 
   it("says that nothing was recorded", () => {
-    expect(outcomeLine({ kind: "empty" })).toBe("Nothing was recorded.\n");
+    expect(outcomeLine({ kind: "empty" })).toBe(
+      "Recording was empty; no recording package was created.\n"
+    );
   });
 
   it("names the saved package's file, as the released recorder does", () => {
@@ -123,7 +125,7 @@ describe("what the terminal is told of warnings", () => {
 describe("what the terminal is told of the window", () => {
   it("gives the recorder window's address, to open it in any browser", () => {
     expect(windowLine("http://127.0.0.1:53124/")).toBe(
-      "Recorder window: http://127.0.0.1:53124/\n"
+      "Recorder UI: http://127.0.0.1:53124/\n"
     );
   });
 });

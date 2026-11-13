@@ -21,7 +21,7 @@ test.describe("recording a running browser", () => {
     await run.waitForStdout(`Attached to the browser at ${cdpEndpoint}.`);
     // The window's address is printed, and nothing is opened in the
     // browser: it is someone else's.
-    await run.waitForStdout("Recorder window: http://127.0.0.1:");
+    await run.waitForStdout("Recorder UI: http://127.0.0.1:");
     const targets = (await (
       await fetch(`${cdpEndpoint}/json/list`)
     ).json()) as { type: string }[];
@@ -29,7 +29,9 @@ test.describe("recording a running browser", () => {
     run.interrupt();
 
     expect(await run.exit).toEqual({ code: 0, signal: null });
-    expect(run.stdout()).toContain("Nothing was recorded.");
+    expect(run.stdout()).toContain(
+      "Recording was empty; no recording package was created."
+    );
     expect(run.stderr()).toBe("");
     // Not loaded again: what was done on the page before is still there.
     expect(fixturePages.requests).toHaveLength(requests);
@@ -54,8 +56,8 @@ test.describe("recording a running browser", () => {
     const run = await runRecorder(["codegen", "--cdp-endpoint", cdpEndpoint], {
       cwd: project,
     });
-    await run.waitForStdout("Recorder window: http://127.0.0.1:");
-    const windowUrl = /^Recorder window: (\S+)$/m.exec(run.stdout())![1]!;
+    await run.waitForStdout("Recorder UI: http://127.0.0.1:");
+    const windowUrl = /^Recorder UI: (\S+)$/m.exec(run.stdout())![1]!;
     const window = new RecorderWindow(windowPage);
     await window.open(windowUrl);
 
