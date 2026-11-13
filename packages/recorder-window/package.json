@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/recorder": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@types/node": "^24.0.0",
     "eslint": "^10.9.1",

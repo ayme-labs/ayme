@@ -1280,6 +1280,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../eslint-config
+      "@ayme-dev/recorder":
+        specifier: workspace:*
+        version: link:../recorder
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config

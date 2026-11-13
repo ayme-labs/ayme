@@ -19,8 +19,8 @@ const slow = { timeout: 60_000 };
 
 it("lint flags an import against the slice layout", slow, async () => {
   expect(
-    await lint("src/shared/view/misplaced.ts", 'export * from "../../app";\n')
-  ).toEqual([expect.stringContaining("shared may only use itself")]);
+    await lint("src/timeline/view/misplaced.ts", 'export * from "../../app";\n')
+  ).toEqual([expect.stringContaining("timeline may only use itself")]);
 });
 
 it(

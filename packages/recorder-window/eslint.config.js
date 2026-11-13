@@ -4,19 +4,24 @@ import {
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules: this file is their source of truth. The slices
-// are a start, named as the Inspector's are; the window's first content may
-// rename them.
+// The source layout's rules. packages/recorder-window/AGENTS.md introduces
+// them; this file is the source of truth.
 
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. app composes them, and nothing uses app.
+// it here. app composes them, and nothing uses app. testing is the window's
+// page objects, the `./testing` entry, which only tests may use (ADR-0026).
 const allowedSlices = {
-  shared: [],
-  app: ["shared"],
+  channel: [],
+  timeline: [],
+  controls: [],
+  app: ["controls", "timeline", "channel"],
+  testing: [],
 };
 const slices = Object.keys(allowedSlices);
+// app and testing aren't layered.
+const unlayered = ["app", "testing"];
 const sourceFiles = "src/**/*.{ts,tsx}";
 
 const patterns = [
@@ -45,8 +50,7 @@ export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // app isn't layered.
-    enforcedSlices: slices.filter((slice) => slice !== "app"),
+    enforcedSlices: slices.filter((slice) => !unlayered.includes(slice)),
   }),
   {
     files: [sourceFiles],
