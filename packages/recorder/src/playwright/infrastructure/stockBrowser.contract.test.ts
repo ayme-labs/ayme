@@ -877,6 +877,25 @@ it("draws the highlight on the element a ref names, in the page, in a same-origi
   await expect.poll(() => drawn(browser.page)).toBeNull();
 });
 
+it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
+  const browser = await onStockPlaywright(PLACES);
+  const { ref } = await refOf(browser, "snapshot_1", "Main");
+
+  // The clear is asked while the element of the first is looked up.
+  await Promise.all([
+    browser.ask({
+      kind: "highlight",
+      highlight: 1,
+      target: { page: "page_1", ref, selector: null },
+    }),
+    browser.ask({ kind: "highlight", highlight: 2, target: null }),
+  ]);
+
+  const { found } = await browser.toldOf("highlighted");
+  expect(found).toBe(false);
+  expect(await drawn(browser.page)).toBeNull();
+});
+
 it("draws nothing, and says so, for an element the page no longer has", async () => {
   const browser = await onStockPlaywright(PLACES);
   const { ref } = await refOf(browser, "snapshot_1", "Main");
