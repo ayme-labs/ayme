@@ -25,6 +25,8 @@ export type HeldByPage =
       readonly seq: number;
       /** Typing, as opposed to a key press Playwright records as a press. */
       readonly typing: boolean;
+      /** It went to the document itself: no element had focus. */
+      readonly nothingFocused: boolean;
       readonly key: string;
       readonly code: string;
       readonly modifiers: readonly Modifier[];
@@ -37,10 +39,13 @@ export type Gate = {
    * Switched off, it lets what follows through once nothing it held waits
    * to be passed on. Returns what it was set to. */
   set(on: boolean): boolean;
-  /** A held input is on its way: the click to this point of the viewport,
-   * or the key with this code. Lets it through; the gate closes again by
-   * itself when it has arrived. */
-  open(input: { x: number; y: number } | { code: string }): void;
+  /** A held input is on its way: the click of this count to this point of
+   * the viewport, or the key with this code. Lets it through; the gate
+   * closes again by itself when it has arrived. Resolves when the input may
+   * be sent: a click waits while the person holds a mouse button down. */
+  open(
+    input: { x: number; y: number; detail: number } | { code: string }
+  ): Promise<void>;
   /** Closes the gate after an input that never arrived. */
   close(): void;
   /** Lets what follows through, unless the document held an input after
@@ -78,9 +83,14 @@ export function installGate(held: string): void {
   /** How many inputs it held, and how many of those still wait. */
   let seq = 0;
   let waiting = 0;
-  let passingOn: { x: number; y: number } | undefined;
+  let passingOn:
+    { x: number; y: number; detail: number; seen: Set<string> } | undefined;
   let passingKey: string | undefined;
   let swallowDoubleClick = false;
+  /** Whether the person holds a mouse button down, and who waits for its
+   * release. */
+  let pressed = false;
+  let released: (() => void) | undefined;
   /** The codes of held keys whose release is the gate's too. */
   const swallowKeyUp = new Set<string>();
   const arrived = () => {
@@ -94,9 +104,20 @@ export function installGate(held: string): void {
       else if (waiting === 0) holding = false;
       return on;
     },
-    open: (input) => {
-      if ("code" in input) passingKey = input.code;
-      else passingOn = input;
+    open: async (input) => {
+      if ("code" in input) {
+        passingKey = input.code;
+        return;
+      }
+      // A click sent on while the person holds the button down would end
+      // their press: it waits for the release, a second at most.
+      if (pressed)
+        await new Promise<void>((resolve) => {
+          released = resolve;
+          setTimeout(resolve, 1_000);
+        });
+      released = undefined;
+      passingOn = { ...input, seen: new Set() };
     },
     close: () => {
       if (passingOn || passingKey) arrived();
@@ -141,13 +162,17 @@ export function installGate(held: string): void {
 
   const onMouse = (event: MouseEvent) => {
     if (!event.isTrusted) return;
-    // The click sent on is known by its place: whatever the person does
-    // elsewhere meanwhile is theirs.
+    // The click sent on is known by its place and its count, and brings one
+    // event of each type: whatever else the person does meanwhile is
+    // theirs, as the second press of a double click at the same place.
     if (
       passingOn &&
       Math.abs(event.clientX - passingOn.x) < 1 &&
-      Math.abs(event.clientY - passingOn.y) < 1
+      Math.abs(event.clientY - passingOn.y) < 1 &&
+      !passingOn.seen.has(event.type) &&
+      (event.type.startsWith("pointer") || event.detail === passingOn.detail)
     ) {
+      passingOn.seen.add(event.type);
       // Its press and its release already reached the page once, from the
       // person: only its click is let through.
       if (event.type === "mousedown") swallow(event);
@@ -156,6 +181,11 @@ export function installGate(held: string): void {
         arrived();
       } else event.stopImmediatePropagation();
       return;
+    }
+    if (event.type === "pointerdown") pressed = true;
+    if (event.type === "pointerup") {
+      pressed = false;
+      released?.();
     }
     if (!on) return;
     if (event.type === "dblclick") {
@@ -248,6 +278,9 @@ export function installGate(held: string): void {
       kind: "key",
       seq: ++seq,
       typing: !press,
+      nothingFocused:
+        event.composedPath()[0] === document.body ||
+        event.composedPath()[0] === document.documentElement,
       key: event.key,
       code: event.code,
       modifiers: modifiersOf(event),

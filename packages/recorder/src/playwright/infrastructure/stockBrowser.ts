@@ -170,7 +170,9 @@ async function openPage(
         held:
           input.kind === "click"
             ? { kind: "click", count: Math.max(1, input.detail) }
-            : { kind: input.typing ? "typing" : "press" },
+            : input.typing
+              ? { kind: "typing" }
+              : { kind: "press", nothingFocused: input.nothingFocused },
       });
     }
   );
@@ -441,7 +443,9 @@ async function passOn(frame: Frame, input: HeldByPage) {
   const page = frame.page();
   await frame.evaluate(
     (at) => window.__aymeRecorderGate?.open(at),
-    input.kind === "click" ? { x: input.x, y: input.y } : { code: input.code }
+    input.kind === "click"
+      ? { x: input.x, y: input.y, detail: Math.max(1, input.detail) }
+      : { code: input.code }
   );
   try {
     if (input.kind === "key") {

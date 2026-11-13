@@ -1205,6 +1205,57 @@ describe("the lifecycle, for every kind of input", () => {
       ],
       state: { phase: "recording" },
     },
+    {
+      name: "a choice reported while the key press that made it waits for its Settled Page starts from the press's 'after'",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "press" }),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        reportedAs(choose),
+        settled("input_1"),
+        taken("snapshot_2"),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        finish,
+      ],
+      todo: [
+        [],
+        [takeSnapshot("snapshot_2")],
+        [
+          keep("snapshot_2"),
+          waitForSettled("reported_1"),
+          letThrough("input_1"),
+        ],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3")],
+        [
+          ...wrapUp,
+          fromReport(choose, "snapshot_2", "snapshot_3"),
+          reply("applied"),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a key pressed with nothing focused is written with no target, whatever element Playwright names",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "press", nothingFocused: true }),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        settled("input_1"),
+        taken("snapshot_2"),
+        reportedAs({
+          ...enter,
+          target: { ref: "e1", tree: "- generic [ref=e1]" },
+        }),
+      ],
+      todo: [[written({ ...enter, target: null }, "snapshot_1", "snapshot_2")]],
+      state: { phase: "recording" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);

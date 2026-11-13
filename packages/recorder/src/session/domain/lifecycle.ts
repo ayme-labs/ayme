@@ -78,8 +78,9 @@ export type HeldInput =
   /** A click of the mouse; `count` is 2 for the second click of a double
    * click. */
   | { readonly kind: "click"; readonly count: number }
-  /** A key press that Playwright records as a press, not as typing. */
-  | { readonly kind: "press" }
+  /** A key press that Playwright records as a press, not as typing.
+   * `nothingFocused`: it went to the page itself, as no element had focus. */
+  | { readonly kind: "press"; readonly nothingFocused?: boolean }
   /** A key typed while an earlier input was held: it waits its turn. */
   | { readonly kind: "typing" };
 
@@ -696,7 +697,6 @@ function during(state: Active, happening: BrowserSignal): Step {
         );
         if (place < 0) place = draft.inputs.length;
         giveUpEarlier(draft, happening.page, place);
-        const latest = gateOf(draft, happening.page)?.latest ?? null;
         draft.inputs = [
           ...draft.inputs.slice(0, place),
           {
@@ -708,9 +708,10 @@ function during(state: Active, happening: BrowserSignal): Step {
             unreported: false,
             stage: "waiting",
             asked: null,
-            before: latest?.id ?? null,
+            // Its start is found as it carries on.
+            before: null,
             after: null,
-            passedOnAt: latest?.at ?? null,
+            passedOnAt: null,
             report: happening.report,
           },
           ...draft.inputs.slice(place),
@@ -730,8 +731,14 @@ function during(state: Active, happening: BrowserSignal): Step {
       );
       if (!input || input.stage === "waiting" || input.stage === "takingBefore")
         break;
-      change(draft, input.id, { report: happening.report });
-      coverFollowingClicks(draft, input, happening.report);
+      // A key pressed with nothing focused has no target, whatever element
+      // Playwright names for it.
+      const report =
+        input.held.kind === "press" && input.held.nothingFocused
+          ? { ...happening.report, target: null }
+          : happening.report;
+      change(draft, input.id, { report });
+      coverFollowingClicks(draft, input, report);
       giveUpEarlier(
         draft,
         input.page,
@@ -755,12 +762,29 @@ function carryOnReported(draft: Draft, id: string) {
   if (input.held.kind !== "reported") return;
   if (input.stage !== "waiting" && input.stage !== "settling") return;
   if (!input.before) {
-    if (input.stage === "waiting")
+    if (input.stage !== "waiting") return;
+    // A held input that reached the page before it has no "after" yet: it
+    // starts from that.
+    const reached = draft.inputs
+      .slice(0, index)
+      .some(
+        (earlier) =>
+          earlier.page === input.page &&
+          earlier.held.kind !== "reported" &&
+          earlier.passedOnAt !== null &&
+          earlier.stage !== "settled"
+      );
+    if (reached) return;
+    const latest = gateOf(draft, input.page)?.latest;
+    if (!latest) {
       change(draft, id, {
         stage: "takingBefore",
         asked: askSnapshot(draft, input.page),
       });
-    return;
+      return;
+    }
+    change(draft, id, { before: latest.id, passedOnAt: latest.at });
+    return carryOnReported(draft, id);
   }
   const next = draft.inputs
     .slice(index + 1)
