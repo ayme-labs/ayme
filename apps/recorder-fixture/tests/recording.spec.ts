@@ -12,7 +12,9 @@ const comparable = (text: string) =>
     .replaceAll(/rec_[0-9TZ]+/g, "rec_<id>")
     .replace(/^createdAt: .*$/m, "createdAt: <time>")
     .replaceAll(/http:\/\/127\.0\.0\.1:\d+/g, "http://127.0.0.1:<port>")
-    .replaceAll(/timestamp: [\d.]+/g, "timestamp: <time>");
+    .replaceAll(/(timestamp|startedAt|endedAt): [\d.]+/g, "$1: <time>")
+    // Where the trace holds a snapshot is the stock trace tool's number.
+    .replaceAll(/(SnapshotId): "\d+"/g, '$1: "<position>"');
 
 /** Presses Finish and reads the package the recorder says it saved. */
 async function finish({ recorder, projectDir }: Recording) {
@@ -103,8 +105,7 @@ test.describe("recording", () => {
         `        changeTree:`,
         `          - [ref=e1]:`,
         `            - <changed> [ref=e4] paragraph: Refreshed`,
-        `traceActionPoints: []`,
-        ``,
+        `traceActionPoints:`,
       ].join("\n")
     );
     expect(text).not.toContain("kind: change");

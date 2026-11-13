@@ -216,6 +216,20 @@ exports.chromium = {
             held({ page, frame }, { x: 1, y: 1, detail: 1, modifiers: [] });
       };
       exports.control.recorder = [];
+      // The context's trace, as the adapter drives it.
+      exports.control.tracing = [];
+      context.tracing = {
+        start: async () => {
+          if (exports.control.tracingBroken) throw new Error("No trace here.");
+          exports.control.tracing.push("start");
+        },
+        stop: async (options) => {
+          exports.control.tracing.push(options?.path ? "stop, kept" : "stop, thrown away");
+          if (options?.path) require("node:fs").writeFileSync(options.path, "a trace");
+        },
+        group: async (name) => void exports.control.tracing.push("group " + name),
+        groupEnd: async () => {},
+      };
       if (${withRecorder})
         context._startRecording = async () => {
           if (exports.control.recorderBroken) throw new Error("No recorder here.");
@@ -248,6 +262,10 @@ exports.chromium = {
         recorderBroken?: boolean;
         /** Set, the page can be read after all. */
         readable?: boolean;
+        /** Set, the trace cannot be started. */
+        tracingBroken?: boolean;
+        /** What was done to the context's trace, in order. */
+        tracing: string[];
         /** What was done to Playwright's recorder, in order: "started", or
          * the mode it was switched to. */
         recorder: string[];
@@ -280,6 +298,8 @@ it(
     expect(phases).toEqual(["notRecording", "recording", "wrappingUp"]);
 
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    // The save did not wait for the page: its trace was stopped all the same.
+    expect(control.tracing).toEqual(["start", "stop, kept"]);
   }
 );
 
@@ -331,6 +351,52 @@ it("answers Record 'ignored' and ends 'failed', with the reason, when Playwright
     kind: "failed",
     reason: "Recording could not start. No recorder here.",
   });
+});
+
+it("answers Record 'ignored' and ends 'failed', with the reason, when the trace cannot be started", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.tracingBroken = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+
+  await expect(recorder.send({ type: "record" })).resolves.toBe("ignored");
+
+  await expect(recorder.done).resolves.toEqual({
+    kind: "failed",
+    reason: "Recording could not start. No trace here.",
+  });
+});
+
+it("traces from the first Record, through a pause, and starts a new trace after Clear", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.readable = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+  // The marks of the snapshots are another matter.
+  const started = () =>
+    control.tracing.filter((done) => !done.startsWith("group"));
+  let phase = "";
+  recorder.subscribe(({ state }) => {
+    phase = state.phase;
+  });
+
+  await recorder.send({ type: "record" });
+  await recorder.send({ type: "stop" });
+  await expect.poll(() => phase).toBe("paused");
+  await recorder.send({ type: "continue" });
+  expect(started()).toEqual(["start"]);
+
+  await recorder.send({ type: "clear" });
+  await expect.poll(() => phase).toBe("notRecording");
+  await recorder.send({ type: "record" });
+  expect(started()).toEqual(["start", "stop, thrown away", "start"]);
+
+  recorder.end();
+  await recorder.done;
 });
 
 it("switches Playwright's recorder off and on by its mode, and starts it once", async () => {

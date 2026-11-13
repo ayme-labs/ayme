@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
@@ -10,6 +12,9 @@ import type { InteractionReport } from "../timeline/domain";
 
 // The `./testing` entry (ADR-0026): a recorder on a scripted browser, where a
 // test plays the browser by hand, with a clock the test moves.
+
+/** What the file of a scripted browser's trace holds. */
+export const SCRIPTED_TRACE = "a scripted trace";
 
 /**
  * The remote control of a scripted browser with one page, "page_1".
@@ -29,6 +34,9 @@ export interface ScriptedBrowser {
   readonly released: boolean;
   /** Everything the engine has asked of the browser, in order. */
   readonly asked: readonly BrowserRequest[];
+  /** The file of each trace it has handed over, in order. Snapshot number N
+   * is at position 10 times N in each of them. */
+  readonly traces: readonly string[];
   /** Resolves once the engine has asked exactly this. */
   asks(request: BrowserRequest): Promise<void>;
   /** What the page looks like from now on, in the notation of Playwright's
@@ -87,6 +95,9 @@ export async function startScriptedRecorder(
   let snapshotsHeld: (() => void)[] | undefined;
   let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
+  const traces: string[] = [];
+  /** The snapshots taken, which a stopped trace has positions for. */
+  const taken: string[] = [];
   // Visits: the document each held input was held in.
   let documents = 0;
   const heldIn = new Map<string, number>();
@@ -107,7 +118,8 @@ export async function startScriptedRecorder(
         return;
       }
       case "takeSnapshot": {
-        const take = () =>
+        const take = () => {
+          taken.push(request.snapshot);
           tell({
             kind: "snapshotTaken",
             snapshot: {
@@ -118,6 +130,7 @@ export async function startScriptedRecorder(
               tree,
             },
           });
+        };
         if (snapshotsHeld) snapshotsHeld.push(take);
         else take();
         return;
@@ -129,6 +142,22 @@ export async function startScriptedRecorder(
         return tell({ kind: "inputPassedOn", input: request.input, at: ++now });
       case "waitForSettled":
         settling = request;
+        return;
+      case "startTrace":
+        return;
+      case "stopTrace": {
+        // A thrown-away trace is not told of; a kept one is written, and
+        // told of once it is.
+        if (!request.keep) return;
+        const file = join(tmpdir(), `ayme-scripted-trace-${randomUUID()}.zip`);
+        const positions = Object.fromEntries(
+          taken.map((id) => [id, String(Number(id.split("_")[1]) * 10)])
+        );
+        void writeFile(file, SCRIPTED_TRACE).then(() => {
+          traces.push(file);
+          tell({ kind: "traceStopped", trace: { file, positions } });
+        });
+      }
     }
   };
 
@@ -171,6 +200,7 @@ export async function startScriptedRecorder(
         return released;
       },
       asked,
+      traces,
       asks: (request) =>
         new Promise((resolve) => {
           const wanted = JSON.stringify(request);

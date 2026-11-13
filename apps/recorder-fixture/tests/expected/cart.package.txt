@@ -2,7 +2,7 @@ recordingId: rec_<id>
 mode: structural
 createdAt: <time>
 url: http://127.0.0.1:<port>/cart.html
-tracePath: null
+tracePath: .ayme/recordings/rec_<id>/trace.zip
 visits:
   - visitId: visit_1
     url: http://127.0.0.1:<port>/cart.html
@@ -62,4 +62,22 @@ visits:
         changeTree:
           - [ref=e1]:
             - <changed> [ref=e3] paragraph: "Items: 2"
-traceActionPoints: []
+traceActionPoints:
+  - interactionId: interaction_1
+    pageId: page_1
+    beforeSnapshotId: "<position>"
+    afterSnapshotId: "<position>"
+    startedAt: <time>
+    endedAt: <time>
+  - interactionId: interaction_2
+    pageId: page_1
+    beforeSnapshotId: "<position>"
+    afterSnapshotId: "<position>"
+    startedAt: <time>
+    endedAt: <time>
+  - interactionId: interaction_3
+    pageId: page_1
+    beforeSnapshotId: "<position>"
+    afterSnapshotId: "<position>"
+    startedAt: <time>
+    endedAt: <time>

@@ -39,6 +39,13 @@ concern and reuse `fixtures.ts`.
   same way: through the engine's handle, with a person's input, reading the
   package from disk.
 
+- `trace.spec.ts` opens a recording's trace with the stock `playwright trace`
+  of the project's own Playwright (`stockTrace.ts`), as a reader does: by the
+  position numbers the package gives, and through `ayme-recorder trace
+latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
+  a snapshot's phase by the installed version: `--name` on Playwright 1.62,
+  `--phase` from 1.63.
+
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
 - `AYME_RECORDER_HEADLESS=1` launches the browser without a window, since the

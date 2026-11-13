@@ -7,6 +7,7 @@ import type {
 import type {
   InteractionReport,
   PageSnapshot,
+  RecordingTrace,
   TimelineAddition,
   VisitCause,
 } from "../../timeline/domain";
@@ -71,6 +72,8 @@ export type BrowserSignal =
       readonly request: BrowserRequest;
       readonly reason: string;
     }
+  /** The trace is stopped and kept, as "stopTrace" asked. */
+  | { readonly kind: "traceStopped"; readonly trace: RecordingTrace }
   // Visits.
   /** A held input can no longer reach its page: the document it was held
    * in is gone. Told instead of "inputPassedOn". */
@@ -102,7 +105,12 @@ export type BrowserRequest =
       readonly kind: "waitForSettled";
       readonly page: string;
       readonly input: string;
-    };
+    }
+  /** Start the recording's one trace. Not answered: only when it breaks. */
+  | { readonly kind: "startTrace" }
+  /** Stop the trace. Kept, it is answered by "traceStopped"; thrown away, it
+   * is not answered: only when it breaks, which changes nothing. */
+  | { readonly kind: "stopTrace"; readonly keep: boolean };
 
 /** One thing that happened. Everything reaches the lifecycle as one of these. */
 export type Happening =
@@ -130,8 +138,9 @@ export type ToDo =
   | { readonly kind: "timeline"; readonly add: TimelineAddition }
   /** Tell the lifecycle "timeLimitPassed" after this long. */
   | { readonly kind: "startTimeLimit"; readonly ms: number }
-  /** Write the Recording Package, then tell the lifecycle "saved". */
-  | { readonly kind: "save" }
+  /** Write the Recording Package, with the trace when there is one, then
+   * tell the lifecycle "saved". */
+  | { readonly kind: "save"; readonly trace?: RecordingTrace }
   /** The recorder has ended: let the browser go and report the outcome. */
   | { readonly kind: "end"; readonly outcome: RecordingOutcome }
   /** Throw away everything recorded: the timeline starts empty again. */
@@ -209,7 +218,11 @@ export type LifecycleState = { readonly pages: readonly Page[] } & (
        * to switch off: the wrap-up waits for nothing else. */
       readonly switchingOff: boolean;
     } & Flow)
-  | { readonly phase: "saving" }
+  | {
+      readonly phase: "saving";
+      /** The trace is asked to stop: the package is written once it has. */
+      readonly stoppingTrace: boolean;
+    }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
   /** Nothing is under way. The count of snapshots goes on after Continue:
    * the timeline is the same one. */
@@ -310,6 +323,8 @@ export function step(state: LifecycleState, happening: Happening): Step {
       return state.phase === "wrappingUp" ? giveUp(state) : stay(state);
     case "requestFailed":
       return failed(state, happening.request, happening.reason);
+    case "traceStopped":
+      return writePackage(state, happening.trace);
     case "saved": {
       if (state.phase !== "saving") return stay(state);
       const outcome: RecordingOutcome =
@@ -377,6 +392,10 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             // to hold inputs back when Playwright reports, and Record is
             // answered when they do: "applied" means that a click is now
             // recorded.
+            //
+            // The recording's one trace starts here, at the first Record:
+            // Continue goes on in the trace that is running.
+            { kind: "browser", ask: { kind: "startTrace" } },
             { kind: "browser", ask: { kind: "reportInteractions", on: true } },
             { kind: "deferReply" },
           ],
@@ -412,7 +431,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       if (asked.type === "clear")
         return {
           state: { phase: "notRecording", pages: state.pages },
-          todo: [{ kind: "clear" }, reply("applied")],
+          todo: [discardTrace, { kind: "clear" }, reply("applied")],
         };
       // Answered first: the worker comes back from a save only when the
       // package is written.
@@ -498,12 +517,36 @@ function answerRecord(state: LifecycleState): ToDo[] {
     : [];
 }
 
+/** The recorded stretch is over for good: the trace is stopped and kept, and
+ * the package is written when it is. */
 function save(state: LifecycleState, todo: readonly ToDo[]): Step {
   return {
-    state: { phase: "saving", pages: state.pages },
-    todo: [...todo, { kind: "save" }],
+    state: { phase: "saving", pages: state.pages, stoppingTrace: true },
+    todo: [
+      ...todo,
+      { kind: "browser", ask: { kind: "stopTrace", keep: true } },
+    ],
   };
 }
+
+/** The trace is stopped, or could not be: the package is written, with it
+ * when there is one. */
+function writePackage(
+  state: LifecycleState,
+  trace: RecordingTrace | null
+): Step {
+  if (state.phase !== "saving" || !state.stoppingTrace) return stay(state);
+  return {
+    state: { ...state, stoppingTrace: false },
+    todo: [trace ? { kind: "save", trace } : { kind: "save" }],
+  };
+}
+
+/** The trace of a recording that is thrown away goes with it. */
+const discardTrace: ToDo = {
+  kind: "browser",
+  ask: { kind: "stopTrace", keep: false },
+};
 
 // Visits.
 
@@ -826,13 +869,18 @@ function wrappedUp(
     case "clear":
       return {
         state: { phase: "notRecording", pages },
-        todo: [...todo, { kind: "clear" }],
+        todo: [...todo, discardTrace, { kind: "clear" }],
       };
     case "clearAndEnd": {
       const outcome: RecordingOutcome = { kind: "empty" };
       return {
         state: { phase: "ended", pages, outcome },
-        todo: [...todo, { kind: "clear" }, { kind: "end", outcome }],
+        todo: [
+          ...todo,
+          discardTrace,
+          { kind: "clear" },
+          { kind: "end", outcome },
+        ],
       };
     }
   }
@@ -900,6 +948,16 @@ function failed(
     case "takeSnapshot":
     case "passOn":
       return isActive(state) ? unanswered(state, request) : stay(state);
+    case "stopTrace":
+      // A trace that cannot be had is no reason to lose the recording: the
+      // package is written without one. A trace that is thrown away anyway
+      // is not missed.
+      return request.keep ? writePackage(state, null) : stay(state);
+    case "startTrace":
+      // Without its trace the recording would have no snapshots to open: it
+      // does not start. Once it has started, a trace that broke later is
+      // not told apart from one that had no file to give.
+      return cannotStart(state, request, reason);
   }
 }
 
@@ -914,7 +972,7 @@ function cannotStart(
   state: LifecycleState,
   request: Extract<
     BrowserRequest,
-    { kind: "reportInteractions" | "holdInputs" }
+    { kind: "reportInteractions" | "holdInputs" | "startTrace" }
   >,
   reason: string
 ): Step {
