@@ -9,18 +9,20 @@ import {
 } from "@ayme-dev/recorder";
 
 /**
- * How `codegen <url>` launches the browser. The two environment variables
- * are for the tests: they run where there is no screen, and act in the
- * recorded browser over a connection of their own.
+ * How `codegen <url>` launches the browser. `--headless` and `--headed` say
+ * whether it has a window. The two environment variables are for the tests:
+ * they run where there is no screen, and act in the recorded browser over a
+ * connection of their own. The command line wins over them.
  */
 export function launchOptions(
   url: string,
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  headless?: boolean
 ): Extract<RecorderOptions["browser"], { launch: unknown }>["launch"] {
   const debugPort = env.AYME_RECORDER_DEBUG_PORT;
   return {
     url,
-    headless: env.AYME_RECORDER_HEADLESS === "1",
+    headless: headless ?? env.AYME_RECORDER_HEADLESS === "1",
     ...(debugPort ? { debugPort: Number(debugPort) } : {}),
   };
 }
@@ -87,11 +89,13 @@ async function start(
  * exit code.
  */
 export async function codegen(
-  target: { readonly url: string } | { readonly cdpEndpoint: string }
+  target:
+    | { readonly url: string; readonly headless?: boolean }
+    | { readonly cdpEndpoint: string }
 ): Promise<number> {
   const browser: RecorderOptions["browser"] =
     "url" in target
-      ? { launch: launchOptions(target.url, process.env) }
+      ? { launch: launchOptions(target.url, process.env, target.headless) }
       : { attach: { cdpEndpoint: target.cdpEndpoint } };
   const recorder = await start(browser);
   if (!recorder) return 1;

@@ -22,6 +22,19 @@ describe("how codegen launches the browser", () => {
     ).toEqual({ url: "http://localhost", headless: true });
   });
 
+  it("follows the command line over the tests' setting for the window", () => {
+    const env = { AYME_RECORDER_HEADLESS: "1" };
+
+    expect(launchOptions("http://localhost", env, false)).toEqual({
+      url: "http://localhost",
+      headless: false,
+    });
+    expect(launchOptions("http://localhost", {}, true)).toEqual({
+      url: "http://localhost",
+      headless: true,
+    });
+  });
+
   it("opens the debug port the tests name", () => {
     expect(
       launchOptions("http://localhost", { AYME_RECORDER_DEBUG_PORT: "9333" })
