@@ -154,27 +154,34 @@ in-browser agents and the app's own code call on the running page.
 
 ### Recorder
 
-- Responsibility: one process per recording: opens a URL in a Chromium it launches with the
-  Playwright the developer's project has installed, or attaches to a running Chromium, and
-  records the input given on the page as Interactions with what each changed. It serves the
-  recorder window at a local address it prints, which shows the recording live and holds
-  Record, Stop, Continue, Clear and Finish; when it launched the browser, it opens the
-  window there as a second window, apart from what it records. It ends when Finish is
-  pressed, the last page is closed or it is stopped from the terminal. A recording that was
-  started ends by writing a Recording Package, with its trace beside it, into the project's
-  `.ayme/recordings`; without one it ends with "empty". `ayme-recorder trace` opens a
-  recording's trace with the project's own `playwright trace`
-- Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`
-  and `trace` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose flows are
-  written with Effect; all three packages are private until the rebuild matches the
-  released recorder. The engine loads Playwright from the project's folder and bundles
+- Responsibility: one process per recording: opens a URL in a Chromium it launches with
+  the Playwright the developer's project has installed, or attaches to a running Chromium,
+  and records the input given on the page as Interactions with what each changed. It
+  serves the recorder window at a local address it prints, which shows the recording live
+  and holds Record, Stop, Continue, Assert visibility, Clear and Finish, discard and
+  restore of an entry while paused, and a highlight on the page of an entry's element
+  while its target is hovered; when it launched the browser, it opens the window there as
+  a second window, apart from what it records. Every recorded page also gets an in-page
+  toolbar with the same controls, kept out of the page's structure. It ends when Finish is
+  pressed, the last page is closed or it is stopped from the terminal. A recording that
+  was started ends by writing a Recording Package, with its trace beside it, into the
+  project's `.ayme/recordings`; without one it ends with "empty". `ayme-recorder trace`
+  opens a recording's trace with the project's own `playwright trace`, and
+  `ayme-recorder install` installs a browser with the project's own Playwright
+- Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`,
+  `trace` and `install` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose
+  flows are written with Effect; all three packages are private until the rebuild matches
+  the released recorder. The engine loads Playwright from the project's folder and bundles
   none, and runs the project's own `playwright trace` as a separate process. It keeps
   Visits and element identity and compares page structures with `@ayme-dev/core`, which
   also runs its wait for a Settled Page. `@ayme-dev/recorder-window` is the window, React
   with the design system, built to one page and one script that the engine serves on plain
   Node `http` and `ws`; the window talks to the engine over tRPC on a WebSocket, and knows
-  it only through the engine's plain-data contract
-- Evidence: verified: [packages/cli/src/cli.ts](packages/cli/src/cli.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/engine/startRecorder.ts](packages/recorder/src/engine/startRecorder.ts), [packages/recorder/src/session/application/recorderSession.ts](packages/recorder/src/session/application/recorderSession.ts), [packages/recorder/src/playwright/infrastructure/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/domain/timeline.ts](packages/recorder/src/timeline/domain/timeline.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts), [packages/recorder/src/server/infrastructure/windowServer.ts](packages/recorder/src/server/infrastructure/windowServer.ts), [packages/recorder-window/src/app/main.tsx](packages/recorder-window/src/app/main.tsx), [docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md](docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
+  it only through the engine's plain-data contract. The same package builds the toolbar,
+  one script with React and the design system in a closed shadow root, which the engine
+  runs in every recorded document; the toolbar sends commands and pulls the state through
+  one page function the engine exposes in the page
+- Evidence: verified: [packages/cli/src/cli.ts](packages/cli/src/cli.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/engine/startRecorder.ts](packages/recorder/src/engine/startRecorder.ts), [packages/recorder/src/session/application/recorderSession.ts](packages/recorder/src/session/application/recorderSession.ts), [packages/recorder/src/playwright/infrastructure/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/domain/timeline.ts](packages/recorder/src/timeline/domain/timeline.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts), [packages/recorder/src/server/infrastructure/windowServer.ts](packages/recorder/src/server/infrastructure/windowServer.ts), [packages/recorder-window/src/app/main.tsx](packages/recorder-window/src/app/main.tsx), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts), [packages/recorder-window/src/app/toolbar.tsx](packages/recorder-window/src/app/toolbar.tsx), [docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md](docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
 
 ## Communication
 
@@ -213,14 +220,16 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → `ayme-recorder codegen <url>` or `codegen --cdp-endpoint <address>`, started in
       their project's folder, and the terminal's stop; `ayme-recorder trace <target>`
-    - → in the recorder window, Record, Stop, Continue, Clear and Finish, sent over tRPC on
-      a WebSocket at `/channel`
+    - → in the recorder window, Record, Stop, Continue, Assert visibility, Clear, Finish,
+      discard and restore of an entry, and the highlight of a hovered entry's element,
+      sent over tRPC on a WebSocket at `/channel`; the same controls in the in-page
+      toolbar, sent through the page function the engine exposes there
     - ← the window's address, where the Recording Package was saved, that nothing was
       recorded, or the reason the recorder could not start or failed
-    - ← in the recorder window, the recorder's state as it changes: its phase, the commands
-      that apply now, and the Visits with their entries
+    - ← in the recorder window and the toolbar, the recorder's state as it changes: its
+      phase, the commands that apply now, and the Visits with their entries
   - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/server/infrastructure/windowChannelRouter.ts](packages/recorder/src/server/infrastructure/windowChannelRouter.ts),
-    [packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts](packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts)
+    [packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts](packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts)
 - **Playground visitors → Playground**
   - Flows:
     - → list edits and Inspector runs
@@ -276,15 +285,19 @@ in-browser agents and the app's own code call on the running page.
   - Evidence: verified: [packages/ayme/src/playwright.ts](packages/ayme/src/playwright.ts), [packages/ayme/src/in-page/host/](packages/ayme/src/in-page/host/)
 - **Recorder → Host application**
   - Flows:
-    - → loading the Playwright installed in the project's folder, launching Chromium with it
-      and opening the URL, or attaching to a running Chromium at its DevTools protocol
+    - → loading the Playwright installed in the project's folder, launching Chromium with
+      it and opening the URL, or attaching to a running Chromium at its DevTools protocol
       address; in the page, holding a click or key press back and sending it on, and
-      reading the page's structure; tracing the recording, and writing the Recording
-      Package with its trace into the project's `.ayme/recordings`; running the project's
-      own `playwright trace` as a separate process
+      reading the page's structure; running the toolbar's script and its page function in
+      every document, switching Playwright's own recorder into picking for Assert
+      visibility, and drawing a highlight through a DevTools session of the page; tracing
+      the recording, and writing the Recording Package with its trace into the project's
+      `.ayme/recordings`; running the project's own `playwright trace` as a separate
+      process
     - ← the opening, navigating and closing of a page, and the closing of the browser; a
-      click or key press the page held back, the page's activity, the Interactions
-      Playwright's own recorder reports, and the trace's position numbers
+      click or key press the page held back, the page's activity, the Interactions and
+      assertions Playwright's own recorder reports, the toolbar's commands and requests
+      for the state, and the trace's position numbers
   - Evidence: verified: [packages/recorder/src/playwright/infrastructure/projectPlaywright.ts](packages/recorder/src/playwright/infrastructure/projectPlaywright.ts), [packages/recorder/src/playwright/infrastructure/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/pageScripts.ts](packages/recorder/src/playwright/infrastructure/pageScripts.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts)
 - **App Process runtime → Ayme MCP server**
   - Flows:
