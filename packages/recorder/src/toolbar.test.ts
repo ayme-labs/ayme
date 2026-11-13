@@ -93,6 +93,19 @@ describe("the toolbar's way to the recorder", () => {
       toolbar({ kind: "send", command: { type: "explode" } })
     ).resolves.toBe("ignored");
     await expect(toolbar("finish")).resolves.toBe("ignored");
+    // Whatever a page sends is untrusted: nothing of it throws.
+    for (const message of [
+      null,
+      undefined,
+      42,
+      [],
+      { kind: "send" },
+      { kind: "update", after: "1" },
+      { kind: "update" },
+    ])
+      await expect(toolbar(message), JSON.stringify(message)).resolves.toBe(
+        "ignored"
+      );
     let phase = "";
     recorder.subscribe(({ state }) => (phase = state.phase));
     expect(phase).toBe("notRecording");
