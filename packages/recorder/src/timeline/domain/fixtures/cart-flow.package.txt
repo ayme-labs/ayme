@@ -1,0 +1,65 @@
+recordingId: rec_20261113T072645693Z
+mode: structural
+createdAt: 2026-11-13T07:26:45.693Z
+url: http://127.0.0.1:51745/cart.html
+tracePath: null
+visits:
+  - visitId: visit_1
+    url: http://127.0.0.1:51745/cart.html
+    cause: initial
+    baselineTree:
+      - [ref=e1]:
+        - [ref=e2] heading "Cart" [level=1]
+        - [ref=e3] paragraph: "Items: 0"
+        - [ref=e5] button "Add item" [active]
+        - [ref=e6] button "Redraw"
+    timelineEntries:
+      - kind: interaction
+        timestamp: 1309.907
+        interaction:
+          id: interaction_1
+          type: click
+          targetRef: e5
+          targetSelector: internal:role=button[name="Add item"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e3] paragraph: "Items: 1"
+      - kind: change
+        timestamp: 2942.489
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e5] button "Add item"
+            - <changed> [ref=e6] button "Redraw" [active]
+      - kind: interaction
+        timestamp: 2944.489
+        interaction:
+          id: interaction_2
+          type: click
+          targetRef: e6
+          targetSelector: internal:role=button[name="Redraw"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: 4556.149
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e5] button "Add item" [active]
+            - <changed> [ref=e6] button "Redraw"
+      - kind: interaction
+        timestamp: 4558.149
+        interaction:
+          id: interaction_3
+          type: click
+          targetRef: e5
+          targetSelector: internal:role=button[name="Add item"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e3] paragraph: "Items: 2"
+traceActionPoints: []

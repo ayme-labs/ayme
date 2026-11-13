@@ -5,3 +5,4 @@ export type {
   TimelineAddition,
   VisitCause,
 } from "./domain/recorded";
+export { Timeline, type PackageHeader } from "./domain/timeline";

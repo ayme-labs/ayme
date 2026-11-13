@@ -32,7 +32,9 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
-    "effect": "^4.1.4"
+    "@ayme-dev/core": "workspace:*",
+    "effect": "^4.1.4",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",

@@ -1,0 +1,151 @@
+{
+  "header": {
+    "recordingId": "rec_20261113T072645693Z",
+    "createdAt": "2026-11-13T07:26:45.693Z",
+    "tracePath": null
+  },
+  "additions": [
+    {
+      "kind": "visit",
+      "page": "page_1",
+      "url": "http://127.0.0.1:51745/cart.html",
+      "cause": "initial"
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_1",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 1306.953,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 0\"\n  - button \"Add item\" [active] [ref=e5]\n  - button \"Redraw\" [ref=e6]"
+      }
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_2",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 1476.668,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 1\"\n  - button \"Add item\" [active] [ref=e5]\n  - button \"Redraw\" [ref=e6]"
+      }
+    },
+    {
+      "kind": "interaction",
+      "interaction": {
+        "page": "page_1",
+        "report": {
+          "type": "click",
+          "selector": "internal:role=button[name=\"Add item\"i]",
+          "target": {
+            "ref": "e5",
+            "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 0\"\n  - button \"Add item\" [active] [ref=e5]\n  - button \"Redraw\" [ref=e6]"
+          },
+          "values": {
+            "button": "left",
+            "modifiers": 0,
+            "clickCount": 1
+          }
+        },
+        "before": "snapshot_1",
+        "after": "snapshot_2",
+        "at": 1309.907
+      }
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_3",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 2942.489,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 1\"\n  - button \"Add item\" [ref=e5]\n  - button \"Redraw\" [active] [ref=e6]"
+      }
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_4",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 3105.242,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 1\"\n  - button \"Add item\" [ref=e7]\n  - button \"Redraw\" [active] [ref=e6]"
+      }
+    },
+    {
+      "kind": "interaction",
+      "interaction": {
+        "page": "page_1",
+        "report": {
+          "type": "click",
+          "selector": "internal:role=button[name=\"Redraw\"i]",
+          "target": {
+            "ref": "e6",
+            "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 1\"\n  - button \"Add item\" [ref=e5]\n  - button \"Redraw\" [active] [ref=e6]"
+          },
+          "values": {
+            "button": "left",
+            "modifiers": 0,
+            "clickCount": 1
+          }
+        },
+        "before": "snapshot_3",
+        "after": "snapshot_4",
+        "at": 2944.489
+      }
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_5",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 4556.149,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 1\"\n  - button \"Add item\" [active] [ref=e7]\n  - button \"Redraw\" [ref=e6]"
+      }
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_6",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 4723.338,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 2\"\n  - button \"Add item\" [active] [ref=e7]\n  - button \"Redraw\" [ref=e6]"
+      }
+    },
+    {
+      "kind": "interaction",
+      "interaction": {
+        "page": "page_1",
+        "report": {
+          "type": "click",
+          "selector": "internal:role=button[name=\"Add item\"i]",
+          "target": {
+            "ref": "e7",
+            "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 1\"\n  - button \"Add item\" [active] [ref=e7]\n  - button \"Redraw\" [ref=e6]"
+          },
+          "values": {
+            "button": "left",
+            "modifiers": 0,
+            "clickCount": 1
+          }
+        },
+        "before": "snapshot_5",
+        "after": "snapshot_6",
+        "at": 4558.149
+      }
+    },
+    {
+      "kind": "snapshot",
+      "snapshot": {
+        "id": "snapshot_7",
+        "page": "page_1",
+        "url": "http://127.0.0.1:51745/cart.html",
+        "at": 6939.468,
+        "tree": "- generic [ref=e1]:\n  - heading \"Cart\" [level=1] [ref=e2]\n  - paragraph [ref=e3]: \"Items: 2\"\n  - button \"Add item\" [active] [ref=e7]\n  - button \"Redraw\" [ref=e6]"
+      }
+    }
+  ]
+}
