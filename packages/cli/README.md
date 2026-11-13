@@ -125,7 +125,7 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **A pause is still traced.** The trace runs from the first Record to Finish. What you type while paused can show in the trace's screenshots and snapshots, so do not type a secret while paused and expect it to be left out.
 - **Closing the page right after your last click can lose that click.** The recorder holds each click back for a moment to take a snapshot first; if the page is gone by then, the click is dropped.
 - **The first key after Record is held back and sent again,** as is anything typed while an earlier input is held back. Sending again is less faithful for paste and for input methods that compose text.
-- **On Playwright 1.62 and 1.63, a click in the last half-second before "Paused" shows can be lost.** Playwright waits a moment to see whether a double click follows, and these versions cannot be asked to report the click sooner.
+- **On Playwright 1.63, a click in the last half-second before "Paused" shows can be lost.** Playwright waits a moment to see whether a double click follows, and this version cannot be asked to report the click sooner.
 - **An upload whose file input is gone when it is read keeps only its first file name,** with a warning.
 - **An element the page structure does not list, which becomes two identical siblings, can be matched to the wrong one** in the next steps.
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
