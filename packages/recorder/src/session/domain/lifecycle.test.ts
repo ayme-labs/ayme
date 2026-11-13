@@ -3271,6 +3271,43 @@ describe("the lifecycle, for what the review against the spec found", () => {
       ],
       state: { phase: "paused" },
     },
+
+    // Input reaches the page in the order the person gave it (rule 11).
+    // The page's part is in the recorded browser's contract suite: it goes
+    // on holding a click while an input it held still waits. This is the
+    // lifecycle's part.
+    {
+      name: "a click a page held back after it stopped holding inputs, behind a click and a key that still wait, is passed on after both (rule 11)",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        {
+          kind: "inputHeld",
+          input: "input_2",
+          page: "page_1",
+          held: { kind: "typing" },
+        },
+        stop,
+        gateOff,
+        clickHeld("input_3"),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        taken("snapshot_2"),
+        passedOn("input_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [],
+        [],
+        [keep("snapshot_1"), passOn("input_1")],
+        [takeSnapshot("snapshot_2")],
+        [keep("snapshot_2"), passOn("input_2")],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3"), passOn("input_3")],
+      ],
+      state: { phase: "wrappingUp" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
