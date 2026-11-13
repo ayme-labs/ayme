@@ -598,7 +598,7 @@ it.runIf(attaching)(
     const debugPort = await freePort();
     // A launched browser keeps a default context with no page; the test's
     // page is in a context of its own.
-    const running = await chromium.launch({
+    const running = await projectChromium.launch({
       headless: true,
       args: [`--remote-debugging-port=${debugPort}`],
     });
@@ -623,7 +623,7 @@ it.runIf(attaching)(
   "does not attach to a browser with no page open, and says what it found",
   async () => {
     const debugPort = await freePort();
-    const running = await chromium.launch({
+    const running = await projectChromium.launch({
       headless: true,
       args: [`--remote-debugging-port=${debugPort}`],
     });
