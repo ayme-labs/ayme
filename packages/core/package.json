@@ -37,11 +37,11 @@
     "@ayme-dev/typescript-config": "workspace:*",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   },
   "license": "FSL-1.1-ALv2",
   "description": "Shared structural observation, capture history, and projection, and the check of a tool's input against its schema"
