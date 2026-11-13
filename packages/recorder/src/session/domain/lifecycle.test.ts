@@ -110,6 +110,10 @@ const wrapUp: ToDo[] = [
   { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
 ];
 const save: ToDo = { kind: "save" };
+const letThrough = (upTo: string | null): ToDo => ({
+  kind: "browser",
+  ask: { kind: "letInputsThrough", page: "page_1", upTo },
+});
 
 /** One click from held to settled, with nothing else going on. */
 const oneClick = [
@@ -307,7 +311,7 @@ describe("the lifecycle", () => {
         [keep("snapshot_1"), passOn("input_1")],
         [waitForSettled("input_1")],
         [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2")],
+        [keep("snapshot_2"), letThrough("input_1")],
       ],
       state: { phase: "recording" },
     },
@@ -332,7 +336,11 @@ describe("the lifecycle", () => {
       todo: [
         [],
         [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), interaction("snapshot_1", "snapshot_2", 33)],
+        [
+          keep("snapshot_2"),
+          interaction("snapshot_1", "snapshot_2", 33),
+          letThrough("input_1"),
+        ],
       ],
       state: { phase: "recording" },
     },
@@ -874,7 +882,7 @@ describe("the lifecycle, for every kind of input", () => {
         [keep("snapshot_1"), passOn("input_1")],
         [waitForSettled("input_1")],
         [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2")],
+        [keep("snapshot_2"), letThrough("input_1")],
         [written(enter, "snapshot_1", "snapshot_2")],
       ],
       state: { phase: "recording" },
@@ -903,7 +911,7 @@ describe("the lifecycle, for every kind of input", () => {
         [keep("snapshot_2"), passOn("input_2")],
         [waitForSettled("input_2")],
         [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
+        [keep("snapshot_3"), letThrough("input_2")],
         [interaction("snapshot_1", "snapshot_2", 21)],
         [written(enter, "snapshot_2", "snapshot_3", 22)],
       ],
@@ -925,6 +933,81 @@ describe("the lifecycle, for every kind of input", () => {
         reportedAs(enter),
       ],
       todo: [[written(enter, "snapshot_2", "snapshot_3", 22)]],
+      state: { phase: "recording" },
+    },
+
+    // Typing waits behind a held input.
+    {
+      name: "a key typed while a click is held waits: the click's 'after' is taken before the typing reaches the page, which gets no snapshot or wait of its own",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        held("input_2", { kind: "typing" }),
+        taken("snapshot_1"),
+        passedOn("input_1", 21),
+        taken("snapshot_2"),
+        passedOn("input_2", 22),
+        reported,
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [],
+        [keep("snapshot_1"), passOn("input_1")],
+        [takeSnapshot("snapshot_2")],
+        [keep("snapshot_2"), passOn("input_2")],
+        [letThrough("input_2")],
+        [interaction("snapshot_1", "snapshot_2", 21)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "keys typed one after another while held are passed on in order, with no snapshot between them",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        held("input_2", { kind: "typing" }),
+        held("input_3", { kind: "typing" }),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        taken("snapshot_2"),
+        passedOn("input_2"),
+        passedOn("input_3"),
+      ],
+      todo: [
+        [keep("snapshot_2"), passOn("input_2")],
+        [passOn("input_3")],
+        [letThrough("input_3")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "after Record a page holds what follows until its first input has a 'before': a key typed first gets one, then the page lets inputs through",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "typing" }),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [keep("snapshot_1"), passOn("input_1")],
+        [letThrough("input_1")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page lets inputs through once a held click has its 'after' and nothing else is held",
+      happened: [opened, ...started, ...oneClick],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [keep("snapshot_1"), passOn("input_1")],
+        [waitForSettled("input_1")],
+        [takeSnapshot("snapshot_2")],
+        [keep("snapshot_2"), letThrough("input_1")],
+      ],
       state: { phase: "recording" },
     },
   ])("$name", ({ happened, todo, state }) => {

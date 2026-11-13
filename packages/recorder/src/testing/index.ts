@@ -5,7 +5,11 @@ import { TestClock } from "effect/testing";
 
 import { startRecorderOn, type Recorder } from "../engine";
 import { RecordedBrowser } from "../session/application";
-import type { BrowserRequest, BrowserSignal } from "../session/domain";
+import type {
+  BrowserRequest,
+  BrowserSignal,
+  HeldInput,
+} from "../session/domain";
 import type { InteractionReport } from "../timeline/domain";
 
 // The `./testing` entry (ADR-0026): a recorder on a scripted browser, where a
@@ -47,6 +51,10 @@ export interface ScriptedBrowser {
   releaseSnapshots(): void;
   /** Moves the recorder's clock on. */
   advanceTime(ms: number): Promise<void>;
+  /** The page holds an input back: a click of some count, a key press, or
+   * a key typed while an earlier input was held. Numbered as `holdClick`
+   * numbers. */
+  holdInput(held: HeldInput): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -106,6 +114,11 @@ export async function startScriptedRecorder(
         return tell({ kind: "inputPassedOn", input: request.input, at: ++now });
       case "waitForSettled":
         settling = request;
+        return;
+      // Every kind of input.
+      case "letInputsThrough":
+        // Nothing answers it.
+        return;
     }
   };
 
@@ -180,6 +193,8 @@ export async function startScriptedRecorder(
         for (const take of held) take();
       },
       advanceTime: (ms) => Effect.runPromise(clock!.adjust(ms)),
+      holdInput: (held) =>
+        tell({ kind: "inputHeld", input: `input_${++inputs}`, page, held }),
     },
   };
 }

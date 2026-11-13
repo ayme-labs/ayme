@@ -18,7 +18,7 @@ import {
   hidePlaywrightOverlay,
   installActivityWatch,
   installGate,
-  type HeldClick,
+  type HeldByPage,
 } from "./pageScripts";
 import { loadProjectPlaywright } from "./projectPlaywright";
 
@@ -127,7 +127,10 @@ async function openPage(
   const pages = new Map<string, Page>();
   const idOf = new Map<Page, string>();
   /** The inputs the pages hold back, until they are passed on. */
-  const held = new Map<string, { frame: Frame; click: HeldClick }>();
+  const held = new Map<string, { frame: Frame; input: HeldByPage }>();
+  /** Every input a page held, in order: which document held it, and its
+   * number there. */
+  const heldBy = new Map<string, { id: string; frame: Frame; seq: number }[]>();
   let inputs = 0;
 
   context.on("page", (page) => {
@@ -148,16 +151,23 @@ async function openPage(
   const heldBinding = "__aymeRecorderHeld";
   await context.exposeBinding(
     heldBinding,
-    ({ page, frame }, click: HeldClick) => {
+    ({ page, frame }, input: HeldByPage) => {
       const pageId = idOf.get(page);
       if (!pageId) return;
-      const input = `input_${++inputs}`;
-      held.set(input, { frame, click });
+      const id = `input_${++inputs}`;
+      held.set(id, { frame, input });
+      heldBy.set(pageId, [
+        ...(heldBy.get(pageId) ?? []),
+        { id, frame, seq: input.seq },
+      ]);
       tell({
         kind: "inputHeld",
-        input,
+        input: id,
         page: pageId,
-        held: { kind: "click", count: Math.max(1, click.detail) },
+        held:
+          input.kind === "click"
+            ? { kind: "click", count: Math.max(1, input.detail) }
+            : { kind: input.typing ? "typing" : "press" },
       });
     }
   );
@@ -249,8 +259,39 @@ async function openPage(
         const input = held.get(request.input);
         held.delete(request.input);
         if (!input) return;
-        await passOn(input.frame, input.click);
+        await passOn(input.frame, input.input);
         return tell({ kind: "inputPassedOn", input: request.input, at: now() });
+      }
+      case "letInputsThrough": {
+        const open = pages.get(request.page);
+        if (!open) return;
+        // What the engine knows the page held: up to `upTo`, by document.
+        const known = heldBy.get(request.page) ?? [];
+        const upTo =
+          request.upTo === null
+            ? []
+            : known.slice(
+                0,
+                known.findIndex((input) => input.id === request.upTo) + 1
+              );
+        await Promise.all(
+          open
+            .frames()
+            .map((frame) =>
+              frame
+                .evaluate(
+                  (seq) => window.__aymeRecorderGate?.letThrough(seq),
+                  Math.max(
+                    0,
+                    ...upTo
+                      .filter((input) => input.frame === frame)
+                      .map((input) => input.seq)
+                  )
+                )
+                .catch(() => {})
+            )
+        );
+        return;
       }
       case "waitForSettled": {
         const open = pages.get(request.page);
@@ -312,20 +353,30 @@ async function openPage(
   return { carryOut };
 }
 
-/** Sends a held click on to its page, as the press of the mouse it was. */
-async function passOn(frame: Frame, click: HeldClick) {
+/** Sends a held input on to its page, as the press of the mouse or the
+ * key it was. */
+async function passOn(frame: Frame, input: HeldByPage) {
   const page = frame.page();
-  const clickCount = Math.max(1, click.detail);
-  await frame.evaluate((at) => window.__aymeRecorderGate?.open(at), {
-    x: click.x,
-    y: click.y,
-  });
+  await frame.evaluate(
+    (at) => window.__aymeRecorderGate?.open(at),
+    input.kind === "click" ? { x: input.x, y: input.y } : { code: input.code }
+  );
   try {
-    for (const modifier of click.modifiers) await page.keyboard.down(modifier);
-    await page.mouse.move(click.x, click.y);
+    if (input.kind === "key") {
+      const key = input.key === " " ? "Space" : input.key;
+      const press = (name: string) =>
+        page.keyboard.press([...input.modifiers, name].join("+"));
+      // A key Playwright has no name for is sent by its place on the
+      // keyboard.
+      await press(key).catch(() => press(input.code));
+      return;
+    }
+    const clickCount = Math.max(1, input.detail);
+    for (const modifier of input.modifiers) await page.keyboard.down(modifier);
+    await page.mouse.move(input.x, input.y);
     await page.mouse.down({ clickCount });
     await page.mouse.up({ clickCount });
-    for (const modifier of click.modifiers) await page.keyboard.up(modifier);
+    for (const modifier of input.modifiers) await page.keyboard.up(modifier);
   } finally {
     // The gate closed by itself if the click arrived. The click may also
     // have taken the page elsewhere: that document's gate is gone with it.

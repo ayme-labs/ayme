@@ -72,7 +72,9 @@ export type HeldInput =
    * click. */
   | { readonly kind: "click"; readonly count: number }
   /** A key press that Playwright records as a press, not as typing. */
-  | { readonly kind: "press" };
+  | { readonly kind: "press" }
+  /** A key typed while an earlier input was held: it waits its turn. */
+  | { readonly kind: "typing" };
 
 /**
  * One thing the engine asks of the recorded browser. The browser takes a
@@ -85,7 +87,9 @@ export type BrowserRequest =
    * "reportingInteractions". */
   | { readonly kind: "reportInteractions" }
   /** Hold inputs back in every page, or stop doing so. Answered by
-   * "inputsHeld" once every page has confirmed. */
+   * "inputsHeld" once every page has confirmed. A page that stops also
+   * stops holding what follows a held input, once nothing it held waits to
+   * be passed on. */
   | { readonly kind: "holdInputs"; readonly on: boolean }
   /** Answered by "snapshotTaken" with a snapshot of this id. */
   | {
@@ -100,6 +104,18 @@ export type BrowserRequest =
       readonly kind: "waitForSettled";
       readonly page: string;
       readonly input: string;
+    }
+  /**
+   * A page that held an input holds everything after it, typing included,
+   * and so does a page from Record until its first input. This lets what
+   * follows reach the page again, unless the page held an input after
+   * `upTo`, the last one the engine knows of; null when it knows none.
+   * Nothing answers it.
+   */
+  | {
+      readonly kind: "letInputsThrough";
+      readonly page: string;
+      readonly upTo: string | null;
     };
 
 /** One thing that happened. Everything reaches the lifecycle as one of these. */
@@ -189,6 +205,19 @@ type Flow = {
   /** Oldest first. */
   readonly inputs: readonly Input[];
   readonly snapshotsAsked: number;
+  /** Of each page: whether it holds everything that follows, and its
+   * latest snapshot. */
+  readonly gates: readonly PageGate[];
+};
+
+type PageGate = {
+  readonly page: string;
+  /** The page holds what follows, typing included, until it is let through. */
+  readonly holding: boolean;
+  /** The last input the page held. */
+  readonly upTo: string | null;
+  /** The latest snapshot of the page. */
+  readonly latest: { readonly id: string; readonly at: number } | null;
 };
 
 export type LifecycleState = { readonly pages: readonly Page[] } & (
@@ -301,6 +330,14 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
         pages: state.pages,
         inputs: [],
         snapshotsAsked: 0,
+        // A page holds what follows from Record on, until its first input
+        // has a "before".
+        gates: state.pages.map((page) => ({
+          page: page.id,
+          holding: true,
+          upTo: null,
+          latest: null,
+        })),
       },
       todo: [
         ...state.pages.map((page, index): ToDo => ({
@@ -356,6 +393,7 @@ function wrapUp(state: Extract<LifecycleState, { phase: "recording" }>): Step {
       pages: state.pages,
       inputs: state.inputs,
       snapshotsAsked: state.snapshotsAsked,
+      gates: state.gates,
       gateOff: false,
       finals: null,
     },
@@ -392,12 +430,14 @@ function withoutPage(state: LifecycleState, page: string): LifecycleState {
     if (input.passedOnAt === null) return [];
     return [{ ...input, stage: "settled", asked: null }];
   });
+  const gates = state.gates.filter((gate) => gate.page !== page);
   return state.phase === "recording"
-    ? { ...state, pages, inputs }
+    ? { ...state, pages, inputs, gates }
     : {
         ...state,
         pages,
         inputs,
+        gates,
         finals: state.finals?.filter((final) => final.page !== page) ?? null,
       };
 }
@@ -406,8 +446,24 @@ function withoutPage(state: LifecycleState, page: string): LifecycleState {
 type Draft = {
   inputs: readonly Input[];
   snapshotsAsked: number;
+  gates: readonly PageGate[];
   readonly todo: ToDo[];
 };
+
+function changeGate(draft: Draft, page: string, patch: Partial<PageGate>) {
+  const known = draft.gates.some((gate) => gate.page === page);
+  draft.gates = known
+    ? draft.gates.map((gate) =>
+        gate.page === page ? { ...gate, ...patch } : gate
+      )
+    : [
+        ...draft.gates,
+        { page, holding: false, upTo: null, latest: null, ...patch },
+      ];
+}
+
+const gateOf = (draft: Draft, page: string) =>
+  draft.gates.find((gate) => gate.page === page);
 
 function change(draft: Draft, id: string, patch: Partial<Input>) {
   draft.inputs = draft.inputs.map((input) =>
@@ -444,6 +500,7 @@ function during(state: Active, happening: BrowserSignal): Step {
   const draft: Draft = {
     inputs: state.inputs,
     snapshotsAsked: state.snapshotsAsked,
+    gates: state.gates,
     todo: [],
   };
   let next = state;
@@ -479,6 +536,8 @@ function during(state: Active, happening: BrowserSignal): Step {
         report: null,
       };
       draft.inputs = [...draft.inputs, held];
+      // The page holds everything after it now, by itself.
+      changeGate(draft, happening.page, { holding: true, upTo: held.id });
       // A newer snapshot closes the previous Interaction.
       if (earlier?.stage === "settling")
         askSharedSnapshot(draft, earlier, held);
@@ -496,6 +555,9 @@ function during(state: Active, happening: BrowserSignal): Step {
       draft.todo.push({
         kind: "timeline",
         add: { kind: "snapshot", snapshot },
+      });
+      changeGate(draft, snapshot.page, {
+        latest: { id: snapshot.id, at: snapshot.at },
       });
       for (const owner of owners) {
         if (owner.stage === "takingAfter") {
@@ -530,6 +592,11 @@ function during(state: Active, happening: BrowserSignal): Step {
       );
       if (!input) break;
       change(draft, input.id, { passedOnAt: happening.at });
+      // Typing has no "after": what it changed is the typing's report's.
+      if (input.held.kind === "typing") {
+        change(draft, input.id, { stage: "settled" });
+        break;
+      }
       const later = draft.inputs.find(
         (held) => held.page === input.page && held.stage === "waiting"
       );
@@ -592,6 +659,24 @@ function during(state: Active, happening: BrowserSignal): Step {
 }
 
 /**
+ * Lets inputs reach a page that holds what follows, once nothing of it is
+ * under way and it has a snapshot to start from. A page that no longer
+ * holds inputs back lets them through by itself once nothing it held
+ * waits to be passed on.
+ */
+function letThrough(draft: Draft) {
+  for (const gate of draft.gates) {
+    if (!gate.holding || underWay(draft, gate.page)) continue;
+    if (!gate.latest) continue;
+    changeGate(draft, gate.page, { holding: false });
+    draft.todo.push({
+      kind: "browser",
+      ask: { kind: "letInputsThrough", page: gate.page, upTo: gate.upTo },
+    });
+  }
+}
+
+/**
  * A click reported with a count above one stands for the clicks before it
  * too: Playwright reports a double click once, with a count of two. The
  * clicks it covers are the ones held right after the reported one, counting
@@ -625,6 +710,7 @@ function coverFollowingClicks(
 const settle = (draft: Draft): Flow => ({
   inputs: draft.inputs,
   snapshotsAsked: draft.snapshotsAsked,
+  gates: draft.gates,
 });
 
 /** What follows from a recording's state as it now stands, whatever
@@ -634,16 +720,29 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
   const draft: Draft = {
     inputs: state.inputs,
     snapshotsAsked: state.snapshotsAsked,
+    gates: state.gates,
     todo: [...done],
   };
   for (const page of new Set(draft.inputs.map((input) => input.page))) {
     const next = underWay(draft, page);
-    if (next?.stage === "waiting")
+    if (next?.stage !== "waiting") continue;
+    // Typing needs no "before" once the page has a snapshot to start from.
+    if (next.held.kind === "typing" && gateOf(draft, page)?.latest) {
+      change(draft, next.id, { stage: "passingOn" });
+      draft.todo.push({
+        kind: "browser",
+        ask: { kind: "passOn", input: next.id },
+      });
+    } else
       change(draft, next.id, {
         stage: "takingBefore",
         asked: askSnapshot(draft, page),
       });
   }
+  // Typing that reached its page is done with.
+  draft.inputs = draft.inputs.filter(
+    (input) => input.held.kind !== "typing" || input.stage !== "settled"
+  );
   for (const input of draft.inputs) {
     if (input.stage === "settled" && input.unreported) {
       draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
@@ -678,6 +777,7 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       (held) => held.id !== input.id && held.joins !== input.id
     );
   }
+  if (state.phase === "recording") letThrough(draft);
   if (state.phase === "recording")
     return { state: { ...state, ...settle(draft) }, todo: draft.todo };
 
