@@ -5,6 +5,8 @@ import {
   type StructuralNode,
 } from "@ayme-dev/core/structural-observation";
 
+import { fitsScope, scopesOf } from "./target";
+
 // An input the gate never holds, as typing, has no snapshot of its own just
 // before it. Playwright's report carries a picture of the page taken at the
 // moment of the input, in the notation of a snapshot but numbered by itself.
@@ -69,7 +71,8 @@ export function pictureBefore(options: {
   const alike = (seen: StructuralNode, node: StructuralNode) =>
     seen.role === node.role && seen.name === node.name;
 
-  const matched = new Set<StructuralNode>();
+  // What one reading of the picture has matched so far.
+  let matched = new Set<StructuralNode>();
   let target: AriaRef | undefined;
 
   function pair(seen: readonly StructuralNode[], known: StructuralNode[]) {
@@ -127,21 +130,47 @@ export function pictureBefore(options: {
     });
   }
 
-  const roots = pair(picture.getRootNodes(), between.getRootNodes());
-  const built = picture
-    .getRootNodes()
-    .map((root) => build(root, roots.get(root)));
-  if (built.length !== 1) return null;
-
-  // Every element the two snapshots agree on was there at the moment of the
-  // input too, unless the picture is of another shape.
-  let complete = true;
-  const check = (node: StructuralNode) => {
-    if (kind(node) === "added" || kind(node) === "removed") return;
-    if (!matched.has(node)) complete = false;
-    if (node.role !== "iframe") nodes(node).forEach(check);
-  };
-  between.getRootNodes().forEach(check);
-  if (!complete) return null;
-  return { tree: new StructuralTree(built[0]!, refs), target };
+  // The document the picture is of: the page, or one of its frames. The
+  // first whose top level it fits and whose elements it all has.
+  for (const scope of scopesOf(between)) {
+    if (
+      !fitsScope(
+        picture.getRootNodes(),
+        scope.roots.filter((node) => kind(node) !== "added")
+      )
+    )
+      continue;
+    matched = new Set();
+    target = undefined;
+    const roots = pair(picture.getRootNodes(), scope.roots);
+    const built = picture
+      .getRootNodes()
+      .map((root) => build(root, roots.get(root)));
+    // Every element the two snapshots agree on was there at the moment of
+    // the input too, unless the picture is of another shape.
+    let complete = true;
+    const check = (node: StructuralNode) => {
+      if (kind(node) === "added" || kind(node) === "removed") return;
+      if (!matched.has(node)) complete = false;
+      if (node.role !== "iframe") nodes(node).forEach(check);
+    };
+    scope.roots.forEach(check);
+    if (!complete) continue;
+    if (!scope.frame)
+      return built.length === 1
+        ? { tree: new StructuralTree(built[0]!, refs), target }
+        : null;
+    // Outside the frame, the page stands as the earlier snapshot has it.
+    const frame = scope.frame.ref;
+    const outside = (node: StructuralNode): StructuralNode =>
+      node.ref === frame
+        ? node.copy({ children: built })
+        : node.copy({
+            children: node.children.map((child) =>
+              typeof child === "string" ? child : outside(child)
+            ),
+          });
+    return { tree: new StructuralTree(outside(previous.root), refs), target };
+  }
+  return null;
 }

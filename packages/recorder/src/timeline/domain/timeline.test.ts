@@ -612,3 +612,82 @@ describe("the timeline, for a target the snapshot does not list", () => {
     );
   });
 });
+
+describe("the timeline, for an input inside a frame", () => {
+  // The snapshot lists a same-origin frame's elements under its iframe;
+  // Playwright's picture of an input in the frame is of the frame alone.
+  const withFrame = (field: string, note: string) =>
+    [
+      `- generic [ref=e1]:`,
+      `  - heading "Shop" [level=1] [ref=e2]`,
+      `  - iframe [ref=e3]:`,
+      `    - generic [ref=f1e1]:`,
+      `      - textbox "Item" [ref=f1e2]${field}`,
+      `      - button "Add" [ref=f1e3]`,
+      `  - paragraph [ref=e4]: ${note}`,
+    ].join("\n");
+  const frameAlone = (field: string) =>
+    [
+      `- generic [ref=e7]:`,
+      `  - textbox "Item" [ref=e8]${field}`,
+      `  - button "Add" [ref=e9]`,
+    ].join("\n");
+  const inFrame = (
+    type: string,
+    ref: string,
+    tree: string,
+    beforeFromReport?: boolean
+  ): TimelineAddition => ({
+    kind: "interaction",
+    interaction: {
+      page: "page_1",
+      report: {
+        type,
+        selector: `iframe >> internal:control=enter-frame >> ${type}`,
+        target: { ref, tree },
+        values: {},
+      },
+      before: "snapshot_1",
+      after: "snapshot_2",
+      at: 10,
+      ...(beforeFromReport ? { beforeFromReport } : {}),
+    },
+  });
+
+  it("finds a click's target among the frame's elements", async () => {
+    const text = await packageOf([
+      visit,
+      snapshot("snapshot_1", 10, withFrame("", "Empty")),
+      snapshot("snapshot_2", 20, withFrame("", "One item")),
+      inFrame("click", "e9", frameAlone("")),
+    ]);
+
+    expect(text).toContain(`          targetRef: f1e3\n`);
+  });
+
+  it("takes typing's 'before' in the frame from the report's picture, and the rest of the page from the snapshot before it", async () => {
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot("snapshot_1", 10, withFrame("", "Empty")),
+      snapshot("snapshot_2", 20, withFrame(": milk", "Draft saved")),
+      inFrame("fill", "e8", frameAlone(": m"), true),
+    ])
+      await timeline.add(addition);
+
+    expect(await timeline.package(header)).toContain(
+      [
+        `          targetRef: f1e2`,
+        `          targetSelector: iframe >> internal:control=enter-frame >> fill`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - [ref=e3] iframe:`,
+        `              - [ref=f1e1]:`,
+        `                - <changed> [ref=f1e2] textbox "Item": milk`,
+        `            - <changed> [ref=e4] paragraph: Draft saved`,
+        `traceActionPoints: []`,
+      ].join("\n")
+    );
+    expect(timeline.warnings()).toEqual([]);
+  });
+});

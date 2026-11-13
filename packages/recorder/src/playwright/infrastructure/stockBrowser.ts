@@ -395,6 +395,34 @@ const CHAIN_TYPES: Readonly<Record<string, readonly string[]>> = {
   select: ["input"],
 };
 
+/**
+ * A point of a frame's viewport, as a point of the page's: moved by the
+ * place of each frame's content box in its parent, frames in frames
+ * included.
+ */
+async function placeInPage(frame: Frame, at: { x: number; y: number }) {
+  let point = { ...at };
+  for (
+    let inner: Frame | null = frame;
+    inner?.parentFrame();
+    inner = inner.parentFrame()
+  ) {
+    const element = await inner.frameElement();
+    const offset = await element.evaluate((node) => {
+      const iframe = node as Element;
+      const box = iframe.getBoundingClientRect();
+      const style = getComputedStyle(iframe);
+      return {
+        x: box.left + iframe.clientLeft + parseFloat(style.paddingLeft),
+        y: box.top + iframe.clientTop + parseFloat(style.paddingTop),
+      };
+    });
+    await element.dispose();
+    point = { x: point.x + offset.x, y: point.y + offset.y };
+  }
+  return point;
+}
+
 /** A report of Playwright's recorder, in the engine's words. */
 function reportOf(action: PlaywrightAction): InteractionReport {
   const { name, selector, ref, ariaSnapshot, signals, ...values } = action;
@@ -426,8 +454,9 @@ async function passOn(frame: Frame, input: HeldByPage) {
       return;
     }
     const clickCount = Math.max(1, input.detail);
+    const at = await placeInPage(frame, input);
     for (const modifier of input.modifiers) await page.keyboard.down(modifier);
-    await page.mouse.move(input.x, input.y);
+    await page.mouse.move(at.x, at.y);
     await page.mouse.down({ clickCount });
     await page.mouse.up({ clickCount });
     for (const modifier of input.modifiers) await page.keyboard.up(modifier);

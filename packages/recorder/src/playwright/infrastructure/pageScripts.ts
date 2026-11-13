@@ -13,7 +13,7 @@ export type HeldByPage =
   | {
       readonly kind: "click";
       readonly seq: number;
-      /** Where it was, in the frame's viewport. */
+      /** Where it was, in its own document's viewport. */
       readonly x: number;
       readonly y: number;
       /** The click's count: 2 for the second click of a double click. */
@@ -70,9 +70,9 @@ declare global {
  * input until the adapter sends it on.
  */
 export function installGate(held: string): void {
-  // Only the top document for now: a click in a frame would need its place
-  // in the page.
-  if (window.__aymeRecorderGate || window.top !== window) return;
+  // Every document has its own, frames included: a frame's click is sent
+  // on at its place in the page.
+  if (window.__aymeRecorderGate) return;
   let on = false;
   let holding = false;
   /** How many inputs it held, and how many of those still wait. */
