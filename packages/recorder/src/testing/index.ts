@@ -84,6 +84,10 @@ export interface ScriptedBrowser {
   // Warnings.
   /** The browser warns of something a person should know. */
   warn(warning: RecorderWarning): void;
+  // Assert visibility.
+  /** The person picks an element while Playwright is in its picking mode:
+   * Playwright reports the assertion, then leaves picking by itself. */
+  pick(report: InteractionReport): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -127,6 +131,8 @@ export async function startScriptedRecorder(
   const heldIn = new Map<string, number>();
   const passedOn: string[] = [];
   const waiting: (() => void)[] = [];
+  /** Whether Playwright is in its picking mode. */
+  let picking = false;
   const tell = (signal: BrowserSignal) => {
     Queue.offerUnsafe(signals!, signal);
   };
@@ -187,6 +193,12 @@ export async function startScriptedRecorder(
       case "letInputsThrough":
         // Nothing answers it.
         return;
+      // Assert visibility.
+      case "pick":
+        // Playwright tells of its mode only when it changes.
+        if (picking === request.on) return;
+        picking = request.on;
+        return tell({ kind: "picking", on: request.on });
     }
   };
 
@@ -293,6 +305,12 @@ export async function startScriptedRecorder(
       },
       // Warnings.
       warn: (warning) => tell({ kind: "browserWarned", warning }),
+      // Assert visibility.
+      pick: (report) => {
+        tell({ kind: "interactionReported", page, report });
+        picking = false;
+        tell({ kind: "picking", on: false });
+      },
     },
   };
 }
