@@ -53,6 +53,13 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   and clicks inside a frame, an open shadow root and on an element the page
   structure does not list.
 
+- `toolbar.spec.ts` drives the in-page toolbar through its page object
+  (`@ayme-dev/recorder-window/testing`), with a person's input, in pages a
+  real recorder records, beside the window when `startRecording` is asked to
+  serve it; and once on the engine's scripted browser, to hold a wrap-up for
+  as long as the test likes. Every recording `startRecording` starts has the
+  toolbar, as the CLI gives it.
+
 - `window.spec.ts` drives the recorder window through its page objects
   (`@ayme-dev/recorder-window/testing`), served by the real server of a
   recorder on the engine's scripted browser (`@ayme-dev/recorder/testing`):
