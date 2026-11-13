@@ -2781,6 +2781,73 @@ describe("the lifecycle, for the highlight", () => {
       happened: [...recording, highlight("interaction_1"), clearHighlight],
       todo: [draw(2, null), reply("applied")],
     },
+    // Every order of a highlight, Clear highlight, and the element being
+    // found: nothing is drawn after Clear highlight, and every highlight is
+    // answered.
+    {
+      name: "Clear highlight before the timeline found the element: the element found then is not drawn, and the highlight is answered 'ignored'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        clearHighlight,
+        located(1),
+      ],
+      todo: [replyKept(1, "ignored")],
+    },
+    {
+      name: "Clear highlight before the timeline found no element: nothing more is cleared, and the highlight is answered 'ignored'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        clearHighlight,
+        located(1, false),
+      ],
+      todo: [replyKept(1, "ignored")],
+    },
+    {
+      name: "Clear highlight while the browser still looks the element up: the clear is asked after the drawing, and the browser draws only the latest",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        clearHighlight,
+      ],
+      todo: [draw(2, null), reply("applied")],
+    },
+    {
+      name: "the browser's answer to a highlight that Clear highlight replaced while it looked the element up is 'ignored'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        clearHighlight,
+        highlighted(1),
+      ],
+      todo: [replyKept(1, "ignored")],
+    },
+    {
+      name: "Clear highlight after the browser drew it clears it",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        highlighted(1),
+        clearHighlight,
+      ],
+      todo: [draw(2, null), reply("applied")],
+    },
+    {
+      name: "a highlight after Clear highlight is drawn as any other",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        clearHighlight,
+        highlight("interaction_1"),
+        located(3),
+      ],
+      todo: [draw(3)],
+    },
     {
       name: "a highlight while not recording is ignored: there is no entry",
       happened: [opened, highlight("interaction_1")],
