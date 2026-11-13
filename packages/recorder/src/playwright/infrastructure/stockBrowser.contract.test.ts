@@ -48,9 +48,8 @@ const projectDir =
  * browser an attaching recorder finds: each version needs only the browser
  * build it installs. The test's own connections use this package's
  * Playwright, which needs no browser to connect. */
-const { chromium: projectChromium } = (
-  await Effect.runPromise(loadProjectPlaywright(projectDir))
-).playwright;
+const underTest = await Effect.runPromise(loadProjectPlaywright(projectDir));
+const { chromium: projectChromium } = underTest.playwright;
 
 /** A recorded browser on stock Playwright, as the engine sees it. */
 type Harness = {
@@ -945,3 +944,99 @@ it.runIf(attaching)(
     expect(await drawn(browser.page)).toBeNull();
   }
 );
+
+// Private details found in review.
+it("names a click on an element its snapshot does not list by the nearest ancestor it does, with the element's own selector", async () => {
+  // A decoration with no role, in a group that has one.
+  const browser = await onStockPlaywright(
+    `<div role="group" aria-label="Card"><i id="star" style="display:inline-block;width:24px;height:24px;background:gold"></i></div>`
+  );
+  await reporting(browser);
+
+  await browser.click(browser.page.locator("#star"));
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report.target).toMatchObject({ ref: null });
+  const [nearest] = report.target!.ancestors ?? [];
+  // The ancestor's ref is the group's in the report's own snapshot.
+  expect(report.target!.tree).toMatch(
+    new RegExp(`group "Card"[^\\n]*\\[ref=${nearest}\\]`)
+  );
+  // The selector is the element's own.
+  expect(
+    await browser.page
+      .locator(report.selector!)
+      .evaluate((element) => element.id)
+  ).toBe("star");
+});
+
+/**
+ * What the Playwright under test does with a left click it may hold back
+ * to see whether a double click follows, when its recorder is switched off
+ * right after it:
+ * - flushes: 1.64 and later hold it back, and report it when asked to;
+ * - reportsAtOnce: 1.62 holds nothing back;
+ * - holdsBack: 1.63 holds it back and cannot be asked to report it, so the
+ *   click can be lost (the documented limit).
+ */
+const clickHeldBack = (() => {
+  const [major = 0, minor = 0] = underTest.version.split(".").map(Number);
+  if (major > 1 || minor >= 64) return "flushes";
+  return minor <= 62 ? "reportsAtOnce" : "holdsBack";
+})();
+
+it(`reports a click made just before Playwright's recorder is switched off ${clickHeldBack === "holdsBack" ? "only after the switch-off is answered, if at all" : "before the switch-off is answered"} (Playwright ${underTest.version}: ${clickHeldBack})`, async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await reporting(browser);
+
+  await browser.click(browser.page.locator("#second"));
+  await browser.ask({ kind: "reportInteractions", on: false });
+  await browser.toldOf("reportingInteractions", (signal) => !signal.on);
+  // Longer than Playwright holds a click back.
+  await new Promise((resolve) => setTimeout(resolve, 1_000));
+
+  const reported = browser.told.findIndex(
+    (signal) => signal.kind === "interactionReported"
+  );
+  const answered = browser.told.findIndex(
+    (signal) => signal.kind === "reportingInteractions" && !signal.on
+  );
+  if (clickHeldBack === "holdsBack")
+    expect(reported === -1 || reported > answered).toBe(true);
+  else {
+    expect(reported).toBeGreaterThanOrEqual(0);
+    expect(reported).toBeLessThan(answered);
+  }
+});
+
+it("reports typing once, and revises that report with each key typed into the same field", async () => {
+  const browser = await onStockPlaywright(
+    `<label>Item <input id="item" /></label>`
+  );
+  await reporting(browser);
+  await browser.page.locator("#item").focus();
+
+  // Keys given over the test's own connection, as a person's are.
+  await browser.page.keyboard.type("abc");
+
+  await browser.toldOf(
+    "interactionRevised",
+    (signal) => signal.report.values["text"] === "abc"
+  );
+  const typing = browser.told.filter(
+    (signal) =>
+      signal.kind === "interactionReported" ||
+      signal.kind === "interactionRevised"
+  );
+  expect(
+    typing.map((signal) => [
+      signal.kind,
+      "report" in signal ? signal.report.type : null,
+      "report" in signal ? signal.report.values["text"] : null,
+    ])
+  ).toEqual([
+    ["interactionReported", "fill", "a"],
+    ["interactionRevised", "fill", "ab"],
+    ["interactionRevised", "fill", "abc"],
+  ]);
+});
