@@ -1,6 +1,7 @@
 import type {
   CommandResult,
   RecorderCommand,
+  RecorderCommandType,
   RecorderPhase,
   RecordingOutcome,
 } from "../../contract";
@@ -221,9 +222,38 @@ export const initialState: LifecycleState = {
 
 /** The phase a state shows outside the engine. */
 export function shown(state: LifecycleState): RecorderPhase {
-  return state.phase === "ended"
-    ? { phase: "ended", outcome: state.outcome }
-    : { phase: state.phase };
+  switch (state.phase) {
+    case "ended":
+      return { phase: "ended", outcome: state.outcome };
+    case "wrappingUp":
+      // A recorder that clears and then ends is shown clearing: what it
+      // ends with is told when it has ended.
+      return {
+        phase: "wrappingUp",
+        then: state.then === "clearAndEnd" ? "clear" : state.then,
+      };
+    default:
+      return { phase: state.phase };
+  }
+}
+
+const COMMANDS: readonly RecorderCommandType[] = [
+  "record",
+  "finish",
+  "stop",
+  "continue",
+  "clear",
+];
+
+/** The commands that apply in a state: those the lifecycle would not answer
+ * "ignored". The window offers these, and no rule of its own. */
+export function offered(state: LifecycleState): RecorderCommandType[] {
+  return COMMANDS.filter(
+    (type) =>
+      !command(state, { type }).todo.some(
+        (item) => item.kind === "reply" && item.result === "ignored"
+      )
+  );
 }
 
 type Step = {

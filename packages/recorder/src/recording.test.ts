@@ -75,7 +75,7 @@ describe("a recording", () => {
 
     // Pressing Record starts a Visit for the current page.
     expect(updates.at(-1)).toEqual({
-      revision: 2,
+      revision: 3,
       state: {
         phase: "recording",
         visits: [
@@ -86,6 +86,7 @@ describe("a recording", () => {
             entries: [],
           },
         ],
+        commands: ["finish", "stop", "clear"],
       },
     });
     expect(browser.asked).toEqual([

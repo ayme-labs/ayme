@@ -4,6 +4,7 @@ import type { RecorderPhase } from "../../contract";
 import type { InteractionReport, PageSnapshot } from "../../timeline/domain";
 import {
   initialState,
+  offered,
   shown,
   step,
   WRAP_UP_LIMIT_MS,
@@ -169,7 +170,8 @@ describe("the lifecycle", () => {
     happened: Happening[];
     /** The lists of the last steps, one per step. */
     todo: ToDo[][];
-    state: RecorderPhase;
+    /** The phase it shows; what a wrap-up leads to may be left out. */
+    state: Partial<RecorderPhase>;
   }>([
     // Before anything is recorded.
     {
@@ -770,7 +772,9 @@ describe("the lifecycle", () => {
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
-    expect(result.state).toEqual(state);
+    // A row names the state it is about; what a wrap-up leads to has rows
+    // of its own (ticket #1276).
+    expect(result.state).toMatchObject(state);
   });
 
   // Ticket #1273, the full lifecycle: Stop, Continue, Clear, and every way
@@ -781,7 +785,8 @@ describe("the lifecycle", () => {
     happened: Happening[];
     /** The lists of the last steps, one per step. */
     todo: ToDo[][];
-    state: RecorderPhase;
+    /** The phase it shows; what a wrap-up leads to may be left out. */
+    state: Partial<RecorderPhase>;
   }>([
     // Stop.
     {
@@ -1360,7 +1365,9 @@ describe("the lifecycle", () => {
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
-    expect(result.state).toEqual(state);
+    // A row names the state it is about; what a wrap-up leads to has rows
+    // of its own (ticket #1276).
+    expect(result.state).toMatchObject(state);
   });
 
   it("saves once, however often Finish is pressed", () => {
@@ -1379,5 +1386,88 @@ describe("the lifecycle", () => {
 
     expect(todo.flat().filter((item) => item.kind === "save")).toHaveLength(1);
     expect(todo.flat().filter((item) => item.kind === "end")).toHaveLength(1);
+  });
+});
+
+// Ticket #1276: what the window shows of the lifecycle. While it wraps up,
+// the state says what the wrap-up leads to, and in every state it says which
+// commands apply now, so that the window offers only those.
+describe("what the lifecycle shows", () => {
+  /** The state after these things happened, and the commands it offers. */
+  const after = (happened: readonly Happening[]) => {
+    let state = initialState;
+    for (const happening of happened) state = step(state, happening).state;
+    return { shown: shown(state), offered: offered(state) };
+  };
+
+  it.each<{ name: string; happened: Happening[]; shown: RecorderPhase }>([
+    {
+      name: "a wrap-up after Stop leads to a pause",
+      happened: [opened, ...started, stop],
+      shown: { phase: "wrappingUp", then: "pause" },
+    },
+    {
+      name: "a wrap-up after Clear leads to clearing",
+      happened: [opened, ...started, clear],
+      shown: { phase: "wrappingUp", then: "clear" },
+    },
+    {
+      name: "a wrap-up after Finish leads to saving",
+      happened: [opened, ...started, finish],
+      shown: { phase: "wrappingUp", then: "save" },
+    },
+    {
+      name: "an outside end turns a wrap-up that would pause into one that saves",
+      happened: [opened, ...started, stop, outsideEnd],
+      shown: { phase: "wrappingUp", then: "save" },
+    },
+    {
+      name: "an outside end leaves a wrap-up that clears clearing",
+      happened: [opened, ...started, clear, outsideEnd],
+      shown: { phase: "wrappingUp", then: "clear" },
+    },
+  ])("$name", ({ happened, shown }) => {
+    expect(after(happened).shown).toEqual(shown);
+  });
+
+  it.each<{ name: string; happened: Happening[]; offered: string[] }>([
+    { name: "no page open: nothing applies", happened: [], offered: [] },
+    {
+      name: "not recording, with a page open: Record",
+      happened: [opened],
+      offered: ["record"],
+    },
+    {
+      name: "recording: Finish, Stop and Clear",
+      happened: [opened, ...started],
+      offered: ["finish", "stop", "clear"],
+    },
+    {
+      name: "while Record waits for the pages: Finish, Stop and Clear",
+      happened: [opened, record],
+      offered: ["finish", "stop", "clear"],
+    },
+    {
+      name: "wrapping up: nothing applies",
+      happened: [opened, ...started, stop],
+      offered: [],
+    },
+    {
+      name: "paused: Finish, Continue and Clear",
+      happened: stopped,
+      offered: ["finish", "continue", "clear"],
+    },
+    {
+      name: "saving: nothing applies",
+      happened: [...stopped, finish],
+      offered: [],
+    },
+    {
+      name: "ended: nothing applies",
+      happened: [outsideEnd],
+      offered: [],
+    },
+  ])("$name", ({ happened, offered }) => {
+    expect(after(happened).offered).toEqual(offered);
   });
 });

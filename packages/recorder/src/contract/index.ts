@@ -18,8 +18,9 @@ export type RecorderPhase =
   | { readonly phase: "notRecording" }
   | { readonly phase: "recording" }
   /** Finishing what is under way before the recording is paused, cleared or
-   * saved: commands are ignored meanwhile. */
-  | { readonly phase: "wrappingUp" }
+   * saved: commands are ignored meanwhile. `then` says which of the three
+   * follows. */
+  | { readonly phase: "wrappingUp"; readonly then: "pause" | "clear" | "save" }
   | { readonly phase: "saving" }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
   /** Stopped for now: nothing is recorded, and the page gets its input
@@ -75,6 +76,8 @@ export type RecordedVisit = {
 /** The recorder as it is now: what it is doing, and what it has recorded. */
 export type RecorderState = RecorderPhase & {
   readonly visits: readonly RecordedVisit[];
+  /** The commands that apply now: any other would be answered "ignored". */
+  readonly commands: readonly RecorderCommandType[];
 };
 
 /** A full picture of the recorder. `revision` grows with every change: a
@@ -98,3 +101,6 @@ export type RecorderCommand =
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */
 export type CommandResult = "applied" | "ignored";
+
+/** The name of a command, as the state lists the ones that apply now. */
+export type RecorderCommandType = RecorderCommand["type"];
