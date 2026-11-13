@@ -306,12 +306,15 @@ async function openPage(
   /** The latest targets each page told of. */
   const chains = new Map<Page, TargetChain[]>();
   const chainBinding = "__aymeRecorderTarget";
+  /** Who waits for a document to tell of a target. */
+  const noting = new Set<() => void>();
   await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
+    for (const heard of [...noting]) heard();
   });
   /** A report, with the ancestors of a target its picture does not list. */
   const reportFrom = (page: Page, action: PlaywrightAction) => {
-    const report = reportOf(action);
+    const report = asUpload(reportOf(action), page);
     if (!action.ariaSnapshot) return report;
     const listed = (ref: string) =>
       action.ariaSnapshot!.includes(`[ref=${ref}]`);
@@ -330,6 +333,52 @@ async function openPage(
       },
     };
   };
+  /**
+   * Files chosen in a file input, which Playwright 1.64 reports as typing
+   * of the input's value, as an upload. A file input's value is always
+   * `C:\fakepath\` and the first file's name (HTML's rule for it); the
+   * other names come from what the document told of the input, when that
+   * has arrived.
+   */
+  const asUpload = (
+    report: InteractionReport,
+    page: Page
+  ): InteractionReport => {
+    const { text, ...values } = report.values;
+    const first = firstFileOf(report);
+    if (first === undefined) return report;
+    void text;
+    const told = filesTold(page, first);
+    return {
+      ...report,
+      type: "setInputFiles",
+      values: { ...values, files: told ?? [first] },
+    };
+  };
+  /** The names of the files the document told of, if its note on the
+   * upload whose first file is `first` has arrived. */
+  const filesTold = (page: Page, first: string) => {
+    const told = (chains.get(page) ?? []).findLast(
+      (chain) => chain.type === "input"
+    )?.files;
+    return told?.[0] === first ? told : undefined;
+  };
+  /** Resolves once the document told of the upload, or after a while. */
+  const noteOf = (page: Page, first: string) =>
+    new Promise<void>((resolve) => {
+      const heard = () => {
+        if (!filesTold(page, first)) return;
+        noting.delete(heard);
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        noting.delete(heard);
+        resolve();
+      }, UPLOAD_NOTE_MS);
+      noting.add(heard);
+      heard();
+    });
   await context.addInitScript(installTargetWatch, chainBinding);
   // Every document gets the gate and the activity watch, both switched off,
   // before its own scripts run.
@@ -588,12 +637,18 @@ async function openPage(
     await startRecording!({
       actionAdded: (reported, action) => {
         const pageId = idOf.get(reported);
-        if (pageId)
+        if (!pageId) return;
+        const told = () =>
           tell({
             kind: "interactionReported",
             page: pageId,
             report: reportFrom(reported, action),
           });
+        // Playwright's report of an upload can come before the document's
+        // note with every file's name: it waits for that, a while at most.
+        const first = firstFileOf(reportOf(action));
+        if (first === undefined || filesTold(reported, first)) return told();
+        void noteOf(reported, first).then(told);
       },
       // Playwright revises the report of typing with each key typed into
       // the same field.
@@ -656,6 +711,23 @@ async function openPage(
   }
 
   return { carryOut, letGo };
+}
+
+/** How a browser begins the value of a file input with a file chosen. */
+const FAKE_PATH = "C:\\fakepath\\";
+
+/** How long the report of an upload waits for the names of its files. */
+const UPLOAD_NOTE_MS = 200;
+
+/** The first file's name, when Playwright reports a file input's value as
+ * typing, as 1.64 does for files chosen in one. */
+function firstFileOf(report: InteractionReport): string | undefined {
+  const text = report.values["text"];
+  return report.type === "fill" &&
+    typeof text === "string" &&
+    text.startsWith(FAKE_PATH)
+    ? text.slice(FAKE_PATH.length)
+    : undefined;
 }
 
 /** The events whose target a report of each kind names. */

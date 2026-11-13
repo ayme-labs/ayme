@@ -634,3 +634,25 @@ it.runIf(attaching)(
     });
   }
 );
+
+// Follow-ups to every kind of input.
+it("reports files chosen in a file input as an upload, with their names", async () => {
+  const browser = await onStockPlaywright(
+    `<label>Photos <input id="photos" type="file" multiple /></label>`
+  );
+  await reporting(browser);
+
+  // Chosen by another client of the browser, as a person's choice would be.
+  await browser.page.locator("#photos").setInputFiles([
+    { name: "one.png", mimeType: "image/png", buffer: Buffer.from("1") },
+    { name: "two.png", mimeType: "image/png", buffer: Buffer.from("2") },
+  ]);
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report).toMatchObject({
+    type: "setInputFiles",
+    selector: expect.stringContaining("Photos"),
+    values: { files: ["one.png", "two.png"] },
+  });
+  expect(report.values).not.toHaveProperty("text");
+});
