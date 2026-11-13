@@ -2018,7 +2018,7 @@ describe("the lifecycle, for every kind of input", () => {
       state: { phase: "recording" },
     },
     {
-      name: "the wrap-up writes typing that has its 'after'",
+      name: "the wrap-up writes typing that has its 'after', at the last: it can be revised until then",
       happened: [
         opened,
         ...started,
@@ -2028,15 +2028,19 @@ describe("the lifecycle, for every kind of input", () => {
         settled("reported_1"),
         taken("snapshot_3"),
         finish,
+        gateOff,
+        taken("snapshot_4"),
       ],
       todo: [
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_4")],
         [
-          ...wrapUp,
+          keep("snapshot_4"),
           fromReport(fill("m"), "snapshot_2", "snapshot_3"),
-          reply("applied"),
+          stopTrace,
         ],
       ],
-      state: { phase: "wrappingUp" },
+      state: { phase: "saving" },
     },
     {
       name: "Playwright's revision of typing replaces its report",
@@ -2050,15 +2054,19 @@ describe("the lifecycle, for every kind of input", () => {
         settled("reported_1"),
         taken("snapshot_3"),
         finish,
+        gateOff,
+        taken("snapshot_4"),
       ],
       todo: [
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_4")],
         [
-          ...wrapUp,
+          keep("snapshot_4"),
           fromReport(fill("milk"), "snapshot_2", "snapshot_3"),
-          reply("applied"),
+          stopTrace,
         ],
       ],
-      state: { phase: "wrappingUp" },
+      state: { phase: "saving" },
     },
     {
       name: "typing revised after its 'after' was taken waits for the page again, and ends at the newer snapshot",
@@ -2074,18 +2082,22 @@ describe("the lifecycle, for every kind of input", () => {
         settled("reported_1"),
         taken("snapshot_4"),
         finish,
+        gateOff,
+        taken("snapshot_5"),
       ],
       todo: [
         [waitForSettled("reported_1")],
         [takeSnapshot("snapshot_4")],
         [keep("snapshot_4")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_5")],
         [
-          ...wrapUp,
+          keep("snapshot_5"),
           fromReport(fill("milk"), "snapshot_2", "snapshot_4"),
-          reply("applied"),
+          stopTrace,
         ],
       ],
-      state: { phase: "wrappingUp" },
+      state: { phase: "saving" },
     },
     {
       name: "a reported select with no snapshot of its page yet gets one to start from",
@@ -2166,6 +2178,8 @@ describe("the lifecycle, for every kind of input", () => {
         settled("reported_1"),
         taken("snapshot_3"),
         finish,
+        gateOff,
+        taken("snapshot_4"),
       ],
       todo: [
         [],
@@ -2177,13 +2191,15 @@ describe("the lifecycle, for every kind of input", () => {
         ],
         [takeSnapshot("snapshot_3")],
         [keep("snapshot_3")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_4")],
         [
-          ...wrapUp,
+          keep("snapshot_4"),
           fromReport(choose, "snapshot_2", "snapshot_3"),
-          reply("applied"),
+          stopTrace,
         ],
       ],
-      state: { phase: "wrappingUp" },
+      state: { phase: "saving" },
     },
     {
       name: "a key pressed with nothing focused is written with no target, whatever element Playwright names",
@@ -2383,8 +2399,10 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
     expect(todo.slice(-4)).toEqual([
       [waitForSettled("reported_1")],
       [takeSnapshot("snapshot_2")],
+      [keep("snapshot_2")],
+      // Written once Playwright's recorder is off: until then Playwright
+      // may still revise what it reported.
       [
-        keep("snapshot_2"),
         {
           kind: "timeline",
           add: {
@@ -2400,7 +2418,6 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
           },
         },
       ],
-      [],
     ]);
     expect(state).toEqual({ phase: "paused" });
   });
@@ -2946,6 +2963,17 @@ describe("the lifecycle, for what the review against the spec found", () => {
       },
     },
   });
+  const fill = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
+  const revised = (report: InteractionReport): Happening => ({
+    kind: "interactionRevised",
+    page: "page_1",
+    report,
+  });
   const visible: InteractionReport = {
     type: "assertVisible",
     selector: "internal:role=heading",
@@ -2975,6 +3003,8 @@ describe("the lifecycle, for what the review against the spec found", () => {
         settled("reported_2"),
         taken("snapshot_4"),
         finish,
+        gateOff,
+        taken("snapshot_5"),
       ],
       todo: [
         [waitForSettled("reported_1")],
@@ -2987,13 +3017,15 @@ describe("the lifecycle, for what the review against the spec found", () => {
         [],
         [takeSnapshot("snapshot_4")],
         [keep("snapshot_4")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_5")],
         [
-          ...wrapUp,
+          keep("snapshot_5"),
           fromReport(choose("eggs"), "snapshot_3", "snapshot_4"),
-          reply("applied"),
+          stopTrace,
         ],
       ],
-      state: { phase: "wrappingUp" },
+      state: { phase: "saving" },
     },
     {
       name: "a second input that is not held back, reported while the first's 'after' is being taken, starts at that snapshot, and what revised the first gets no further wait (rule 12)",
@@ -3037,6 +3069,8 @@ describe("the lifecycle, for what the review against the spec found", () => {
         settled("reported_2"),
         taken("snapshot_4"),
         finish,
+        gateOff,
+        taken("snapshot_5"),
       ],
       todo: [
         [takeSnapshot("snapshot_3")],
@@ -3060,13 +3094,125 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ],
         [takeSnapshot("snapshot_4")],
         [keep("snapshot_4")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_5")],
         [
-          ...wrapUp,
+          keep("snapshot_5"),
           fromReport(choose("eggs"), "snapshot_3", "snapshot_4"),
-          reply("applied"),
+          stopTrace,
         ],
       ],
-      state: { phase: "wrappingUp" },
+      state: { phase: "saving" },
+    },
+
+    // "Paused" on screen is the moment recording ends (rule 13).
+    {
+      name: "typing that is revised while the recorder wraps up is written as revised: it is written only once Playwright's recorder is off (rule 13)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        stop,
+        revised(fill("milk")),
+        gateOff,
+        settled("reported_1"),
+        taken("snapshot_4"),
+        taken("snapshot_5"),
+        reportingOff,
+      ],
+      todo: [
+        [...wrapUp, reply("applied")],
+        [waitForSettled("reported_1")],
+        [],
+        [takeSnapshot("snapshot_4")],
+        [keep("snapshot_4"), takeSnapshot("snapshot_5")],
+        [keep("snapshot_5"), stopReporting],
+        [fromReport(fill("milk"), "snapshot_2", "snapshot_4")],
+      ],
+      state: { phase: "paused" },
+    },
+    {
+      name: "typing that is revised while Playwright's recorder is being switched off is written as revised (rule 13)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        stop,
+        gateOff,
+        taken("snapshot_4"),
+        revised(fill("milk")),
+        reportingOff,
+        settled("reported_1"),
+        taken("snapshot_5"),
+        reportingOff,
+      ],
+      todo: [
+        [keep("snapshot_4"), stopReporting],
+        [waitForSettled("reported_1")],
+        [],
+        [takeSnapshot("snapshot_5")],
+        [keep("snapshot_5"), stopReporting],
+        [fromReport(fill("milk"), "snapshot_2", "snapshot_5")],
+      ],
+      state: { phase: "paused" },
+    },
+    {
+      name: "typing that is revised after Finish was pressed is saved as revised (rules 4 and 13)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        finish,
+        revised(fill("milk")),
+        gateOff,
+        settled("reported_1"),
+        taken("snapshot_4"),
+        taken("snapshot_5"),
+      ],
+      todo: [
+        [...wrapUp, reply("applied")],
+        [waitForSettled("reported_1")],
+        [],
+        [takeSnapshot("snapshot_4")],
+        [keep("snapshot_4"), takeSnapshot("snapshot_5")],
+        [
+          keep("snapshot_5"),
+          fromReport(fill("milk"), "snapshot_2", "snapshot_4"),
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+    {
+      name: "when the time limit passes, typing that waited to be revised is written all the same",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        stop,
+        { kind: "timeLimitPassed" },
+      ],
+      todo: [
+        [...wrapUp, reply("applied")],
+        [fromReport(fill("m"), "snapshot_2", "snapshot_3"), stopReporting],
+      ],
+      state: { phase: "paused" },
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);

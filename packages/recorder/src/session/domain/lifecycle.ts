@@ -997,13 +997,12 @@ function during(state: Active, happening: BrowserSignal): Step {
           kind: "browser",
           ask: { kind: "holdInputs", on: true },
         });
-      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on) {
-        // An input known from its last reports is finished first; then
-        // Playwright's recorder is switched off once more.
-        if (state.inputs.length > 0)
-          return proceed({ ...state, switchingOff: false }, []);
-        return wrappedUp(state, []);
-      }
+      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on)
+        // Nothing newer can be reported now: an input known from its report
+        // only is written, and the wrap-up is over. One that is not
+        // finished is finished first; then Playwright's recorder is
+        // switched off once more.
+        return proceed({ ...state, switchingOff: false }, [], true);
       break;
     case "inputsHeld":
       if (state.phase === "wrappingUp" && !happening.on)
@@ -1425,7 +1424,12 @@ const settle = (draft: Draft): Flow => ({
 /** What follows from a recording's state as it now stands, whatever
  * happened: the next input of a free page starts, an input with everything
  * it needs is written down, and a wrap-up that has all it waited for saves. */
-function proceed(state: Active, done: readonly ToDo[]): Step {
+function proceed(
+  state: Active,
+  done: readonly ToDo[],
+  /** Playwright's recorder was just confirmed off. */
+  reportsOff = false
+): Step {
   const draft: Draft = {
     // An input whose "before" could not be taken is not recorded. It was
     // kept until its report came, so that no later input took the report
@@ -1459,6 +1463,73 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
   draft.inputs = draft.inputs.filter(
     (input) => input.held.kind !== "typing" || input.stage !== "settled"
   );
+  // While the recorder wraps up, an input known from its report only can
+  // still be revised, as typing goes on until "Paused" shows: it is written
+  // at the last, when nothing newer can be reported.
+  const atTheLast = (finals: readonly unknown[] | null) =>
+    state.phase === "wrappingUp" &&
+    finals?.length === 0 &&
+    (reportsOff || endsRecorder(state.then));
+  writeDown(draft, state.phase === "wrappingUp" && atTheLast(state.finals));
+  if (state.phase === "recording") letThrough(draft);
+  if (state.phase === "recording")
+    return {
+      state: { ...state, ...settle(draft), picking: pickNow(state, draft) },
+      todo: draft.todo,
+    };
+
+  let finals = state.finals;
+  if (
+    state.gateOff &&
+    finals === null &&
+    draft.inputs.every((input) => input.stage === "settled")
+  )
+    // What changed after the last Interaction is picked up once, here.
+    finals = state.pages.map((page) => ({
+      page: page.id,
+      snapshot: askSnapshot(draft, page.id),
+    }));
+  // The last snapshots may be in just now, as when no page is left.
+  writeDown(draft, atTheLast(finals));
+  const next = { ...state, ...settle(draft), finals };
+  if (
+    finals?.length !== 0 ||
+    draft.inputs.some((input) => !awaitsTheLast(input)) ||
+    state.switchingOff
+  )
+    return { state: next, todo: draft.todo };
+  // A recorder that ends is let go with its browser. One that lives on has
+  // Playwright's recorder switched off first: it is not recording any more.
+  if (draft.inputs.length === 0 && (reportsOff || endsRecorder(state.then)))
+    return wrappedUp(next, draft.todo);
+  return {
+    state: { ...next, switchingOff: true },
+    todo: [
+      ...draft.todo,
+      { kind: "browser", ask: { kind: "reportInteractions", on: false } },
+    ],
+  };
+}
+
+/** Whether a wrap-up ends the recorder: Playwright's recorder is then let
+ * go with the browser, and never switched off. */
+const endsRecorder = (then: AfterWrapUp) =>
+  then === "save" || then === "clearAndEnd";
+
+/** An input known from its report only that has all it needs, and waits to
+ * be written at the last. */
+const awaitsTheLast = (input: Input) =>
+  input.held.kind === "reported" &&
+  input.stage === "settled" &&
+  input.report !== null &&
+  input.before !== null;
+
+/**
+ * Writes down every input that has all it needs, in the order of the
+ * inputs. `last`: nothing newer can happen any more, so an input known from
+ * its report only is written too.
+ */
+function writeDown(draft: Draft, last: boolean) {
   for (const input of draft.inputs) {
     if (input.stage === "settled" && input.unreported) {
       draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
@@ -1466,11 +1537,11 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
     }
     if (input.stage !== "settled" || !input.report || !input.before) continue;
     // An input known from its report only may still be revised: it is
-    // written once something newer happened on its page, or at the end.
+    // written once something newer happened on its page, or at the last.
     const reportedOnly = input.held.kind === "reported";
     if (
       reportedOnly &&
-      state.phase === "recording" &&
+      !last &&
       !draft.inputs
         .slice(draft.inputs.findIndex((held) => held.id === input.id) + 1)
         .some(
@@ -1507,38 +1578,6 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       (held) => held.id !== input.id && held.joins !== input.id
     );
   }
-  if (state.phase === "recording") letThrough(draft);
-  if (state.phase === "recording")
-    return {
-      state: { ...state, ...settle(draft), picking: pickNow(state, draft) },
-      todo: draft.todo,
-    };
-
-  let finals = state.finals;
-  if (
-    state.gateOff &&
-    finals === null &&
-    draft.inputs.every((input) => input.stage === "settled")
-  )
-    // What changed after the last Interaction is picked up once, here.
-    finals = state.pages.map((page) => ({
-      page: page.id,
-      snapshot: askSnapshot(draft, page.id),
-    }));
-  const next = { ...state, ...settle(draft), finals };
-  if (finals?.length !== 0 || draft.inputs.length !== 0 || state.switchingOff)
-    return { state: next, todo: draft.todo };
-  // A recorder that ends is let go with its browser. One that lives on has
-  // Playwright's recorder switched off first: it is not recording any more.
-  if (state.then === "save" || state.then === "clearAndEnd")
-    return wrappedUp(next, draft.todo);
-  return {
-    state: { ...next, switchingOff: true },
-    todo: [
-      ...draft.todo,
-      { kind: "browser", ask: { kind: "reportInteractions", on: false } },
-    ],
-  };
 }
 
 /** What a wrap-up that is over leads to. */
@@ -1577,11 +1616,26 @@ function wrappedUp(
 
 /**
  * The wrap-up's time limit has passed: whatever is still owed is left out
- * of the recording. A click that is still held back is the page's all the
- * same, and is passed on. Nothing is waited for any more.
+ * of the recording, and what is complete is written. A click that is still
+ * held back is the page's all the same, and is passed on. Nothing is waited
+ * for any more.
  */
 function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
-  const todo = release(state.inputs);
+  // What has all it needs is written all the same; what is owed something
+  // is in nobody's way any more.
+  const draft: Draft = {
+    inputs: state.inputs.filter(
+      (input) =>
+        input.stage === "settled" &&
+        (input.report !== null || input.joins !== null)
+    ),
+    snapshotsAsked: state.snapshotsAsked,
+    gates: state.gates,
+    reportedOnly: state.reportedOnly,
+    todo: [],
+  };
+  writeDown(draft, true);
+  const todo = [...draft.todo, ...release(state.inputs)];
   const livesOn = state.then === "pause" || state.then === "clear";
   if (livesOn && !state.switchingOff)
     todo.push({
