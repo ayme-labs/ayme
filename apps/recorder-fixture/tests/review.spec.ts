@@ -95,4 +95,51 @@ test.describe("discarding and restoring entries", () => {
     );
     expect(second).toMatch(/<changed> \[ref=\w+\] paragraph: Paid/);
   });
+
+  test("Clear drops the decisions, and a recording in which everything was discarded still saves", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/cart.html");
+    const { recorder, page, person } = recording;
+    const seen = watch(recording);
+    await recorder.send({ type: "record" });
+    await person.click(page.locator("#add"));
+    await expect(page.getByText("Items: 1")).toBeVisible();
+    await expect.poll(() => seen.entries).toHaveLength(1);
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => seen.phase).toBe("paused");
+    expect(
+      await recorder.send({ type: "discard", entry: "interaction_1" })
+    ).toBe("applied");
+
+    expect(await recorder.send({ type: "clear" })).toBe("applied");
+    await expect.poll(() => seen.phase).toBe("notRecording");
+    expect(seen.entries).toEqual([]);
+
+    // The next recording's first click has the same id, and no decision.
+    await recorder.send({ type: "record" });
+    await person.click(page.locator("#add"));
+    await expect(page.getByText("Items: 2")).toBeVisible();
+    await expect
+      .poll(() => seen.entries)
+      .toEqual([{ id: "interaction_1", discarded: false }]);
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => seen.phase).toBe("paused");
+    await recorder.send({ type: "discard", entry: "interaction_1" });
+
+    expect(await recorder.send({ type: "finish" })).toBe("applied");
+    const outcome = await recorder.done;
+    if (outcome.kind !== "saved") throw new Error("Nothing was saved.");
+    const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
+    expect(text.match(/visitId:/g)).toHaveLength(1);
+    expect(text.match(/- kind: /g)).toHaveLength(1);
+    expect(text).toMatch(
+      /\n {6}- kind: interaction\n {8}timestamp: [\d.]+\n {8}discarded: true\n {8}interaction:\n {10}id: interaction_1\n {10}type: click\ntraceActionPoints:/
+    );
+    expect(
+      (await readFile(join(outcome.folder, "trace.zip")))
+        .subarray(0, 2)
+        .toString()
+    ).toBe("PK");
+  });
 });
