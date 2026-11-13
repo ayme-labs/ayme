@@ -19,8 +19,11 @@ const slow = { timeout: 60_000 };
 
 it("lint flags an import against the slice layout", slow, async () => {
   expect(
-    await lint("src/shared/view/misplaced.ts", 'export * from "../../app";\n')
-  ).toEqual([expect.stringContaining("shared may only use itself")]);
+    await lint(
+      "src/timeline/view/misplaced.ts",
+      'export * from "../../controls";\n'
+    )
+  ).toEqual([expect.stringContaining("timeline may only use itself")]);
 });
 
 it(
@@ -46,6 +49,19 @@ it(
       await lint(
         "src/app/placed.ts",
         'import type { RecorderUpdate } from "@ayme-dev/recorder/contract";\nexport type Placed = RecorderUpdate;\n'
+      )
+    ).toEqual([]);
+  }
+);
+
+it(
+  "lint lets the page objects, and only them, take Playwright's types",
+  slow,
+  async () => {
+    expect(
+      await lint(
+        "src/testing/pom/Placed.ts",
+        'import type { Page } from "@playwright/test";\nexport type Placed = Page;\n'
       )
     ).toEqual([]);
   }

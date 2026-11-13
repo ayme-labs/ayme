@@ -141,7 +141,28 @@ export function changeText(change: StructuralTree): string {
   );
 }
 
-const entryLines = (entry: TimelineEntry) => [
+const entryLines = (entry: TimelineEntry) =>
+  entry.discarded ? stubLines(entry) : keptLines(entry);
+
+/** What the released recorder keeps of an entry the person left out: where
+ * it was, and for an Interaction its id and type. No target, no value, no
+ * Change Tree. */
+const stubLines = (entry: TimelineEntry) =>
+  fields(
+    entry.kind === "interaction"
+      ? {
+          kind: entry.kind,
+          timestamp: entry.timestamp,
+          discarded: true,
+          interaction: {
+            id: entry.interaction.id,
+            type: entry.interaction.type,
+          },
+        }
+      : { kind: entry.kind, timestamp: entry.timestamp, discarded: true }
+  );
+
+const keptLines = (entry: TimelineEntry) => [
   ...fields(
     entry.kind === "interaction"
       ? {

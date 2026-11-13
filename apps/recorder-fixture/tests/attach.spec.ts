@@ -17,6 +17,13 @@ test.describe("recording a running browser", () => {
 
     const run = await runRecorder(["codegen", "--cdp-endpoint", cdpEndpoint]);
     await run.waitForStdout(`Attached to the browser at ${cdpEndpoint}.`);
+    // The window's address is printed, and nothing is opened in the
+    // browser: it is someone else's.
+    await run.waitForStdout("Recorder window: http://127.0.0.1:");
+    const targets = (await (
+      await fetch(`${cdpEndpoint}/json/list`)
+    ).json()) as { type: string }[];
+    expect(targets.filter((target) => target.type === "page")).toHaveLength(1);
     run.interrupt();
 
     expect(await run.exit).toEqual({ code: 0, signal: null });

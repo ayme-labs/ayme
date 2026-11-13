@@ -38,15 +38,51 @@ describe("a recorder", () => {
     recorder.subscribe((update) => updates.push(update));
 
     browser.closePage({ pagesLeft: 1 });
-    // A command is answered after everything that happened before it.
-    await recorder.send({ type: "finish" });
 
-    expect(updates).toEqual([
-      {
-        revision: 0,
-        state: { phase: "notRecording", visits: [], warnings: [] },
-      },
+    // With the page it knew closed, Record no longer applies; it has not
+    // ended.
+    await expect
+      .poll(() => updates.at(-1))
+      .toEqual({
+        revision: 2,
+        state: {
+          phase: "notRecording",
+          visits: [],
+          commands: [],
+          warnings: [],
+        },
+      });
+    expect(updates).toHaveLength(2);
+  });
+
+  it("tells a subscriber what a wrap-up leads to, also when an outside end changes it", async () => {
+    const { recorder, browser } = await startScriptedRecorder();
+    await recorder.send({ type: "record" });
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    browser.holdConfirmations();
+
+    await recorder.send({ type: "stop" });
+    recorder.end();
+    // A command is answered after everything that happened before it.
+    await recorder.send({ type: "stop" });
+
+    expect(updates.map(({ state }) => state)).toEqual([
+      expect.objectContaining({
+        phase: "recording",
+        commands: ["finish", "stop", "clear"],
+        warnings: [],
+      }),
+      expect.objectContaining({
+        phase: "wrappingUp",
+        then: "pause",
+        commands: [],
+        warnings: [],
+      }),
+      expect.objectContaining({ phase: "wrappingUp", then: "save" }),
     ]);
+    browser.releaseConfirmations();
+    await recorder.done;
   });
 
   it("has let the browser go by the time it reports the end", async () => {
@@ -66,8 +102,13 @@ describe("a recorder", () => {
     recorder.subscribe((update) => updates.push(update));
     expect(updates).toEqual([
       {
-        revision: 0,
-        state: { phase: "notRecording", visits: [], warnings: [] },
+        revision: 1,
+        state: {
+          phase: "notRecording",
+          visits: [],
+          commands: ["record"],
+          warnings: [],
+        },
       },
     ]);
 
@@ -75,15 +116,21 @@ describe("a recorder", () => {
     await recorder.done;
     expect(updates).toEqual([
       {
-        revision: 0,
-        state: { phase: "notRecording", visits: [], warnings: [] },
+        revision: 1,
+        state: {
+          phase: "notRecording",
+          visits: [],
+          commands: ["record"],
+          warnings: [],
+        },
       },
       {
-        revision: 1,
+        revision: 2,
         state: {
           phase: "ended",
           outcome: { kind: "empty" },
           visits: [],
+          commands: [],
           warnings: [],
         },
       },
@@ -100,11 +147,12 @@ describe("a recorder", () => {
 
     expect(updates).toEqual([
       {
-        revision: 1,
+        revision: 2,
         state: {
           phase: "ended",
           outcome: { kind: "empty" },
           visits: [],
+          commands: [],
           warnings: [],
         },
       },
@@ -131,13 +179,5 @@ describe("a recorder", () => {
     recorder.end();
     await recorder.done;
     await expect(recorder.send({ type: "finish" })).resolves.toBe("ignored");
-  });
-
-  it("serves no window yet", async () => {
-    const { recorder } = await startScriptedRecorder();
-
-    expect(recorder.windowUrl).toBeNull();
-    recorder.end();
-    await recorder.done;
   });
 });

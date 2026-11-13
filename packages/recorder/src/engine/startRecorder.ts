@@ -1,4 +1,5 @@
 import { stockBrowser } from "../playwright/infrastructure";
+import { serveWindow } from "../server/infrastructure";
 import { startRecorderOn, type Recorder } from "./recorder";
 
 export type RecorderOptions = {
@@ -27,6 +28,9 @@ export type RecorderOptions = {
           readonly cdpEndpoint: string;
         };
       };
+  /** Serve the recorder window, whose built files are in `folder`. The
+   * engine knows nothing else of the window: the caller says where it is. */
+  readonly window?: { readonly folder: string };
 };
 
 /**
@@ -34,19 +38,30 @@ export type RecorderOptions = {
  * `RecorderStartError` that carries a reason. Everything after is told
  * through the handle.
  */
-export function startRecorder(options: RecorderOptions): Promise<Recorder> {
+export async function startRecorder(
+  options: RecorderOptions
+): Promise<Recorder> {
   const { projectDir } = options;
+  const window = options.window
+    ? await serveWindow(options.window.folder)
+    : undefined;
   if ("attach" in options.browser)
     return startRecorderOn(
       stockBrowser({
         projectDir,
         cdpEndpoint: options.browser.attach.cdpEndpoint,
       }),
-      { projectDir }
+      { projectDir, window }
     );
   const { url, headless = false, debugPort } = options.browser.launch;
   return startRecorderOn(
-    stockBrowser({ projectDir, url, headless, debugPort }),
-    { projectDir }
+    stockBrowser({
+      projectDir,
+      url,
+      headless,
+      debugPort,
+      windowUrl: window?.url,
+    }),
+    { projectDir, window }
   );
 }

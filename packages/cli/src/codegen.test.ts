@@ -6,6 +6,8 @@ import {
   outcomeLine,
   startLine,
   warningPrinter,
+  windowFolder,
+  windowLine,
 } from "./codegen";
 
 describe("how codegen launches the browser", () => {
@@ -22,10 +24,31 @@ describe("how codegen launches the browser", () => {
     ).toEqual({ url: "http://localhost", headless: true });
   });
 
+  it("follows the command line over the tests' setting for the window", () => {
+    const env = { AYME_RECORDER_HEADLESS: "1" };
+
+    expect(launchOptions("http://localhost", env, false)).toEqual({
+      url: "http://localhost",
+      headless: false,
+    });
+    expect(launchOptions("http://localhost", {}, true)).toEqual({
+      url: "http://localhost",
+      headless: true,
+    });
+  });
+
   it("opens the debug port the tests name", () => {
     expect(
       launchOptions("http://localhost", { AYME_RECORDER_DEBUG_PORT: "9333" })
     ).toEqual({ url: "http://localhost", headless: false, debugPort: 9333 });
+  });
+});
+
+describe("where the recorder window's files are", () => {
+  it("is the window folder beside the command's own file, which the build fills", () => {
+    expect(windowFolder("file:///usr/lib/node_modules/cli/dist/cli.mjs")).toBe(
+      "/usr/lib/node_modules/cli/dist/window"
+    );
   });
 });
 
@@ -87,5 +110,13 @@ describe("what the terminal is told of warnings", () => {
     print([shape, trace]);
 
     expect(printed).toEqual(["Warning: One.\n", "Warning: Two.\n"]);
+  });
+});
+
+describe("what the terminal is told of the window", () => {
+  it("gives the recorder window's address, to open it in any browser", () => {
+    expect(windowLine("http://127.0.0.1:53124/")).toBe(
+      "Recorder window: http://127.0.0.1:53124/\n"
+    );
   });
 });

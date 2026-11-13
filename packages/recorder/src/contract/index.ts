@@ -18,8 +18,9 @@ export type RecorderPhase =
   | { readonly phase: "notRecording" }
   | { readonly phase: "recording" }
   /** Finishing what is under way before the recording is paused, cleared or
-   * saved: commands are ignored meanwhile. */
-  | { readonly phase: "wrappingUp" }
+   * saved: commands are ignored meanwhile. `then` says which of the three
+   * follows. */
+  | { readonly phase: "wrappingUp"; readonly then: "pause" | "clear" | "save" }
   | { readonly phase: "saving" }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
   /** Stopped for now: nothing is recorded, and the page gets its input
@@ -41,7 +42,7 @@ export type InteractionDetails = {
 
 /** One entry of a Visit's timeline. A Change Tree is text, in the compact
  * notation of the Recording Package. */
-export type TimelineEntry =
+export type TimelineEntry = (
   | {
       readonly kind: "interaction";
       /** Milliseconds on the recorded browser's monotonic clock. */
@@ -56,7 +57,19 @@ export type TimelineEntry =
       readonly kind: "change";
       readonly timestamp: number;
       readonly changeTree: string;
-    };
+    }
+) & {
+  /**
+   * The entry's identity: the same in every update, after a reload of the
+   * window and in the saved package, and the one a decision names. An
+   * Interaction's is its own id. Whatever kind of entry is added, it has one.
+   */
+  readonly id: string;
+  /** The person left it out of the recording. It stays where it is: what it
+   * changed is still here, and the package writes it as a stub. Absent when
+   * it is kept. */
+  readonly discarded?: true;
+};
 
 /** One Visit of the recording, with the entries recorded in it so far. */
 export type RecordedVisit = {
@@ -75,6 +88,8 @@ export type RecordedVisit = {
 /** The recorder as it is now: what it is doing, and what it has recorded. */
 export type RecorderState = RecorderPhase & {
   readonly visits: readonly RecordedVisit[];
+  /** The commands that apply now: any other would be answered "ignored". */
+  readonly commands: readonly RecorderCommandType[];
   /** What a person should know about how this recording is made, oldest
    * first. Each is told once. */
   readonly warnings: readonly RecorderWarning[];
@@ -114,8 +129,17 @@ export type RecorderCommand =
   /** Goes on recording after a pause, into the same timeline. */
   | { readonly type: "continue" }
   /** Throws away everything recorded so far. */
-  | { readonly type: "clear" };
+  | { readonly type: "clear" }
+  /** While paused: leaves the entry out of the recording. It stays in the
+   * timeline, marked, and Finish saves it as a stub. `entry` is the entry's
+   * `id`. */
+  | { readonly type: "discard"; readonly entry: string }
+  /** While paused: puts a discarded entry back. */
+  | { readonly type: "restore"; readonly entry: string };
 
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */
 export type CommandResult = "applied" | "ignored";
+
+/** The name of a command, as the state lists the ones that apply now. */
+export type RecorderCommandType = RecorderCommand["type"];

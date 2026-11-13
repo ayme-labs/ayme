@@ -664,6 +664,9 @@ importers:
       "@ayme-dev/recorder":
         specifier: workspace:*
         version: link:../../packages/recorder
+      "@ayme-dev/recorder-window":
+        specifier: workspace:*
+        version: link:../../packages/recorder-window
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -822,13 +825,19 @@ importers:
 
   packages/cli:
     dependencies:
-      "@ayme-dev/recorder":
-        specifier: workspace:*
-        version: link:../recorder
+      "@playwright/test":
+        specifier: ">=1.62"
+        version: 1.64.0
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../eslint-config
+      "@ayme-dev/recorder":
+        specifier: workspace:*
+        version: link:../recorder
+      "@ayme-dev/recorder-window":
+        specifier: workspace:*
+        version: link:../recorder-window
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
@@ -1216,12 +1225,21 @@ importers:
       "@ayme-dev/core":
         specifier: workspace:*
         version: link:../core
+      "@trpc/server":
+        specifier: ^11.19.0
+        version: 11.19.0(typescript@6.0.3)
       effect:
         specifier: ^4.1.4
         version: 4.1.4
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.0
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
+      zod:
+        specifier: ^4.5.4
+        version: 4.6.5
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -1238,9 +1256,15 @@ importers:
       "@stryker-mutator/vitest-runner":
         specifier: ^10.1.1
         version: 10.1.1(patch_hash=0714969f239a85f89ab5ffe558558ad7a5ddacd44e82a86c4a8f1e01040b1e45)(@stryker-mutator/core@10.1.1(@types/node@24.13.3))(vitest@4.1.11)
+      "@trpc/client":
+        specifier: ^11.19.0
+        version: 11.19.0(@trpc/server@11.19.0(typescript@6.0.3))(typescript@6.0.3)
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
+      "@types/ws":
+        specifier: ^8.18.2
+        version: 8.18.2
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -1262,27 +1286,66 @@ importers:
 
   packages/recorder-window:
     devDependencies:
+      "@ayme-dev/design-system":
+        specifier: workspace:*
+        version: link:../design-system
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../eslint-config
+      "@ayme-dev/recorder":
+        specifier: workspace:*
+        version: link:../recorder
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@playwright/test":
+        specifier: ^1.64.0
+        version: 1.64.0
+      "@trpc/client":
+        specifier: ^11.19.0
+        version: 11.19.0(@trpc/server@11.19.0(typescript@6.0.3))(typescript@6.0.3)
+      "@trpc/server":
+        specifier: ^11.19.0
+        version: 11.19.0(typescript@6.0.3)
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
+      "@types/react":
+        specifier: ^19.0.0
+        version: 19.2.18
+      "@types/react-dom":
+        specifier: ^19.0.0
+        version: 19.2.7(@types/react@19.2.18)
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      lucide-react:
+        specifier: ^1.0.0
+        version: 1.48.0(react@19.2.8)
+      radix-ui:
+        specifier: ^1.6.7
+        version: 1.6.7(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+      tailwindcss:
+        specifier: ^4.3.3
+        version: 4.3.3
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vite:
+        specifier: ^8.2.2
+        version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
   packages/svelte:
     dependencies:

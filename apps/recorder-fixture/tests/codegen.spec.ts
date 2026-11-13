@@ -2,7 +2,14 @@ import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
+import { chromium } from "@playwright/test";
+
 import { expect, test } from "./fixtures";
+
+/** The window's address, once the command has printed it. */
+const windowUrlOf = (stdout: string) =>
+  /^Recorder window: (http:\/\/127\.0\.0\.1:\d+\/)$/m.exec(stdout)?.[1];
 
 test.describe("codegen <url>", () => {
   test("opens the page in Chromium and ends with 'empty' when it is stopped from the terminal", async ({
@@ -22,6 +29,60 @@ test.describe("codegen <url>", () => {
     expect(await run.exit).toEqual({ code: 0, signal: null });
     expect(run.stdout()).toContain("Nothing was recorded.");
     expect(run.stderr()).toBe("");
+  });
+
+  test("prints the window's address, and opens the window as a second window of the browser it launched, apart from what it records", async ({
+    fixturePages,
+    runRecorder,
+  }) => {
+    const run = await runRecorder(["codegen", fixturePages.url()]);
+    await run.waitForStdout("Recorder window: ");
+    const windowUrl = windowUrlOf(run.stdout());
+    expect(windowUrl).toBeDefined();
+
+    const browser = await chromium.connectOverCDP(run.debugEndpoint);
+    try {
+      // The browser's own list of its pages, with the context of each.
+      const cdp = await browser.newBrowserCDPSession();
+      const pages = async () =>
+        (await cdp.send("Target.getTargets")).targetInfos.filter(
+          (target) => target.type === "page"
+        );
+      await expect
+        .poll(async () => (await pages()).map((target) => target.url).sort())
+        .toEqual([fixturePages.url(), windowUrl].sort());
+      const contextOf = async (url: string) =>
+        (await pages()).find((target) => target.url === url)!.browserContextId;
+      // A context of its own: the recorder's page hooks, Playwright's
+      // recorder and the trace are all the recorded context's.
+      expect(await contextOf(windowUrl!)).not.toBe(
+        await contextOf(fixturePages.url())
+      );
+      const pageAt = (url: string) =>
+        browser
+          .contexts()
+          .flatMap((context) => context.pages())
+          .find((page) => page.url() === url)!;
+      expect(
+        await pageAt(windowUrl!).evaluate(
+          () => "__aymeRecorderHeld" in globalThis
+        )
+      ).toBe(false);
+      expect(
+        await pageAt(fixturePages.url()).evaluate(
+          () => "__aymeRecorderHeld" in globalThis
+        )
+      ).toBe(true);
+      // It is the recorder's window, live.
+      await expect(
+        new RecorderWindow(pageAt(windowUrl!)).controls.status
+      ).toHaveText("Not recording");
+
+      run.interrupt();
+      expect(await run.exit).toEqual({ code: 0, signal: null });
+    } finally {
+      await browser.close();
+    }
   });
 
   test("ends with 'empty' when the last page is closed", async ({

@@ -63,6 +63,9 @@ export type Run = {
   /** Closes the page at `url` in the recorder's browser, as the person
    * would, over the test's own connection to that browser. */
   closePage(url: string): Promise<void>;
+  /** The DevTools protocol address of the browser the run launched, for a
+   * connection of the test's own. */
+  readonly debugEndpoint: string;
   /** How it ended. */
   readonly exit: Promise<{ code: number | null; signal: string | null }>;
 };
@@ -395,6 +398,7 @@ export const test = base.extend<{
             check();
           }),
         interrupt: () => void child.kill("SIGINT"),
+        debugEndpoint: `http://127.0.0.1:${debugPort}`,
         closePage: async (url) => {
           // The browser's DevTools protocol, over its HTTP endpoints.
           const devtools = `http://127.0.0.1:${debugPort}/json`;

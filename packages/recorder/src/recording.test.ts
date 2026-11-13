@@ -85,7 +85,7 @@ describe("a recording", () => {
 
     // Pressing Record starts a Visit for the current page.
     expect(updates.at(-1)).toEqual({
-      revision: 2,
+      revision: 3,
       state: {
         phase: "recording",
         visits: [
@@ -96,6 +96,7 @@ describe("a recording", () => {
             entries: [],
           },
         ],
+        commands: ["finish", "stop", "clear"],
         warnings: [],
       },
     });
@@ -144,6 +145,7 @@ describe("a recording", () => {
     browser.report(click);
     const interaction = {
       kind: "interaction",
+      id: "interaction_1",
       timestamp: 2,
       interaction: {
         id: "interaction_1",
@@ -170,6 +172,7 @@ describe("a recording", () => {
       interaction,
       {
         kind: "change",
+        id: "change_1",
         timestamp: 4,
         changeTree: [
           `- [ref=e1]:`,

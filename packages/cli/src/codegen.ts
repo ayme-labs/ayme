@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   RecorderStartError,
   startRecorder,
@@ -9,18 +10,20 @@ import {
 } from "@ayme-dev/recorder";
 
 /**
- * How `codegen <url>` launches the browser. The two environment variables
- * are for the tests: they run where there is no screen, and act in the
- * recorded browser over a connection of their own.
+ * How `codegen <url>` launches the browser. `--headless` and `--headed` say
+ * whether it has a window. The two environment variables are for the tests:
+ * they run where there is no screen, and act in the recorded browser over a
+ * connection of their own. The command line wins over them.
  */
 export function launchOptions(
   url: string,
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  headless?: boolean
 ): Extract<RecorderOptions["browser"], { launch: unknown }>["launch"] {
   const debugPort = env.AYME_RECORDER_DEBUG_PORT;
   return {
     url,
-    headless: env.AYME_RECORDER_HEADLESS === "1",
+    headless: headless ?? env.AYME_RECORDER_HEADLESS === "1",
     ...(debugPort ? { debugPort: Number(debugPort) } : {}),
   };
 }
@@ -31,6 +34,19 @@ export function startLine(browser: RecorderOptions["browser"]): string {
     ? `Attached to the browser at ${browser.attach.cdpEndpoint}. Close its page, or press Ctrl+C here, to end: the browser stays open.\n`
     : `Opened ${browser.launch.url}. Close the browser, or press Ctrl+C here, to end.\n`;
 }
+
+/** What the terminal is told of the recorder window: its address. */
+export function windowLine(url: string): string {
+  return `Recorder window: ${url}\n`;
+}
+
+/**
+ * The folder of the recorder window's built files: the build puts them in a
+ * `window` folder beside the command's own file, so that the packed package
+ * carries the window and needs nothing resolved where it is installed.
+ */
+export const windowFolder = (commandFile: string): string =>
+  join(dirname(fileURLToPath(commandFile)), "window");
 
 /** What the terminal is told when the recorder has ended. */
 export function outcomeLine(outcome: RecordingOutcome): string {
@@ -69,7 +85,11 @@ async function start(
   browser: RecorderOptions["browser"]
 ): Promise<Recorder | undefined> {
   try {
-    return await startRecorder({ projectDir: process.cwd(), browser });
+    return await startRecorder({
+      projectDir: process.cwd(),
+      browser,
+      window: { folder: windowFolder(import.meta.url) },
+    });
   } catch (error) {
     if (!(error instanceof RecorderStartError)) throw error;
     // Its message is a sentence for the terminal: no stack trace.
@@ -84,11 +104,13 @@ async function start(
  * exit code.
  */
 export async function codegen(
-  target: { readonly url: string } | { readonly cdpEndpoint: string }
+  target:
+    | { readonly url: string; readonly headless?: boolean }
+    | { readonly cdpEndpoint: string }
 ): Promise<number> {
   const browser: RecorderOptions["browser"] =
     "url" in target
-      ? { launch: launchOptions(target.url, process.env) }
+      ? { launch: launchOptions(target.url, process.env, target.headless) }
       : { attach: { cdpEndpoint: target.cdpEndpoint } };
   const recorder = await start(browser);
   if (!recorder) return 1;
@@ -99,6 +121,7 @@ export async function codegen(
   process.on("SIGINT", end);
   process.on("SIGTERM", end);
   process.stdout.write(startLine(browser));
+  if (recorder.windowUrl) process.stdout.write(windowLine(recorder.windowUrl));
   const printWarnings = warningPrinter((text) => process.stderr.write(text));
   recorder.subscribe((update) => printWarnings(update.state.warnings));
 

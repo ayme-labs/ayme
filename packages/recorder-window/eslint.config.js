@@ -4,19 +4,24 @@ import {
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules: this file is their source of truth. The slices
-// are a start, named as the Inspector's are; the window's first content may
-// rename them.
+// The source layout's rules. packages/recorder-window/AGENTS.md introduces
+// them; this file is the source of truth.
 
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. app composes them, and nothing uses app.
+// it here. app composes them, and nothing uses app. testing is the window's
+// page objects, the `./testing` entry, which only tests may use (ADR-0026).
 const allowedSlices = {
-  shared: [],
-  app: ["shared"],
+  channel: [],
+  timeline: [],
+  controls: [],
+  app: ["controls", "timeline", "channel"],
+  testing: [],
 };
 const slices = Object.keys(allowedSlices);
+// app and testing aren't layered.
+const unlayered = ["app", "testing"];
 const sourceFiles = "src/**/*.{ts,tsx}";
 
 const patterns = [
@@ -41,12 +46,35 @@ const patterns = [
   },
 ];
 
+/** The rules for `files`, which may import what `patterns` names. */
+function restricted(files, patterns, { ignores } = {}) {
+  return {
+    files,
+    ...(ignores ? { ignores } : {}),
+    rules: {
+      "no-restricted-imports": ["error", { patterns }],
+      // The same rules for a dynamic import(). esquery reads `/` as the end
+      // of a regex, so selectors match it as `\x2F`.
+      "no-restricted-syntax": [
+        "error",
+        ...patterns.map(({ regex, message }) => ({
+          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
+          message,
+        })),
+      ],
+    },
+  };
+}
+
+// The page objects take Playwright's types, as a test does.
+const pageObjects = ["src/testing/**/*.ts"];
+const playwrightPattern = patterns[2];
+
 export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // app isn't layered.
-    enforcedSlices: slices.filter((slice) => slice !== "app"),
+    enforcedSlices: slices.filter((slice) => !unlayered.includes(slice)),
   }),
   {
     files: [sourceFiles],
@@ -77,16 +105,11 @@ export default [
           })),
         },
       ],
-      "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
-      "no-restricted-syntax": [
-        "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
-      ],
     },
   },
+  restricted([sourceFiles], patterns, { ignores: pageObjects }),
+  restricted(
+    pageObjects,
+    patterns.filter((pattern) => pattern !== playwrightPattern)
+  ),
 ];

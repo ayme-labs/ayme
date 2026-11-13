@@ -7,7 +7,9 @@ export type RecorderStartReason =
   /** The project's Playwright is older than the supported range. */
   | "playwright-too-old"
   /** The project's Playwright has no recorder the engine knows how to start. */
-  | "playwright-recorder-not-found";
+  | "playwright-recorder-not-found"
+  /** The recorder window's server could not listen on a local port. */
+  | "port-in-use";
 
 /**
  * The one way starting a recorder fails. Its message is a sentence for the

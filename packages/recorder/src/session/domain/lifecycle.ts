@@ -1,6 +1,7 @@
 import type {
   CommandResult,
   RecorderCommand,
+  RecorderCommandType,
   RecorderPhase,
   RecorderWarning,
   RecordingOutcome,
@@ -329,9 +330,45 @@ export const initialState: LifecycleState = {
 
 /** The phase a state shows outside the engine. */
 export function shown(state: LifecycleState): RecorderPhase {
-  return state.phase === "ended"
-    ? { phase: "ended", outcome: state.outcome }
-    : { phase: state.phase };
+  switch (state.phase) {
+    case "ended":
+      return { phase: "ended", outcome: state.outcome };
+    case "wrappingUp":
+      // A recorder that clears and then ends is shown clearing: what it
+      // ends with is told when it has ended.
+      return {
+        phase: "wrappingUp",
+        then: state.then === "clearAndEnd" ? "clear" : state.then,
+      };
+    default:
+      return { phase: state.phase };
+  }
+}
+
+const COMMANDS: readonly RecorderCommandType[] = [
+  "record",
+  "finish",
+  "stop",
+  "continue",
+  "clear",
+  "discard",
+  "restore",
+];
+
+/** A command of this type, to ask whether it applies: the answer does not
+ * depend on which entry it names. */
+const probe = (type: RecorderCommandType): RecorderCommand =>
+  type === "discard" || type === "restore" ? { type, entry: "" } : { type };
+
+/** The commands that apply in a state: those the lifecycle would not answer
+ * "ignored". The window offers these, and no rule of its own. */
+export function offered(state: LifecycleState): RecorderCommandType[] {
+  return COMMANDS.filter(
+    (type) =>
+      !command(state, probe(type)).todo.some(
+        (item) => item.kind === "reply" && item.result === "ignored"
+      )
+  );
 }
 
 type Step = {
@@ -532,6 +569,19 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       // Answered first: the worker comes back from a save only when the
       // package is written.
       if (asked.type === "finish") return save(state, [reply("applied")]);
+      // The only time an entry may be left out or put back: nothing is under
+      // way, and Continue and Finish keep the decision with the timeline.
+      if (asked.type === "discard" || asked.type === "restore")
+        return {
+          state,
+          todo: [
+            {
+              kind: "timeline",
+              add: { kind: asked.type, entry: asked.entry },
+            },
+            reply("applied"),
+          ],
+        };
       break;
   }
   // A command that does not apply now changes nothing: it is never kept for

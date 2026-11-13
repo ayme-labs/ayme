@@ -67,7 +67,12 @@ export type TimelineAddition =
       readonly cause: VisitCause;
     }
   | { readonly kind: "snapshot"; readonly snapshot: PageSnapshot }
-  | { readonly kind: "interaction"; readonly interaction: RecordedInteraction };
+  | { readonly kind: "interaction"; readonly interaction: RecordedInteraction }
+  /** The person leaves an entry out of the recording, by its `id`. An entry
+   * the timeline does not have is left alone. */
+  | { readonly kind: "discard"; readonly entry: string }
+  /** The person puts a discarded entry back. */
+  | { readonly kind: "restore"; readonly entry: string };
 
 /**
  * A recording's trace, as the browser hands it over once it is stopped: the

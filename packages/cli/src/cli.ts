@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runTrace } from "@ayme-dev/recorder";
+import { runInstall, runTrace } from "@ayme-dev/recorder";
 
 import { codegen } from "./codegen";
 import { readCommand } from "./readCommand";
@@ -12,11 +12,19 @@ if (command.kind === "help") {
   process.exitCode = 1;
 } else if (command.kind === "attach") {
   process.exitCode = await codegen({ cdpEndpoint: command.cdpEndpoint });
+} else if (command.kind === "install") {
+  process.exitCode = await runInstall({
+    projectDir: process.cwd(),
+    args: command.args,
+  });
 } else if (command.kind === "trace") {
   process.exitCode = await runTrace({
     projectDir: process.cwd(),
     args: command.args,
   });
 } else {
-  process.exitCode = await codegen({ url: command.url });
+  process.exitCode = await codegen({
+    url: command.url,
+    headless: command.headless,
+  });
 }

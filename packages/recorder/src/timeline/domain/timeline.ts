@@ -95,6 +95,7 @@ export class Timeline {
   /** The Visit each page is in. */
   private readonly current = new Map<string, Visit>();
   private interactions = 0;
+  private changes = 0;
   /** Every Interaction taken in, in order, for the trace's sake: whether it
    * left its Visit says whether its "after" is a picture of the same one. */
   private readonly recorded: (RecordedInteraction & {
@@ -197,7 +198,25 @@ export class Timeline {
             (kept) => kept.snapshot.id === interaction.before
           )
         );
+        return;
       }
+      case "discard":
+      case "restore":
+        return this.decide(addition.entry, addition.kind === "discard");
+    }
+  }
+
+  /** Leaves an entry out of the recording, or puts it back. One this
+   * timeline does not have is left alone. */
+  private decide(id: string, discarded: boolean) {
+    for (const visit of this.all) {
+      const place = visit.entries.findIndex((entry) => entry.id === id);
+      if (place < 0) continue;
+      const { discarded: was, ...entry } = visit.entries[place]!;
+      if ((was === true) === discarded) return;
+      visit.entries[place] = discarded ? { ...entry, discarded: true } : entry;
+      this.tell();
+      return;
     }
   }
 
@@ -354,6 +373,7 @@ export class Timeline {
             if (read.changedBefore !== "")
               entries.push({
                 kind: "change",
+                id: `change_${++this.changes}`,
                 timestamp: interaction!.at,
                 changeTree: read.changedBefore,
               });
@@ -365,6 +385,7 @@ export class Timeline {
         }
         entries.push({
           kind: "interaction",
+          id: interaction!.id,
           timestamp: interaction!.at,
           interaction: interactionDetails(
             interaction!.id,
@@ -383,6 +404,7 @@ export class Timeline {
       if (change !== "")
         entries.push({
           kind: "change",
+          id: `change_${++this.changes}`,
           timestamp: next.snapshot.at,
           changeTree: change,
         });

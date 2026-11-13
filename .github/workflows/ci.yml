@@ -342,13 +342,17 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          range=packages/recorder/playwright-range.json
-          major=$(jq -r '.floor | split(".")[0]' "$range")
-          from=$(jq -r '.floor | split(".")[1]' "$range")
-          to=$(jq -r '.lastVerified | split(".")[1]' "$range")
+          # Every minor in the range. The Playwright image has no jq: Node
+          # reads the file.
+          versions=$(node -e '
+            const { floor, lastVerified } = require("./packages/recorder/playwright-range.json");
+            const [major, from] = floor.split(".").map(Number);
+            const to = Number(lastVerified.split(".")[1]);
+            for (let minor = from; minor <= to; minor++) console.log(`${major}.${minor}`);
+          ')
+          test -n "$versions"
           failed=
-          for minor in $(seq "$from" "$to"); do
-            version="$major.$minor"
+          for version in $versions; do
             echo "::group::Playwright $version"
             # A project with only that Playwright, outside the repository,
             # and the headless Chromium it launches.

@@ -325,6 +325,7 @@ describe("Clear", () => {
     expect(updates.at(-1)!.state).toEqual({
       phase: "notRecording",
       visits: [],
+      commands: ["record"],
       warnings: [],
     });
     // "Not recording" was never shown with the old entries still in it.
@@ -374,6 +375,7 @@ describe("Clear", () => {
     expect(updates.at(-1)!.state).toEqual({
       phase: "notRecording",
       visits: [],
+      commands: ["record"],
       warnings: [],
     });
     recorder.end();
@@ -400,6 +402,7 @@ describe("Clear", () => {
       phase: "ended",
       outcome: { kind: "empty" },
       visits: [],
+      commands: [],
       warnings: [],
     });
     await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);

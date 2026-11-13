@@ -4,6 +4,7 @@ import type { RecorderPhase } from "../../contract";
 import type { InteractionReport, PageSnapshot } from "../../timeline/domain";
 import {
   initialState,
+  offered,
   shown,
   step,
   WRAP_UP_LIMIT_MS,
@@ -200,7 +201,8 @@ describe("the lifecycle", () => {
     happened: Happening[];
     /** The lists of the last steps, one per step. */
     todo: ToDo[][];
-    state: RecorderPhase;
+    /** The phase it shows; what a wrap-up leads to may be left out. */
+    state: Partial<RecorderPhase>;
   }>([
     // Before anything is recorded.
     {
@@ -988,7 +990,9 @@ describe("the lifecycle", () => {
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
-    expect(result.state).toEqual(state);
+    // A row names the state it is about; what a wrap-up leads to has rows
+    // of its own (ticket #1276).
+    expect(result.state).toMatchObject(state);
   });
 
   // Ticket #1273, the full lifecycle: Stop, Continue, Clear, and every way
@@ -999,7 +1003,8 @@ describe("the lifecycle", () => {
     happened: Happening[];
     /** The lists of the last steps, one per step. */
     todo: ToDo[][];
-    state: RecorderPhase;
+    /** The phase it shows; what a wrap-up leads to may be left out. */
+    state: Partial<RecorderPhase>;
   }>([
     // Stop.
     {
@@ -1591,7 +1596,9 @@ describe("the lifecycle", () => {
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
-    expect(result.state).toEqual(state);
+    // A row names the state it is about; what a wrap-up leads to has rows
+    // of its own (ticket #1276).
+    expect(result.state).toMatchObject(state);
   });
 
   it("saves once, however often Finish is pressed", () => {
@@ -1611,6 +1618,89 @@ describe("the lifecycle", () => {
 
     expect(todo.flat().filter((item) => item.kind === "save")).toHaveLength(1);
     expect(todo.flat().filter((item) => item.kind === "end")).toHaveLength(1);
+  });
+});
+
+// Ticket #1276: what the window shows of the lifecycle. While it wraps up,
+// the state says what the wrap-up leads to, and in every state it says which
+// commands apply now, so that the window offers only those.
+describe("what the lifecycle shows", () => {
+  /** The state after these things happened, and the commands it offers. */
+  const after = (happened: readonly Happening[]) => {
+    let state = initialState;
+    for (const happening of happened) state = step(state, happening).state;
+    return { shown: shown(state), offered: offered(state) };
+  };
+
+  it.each<{ name: string; happened: Happening[]; shown: RecorderPhase }>([
+    {
+      name: "a wrap-up after Stop leads to a pause",
+      happened: [opened, ...started, stop],
+      shown: { phase: "wrappingUp", then: "pause" },
+    },
+    {
+      name: "a wrap-up after Clear leads to clearing",
+      happened: [opened, ...started, clear],
+      shown: { phase: "wrappingUp", then: "clear" },
+    },
+    {
+      name: "a wrap-up after Finish leads to saving",
+      happened: [opened, ...started, finish],
+      shown: { phase: "wrappingUp", then: "save" },
+    },
+    {
+      name: "an outside end turns a wrap-up that would pause into one that saves",
+      happened: [opened, ...started, stop, outsideEnd],
+      shown: { phase: "wrappingUp", then: "save" },
+    },
+    {
+      name: "an outside end leaves a wrap-up that clears clearing",
+      happened: [opened, ...started, clear, outsideEnd],
+      shown: { phase: "wrappingUp", then: "clear" },
+    },
+  ])("$name", ({ happened, shown }) => {
+    expect(after(happened).shown).toEqual(shown);
+  });
+
+  it.each<{ name: string; happened: Happening[]; offered: string[] }>([
+    { name: "no page open: nothing applies", happened: [], offered: [] },
+    {
+      name: "not recording, with a page open: Record",
+      happened: [opened],
+      offered: ["record"],
+    },
+    {
+      name: "recording: Finish, Stop and Clear",
+      happened: [opened, ...started],
+      offered: ["finish", "stop", "clear"],
+    },
+    {
+      name: "while Record waits for the pages: Finish, Stop and Clear",
+      happened: [opened, record],
+      offered: ["finish", "stop", "clear"],
+    },
+    {
+      name: "wrapping up: nothing applies",
+      happened: [opened, ...started, stop],
+      offered: [],
+    },
+    {
+      name: "paused: Finish, Continue, Clear, Discard and Restore",
+      happened: stopped,
+      offered: ["finish", "continue", "clear", "discard", "restore"],
+    },
+    {
+      name: "saving: nothing applies",
+      happened: [...stopped, finish],
+      offered: [],
+    },
+    {
+      name: "ended: nothing applies",
+      happened: [outsideEnd],
+      offered: [],
+    },
+  ])("$name", ({ happened, offered }) => {
+    expect(after(happened).offered).toEqual(offered);
   });
 });
 
@@ -1701,7 +1791,8 @@ describe("the lifecycle, for every kind of input", () => {
     name: string;
     happened: Happening[];
     todo: ToDo[][];
-    state: RecorderPhase;
+    /** The phase it shows; what a wrap-up leads to may be left out. */
+    state: Partial<RecorderPhase>;
   }>([
     {
       name: "one report of a double click covers both held clicks: one Interaction from the first's 'before' to the second's 'after'",
@@ -2100,7 +2191,128 @@ describe("the lifecycle, for every kind of input", () => {
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
-    expect(result.state).toEqual(state);
+    // A row names the state it is about; what a wrap-up leads to has rows
+    // of its own (ticket #1276).
+    expect(result.state).toMatchObject(state);
+  });
+});
+
+// Ticket #1279: discard and restore. They are commands like the others: the
+// lifecycle says whether one applies, and what it asks of the timeline. It
+// knows no entry, so it cannot tell a missing one: the timeline leaves what
+// it does not have alone.
+describe("the lifecycle, for discard and restore", () => {
+  const discard = (entry: string): Happening => ({
+    kind: "command",
+    command: { type: "discard", entry },
+  });
+  const restore = (entry: string): Happening => ({
+    kind: "command",
+    command: { type: "restore", entry },
+  });
+  const timelineDiscards = (entry: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "discard", entry },
+  });
+  const timelineRestores = (entry: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "restore", entry },
+  });
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[];
+    state: Partial<RecorderPhase>;
+  }>([
+    {
+      name: "Discard while paused is applied, and the timeline is asked to discard the entry (rule 6)",
+      happened: [...stopped, discard("interaction_1")],
+      todo: [timelineDiscards("interaction_1"), reply("applied")],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Restore while paused is applied, and the timeline is asked to restore the entry (rule 6)",
+      happened: [...stopped, restore("change_1")],
+      todo: [timelineRestores("change_1"), reply("applied")],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Discard with nothing recorded is ignored: no recording is paused",
+      happened: [opened, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "Discard while recording is ignored (rule 6)",
+      happened: [opened, ...started, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Restore while recording is ignored (rule 6)",
+      happened: [opened, ...started, restore("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Discard while the recorder wraps up for a pause is ignored: it is not paused yet",
+      happened: [opened, ...started, stop, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Discard while the package is written is ignored: review ended with Finish",
+      happened: [...stopped, finish, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "saving" },
+    },
+    {
+      name: "Restore after the end is ignored",
+      happened: [...stopped, finish, traceStopped, saved, restore("a")],
+      todo: [reply("ignored")],
+      state: { phase: "ended" },
+    },
+    {
+      name: "Continue after a discard goes on as it does without one: the decision is the timeline's, and nothing is thrown away",
+      happened: [...stopped, discard("interaction_1"), resume],
+      todo: [reportInteractions, { kind: "deferReply" }],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Finish after a discard saves as it does without one: the timeline writes the decisions",
+      happened: [...stopped, discard("interaction_1"), finish],
+      todo: [reply("applied"), stopTrace],
+      state: { phase: "saving" },
+    },
+    {
+      name: "Clear after a discard throws the timeline away, decisions with it (rule 5)",
+      happened: [...stopped, discard("interaction_1"), clear],
+      todo: [discardTrace, { kind: "clear" }, reply("applied")],
+      state: { phase: "notRecording" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.at(-1)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+
+  it("offers Discard and Restore while paused, and in no other state", () => {
+    const after = (happened: readonly Happening[]) => {
+      let state = initialState;
+      for (const happening of happened) state = step(state, happening).state;
+      return offered(state);
+    };
+    expect(after(stopped)).toEqual([
+      "finish",
+      "continue",
+      "clear",
+      "discard",
+      "restore",
+    ]);
+    expect(after([opened, ...started])).not.toContain("discard");
+    expect(after([opened, ...started, stop])).not.toContain("restore");
+    expect(after([...stopped, finish])).toEqual([]);
   });
 });
 

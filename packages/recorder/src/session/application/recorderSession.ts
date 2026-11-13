@@ -10,6 +10,7 @@ import type {
 import { Timeline, type RecordingTrace } from "../../timeline/domain";
 import {
   initialState,
+  offered,
   shown,
   step,
   type Happening,
@@ -71,20 +72,25 @@ export class RecorderSession extends Context.Service<
         let timeline = new Timeline();
         let state = initialState;
         let visits = timeline.visits();
+        /** What shows of the lifecycle from outside: the phase, and the
+         * commands that apply. */
+        const told = () => ({ ...shown(state), commands: offered(state) });
         /** The warnings told so far, and how many of the timeline's. */
         let warnings: readonly RecorderWarning[] = [];
         let fromTimeline = 0;
         let update: RecorderUpdate = {
           revision: 0,
-          state: { ...shown(state), visits, warnings },
+          state: { ...told(), visits, warnings },
         };
+        let toldNow = JSON.stringify(told());
         /** Tells the listeners the recorder as it is now, under a new revision. */
         const publish = () => {
           visits = timeline.visits();
           update = {
             revision: update.revision + 1,
-            state: { ...shown(state), visits, warnings },
+            state: { ...told(), visits, warnings },
           };
+          toldNow = JSON.stringify(told());
           for (const listener of listeners) listener(update);
         };
         const tell = (happening: Happening) =>
@@ -167,13 +173,14 @@ export class RecorderSession extends Context.Service<
           const next = step(state, happening);
           state = next.state;
           // Only what shows from outside is told: a phase is one state
-          // there. It is told before the step's list is carried out, so
+          // there, with what a wrap-up leads to and the commands that
+          // apply. It is told before the step's list is carried out, so
           // that "saving" shows while the package is written. A step that
           // throws the recording away tells its phase with the empty
           // timeline, in one update: the new phase never shows with the
           // old entries.
           if (
-            state.phase !== update.state.phase &&
+            JSON.stringify(told()) !== toldNow &&
             !next.todo.some((item) => item.kind === "clear")
           )
             publish();
@@ -181,9 +188,11 @@ export class RecorderSession extends Context.Service<
         });
 
         // What the browser told while it started comes before anything that
-        // is asked of the recorder: the pages that are open, for one.
+        // is asked of the recorder: the pages that are open, for one. It is
+        // handled before the recorder is handed out, so that its first
+        // subscriber is told those pages, and that Record applies.
         for (const happening of yield* Queue.clear(browser.signals))
-          yield* tell(happening);
+          yield* handle({ happening });
         // The browser's signals join the queue in the order the browser gave them.
         yield* Queue.take(browser.signals).pipe(
           Effect.flatMap(tell),

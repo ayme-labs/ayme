@@ -1,10 +1,35 @@
 {
   "name": "@ayme-dev/cli",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "The Ayme Recorder's command line: records a flow on the Playwright your project already has",
+  "description": "The Ayme Recorder: records a browser flow on the Playwright your project already has, for a coding agent to turn into page objects and a test.",
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "mcp",
+    "webmcp",
+    "browser-automation",
+    "playwright",
+    "page-object-model",
+    "testing",
+    "e2e",
+    "recorder",
+    "codegen"
+  ],
+  "homepage": "https://ayme.dev",
   "license": "FSL-1.1-ALv2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayme-labs/ayme.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "ayme-recorder": "./dist/cli.mjs"
   },
@@ -16,11 +41,18 @@
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
     "test:mutation": "stryker run"
   },
-  "dependencies": {
-    "@ayme-dev/recorder": "workspace:*"
+  "peerDependencies": {
+    "@playwright/test": ">=1.62"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/recorder": "workspace:*",
+    "@ayme-dev/recorder-window": "workspace:*",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@stryker-mutator/core": "^10.1.1",
