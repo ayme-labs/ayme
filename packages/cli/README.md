@@ -39,7 +39,7 @@ The terminal prints the address of the recorder window, such as `Recorder window
 - `--headed`: open Chromium with a visible window. This is the default.
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
 
-To end, press **Finish**, close the browser, or press Ctrl+C in the terminal. Closing the browser or pressing Ctrl+C while recording saves what was recorded so far, as Finish does. Pressing Ctrl+C a second time does not cut the save short.
+To end, press **Finish**, close the browser, or press Ctrl+C in the terminal. Closing the browser or pressing Ctrl+C while recording or paused saves what was recorded so far, as Finish does; before you press Record there is nothing to save. Pressing Ctrl+C a second time does not cut the save short.
 
 ### `codegen --cdp-endpoint <address>`
 
@@ -52,7 +52,7 @@ npx @ayme-dev/cli codegen --cdp-endpoint http://127.0.0.1:9222
 - The address is `http://` or `ws://`, on `localhost` or a `127.x.x.x` address. A browser on another machine is refused.
 - The browser must have exactly one page open. The recorder records that page and does not navigate it.
 - Input given by another automation client in that browser is recorded like a person's.
-- When the recorder ends, it takes its toolbar off the page and leaves the browser open. Close the page or press Ctrl+C to end.
+- When the recorder ends, it takes its toolbar off the page and leaves the browser open. Close the page or press Ctrl+C to end; either saves what was recorded, as Finish does.
 - The recorder window does not open by itself: open the printed address in any browser.
 - `--headless` and `--headed` do not apply here, and you cannot give a URL as well.
 
@@ -67,6 +67,8 @@ npx @ayme-dev/cli trace .ayme/recordings/rec_20261113T195055354Z/trace.zip
 ```
 
 `trace open` works the same way, with `latest` or an id in place of the file. Any other `trace` command, such as `trace actions` or `trace snapshot`, is passed to `npx playwright trace` as it is. The trace is a standard Playwright trace, so `npx playwright trace` can also open it directly.
+
+The trace's list of actions (`trace actions`) does not name your steps. It shows the recorder's own calls: its reads of the page, and the mouse events of the clicks it held back and sent on. Keys it held back show as key presses; other typed or pasted text is not an action there. To find a step, use the position numbers the package gives for it, as the [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md#use-the-trace) describes.
 
 ### `install`
 
@@ -107,6 +109,8 @@ While paused, every step and every change row has a **Discard** button. A discar
       trace.zip                  the Playwright trace of the recording
 ```
 
+The package lists each Visit with its steps and what each changed, by the page's structure. A step names the element it acted on by a ref and a selector. Two kinds of step have a selector and no ref: an Assert visibility step, and a key pressed while nothing on the page had focus, which goes to the page's body, which the page structure does not list. A step's time is when its input reached the page, and the end of its place in the trace is when the page was read after it. The skill describes every field.
+
 The first save writes `.ayme/.gitignore`, so recordings stay out of your commits. If the project already has a `.ayme/.gitignore`, the recorder leaves it as it is. A package is written under a temporary name and renamed when complete, so you find either a whole package or none.
 
 ## Warnings
@@ -122,7 +126,7 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 
 ## Known limits
 
-- **A pause is still traced.** The trace runs from the first Record to Finish. What you type while paused can show in the trace's screenshots and snapshots, so do not type a secret while paused and expect it to be left out.
+- **A pause is still traced.** The trace runs from the first Record to Finish, with screenshots of the page throughout, including what was on screen while paused. What you type while paused can show in those screenshots and in the snapshots, so do not type a secret while paused and expect it to be left out.
 - **Closing the page right after your last click can lose that click.** The recorder holds each click back for a moment to take a snapshot first; if the page is gone by then, the click is dropped.
 - **The first key after Record is held back and sent again,** as is anything typed while an earlier input is held back. Sending again is less faithful for paste and for input methods that compose text.
 - **On Playwright 1.62 and 1.63, a click in the last half-second before "Paused" shows can be lost.** Playwright waits a moment to see whether a double click follows, and these versions cannot be asked to report the click sooner.
@@ -134,4 +138,5 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **The recorded page's own scripts can reach the toolbar's function** on the page, as any script the page runs can.
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.
 - **The window's change rows say what appeared, was removed or changed, but not the old and the new value.** The package has the full picture.
+- **An Assert visibility step has no ref for its element, only a selector.** Playwright reports the element it picked by a selector alone.
 - **Recording is Chromium only.**

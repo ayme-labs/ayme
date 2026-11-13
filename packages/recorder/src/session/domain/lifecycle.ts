@@ -438,6 +438,11 @@ export function shown(state: LifecycleState): RecorderPhase {
         then: state.then === "clearAndEnd" ? "clear" : state.then,
       };
     case "recording":
+      // Record, or Continue, is not answered yet: until Playwright reports
+      // and every page holds inputs back, a click is not recorded, so the
+      // recorder is not shown recording (rule 13).
+      if (state.starting)
+        return { phase: state.resumed ? "paused" : "notRecording" };
       return state.picking === "on"
         ? { phase: "recording", picking: true }
         : { phase: "recording" };
