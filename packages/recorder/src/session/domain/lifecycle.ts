@@ -790,8 +790,13 @@ function during(state: Active, happening: BrowserSignal): Step {
           kind: "browser",
           ask: { kind: "holdInputs", on: true },
         });
-      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on)
+      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on) {
+        // An input known from its last reports is finished first; then
+        // Playwright's recorder is switched off once more.
+        if (state.inputs.length > 0)
+          return proceed({ ...state, switchingOff: false }, []);
         return wrappedUp(state, []);
+      }
       break;
     case "inputsHeld":
       if (state.phase === "wrappingUp" && !happening.on)
@@ -949,34 +954,7 @@ function during(state: Active, happening: BrowserSignal): Step {
     case "interactionReported": {
       const kind = heldKindOf(happening.report);
       if (kind === null && REPORTED_ONLY.has(happening.report.type)) {
-        // It happened before every input of its page that has not reached
-        // the page yet.
-        let place = draft.inputs.findIndex(
-          (input) =>
-            input.page === happening.page &&
-            (input.stage === "waiting" || input.stage === "takingBefore")
-        );
-        if (place < 0) place = draft.inputs.length;
-        giveUpEarlier(draft, happening.page, place);
-        draft.inputs = [
-          ...draft.inputs.slice(0, place),
-          {
-            id: `reported_${++draft.reportedOnly}`,
-            page: happening.page,
-            held: { kind: "reported" },
-            revised: false,
-            joins: null,
-            unreported: false,
-            stage: "waiting",
-            asked: null,
-            // Its start is found as it carries on.
-            before: null,
-            after: null,
-            passedOnAt: null,
-            report: happening.report,
-          },
-          ...draft.inputs.slice(place),
-        ];
+        knownFromReport(draft, happening.page, happening.report);
         break;
       }
       if (kind === null) break;
@@ -990,8 +968,20 @@ function during(state: Active, happening: BrowserSignal): Step {
           held.report === null &&
           held.joins === null
       );
-      if (!input || input.stage === "waiting" || input.stage === "takingBefore")
+      if (!input) {
+        // A click or a key made while the recorder wraps up, once the pages
+        // no longer hold inputs back: recording ends when "Paused" shows,
+        // so it is recorded from Playwright's report alone. A click of
+        // count zero is a key's or a label's, recorded with that key.
+        if (
+          state.phase === "wrappingUp" &&
+          happening.report.values["clickCount"] !== 0 &&
+          state.pages.some((page) => page.id === happening.page)
+        )
+          knownFromReport(draft, happening.page, happening.report);
         break;
+      }
+      if (input.stage === "waiting" || input.stage === "takingBefore") break;
       // A key pressed with nothing focused has no target, whatever element
       // Playwright names for it.
       const report =
@@ -1066,6 +1056,41 @@ function carryOnReported(draft: Draft, id: string) {
   if (next || input.stage === "settling" || underWay(draft, input.page)) return;
   change(draft, id, { stage: "settling" });
   draft.todo.push(settleAfter(input));
+}
+
+/** An input known from Playwright's report only. It happened before every
+ * input of its page that has not reached the page yet. */
+function knownFromReport(
+  draft: Draft,
+  page: string,
+  report: InteractionReport
+) {
+  let place = draft.inputs.findIndex(
+    (input) =>
+      input.page === page &&
+      (input.stage === "waiting" || input.stage === "takingBefore")
+  );
+  if (place < 0) place = draft.inputs.length;
+  giveUpEarlier(draft, page, place);
+  draft.inputs = [
+    ...draft.inputs.slice(0, place),
+    {
+      id: `reported_${++draft.reportedOnly}`,
+      page,
+      held: { kind: "reported" },
+      revised: false,
+      joins: null,
+      unreported: false,
+      stage: "waiting",
+      asked: null,
+      // Its start is found as it carries on.
+      before: null,
+      after: null,
+      passedOnAt: null,
+      report,
+    },
+    ...draft.inputs.slice(place),
+  ];
 }
 
 /** Playwright reports in order: the inputs of a page held before the

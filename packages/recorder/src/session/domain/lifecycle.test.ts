@@ -2128,3 +2128,71 @@ describe("the lifecycle, for a page that is blank at Record", () => {
     expect(state).toEqual({ phase: "recording" });
   });
 });
+
+describe("the lifecycle, for a click made while the recorder wraps up", () => {
+  const clickReport = (count: number): InteractionReport => ({
+    ...click,
+    values: { button: "left", clickCount: count },
+  });
+  const reportedClick = (count: number): Happening => ({
+    kind: "interactionReported",
+    page: "page_1",
+    report: clickReport(count),
+  });
+  /** Stop, up to Playwright's recorder being switched off. */
+  const stopping = [opened, ...started, stop, gateOff, taken("snapshot_1")];
+
+  it("records a click the pages no longer held from Playwright's report alone, before the recorder is paused", () => {
+    const { todo, state } = run([
+      ...stopping,
+      reportedClick(1),
+      settled("reported_1"),
+      taken("snapshot_2"),
+      reportingOff,
+    ]);
+
+    expect(todo.slice(-4)).toEqual([
+      [waitForSettled("reported_1")],
+      [takeSnapshot("snapshot_2")],
+      [
+        keep("snapshot_2"),
+        {
+          kind: "timeline",
+          add: {
+            kind: "interaction",
+            interaction: {
+              page: "page_1",
+              report: clickReport(1),
+              before: "snapshot_1",
+              after: "snapshot_2",
+              at: 10,
+              beforeFromReport: true,
+            },
+          },
+        },
+      ],
+      [],
+    ]);
+    expect(state).toEqual({ phase: "paused" });
+  });
+
+  it("waits for such a click when Playwright's recorder is switched off before it has its 'after'", () => {
+    const { todo, state } = run([
+      ...stopping,
+      reportedClick(1),
+      reportingOff,
+      settled("reported_1"),
+      taken("snapshot_2"),
+      reportingOff,
+    ]);
+
+    expect(todo.at(-2)).toContainEqual(stopReporting);
+    expect(state).toEqual({ phase: "paused" });
+  });
+
+  it("ignores a click of count zero, which a key or a label caused", () => {
+    const { todo } = run([...stopping, reportedClick(0)]);
+
+    expect(todo.at(-1)).toEqual([]);
+  });
+});

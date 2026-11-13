@@ -189,6 +189,9 @@ function theOnePage(browser: Browser): Page {
 type PlaywrightRecorderMode = {
   mode(): string;
   setMode(mode: "none" | "recording"): Promise<void>;
+  /** 1.64 and later: reports a click it holds back for a while, to see
+   * whether a double click follows, at once. */
+  flushPendingActions?(): void;
 };
 
 /**
@@ -625,6 +628,8 @@ async function openPage(
    * Switching the mode leaves a trace that is being recorded alone.
    */
   async function reportInteractions(on: boolean) {
+    // A click made just before is reported before the answer, not after.
+    if (recorderMode && !on) recorderMode.flushPendingActions?.();
     if (recorderMode) await recorderMode.setMode(on ? "recording" : "none");
     else if (on) {
       await startPlaywrightRecorder();
