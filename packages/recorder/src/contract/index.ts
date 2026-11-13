@@ -96,7 +96,13 @@ export type RecorderCommand =
   /** Goes on recording after a pause, into the same timeline. */
   | { readonly type: "continue" }
   /** Throws away everything recorded so far. */
-  | { readonly type: "clear" };
+  | { readonly type: "clear" }
+  /** While paused: leaves the entry out of the recording. It stays in the
+   * timeline, marked, and Finish saves it as a stub. `entry` is the entry's
+   * `id`. */
+  | { readonly type: "discard"; readonly entry: string }
+  /** While paused: puts a discarded entry back. */
+  | { readonly type: "restore"; readonly entry: string };
 
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */

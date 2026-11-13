@@ -1,5 +1,5 @@
 import type {
-  RecorderCommandType,
+  RecorderCommand,
   RecorderState,
   RecorderUpdate,
 } from "@ayme-dev/recorder/contract";
@@ -12,7 +12,7 @@ import { newest } from "../domain/newest";
  * before the first, and a way to ask it something. */
 export function useRecorder(channel: RecorderChannel): {
   state: RecorderState | null;
-  send(type: RecorderCommandType): void;
+  send(command: RecorderCommand): void;
 } {
   const [update, setUpdate] = useState<RecorderUpdate | null>(null);
   useEffect(
@@ -22,7 +22,7 @@ export function useRecorder(channel: RecorderChannel): {
   );
   // The answer needs nothing done: the state that follows shows it.
   const send = useCallback(
-    (type: RecorderCommandType) => void channel.send({ type }).catch(() => {}),
+    (command: RecorderCommand) => void channel.send(command).catch(() => {}),
     [channel]
   );
   return { state: update?.state ?? null, send };
