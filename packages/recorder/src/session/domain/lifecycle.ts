@@ -206,8 +206,10 @@ type Page = {
   readonly url: string;
   /** What became of it while it had no Visit at its address: it opened,
    * blank while recording or while paused, or it went elsewhere while
-   * paused. Its Visit starts when it is at an address while recording. */
-  readonly since?: "opened" | "moved";
+   * paused, or it was blank when Record started a recording that has no
+   * Visit yet, so that its Visit is the first. Its Visit starts when it is
+   * at an address while recording. */
+  readonly since?: "opened" | "moved" | "blankAtRecord";
 };
 
 /** One input the gate held back, until it is written down or dropped. */
@@ -454,7 +456,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             phase: "recording",
             starting: true,
             resumed: false,
-            pages: state.pages.map(visited),
+            pages: atRecord(state.pages).pages,
             inputs: [],
             snapshotsAsked: 0,
             // A page holds what follows from Record on, until its first
@@ -463,15 +465,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             reportedOnly: 0,
           },
           todo: [
-            ...state.pages.map((page, index): ToDo => ({
-              kind: "timeline",
-              add: {
-                kind: "visit",
-                page: page.id,
-                url: page.url,
-                cause: index === 0 ? "initial" : "openPage",
-              },
-            })),
+            ...atRecord(state.pages).todo,
             // Reports first: a click held before Playwright listens would
             // be passed on without ever being reported. The pages are asked
             // to hold inputs back when Playwright reports, and Record is
@@ -654,7 +648,35 @@ const visitOf = (page: string, url: string, cause: VisitCause): ToDo => ({
 });
 
 const causeOf = (page: Page): VisitCause =>
-  page.since === "opened" ? "openPage" : "navigate";
+  page.since === "opened"
+    ? "openPage"
+    : page.since === "blankAtRecord"
+      ? "initial"
+      : "navigate";
+
+/**
+ * Record starts a Visit for each page at an address, the first one
+ * "initial". A page that is still blank gets its Visit at its first real
+ * address, as a page that opens blank while recording does.
+ */
+function atRecord(pages: readonly Page[]) {
+  const first = pages.find((page) => page.url !== BLANK);
+  return {
+    pages: pages.map((page, index): Page =>
+      page.url !== BLANK
+        ? visited(page)
+        : {
+            ...visited(page),
+            since: !first && index === 0 ? "blankAtRecord" : "opened",
+          }
+    ),
+    todo: pages
+      .filter((page) => page.url !== BLANK)
+      .map((page) =>
+        visitOf(page.id, page.url, page === first ? "initial" : "openPage")
+      ),
+  };
+}
 
 /** The page, with a Visit at its address. */
 const visited = ({ id, url }: Page): Page => ({ id, url });

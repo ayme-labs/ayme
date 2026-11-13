@@ -2103,3 +2103,28 @@ describe("the lifecycle, for every kind of input", () => {
     expect(result.state).toEqual(state);
   });
 });
+
+// Follow-ups to every kind of input.
+describe("the lifecycle, for a page that is blank at Record", () => {
+  const blank: Happening = {
+    kind: "pageOpened",
+    page: "page_1",
+    url: "about:blank",
+  };
+
+  it("starts no Visit for it, and starts its Visit, as the first, at its first real address", () => {
+    const { todo, state } = run([
+      blank,
+      record,
+      { kind: "pageNavigated", page: "page_1", url },
+    ]);
+
+    expect(todo.at(-2)).toEqual([
+      startTrace,
+      reportInteractions,
+      { kind: "deferReply" },
+    ]);
+    expect(todo.at(-1)).toEqual([startVisit]);
+    expect(state).toEqual({ phase: "recording" });
+  });
+});
