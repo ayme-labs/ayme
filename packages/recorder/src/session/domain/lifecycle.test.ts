@@ -2913,3 +2913,164 @@ describe("the lifecycle, for the highlight", () => {
     expect(after([...recording, stop])).toEqual([]);
   });
 });
+
+// The review of the whole recorder against the spec: one row or test for
+// each fault it found in the lifecycle, named by the rule it keeps.
+describe("the lifecycle, for what the review against the spec found", () => {
+  const reportedAs = (report: InteractionReport): Happening => ({
+    kind: "interactionReported",
+    page: "page_1",
+    report,
+  });
+  const choose = (option: string): InteractionReport => ({
+    type: "select",
+    selector: `internal:role=combobox[name="${option}"]`,
+    target: null,
+    values: { options: [option] },
+  });
+  const fromReport = (
+    report: InteractionReport,
+    before: string,
+    after: string
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: {
+        page: "page_1",
+        report,
+        before,
+        after,
+        at: 10,
+        beforeFromReport: true,
+      },
+    },
+  });
+  const visible: InteractionReport = {
+    type: "assertVisible",
+    selector: "internal:role=heading",
+    target: null,
+    values: {},
+  };
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    // Each "after" is no later than the next "before" (rule 12).
+    {
+      name: "a second input that is not held back, reported while the first waits for its Settled Page, closes the first: one snapshot is the first's 'after' and the second's 'before' (rule 12)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(choose("milk")),
+        reportedAs(choose("eggs")),
+        taken("snapshot_3"),
+        // The wait that was cut short ends later: nothing more is asked.
+        settled("reported_1"),
+        settled("reported_2"),
+        taken("snapshot_4"),
+        finish,
+      ],
+      todo: [
+        [waitForSettled("reported_1")],
+        [takeSnapshot("snapshot_3")],
+        [
+          keep("snapshot_3"),
+          waitForSettled("reported_2"),
+          fromReport(choose("milk"), "snapshot_2", "snapshot_3"),
+        ],
+        [],
+        [takeSnapshot("snapshot_4")],
+        [keep("snapshot_4")],
+        [
+          ...wrapUp,
+          fromReport(choose("eggs"), "snapshot_3", "snapshot_4"),
+          reply("applied"),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a second input that is not held back, reported while the first's 'after' is being taken, starts at that snapshot, and what revised the first gets no further wait (rule 12)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(choose("milk")),
+        settled("reported_1"),
+        {
+          kind: "interactionRevised",
+          page: "page_1",
+          report: choose("bread"),
+        },
+        reportedAs(choose("eggs")),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [],
+        [],
+        [
+          keep("snapshot_3"),
+          waitForSettled("reported_2"),
+          fromReport(choose("bread"), "snapshot_2", "snapshot_3"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "an input that is not held back, reported while an assertion's snapshot is being taken, starts at that snapshot (rule 12)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(visible),
+        reportedAs(choose("eggs")),
+        taken("snapshot_3"),
+        settled("reported_2"),
+        taken("snapshot_4"),
+        finish,
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [],
+        [
+          keep("snapshot_3"),
+          waitForSettled("reported_2"),
+          {
+            kind: "timeline",
+            add: {
+              kind: "interaction",
+              interaction: {
+                page: "page_1",
+                report: visible,
+                before: "snapshot_3",
+                after: "snapshot_3",
+                at: 10,
+              },
+            },
+          },
+        ],
+        [takeSnapshot("snapshot_4")],
+        [keep("snapshot_4")],
+        [
+          ...wrapUp,
+          fromReport(choose("eggs"), "snapshot_3", "snapshot_4"),
+          reply("applied"),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+});

@@ -1314,3 +1314,44 @@ describe("the timeline, for the highlight", () => {
     expect(timeline.liveTarget("interaction_9")).toBeNull();
   });
 });
+
+// The review of the whole recorder against the spec.
+describe("the timeline, for what the review against the spec found", () => {
+  it("still writes an Interaction that starts at a snapshot the entries have passed: nothing done while recording is left out", async () => {
+    const done = [
+      `- generic [ref=e1]:`,
+      `  - button "Save" [ref=e2]`,
+      `  - paragraph [ref=e3]: Saved`,
+      `  - status [ref=e4]: Done`,
+    ].join("\n");
+
+    const text = await packageOf([
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      snapshot("snapshot_2", 20, savedPage),
+      click("snapshot_1", "snapshot_2", null),
+      snapshot("snapshot_3", 30, done),
+      // It shares its "before" with the Interaction ahead of it.
+      click("snapshot_1", "snapshot_3", null),
+    ]);
+
+    expect(text!.match(/kind: interaction/g)).toHaveLength(2);
+    expect(text).toContain(
+      [
+        `          id: interaction_2`,
+        `          type: click`,
+        `          targetRef: null`,
+        `          targetSelector: internal:role=button[name="Save"i]`,
+        `          button: left`,
+        `          modifiers: 0`,
+        `          clickCount: 1`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <changed> [ref=e3] paragraph: Saved`,
+        `            - <added> [ref=e4] status: Done`,
+        `traceActionPoints: []`,
+        ``,
+      ].join("\n")
+    );
+  });
+});

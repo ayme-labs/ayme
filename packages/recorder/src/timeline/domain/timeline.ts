@@ -389,16 +389,20 @@ export class Timeline {
     const { snapshots, entries } = visit;
     const before = entries.length;
     for (;;) {
-      const from = snapshots[visit.through];
-      if (!from) break;
+      const through = snapshots[visit.through];
+      if (!through) break;
+      // An Interaction starts at this snapshot. One that starts at a
+      // snapshot the entries have passed is written all the same, from its
+      // own start: no Interaction is left out for where it starts.
+      const place = (id: string | null) =>
+        snapshots.findIndex((kept) => kept.snapshot.id === id);
       const starting = visit.waiting.findIndex(
-        (interaction) => interaction.before === from.snapshot.id
+        (interaction) => place(interaction.before) <= visit.through
       );
       if (starting >= 0) {
         const [interaction] = visit.waiting.splice(starting, 1);
-        const end = snapshots.findIndex(
-          (kept) => kept.snapshot.id === interaction!.after
-        );
+        const from = snapshots[place(interaction!.before)]!;
+        const end = place(interaction!.after);
         let targetRef = locateTarget(from.tree, interaction!.report.target);
         let change =
           end < 0 ? "" : changeText(await this.change(from, snapshots[end]!));
@@ -440,7 +444,7 @@ export class Timeline {
       }
       const next = snapshots[visit.through + 1];
       if (visit.through >= upTo || !next) break;
-      const change = changeText(await this.change(from, next));
+      const change = changeText(await this.change(through, next));
       // Nothing changed: there is nothing to tell.
       if (change !== "")
         entries.push({

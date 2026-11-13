@@ -1246,6 +1246,34 @@ function carryOnReported(draft: Draft, id: string) {
           earlier.stage !== "settled"
       );
     if (reached) return;
+    // An earlier input known from its report only that has no "after" yet
+    // ends where this one starts: one snapshot is both, as between two held
+    // inputs. Starting from the page's latest snapshot instead would give
+    // the two one "before", and the earlier one an "after" that is later
+    // than this one's "before". An assertion's one snapshot is waited for
+    // in the same way.
+    const open = draft.inputs
+      .slice(0, index)
+      .findLast(
+        (earlier) =>
+          earlier.page === input.page &&
+          (earlier.held.kind === "reported" ||
+            earlier.held.kind === "asserted") &&
+          earlier.stage !== "settled"
+      );
+    if (open?.stage === "settling") {
+      askSharedSnapshot(draft, open, input);
+      return;
+    }
+    if (open?.stage === "takingAfter") {
+      // The snapshot under way is its last: what revised it meanwhile gets
+      // no further wait.
+      change(draft, open.id, { revised: false });
+      change(draft, id, { stage: "takingBefore", asked: open.asked });
+      return;
+    }
+    // It has no start of its own yet: this one waits for that.
+    if (open) return;
     const latest = gateOf(draft, input.page)?.latest;
     if (!latest) {
       change(draft, id, {
