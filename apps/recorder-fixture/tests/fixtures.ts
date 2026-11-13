@@ -83,8 +83,21 @@ export type Person = {
    * be a Settled Page and be read. The recorder gives no sign of that yet.
    */
   pause(): Promise<void>;
+  /** Clicks twice on the middle of an element, as a double click. */
+  doubleClick(target: Locator): Promise<void>;
+  /** Types text key by key, with a short gap between keys. */
+  type(text: string): Promise<void>;
+  /** Presses and releases one named key, such as "Enter". */
+  press(key: "Enter" | "Escape" | "ArrowDown"): Promise<void>;
 };
 type Point = { x: number; y: number };
+
+/** The named keys a person presses here, as the DevTools protocol has them. */
+const NAMED_KEYS = {
+  Enter: { code: "Enter", windowsVirtualKeyCode: 13, text: "\r" },
+  Escape: { code: "Escape", windowsVirtualKeyCode: 27 },
+  ArrowDown: { code: "ArrowDown", windowsVirtualKeyCode: 40 },
+} as const;
 
 /** A recorder started in this process, on a fixture page. */
 export type Recording = {
@@ -143,6 +156,38 @@ function personAt(session: CDPSession): Person {
       await mouse("mouseReleased", to, released);
     },
     pause: () => wait(1_000),
+    async doubleClick(target) {
+      const at = await person.middleOf(target);
+      await mouse("mouseMoved", at);
+      for (const clickCount of [1, 2]) {
+        await mouse("mousePressed", at, { ...held, clickCount });
+        await wait(40);
+        await mouse("mouseReleased", at, { ...released, clickCount });
+        await wait(40);
+      }
+    },
+    async type(text) {
+      for (const character of text) {
+        const key = {
+          key: character,
+          code: `Key${character.toUpperCase()}`,
+          windowsVirtualKeyCode: character.toUpperCase().charCodeAt(0),
+        };
+        await session.send("Input.dispatchKeyEvent", {
+          type: "keyDown",
+          ...key,
+          text: character,
+          unmodifiedText: character,
+        });
+        await session.send("Input.dispatchKeyEvent", { type: "keyUp", ...key });
+        await wait(10);
+      }
+    },
+    async press(name) {
+      const key = { key: name, ...NAMED_KEYS[name] };
+      await session.send("Input.dispatchKeyEvent", { type: "keyDown", ...key });
+      await session.send("Input.dispatchKeyEvent", { type: "keyUp", ...key });
+    },
   };
   return person;
 }
