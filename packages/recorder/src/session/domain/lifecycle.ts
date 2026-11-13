@@ -91,7 +91,11 @@ export type BrowserSignal =
   | { readonly kind: "inputGone"; readonly input: string }
   // Warnings.
   /** Something a person should know about how the recording is made. */
-  | { readonly kind: "browserWarned"; readonly warning: RecorderWarning };
+  | { readonly kind: "browserWarned"; readonly warning: RecorderWarning }
+  // Assert visibility.
+  /** Playwright's recorder is in its picking mode now, or no longer is,
+   * whoever switched it: it leaves it by itself once the element is picked. */
+  | { readonly kind: "picking"; readonly on: boolean };
 
 /** What a page held back. */
 export type HeldInput =
@@ -149,7 +153,14 @@ export type BrowserRequest =
   | { readonly kind: "startTrace" }
   /** Stop the trace. Kept, it is answered by "traceStopped"; thrown away, it
    * is not answered: only when it breaks, which changes nothing. */
-  | { readonly kind: "stopTrace"; readonly keep: boolean };
+  | { readonly kind: "stopTrace"; readonly keep: boolean }
+  // Assert visibility.
+  /** Have Playwright's recorder pick the element whose visibility is
+   * asserted, or stop picking, and have every page leave the picking click
+   * alone meanwhile: it is Playwright's, and never reaches the page. Picking
+   * that starts is answered by "picking"; one that is asked to stop needs no
+   * answer. */
+  | { readonly kind: "pick"; readonly on: boolean };
 
 /** One thing that happened. Everything reaches the lifecycle as one of these. */
 export type Happening =
@@ -229,7 +240,12 @@ type Input = {
   readonly page: string;
   /** What the page held back, or "reported" for an input the gate never
    * holds, known from Playwright's report only. */
-  readonly held: HeldInput | { readonly kind: "reported" };
+  readonly held:
+    | HeldInput
+    | { readonly kind: "reported" }
+    /** An assertion Playwright reported. Its one snapshot is its "before"
+     * and its "after". */
+    | { readonly kind: "asserted" };
   /** Its report was revised while its "after" was being taken. */
   readonly revised: boolean;
   /** The input whose report covers this one too, as the first click of a
@@ -289,6 +305,8 @@ export type LifecycleState = { readonly pages: readonly Page[] } & (
       readonly starting: boolean;
       /** It goes on after a pause: Continue started it, not Record. */
       readonly resumed: boolean;
+      /** Assert visibility. */
+      readonly picking: Picking;
     } & Flow)
   | ({
       readonly phase: "wrappingUp";
@@ -323,6 +341,13 @@ type AfterWrapUp = "save" | "pause" | "clear" | "clearAndEnd";
 
 type Active = Extract<LifecycleState, { phase: "recording" | "wrappingUp" }>;
 
+/**
+ * Where Assert visibility stands while recording: off; asked for while an
+ * input is held, which picking would swallow when it is passed on; asked of
+ * Playwright; or Playwright is in its picking mode.
+ */
+type Picking = "off" | "waiting" | "asked" | "on";
+
 export const initialState: LifecycleState = {
   phase: "notRecording",
   pages: [],
@@ -340,6 +365,10 @@ export function shown(state: LifecycleState): RecorderPhase {
         phase: "wrappingUp",
         then: state.then === "clearAndEnd" ? "clear" : state.then,
       };
+    case "recording":
+      return state.picking === "on"
+        ? { phase: "recording", picking: true }
+        : { phase: "recording" };
     default:
       return { phase: state.phase };
   }
@@ -353,6 +382,9 @@ const COMMANDS: readonly RecorderCommandType[] = [
   "clear",
   "discard",
   "restore",
+  // Assert visibility.
+  "assertVisibility",
+  "leaveAssertVisibility",
 ];
 
 /** A command of this type, to ask whether it applies: the answer does not
@@ -449,6 +481,8 @@ export function step(state: LifecycleState, happening: Happening): Step {
       return failed(state, happening.request, happening.reason);
     case "traceStopped":
       return writePackage(state, happening.trace);
+    case "picking":
+      return pickingChanged(state, happening.on);
     case "saved": {
       if (state.phase !== "saving") return stay(state);
       const outcome: RecordingOutcome =
@@ -507,6 +541,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             phase: "recording",
             starting: true,
             resumed: false,
+            picking: "off",
             pages: atRecord(state.pages).pages,
             inputs: [],
             snapshotsAsked: 0,
@@ -535,6 +570,16 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       if (asked.type === "finish") return applied(wrapUp(state, "save"));
       if (asked.type === "stop") return applied(wrapUp(state, "pause"));
       if (asked.type === "clear") return applied(wrapUp(state, "clear"));
+      if (asked.type === "assertVisibility" && !state.starting)
+        return assertVisibility(state);
+      if (asked.type === "leaveAssertVisibility" && state.picking !== "off")
+        return {
+          state: { ...state, picking: "off" },
+          todo: [
+            ...(state.picking === "waiting" ? [] : [pickRequest(false)]),
+            reply("applied"),
+          ],
+        };
       break;
     case "paused":
       // It starts as Record does, into the timeline that is there.
@@ -545,6 +590,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             phase: "recording",
             starting: true,
             resumed: true,
+            picking: "off",
             pages: continued.pages,
             inputs: [],
             snapshotsAsked: state.snapshotsAsked,
@@ -650,6 +696,10 @@ function wrapUp(
       switchingOff: false,
     },
     [
+      // Assert visibility is never left on: picking would swallow a click.
+      ...(state.picking === "asked" || state.picking === "on"
+        ? [pickRequest(false)]
+        : []),
       ...answerRecord(state),
       { kind: "browser", ask: { kind: "holdInputs", on: false } },
       { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
@@ -926,6 +976,15 @@ function during(state: Active, happening: BrowserSignal): Step {
             after: snapshot.id,
             asked: null,
           });
+        } else if (owner.held.kind === "asserted") {
+          // One snapshot, as the page stood when the element was picked.
+          change(draft, owner.id, {
+            stage: "settled",
+            before: snapshot.id,
+            after: snapshot.id,
+            passedOnAt: snapshot.at,
+            asked: null,
+          });
         } else if (owner.held.kind === "reported") {
           // It has a snapshot to start from: now the page is given time.
           change(draft, owner.id, {
@@ -1016,6 +1075,10 @@ function during(state: Active, happening: BrowserSignal): Step {
       );
       break;
     case "interactionReported": {
+      if (happening.report.type === ASSERTED) {
+        asserted(draft, happening.page, happening.report);
+        break;
+      }
       const kind = heldKindOf(happening.report);
       if (kind === null && REPORTED_ONLY.has(happening.report.type)) {
         knownFromReport(draft, happening.page, happening.report);
@@ -1132,6 +1195,8 @@ function knownFromReport(
   let place = draft.inputs.findIndex(
     (input) =>
       input.page === page &&
+      // An assertion was reported before it: it came first.
+      input.held.kind !== "asserted" &&
       (input.stage === "waiting" || input.stage === "takingBefore")
   );
   if (place < 0) place = draft.inputs.length;
@@ -1323,7 +1388,10 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
   }
   if (state.phase === "recording") letThrough(draft);
   if (state.phase === "recording")
-    return { state: { ...state, ...settle(draft) }, todo: draft.todo };
+    return {
+      state: { ...state, ...settle(draft), picking: pickNow(state, draft) },
+      todo: draft.todo,
+    };
 
   let finals = state.finals;
   if (
@@ -1463,6 +1531,11 @@ function failed(
       // The page goes on holding what follows: each key it holds is told
       // of, passed on, and lets the page through once more.
       return stay(state);
+    // Assert visibility.
+    case "pick":
+      // Picking that cannot start is off; picking that cannot be left
+      // counts as left, as switching Playwright's recorder off does.
+      return request.on ? pickingChanged(state, false, false) : stay(state);
   }
 }
 
@@ -1559,4 +1632,96 @@ function unanswered(
       };
   }
   return proceed({ ...next, ...settle(draft) }, draft.todo);
+}
+
+// Assert visibility.
+
+/** Playwright's name for an assertion that an element is visible. */
+const ASSERTED = "assertVisible";
+
+const pickRequest = (on: boolean): ToDo => ({
+  kind: "browser",
+  ask: { kind: "pick", on },
+});
+
+/** Whether an input a page held back has not reached it yet: picking would
+ * swallow it when it is passed on. */
+const anyHeld = (inputs: readonly Input[]) =>
+  inputs.some(
+    (input) =>
+      (input.held.kind === "click" ||
+        input.held.kind === "press" ||
+        input.held.kind === "typing") &&
+      input.passedOnAt === null
+  );
+
+/** Assert visibility, while recording: it takes effect only when no input
+ * is held back, and waits until then. */
+function assertVisibility(
+  state: Extract<LifecycleState, { phase: "recording" }>
+): Step {
+  const reply: ToDo = { kind: "reply", result: "ignored" };
+  if (state.picking !== "off") return { state, todo: [reply] };
+  const applied: ToDo = { kind: "reply", result: "applied" };
+  if (anyHeld(state.inputs))
+    return { state: { ...state, picking: "waiting" }, todo: [applied] };
+  return {
+    state: { ...state, picking: "asked" },
+    todo: [pickRequest(true), applied],
+  };
+}
+
+/** Assert visibility that waited is asked of Playwright once no input is
+ * held back any more. */
+function pickNow(
+  state: Extract<LifecycleState, { phase: "recording" }>,
+  draft: Draft
+): Picking {
+  if (state.picking !== "waiting" || anyHeld(draft.inputs))
+    return state.picking;
+  draft.todo.push(pickRequest(true));
+  return "asked";
+}
+
+/**
+ * Playwright's recorder entered its picking mode, or left it. Only a
+ * recording picks: while it wraps up, picking is being left. Once picking
+ * ends, the pages are told to hold inputs again: `tell` is false when the
+ * request to pick is what broke.
+ */
+function pickingChanged(state: LifecycleState, on: boolean, tell = true): Step {
+  if (state.phase !== "recording") return stay(state);
+  if (on) return stay({ ...state, picking: "on" });
+  if (state.picking === "off") return stay(state);
+  return {
+    state: { ...state, picking: "off" },
+    todo: tell ? [pickRequest(false)] : [],
+  };
+}
+
+/**
+ * An assertion Playwright reported. It takes one snapshot, after every
+ * input of its page that came before it: an Interaction that is still
+ * settling gets the same snapshot as its "after", so that what changed
+ * after the assertion is never the Interaction's.
+ */
+function asserted(draft: Draft, page: string, report: InteractionReport) {
+  const earlier = underWay(draft, page);
+  const assertion: Input = {
+    id: `reported_${++draft.reportedOnly}`,
+    page,
+    held: { kind: "asserted" },
+    joins: null,
+    unreported: false,
+    revised: false,
+    stage: "waiting",
+    asked: null,
+    before: null,
+    after: null,
+    passedOnAt: null,
+    report,
+  };
+  draft.inputs = [...draft.inputs, assertion];
+  if (earlier?.stage === "settling")
+    askSharedSnapshot(draft, earlier, assertion);
 }

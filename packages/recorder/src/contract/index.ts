@@ -16,7 +16,13 @@ export type RecordingOutcome =
 /** What the recorder is doing now. */
 export type RecorderPhase =
   | { readonly phase: "notRecording" }
-  | { readonly phase: "recording" }
+  | {
+      readonly phase: "recording";
+      /** Assert visibility is on: Playwright's picking mode waits for the
+       * person to click the element that must be visible. Absent when it
+       * is not. */
+      readonly picking?: true;
+    }
   /** Finishing what is under way before the recording is paused, cleared or
    * saved: commands are ignored meanwhile. `then` says which of the three
    * follows. */
@@ -135,7 +141,14 @@ export type RecorderCommand =
    * `id`. */
   | { readonly type: "discard"; readonly entry: string }
   /** While paused: puts a discarded entry back. */
-  | { readonly type: "restore"; readonly entry: string };
+  | { readonly type: "restore"; readonly entry: string }
+  // Assert visibility.
+  /** While recording: the next element the person clicks is recorded as
+   * "this must be visible", and the click does not reach the page. It takes
+   * effect once no input is held back. */
+  | { readonly type: "assertVisibility" }
+  /** While Assert visibility is on, or waits to be: turns it off. */
+  | { readonly type: "leaveAssertVisibility" };
 
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */

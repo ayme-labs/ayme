@@ -1670,9 +1670,9 @@ describe("what the lifecycle shows", () => {
       offered: ["record"],
     },
     {
-      name: "recording: Finish, Stop and Clear",
+      name: "recording: Finish, Stop, Clear and Assert visibility",
       happened: [opened, ...started],
-      offered: ["finish", "stop", "clear"],
+      offered: ["finish", "stop", "clear", "assertVisibility"],
     },
     {
       name: "while Record waits for the pages: Finish, Stop and Clear",
@@ -2422,5 +2422,232 @@ describe("the lifecycle, for a warning", () => {
     expect(
       run([opened, ...started, { kind: "timelineWarned", warning }]).todo.at(-1)
     ).toEqual([{ kind: "warn", warning }]);
+  });
+});
+
+// Ticket #1278: Assert visibility. Playwright's own picking mode picks the
+// element and reports the assertion; the lifecycle decides when picking
+// starts and what ends it.
+describe("the lifecycle, for Assert visibility", () => {
+  const assertVisibility: Happening = {
+    kind: "command",
+    command: { type: "assertVisibility" },
+  };
+  const leaveAssertVisibility: Happening = {
+    kind: "command",
+    command: { type: "leaveAssertVisibility" },
+  };
+  const picking = (on: boolean): Happening => ({ kind: "picking", on });
+  const pick = (on: boolean): ToDo => ({
+    kind: "browser",
+    ask: { kind: "pick", on },
+  });
+  const asserted: InteractionReport = {
+    type: "assertVisible",
+    selector: 'internal:role=button[name="Add"i]',
+    target: null,
+    values: {},
+  };
+  const assertionReported: Happening = {
+    kind: "interactionReported",
+    page: "page_1",
+    report: asserted,
+  };
+  const assertion = (snapshot: string): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: {
+        page: "page_1",
+        report: asserted,
+        before: snapshot,
+        after: snapshot,
+        at: 10,
+      },
+    },
+  });
+  const recording = [opened, ...started];
+  const pickingOn = [...recording, assertVisibility, picking(true)];
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[];
+    state: RecorderPhase;
+  }>([
+    {
+      name: "Assert visibility while recording asks Playwright to pick, and shows picking only once Playwright is in its picking mode",
+      happened: [...recording, assertVisibility],
+      todo: [pick(true), reply("applied")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Playwright's mode change to picking shows picking, whoever switched it",
+      happened: pickingOn,
+      todo: [],
+      state: { phase: "recording", picking: true },
+    },
+    {
+      name: "Playwright leaving its picking mode by itself, after the pick or on Escape, ends picking, and the pages are told",
+      happened: [...pickingOn, picking(false)],
+      todo: [pick(false)],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Leave Assert visibility while picking asks Playwright to stop picking",
+      happened: [...pickingOn, leaveAssertVisibility],
+      todo: [pick(false), reply("applied")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility while picking is ignored: it is no toggle",
+      happened: [...pickingOn, assertVisibility],
+      todo: [reply("ignored")],
+      state: { phase: "recording", picking: true },
+    },
+    {
+      name: "Leave Assert visibility while not picking is ignored: it is no toggle",
+      happened: [...recording, leaveAssertVisibility],
+      todo: [reply("ignored")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility while not recording is ignored",
+      happened: [opened, assertVisibility],
+      todo: [reply("ignored")],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "Assert visibility while Record waits for the pages is ignored",
+      happened: [opened, record, assertVisibility],
+      todo: [reply("ignored")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility while paused is ignored",
+      happened: [...stopped, assertVisibility],
+      todo: [reply("ignored")],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Assert visibility while a click is held waits: picking would swallow the click when it is passed on (rule 1)",
+      happened: [...recording, clickHeld("input_1"), assertVisibility],
+      todo: [reply("applied")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility that waited takes effect once no input is held",
+      happened: [
+        ...recording,
+        clickHeld("input_1"),
+        assertVisibility,
+        taken("snapshot_1"),
+        passedOn("input_1"),
+      ],
+      todo: [waitForSettled("input_1"), pick(true)],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Leave Assert visibility while it waits for a held input cancels it, with nothing to ask of the browser",
+      happened: [
+        ...recording,
+        clickHeld("input_1"),
+        assertVisibility,
+        leaveAssertVisibility,
+      ],
+      todo: [reply("applied")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Stop while picking leaves picking as part of its wrap-up: Assert visibility is never left on (rule 3)",
+      happened: [...pickingOn, stop],
+      todo: [pick(false), ...wrapUp, reply("applied")],
+      state: { phase: "wrappingUp", then: "pause" },
+    },
+    {
+      name: "Finish while picking leaves picking as part of its wrap-up",
+      happened: [...pickingOn, finish],
+      todo: [pick(false), ...wrapUp, reply("applied")],
+      state: { phase: "wrappingUp", then: "save" },
+    },
+    {
+      name: "Clear while picking leaves picking as part of its wrap-up",
+      happened: [...pickingOn, clear],
+      todo: [pick(false), ...wrapUp, reply("applied")],
+      state: { phase: "wrappingUp", then: "clear" },
+    },
+    {
+      name: "an outside end while picking leaves picking as part of its wrap-up",
+      happened: [...pickingOn, outsideEnd],
+      todo: [pick(false), ...wrapUp],
+      state: { phase: "wrappingUp", then: "save" },
+    },
+    {
+      name: "Stop while Playwright is only asked to pick leaves picking too",
+      happened: [...recording, assertVisibility, stop],
+      todo: [pick(false), ...wrapUp, reply("applied")],
+      state: { phase: "wrappingUp", then: "pause" },
+    },
+    {
+      name: "Playwright entering its picking mode while the recorder wraps up is ignored: picking is being left",
+      happened: [...recording, assertVisibility, stop, picking(true)],
+      todo: [],
+      state: { phase: "wrappingUp", then: "pause" },
+    },
+    {
+      name: "an assertion takes one snapshot of the page as it stands",
+      happened: [...pickingOn, assertionReported],
+      todo: [takeSnapshot("snapshot_1")],
+      state: { phase: "recording", picking: true },
+    },
+    {
+      name: "an assertion's snapshot is both its 'before' and its 'after': it never carries changes (rule 7)",
+      happened: [...pickingOn, assertionReported, taken("snapshot_1")],
+      todo: [keep("snapshot_1"), assertion("snapshot_1"), letThrough(null)],
+      state: { phase: "recording", picking: true },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.at(-1)).toEqual(todo);
+    expect(result.state).toEqual(state);
+  });
+
+  it("closes an Interaction that is still settling with the assertion's snapshot: what changed after it is not the Interaction's (rule 7)", () => {
+    const { todo } = run([
+      ...recording,
+      clickHeld("input_1"),
+      taken("snapshot_1"),
+      passedOn("input_1"),
+      reported,
+      assertVisibility,
+      picking(true),
+      assertionReported,
+      taken("snapshot_2"),
+    ]);
+
+    expect(todo.at(-2)).toEqual([takeSnapshot("snapshot_2")]);
+    expect(todo.at(-1)).toEqual([
+      keep("snapshot_2"),
+      interaction("snapshot_1", "snapshot_2"),
+      assertion("snapshot_2"),
+      letThrough("input_1"),
+    ]);
+  });
+
+  it("offers Assert visibility while recording, and Leave Assert visibility while picking or waiting to", () => {
+    const after = (happened: readonly Happening[]) => {
+      let state = initialState;
+      for (const happening of happened) state = step(state, happening).state;
+      return offered(state);
+    };
+    expect(after(recording)).toContain("assertVisibility");
+    expect(after(recording)).not.toContain("leaveAssertVisibility");
+    expect(after(pickingOn)).toContain("leaveAssertVisibility");
+    expect(after(pickingOn)).not.toContain("assertVisibility");
+    expect(
+      after([...recording, clickHeld("input_1"), assertVisibility])
+    ).toContain("leaveAssertVisibility");
+    expect(after(stopped)).not.toContain("assertVisibility");
+    expect(after([opened])).not.toContain("assertVisibility");
   });
 });

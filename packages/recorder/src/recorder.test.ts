@@ -70,7 +70,7 @@ describe("a recorder", () => {
     expect(updates.map(({ state }) => state)).toEqual([
       expect.objectContaining({
         phase: "recording",
-        commands: ["finish", "stop", "clear"],
+        commands: ["finish", "stop", "clear", "assertVisibility"],
         warnings: [],
       }),
       expect.objectContaining({

@@ -83,9 +83,10 @@ describe("a recording", () => {
 
     await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
 
-    // Pressing Record starts a Visit for the current page.
+    // Pressing Record starts a Visit for the current page. Once Record is
+    // answered, Assert visibility applies too.
     expect(updates.at(-1)).toEqual({
-      revision: 3,
+      revision: 4,
       state: {
         phase: "recording",
         visits: [
@@ -96,7 +97,7 @@ describe("a recording", () => {
             entries: [],
           },
         ],
-        commands: ["finish", "stop", "clear"],
+        commands: ["finish", "stop", "clear", "assertVisibility"],
         warnings: [],
       },
     });
