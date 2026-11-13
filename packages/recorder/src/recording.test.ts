@@ -297,6 +297,33 @@ describe("a recording", () => {
     );
   });
 
+  it("drops a click held when its page goes away, never passes it on to the page after, and still saves", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    // The page is slow to be read, and goes elsewhere meanwhile.
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_1",
+      page: "page_1",
+    });
+    browser.goTo("http://shop.test/cart");
+    browser.releaseSnapshots();
+    browser.report(click);
+
+    await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
+    const outcome = await recorder.done;
+    expect(browser.passedOn).toEqual([]);
+    expect(outcome.kind).toBe("saved");
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    expect(text).not.toContain("kind: interaction");
+  });
+
   it("takes Finish while a click's 'before' snapshot is outstanding: it wraps up, and the time limit runs", async () => {
     const { recorder, browser } = await start();
     await recorder.send({ type: "record" });

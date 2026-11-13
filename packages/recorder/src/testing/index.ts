@@ -48,8 +48,11 @@ export interface ScriptedBrowser {
   /** Moves the recorder's clock on. */
   advanceTime(ms: number): Promise<void>;
   // Visits.
-  /** The page goes to another address, in a new document. */
+  /** The page goes to another address, in a new document: a click held in
+   * the one before can no longer reach it. */
   goTo(url: string): void;
+  /** The held inputs that reached a page, in order. */
+  readonly passedOn: readonly string[];
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -78,6 +81,10 @@ export async function startScriptedRecorder(
   let settling: Extract<BrowserRequest, { kind: "waitForSettled" }> | undefined;
   let snapshotsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
+  // Visits: the document each held input was held in.
+  let documents = 0;
+  const heldIn = new Map<string, number>();
+  const passedOn: string[] = [];
   const waiting: (() => void)[] = [];
   const tell = (signal: BrowserSignal) => {
     Queue.offerUnsafe(signals!, signal);
@@ -106,6 +113,9 @@ export async function startScriptedRecorder(
         return;
       }
       case "passOn":
+        if (heldIn.get(request.input) !== documents)
+          return tell({ kind: "inputGone", input: request.input });
+        passedOn.push(request.input);
         return tell({ kind: "inputPassedOn", input: request.input, at: ++now });
       case "waitForSettled":
         settling = request;
@@ -165,8 +175,11 @@ export async function startScriptedRecorder(
       showPage: (next) => {
         tree = next;
       },
-      holdClick: () =>
-        tell({ kind: "inputHeld", input: `input_${++inputs}`, page }),
+      holdClick: () => {
+        const input = `input_${++inputs}`;
+        heldIn.set(input, documents);
+        tell({ kind: "inputHeld", input, page });
+      },
       settle: () => {
         if (!settling) throw new Error("The engine waits for no Settled Page.");
         const { page: settled, input } = settling;
@@ -185,8 +198,10 @@ export async function startScriptedRecorder(
       advanceTime: (ms) => Effect.runPromise(clock!.adjust(ms)),
       goTo: (next) => {
         url = next;
+        documents += 1;
         tell({ kind: "pageNavigated", page, url });
       },
+      passedOn,
     },
   };
 }
