@@ -271,9 +271,18 @@ describe("Continue", () => {
     await expect(recorder.send({ type: "continue" })).resolves.toBe("applied");
 
     expect(updates.at(-1)!.state.phase).toBe("recording");
-    expect(browser.asked.slice(askedWhenPaused)).toEqual([
+    // The page is read once its inputs are held back: where recording
+    // resumes.
+    const resumedAt = {
+      kind: "takeSnapshot",
+      snapshot: "snapshot_4",
+      page: "page_1",
+    } as const;
+    await browser.asks(resumedAt);
+    expect(browser.asked.slice(askedWhenPaused, askedWhenPaused + 3)).toEqual([
       { kind: "reportInteractions", on: true },
       { kind: "holdInputs", on: true },
+      resumedAt,
     ]);
     // No Visit was started, and the earlier entry is still there.
     expect(updates.at(-1)!.state.visits).toHaveLength(1);
@@ -295,6 +304,54 @@ describe("Continue", () => {
     // Every update had a counter above the one before it.
     const revisions = updates.map((update) => update.revision);
     expect(revisions).toEqual([...new Set(revisions)].sort((a, b) => a - b));
+  });
+
+  it("leaves what the page changed while paused out of the recording, and records what it changes after Continue (rule 13)", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => updates.at(-1)!.state.phase).toBe("paused");
+
+    // The page gets a status while paused.
+    browser.showPage(saved);
+    await recorder.send({ type: "continue" });
+    await browser.asks({
+      kind: "letInputsThrough",
+      page: "page_1",
+      upTo: null,
+    });
+    // After Continue it gets another by itself, and then the person clicks.
+    const later = [saved, `  - status [ref=e4]: Later`].join("\n");
+    browser.showPage(later);
+    await clickOnce(browser, "input_2", later);
+    await expect
+      .poll(() => idsOf(updates.at(-1)!))
+      .toEqual(["interaction_1", "interaction_2"]);
+
+    expect(
+      entriesOf(updates.at(-1)!).map((entry) => [entry.kind, entry.changeTree])
+    ).toEqual([
+      ["interaction", null],
+      [
+        "change",
+        [`- [ref=e1]:`, `  - <added> [ref=e4] status: Later`].join("\n"),
+      ],
+      ["interaction", null],
+    ]);
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+    // Nothing of the pause is in the package, as a change of its own or as
+    // part of another.
+    expect(
+      await readFile(
+        join((outcome as { folder: string }).folder, "package.yaml"),
+        "utf8"
+      )
+    ).not.toContain("status: Saved");
   });
 
   it("is ignored unless the recorder is paused", async () => {

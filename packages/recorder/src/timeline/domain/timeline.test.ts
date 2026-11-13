@@ -1317,6 +1317,59 @@ describe("the timeline, for the highlight", () => {
 
 // The review of the whole recorder against the spec.
 describe("the timeline, for what the review against the spec found", () => {
+  it("leaves out what the page changed while paused: the snapshot where recording resumes is the new point to compare from (rule 13)", async () => {
+    const withStatus = (text: string, status: string) =>
+      [
+        `- generic [ref=e1]:`,
+        `  - button "Save" [ref=e2]`,
+        `  - paragraph [ref=e3]: ${text}`,
+        `  - status [ref=e4]: ${status}`,
+      ].join("\n");
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      snapshot("snapshot_2", 20, savedPage),
+      click("snapshot_1", "snapshot_2", null),
+      // The last snapshot before the pause, and the first after it: the
+      // page got a status while paused.
+      snapshot("snapshot_3", 30, savedPage),
+      {
+        ...snapshot("snapshot_4", 40, withStatus("Saved", "Paused work")),
+        resumes: true,
+      },
+      // What it changed by itself after Continue is the recording's.
+      snapshot("snapshot_5", 50, withStatus("Saved again", "Paused work")),
+      snapshot("snapshot_6", 60, withStatus("Not saved", "Paused work")),
+      click("snapshot_5", "snapshot_6", null),
+    ] satisfies TimelineAddition[])
+      await timeline.add(addition);
+
+    expect(
+      timeline
+        .visits()[0]!
+        .entries.map((entry) => [entry.kind, entry.changeTree])
+    ).toEqual([
+      [
+        "interaction",
+        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Saved`].join("\n"),
+      ],
+      [
+        "change",
+        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Saved again`].join(
+          "\n"
+        ),
+      ],
+      [
+        "interaction",
+        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Not saved`].join(
+          "\n"
+        ),
+      ],
+    ]);
+    expect(await timeline.package(header)).not.toContain("Paused work");
+  });
+
   it("still writes an Interaction that starts at a snapshot the entries have passed: nothing done while recording is left out", async () => {
     const done = [
       `- generic [ref=e1]:`,

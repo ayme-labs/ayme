@@ -1196,15 +1196,15 @@ describe("the lifecycle", () => {
       state: { phase: "recording" },
     },
     {
-      name: "Continue is answered once the pages hold inputs back again",
+      name: "Continue is answered once the pages hold inputs back again, and the page is read as it stands then",
       happened: [...stopped, resume, reporting, holding],
-      todo: [[holdInputs], [recordApplied]],
+      todo: [[holdInputs], [recordApplied, takeSnapshot("snapshot_2")]],
       state: { phase: "recording" },
     },
     {
       name: "after Continue the snapshots go on counting: the timeline is the same one, and a 'before' comes after every earlier 'after' (rule 12)",
       happened: [...stopped, resume, reporting, holding, clickHeld("input_1")],
-      todo: [[takeSnapshot("snapshot_2")]],
+      todo: [[takeSnapshot("snapshot_3")]],
       state: { phase: "recording" },
     },
     {
@@ -2974,6 +2974,11 @@ describe("the lifecycle, for what the review against the spec found", () => {
     page: "page_1",
     report,
   });
+  /** A page's first snapshot since a pause, kept as such. */
+  const resumesAt = (id: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "snapshot", snapshot: snapshot(id), resumes: true },
+  });
   const visible: InteractionReport = {
     type: "assertVisible",
     selector: "internal:role=heading",
@@ -3211,6 +3216,58 @@ describe("the lifecycle, for what the review against the spec found", () => {
       todo: [
         [...wrapUp, reply("applied")],
         [fromReport(fill("m"), "snapshot_2", "snapshot_3"), stopReporting],
+      ],
+      state: { phase: "paused" },
+    },
+
+    // Nothing done while not recording appears (rule 13): what the page
+    // changed while paused is left out.
+    {
+      name: "Continue has each page read once the pages hold inputs back: where recording resumes is the new point to compare from (rule 13)",
+      happened: [...stopped, resume, reporting, holding, taken("snapshot_2")],
+      todo: [
+        [holdInputs],
+        [recordApplied, takeSnapshot("snapshot_2")],
+        [resumesAt("snapshot_2"), letThrough(null)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "only a page's first snapshot after Continue is where recording resumes: a click held before it is in gets its own 'before', and whichever comes first is the one (rule 13)",
+      happened: [
+        ...stopped,
+        resume,
+        reporting,
+        holding,
+        clickHeld("input_1"),
+        taken("snapshot_3"),
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [resumesAt("snapshot_3"), passOn("input_1")],
+        [keep("snapshot_2")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Stop pressed before the page is read after Continue: the last snapshot is where recording resumed, and nothing waits for the other (rule 13)",
+      happened: [
+        ...stopped,
+        resume,
+        reporting,
+        holding,
+        stop,
+        gateOff,
+        taken("snapshot_3"),
+        reportingOff,
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [resumesAt("snapshot_3"), stopReporting],
+        [],
+        [],
       ],
       state: { phase: "paused" },
     },

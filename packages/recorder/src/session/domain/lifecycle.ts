@@ -348,6 +348,12 @@ type PageGate = {
   readonly upTo: string | null;
   /** The latest snapshot of the page. */
   readonly latest: { readonly id: string; readonly at: number } | null;
+  /** The page's next snapshot is its first since a pause: it is where
+   * recording resumes, the new point to compare from. */
+  readonly resumes?: boolean;
+  /** The snapshot asked for at Continue to be that one, while it is under
+   * way. */
+  readonly resuming?: string | null;
 };
 
 export type LifecycleState = {
@@ -687,8 +693,13 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             pages: continued.pages,
             inputs: [],
             snapshotsAsked: state.snapshotsAsked,
-            // As at Record: the page may have changed while paused.
-            gates: freshGates(continued.pages),
+            // As at Record: the page may have changed while paused. What
+            // it changed then is not the recording's: each page's next
+            // snapshot is where recording resumes.
+            gates: freshGates(continued.pages).map((gate) => ({
+              ...gate,
+              resumes: true,
+            })),
             reportedOnly: 0,
           },
           todo: [
@@ -1010,6 +1021,13 @@ function during(state: Active, happening: BrowserSignal): Step {
       if (state.phase === "recording" && state.starting && happening.on) {
         next = { ...state, starting: false };
         draft.todo.push({ kind: "replyDeferred", result: "applied" });
+        // After a pause every page is read as it stands now that its
+        // inputs are held back: from here on, what changes is recorded.
+        if (state.resumed)
+          for (const page of state.pages)
+            changeGate(draft, page.id, {
+              resuming: askSnapshot(draft, page.id),
+            });
       }
       break;
     case "inputHeld": {
@@ -1043,14 +1061,20 @@ function during(state: Active, happening: BrowserSignal): Step {
       );
       const finals = state.phase === "wrappingUp" ? state.finals : null;
       const isFinal = finals?.some((final) => final.snapshot === snapshot.id);
+      const gate = gateOf(draft, snapshot.page);
+      const resuming = gate?.resuming === snapshot.id;
       // A snapshot nobody waits for is of a page or an input that is gone.
-      if (owners.length === 0 && !isFinal) break;
+      if (owners.length === 0 && !isFinal && !resuming) break;
       draft.todo.push({
         kind: "timeline",
-        add: { kind: "snapshot", snapshot },
+        add: gate?.resumes
+          ? { kind: "snapshot", snapshot, resumes: true }
+          : { kind: "snapshot", snapshot },
       });
       changeGate(draft, snapshot.page, {
         latest: { id: snapshot.id, at: snapshot.at },
+        ...(gate?.resumes ? { resumes: false } : {}),
+        ...(resuming ? { resuming: null } : {}),
       });
       for (const owner of owners) {
         if (owner.stage === "takingAfter" && owner.revised) {
