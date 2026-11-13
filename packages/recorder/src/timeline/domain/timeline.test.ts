@@ -423,3 +423,111 @@ describe("the timeline", () => {
     expect(await packageOf([snapshot("snapshot_1", 10, idle)])).toBeNull();
   });
 });
+
+// Inputs the gate never holds, as typing: their "before" is the report's own
+// picture of the page, matched to the snapshots around it.
+describe("the timeline, for an input known from its report", () => {
+  const draftEmpty = [
+    `- generic [ref=e1]:`,
+    `  - heading "Shopping" [level=1] [ref=e2]`,
+    `  - textbox "Item" [ref=e3]`,
+    `  - paragraph [ref=e4]: No draft`,
+  ].join("\n");
+  // Playwright's recorder numbers its picture by itself. When the person
+  // typed, a banner was already there and the field showed the first key.
+  const atTheMoment = [
+    `- generic [ref=e1]:`,
+    `  - heading "Shopping" [level=1] [ref=e2]`,
+    `  - alert [ref=e3]: Welcome back`,
+    `  - textbox "Item" [ref=e4]: m`,
+    `  - paragraph [ref=e5]: No draft`,
+  ].join("\n");
+  const draftSaved = [
+    `- generic [ref=e1]:`,
+    `  - heading "Shopping" [level=1] [ref=e2]`,
+    `  - alert [ref=e5]: Welcome back`,
+    `  - textbox "Item" [ref=e3]: milk`,
+    `  - paragraph [ref=e4]: Draft saved`,
+  ].join("\n");
+  const typing = (picture: string): TimelineAddition => ({
+    kind: "interaction",
+    interaction: {
+      page: "page_1",
+      report: {
+        type: "fill",
+        selector: 'internal:role=textbox[name="Item"i]',
+        target: { ref: "e4", tree: picture },
+        values: { text: "milk" },
+      },
+      before: "snapshot_1",
+      after: "snapshot_2",
+      at: 10,
+      beforeFromReport: true,
+    },
+  });
+
+  it("writes what changed before the input apart from what the input changed, as the report's picture tells", async () => {
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot("snapshot_1", 10, draftEmpty),
+      snapshot("snapshot_2", 20, draftSaved),
+      typing(atTheMoment),
+    ])
+      await timeline.add(addition);
+
+    expect(await timeline.package(header)).toContain(
+      [
+        `    timelineEntries:`,
+        `      - kind: change`,
+        `        timestamp: 10`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <added> [ref=e5] alert: Welcome back`,
+        `      - kind: interaction`,
+        `        timestamp: 10`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: fill`,
+        `          targetRef: e3`,
+        `          targetSelector: internal:role=textbox[name="Item"i]`,
+        `          text: milk`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <changed> [ref=e3] textbox "Item": milk`,
+        `            - <changed> [ref=e4] paragraph: Draft saved`,
+        `traceActionPoints: []`,
+      ].join("\n")
+    );
+    expect(timeline.warnings()).toEqual([]);
+  });
+
+  it("writes the input with its 'after' only, and warns, when the report's picture is not of the shape of a snapshot", async () => {
+    // Nodes the snapshots before and after agree on are missing from it.
+    const otherShape = `- document [ref=e1]: Shopping Item No draft`;
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot("snapshot_1", 10, draftEmpty),
+      snapshot("snapshot_2", 20, draftSaved),
+      typing(otherShape),
+    ])
+      await timeline.add(addition);
+
+    const text = await timeline.package(header);
+    expect(text).not.toContain("kind: change");
+    expect(text).toContain(
+      [
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <added> [ref=e5] alert: Welcome back`,
+        `            - <changed> [ref=e3] textbox "Item": milk`,
+        `            - <changed> [ref=e4] paragraph: Draft saved`,
+        `traceActionPoints: []`,
+      ].join("\n")
+    );
+    expect(timeline.warnings()).toEqual([
+      "Playwright's report of interaction_1 does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.",
+    ]);
+  });
+});

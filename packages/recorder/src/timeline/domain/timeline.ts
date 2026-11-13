@@ -23,6 +23,7 @@ import type {
   TimelineAddition,
   VisitCause,
 } from "./recorded";
+import { pictureBefore } from "./reportPicture";
 import { locateTarget } from "./target";
 
 export type { PackageHeader } from "./packageText";
@@ -84,6 +85,12 @@ export class Timeline {
   private readonly current = new Map<string, Visit>();
   private interactions = 0;
   private told: readonly RecordedVisit[] = [];
+  private readonly warned: string[] = [];
+
+  /** What a person should know about how this recording was made. */
+  warnings(): readonly string[] {
+    return [...this.warned];
+  }
 
   /**
    * The Visits with the entries produced so far, as plain data. It is the
@@ -221,6 +228,57 @@ export class Timeline {
   }
 
   /**
+   * What changed before an input known from its report, and what it changed:
+   * the report's picture of the page stands between the snapshot before it
+   * and its "after". Null when the picture cannot be read so.
+   */
+  private async fromPicture(
+    from: Kept,
+    to: Kept,
+    interaction: RecordedInteraction
+  ): Promise<{
+    changedBefore: string;
+    changedByIt: string;
+    target: AriaRef | undefined;
+  } | null> {
+    const { target, type } = interaction.report;
+    if (!target) return null;
+    const pageId = from.observation.pageId;
+    const between = await this.session.readChange(
+      pageId,
+      from.observation,
+      to.observation
+    );
+    const picture = pictureBefore({
+      previous: from.tree,
+      between,
+      picture: target.tree,
+      target: target.ref,
+      targetAsBefore: type === "fill" || type === "select",
+      refs: this.refs,
+    });
+    if (!picture) return null;
+    const [before, after] = await this.session.readIdentityLedger(
+      pageId,
+      (ledger) => {
+        const sameIdentity = (beforeRef: AriaRef, afterRef: AriaRef) =>
+          ledger.sameIdentity(beforeRef, afterRef);
+        return [
+          StructuralTree.reconcile(from.tree, picture.tree, { sameIdentity }),
+          StructuralTree.reconcile(picture.tree, to.tree, { sameIdentity }),
+        ];
+      }
+    );
+    const firstRefs = new Map([...from.firstRefs, ...to.firstRefs]);
+    return {
+      changedBefore: changeText(this.underFirstRefs(before!, firstRefs)),
+      changedByIt: changeText(this.underFirstRefs(after!, firstRefs)),
+      target:
+        picture.target && (firstRefs.get(picture.target) ?? picture.target),
+    };
+  }
+
+  /**
    * Produces a Visit's entries up to the snapshot at `upTo`: the entry of an
    * Interaction that starts at a snapshot on the way, and a change of its
    * own for every other step from one snapshot to the next.
@@ -239,9 +297,29 @@ export class Timeline {
         const end = snapshots.findIndex(
           (kept) => kept.snapshot.id === interaction!.after
         );
-        const targetRef = locateTarget(from.tree, interaction!.report.target);
-        const change =
+        let targetRef = locateTarget(from.tree, interaction!.report.target);
+        let change =
           end < 0 ? "" : changeText(await this.change(from, snapshots[end]!));
+        if (interaction!.beforeFromReport && end >= 0) {
+          const read = await this.fromPicture(
+            from,
+            snapshots[end]!,
+            interaction!
+          );
+          if (read) {
+            targetRef = read.target;
+            change = read.changedByIt;
+            if (read.changedBefore !== "")
+              entries.push({
+                kind: "change",
+                timestamp: interaction!.at,
+                changeTree: read.changedBefore,
+              });
+          } else
+            this.warned.push(
+              `Playwright's report of ${interaction!.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`
+            );
+        }
         entries.push({
           kind: "interaction",
           timestamp: interaction!.at,
