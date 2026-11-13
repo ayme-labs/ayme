@@ -574,9 +574,63 @@ it.runIf(attaching)(
     expect(failure).toMatchObject({
       reason: "browser-unavailable",
       message: expect.stringContaining(
-        "The browser at this address has 2 pages in 1 context"
+        "The browser at this address has 2 pages open"
       ),
     });
     expect(running.pages()).toHaveLength(2);
+  }
+);
+
+it.runIf(attaching)(
+  "attaches to a browser whose one page sits beside an empty context, as a browser a Playwright test started has",
+  async () => {
+    const debugPort = await freePort();
+    // A launched browser keeps a default context with no page; the test's
+    // page is in a context of its own.
+    const running = await chromium.launch({
+      headless: true,
+      args: [`--remote-debugging-port=${debugPort}`],
+    });
+    ends.push(() => running.close());
+    const page = await (await running.newContext()).newPage();
+    await page.setContent("<button>Only</button>");
+    const runtime = ManagedRuntime.make(
+      stockBrowser({ projectDir, cdpEndpoint: `http://127.0.0.1:${debugPort}` })
+    );
+    ends.push(() => runtime.dispose());
+
+    const browser = await runtime.runPromise(RecordedBrowser);
+    const told = await runtime.runPromise(Queue.clear(browser.signals));
+
+    expect(told).toContainEqual(
+      expect.objectContaining({ kind: "pageOpened" })
+    );
+  }
+);
+
+it.runIf(attaching)(
+  "does not attach to a browser with no page open, and says what it found",
+  async () => {
+    const debugPort = await freePort();
+    const running = await chromium.launch({
+      headless: true,
+      args: [`--remote-debugging-port=${debugPort}`],
+    });
+    ends.push(() => running.close());
+    const runtime = ManagedRuntime.make(
+      stockBrowser({ projectDir, cdpEndpoint: `http://127.0.0.1:${debugPort}` })
+    );
+    ends.push(() => runtime.dispose());
+
+    const failure = await runtime
+      .runPromise(RecordedBrowser)
+      .catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      reason: "browser-unavailable",
+      message: expect.stringContaining(
+        "The browser at this address has no page open"
+      ),
+    });
   }
 );

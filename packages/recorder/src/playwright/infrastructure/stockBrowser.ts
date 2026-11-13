@@ -169,15 +169,15 @@ class NotOnePage extends Error {}
 
 /**
  * The page the recorder records in a browser it attached to: the one page
- * of its one context. With more, or none, it does not guess, as the released
- * recorder does not.
+ * open in it. A context with no page, as the default context of a browser a
+ * Playwright test started, does not count. With more pages, or none, it
+ * does not guess, as the released recorder does not.
  */
 function theOnePage(browser: Browser): Page {
-  const contexts = browser.contexts();
-  const pages = contexts.flatMap((context) => context.pages());
-  if (contexts.length === 1 && pages.length === 1) return pages[0]!;
+  const pages = browser.contexts().flatMap((context) => context.pages());
+  if (pages.length === 1) return pages[0]!;
   throw new NotOnePage(
-    `The recorder records a browser with exactly one page open, in one context, and leaves it as it is. The browser at this address has ${pages.length} ${pages.length === 1 ? "page" : "pages"} in ${contexts.length} ${contexts.length === 1 ? "context" : "contexts"}: close the others and attach again.`
+    `The recorder records a browser with exactly one page open, and leaves it as it is. The browser at this address has ${pages.length === 0 ? "no page" : `${pages.length} pages`} open: ${pages.length === 0 ? "open the page to record" : "close the others"} and attach again.`
   );
 }
 
