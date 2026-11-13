@@ -33,6 +33,16 @@ const cliCommand = join(
   ).bin["ayme-recorder"]!
 );
 
+/** The recorder window's built files and the toolbar's built script, as the
+ * CLI finds them and hands them to the engine. */
+const windowPackage = createRequire(import.meta.url);
+export const windowFolder = dirname(
+  windowPackage.resolve("@ayme-dev/recorder-window/window/index.html")
+);
+export const toolbarScript = windowPackage.resolve(
+  "@ayme-dev/recorder-window/toolbar.js"
+);
+
 // The port is released before the browser binds it, so another process could
 // take it in between; the browser then fails to launch and so does the test.
 const freePort = () =>
@@ -115,6 +125,9 @@ export type Recording = {
   /** The person at another page of the recorder's browser, such as one
    * the recorded page opened. */
   personOn(page: Page): Promise<Person>;
+  /** The recorder window's address, when `startRecording` was asked to
+   * serve it. */
+  readonly windowUrl: string | null;
 };
 
 function personAt(session: CDPSession): Person {
@@ -224,7 +237,14 @@ export const test = base.extend<{
    * app, so the app's Playwright is the one it finds; or, when
    * AYME_RECORDER_PLAYWRIGHT_PROJECT names a project with another
    * Playwright installed, a folder of the test's own inside that one. */
-  startRecording: (path: string) => Promise<Recording>;
+  startRecording: (
+    path: string,
+    options?: {
+      /** Serve the recorder window as well. Every recorded page has the
+       * toolbar, as the CLI gives it. */
+      readonly window?: boolean;
+    }
+  ) => Promise<Recording>;
 }>({
   recordedBrowser: ["launch", { option: true }],
 
@@ -257,7 +277,11 @@ export const test = base.extend<{
     const ends: (() => Promise<unknown>)[] = [];
     /** Project folders made inside another project, removed at the end. */
     const madeInside: string[] = [];
-    await use(async (path) => {
+    await use(async (path, options = {}) => {
+      const shown = {
+        toolbar: { script: toolbarScript },
+        ...(options.window ? { window: { folder: windowFolder } } : {}),
+      };
       const otherPlaywright = process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT;
       const projectDir = otherPlaywright
         ? await mkdtemp(join(otherPlaywright, "recorder-fixture-"))
@@ -272,6 +296,7 @@ export const test = base.extend<{
         const recorder = await startRecorder({
           projectDir,
           browser: { attach: { cdpEndpoint } },
+          ...shown,
         });
         ends.push(() => {
           recorder.end();
@@ -283,12 +308,14 @@ export const test = base.extend<{
           person: await personOn(page),
           projectDir,
           personOn,
+          windowUrl: recorder.windowUrl,
         };
       }
       const debugPort = await freePort();
       const recorder = await startRecorder({
         projectDir,
         browser: { launch: { url, headless: true, debugPort } },
+        ...shown,
       });
       ends.push(() => {
         recorder.end();
@@ -311,6 +338,7 @@ export const test = base.extend<{
         person: await personOn(page),
         projectDir,
         personOn,
+        windowUrl: recorder.windowUrl,
       };
     });
     for (const end of ends) await end();

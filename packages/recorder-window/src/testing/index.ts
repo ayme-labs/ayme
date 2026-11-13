@@ -4,3 +4,4 @@
 export { Controls, type CommandName } from "./pom/Controls";
 export { RecorderWindow } from "./pom/RecorderWindow";
 export { Entry, Timeline, Visit, type ChangeRow } from "./pom/Timeline";
+export { RecorderToolbar } from "./pom/RecorderToolbar";

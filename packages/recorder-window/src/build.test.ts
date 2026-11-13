@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // The window's build is what the engine serves: index.html and one script.
 // It knows the engine only through the contract, which is types: nothing of
@@ -43,4 +43,31 @@ it("carries no engine code", () => {
     "getWSConnectionHandler",
   ])
     expect(script, engineOnly).not.toContain(engineOnly);
+});
+
+describe("the toolbar's build", () => {
+  // One classic script, which the engine runs in every recorded document
+  // before the page's own: no module syntax, and nothing to resolve.
+  const toolbar = readFileSync(
+    join(window, "..", "toolbar", "toolbar.js"),
+    "utf8"
+  );
+
+  it("is a classic script that leaves nothing to resolve", () => {
+    expect(toolbar).toContain("Recorder toolbar");
+    expect(
+      [...toolbar.matchAll(SPECIFIER)].map((match) => match[1] ?? match[2])
+    ).toEqual([]);
+    expect(/["'`]node:[a-z]/.test(toolbar)).toBe(false);
+  });
+
+  it("carries no engine code and opens no socket", () => {
+    for (const engineOnly of [
+      "@ayme-dev/recorder/session/RecorderSession",
+      "__aymeRecorderHeld",
+      "getWSConnectionHandler",
+      "WebSocket",
+    ])
+      expect(toolbar, engineOnly).not.toContain(engineOnly);
+  });
 });

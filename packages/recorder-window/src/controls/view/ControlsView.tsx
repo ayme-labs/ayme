@@ -8,7 +8,7 @@ import { Circle, ListX, Play, Square } from "lucide-react";
 import { statusText } from "../domain/status";
 
 /** The one control that records, stops or continues, by the phase. */
-function primaryOf(state: RecorderState) {
+export function primaryOf(state: RecorderState) {
   switch (state.phase) {
     case "notRecording":
       return { type: "record", label: "Record", Icon: Circle } as const;

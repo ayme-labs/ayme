@@ -182,6 +182,8 @@ export function installGate(held: string): void {
   ]);
   const leftAlone = (target: EventTarget | undefined) =>
     !(target instanceof Element) ||
+    // The recorder's own toolbar: an input on it is no Interaction.
+    target.nodeName === "AYME-RECORDER-TOOLBAR" ||
     target.nodeName === "SELECT" ||
     target.nodeName === "OPTION" ||
     (target instanceof HTMLInputElement && pickers.has(target.type));

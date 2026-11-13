@@ -11,7 +11,8 @@
       "import": "./dist/testing.mjs",
       "default": "./dist/testing.mjs"
     },
-    "./window/index.html": "./dist/window/index.html"
+    "./window/index.html": "./dist/window/index.html",
+    "./toolbar.js": "./dist/toolbar/toolbar.js"
   },
   "scripts": {
     "build": "tsdown",

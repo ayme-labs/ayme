@@ -46,6 +46,13 @@ const windowFolder = () =>
     )
   );
 
+/** The path of the in-page toolbar's built script, handed to the engine
+ * the same way. */
+const toolbarScript = () =>
+  createRequire(import.meta.url).resolve(
+    "@ayme-dev/recorder-window/toolbar.js"
+  );
+
 /** What the terminal is told when the recorder has ended. */
 export function outcomeLine(outcome: RecordingOutcome): string {
   switch (outcome.kind) {
@@ -72,6 +79,7 @@ async function start(
       projectDir: process.cwd(),
       browser,
       window: { folder: windowFolder() },
+      toolbar: { script: toolbarScript() },
     });
   } catch (error) {
     if (!(error instanceof RecorderStartError)) throw error;

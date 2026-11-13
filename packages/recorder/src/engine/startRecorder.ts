@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
+
 import { stockBrowser } from "../playwright/infrastructure";
-import { serveWindow } from "../server/infrastructure";
+import { serveWindow, toolbarBridge } from "../server/infrastructure";
 import { startRecorderOn, type Recorder } from "./recorder";
 
 export type RecorderOptions = {
@@ -31,7 +33,18 @@ export type RecorderOptions = {
   /** Serve the recorder window, whose built files are in `folder`. The
    * engine knows nothing else of the window: the caller says where it is. */
   readonly window?: { readonly folder: string };
+  /** Put the in-page toolbar in every recorded page: `script` is the path
+   * of its built script. The engine knows nothing else of the toolbar. */
+  readonly toolbar?: { readonly script: string };
 };
+
+/** The toolbar's script and its way to the recorder, when it is asked for. */
+async function toolbarFor(options: RecorderOptions) {
+  if (!options.toolbar) return undefined;
+  // Read before anything opens: a CLI built without it fails at once.
+  const script = await readFile(options.toolbar.script, "utf8");
+  return { script, bridge: toolbarBridge() };
+}
 
 /**
  * Starts a recorder. Only starting can fail: it rejects with a
@@ -42,16 +55,22 @@ export async function startRecorder(
   options: RecorderOptions
 ): Promise<Recorder> {
   const { projectDir } = options;
+  const toolbar = await toolbarFor(options);
   const window = options.window
     ? await serveWindow(options.window.folder)
     : undefined;
+  const shown = toolbar && {
+    script: toolbar.script,
+    answer: toolbar.bridge.answer,
+  };
   if ("attach" in options.browser)
     return startRecorderOn(
       stockBrowser({
         projectDir,
         cdpEndpoint: options.browser.attach.cdpEndpoint,
+        toolbar: shown,
       }),
-      { projectDir, window }
+      { projectDir, window, toolbar: toolbar?.bridge }
     );
   const { url, headless = false, debugPort } = options.browser.launch;
   return startRecorderOn(
@@ -61,7 +80,8 @@ export async function startRecorder(
       headless,
       debugPort,
       windowUrl: window?.url,
+      toolbar: shown,
     }),
-    { projectDir, window }
+    { projectDir, window, toolbar: toolbar?.bridge }
   );
 }

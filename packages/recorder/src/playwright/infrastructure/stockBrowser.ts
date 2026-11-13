@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import type { Browser, BrowserContext, Frame, Page } from "playwright-core";
 
+import type { ToolbarBinding } from "../../contract";
 import { RecordedBrowser } from "../../session/application";
 import {
   RecorderStartError,
@@ -49,6 +50,7 @@ type Launch = {
   /** The recorder window's address, opened as a second window of the
    * launched browser; none when no window is served. */
   readonly windowUrl?: string;
+  readonly toolbar?: Toolbar;
 };
 
 /** A Chromium that is already running, reached at the address of its
@@ -56,6 +58,17 @@ type Launch = {
 type Attach = {
   readonly projectDir: string;
   readonly cdpEndpoint: string;
+  readonly toolbar?: Toolbar;
+};
+
+/**
+ * The in-page toolbar, which every recorded document gets: its script, and
+ * what answers the one page function it calls. The adapter carries the two
+ * between the page and the engine and knows nothing else of the toolbar.
+ */
+type Toolbar = {
+  readonly script: string;
+  readonly answer: (message: unknown) => Promise<unknown>;
 };
 
 /**
@@ -112,7 +125,8 @@ export const stockBrowser = (
             browser,
             attach ? { attached: true } : { url: (options as Launch).url },
             options.projectDir,
-            (signal) => Queue.offerUnsafe(signals, signal)
+            (signal) => Queue.offerUnsafe(signals, signal),
+            options.toolbar
           ),
         catch: (cause) =>
           cause instanceof NoPlaywrightRecorder
@@ -253,7 +267,8 @@ async function openPage(
   browser: Browser,
   start: { readonly url: string } | { readonly attached: true },
   projectDir: string,
-  tell: (signal: BrowserSignal) => void
+  tell: (signal: BrowserSignal) => void,
+  toolbar: Toolbar | undefined
 ) {
   browser.on("disconnected", () => tell({ kind: "browserGone" }));
   const context =
@@ -357,6 +372,15 @@ async function openPage(
   await context.addInitScript(installGate, heldBinding);
   await context.addInitScript(installActivityWatch, changedBinding);
   await context.addInitScript(hidePlaywrightOverlay);
+  // The toolbar's page function first, then its script: each document
+  // shows it before it first paints, and before Playwright's own overlay
+  // could.
+  if (toolbar) {
+    await context.exposeBinding(TOOLBAR_BINDING, (_source, message: unknown) =>
+      toolbar.answer(message)
+    );
+    await context.addInitScript({ content: toolbar.script });
+  }
 
   /**
    * A page's activity, for core's wait (ADR-0024): every change to the
@@ -409,6 +433,10 @@ async function openPage(
           frame.evaluate(installGate, heldBinding),
           frame.evaluate(installActivityWatch, changedBinding),
           frame.evaluate(hidePlaywrightOverlay),
+          // It shows only in the top document, and leaves the others be.
+          ...(toolbar && !frame.parentFrame()
+            ? [frame.evaluate(toolbar.script)]
+            : []),
         ]).catch(() => {})
       )
     );
@@ -648,10 +676,13 @@ async function openPage(
     const putBack = Promise.all([
       ...frames.map((frame) =>
         frame
-          .evaluate(() => {
+          .evaluate((remove) => {
             window.__aymeRecorderGate?.set(false);
             window.__aymeRecorderActivity?.watch(false);
-          })
+            document
+              .querySelector("ayme-recorder-toolbar")
+              ?.dispatchEvent(new Event(remove));
+          }, TOOLBAR_REMOVE)
           .catch(() => {})
       ),
       ...[...held.values()].map(({ frame, input }) =>
@@ -728,6 +759,11 @@ function reportOf(action: PlaywrightAction): InteractionReport {
     values,
   };
 }
+
+/** The page function the toolbar calls (the contract's `ToolbarBinding`). */
+const TOOLBAR_BINDING: ToolbarBinding = "__aymeRecorderToolbar";
+/** The event on the toolbar's host that takes it out of the page. */
+const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
 
 /** How long letting go of an attached browser may take. */
 const LET_GO_LIMIT_MS = 5_000;

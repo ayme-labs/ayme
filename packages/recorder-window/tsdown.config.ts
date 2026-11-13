@@ -1,6 +1,6 @@
 import { defineConfig } from "tsdown";
 
-import { windowCss } from "./windowCss.config.ts";
+import { toolbarCss, windowCss } from "./windowCss.config.ts";
 
 // Omit build-machine source paths, not copyright or license comments.
 const inputOptions = { experimental: { attachDebugInfo: "none" as const } };
@@ -39,6 +39,35 @@ export default defineConfig([
     alias: { "lucide-react": "lucide-react/dist/esm/lucide-react.mjs" },
     deps: { alwaysBundle: [/.*/] },
     copy: [{ from: "src/app/index.html", to: "dist/window" }],
+    minify: true,
+  },
+  {
+    // The in-page toolbar: one classic script, which the engine runs in
+    // every recorded document before the page's own. The CLI hands the
+    // engine its path. React, the design system and the stylesheet are
+    // inside it, and nothing of it leaks into the page's globals.
+    clean: false,
+    inputOptions: {
+      ...inputOptions,
+      // The window's channel client shares the channel slice's front door
+      // with the toolbar's, and tRPC does not say that importing it does
+      // nothing: it is left out here, since the toolbar opens no socket.
+      treeshake: {
+        moduleSideEffects: (id: string) =>
+          /[\\/]@trpc[\\/]/.test(id) ? false : undefined,
+      },
+    },
+    dts: false,
+    entry: { toolbar: "src/app/toolbar.tsx" },
+    outDir: "dist/toolbar",
+    format: ["iife"],
+    platform: "browser",
+    outputOptions: { entryFileNames: "[name].js" },
+    define: { "process.env.NODE_ENV": JSON.stringify("production") },
+    suppressWarnings: [/module level directive "use client"/],
+    plugins: [toolbarCss()],
+    alias: { "lucide-react": "lucide-react/dist/esm/lucide-react.mjs" },
+    deps: { alwaysBundle: [/.*/] },
     minify: true,
   },
 ]);
