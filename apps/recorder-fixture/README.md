@@ -59,6 +59,11 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   the test plays the browser by hand, and opens the window's address in its
   own page.
 
+- `review.spec.ts` discards and restores entries while paused, through the
+  engine's handle on real Chromium, and reads the package from disk.
+  `windowReview.spec.ts` does it in the recorder window, through its page
+  objects, on the scripted browser.
+
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
 - `AYME_RECORDER_HEADLESS=1` launches the browser without a window, since the

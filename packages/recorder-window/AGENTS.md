@@ -7,7 +7,7 @@ The Recorder's window: React with the design system, served by the engine (`pack
 Slices:
 
 - `channel`: the window's channel to the recorder. `infrastructure` opens it over tRPC on a WebSocket at `/channel` beside the page (the mutation `send`, the subscription `updates`); `domain` keeps the newest state heard and ignores an older one; `presentation` is the hook the window reads it through.
-- `timeline`: the recording as the window lists it. `domain` reads an entry's Change Tree, text in the Recording Package's compact notation, down to the roots of what changed (only the topmost marked nodes: the engine's Change Tree stays complete), and names an Interaction and its target. `view` shows each Visit with its entries; an entry's header leaves room for the controls that review it.
+- `timeline`: the recording as the window lists it. `domain` reads an entry's Change Tree, text in the Recording Package's compact notation, down to the roots of what changed (only the topmost marked nodes: the engine's Change Tree stays complete), and names an Interaction and its target. `view` shows each Visit with its entries. An entry's header has the control that discards it, or restores it when it is discarded: dimmed, with its changes hidden. Each shows only while the state's `commands` lists it, and names the entry by its `id`.
 - `controls`: the controls and the line that says what the recorder does. Which can be pressed comes from the state's `commands`: the window repeats none of the engine's rules.
 - `app`: the composition root: `main.tsx` mounts the window, `window.css` is its stylesheet, `index.html` its page.
 - `testing`: the window's page objects, the `./testing` entry (ADR-0026). Only they may name Playwright's types.

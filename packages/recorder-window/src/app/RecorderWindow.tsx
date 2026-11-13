@@ -9,7 +9,11 @@ export function RecorderWindow({ channel }: { channel: RecorderChannel }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <ControlsView state={state} onCommand={send} />
-      <TimelineView visits={state?.visits ?? []} />
+      <TimelineView
+        visits={state?.visits ?? []}
+        commands={state?.commands ?? []}
+        onCommand={send}
+      />
     </div>
   );
 }

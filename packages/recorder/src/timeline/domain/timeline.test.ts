@@ -447,6 +447,7 @@ describe("the timeline", () => {
     ];
     const savedByClick = {
       kind: "interaction",
+      id: "interaction_1",
       timestamp: 15,
       interaction: {
         id: "interaction_1",
@@ -504,6 +505,7 @@ describe("the timeline", () => {
       );
       const offer = {
         kind: "change",
+        id: "change_1",
         timestamp: 30,
         changeTree: [
           `- [ref=e1]:`,
@@ -512,6 +514,7 @@ describe("the timeline", () => {
       };
       const secondClick = {
         kind: "interaction",
+        id: "interaction_2",
         timestamp: 15,
         interaction: { ...savedByClick.interaction, id: "interaction_2" },
         // It changed nothing.
@@ -938,5 +941,203 @@ describe("the timeline, for an input inside a frame", () => {
       ].join("\n")
     );
     expect(timeline.warnings()).toEqual([]);
+  });
+});
+
+// Ticket #1279: leaving an entry out of the recording, and putting it back.
+// An entry keeps its place in the timeline, marked; the package writes it as
+// the released recorder does, a stub.
+describe("the timeline, for discard and restore", () => {
+  const banner = `${savedPage}\n  - alert [ref=e4]: Offer ends soon`;
+  /** A click that saved, a change of the page's own, and a click that
+   * changed nothing: `interaction_1`, `change_1`, `interaction_2`. */
+  const flow: TimelineAddition[] = [
+    visit,
+    snapshot("snapshot_1", 10, idle),
+    snapshot("snapshot_2", 20, savedPage),
+    click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+    snapshot("snapshot_3", 30, banner),
+    snapshot("snapshot_4", 40, banner),
+    click("snapshot_3", "snapshot_4", { ref: "e2", tree: banner }),
+  ];
+  const timelineOf = async (additions: readonly TimelineAddition[]) => {
+    const timeline = new Timeline();
+    for (const addition of additions) await timeline.add(addition);
+    return timeline;
+  };
+  const discard = (entry: string): TimelineAddition => ({
+    kind: "discard",
+    entry,
+  });
+  const restore = (entry: string): TimelineAddition => ({
+    kind: "restore",
+    entry,
+  });
+
+  it("gives every entry an identity that stays: an Interaction's, and a change's of its own", async () => {
+    const timeline = await timelineOf(flow);
+
+    expect(
+      timeline.visits()[0]!.entries.map((entry) => [entry.kind, entry.id])
+    ).toEqual([
+      ["interaction", "interaction_1"],
+      ["change", "change_1"],
+      ["interaction", "interaction_2"],
+    ]);
+  });
+
+  it("marks a discarded entry where it is, keeps the rest as it was, and puts it back", async () => {
+    const timeline = await timelineOf(flow);
+    const before = timeline.visits();
+
+    await timeline.add(discard("interaction_1"));
+    const [first, change, second] = timeline.visits()[0]!.entries;
+    expect(first).toMatchObject({ id: "interaction_1", discarded: true });
+    // What it changed is still there: the window hides it, and a restore
+    // brings it back as it was.
+    expect(first).toHaveProperty("changeTree");
+    expect(change).not.toHaveProperty("discarded");
+    expect(second).not.toHaveProperty("discarded");
+
+    await timeline.add(restore("interaction_1"));
+    expect(timeline.visits()).toEqual(before);
+    expect(timeline.visits()[0]!.entries[0]).not.toHaveProperty("discarded");
+  });
+
+  it("discards a change of its own as well as an Interaction", async () => {
+    const timeline = await timelineOf(flow);
+
+    await timeline.add(discard("change_1"));
+
+    expect(timeline.visits()[0]!.entries.map((entry) => entry.id)).toEqual([
+      "interaction_1",
+      "change_1",
+      "interaction_2",
+    ]);
+    expect(timeline.visits()[0]!.entries[1]).toMatchObject({
+      kind: "change",
+      discarded: true,
+    });
+  });
+
+  it("leaves what it does not have alone: the list is the same one", async () => {
+    const timeline = await timelineOf(flow);
+    const before = timeline.visits();
+
+    await timeline.add(discard("interaction_9"));
+    await timeline.add(restore("interaction_1"));
+
+    expect(timeline.visits()).toBe(before);
+  });
+
+  it("writes a discarded entry as the released recorder does, a stub; the trace still has the Interaction's action", async () => {
+    const timeline = await timelineOf(flow);
+    await timeline.add(discard("interaction_1"));
+    await timeline.add(discard("change_1"));
+
+    expect(
+      await timeline.package(header, { snapshot_1: "11", snapshot_3: "31" })
+    ).toContain(
+      [
+        `    timelineEntries:`,
+        `      - kind: interaction`,
+        `        timestamp: 15`,
+        `        discarded: true`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: click`,
+        `      - kind: change`,
+        `        timestamp: 30`,
+        `        discarded: true`,
+        `      - kind: interaction`,
+        `        timestamp: 15`,
+        `        interaction:`,
+        `          id: interaction_2`,
+        `          type: click`,
+        `          targetRef: e2`,
+        `          targetSelector: internal:role=button[name="Save"i]`,
+        `          button: left`,
+        `          modifiers: 0`,
+        `          clickCount: 1`,
+        `traceActionPoints:`,
+        `  - interactionId: interaction_1`,
+        `    pageId: page_1`,
+        `    beforeSnapshotId: "11"`,
+      ].join("\n")
+    );
+  });
+
+  it("writes an entry that was discarded and restored as if it never was", async () => {
+    const kept = await (await timelineOf(flow)).package(header);
+    const timeline = await timelineOf(flow);
+    await timeline.add(discard("interaction_1"));
+    await timeline.add(restore("interaction_1"));
+
+    expect(await timeline.package(header)).toBe(kept);
+  });
+
+  it("still has a package when every entry was discarded, unlike a recording of nothing", async () => {
+    const timeline = await timelineOf(flow);
+    for (const entry of ["interaction_1", "change_1", "interaction_2"])
+      await timeline.add(discard(entry));
+
+    const text = await timeline.package(header);
+
+    expect(text).not.toBeNull();
+    expect(text).not.toContain("changeTree:");
+    expect(text!.match(/discarded: true/g)).toHaveLength(3);
+    // Nothing was recorded here: that is empty, as before.
+    expect(
+      await (
+        await timelineOf([visit, snapshot("snapshot_1", 10, idle)])
+      ).package(header)
+    ).toBeNull();
+  });
+
+  it("leaves the later Visit intact when the navigation that led to it is discarded", async () => {
+    const cart = [
+      `- generic [ref=f1e1]:`,
+      `  - heading "Cart" [level=1] [ref=f1e2]`,
+      `  - button "Pay" [ref=f1e3]`,
+    ].join("\n");
+    const paid = cart.replace(`"Pay"`, `"Paid" [disabled]`);
+    const timeline = await timelineOf([
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      {
+        kind: "visit",
+        page: "page_1",
+        url: "http://shop.test/cart",
+        cause: "navigate",
+      },
+      snapshot("snapshot_2", 20, cart),
+      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      snapshot("snapshot_3", 30, cart),
+      snapshot("snapshot_4", 40, paid),
+      click("snapshot_3", "snapshot_4", { ref: "f1e3", tree: cart }),
+    ]);
+    const visitsBefore = timeline.visits().map((one) => one.visitId);
+
+    await timeline.add(discard("interaction_1"));
+
+    expect(timeline.visits().map((one) => one.visitId)).toEqual(visitsBefore);
+    expect(await timeline.package(header)).toContain(
+      [
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/cart`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+        `      - [ref=f1e1]:`,
+        `        - [ref=f1e2] heading "Cart" [level=1]`,
+        `        - [ref=f1e3] button "Pay"`,
+        `    timelineEntries:`,
+        `      - kind: interaction`,
+        `        timestamp: 15`,
+        `        interaction:`,
+        `          id: interaction_2`,
+        `          type: click`,
+        `          targetRef: f1e3`,
+      ].join("\n")
+    );
   });
 });

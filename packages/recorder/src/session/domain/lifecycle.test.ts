@@ -1685,9 +1685,9 @@ describe("what the lifecycle shows", () => {
       offered: [],
     },
     {
-      name: "paused: Finish, Continue and Clear",
+      name: "paused: Finish, Continue, Clear, Discard and Restore",
       happened: stopped,
-      offered: ["finish", "continue", "clear"],
+      offered: ["finish", "continue", "clear", "discard", "restore"],
     },
     {
       name: "saving: nothing applies",
@@ -2194,5 +2194,124 @@ describe("the lifecycle, for every kind of input", () => {
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
+  });
+});
+
+// Ticket #1279: discard and restore. They are commands like the others: the
+// lifecycle says whether one applies, and what it asks of the timeline. It
+// knows no entry, so it cannot tell a missing one: the timeline leaves what
+// it does not have alone.
+describe("the lifecycle, for discard and restore", () => {
+  const discard = (entry: string): Happening => ({
+    kind: "command",
+    command: { type: "discard", entry },
+  });
+  const restore = (entry: string): Happening => ({
+    kind: "command",
+    command: { type: "restore", entry },
+  });
+  const timelineDiscards = (entry: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "discard", entry },
+  });
+  const timelineRestores = (entry: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "restore", entry },
+  });
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[];
+    state: Partial<RecorderPhase>;
+  }>([
+    {
+      name: "Discard while paused is applied, and the timeline is asked to discard the entry (rule 6)",
+      happened: [...stopped, discard("interaction_1")],
+      todo: [timelineDiscards("interaction_1"), reply("applied")],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Restore while paused is applied, and the timeline is asked to restore the entry (rule 6)",
+      happened: [...stopped, restore("change_1")],
+      todo: [timelineRestores("change_1"), reply("applied")],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Discard with nothing recorded is ignored: no recording is paused",
+      happened: [opened, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "Discard while recording is ignored (rule 6)",
+      happened: [opened, ...started, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Restore while recording is ignored (rule 6)",
+      happened: [opened, ...started, restore("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Discard while the recorder wraps up for a pause is ignored: it is not paused yet",
+      happened: [opened, ...started, stop, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Discard while the package is written is ignored: review ended with Finish",
+      happened: [...stopped, finish, discard("interaction_1")],
+      todo: [reply("ignored")],
+      state: { phase: "saving" },
+    },
+    {
+      name: "Restore after the end is ignored",
+      happened: [...stopped, finish, traceStopped, saved, restore("a")],
+      todo: [reply("ignored")],
+      state: { phase: "ended" },
+    },
+    {
+      name: "Continue after a discard goes on as it does without one: the decision is the timeline's, and nothing is thrown away",
+      happened: [...stopped, discard("interaction_1"), resume],
+      todo: [reportInteractions, { kind: "deferReply" }],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Finish after a discard saves as it does without one: the timeline writes the decisions",
+      happened: [...stopped, discard("interaction_1"), finish],
+      todo: [reply("applied"), stopTrace],
+      state: { phase: "saving" },
+    },
+    {
+      name: "Clear after a discard throws the timeline away, decisions with it (rule 5)",
+      happened: [...stopped, discard("interaction_1"), clear],
+      todo: [discardTrace, { kind: "clear" }, reply("applied")],
+      state: { phase: "notRecording" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.at(-1)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+
+  it("offers Discard and Restore while paused, and in no other state", () => {
+    const after = (happened: readonly Happening[]) => {
+      let state = initialState;
+      for (const happening of happened) state = step(state, happening).state;
+      return offered(state);
+    };
+    expect(after(stopped)).toEqual([
+      "finish",
+      "continue",
+      "clear",
+      "discard",
+      "restore",
+    ]);
+    expect(after([opened, ...started])).not.toContain("discard");
+    expect(after([opened, ...started, stop])).not.toContain("restore");
+    expect(after([...stopped, finish])).toEqual([]);
   });
 });

@@ -24,7 +24,12 @@ const COMMAND_TYPES = [
   "continue",
   "clear",
 ] as const satisfies readonly RecorderCommandType[];
-const CommandSchema = z.object({ type: z.enum(COMMAND_TYPES) });
+// A command that names an entry is told by its type: the others carry no more.
+const CommandSchema = z.union([
+  z.object({ type: z.enum(COMMAND_TYPES) }),
+  z.object({ type: z.literal("discard"), entry: z.string() }),
+  z.object({ type: z.literal("restore"), entry: z.string() }),
+]);
 
 /** The windows' subscriptions, which the server waits for when it closes. */
 export type Subscriptions = {
