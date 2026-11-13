@@ -530,5 +530,20 @@ describe("the timeline", () => {
         )
       );
     });
+
+    it("stays in the Visit when only the part of the address after '?' or '#' changes, as core decides", async () => {
+      const text = await packageOf([
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        { ...toCart, url: "http://shop.test/?tab=saved#top" },
+        snapshot("snapshot_2", 20, savedPage),
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      ]);
+
+      expect(text).not.toContain("visit_2");
+      expect(text).toContain(
+        `            - <changed> [ref=e3] paragraph: Saved`
+      );
+    });
   });
 });
