@@ -8,6 +8,7 @@ import {
   step,
   WRAP_UP_LIMIT_MS,
   type Happening,
+  type HeldInput,
   type ToDo,
 } from "./lifecycle";
 
@@ -761,5 +762,98 @@ describe("the lifecycle", () => {
 
     expect(todo.flat().filter((item) => item.kind === "save")).toHaveLength(1);
     expect(todo.flat().filter((item) => item.kind === "end")).toHaveLength(1);
+  });
+});
+
+// Every kind of input: clicks of more than one count, key presses, typing,
+// and the inputs Playwright reports that the gate never holds.
+describe("the lifecycle, for every kind of input", () => {
+  const held = (input: string, what: HeldInput): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: "page_1",
+    held: what,
+  });
+  const clickOf = (count: number): InteractionReport => ({
+    ...click,
+    values: { button: "left", clickCount: count },
+  });
+  const reportedAs = (report: InteractionReport): Happening => ({
+    kind: "interactionReported",
+    page: "page_1",
+    report,
+  });
+  const written = (
+    report: InteractionReport,
+    before: string,
+    after: string | null,
+    at = 20
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: { page: "page_1", report, before, after, at },
+    },
+  });
+  /** Two clicks of one double click, from held to settled. */
+  const doubleClick = [
+    held("input_1", { kind: "click", count: 1 }),
+    held("input_2", { kind: "click", count: 2 }),
+    taken("snapshot_1"),
+    passedOn("input_1", 21),
+    taken("snapshot_2"),
+    passedOn("input_2", 22),
+    settled("input_2"),
+    taken("snapshot_3"),
+  ];
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: RecorderPhase;
+  }>([
+    {
+      name: "one report of a double click covers both held clicks: one Interaction from the first's 'before' to the second's 'after'",
+      happened: [opened, ...started, ...doubleClick, reportedAs(clickOf(2))],
+      todo: [[written(clickOf(2), "snapshot_1", "snapshot_3", 21)]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a double click reported as two clicks is two Interactions",
+      happened: [
+        opened,
+        ...started,
+        ...doubleClick,
+        reportedAs(clickOf(1)),
+        reportedAs(clickOf(2)),
+      ],
+      todo: [
+        [written(clickOf(1), "snapshot_1", "snapshot_2", 21)],
+        [written(clickOf(2), "snapshot_2", "snapshot_3", 22)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "the wrap-up saves a double click once its one report is in, without waiting out the time limit",
+      happened: [
+        opened,
+        ...started,
+        ...doubleClick,
+        finish,
+        gateOff,
+        taken("snapshot_4"),
+        reportedAs(clickOf(2)),
+      ],
+      todo: [
+        [keep("snapshot_4")],
+        [written(clickOf(2), "snapshot_1", "snapshot_3", 21), save],
+      ],
+      state: { phase: "saving" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toEqual(state);
   });
 });

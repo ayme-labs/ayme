@@ -42,6 +42,8 @@ export type BrowserSignal =
       readonly kind: "inputHeld";
       readonly input: string;
       readonly page: string;
+      /** What was held; a click of count one when it is not said. */
+      readonly held?: HeldInput;
     }
   | { readonly kind: "snapshotTaken"; readonly snapshot: PageSnapshot }
   /** A held input has reached its page. `at` is on the clock of snapshots. */
@@ -63,6 +65,12 @@ export type BrowserSignal =
       readonly page: string;
       readonly report: InteractionReport;
     };
+
+/** What a page held back. */
+export type HeldInput =
+  /** A click of the mouse; `count` is 2 for the second click of a double
+   * click. */
+  { readonly kind: "click"; readonly count: number };
 
 /**
  * One thing the engine asks of the recorded browser. The browser takes a
@@ -139,6 +147,10 @@ type Page = { readonly id: string; readonly url: string };
 type Input = {
   readonly id: string;
   readonly page: string;
+  readonly held: HeldInput;
+  /** The input whose report covers this one too, as the first click of a
+   * double click covers the second. */
+  readonly joins: string | null;
   /**
    * - waiting: behind an earlier input of its page.
    * - takingBefore, takingAfter: the snapshot `asked` is under way.
@@ -444,6 +456,8 @@ function during(state: Active, happening: BrowserSignal): Step {
       const held: Input = {
         id: happening.input,
         page: happening.page,
+        held: happening.held ?? { kind: "click", count: 1 },
+        joins: null,
         stage: "waiting",
         asked: null,
         before: null,
@@ -541,10 +555,42 @@ function during(state: Active, happening: BrowserSignal): Step {
       if (!input || input.stage === "waiting" || input.stage === "takingBefore")
         break;
       change(draft, input.id, { report: happening.report });
+      coverFollowingClicks(draft, input, happening.report);
       break;
     }
   }
   return proceed({ ...next, ...settle(draft) }, draft.todo);
+}
+
+/**
+ * A click reported with a count above one stands for the clicks before it
+ * too: Playwright reports a double click once, with a count of two. The
+ * clicks it covers are the ones held right after the reported one, counting
+ * up to the reported count.
+ */
+function coverFollowingClicks(
+  draft: Draft,
+  head: Input,
+  report: InteractionReport
+) {
+  const count = report.values["clickCount"];
+  if (head.held.kind !== "click" || typeof count !== "number") return;
+  let last = head.held.count;
+  for (const input of draft.inputs.slice(
+    draft.inputs.findIndex((input) => input.id === head.id) + 1
+  )) {
+    if (input.page !== head.page) continue;
+    if (
+      input.report !== null ||
+      input.joins !== null ||
+      input.held.kind !== "click" ||
+      input.held.count !== last + 1 ||
+      input.held.count > count
+    )
+      break;
+    change(draft, input.id, { joins: head.id });
+    last = input.held.count;
+  }
 }
 
 const settle = (draft: Draft): Flow => ({
@@ -571,6 +617,9 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
   }
   for (const input of draft.inputs) {
     if (input.stage !== "settled" || !input.report || !input.before) continue;
+    const covered = draft.inputs.filter((held) => held.joins === input.id);
+    if (covered.some((held) => held.stage !== "settled")) continue;
+    const after = covered.at(-1)?.after ?? input.after;
     draft.todo.push({
       kind: "timeline",
       add: {
@@ -579,12 +628,14 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
           page: input.page,
           report: input.report,
           before: input.before,
-          after: input.after,
+          after: covered.length > 0 ? after : input.after,
           at: input.passedOnAt ?? 0,
         },
       },
     });
-    draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
+    draft.inputs = draft.inputs.filter(
+      (held) => held.id !== input.id && held.joins !== input.id
+    );
   }
   if (state.phase === "recording")
     return { state: { ...state, ...settle(draft) }, todo: draft.todo };

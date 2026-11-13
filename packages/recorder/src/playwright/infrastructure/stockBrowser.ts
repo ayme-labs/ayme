@@ -153,7 +153,12 @@ async function openPage(
       if (!pageId) return;
       const input = `input_${++inputs}`;
       held.set(input, { frame, click });
-      tell({ kind: "inputHeld", input, page: pageId });
+      tell({
+        kind: "inputHeld",
+        input,
+        page: pageId,
+        held: { kind: "click", count: Math.max(1, click.detail) },
+      });
     }
   );
   /** Who hears of a page's activity now: a wait for a Settled Page. */
