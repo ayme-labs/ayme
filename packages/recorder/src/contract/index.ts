@@ -104,3 +104,17 @@ export type CommandResult = "applied" | "ignored";
 
 /** The name of a command, as the state lists the ones that apply now. */
 export type RecorderCommandType = RecorderCommand["type"];
+
+/** What the in-page toolbar asks of the recorder. It calls the page function
+ * named `ToolbarBinding` with one of these. */
+export type ToolbarMessage =
+  /** Answered with the command's `CommandResult`. */
+  | { readonly kind: "send"; readonly command: RecorderCommand }
+  /** Answered with the first `RecorderUpdate` whose revision is above
+   * `after`: at once when there is one, or else when it comes. Answered with
+   * null once the recorder has ended and the toolbar has been told so. */
+  | { readonly kind: "update"; readonly after: number };
+
+/** The name of the function the engine puts in every recorded page for the
+ * toolbar. */
+export type ToolbarBinding = "__aymeRecorderToolbar";

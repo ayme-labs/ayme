@@ -24,7 +24,8 @@ const COMMAND_TYPES = [
   "continue",
   "clear",
 ] as const satisfies readonly RecorderCommandType[];
-const CommandSchema = z.object({ type: z.enum(COMMAND_TYPES) });
+/** A command, as the window and the toolbar send it. */
+export const CommandSchema = z.object({ type: z.enum(COMMAND_TYPES) });
 
 /** The windows' subscriptions, which the server waits for when it closes. */
 export type Subscriptions = {

@@ -5,7 +5,12 @@ import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import { TestClock } from "effect/testing";
 
-import { serveWindow, startRecorderOn, type Recorder } from "../engine";
+import {
+  serveWindow,
+  startRecorderOn,
+  toolbarBridge,
+  type Recorder,
+} from "../engine";
 import { RecordedBrowser } from "../session/application";
 import type {
   BrowserRequest,
@@ -93,6 +98,9 @@ export async function startScriptedRecorder(
 ): Promise<{
   recorder: Recorder;
   browser: ScriptedBrowser;
+  /** What a recorded page's toolbar calls with a message, as the stock
+   * adapter exposes it to every page. */
+  toolbar: (message: unknown) => Promise<unknown>;
 }> {
   const page = "page_1";
   let url = options.url ?? "http://scripted.test/";
@@ -178,6 +186,7 @@ export async function startScriptedRecorder(
     }
   };
 
+  const toolbar = toolbarBridge();
   const recorder = await startRecorderOn(
     Layer.effect(
       RecordedBrowser,
@@ -208,11 +217,13 @@ export async function startScriptedRecorder(
       window: options.window
         ? await serveWindow(options.window.folder)
         : undefined,
+      toolbar,
     }
   );
 
   return {
     recorder,
+    toolbar: toolbar.answer,
     browser: {
       closePage: ({ pagesLeft }) =>
         tell({ kind: "pageClosed", page, pagesLeft }),

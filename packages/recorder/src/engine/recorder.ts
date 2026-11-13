@@ -6,7 +6,7 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../contract";
-import type { WindowServer } from "../server/infrastructure";
+import type { ToolbarBridge, WindowServer } from "../server/infrastructure";
 import { RecorderSession, type RecordedBrowser } from "../session/application";
 import type { RecorderStartError } from "../session/domain";
 import { saveRecording } from "../timeline/infrastructure";
@@ -42,6 +42,9 @@ export async function startRecorderOn(
     /** The window's server, started: it serves this recorder from now on,
      * and is closed when the recorder has ended. */
     readonly window?: WindowServer;
+    /** The in-page toolbar's way to the recorder: it reaches the recorder
+     * from now on, and is closed when the recorder has ended. */
+    readonly toolbar?: ToolbarBridge;
   }
 ): Promise<Recorder> {
   const runtime = ManagedRuntime.make(
@@ -62,6 +65,7 @@ export async function startRecorderOn(
     .catch(async (error: unknown) => {
       await runtime.dispose();
       await options.window?.close();
+      options.toolbar?.close();
       throw error;
     });
   // The runtime is closed once the recorder has ended: that lets the browser
@@ -70,6 +74,7 @@ export async function startRecorderOn(
   const done = runtime.runPromise(session.done).then(async (outcome) => {
     ended = true;
     await runtime.dispose();
+    options.toolbar?.close();
     await options.window?.close();
     return outcome;
   });
@@ -77,9 +82,10 @@ export async function startRecorderOn(
     ended ? Promise.resolve(afterTheEnd) : runtime.runPromise(effect);
   const send = (command: RecorderCommand) =>
     run(session.send(command), "ignored" as CommandResult);
-  // The one place the window's commands and subscriptions cross into the
+  // The one place the window's and the toolbar's commands and subscriptions cross into the
   // engine: through the same handle every caller gets.
   options.window?.attach({ send, subscribe: session.subscribe });
+  options.toolbar?.attach({ send, subscribe: session.subscribe });
   return {
     windowUrl: options.window?.url ?? null,
     send,
