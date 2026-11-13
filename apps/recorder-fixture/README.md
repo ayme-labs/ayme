@@ -43,6 +43,13 @@ Two environment variables exist for these tests, and `runRecorder` sets both:
   connection of its own, as the person would: `run.closePage(url)` closes a
   page through it.
 
+`recording.spec.ts` runs on another Playwright version when
+`AYME_RECORDER_PLAYWRIGHT_PROJECT` names a project folder with that version
+installed: each test's project is then a folder inside that one, so the
+recorder finds that Playwright. CI runs the first test of that file this way
+once per supported version; the range is in
+[`packages/recorder/playwright-range.json`](../../packages/recorder/playwright-range.json).
+
 ## Running
 
 Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
