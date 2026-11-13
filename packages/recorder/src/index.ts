@@ -1,0 +1,11 @@
+// The engine's front door. Promises, callbacks and plain data only: no Effect
+// type and no Playwright type is reachable from here (src/frontDoor.test.ts).
+export type {
+  CommandResult,
+  RecorderCommand,
+  RecorderState,
+  RecorderUpdate,
+  RecordingOutcome,
+} from "./contract";
+export { startRecorder, type Recorder, type RecorderOptions } from "./engine";
+export { RecorderStartError, type RecorderStartReason } from "./session";
