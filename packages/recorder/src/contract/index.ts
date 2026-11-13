@@ -2,16 +2,21 @@
 // the CLI, the window and the toolbar. Types only, no code: nothing here may
 // need Node, Effect or Playwright.
 
-/** How a recorder ended. A saved Recording Package joins "empty" with the
- * ticket that writes one. */
-export type RecordingOutcome = {
+/** How a recorder ended. */
+export type RecordingOutcome =
   /** Nothing was recorded: no package was written. */
-  readonly kind: "empty";
-};
+  | { readonly kind: "empty" }
+  /** A Recording Package was written. `folder` is its folder, as an absolute
+   * path: `package.yaml` is in it. */
+  | { readonly kind: "saved"; readonly folder: string };
 
 /** What the recorder is doing now. */
 export type RecorderState =
   | { readonly phase: "notRecording" }
+  | { readonly phase: "recording" }
+  /** Finishing what is under way before the package is saved: commands wait. */
+  | { readonly phase: "wrappingUp" }
+  | { readonly phase: "saving" }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome };
 
 /** A full picture of the recorder. `revision` grows with every change: a
@@ -22,7 +27,8 @@ export type RecorderUpdate = {
 };
 
 /** Something a person asks of the recorder. */
-export type RecorderCommand = { readonly type: "finish" };
+export type RecorderCommand =
+  { readonly type: "record" } | { readonly type: "finish" };
 
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */

@@ -67,14 +67,30 @@ async function openPage(
   );
   // No fixed viewport: the page has the size of its window.
   const context = await browser.newContext({ viewport: null });
-  context.on("page", (page) =>
+  let pages = 0;
+  context.on("page", (page) => {
+    const id = `page_${++pages}`;
+    Queue.offerUnsafe(signals, {
+      kind: "pageOpened",
+      page: id,
+      url: page.url(),
+    });
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame())
+        Queue.offerUnsafe(signals, {
+          kind: "pageNavigated",
+          page: id,
+          url: frame.url(),
+        });
+    });
     page.on("close", () =>
       Queue.offerUnsafe(signals, {
         kind: "pageClosed",
+        page: id,
         pagesLeft: context.pages().length,
       })
-    )
-  );
+    );
+  });
   const page = await context.newPage();
   // A page that does not load is no reason to stop: the browser shows the
   // error, and the person can go elsewhere or close it.

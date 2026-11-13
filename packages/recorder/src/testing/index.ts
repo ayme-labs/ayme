@@ -40,7 +40,11 @@ export async function startScriptedRecorder(): Promise<{
     recorder,
     browser: {
       closePage: ({ pagesLeft }) => {
-        Queue.offerUnsafe(signals!, { kind: "pageClosed", pagesLeft });
+        Queue.offerUnsafe(signals!, {
+          kind: "pageClosed",
+          page: "page_1",
+          pagesLeft,
+        });
       },
       get released() {
         return released;

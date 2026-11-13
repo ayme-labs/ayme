@@ -6,7 +6,7 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../../contract";
-import { initialState, step, type Happening } from "../domain/lifecycle";
+import { initialState, shown, step, type Happening } from "../domain/lifecycle";
 import { RecordedBrowser } from "./recordedBrowser";
 
 /** One thing that happened, waiting for its turn, and where a command's
@@ -43,20 +43,24 @@ export class RecorderSession extends Context.Service<
       const queue = yield* Queue.unbounded<Queued>();
       const done = yield* Deferred.make<RecordingOutcome>();
       const listeners = new Set<(update: RecorderUpdate) => void>();
-      let update: RecorderUpdate = { revision: 0, state: initialState };
+      let state = initialState;
+      let update: RecorderUpdate = { revision: 0, state: shown(state) };
 
       const handle = Effect.fnUntraced(function* ({
         happening,
         reply,
       }: Queued) {
-        const { state, todo } = step(update.state, happening);
-        if (state !== update.state) {
-          update = { revision: update.revision + 1, state };
+        const next = step(state, happening);
+        state = next.state;
+        // Only what shows from outside is told: a phase is one state there.
+        if (state.phase !== update.state.phase) {
+          update = { revision: update.revision + 1, state: shown(state) };
           for (const listener of listeners) listener(update);
         }
-        for (const item of todo) {
+        for (const item of next.todo) {
           if (item.kind === "end") yield* Deferred.succeed(done, item.outcome);
-          else if (reply) yield* Deferred.succeed(reply, item.result);
+          else if (item.kind === "reply" && reply)
+            yield* Deferred.succeed(reply, item.result);
         }
       });
 

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   RecorderStartError,
   startRecorder,
@@ -24,9 +25,11 @@ export function launchOptions(
 }
 
 /** What the terminal is told when the recorder has ended. */
-export const OUTCOME_LINES: Record<RecordingOutcome["kind"], string> = {
-  empty: "Nothing was recorded.\n",
-};
+export function outcomeLine(outcome: RecordingOutcome): string {
+  return outcome.kind === "saved"
+    ? `Recording package: ${join(outcome.folder, "package.yaml")}\n`
+    : "Nothing was recorded.\n";
+}
 
 /** Starts the recorder in the project the command was started in. A start
  * error is printed and gives no recorder. */
@@ -59,6 +62,6 @@ export async function codegen(url: string): Promise<number> {
   );
 
   const outcome = await recorder.done;
-  process.stdout.write(OUTCOME_LINES[outcome.kind]);
+  process.stdout.write(outcomeLine(outcome));
   return 0;
 }
