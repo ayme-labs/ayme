@@ -30,6 +30,11 @@ concern and reuse `fixtures.ts`.
   the throwaway prototype of pull request #1268 wrote for the same clicks,
   with what differs from run to run replaced.
 
+- `attach.spec.ts` records a running browser: `runningBrowser` launches one
+  with its page open before the recorder comes, and its connection is another
+  automation client in that browser. `recordedBrowser: "attach"` has
+  `startRecording` attach to such a browser instead of launching one.
+
 - `controls.spec.ts` stops, continues, clears and finishes a recording, the
   same way: through the engine's handle, with a person's input, reading the
   package from disk.
@@ -43,11 +48,15 @@ Two environment variables exist for these tests, and `runRecorder` sets both:
   connection of its own, as the person would: `run.closePage(url)` closes a
   page through it.
 
+The Playwright project `attach` runs the first test of `recording.spec.ts`
+again on a running browser the recorder attaches to; the project `launch`
+runs every test.
+
 `recording.spec.ts` runs on another Playwright version when
 `AYME_RECORDER_PLAYWRIGHT_PROJECT` names a project folder with that version
 installed: each test's project is then a folder inside that one, so the
 recorder finds that Playwright. CI runs the first test of that file this way
-once per supported version; the range is in
+once per supported version, in both projects; the range is in
 [`packages/recorder/playwright-range.json`](../../packages/recorder/playwright-range.json).
 
 ## Running

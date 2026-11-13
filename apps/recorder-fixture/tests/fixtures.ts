@@ -9,6 +9,7 @@ import { startRecorder, type Recorder } from "@ayme-dev/recorder";
 import {
   chromium,
   test as base,
+  type BrowserContext,
   type CDPSession,
   type Locator,
   type Page,
@@ -150,7 +151,23 @@ function personAt(session: CDPSession): Person {
   return person;
 }
 
+/** A Chromium that runs before the recorder comes, as someone else's: the
+ * test launched it, and its connection is another automation client. */
+export type RunningBrowser = {
+  /** The address of its DevTools protocol. */
+  readonly cdpEndpoint: string;
+  /** Its one page, over the test's own connection. */
+  readonly page: Page;
+  readonly context: BrowserContext;
+};
+
 export const test = base.extend<{
+  /** Which browser `startRecording` records: one the recorder launches, or
+   * a running one it attaches to. The project "attach" sets it. */
+  recordedBrowser: "launch" | "attach";
+  /** Launches a running browser with one page open at `url`. It is closed
+   * at the end of the test, after every recorder. */
+  runningBrowser: (url: string) => Promise<RunningBrowser>;
   fixturePages: FixturePages;
   /** Runs `ayme-recorder` with these arguments in a project folder. */
   runRecorder: (args: string[], options?: { cwd?: string }) => Promise<Run>;
@@ -161,7 +178,34 @@ export const test = base.extend<{
    * Playwright installed, a folder of the test's own inside that one. */
   startRecording: (path: string) => Promise<Recording>;
 }>({
-  startRecording: async ({ fixturePages }, use, testInfo) => {
+  recordedBrowser: ["launch", { option: true }],
+
+  // eslint-disable-next-line no-empty-pattern
+  runningBrowser: async ({}, use) => {
+    const running: BrowserContext[] = [];
+    await use(async (url) => {
+      const debugPort = await freePort();
+      const context = await chromium.launchPersistentContext("", {
+        headless: true,
+        args: [`--remote-debugging-port=${debugPort}`],
+      });
+      running.push(context);
+      const page = context.pages()[0]!;
+      await page.goto(url);
+      return {
+        cdpEndpoint: `http://127.0.0.1:${debugPort}`,
+        page,
+        context,
+      };
+    });
+    for (const context of running) await context.close();
+  },
+
+  startRecording: async (
+    { fixturePages, recordedBrowser, runningBrowser },
+    use,
+    testInfo
+  ) => {
     const ends: (() => Promise<unknown>)[] = [];
     /** Project folders made inside another project, removed at the end. */
     const madeInside: string[] = [];
@@ -172,8 +216,28 @@ export const test = base.extend<{
         : testInfo.outputPath("project");
       await mkdir(projectDir, { recursive: true });
       if (otherPlaywright) madeInside.push(projectDir);
-      const debugPort = await freePort();
       const url = fixturePages.url(path);
+      const personOn = async (other: Page) =>
+        personAt(await other.context().newCDPSession(other));
+      if (recordedBrowser === "attach") {
+        const { cdpEndpoint, page } = await runningBrowser(url);
+        const recorder = await startRecorder({
+          projectDir,
+          browser: { attach: { cdpEndpoint } },
+        });
+        ends.push(() => {
+          recorder.end();
+          return recorder.done.catch(() => {});
+        });
+        return {
+          recorder,
+          page,
+          person: await personOn(page),
+          projectDir,
+          personOn,
+        };
+      }
+      const debugPort = await freePort();
       const recorder = await startRecorder({
         projectDir,
         browser: { launch: { url, headless: true, debugPort } },
@@ -193,8 +257,6 @@ export const test = base.extend<{
         .find((candidate) => candidate.url() === url);
       if (!page)
         throw new Error(`No page at ${url} in the recorder's browser.`);
-      const personOn = async (other: Page) =>
-        personAt(await other.context().newCDPSession(other));
       return {
         recorder,
         page,
