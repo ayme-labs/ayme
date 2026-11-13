@@ -825,16 +825,19 @@ importers:
 
   packages/cli:
     dependencies:
+      "@playwright/test":
+        specifier: ">=1.62"
+        version: 1.64.0
+    devDependencies:
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../eslint-config
       "@ayme-dev/recorder":
         specifier: workspace:*
         version: link:../recorder
       "@ayme-dev/recorder-window":
         specifier: workspace:*
         version: link:../recorder-window
-    devDependencies:
-      "@ayme-dev/eslint-config":
-        specifier: workspace:*
-        version: link:../eslint-config
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config

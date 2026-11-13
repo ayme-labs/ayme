@@ -1,4 +1,5 @@
 import type {
+  RecorderCommand,
   RecorderCommandType,
   RecorderState,
 } from "@ayme-dev/recorder/contract";
@@ -31,7 +32,7 @@ export function ControlsView({
   onCommand,
 }: {
   state: RecorderState | null;
-  onCommand(type: RecorderCommandType): void;
+  onCommand(command: RecorderCommand): void;
 }) {
   const applies = (type: RecorderCommandType) =>
     state?.commands.includes(type) ?? false;
@@ -46,7 +47,7 @@ export function ControlsView({
         <Button
           variant="secondary"
           disabled={!applies(primary.type)}
-          onClick={() => onCommand(primary.type)}
+          onClick={() => onCommand({ type: primary.type })}
         >
           <primary.Icon
             className={
@@ -72,13 +73,13 @@ export function ControlsView({
             aria-label="Clear"
             title="Clear"
             disabled={!applies("clear")}
-            onClick={() => onCommand("clear")}
+            onClick={() => onCommand({ type: "clear" })}
           >
             <ListX />
           </Button>
           <Button
             disabled={!applies("finish")}
-            onClick={() => onCommand("finish")}
+            onClick={() => onCommand({ type: "finish" })}
           >
             Finish
           </Button>

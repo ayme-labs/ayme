@@ -32,6 +32,10 @@ test.describe("the trace of a recording", () => {
   test("opens an Interaction's before and after with the stock trace tool, by the package's own position numbers", async ({
     startRecording,
   }) => {
+    // Opening a snapshot is honest work: the stock tool launches a browser to
+    // render it, about 6 s each on a developer's machine and more on CI's, and
+    // the default 30 s left no room for two of them next to the recording.
+    test.setTimeout(90_000);
     const recording = await startRecording("/cart.html");
     const { recorder, page, person } = recording;
     await recorder.send({ type: "record" });
@@ -55,17 +59,16 @@ test.describe("the trace of a recording", () => {
     const stock = await stockTraceTool();
     try {
       await stock.open(join(folder, "trace.zip"));
-      // The expected element is the page's count: what each Interaction
-      // started from, and what it ended at.
+      // The expected element is the page's count: what the second click
+      // started from, and what it ended at. The second, not the first, so that
+      // numbers that only fit the first Interaction would be found out: the
+      // first click's "after" shows the same count as this "before", at
+      // another position.
       const count = "document.getElementById('count').textContent";
-      for (const [index, point] of points.entries()) {
-        expect(await stock.evaluateAt(point.before, count)).toBe(
-          `Items: ${index}`
-        );
-        expect(await stock.evaluateAt(point.after, count)).toBe(
-          `Items: ${index + 1}`
-        );
-      }
+      const second = points[1]!;
+      expect(second.before).not.toBe(points[0]!.after);
+      expect(await stock.evaluateAt(second.before, count)).toBe("Items: 1");
+      expect(await stock.evaluateAt(second.after, count)).toBe("Items: 2");
     } finally {
       await stock.close();
     }

@@ -1,5 +1,6 @@
 import { defineConfig } from "tsdown";
 
+import { bundledPackages } from "./bundledPackages.config.ts";
 import { toolbarCss, windowCss } from "./windowCss.config.ts";
 
 // Omit build-machine source paths, not copyright or license comments.
@@ -33,7 +34,7 @@ export default defineConfig([
     define: { "process.env.NODE_ENV": JSON.stringify("production") },
     // Radix marks its modules "use client", which means nothing here.
     suppressWarnings: [/module level directive "use client"/],
-    plugins: [windowCss()],
+    plugins: [windowCss(), bundledPackages()],
     // lucide-react has no exports map: its ES build keeps each icon apart,
     // so only those used stay.
     alias: { "lucide-react": "lucide-react/dist/esm/lucide-react.mjs" },
@@ -65,7 +66,8 @@ export default defineConfig([
     outputOptions: { entryFileNames: "[name].js" },
     define: { "process.env.NODE_ENV": JSON.stringify("production") },
     suppressWarnings: [/module level directive "use client"/],
-    plugins: [toolbarCss()],
+    // Its own list: the builds run side by side.
+    plugins: [toolbarCss(), bundledPackages("toolbar-bundled-packages.json")],
     alias: { "lucide-react": "lucide-react/dist/esm/lucide-react.mjs" },
     deps: { alwaysBundle: [/.*/] },
     minify: true,

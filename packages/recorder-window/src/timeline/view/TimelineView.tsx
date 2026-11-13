@@ -1,4 +1,10 @@
-import type { RecordedVisit, TimelineEntry } from "@ayme-dev/recorder/contract";
+import type {
+  RecorderCommand,
+  RecorderCommandType,
+  RecordedVisit,
+  TimelineEntry,
+} from "@ayme-dev/recorder/contract";
+import { Button } from "@ayme-dev/design-system/components/button";
 import {
   Activity,
   Globe,
@@ -27,7 +33,17 @@ const ICONS: Record<string, LucideIcon> = {
 
 /** The recording as the window lists it: one section per Visit, each with
  * its entries as they are recorded. */
-export function TimelineView({ visits }: { visits: readonly RecordedVisit[] }) {
+export function TimelineView({
+  visits,
+  commands,
+  onCommand,
+}: {
+  visits: readonly RecordedVisit[];
+  /** What the engine says applies now: an entry can be discarded or
+   * restored when it lists those. */
+  commands: readonly RecorderCommandType[];
+  onCommand(command: RecorderCommand): void;
+}) {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-6">
       {visits.length === 0 ? (
@@ -40,7 +56,13 @@ export function TimelineView({ visits }: { visits: readonly RecordedVisit[] }) {
         </p>
       ) : (
         visits.map((visit, index) => (
-          <VisitSection key={visit.visitId} visit={visit} number={index + 1} />
+          <VisitSection
+            key={visit.visitId}
+            visit={visit}
+            number={index + 1}
+            commands={commands}
+            onCommand={onCommand}
+          />
         ))
       )}
     </main>
@@ -50,9 +72,13 @@ export function TimelineView({ visits }: { visits: readonly RecordedVisit[] }) {
 function VisitSection({
   visit,
   number,
+  commands,
+  onCommand,
 }: {
   visit: RecordedVisit;
   number: number;
+  commands: readonly RecorderCommandType[];
+  onCommand(command: RecorderCommand): void;
 }) {
   const heading = useId();
   return (
@@ -71,20 +97,36 @@ function VisitSection({
           {visit.cause === "openPage" ? "Opened" : "Navigated to"} {visit.url}
         </p>
       </EntryFrame>
-      {visit.entries.map((entry, index) => (
-        <EntryCard key={`${visit.visitId}:${index}`} entry={entry} />
+      {visit.entries.map((entry) => (
+        <EntryCard
+          key={entry.id}
+          entry={entry}
+          commands={commands}
+          onCommand={onCommand}
+        />
       ))}
     </section>
   );
 }
 
-/** One entry, with room on its header's right for the controls that review
- * it. */
-function EntryCard({ entry }: { entry: TimelineEntry }) {
+/** One entry, with the controls that review it on its header's right. An
+ * entry the person left out stays where it is, dimmed, with what it changed
+ * hidden. */
+function EntryCard({
+  entry,
+  commands,
+  onCommand,
+}: {
+  entry: TimelineEntry;
+  commands: readonly RecorderCommandType[];
+  onCommand(command: RecorderCommand): void;
+}) {
   const heading = useId();
   const interaction = entry.kind === "interaction" ? entry.interaction : null;
   const target = interaction && targetLabel(interaction);
-  const roots = entry.changeTree ? changeRoots(entry.changeTree) : [];
+  const discarded = entry.discarded === true;
+  const roots =
+    entry.changeTree && !discarded ? changeRoots(entry.changeTree) : [];
   return (
     <EntryFrame
       Icon={
@@ -93,18 +135,51 @@ function EntryCard({ entry }: { entry: TimelineEntry }) {
     >
       <article aria-labelledby={heading} className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 id={heading} className="font-semibold">
-            {interaction
-              ? interactionTitle(interaction)
-              : "Change without an Interaction"}
-          </h3>
-          {target && (
+          <div
+            data-testid="entry-content"
+            className={`flex min-w-0 flex-wrap items-center gap-3 ${discarded ? "opacity-50" : ""}`}
+          >
+            <h3 id={heading} className="font-semibold">
+              {interaction
+                ? interactionTitle(interaction)
+                : "Change without an Interaction"}
+            </h3>
+            {target && (
+              <span
+                data-testid="entry-target"
+                className="rounded-md bg-muted px-2 py-0.5 font-mono text-sm break-all"
+              >
+                {target}
+              </span>
+            )}
+          </div>
+          {discarded && (
             <span
-              data-testid="entry-target"
-              className="rounded-md bg-muted px-2 py-0.5 font-mono text-sm break-all"
+              data-testid="entry-discarded"
+              className="text-sm text-muted-foreground"
             >
-              {target}
+              Discarded
             </span>
+          )}
+          {discarded && commands.includes("restore") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => onCommand({ type: "restore", entry: entry.id })}
+            >
+              Restore
+            </Button>
+          )}
+          {!discarded && commands.includes("discard") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => onCommand({ type: "discard", entry: entry.id })}
+            >
+              Discard
+            </Button>
           )}
         </div>
         {roots.length > 0 && (

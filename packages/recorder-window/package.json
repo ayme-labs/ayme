@@ -12,7 +12,9 @@
       "default": "./dist/testing.mjs"
     },
     "./window/index.html": "./dist/window/index.html",
-    "./toolbar.js": "./dist/toolbar/toolbar.js"
+    "./toolbar.js": "./dist/toolbar/toolbar.js",
+    "./bundled-packages.json": "./dist/bundled-packages.json",
+    "./toolbar-bundled-packages.json": "./dist/toolbar-bundled-packages.json"
   },
   "scripts": {
     "build": "tsdown",

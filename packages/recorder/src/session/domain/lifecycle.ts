@@ -339,14 +339,21 @@ const COMMANDS: readonly RecorderCommandType[] = [
   "stop",
   "continue",
   "clear",
+  "discard",
+  "restore",
 ];
+
+/** A command of this type, to ask whether it applies: the answer does not
+ * depend on which entry it names. */
+const probe = (type: RecorderCommandType): RecorderCommand =>
+  type === "discard" || type === "restore" ? { type, entry: "" } : { type };
 
 /** The commands that apply in a state: those the lifecycle would not answer
  * "ignored". The window offers these, and no rule of its own. */
 export function offered(state: LifecycleState): RecorderCommandType[] {
   return COMMANDS.filter(
     (type) =>
-      !command(state, { type }).todo.some(
+      !command(state, probe(type)).todo.some(
         (item) => item.kind === "reply" && item.result === "ignored"
       )
   );
@@ -554,6 +561,19 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       // Answered first: the worker comes back from a save only when the
       // package is written.
       if (asked.type === "finish") return save(state, [reply("applied")]);
+      // The only time an entry may be left out or put back: nothing is under
+      // way, and Continue and Finish keep the decision with the timeline.
+      if (asked.type === "discard" || asked.type === "restore")
+        return {
+          state,
+          todo: [
+            {
+              kind: "timeline",
+              add: { kind: asked.type, entry: asked.entry },
+            },
+            reply("applied"),
+          ],
+        };
       break;
   }
   // A command that does not apply now changes nothing: it is never kept for

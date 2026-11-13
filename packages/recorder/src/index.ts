@@ -12,6 +12,7 @@ export type {
   TimelineEntry,
 } from "./contract";
 export {
+  runInstall,
   runTrace,
   startRecorder,
   type Recorder,

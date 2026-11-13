@@ -342,29 +342,53 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          range=packages/recorder/playwright-range.json
-          major=$(jq -r '.floor | split(".")[0]' "$range")
-          from=$(jq -r '.floor | split(".")[1]' "$range")
-          to=$(jq -r '.lastVerified | split(".")[1]' "$range")
+          # Every minor in the range. The Playwright image has no jq: Node
+          # reads the file.
+          versions=$(node -e '
+            const { floor, lastVerified } = require("./packages/recorder/playwright-range.json");
+            const [major, from] = floor.split(".").map(Number);
+            const to = Number(lastVerified.split(".")[1]);
+            for (let minor = from; minor <= to; minor++) console.log(`${major}.${minor}`);
+          ')
+          test -n "$versions"
+          # Each part runs for every version, whatever failed before it, and
+          # each is reported: one failure says nothing of the others.
           failed=
-          for minor in $(seq "$from" "$to"); do
-            version="$major.$minor"
+          results=
+          part() {
+            local name="$1"
+            shift
+            if "$@"; then
+              results="$results$version $name: passed"$'\n'
+            else
+              results="$results$version $name: FAILED"$'\n'
+              failed="$failed $version ($name)"
+              echo "::error::Playwright $version: $name failed"
+            fi
+          }
+          for version in $versions; do
             echo "::group::Playwright $version"
             # A project with only that Playwright, outside the repository,
             # and the headless Chromium it launches.
             project="$RUNNER_TEMP/playwright-$version"
             mkdir -p "$project"
-            (cd "$project" && npm init -y > /dev/null \
-              && npm install --no-audit --no-fund "playwright@$version" \
-              && npx --no-install playwright install chromium-headless-shell) \
-              && AYME_RECORDER_PLAYWRIGHT_PROJECT="$project" \
-                pnpm --filter @ayme-dev/recorder test:contract \
-              && AYME_RECORDER_PLAYWRIGHT_PROJECT="$project" \
-                pnpm --filter @ayme-dev/recorder-fixture exec playwright test \
-                  -g "Finish writes the released Recording Package" \
-              || failed="$failed $version"
+            part install sh -c "cd '$project' && npm init -y > /dev/null \
+              && npm install --no-audit --no-fund 'playwright@$version' \
+              && npx --no-install playwright install chromium-headless-shell"
+            export AYME_RECORDER_PLAYWRIGHT_PROJECT="$project"
+            part "contract suite" pnpm --filter @ayme-dev/recorder test:contract
+            part "end-to-end test" pnpm --filter @ayme-dev/recorder-fixture \
+              exec playwright test -g "Finish writes the released Recording Package"
+            # The next run clears test-results: keep this version's.
+            if [ -d apps/recorder-fixture/test-results ]; then
+              mkdir -p apps/recorder-fixture/results-per-version
+              mv apps/recorder-fixture/test-results \
+                "apps/recorder-fixture/results-per-version/$version"
+            fi
             echo "::endgroup::"
           done
+          printf '%s' "$results"
+          { echo '```'; printf '%s' "$results"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$failed" ]; then
             echo "::error::The recorder failed on Playwright$failed"
             exit 1
@@ -374,7 +398,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: browser-test-results-recorder-playwright
-          path: apps/recorder-fixture/test-results
+          path: apps/recorder-fixture/results-per-version
           if-no-files-found: ignore
 
   # Branch protection requires this job instead of the jobs above, because

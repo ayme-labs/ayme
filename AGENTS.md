@@ -9,6 +9,8 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 - `packages/ayme/`: read [its AGENTS.md](packages/ayme/AGENTS.md) before adding or moving a source file.
 - `packages/inspector/`: read [its AGENTS.md](packages/inspector/AGENTS.md) before adding or moving a source file.
 - `packages/mcp/`: read [its AGENTS.md](packages/mcp/AGENTS.md) before adding or moving a source file.
+- `packages/recorder/`: read [its AGENTS.md](packages/recorder/AGENTS.md) before adding or moving a source file.
+- `packages/recorder-window/`: read [its AGENTS.md](packages/recorder-window/AGENTS.md) before adding or moving a source file.
 - `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only Ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers.
@@ -58,7 +60,7 @@ Commit messages follow Conventional Commits. `commitlint.config.ts` defines the 
 
 ## Moving the supported Playwright range
 
-`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range.
+`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range. The Recorder's own range lives in `packages/recorder/playwright-range.json`.
 
 ## Updating the Playwright Lite fork
 

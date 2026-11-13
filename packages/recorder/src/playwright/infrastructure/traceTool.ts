@@ -43,15 +43,15 @@ export function runTraceTool(
   });
 }
 
-/** Runs `playwright trace <args>` with the terminal as its own, in the
- * folder the caller is in. Resolves with its exit code. */
-export function passThroughTraceTool(
+/** Runs `playwright <args>` with the terminal as its own, in the folder the
+ * caller names. Resolves with its exit code. */
+export function passThroughPlaywrightCli(
   cli: string,
   args: readonly string[],
   cwd: string
 ): Promise<number> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [cli, "trace", ...args], {
+    const child = spawn(process.execPath, [cli, ...args], {
       cwd,
       stdio: "inherit",
     });
@@ -59,6 +59,13 @@ export function passThroughTraceTool(
     child.on("close", (code) => resolve(code ?? 1));
   });
 }
+
+/** Runs `playwright trace <args>` the same way. */
+export const passThroughTraceTool = (
+  cli: string,
+  args: readonly string[],
+  cwd: string
+): Promise<number> => passThroughPlaywrightCli(cli, ["trace", ...args], cwd);
 
 /**
  * Where each snapshot marker is, in the trace's own numbering. A marker is a

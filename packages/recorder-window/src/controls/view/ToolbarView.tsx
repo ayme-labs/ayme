@@ -1,4 +1,5 @@
 import type {
+  RecorderCommand,
   RecorderCommandType,
   RecorderState,
 } from "@ayme-dev/recorder/contract";
@@ -18,17 +19,20 @@ export function ToolbarView({
   onCommand,
 }: {
   state: RecorderState | null;
-  onCommand(type: RecorderCommandType): void;
+  onCommand(command: RecorderCommand): void;
 }) {
   const applies = (type: RecorderCommandType) =>
     state?.commands.includes(type) ?? false;
   const primary = state && primaryOf(state);
-  const control = (type: RecorderCommandType, label: string) => ({
+  const control = (
+    type: "record" | "stop" | "continue" | "clear" | "finish",
+    label: string
+  ) => ({
     "aria-label": label,
     title: label,
     tabIndex: -1,
     disabled: !applies(type),
-    onClick: () => onCommand(type),
+    onClick: () => onCommand({ type }),
   });
   return (
     <div
