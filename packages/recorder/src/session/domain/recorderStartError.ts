@@ -3,7 +3,9 @@ export type RecorderStartReason =
   /** No Playwright resolves from the project folder. */
   | "playwright-not-found"
   /** Playwright could not launch its browser. */
-  | "browser-unavailable";
+  | "browser-unavailable"
+  /** The project's Playwright is older than the supported range. */
+  | "playwright-too-old";
 
 /**
  * The one way starting a recorder fails. Its message is a sentence for the

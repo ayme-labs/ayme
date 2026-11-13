@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import range from "../playwright-range.json";
 import { RecorderStartError, startRecorder } from "./index";
 
 // Outside the repository, so no Playwright resolves from it: the engine
@@ -22,12 +23,16 @@ const start = (projectDir: string, launch: { debugPort?: number } = {}) =>
 
 /** Installs a stand-in for Playwright whose Chromium never launches, and
  * says what it was asked to launch with. */
-async function installPlaywrightWithoutChromium(root: string, name: string) {
+async function installPlaywrightWithoutChromium(
+  root: string,
+  name: string,
+  version = "1.64.0"
+) {
   const installed = join(root, "node_modules", name);
   await mkdir(installed, { recursive: true });
   await writeFile(
     join(installed, "package.json"),
-    JSON.stringify({ name, version: "1.64.0", main: "index.js" })
+    JSON.stringify({ name, version, main: "index.js" })
   );
   await writeFile(
     join(installed, "index.js"),
@@ -61,6 +66,18 @@ it.each(["playwright", "@playwright/test", "playwright-core"])(
     });
   }
 );
+
+it("fails to start, naming the supported range, when the project's Playwright is older than it", async () => {
+  await installPlaywrightWithoutChromium(folder, "@playwright/test", "1.61.1");
+
+  const failure = await start(folder);
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "playwright-too-old",
+    message: `${folder} has Playwright 1.61.1. The recorder needs Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}: update the project's Playwright, for example with "npm install -D @playwright/test@latest".`,
+  });
+});
 
 /** What the project's Playwright was asked to launch Chromium with. */
 async function launchOptions(launch: { debugPort?: number } = {}) {
