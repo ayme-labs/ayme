@@ -99,6 +99,36 @@ test.describe("codegen <url>", () => {
     expect(run.stderr()).toBe("");
   });
 
+  test("closing the recorded page ends the recorder and closes its window", async ({
+    fixturePages,
+    runRecorder,
+  }) => {
+    const run = await runRecorder(["codegen", fixturePages.url()]);
+    await run.waitForStdout("Recorder window: ");
+    const windowUrl = windowUrlOf(run.stdout())!;
+    const browser = await chromium.connectOverCDP(run.debugEndpoint);
+    try {
+      const windowAt = () =>
+        browser
+          .contexts()
+          .flatMap((context) => context.pages())
+          .find((page) => page.url() === windowUrl);
+      await expect.poll(windowAt).toBeDefined();
+      const windowPage = windowAt()!;
+      await expect(new RecorderWindow(windowPage).controls.status).toHaveText(
+        "Not recording"
+      );
+
+      await run.closePage(fixturePages.url());
+
+      expect(await run.exit).toEqual({ code: 0, signal: null });
+      await expect.poll(() => windowPage.isClosed()).toBe(true);
+      expect(run.stdout()).toContain("Nothing was recorded.");
+    } finally {
+      await browser.close();
+    }
+  });
+
   test("a second stop from the terminal does no harm", async ({
     fixturePages,
     runRecorder,
