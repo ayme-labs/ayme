@@ -70,7 +70,9 @@ export type BrowserSignal =
 export type HeldInput =
   /** A click of the mouse; `count` is 2 for the second click of a double
    * click. */
-  { readonly kind: "click"; readonly count: number };
+  | { readonly kind: "click"; readonly count: number }
+  /** A key press that Playwright records as a press, not as typing. */
+  | { readonly kind: "press" };
 
 /**
  * One thing the engine asks of the recorded browser. The browser takes a
@@ -141,6 +143,13 @@ export const WRAP_UP_LIMIT_MS = 5_000;
 /** The reports a held click can lead to. */
 const HELD_CLICK_REPORTS = new Set(["click", "check", "uncheck"]);
 
+/** The kind of held input a report belongs to, if any. */
+function heldKindOf(report: InteractionReport): HeldInput["kind"] | null {
+  if (HELD_CLICK_REPORTS.has(report.type)) return "click";
+  if (report.type === "press") return "press";
+  return null;
+}
+
 type Page = { readonly id: string; readonly url: string };
 
 /** One input the gate held back, until it is written down or dropped. */
@@ -151,6 +160,9 @@ type Input = {
   /** The input whose report covers this one too, as the first click of a
    * double click covers the second. */
   readonly joins: string | null;
+  /** Its report is not coming: a later input of its page was reported
+   * first, and Playwright reports in order. It is left out. */
+  readonly unreported: boolean;
   /**
    * - waiting: behind an earlier input of its page.
    * - takingBefore, takingAfter: the snapshot `asked` is under way.
@@ -458,6 +470,7 @@ function during(state: Active, happening: BrowserSignal): Step {
         page: happening.page,
         held: happening.held ?? { kind: "click", count: 1 },
         joins: null,
+        unreported: false,
         stage: "waiting",
         asked: null,
         before: null,
@@ -546,16 +559,32 @@ function during(state: Active, happening: BrowserSignal): Step {
       break;
     }
     case "interactionReported": {
-      if (!HELD_CLICK_REPORTS.has(happening.report.type)) break;
+      const kind = heldKindOf(happening.report);
+      if (kind === null) break;
       // Reports come in the order of the inputs: this one belongs to the
-      // oldest input of its page that has none, if that input is on its way.
+      // oldest input of its page and its kind that has none, if that input
+      // is on its way.
       const input = draft.inputs.find(
-        (held) => held.page === happening.page && held.report === null
+        (held) =>
+          held.page === happening.page &&
+          held.held.kind === kind &&
+          held.report === null &&
+          held.joins === null
       );
       if (!input || input.stage === "waiting" || input.stage === "takingBefore")
         break;
       change(draft, input.id, { report: happening.report });
       coverFollowingClicks(draft, input, happening.report);
+      for (const earlier of draft.inputs.slice(
+        0,
+        draft.inputs.findIndex((held) => held.id === input.id)
+      ))
+        if (
+          earlier.page === input.page &&
+          earlier.report === null &&
+          earlier.joins === null
+        )
+          change(draft, earlier.id, { unreported: true });
       break;
     }
   }
@@ -616,7 +645,19 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       });
   }
   for (const input of draft.inputs) {
+    if (input.stage === "settled" && input.unreported) {
+      draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
+      continue;
+    }
     if (input.stage !== "settled" || !input.report || !input.before) continue;
+    // Entries keep the order of the inputs: an earlier input of the page
+    // that is not written down yet goes first.
+    const earlier = draft.inputs.slice(
+      0,
+      draft.inputs.findIndex((held) => held.id === input.id)
+    );
+    if (earlier.some((held) => held.page === input.page && !held.joins))
+      continue;
     const covered = draft.inputs.filter((held) => held.joins === input.id);
     if (covered.some((held) => held.stage !== "settled")) continue;
     const after = covered.at(-1)?.after ?? input.after;
