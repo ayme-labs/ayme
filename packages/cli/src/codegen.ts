@@ -15,13 +15,20 @@ import {
 export function launchOptions(
   url: string,
   env: NodeJS.ProcessEnv
-): RecorderOptions["browser"]["launch"] {
+): Extract<RecorderOptions["browser"], { launch: unknown }>["launch"] {
   const debugPort = env.AYME_RECORDER_DEBUG_PORT;
   return {
     url,
     headless: env.AYME_RECORDER_HEADLESS === "1",
     ...(debugPort ? { debugPort: Number(debugPort) } : {}),
   };
+}
+
+/** What the terminal is told once the recorder has started. */
+export function startLine(browser: RecorderOptions["browser"]): string {
+  return "attach" in browser
+    ? `Attached to the browser at ${browser.attach.cdpEndpoint}. Close its page, or press Ctrl+C here, to end: the browser stays open.\n`
+    : `Opened ${browser.launch.url}. Close the browser, or press Ctrl+C here, to end.\n`;
 }
 
 /** What the terminal is told when the recorder has ended. */
@@ -42,12 +49,11 @@ export const exitCode = (outcome: RecordingOutcome): number =>
 
 /** Starts the recorder in the project the command was started in. A start
  * error is printed and gives no recorder. */
-async function start(url: string): Promise<Recorder | undefined> {
+async function start(
+  browser: RecorderOptions["browser"]
+): Promise<Recorder | undefined> {
   try {
-    return await startRecorder({
-      projectDir: process.cwd(),
-      browser: { launch: launchOptions(url, process.env) },
-    });
+    return await startRecorder({ projectDir: process.cwd(), browser });
   } catch (error) {
     if (!(error instanceof RecorderStartError)) throw error;
     // Its message is a sentence for the terminal: no stack trace.
@@ -56,9 +62,19 @@ async function start(url: string): Promise<Recorder | undefined> {
   }
 }
 
-/** Runs `codegen <url>` to its end. Resolves with the process's exit code. */
-export async function codegen(url: string): Promise<number> {
-  const recorder = await start(url);
+/**
+ * Runs `codegen <url>`, or `codegen --cdp-endpoint <address>` when given
+ * the running browser's address, to its end. Resolves with the process's
+ * exit code.
+ */
+export async function codegen(
+  target: { readonly url: string } | { readonly cdpEndpoint: string }
+): Promise<number> {
+  const browser: RecorderOptions["browser"] =
+    "url" in target
+      ? { launch: launchOptions(target.url, process.env) }
+      : { attach: { cdpEndpoint: target.cdpEndpoint } };
+  const recorder = await start(browser);
   if (!recorder) return 1;
 
   // The terminal's stop ends the recorder. Another one lands here again and
@@ -66,9 +82,7 @@ export async function codegen(url: string): Promise<number> {
   const end = () => recorder.end();
   process.on("SIGINT", end);
   process.on("SIGTERM", end);
-  process.stdout.write(
-    `Opened ${url}. Close the browser, or press Ctrl+C here, to end.\n`
-  );
+  process.stdout.write(startLine(browser));
 
   const outcome = await recorder.done;
   (outcome.kind === "failed" ? process.stderr : process.stdout).write(

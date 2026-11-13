@@ -36,7 +36,10 @@ async function installPlaywrightWithoutChromium(
   );
   await writeFile(
     join(installed, "index.js"),
-    `exports.chromium = { launch: async (options) => { throw new Error("Cannot launch with " + JSON.stringify(options)); } };\n`
+    `exports.chromium = {
+  launch: async (options) => { throw new Error("Cannot launch with " + JSON.stringify(options)); },
+  connectOverCDP: async (endpoint, options) => { throw new Error("Cannot connect to " + endpoint + " with " + JSON.stringify(options)); },
+};\n`
   );
 }
 
@@ -101,6 +104,57 @@ it("opens the browser's DevTools protocol on the debug port it is given", async 
     args: ["--remote-debugging-port=9333"],
   });
 });
+
+const attach = (projectDir: string, cdpEndpoint: string) =>
+  startRecorder({ projectDir, browser: { attach: { cdpEndpoint } } }).catch(
+    (error: unknown) => error
+  );
+
+it("attaches to the running browser at the address it is given, leaving its default settings alone", async () => {
+  await installPlaywrightWithoutChromium(folder, "playwright");
+
+  const failure = await attach(folder, "http://127.0.0.1:9222");
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "browser-unavailable",
+    message:
+      'Playwright could not connect to the browser at http://127.0.0.1:9222. Cannot connect to http://127.0.0.1:9222 with {"noDefaults":true}',
+  });
+});
+
+it.each([
+  "http://localhost:9222",
+  "ws://127.0.0.1:9222/devtools/browser/abc",
+  "http://[::1]:9222",
+  "http://127.1.2.3:9222/",
+])("attaches to a browser on this machine at %s", async (cdpEndpoint) => {
+  await installPlaywrightWithoutChromium(folder, "playwright");
+
+  expect(await attach(folder, cdpEndpoint)).toMatchObject({
+    message: expect.stringContaining(`Cannot connect to ${cdpEndpoint}`),
+  });
+});
+
+it.each([
+  "http://192.168.1.20:9222",
+  "http://example.com:9222",
+  "https://127.0.0.1:9222",
+  "127.0.0.1:9222",
+])(
+  "fails to start, as the released recorder does, for an address that is not on this machine or not of the DevTools protocol: %s",
+  async (cdpEndpoint) => {
+    await installPlaywrightWithoutChromium(folder, "playwright");
+
+    const failure = await attach(folder, cdpEndpoint);
+
+    expect(failure).toBeInstanceOf(RecorderStartError);
+    expect(failure).toMatchObject({
+      reason: "browser-unavailable",
+      message: `The recorder attaches only to a browser on this machine, at an http:// or ws:// address on localhost or 127.0.0.1, such as http://127.0.0.1:9222. It was given ${cdpEndpoint}.`,
+    });
+  }
+);
 
 it("uses the Playwright installed above the project folder, as in a monorepo", async () => {
   await installPlaywrightWithoutChromium(folder, "playwright");

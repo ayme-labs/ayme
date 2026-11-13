@@ -22,22 +22,48 @@ import {
   type HeldClick,
 } from "./pageScripts";
 import { playwrightRecorderOf } from "./playwrightRecorder";
-import { loadProjectPlaywright, rangeText } from "./projectPlaywright";
+import { attachAddressRule, isAttachAddress } from "./attachAddress";
+import {
+  loadProjectPlaywright,
+  rangeText,
+  type Playwright,
+} from "./projectPlaywright";
 
-/**
- * The recorded browser on stock Playwright: Chromium, launched by the
- * project's own Playwright on a URL. Closing the layer's scope closes the
- * browser.
- */
-export const stockBrowser = (options: {
+/** Chromium launched by the project's own Playwright on a URL. */
+type Launch = {
   readonly projectDir: string;
   readonly url: string;
   readonly headless: boolean;
   readonly debugPort: number | undefined;
-}): Layer.Layer<RecordedBrowser, RecorderStartError> =>
+};
+
+/** A Chromium that is already running, reached at the address of its
+ * DevTools protocol. Its page is recorded as it is: never navigated. */
+type Attach = {
+  readonly projectDir: string;
+  readonly cdpEndpoint: string;
+};
+
+/**
+ * The recorded browser on stock Playwright: Chromium, launched by the
+ * project's own Playwright on a URL, or a running one it attaches to.
+ * Closing the layer's scope closes a launched browser, and lets go of an
+ * attached one, which stays open.
+ */
+export const stockBrowser = (
+  options: Launch | Attach
+): Layer.Layer<RecordedBrowser, RecorderStartError> =>
   Layer.effect(
     RecordedBrowser,
     Effect.gen(function* () {
+      const attach = "cdpEndpoint" in options ? options : undefined;
+      if (attach && !isAttachAddress(attach.cdpEndpoint))
+        return yield* Effect.fail(
+          new RecorderStartError(
+            "browser-unavailable",
+            attachAddressRule(attach.cdpEndpoint)
+          )
+        );
       const { playwright, version } = yield* loadProjectPlaywright(
         options.projectDir
       );
@@ -45,32 +71,33 @@ export const stockBrowser = (options: {
       const unavailable = (cause: unknown) =>
         new RecorderStartError(
           "browser-unavailable",
-          `Playwright could not open Chromium. ${cause instanceof Error ? cause.message : String(cause)}`
+          cause instanceof NotOnePage
+            ? cause.message
+            : `${attach ? `Playwright could not connect to the browser at ${attach.cdpEndpoint}.` : "Playwright could not open Chromium."} ${cause instanceof Error ? cause.message : String(cause)}`
         );
       const browser = yield* Effect.acquireRelease(
         Effect.tryPromise({
           try: () =>
-            playwright.chromium.launch({
-              headless: options.headless,
-              args:
-                options.debugPort === undefined
-                  ? []
-                  : [`--remote-debugging-port=${options.debugPort}`],
-              // Terminal signals belong to the CLI, which ends the recorder.
-              // Left on, Playwright would exit the process on the first one.
-              handleSIGINT: false,
-              handleSIGTERM: false,
-              handleSIGHUP: false,
-            }),
+            attach
+              ? playwright.chromium.connectOverCDP(attach.cdpEndpoint, {
+                  // The browser is someone else's: its settings stay as
+                  // they are.
+                  noDefaults: true,
+                })
+              : launchIn(playwright, options as Launch),
           catch: unavailable,
         }),
-        // A browser the person already closed has nothing left to close.
+        // A launched browser the person already closed has nothing left to
+        // close. An attached one is only let go: Playwright closes its
+        // connection, not the browser.
         (browser) => Effect.promise(() => browser.close().catch(() => {}))
       );
       const recorded = yield* Effect.tryPromise({
         try: () =>
-          openPage(browser, options.url, (signal) =>
-            Queue.offerUnsafe(signals, signal)
+          openPage(
+            browser,
+            attach ? { attached: true } : { url: (options as Launch).url },
+            (signal) => Queue.offerUnsafe(signals, signal)
           ),
         catch: (cause) =>
           cause instanceof NoPlaywrightRecorder
@@ -100,11 +127,43 @@ export const stockBrowser = (options: {
     })
   );
 
+/** Launches Chromium for the recorder with the project's Playwright. */
+const launchIn = (playwright: Playwright, options: Launch) =>
+  playwright.chromium.launch({
+    headless: options.headless,
+    args:
+      options.debugPort === undefined
+        ? []
+        : [`--remote-debugging-port=${options.debugPort}`],
+    // Terminal signals belong to the CLI, which ends the recorder.
+    // Left on, Playwright would exit the process on the first one.
+    handleSIGINT: false,
+    handleSIGTERM: false,
+    handleSIGHUP: false,
+  });
+
 /** Milliseconds on the clock Playwright's own times are on. */
 const now = () => Math.floor(performance.now() * 1e3) / 1e3;
 
 /** This Playwright has no recorder the engine knows how to start. */
 class NoPlaywrightRecorder extends Error {}
+
+/** The running browser has not exactly one page to record. */
+class NotOnePage extends Error {}
+
+/**
+ * The page the recorder records in a browser it attached to: the one page
+ * of its one context. With more, or none, it does not guess, as the released
+ * recorder does not.
+ */
+function theOnePage(browser: Browser): Page {
+  const contexts = browser.contexts();
+  const pages = contexts.flatMap((context) => context.pages());
+  if (contexts.length === 1 && pages.length === 1) return pages[0]!;
+  throw new NotOnePage(
+    `The recorder records a browser with exactly one page open, in one context, and leaves it as it is. The browser at this address has ${pages.length} ${pages.length === 1 ? "page" : "pages"} in ${contexts.length} ${contexts.length === 1 ? "context" : "contexts"}: close the others and attach again.`
+  );
+}
 
 /**
  * Playwright's recorder as it runs beside the context, with the mode it is
@@ -155,12 +214,15 @@ async function recorderModeOf(
  */
 async function openPage(
   browser: Browser,
-  url: string,
+  start: { readonly url: string } | { readonly attached: true },
   tell: (signal: BrowserSignal) => void
 ) {
   browser.on("disconnected", () => tell({ kind: "browserGone" }));
-  // No fixed viewport: the page has the size of its window.
-  const context = await browser.newContext({ viewport: null });
+  const context =
+    "url" in start
+      ? // No fixed viewport: the page has the size of its window.
+        await browser.newContext({ viewport: null })
+      : theOnePage(browser).context();
   const startRecording = playwrightRecorderOf(context);
   if (!startRecording) throw new NoPlaywrightRecorder();
 
@@ -172,7 +234,7 @@ async function openPage(
   /** How often the gate was switched. */
   let gateChanges = 0;
 
-  context.on("page", (page) => {
+  const track = (page: Page) => {
     const id = `page_${idOf.size + 1}`;
     pages.set(id, page);
     idOf.set(page, id);
@@ -185,7 +247,10 @@ async function openPage(
       pages.delete(id);
       tell({ kind: "pageClosed", page: id, pagesLeft: context.pages().length });
     });
-  });
+  };
+  context.on("page", track);
+  // An attached browser's page is open already: no "page" event tells of it.
+  for (const open of context.pages()) track(open);
 
   const heldBinding = "__aymeRecorderHeld";
   await context.exposeBinding(
@@ -245,12 +310,26 @@ async function openPage(
     },
   });
 
-  const page = await context.newPage();
-  // A page that does not load is no reason to stop: the browser shows the
-  // error, and the person can go elsewhere or close it.
-  await page.goto(url).catch(() => {});
-
   const everyFrame = () => [...pages.values()].flatMap((open) => open.frames());
+
+  if ("url" in start) {
+    const page = await context.newPage();
+    // A page that does not load is no reason to stop: the browser shows the
+    // error, and the person can go elsewhere or close it.
+    await page.goto(start.url).catch(() => {});
+  } else {
+    // Scripts for new documents never run in one that is loaded already:
+    // the attached page's documents get them now, the same way.
+    await Promise.all(
+      everyFrame().map((frame) =>
+        Promise.all([
+          frame.evaluate(installGate, heldBinding),
+          frame.evaluate(installActivityWatch, changedBinding),
+          frame.evaluate(hidePlaywrightOverlay),
+        ]).catch(() => {})
+      )
+    );
+  }
 
   async function carryOut(request: BrowserRequest): Promise<void> {
     switch (request.kind) {

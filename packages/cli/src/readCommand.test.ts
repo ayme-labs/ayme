@@ -10,6 +10,26 @@ describe("readCommand", () => {
     });
   });
 
+  it("records a running browser for `codegen --cdp-endpoint <address>`, with no URL", () => {
+    expect(
+      readCommand(["codegen", "--cdp-endpoint", "http://127.0.0.1:9222"])
+    ).toEqual({ kind: "attach", cdpEndpoint: "http://127.0.0.1:9222" });
+  });
+
+  it("fails with the usage text when it is given both a URL and a running browser", () => {
+    expect(
+      readCommand([
+        "codegen",
+        "http://localhost",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9222",
+      ])
+    ).toEqual({
+      kind: "error",
+      text: `Give either a URL or --cdp-endpoint, not both: attaching never navigates the page.\n\n${USAGE}`,
+    });
+  });
+
   it.each([["--help"], ["-h"], ["codegen", "--help"]])(
     "prints the usage text for %j",
     (...args) => {

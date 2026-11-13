@@ -8,6 +8,8 @@ if (command.kind === "help") {
 } else if (command.kind === "error") {
   process.stderr.write(command.text);
   process.exitCode = 1;
+} else if (command.kind === "attach") {
+  process.exitCode = await codegen({ cdpEndpoint: command.cdpEndpoint });
 } else {
-  process.exitCode = await codegen(command.url);
+  process.exitCode = await codegen({ url: command.url });
 }
