@@ -2,7 +2,12 @@ import { createServer } from "node:http";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 import { Effect, ManagedRuntime, Queue } from "effect";
-import { chromium, type Locator, type Page } from "playwright-core";
+import {
+  chromium,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from "playwright-core";
 import { afterEach, expect, it } from "vitest";
 
 import { RecordedBrowser } from "../../session/application";
@@ -18,6 +23,13 @@ import { stockBrowser } from "./stockBrowser";
 // The Playwright under test is the one installed in the project folder that
 // AYME_RECORDER_PLAYWRIGHT_PROJECT names, or else this package's own. To add
 // a private detail, add one test that uses `onStockPlaywright`.
+//
+// The suite runs twice (vitest.contract.config.ts): on a browser the adapter
+// launches, and, with AYME_RECORDER_BROWSER=attach, on a browser that is
+// already running, with its page open, when the adapter attaches to it. That
+// browser is the test's own: it launched it, and its connection is another
+// automation client in the recorded browser.
+const attaching = process.env.AYME_RECORDER_BROWSER === "attach";
 
 const projectDir =
   process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT ??
@@ -38,6 +50,8 @@ type Harness = {
   /** A person at the recorded browser: raw input over that connection, so
    * that it is no call of the Playwright under test. */
   click(target: Locator): Promise<void>;
+  /** Closes the layer's scope, as the end of a recorder does. */
+  letGo(): Promise<void>;
 };
 
 const ends: (() => Promise<unknown>)[] = [];
@@ -70,8 +84,24 @@ async function onStockPlaywright(html: string): Promise<Harness> {
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
   const debugPort = await freePort();
 
+  let running: BrowserContext | undefined;
+  if (attaching) {
+    // Someone else's browser, open on the page before the recorder comes.
+    running = await chromium.launchPersistentContext("", {
+      headless: true,
+      args: [`--remote-debugging-port=${debugPort}`],
+    });
+    const open = running;
+    ends.push(() => open.close());
+    await open.pages()[0]!.goto(url);
+  }
   const runtime = ManagedRuntime.make(
-    stockBrowser({ projectDir, url, headless: true, debugPort })
+    attaching
+      ? stockBrowser({
+          projectDir,
+          cdpEndpoint: `http://127.0.0.1:${debugPort}`,
+        })
+      : stockBrowser({ projectDir, url, headless: true, debugPort })
   );
   ends.push(() => runtime.dispose());
   const browser = await runtime.runPromise(RecordedBrowser);
@@ -84,12 +114,16 @@ async function onStockPlaywright(html: string): Promise<Harness> {
     )
   );
 
-  const connection = await chromium.connectOverCDP(
-    `http://127.0.0.1:${debugPort}`
-  );
-  ends.push(() => connection.close());
-  const page = connection
-    .contexts()
+  let contexts: BrowserContext[];
+  if (running) contexts = [running];
+  else {
+    const connection = await chromium.connectOverCDP(
+      `http://127.0.0.1:${debugPort}`
+    );
+    ends.push(() => connection.close());
+    contexts = connection.contexts();
+  }
+  const page = contexts
     .flatMap((context) => context.pages())
     .find((candidate) => candidate.url() === url);
   if (!page) throw new Error(`No page at ${url} in the recorded browser.`);
@@ -125,6 +159,7 @@ async function onStockPlaywright(html: string): Promise<Harness> {
       await mouse("mousePressed", at, 1);
       await mouse("mouseReleased", at, 0);
     },
+    letGo: () => runtime.dispose(),
   };
 }
 
@@ -301,3 +336,41 @@ it("tells of a held click whose document is gone, and never sends it to the next
   expect(browser.told.map(({ kind }) => kind)).not.toContain("inputPassedOn");
   expect(await browser.page.evaluate("window.clicks")).toBe(0);
 });
+
+// Attaching.
+
+it.runIf(attaching)(
+  "lets go of a browser it attached to as it found it: open, its page where it was, and Playwright's recorder no longer acting on it",
+  async () => {
+    const browser = await onStockPlaywright(`${BUTTONS}
+      <script>
+        window.events = [];
+        for (const type of ["mousedown", "contextmenu", "click"])
+          document.addEventListener(type, (event) =>
+            window.events.push(type + " " + event.button));
+      </script>`);
+    await reporting(browser);
+    await browser.ask({ kind: "holdInputs", on: true });
+    await browser.toldOf("inputsHeld");
+    const url = browser.page.url();
+
+    await browser.letGo();
+
+    expect(browser.page.isClosed()).toBe(false);
+    expect(browser.page.url()).toBe(url);
+    // A right click and a left click reach the page, each once: nothing
+    // holds them back or takes them any more.
+    await browser.page.locator("#first").click({ button: "right" });
+    await browser.page.locator("#first").click();
+    await expect
+      .poll(() => browser.page.evaluate("window.events"))
+      .toEqual(["mousedown 2", "contextmenu 2", "mousedown 0", "click 0"]);
+    // Playwright's recorder leaves no mark that makes every element look
+    // clickable.
+    expect(
+      await browser.page.evaluate(() =>
+        document.body.getAttribute("data-pw-cursor")
+      )
+    ).toBeNull();
+  }
+);

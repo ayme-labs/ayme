@@ -107,6 +107,10 @@ export const stockBrowser = (
               )
             : unavailable(cause),
       });
+      // Before its connection closes, an attached browser is put back as
+      // it was found: it stays open, in someone else's hands.
+      if (attach)
+        yield* Effect.addFinalizer(() => Effect.promise(recorded.letGo));
       return RecordedBrowser.of({
         signals,
         // Handed over, never waited on: the answer is told as a signal, and
@@ -441,7 +445,67 @@ async function openPage(
     );
   }
 
-  return { carryOut };
+  /**
+   * Puts the pages back as the recorder found them, for a browser that
+   * stays open: nothing held back or watched any more, a click still held
+   * passed on, and Playwright's recorder switched off in every document,
+   * since its in-page part keeps the last mode it heard of once the
+   * connection is gone. What does not answer in time is left as it is.
+   */
+  async function letGo(): Promise<void> {
+    const frames = everyFrame();
+    const putBack = Promise.all([
+      ...frames.map((frame) =>
+        frame
+          .evaluate(() => {
+            window.__aymeRecorderGate?.set(false);
+            window.__aymeRecorderActivity?.watch(false);
+          })
+          .catch(() => {})
+      ),
+      ...[...held.values()].map(({ frame, click }) =>
+        passOn(frame, click).catch(() => {})
+      ),
+      switchPlaywrightRecorderOff(frames),
+    ]);
+    held.clear();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      putBack,
+      new Promise((resolve) => (timer = setTimeout(resolve, LET_GO_LIMIT_MS))),
+    ]);
+    clearTimeout(timer);
+  }
+
+  async function switchPlaywrightRecorderOff(frames: readonly Frame[]) {
+    if (!recorderMode) return;
+    await recorderMode.setMode("none").catch(() => {});
+    await Promise.all(
+      frames.map((frame) => frame.evaluate(noLongerRecording).catch(() => {}))
+    );
+  }
+
+  return { carryOut, letGo };
+}
+
+/** How long letting go of an attached browser may take. */
+const LET_GO_LIMIT_MS = 5_000;
+
+/**
+ * Runs in a document once Playwright's recorder has been switched off:
+ * resolves when the document's part of it has heard so, and takes away the
+ * mark it leaves on the body, which makes every element look clickable.
+ * Private parts of Playwright (ADR-0052): the document asks for the
+ * recorder's state on its own, through a binding of Playwright's; asking
+ * once more and getting the answer means the document's own earlier
+ * question was answered first.
+ */
+async function noLongerRecording(): Promise<void> {
+  const state = (
+    window as unknown as { __pw_recorderState?: () => Promise<unknown> }
+  ).__pw_recorderState;
+  if (state) await state();
+  document.body?.removeAttribute("data-pw-cursor");
 }
 
 /** Sends a held click on to its page, as the press of the mouse it was.
