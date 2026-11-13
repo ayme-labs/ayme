@@ -63,7 +63,11 @@ export type BrowserSignal =
       readonly kind: "interactionReported";
       readonly page: string;
       readonly report: InteractionReport;
-    };
+    }
+  // Visits.
+  /** A held input can no longer reach its page: the document it was held
+   * in is gone. Told instead of "inputPassedOn". */
+  | { readonly kind: "inputGone"; readonly input: string };
 
 /**
  * One thing the engine asks of the recorded browser. The browser takes a
@@ -575,6 +579,12 @@ function during(state: Active, happening: BrowserSignal): Step {
       });
       break;
     }
+    case "inputGone":
+      // Never passed on to the document that came after it.
+      draft.inputs = draft.inputs.filter(
+        (held) => held.id !== happening.input || held.passedOnAt !== null
+      );
+      break;
     case "interactionReported": {
       if (!HELD_CLICK_REPORTS.has(happening.report.type)) break;
       // Reports come in the order of the inputs: this one belongs to the

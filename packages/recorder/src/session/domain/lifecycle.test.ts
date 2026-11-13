@@ -794,6 +794,42 @@ describe("the lifecycle", () => {
       todo: [[]],
       state: { phase: "notRecording" },
     },
+    {
+      name: "a held click whose document is gone before it reaches it is dropped, and the next click goes on",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        clickHeld("input_2"),
+        taken("snapshot_1"),
+        navigated("http://shop.test/cart"),
+        { kind: "inputGone", input: "input_1" },
+        // A report of the click is of no held click any more.
+        reported,
+      ],
+      todo: [
+        [keep("snapshot_1"), passOn("input_1")],
+        [visitAt("http://shop.test/cart", "navigate")],
+        [takeSnapshot("snapshot_2")],
+        [],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a held click whose document is gone while wrapping up is dropped, and the recording saves",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        taken("snapshot_1"),
+        finish,
+        gateOff,
+        { kind: "inputGone", input: "input_1" },
+        taken("snapshot_2"),
+      ],
+      todo: [[takeSnapshot("snapshot_2")], [keep("snapshot_2"), save]],
+      state: { phase: "saving" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
