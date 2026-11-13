@@ -1,7 +1,7 @@
 import type {
   CommandResult,
   RecorderCommand,
-  RecorderState,
+  RecorderPhase,
   RecordingOutcome,
 } from "../../contract";
 import type {
@@ -192,8 +192,8 @@ export const initialState: LifecycleState = {
   pages: [],
 };
 
-/** What a state looks like from outside the engine. */
-export function shown(state: LifecycleState): RecorderState {
+/** The phase a state shows outside the engine. */
+export function shown(state: LifecycleState): RecorderPhase {
   return state.phase === "ended"
     ? { phase: "ended", outcome: state.outcome }
     : { phase: state.phase };

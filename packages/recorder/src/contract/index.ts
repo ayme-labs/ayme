@@ -14,13 +14,64 @@ export type RecordingOutcome =
   | { readonly kind: "failed"; readonly reason: string };
 
 /** What the recorder is doing now. */
-export type RecorderState =
+export type RecorderPhase =
   | { readonly phase: "notRecording" }
   | { readonly phase: "recording" }
   /** Finishing what is under way before the package is saved: commands wait. */
   | { readonly phase: "wrappingUp" }
   | { readonly phase: "saving" }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome };
+
+/** One Interaction as it is recorded, and as the Recording Package lists it. */
+export type InteractionDetails = {
+  readonly id: string;
+  /** Playwright's name for it: "click", "check" and so on. */
+  readonly type: string;
+  /** The target's Structural Ref; null when the target is not known in the
+   * page's structure. */
+  readonly targetRef: string | null;
+  readonly targetSelector?: string;
+  /** Whatever else Playwright said of it: the button, the modifiers and so on. */
+  readonly [value: string]: unknown;
+};
+
+/** One entry of a Visit's timeline. A Change Tree is text, in the compact
+ * notation of the Recording Package. */
+export type TimelineEntry =
+  | {
+      readonly kind: "interaction";
+      /** Milliseconds on the recorded browser's monotonic clock. */
+      readonly timestamp: number;
+      readonly interaction: InteractionDetails;
+      /** What it changed; null when it changed nothing, or when the page was
+       * gone before that could be seen. */
+      readonly changeTree: string | null;
+    }
+  /** What changed on the page with no Interaction to explain it. */
+  | {
+      readonly kind: "change";
+      readonly timestamp: number;
+      readonly changeTree: string;
+    };
+
+/** One Visit of the recording, with the entries recorded in it so far. */
+export type RecordedVisit = {
+  readonly visitId: string;
+  readonly url: string;
+  /** Why it started. The first Visit of a recording is "initial". */
+  readonly cause: "initial" | "navigate" | "openPage";
+  /**
+   * In the order they happened. An Interaction's entry joins when the
+   * Interaction is complete; a change that belongs to no Interaction joins
+   * with the next Interaction, or at the end of the recording.
+   */
+  readonly entries: readonly TimelineEntry[];
+};
+
+/** The recorder as it is now: what it is doing, and what it has recorded. */
+export type RecorderState = RecorderPhase & {
+  readonly visits: readonly RecordedVisit[];
+};
 
 /** A full picture of the recorder. `revision` grows with every change: a
  * receiver ignores an update whose revision is not above the last it applied. */

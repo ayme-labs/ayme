@@ -2,10 +2,14 @@
 // type and no Playwright type is reachable from here (src/frontDoor.test.ts).
 export type {
   CommandResult,
+  InteractionDetails,
+  RecordedVisit,
   RecorderCommand,
+  RecorderPhase,
   RecorderState,
   RecorderUpdate,
   RecordingOutcome,
+  TimelineEntry,
 } from "./contract";
 export { startRecorder, type Recorder, type RecorderOptions } from "./engine";
 export { RecorderStartError, type RecorderStartReason } from "./session/domain";

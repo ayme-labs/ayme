@@ -67,7 +67,24 @@ export class RecorderSession extends Context.Service<
         const listeners = new Set<(update: RecorderUpdate) => void>();
         const timeline = new Timeline();
         let state = initialState;
-        let update: RecorderUpdate = { revision: 0, state: shown(state) };
+        let visits = timeline.visits();
+        let update: RecorderUpdate = {
+          revision: 0,
+          state: { ...shown(state), visits },
+        };
+        /** Tells the listeners the recorder as it is now, under a new revision. */
+        const publish = () => {
+          visits = timeline.visits();
+          update = {
+            revision: update.revision + 1,
+            state: { ...shown(state), visits },
+          };
+          for (const listener of listeners) listener(update);
+        };
+        /** Tells them, if the timeline has a Visit or an entry more. */
+        const publishEntries = Effect.sync(() => {
+          if (timeline.visits() !== visits) publish();
+        });
         const tell = (happening: Happening) =>
           Queue.offer(queue, { happening });
         /** The answer the lifecycle keeps for a later step. */
@@ -91,7 +108,9 @@ export class RecorderSession extends Context.Service<
             case "browser":
               return yield* browser.ask(item.ask);
             case "timeline":
-              return yield* Effect.promise(() => timeline.add(item.add));
+              // An entry is told as soon as it is produced.
+              yield* Effect.promise(() => timeline.add(item.add));
+              return yield* publishEntries;
             case "startTimeLimit":
               // It runs beside the queue, and ends with the recorder.
               return yield* Effect.sleep(item.ms).pipe(
@@ -103,6 +122,8 @@ export class RecorderSession extends Context.Service<
               const folder = yield* Effect.promise(() =>
                 options.save(timeline, createdAt)
               );
+              // What changed after the last Interaction is an entry now.
+              yield* publishEntries;
               return yield* tell({ kind: "saved", folder });
             }
             case "end":
@@ -116,11 +137,10 @@ export class RecorderSession extends Context.Service<
         }: Queued) {
           const next = step(state, happening);
           state = next.state;
-          // Only what shows from outside is told: a phase is one state there.
-          if (state.phase !== update.state.phase) {
-            update = { revision: update.revision + 1, state: shown(state) };
-            for (const listener of listeners) listener(update);
-          }
+          // Only what shows from outside is told: a phase is one state
+          // there. It is told before the step's list is carried out, so
+          // that "saving" shows while the package is written.
+          if (state.phase !== update.state.phase) publish();
           for (const item of next.todo) yield* carryOut(item, reply);
         });
 

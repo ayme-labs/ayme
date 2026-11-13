@@ -8,7 +8,12 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { stringify } from "yaml";
 
-import type { InteractionReport, VisitCause } from "./recorded";
+import type {
+  InteractionDetails,
+  RecordedVisit,
+  TimelineEntry,
+} from "../../contract";
+import type { InteractionReport } from "./recorded";
 
 // The text of a Recording Package, in the released format: the layout the
 // `ayme-recorder` skill and the 0.1 recorder's readers know. Trees are core's
@@ -23,30 +28,8 @@ export type PackageHeader = {
   readonly tracePath: string | null;
 };
 
-export type PackageEntry =
-  | {
-      readonly kind: "interaction";
-      readonly timestamp: number;
-      readonly id: string;
-      readonly report: InteractionReport;
-      /** Null when the target is not known in the tree. */
-      readonly targetRef: string | null;
-      /** Null when no "after" was taken. */
-      readonly changeTree: StructuralTree | null;
-    }
-  | {
-      readonly kind: "change";
-      readonly timestamp: number;
-      readonly changeTree: StructuralTree;
-    };
-
-export type PackageVisit = {
-  readonly visitId: string;
-  readonly url: string;
-  readonly cause: VisitCause;
-  readonly baselineTree: StructuralTree;
-  readonly timelineEntries: readonly PackageEntry[];
-};
+/** A Visit as the package shows it: with its starting picture. */
+export type PackageVisit = RecordedVisit & { readonly baselineTree: string };
 
 /** What Playwright says of an Interaction, in the order the package lists it. */
 const INTERACTION_VALUES = [
@@ -61,6 +44,25 @@ const INTERACTION_VALUES = [
   "files",
   "options",
 ];
+
+/** An Interaction as the package lists it, in the released order of fields. */
+export function interactionDetails(
+  id: string,
+  report: InteractionReport,
+  targetRef: string | null
+): InteractionDetails {
+  const details: Record<string, unknown> = {
+    id,
+    type: report.type,
+    // Always there: a reader of the released format requires the field, and
+    // takes null for a target that is not known.
+    targetRef,
+    ...(report.selector ? { targetSelector: report.selector } : {}),
+  };
+  for (const key of INTERACTION_VALUES)
+    if (key in report.values) details[key] = report.values[key];
+  return details as InteractionDetails;
+}
 
 const fields = (value: object) =>
   stringify(value, { indent: 2, lineWidth: 0, defaultStringType: "PLAIN" })
@@ -87,7 +89,7 @@ const changedItself = (node: StructuralNode) =>
 const isNode = (child: StructuralNode | string) => typeof child !== "string";
 
 /** Every node, with no status mark and no property such as a link's URL. */
-function wholeTreeText(structuralTree: StructuralTree): string {
+export function wholeTreeText(structuralTree: StructuralTree): string {
   return renderCompactStructuralNodeForest(
     projectStructuralNodeForest(
       structuralNodeForest(structuralTree.getRootNodes()),
@@ -98,7 +100,7 @@ function wholeTreeText(structuralTree: StructuralTree): string {
 
 /** A Change Tree's text: only the ways down to the nodes that were added,
  * removed or changed themselves. Empty when there is none. */
-function changeText(change: StructuralTree): string {
+export function changeText(change: StructuralTree): string {
   const leads = new WeakMap<StructuralNode, boolean>();
   const leadsToChange = (node: StructuralNode): boolean => {
     let known = leads.get(node);
@@ -123,32 +125,18 @@ function changeText(change: StructuralTree): string {
   );
 }
 
-function entryLines(entry: PackageEntry): string[] | undefined {
-  const change = entry.changeTree ? changeText(entry.changeTree) : "";
-  if (entry.kind === "change")
-    // Nothing changed: there is nothing to tell.
-    return change === ""
-      ? undefined
-      : [
-          ...fields({ kind: entry.kind, timestamp: entry.timestamp }),
-          ...tree("changeTree", change),
-        ];
-  const { report } = entry;
-  const interaction: Record<string, unknown> = {
-    id: entry.id,
-    type: report.type,
-    // Always written: a reader of the released format requires the field,
-    // and takes null for a target that is not known.
-    targetRef: entry.targetRef,
-    ...(report.selector ? { targetSelector: report.selector } : {}),
-  };
-  for (const key of INTERACTION_VALUES)
-    if (key in report.values) interaction[key] = report.values[key];
-  return [
-    ...fields({ kind: entry.kind, timestamp: entry.timestamp, interaction }),
-    ...(change === "" ? [] : tree("changeTree", change)),
-  ];
-}
+const entryLines = (entry: TimelineEntry) => [
+  ...fields(
+    entry.kind === "interaction"
+      ? {
+          kind: entry.kind,
+          timestamp: entry.timestamp,
+          interaction: entry.interaction,
+        }
+      : { kind: entry.kind, timestamp: entry.timestamp }
+  ),
+  ...(entry.changeTree === null ? [] : tree("changeTree", entry.changeTree)),
+];
 
 /** The package's text. Its `url` is the first Visit's. */
 export function renderPackage(
@@ -171,14 +159,8 @@ export function renderPackage(
           url: visit.url,
           cause: visit.cause,
         }),
-        ...tree("baselineTree", wholeTreeText(visit.baselineTree)),
-        ...list(
-          "timelineEntries",
-          visit.timelineEntries.flatMap((entry) => {
-            const lines = entryLines(entry);
-            return lines ? [lines] : [];
-          })
-        ),
+        ...tree("baselineTree", visit.baselineTree),
+        ...list("timelineEntries", visit.entries.map(entryLines)),
       ])
     ),
     // The trace's position numbers join with the trace file.

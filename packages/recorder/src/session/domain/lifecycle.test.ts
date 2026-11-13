@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { RecorderState } from "../../contract";
+import type { RecorderPhase } from "../../contract";
 import type { InteractionReport, PageSnapshot } from "../../timeline/domain";
 import {
   initialState,
@@ -141,7 +141,7 @@ describe("the lifecycle", () => {
     happened: Happening[];
     /** The lists of the last steps, one per step. */
     todo: ToDo[][];
-    state: RecorderState;
+    state: RecorderPhase;
   }>([
     // Before anything is recorded.
     {

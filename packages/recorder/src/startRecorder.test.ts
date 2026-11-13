@@ -168,7 +168,10 @@ it(
       browser: { launch: { url: "http://stand-in.test/" } },
     });
     const phases: string[] = [];
-    recorder.subscribe((update) => phases.push(update.state.phase));
+    recorder.subscribe(({ state }) => {
+      // A phase is told again with each entry: once is enough here.
+      if (phases.at(-1) !== state.phase) phases.push(state.phase);
+    });
     await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
     // Its "before" snapshot is asked for, and never comes.
     control.holdClick();

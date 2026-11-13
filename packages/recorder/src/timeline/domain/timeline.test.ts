@@ -316,6 +316,109 @@ describe("the timeline", () => {
     );
   });
 
+  describe("as it is told live", () => {
+    const visitWith = (entries: unknown[]) => [
+      { visitId: "visit_1", url, cause: "initial", entries },
+    ];
+    const savedByClick = {
+      kind: "interaction",
+      timestamp: 15,
+      interaction: {
+        id: "interaction_1",
+        type: "click",
+        targetRef: "e2",
+        targetSelector: 'internal:role=button[name="Save"i]',
+        button: "left",
+        modifiers: 0,
+        clickCount: 1,
+      },
+      changeTree: [
+        `- [ref=e1]:`,
+        `  - <changed> [ref=e3] paragraph: Saved`,
+      ].join("\n"),
+    };
+
+    it("has no Visit before one starts, and a Visit without entries once it has", async () => {
+      const timeline = new Timeline();
+      expect(timeline.visits()).toEqual([]);
+
+      await timeline.add(visit);
+
+      expect(timeline.visits()).toEqual(visitWith([]));
+    });
+
+    it("has an Interaction's entry once the Interaction is added, not when its snapshots are", async () => {
+      const timeline = new Timeline();
+      await timeline.add(visit);
+      await timeline.add(snapshot("snapshot_1", 10, idle));
+      await timeline.add(snapshot("snapshot_2", 20, savedPage));
+      expect(timeline.visits()).toEqual(visitWith([]));
+
+      await timeline.add(
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle })
+      );
+
+      expect(timeline.visits()).toEqual(visitWith([savedByClick]));
+    });
+
+    it("has a change of no Interaction with the next Interaction, and one after the last when the package is made", async () => {
+      const banner = `${savedPage}\n  - alert [ref=e4]: Offer ends soon`;
+      const timeline = new Timeline();
+      await timeline.add(visit);
+      await timeline.add(snapshot("snapshot_1", 10, idle));
+      await timeline.add(snapshot("snapshot_2", 20, savedPage));
+      await timeline.add(
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle })
+      );
+      await timeline.add(snapshot("snapshot_3", 30, banner));
+      await timeline.add(snapshot("snapshot_4", 40, banner));
+      expect(timeline.visits()).toEqual(visitWith([savedByClick]));
+
+      await timeline.add(
+        click("snapshot_3", "snapshot_4", { ref: "e2", tree: banner })
+      );
+      const offer = {
+        kind: "change",
+        timestamp: 30,
+        changeTree: [
+          `- [ref=e1]:`,
+          `  - <added> [ref=e4] alert: Offer ends soon`,
+        ].join("\n"),
+      };
+      const secondClick = {
+        kind: "interaction",
+        timestamp: 15,
+        interaction: { ...savedByClick.interaction, id: "interaction_2" },
+        // It changed nothing.
+        changeTree: null,
+      };
+      expect(timeline.visits()).toEqual(
+        visitWith([savedByClick, offer, secondClick])
+      );
+
+      await timeline.add(snapshot("snapshot_5", 50, idle));
+      expect(timeline.visits()).toEqual(
+        visitWith([savedByClick, offer, secondClick])
+      );
+      await timeline.package(header);
+
+      expect(timeline.visits()[0]!.entries).toHaveLength(4);
+      expect(timeline.visits()[0]!.entries[3]).toMatchObject({
+        kind: "change",
+        timestamp: 50,
+      });
+    });
+
+    it("is a new list only when something was added to it", async () => {
+      const timeline = new Timeline();
+      await timeline.add(visit);
+      const before = timeline.visits();
+      await timeline.add(snapshot("snapshot_1", 10, idle));
+
+      expect(timeline.visits()).toBe(before);
+    });
+  });
+
   it("leaves out a snapshot of a page that has no Visit", async () => {
     expect(await packageOf([snapshot("snapshot_1", 10, idle)])).toBeNull();
   });

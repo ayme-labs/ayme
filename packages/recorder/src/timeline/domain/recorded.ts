@@ -1,8 +1,10 @@
 // What a recording is made of, as the session hands it to the timeline:
 // plain data in the engine's words, with nothing of Playwright in it.
 
+import type { RecordedVisit } from "../../contract";
+
 /** Why a Visit started. The first Visit of a recording is "initial". */
-export type VisitCause = "initial" | "navigate" | "openPage";
+export type VisitCause = RecordedVisit["cause"];
 
 /** A page's structure at one moment, as the browser read it. */
 export type PageSnapshot = {

@@ -42,7 +42,7 @@ describe("a recorder", () => {
     await recorder.send({ type: "finish" });
 
     expect(updates).toEqual([
-      { revision: 0, state: { phase: "notRecording" } },
+      { revision: 0, state: { phase: "notRecording", visits: [] } },
     ]);
   });
 
@@ -62,16 +62,16 @@ describe("a recorder", () => {
 
     recorder.subscribe((update) => updates.push(update));
     expect(updates).toEqual([
-      { revision: 0, state: { phase: "notRecording" } },
+      { revision: 0, state: { phase: "notRecording", visits: [] } },
     ]);
 
     recorder.end();
     await recorder.done;
     expect(updates).toEqual([
-      { revision: 0, state: { phase: "notRecording" } },
+      { revision: 0, state: { phase: "notRecording", visits: [] } },
       {
         revision: 1,
-        state: { phase: "ended", outcome: { kind: "empty" } },
+        state: { phase: "ended", outcome: { kind: "empty" }, visits: [] },
       },
     ]);
   });
@@ -87,7 +87,7 @@ describe("a recorder", () => {
     expect(updates).toEqual([
       {
         revision: 1,
-        state: { phase: "ended", outcome: { kind: "empty" } },
+        state: { phase: "ended", outcome: { kind: "empty" }, visits: [] },
       },
     ]);
   });

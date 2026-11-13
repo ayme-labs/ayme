@@ -9,7 +9,14 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 
-import { renderPackage, type PackageHeader } from "./packageText";
+import type { RecordedVisit, TimelineEntry } from "../../contract";
+import {
+  changeText,
+  interactionDetails,
+  renderPackage,
+  wholeTreeText,
+  type PackageHeader,
+} from "./packageText";
 import type {
   PageSnapshot,
   RecordedInteraction,
@@ -37,15 +44,29 @@ type Visit = {
   readonly url: string;
   readonly cause: VisitCause;
   readonly snapshots: Kept[];
-  readonly interactions: (RecordedInteraction & { readonly id: string })[];
+  /** The Interactions that have no entry yet. */
+  readonly waiting: (RecordedInteraction & { readonly id: string })[];
+  /** The entries produced so far, in order. */
+  readonly entries: TimelineEntry[];
+  /** The place in `snapshots` up to which entries are produced: what
+   * changed from this snapshot on is not told yet. */
+  through: number;
   /** From every ref the browser used in this Visit to the element's first. */
   readonly firstRefs: Map<AriaRef, AriaRef>;
 };
 
 /**
  * The timeline of one recording: Visits, snapshots and Interactions in, the
- * Recording Package out. Visits and the identity of an element across
- * snapshots are core's observation session's; the Change Trees are core's.
+ * Visits with their entries out, as they are produced, and the Recording
+ * Package at the end. Visits and the identity of an element across snapshots
+ * are core's observation session's; the Change Trees are core's.
+ *
+ * A Visit's first snapshot is its starting picture. From there on, what
+ * changed between a snapshot and the next is an Interaction's when the two
+ * are its "before" and its "after", and a change of its own otherwise. An
+ * Interaction's entry is produced when the Interaction is added. A change of
+ * its own is produced with the next Interaction, or when the package is
+ * made: until then a later Interaction may still claim it.
  *
  * Additions are taken one at a time, in the order they happened: wait for
  * one before adding the next.
@@ -58,10 +79,28 @@ export class Timeline {
   private readonly session = new StructuralObservationSession({
     clock: { now: () => this.latestAt },
   });
-  private readonly visits: Visit[] = [];
+  private readonly all: Visit[] = [];
   /** The Visit each page is in. */
   private readonly current = new Map<string, Visit>();
   private interactions = 0;
+  private told: readonly RecordedVisit[] = [];
+
+  /**
+   * The Visits with the entries produced so far, as plain data. It is the
+   * same list until a Visit or an entry is added.
+   */
+  visits(): readonly RecordedVisit[] {
+    return this.told;
+  }
+
+  private tell() {
+    this.told = this.all.map((visit) => ({
+      visitId: visit.id,
+      url: visit.url,
+      cause: visit.cause,
+      entries: [...visit.entries],
+    }));
+  }
 
   async add(addition: TimelineAddition): Promise<void> {
     switch (addition.kind) {
@@ -77,11 +116,14 @@ export class Timeline {
           url: addition.url,
           cause: addition.cause,
           snapshots: [],
-          interactions: [],
+          waiting: [],
+          entries: [],
+          through: 0,
           firstRefs: new Map(),
         };
-        this.visits.push(visit);
+        this.all.push(visit);
         this.current.set(addition.page, visit);
+        this.tell();
         return;
       }
       case "snapshot": {
@@ -90,11 +132,23 @@ export class Timeline {
           visit.snapshots.push(await this.keep(visit, addition.snapshot));
         return;
       }
-      case "interaction":
-        this.current.get(addition.interaction.page)?.interactions.push({
-          ...addition.interaction,
+      case "interaction": {
+        const { interaction } = addition;
+        const visit = this.current.get(interaction.page);
+        if (!visit) return;
+        visit.waiting.push({
+          ...interaction,
           id: `interaction_${++this.interactions}`,
         });
+        // Everything up to it is settled now: what changed before it, and
+        // what it changed.
+        await this.produce(
+          visit,
+          visit.snapshots.findIndex(
+            (kept) => kept.snapshot.id === interaction.before
+          )
+        );
+      }
     }
   }
 
@@ -167,71 +221,74 @@ export class Timeline {
   }
 
   /**
+   * Produces a Visit's entries up to the snapshot at `upTo`: the entry of an
+   * Interaction that starts at a snapshot on the way, and a change of its
+   * own for every other step from one snapshot to the next.
+   */
+  private async produce(visit: Visit, upTo: number): Promise<void> {
+    const { snapshots, entries } = visit;
+    const before = entries.length;
+    for (;;) {
+      const from = snapshots[visit.through];
+      if (!from) break;
+      const starting = visit.waiting.findIndex(
+        (interaction) => interaction.before === from.snapshot.id
+      );
+      if (starting >= 0) {
+        const [interaction] = visit.waiting.splice(starting, 1);
+        const end = snapshots.findIndex(
+          (kept) => kept.snapshot.id === interaction!.after
+        );
+        const targetRef = locateTarget(from.tree, interaction!.report.target);
+        const change =
+          end < 0 ? "" : changeText(await this.change(from, snapshots[end]!));
+        entries.push({
+          kind: "interaction",
+          timestamp: interaction!.at,
+          interaction: interactionDetails(
+            interaction!.id,
+            interaction!.report,
+            targetRef ? (from.firstRefs.get(targetRef) ?? targetRef) : null
+          ),
+          changeTree: change === "" ? null : change,
+        });
+        if (end > visit.through) visit.through = end;
+        continue;
+      }
+      const next = snapshots[visit.through + 1];
+      if (visit.through >= upTo || !next) break;
+      const change = changeText(await this.change(from, next));
+      // Nothing changed: there is nothing to tell.
+      if (change !== "")
+        entries.push({
+          kind: "change",
+          timestamp: next.snapshot.at,
+          changeTree: change,
+        });
+      visit.through += 1;
+    }
+    if (entries.length > before) this.tell();
+  }
+
+  /**
    * The Recording Package's text, or null when no page was read: there is
-   * nothing to write then.
-   *
-   * A Visit's first snapshot is its starting picture. From there on, what
-   * changed between a snapshot and the next is an Interaction's when the two
-   * are its "before" and its "after", and a change of its own otherwise.
+   * nothing to write then. Making it ends the recording: what changed after
+   * the last Interaction of each Visit becomes a change of its own.
    */
   async package(header: PackageHeader): Promise<string | null> {
     const visits = [];
-    for (const visit of this.visits) {
+    for (const visit of this.all) {
       const [first] = visit.snapshots;
       if (!first) continue;
+      await this.produce(visit, visit.snapshots.length - 1);
       visits.push({
         visitId: visit.id,
         url: visit.url,
         cause: visit.cause,
-        baselineTree: first.stable,
-        timelineEntries: await this.entries(visit),
+        entries: visit.entries,
+        baselineTree: wholeTreeText(first.stable),
       });
     }
     return visits.length === 0 ? null : renderPackage(header, visits);
-  }
-
-  private async entries(visit: Visit) {
-    const { snapshots } = visit;
-    const position = new Map(
-      snapshots.map((kept, index) => [kept.snapshot.id, index])
-    );
-    const entries = [];
-    for (let index = 0; index < snapshots.length;) {
-      const from = snapshots[index]!;
-      const interaction = visit.interactions.find(
-        (candidate) => candidate.before === from.snapshot.id
-      );
-      const end =
-        interaction?.after == null
-          ? undefined
-          : position.get(interaction.after);
-      const after = end === undefined ? undefined : snapshots[end]!;
-      if (interaction) {
-        const targetRef = locateTarget(from.tree, interaction.report.target);
-        entries.push({
-          kind: "interaction" as const,
-          timestamp: interaction.at,
-          id: interaction.id,
-          report: interaction.report,
-          targetRef: targetRef
-            ? (from.firstRefs.get(targetRef) ?? targetRef)
-            : null,
-          changeTree: after ? await this.change(from, after) : null,
-        });
-      }
-      if (end !== undefined && end > index) {
-        index = end;
-        continue;
-      }
-      const next = snapshots[index + 1];
-      if (next)
-        entries.push({
-          kind: "change" as const,
-          timestamp: next.snapshot.at,
-          changeTree: await this.change(from, next),
-        });
-      index += 1;
-    }
-    return entries;
   }
 }

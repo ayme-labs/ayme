@@ -6,8 +6,8 @@ The engine of the Recorder: it starts a recorder on the Playwright the project h
 
 Slices, from the bottom up:
 
-- `contract`: the plain data shared with the CLI, the window and the toolbar: the outcome, the state, updates with their counter, commands and their answer. Types only. It is the `./contract` entry.
-- `timeline`: Visits, snapshots and Interactions in, the Recording Package out. `domain` holds what a recording is made of in the engine's words (`recorded.ts`), the `Timeline`, which keeps Visits and element identity with core's observation session and compares snapshots with core's trees, the rule that finds an Interaction's target (`target.ts`) and the released package text (`packageText.ts`). `infrastructure` writes the package where the released recorder keeps its recordings. No Effect: its work is promises.
+- `contract`: the plain data shared with the CLI, the window and the toolbar: the outcome, the state with its phase and the Visits and entries recorded so far, updates with their counter, commands and their answer. Types only. It is the `./contract` entry.
+- `timeline`: Visits, snapshots and Interactions in, the Visits with their entries out as they are produced, and the Recording Package at the end. `domain` holds what a recording is made of in the engine's words (`recorded.ts`), the `Timeline`, which keeps Visits and element identity with core's observation session and compares snapshots with core's trees, the rule that finds an Interaction's target (`target.ts`) and the released package text (`packageText.ts`). An entry is the contract's plain data, and the package is written from the very entries a subscriber was told. `infrastructure` writes the package where the released recorder keeps its recordings. No Effect: its work is promises.
 - `session`: one live recorder. `domain` holds the lifecycle, one pure function (`step`) from a state and one thing that happened to a new state and a list of things to do, and the start error. `application` holds the queue with its one worker (`RecorderSession`), which feeds `step` and carries out its list in order, and the engine's one seam, the recorded browser (`RecordedBrowser`), which speaks the engine's words and never Playwright's.
 - `playwright`: the stock Playwright adapter of the recorded browser. It finds the project's own Playwright, launches Chromium with it and carries out the engine's requests on it. `pageScripts.ts` holds what runs inside a recorded page, such as the gate that holds a click back. The only slice that may import Playwright, types included.
 - `server`: the window's server. It holds no code yet.
@@ -33,7 +33,7 @@ The engine asks the browser and the browser tells the engine, and both are plain
 - `ask` returns at once, for every request and in both adapters, and the answer comes later as a signal. The one worker never waits on the browser, so a page that is slow or stuck cannot keep a command or a time limit from being handled. A request that cannot be carried out is answered by nothing.
 - Requests are carried out side by side. When one must follow another, the lifecycle asks for the second when the first is answered, as Record does: Playwright reports Interactions, then the pages hold inputs back, then Record is answered.
 - A command is answered in the step that handles it, or, when its answer depends on the browser, kept with `deferReply` and given with `replyDeferred`. Every path out of that state gives the answer.
-- A new thing the timeline keeps is a member of `TimelineAddition`, which the lifecycle lists like any other thing to do.
+- A new thing the timeline keeps is a member of `TimelineAddition`, which the lifecycle lists like any other thing to do. After each one the worker tells subscribers the Visits and entries if there is one more, under a new revision.
 
 ## Effect
 

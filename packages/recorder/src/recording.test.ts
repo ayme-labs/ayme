@@ -64,9 +64,20 @@ describe("a recording", () => {
 
     await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
 
+    // Pressing Record starts a Visit for the current page.
     expect(updates.at(-1)).toEqual({
-      revision: 1,
-      state: { phase: "recording" },
+      revision: 2,
+      state: {
+        phase: "recording",
+        visits: [
+          {
+            visitId: "visit_1",
+            url: "http://shop.test/",
+            cause: "initial",
+            entries: [],
+          },
+        ],
+      },
     });
     expect(browser.asked).toEqual([
       { kind: "reportInteractions" },
@@ -92,6 +103,66 @@ describe("a recording", () => {
       snapshot: "snapshot_2",
       page: "page_1",
     });
+  });
+
+  it("tells a subscriber each entry as it is produced, with a growing revision", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    const entriesOf = (update: RecorderUpdate) =>
+      update.state.visits.flatMap((visit) => visit.entries);
+    expect(updates.map(entriesOf)).toEqual([[]]);
+
+    // A click, and what it changed.
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    browser.showPage(saved);
+    browser.settle();
+    browser.report(click);
+    const interaction = {
+      kind: "interaction",
+      timestamp: 2,
+      interaction: {
+        id: "interaction_1",
+        type: "click",
+        targetRef: "e2",
+        targetSelector: 'internal:role=button[name="Save"i]',
+        button: "left",
+        modifiers: 0,
+        clickCount: 1,
+      },
+      changeTree: [`- [ref=e1]:`, `  - <added> [ref=e3] status: Saved`].join(
+        "\n"
+      ),
+    };
+    await expect.poll(() => entriesOf(updates.at(-1)!)).toEqual([interaction]);
+    expect(updates.at(-1)!.state.phase).toBe("recording");
+
+    // What the page changed by itself afterwards is told at Finish.
+    browser.showPage(idle);
+    await recorder.send({ type: "finish" });
+    await recorder.done;
+
+    expect(entriesOf(updates.at(-1)!)).toEqual([
+      interaction,
+      {
+        kind: "change",
+        timestamp: 4,
+        changeTree: [
+          `- [ref=e1]:`,
+          `  - <removed> [ref=e3] status: Saved`,
+        ].join("\n"),
+      },
+    ]);
+    const revisions = updates.map((update) => update.revision);
+    expect(revisions).toEqual([...revisions].sort((a, b) => a - b));
+    expect(new Set(revisions).size).toBe(revisions.length);
+    // A late subscriber's first message is the full state.
+    const late: RecorderUpdate[] = [];
+    recorder.subscribe((update) => late.push(update));
+    expect(late).toEqual([updates.at(-1)]);
   });
 
   it("saves a click on Finish as a Recording Package in the released location", async () => {
@@ -198,7 +269,10 @@ describe("a recording", () => {
     const { recorder, browser } = await start();
     await recorder.send({ type: "record" });
     const phases: string[] = [];
-    recorder.subscribe((update) => phases.push(update.state.phase));
+    recorder.subscribe(({ state }) => {
+      // A phase is told again with each entry: once is enough here.
+      if (phases.at(-1) !== state.phase) phases.push(state.phase);
+    });
     // The page cannot be read: the snapshot the click waits for never comes.
     browser.holdSnapshots();
     browser.holdClick();
@@ -220,7 +294,10 @@ describe("a recording", () => {
   it("shows the wrap-up and the save, and lets the browser go only after the package is written", async () => {
     const { recorder, browser } = await start();
     const phases: string[] = [];
-    recorder.subscribe((update) => phases.push(update.state.phase));
+    recorder.subscribe(({ state }) => {
+      // A phase is told again with each entry: once is enough here.
+      if (phases.at(-1) !== state.phase) phases.push(state.phase);
+    });
     await recorder.send({ type: "record" });
 
     await recorder.send({ type: "finish" });
@@ -264,7 +341,10 @@ describe("a recording", () => {
     browser.settle();
     // Playwright never reports this click.
     const phases: string[] = [];
-    recorder.subscribe((update) => phases.push(update.state.phase));
+    recorder.subscribe(({ state }) => {
+      // A phase is told again with each entry: once is enough here.
+      if (phases.at(-1) !== state.phase) phases.push(state.phase);
+    });
 
     await recorder.send({ type: "finish" });
     // Everything else is done: the last snapshot is in.
