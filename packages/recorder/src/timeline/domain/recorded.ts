@@ -56,3 +56,16 @@ export type TimelineAddition =
     }
   | { readonly kind: "snapshot"; readonly snapshot: PageSnapshot }
   | { readonly kind: "interaction"; readonly interaction: RecordedInteraction };
+
+/**
+ * A recording's trace, as the browser hands it over once it is stopped: the
+ * file, and where each of the recording's snapshots is in it. A position is
+ * the number the stock `playwright trace` tool takes to open that snapshot's
+ * page, and it is kept as the text it is printed as.
+ */
+export type RecordingTrace = {
+  /** An absolute path. The file is the recording's to keep or remove. */
+  readonly file: string;
+  /** From a snapshot's id to its position in the trace. */
+  readonly positions: Readonly<Record<string, string>>;
+};

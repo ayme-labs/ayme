@@ -4,6 +4,7 @@ import {
   readdir,
   readFile,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -91,7 +92,7 @@ describe("Stop", () => {
     expect(
       browser.asked
         .filter((request) => request.kind !== "takeSnapshot")
-        .slice(2)
+        .slice(3)
     ).toEqual([
       { kind: "holdInputs", on: false },
       { kind: "reportInteractions", on: false },
@@ -217,8 +218,10 @@ describe("a paused recorder", () => {
     const outcome = await recorder.done;
 
     expect(phases.slice(-3)).toEqual(["paused", "saving", "ended"]);
-    // Nothing more was asked of the browser: the page was not read again.
-    expect(browser.asked).toHaveLength(askedWhenPaused);
+    // Only the trace was asked for: the page was not read again.
+    expect(browser.asked.slice(askedWhenPaused)).toEqual([
+      { kind: "stopTrace", keep: true },
+    ]);
     const text = await readFile(
       join((outcome as { folder: string }).folder, "package.yaml"),
       "utf8"
@@ -329,10 +332,10 @@ describe("Clear", () => {
         ({ state }) => state.phase === "notRecording" && state.visits.length > 0
       )
     ).toEqual([]);
-    expect(browser.asked.at(-1)).toEqual({
-      kind: "reportInteractions",
-      on: false,
-    });
+    expect(browser.asked.slice(-2)).toEqual([
+      { kind: "reportInteractions", on: false },
+      { kind: "stopTrace", keep: false },
+    ]);
 
     // The next recording is a recording of its own.
     await recorder.send({ type: "record" });
@@ -498,6 +501,94 @@ describe("saving", () => {
       "latest.yaml",
       "rec_19700101T000000000Z",
     ]);
-    expect(await readdir(folder)).toEqual(["package.yaml"]);
+    expect((await readdir(folder)).sort()).toEqual([
+      "package.yaml",
+      "trace.zip",
+    ]);
+  });
+});
+
+// One trace for the whole recording: from the first Record to the save, with
+// every pause in it. Clear throws it away.
+describe("the trace of a recording", () => {
+  const asked = (browser: ScriptedBrowser, kind: string) =>
+    browser.asked.filter((request) => request.kind === kind);
+
+  it("runs through a pause and is stopped once, at the save", async () => {
+    const { recorder, browser } = await start();
+    const phases = phasesOf(recorder);
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => phases.at(-1)).toBe("paused");
+    await recorder.send({ type: "continue" });
+    await clickOnce(browser, "input_2");
+
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+
+    expect(asked(browser, "startTrace")).toHaveLength(1);
+    expect(asked(browser, "stopTrace")).toEqual([
+      { kind: "stopTrace", keep: true },
+    ]);
+    // Both Interactions, either side of the pause, are in the one trace.
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    expect(text).toMatch(
+      /interactionId: interaction_1[^]*interactionId: interaction_2/
+    );
+  });
+
+  it("is stopped and kept when a paused recording is finished", async () => {
+    const { recorder, browser } = await start();
+    const phases = phasesOf(recorder);
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => phases.at(-1)).toBe("paused");
+
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+
+    expect(asked(browser, "stopTrace")).toEqual([
+      { kind: "stopTrace", keep: true },
+    ]);
+    expect(await readdir((outcome as { folder: string }).folder)).toContain(
+      "trace.zip"
+    );
+  });
+
+  it("is thrown away on Clear, and Record starts a new one", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "clear" });
+    await expect.poll(() => asked(browser, "stopTrace")).toHaveLength(1);
+    await recorder.send({ type: "record" });
+
+    expect(asked(browser, "stopTrace")).toEqual([
+      { kind: "stopTrace", keep: false },
+    ]);
+    expect(asked(browser, "startTrace")).toHaveLength(2);
+    await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
+    recorder.end();
+    await recorder.done;
+  });
+
+  it("leaves no file behind when the recording is empty", async () => {
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    expect(browser.traces).toHaveLength(1);
+    await expect(stat(browser.traces[0]!)).rejects.toThrow(/ENOENT/);
   });
 });

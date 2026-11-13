@@ -52,3 +52,19 @@ export const loadProjectPlaywright = (
       )
     );
   });
+
+/**
+ * The command line of the project's Playwright, `cli.js`: it runs the same
+ * `playwright trace` and the same `playwright install` the project's own
+ * `npx playwright` does. Undefined when none is installed.
+ */
+export function projectPlaywrightCli(projectDir: string): string | undefined {
+  for (const name of PLAYWRIGHT_PACKAGES) {
+    const folder = installedIn(projectDir, name);
+    if (folder) {
+      const cli = join(folder, "cli.js");
+      if (existsSync(cli)) return cli;
+    }
+  }
+  return undefined;
+}

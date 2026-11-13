@@ -16,6 +16,7 @@ import {
   renderPackage,
   wholeTreeText,
   type PackageHeader,
+  type TracePoint,
 } from "./packageText";
 import type {
   PageSnapshot,
@@ -83,6 +84,11 @@ export class Timeline {
   /** The Visit each page is in. */
   private readonly current = new Map<string, Visit>();
   private interactions = 0;
+  /** Every Interaction taken in, in order, for the trace's sake. */
+  private readonly recorded: (RecordedInteraction & { readonly id: string })[] =
+    [];
+  /** When each snapshot was read. */
+  private readonly readAt = new Map<string, number>();
   private told: readonly RecordedVisit[] = [];
 
   /**
@@ -127,6 +133,7 @@ export class Timeline {
         return;
       }
       case "snapshot": {
+        this.readAt.set(addition.snapshot.id, addition.snapshot.at);
         const visit = this.current.get(addition.snapshot.page);
         if (visit)
           visit.snapshots.push(await this.keep(visit, addition.snapshot));
@@ -136,10 +143,12 @@ export class Timeline {
         const { interaction } = addition;
         const visit = this.current.get(interaction.page);
         if (!visit) return;
-        visit.waiting.push({
+        const recorded = {
           ...interaction,
           id: `interaction_${++this.interactions}`,
-        });
+        };
+        visit.waiting.push(recorded);
+        this.recorded.push(recorded);
         // Everything up to it is settled now: what changed before it, and
         // what it changed.
         await this.produce(
@@ -277,8 +286,15 @@ export class Timeline {
    * and what the page changed by itself, make no recording. Making the
    * package ends the recording: what changed after the last Interaction of
    * each Visit becomes a change of its own.
+   *
+   * `positions` says where each snapshot is in the recording's trace, by the
+   * snapshot's id; without a trace it is empty, and so is the list of where
+   * the trace holds each Interaction.
    */
-  async package(header: PackageHeader): Promise<string | null> {
+  async package(
+    header: PackageHeader,
+    positions: Readonly<Record<string, string>> = {}
+  ): Promise<string | null> {
     if (this.interactions === 0) return null;
     const visits = [];
     for (const visit of this.all) {
@@ -293,6 +309,32 @@ export class Timeline {
         baselineTree: wholeTreeText(first.stable),
       });
     }
-    return visits.length === 0 ? null : renderPackage(header, visits);
+    return visits.length === 0
+      ? null
+      : renderPackage(header, visits, this.tracePoints(positions));
+  }
+
+  /** Where the trace holds each Interaction: the position of its "before"
+   * and of its "after", for as many as the trace has. */
+  private tracePoints(
+    positions: Readonly<Record<string, string>>
+  ): TracePoint[] {
+    if (Object.keys(positions).length === 0) return [];
+    return this.recorded.map((interaction) => {
+      const before = positions[interaction.before];
+      const after =
+        interaction.after === null ? undefined : positions[interaction.after];
+      return {
+        interactionId: interaction.id,
+        pageId: interaction.page,
+        ...(before === undefined ? {} : { beforeSnapshotId: before }),
+        ...(after === undefined ? {} : { afterSnapshotId: after }),
+        startedAt: interaction.at,
+        endedAt:
+          (interaction.after === null
+            ? undefined
+            : this.readAt.get(interaction.after)) ?? interaction.at,
+      };
+    });
   }
 }

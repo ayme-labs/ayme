@@ -5,6 +5,9 @@ import {
   waitForSettled,
   type PageActivitySource,
 } from "@ayme-dev/core/structural-observation";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import type { Browser, BrowserContext, Frame, Page } from "playwright-core";
 
@@ -20,7 +23,11 @@ import {
   installGate,
   type HeldClick,
 } from "./pageScripts";
-import { loadProjectPlaywright } from "./projectPlaywright";
+import {
+  loadProjectPlaywright,
+  projectPlaywrightCli,
+} from "./projectPlaywright";
+import { snapshotPositions } from "./traceTool";
 
 /**
  * The recorded browser on stock Playwright: Chromium, launched by the
@@ -65,7 +72,7 @@ export const stockBrowser = (options: {
       );
       const recorded = yield* Effect.tryPromise({
         try: () =>
-          openPage(browser, options.url, (signal) =>
+          openPage(browser, options.url, options.projectDir, (signal) =>
             Queue.offerUnsafe(signals, signal)
           ),
         catch: unavailable,
@@ -165,6 +172,7 @@ type PlaywrightAction = {
 async function openPage(
   browser: Browser,
   url: string,
+  projectDir: string,
   tell: (signal: BrowserSignal) => void
 ) {
   browser.on("disconnected", () => tell({ kind: "browserGone" }));
@@ -257,6 +265,67 @@ async function openPage(
 
   const everyFrame = () => [...pages.values()].flatMap((open) => open.frames());
 
+  /**
+   * The trace's own order. Starting and stopping it follow each other as
+   * they were asked, and so does a snapshot's marker after a start, so that
+   * a Record after a Clear never meets the trace that Clear is still
+   * throwing away. A snapshot's marker does not wait for a stop that is
+   * asked later, and a stop does not wait for a snapshot that cannot be read.
+   */
+  let traceOps: Promise<unknown> = Promise.resolve();
+  const inTraceOrder = <T>(run: () => Promise<T>): Promise<T> => {
+    const done = traceOps.then(run);
+    traceOps = done.catch(() => {});
+    return done;
+  };
+  /** Playwright groups every call of a context: one marker at a time. */
+  let markers: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Leaves a mark in the trace for a snapshot just read: a group named for
+   * the snapshot's id with one call inside it, whose page the stock trace
+   * tool opens as the page at that moment. It changes nothing in the page.
+   * A mark that cannot be made leaves the snapshot without a place in the
+   * trace, and is no reason to lose the snapshot.
+   */
+  async function mark(page: Page, snapshot: string) {
+    const made = markers.then(async () => {
+      await traceOps;
+      await context.tracing.group(snapshot);
+      try {
+        await page.evaluate(() => 0);
+      } finally {
+        await context.tracing.groupEnd();
+      }
+    });
+    markers = made.catch(() => {});
+    await made.catch(() => {});
+  }
+
+  /** The trace is stopped. Kept, it is a file with the place of each mark
+   * in it, as the stock trace tool numbers them. */
+  async function stopTrace(keep: boolean) {
+    if (!keep)
+      return inTraceOrder(async () => {
+        await context.tracing.stop();
+      });
+    return inTraceOrder(async () => {
+      const file = join(
+        await mkdtemp(join(tmpdir(), "ayme-recorder-")),
+        "trace.zip"
+      );
+      await context.tracing.stop({ path: file });
+      const cli = projectPlaywrightCli(projectDir);
+      tell({
+        kind: "traceStopped",
+        trace: {
+          file,
+          positions: cli ? await snapshotPositions(cli, file) : {},
+        },
+      });
+    });
+  }
+
   async function carryOut(request: BrowserRequest): Promise<void> {
     switch (request.kind) {
       case "reportInteractions":
@@ -276,6 +345,8 @@ async function openPage(
         if (!open) return;
         const at = now();
         const tree = await open.ariaSnapshot({ mode: "ai" });
+        // Before the snapshot is told: its input is passed on after that.
+        await mark(open, request.snapshot);
         return tell({
           kind: "snapshotTaken",
           snapshot: {
@@ -294,6 +365,16 @@ async function openPage(
         await passOn(input.frame, input.click);
         return tell({ kind: "inputPassedOn", input: request.input, at: now() });
       }
+      case "startTrace":
+        return inTraceOrder(async () => {
+          await context.tracing.start({
+            name: "ayme-recording",
+            snapshots: true,
+            screenshots: true,
+          });
+        });
+      case "stopTrace":
+        return stopTrace(request.keep);
       case "waitForSettled": {
         const open = pages.get(request.page);
         // Core owns the quiet window, the deadline and what "settled" is.

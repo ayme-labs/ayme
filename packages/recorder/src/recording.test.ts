@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
+import {
+  SCRIPTED_TRACE,
+  startScriptedRecorder,
+  type ScriptedBrowser,
+} from "./testing";
 
 // A recording on the scripted browser, with a test clock: what the handle
 // answers and shows, what it asks of the browser, and the package on disk.
@@ -52,7 +56,13 @@ const savedClick = [
   `        changeTree:`,
   `          - [ref=e1]:`,
   `            - <added> [ref=e3] status: Saved`,
-  `traceActionPoints: []`,
+  `traceActionPoints:`,
+  `  - interactionId: interaction_1`,
+  `    pageId: page_1`,
+  `    beforeSnapshotId: "10"`,
+  `    afterSnapshotId: "20"`,
+  `    startedAt: 2`,
+  `    endedAt: 3`,
   ``,
 ].join("\n");
 
@@ -89,6 +99,7 @@ describe("a recording", () => {
       },
     });
     expect(browser.asked).toEqual([
+      { kind: "startTrace" },
       { kind: "reportInteractions", on: true },
       { kind: "holdInputs", on: true },
     ]);
@@ -100,7 +111,7 @@ describe("a recording", () => {
 
     browser.holdClick();
     await browser.asks(waitForSettled);
-    expect(browser.asked.slice(2)).toEqual([
+    expect(browser.asked.slice(3)).toEqual([
       { kind: "takeSnapshot", snapshot: "snapshot_1", page: "page_1" },
       { kind: "passOn", input: "input_1" },
       { kind: "waitForSettled", page: "page_1", input: "input_1" },
@@ -195,7 +206,7 @@ describe("a recording", () => {
         `mode: structural`,
         `createdAt: 1970-01-01T00:00:00.000Z`,
         `url: http://shop.test/`,
-        `tracePath: null`,
+        `tracePath: .ayme/recordings/${recordingId}/trace.zip`,
         `visits:`,
         `  - visitId: visit_1`,
         `    url: http://shop.test/`,
@@ -211,7 +222,14 @@ describe("a recording", () => {
     await expect(
       readFile(join(projectDir, ".ayme", "recordings", "latest.yaml"), "utf8")
     ).resolves.toBe(text);
-    expect(await readdir(folder)).toEqual(["package.yaml"]);
+    // The recording's trace is beside the package.
+    expect((await readdir(folder)).sort()).toEqual([
+      "package.yaml",
+      "trace.zip",
+    ]);
+    await expect(readFile(join(folder, "trace.zip"), "utf8")).resolves.toBe(
+      SCRIPTED_TRACE
+    );
   });
 
   it("replaces an earlier 'latest', and the semantic one of the released recorder", async () => {

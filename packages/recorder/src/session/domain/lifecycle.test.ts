@@ -95,6 +95,7 @@ const startVisit: ToDo = {
   kind: "timeline",
   add: { kind: "visit", page: "page_1", url, cause: "initial" },
 };
+const startTrace: ToDo = { kind: "browser", ask: { kind: "startTrace" } };
 const reportInteractions: ToDo = {
   kind: "browser",
   ask: { kind: "reportInteractions", on: true },
@@ -108,7 +109,17 @@ const wrapUp: ToDo[] = [
   { kind: "browser", ask: { kind: "holdInputs", on: false } },
   { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
 ];
-const save: ToDo = { kind: "save" };
+const trace = { file: "/tmp/trace.zip", positions: { snapshot_1: "11" } };
+const stopTrace: ToDo = {
+  kind: "browser",
+  ask: { kind: "stopTrace", keep: true },
+};
+const discardTrace: ToDo = {
+  kind: "browser",
+  ask: { kind: "stopTrace", keep: false },
+};
+const traceStopped: Happening = { kind: "traceStopped", trace };
+const save: ToDo = { kind: "save", trace };
 
 // Ticket #1273: the commands, and Playwright's recorder switched off.
 const stop: Happening = { kind: "command", command: { type: "stop" } };
@@ -229,7 +240,9 @@ describe("the lifecycle", () => {
     {
       name: "Record starts a Visit for the open page and has Interactions reported; its answer waits",
       happened: [opened, record],
-      todo: [[startVisit, reportInteractions, { kind: "deferReply" }]],
+      todo: [
+        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
+      ],
       state: { phase: "recording" },
     },
     {
@@ -262,6 +275,7 @@ describe("the lifecycle", () => {
               cause: "initial",
             },
           },
+          startTrace,
           reportInteractions,
           { kind: "deferReply" },
         ],
@@ -518,11 +532,12 @@ describe("the lifecycle", () => {
         finish,
         gateOff,
         taken("snapshot_1"),
+        traceStopped,
         saved,
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), save],
+        [keep("snapshot_1"), stopTrace],
+        [save],
         [{ kind: "end", outcome: { kind: "saved", folder: "/project/rec_1" } }],
       ],
       state: {
@@ -533,7 +548,7 @@ describe("the lifecycle", () => {
     {
       name: "the recorder shows that it is saving while the package is written",
       happened: [opened, ...started, finish, gateOff, taken("snapshot_1")],
-      todo: [[keep("snapshot_1"), save]],
+      todo: [[keep("snapshot_1"), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -550,7 +565,7 @@ describe("the lifecycle", () => {
       todo: [
         [...wrapUp, reply("applied")],
         [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), save],
+        [keep("snapshot_3"), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -578,7 +593,7 @@ describe("the lifecycle", () => {
         [takeSnapshot("snapshot_2")],
         [keep("snapshot_2"), takeSnapshot("snapshot_3")],
         [interaction("snapshot_1", "snapshot_2")],
-        [keep("snapshot_3"), save],
+        [keep("snapshot_3"), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -615,7 +630,7 @@ describe("the lifecycle", () => {
       todo: [
         [takeSnapshot("snapshot_3")],
         [keep("snapshot_3")],
-        [interaction("snapshot_1", "snapshot_2"), save],
+        [interaction("snapshot_1", "snapshot_2"), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -630,7 +645,7 @@ describe("the lifecycle", () => {
         taken("snapshot_3"),
         { kind: "timeLimitPassed" },
       ],
-      todo: [[keep("snapshot_3")], [save]],
+      todo: [[keep("snapshot_3")], [stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -673,6 +688,7 @@ describe("the lifecycle", () => {
         finish,
         gateOff,
         taken("snapshot_1"),
+        traceStopped,
         saved,
         finish,
       ],
@@ -690,10 +706,76 @@ describe("the lifecycle", () => {
         finish,
         gateOff,
         taken("snapshot_1"),
+        traceStopped,
         { kind: "saved", folder: null },
       ],
       todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
       state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+
+    // The trace (ticket #1274): one per recording, from the first Record to
+    // the save, through every pause. Clear throws it away.
+    {
+      name: "Stop leaves the trace running: only Playwright's recorder is switched off",
+      happened: [...stopped],
+      todo: [[keep("snapshot_1"), stopReporting], []],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Continue goes on in the trace that is running",
+      happened: [...stopped, resume],
+      todo: [[reportInteractions, { kind: "deferReply" }]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Finish while paused stops the trace, and the package is written once it is stopped",
+      happened: [...stopped, finish, traceStopped],
+      todo: [[reply("applied"), stopTrace], [save]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "an outside end while paused stops the trace and saves",
+      happened: [...stopped, outsideEnd, traceStopped],
+      todo: [[stopTrace], [save]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "the package is written once, whatever tells of the stopped trace again",
+      happened: [...stopped, finish, traceStopped, traceStopped],
+      todo: [[save], []],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a trace that cannot be stopped does not lose the recording: the package is written without it",
+      happened: [...stopped, finish, failed(stopTrace)],
+      todo: [[{ kind: "save" }]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "Finish is ignored while the trace is being stopped",
+      happened: [...stopped, finish, finish],
+      todo: [[reply("ignored")]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a trace that is thrown away and cannot be stopped changes nothing",
+      happened: [...stopped, clear, failed(discardTrace)],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a trace that breaks after Record was answered changes nothing",
+      happened: [opened, ...started, failed(startTrace)],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a new recording after Clear starts a new trace",
+      happened: [...stopped, clear, record],
+      todo: [
+        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
+      ],
+      state: { phase: "recording" },
     },
 
     // A breakdown.
@@ -734,7 +816,11 @@ describe("the lifecycle", () => {
     {
       name: "an outside end while recording wraps up and saves, as Finish does",
       happened: [opened, ...started, outsideEnd, gateOff, taken("snapshot_1")],
-      todo: [wrapUp, [takeSnapshot("snapshot_1")], [keep("snapshot_1"), save]],
+      todo: [
+        wrapUp,
+        [takeSnapshot("snapshot_1")],
+        [keep("snapshot_1"), stopTrace],
+      ],
       state: { phase: "saving" },
     },
     {
@@ -764,7 +850,7 @@ describe("the lifecycle", () => {
         { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
         gateOff,
       ],
-      todo: [wrapUp, [save]],
+      todo: [wrapUp, [stopTrace]],
       state: { phase: "saving" },
     },
   ])("$name", ({ happened, todo, state }) => {
@@ -903,7 +989,7 @@ describe("the lifecycle", () => {
         finish,
         { kind: "timeLimitPassed" },
       ],
-      todo: [[passOn("input_1"), save]],
+      todo: [[passOn("input_1"), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1024,7 +1110,7 @@ describe("the lifecycle", () => {
         [...wrapUp, reply("applied")],
         [takeSnapshot("snapshot_3")],
         [keep("snapshot_3"), stopReporting],
-        [{ kind: "clear" }],
+        [discardTrace, { kind: "clear" }],
       ],
       state: { phase: "notRecording" },
     },
@@ -1060,9 +1146,9 @@ describe("the lifecycle", () => {
         reported,
       ],
       todo: [
-        [stopReporting, { kind: "clear" }],
+        [stopReporting, discardTrace, { kind: "clear" }],
         [],
-        [startVisit, reportInteractions, { kind: "deferReply" }],
+        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
         [holdInputs],
         [recordApplied],
         [],
@@ -1072,14 +1158,14 @@ describe("the lifecycle", () => {
     {
       name: "Clear while paused throws everything away at once",
       happened: [...stopped, clear],
-      todo: [[{ kind: "clear" }, reply("applied")]],
+      todo: [[discardTrace, { kind: "clear" }, reply("applied")]],
       state: { phase: "notRecording" },
     },
     {
       name: "after Clear, Record starts a recording of its own: a new Visit, and the first snapshot",
       happened: [...stopped, clear, ...started, clickHeld("input_1")],
       todo: [
-        [startVisit, reportInteractions, { kind: "deferReply" }],
+        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
         [holdInputs],
         [recordApplied],
         [takeSnapshot("snapshot_1")],
@@ -1097,13 +1183,13 @@ describe("the lifecycle", () => {
     {
       name: "Finish while paused is answered and saves at once: nothing is under way, and nothing of the pause is read",
       happened: [...stopped, finish],
-      todo: [[reply("applied"), save]],
+      todo: [[reply("applied"), stopTrace]],
       state: { phase: "saving" },
     },
     {
       name: "an outside end while paused saves what was recorded",
       happened: [...stopped, outsideEnd, outsideEnd],
-      todo: [[save], []],
+      todo: [[stopTrace], []],
       state: { phase: "saving" },
     },
     {
@@ -1112,7 +1198,7 @@ describe("the lifecycle", () => {
         ...stopped,
         { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
       ],
-      todo: [[save]],
+      todo: [[stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1125,7 +1211,7 @@ describe("the lifecycle", () => {
         gateOff,
         taken("snapshot_1"),
       ],
-      todo: [[], [takeSnapshot("snapshot_1")], [keep("snapshot_1"), save]],
+      todo: [[], [takeSnapshot("snapshot_1")], [keep("snapshot_1"), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1139,7 +1225,7 @@ describe("the lifecycle", () => {
         outsideEnd,
         reportingOff,
       ],
-      todo: [[], [save]],
+      todo: [[], [stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1157,6 +1243,7 @@ describe("the lifecycle", () => {
         [takeSnapshot("snapshot_1")],
         [
           keep("snapshot_1"),
+          discardTrace,
           { kind: "clear" },
           { kind: "end", outcome: { kind: "empty" } },
         ],
@@ -1184,6 +1271,18 @@ describe("the lifecycle", () => {
       },
     },
     {
+      name: "Record is answered 'ignored' and the recorder ends 'failed' when the trace cannot be started",
+      happened: [opened, record, failed(startTrace)],
+      todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
+      state: {
+        phase: "ended",
+        outcome: {
+          kind: "failed",
+          reason: "Recording could not start. It broke.",
+        },
+      },
+    },
+    {
       name: "Record is answered 'ignored' and the recorder ends 'failed' when the pages cannot hold inputs back",
       happened: [opened, record, reporting, failed(holdInputs)],
       todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
@@ -1200,7 +1299,7 @@ describe("the lifecycle", () => {
       happened: [...stopped, resume, failed(reportInteractions), finish],
       todo: [
         [{ kind: "replyDeferred", result: "ignored" }],
-        [reply("applied"), save],
+        [reply("applied"), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -1315,7 +1414,7 @@ describe("the lifecycle", () => {
         gateOff,
         failed(takeSnapshot("snapshot_1")),
       ],
-      todo: [[save]],
+      todo: [[stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1373,6 +1472,7 @@ describe("the lifecycle", () => {
       finish,
       taken("snapshot_1"),
       finish,
+      traceStopped,
       saved,
       finish,
     ]);

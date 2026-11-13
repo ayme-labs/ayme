@@ -1,6 +1,7 @@
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import type { RecordingTrace } from "../domain";
 import type { Timeline } from "../domain/timeline";
 
 /**
@@ -8,28 +9,56 @@ import type { Timeline } from "../domain/timeline";
  * keeps its recordings, in the project:
  *
  *     .ayme/recordings/<recordingId>/package.yaml
- *     .ayme/recordings/latest.yaml      the same text
+ *     .ayme/recordings/<recordingId>/trace.zip   when the recording has one
+ *     .ayme/recordings/latest.yaml      the same text as the package
  *
  * Resolves with the package's folder, or with null when the timeline has
  * nothing to write: nothing is written then.
  *
- * Both are written under a temporary name and renamed, so that whoever
- * looks while the package is written, or stops the recorder then, finds a
- * whole package or none. A save that cannot be completed leaves nothing
- * behind.
+ * The folder and `latest.yaml` are written under a temporary name and
+ * renamed, the trace file in the folder, so that whoever looks while the
+ * package is written, or stops the recorder then, finds a whole package or
+ * none. A save that cannot be completed leaves nothing behind. The trace's
+ * own file, in the place the browser wrote it, is the store's to remove
+ * whatever comes of the save.
  */
 export async function saveRecording(
   timeline: Timeline,
-  options: { readonly projectDir: string; readonly createdAt: Date }
+  options: {
+    readonly projectDir: string;
+    readonly createdAt: Date;
+    readonly trace: RecordingTrace | null;
+  }
 ): Promise<string | null> {
+  const { trace } = options;
+  try {
+    return await write(timeline, options);
+  } finally {
+    if (trace) await rm(trace.file, { force: true });
+  }
+}
+
+async function write(
+  timeline: Timeline,
+  options: {
+    readonly projectDir: string;
+    readonly createdAt: Date;
+    readonly trace: RecordingTrace | null;
+  }
+): Promise<string | null> {
+  const { trace } = options;
   const createdAt = options.createdAt.toISOString();
   const recordingId = `rec_${createdAt.replace(/[-:.]/g, "")}`;
-  // No trace is recorded yet.
-  const text = await timeline.package({
-    recordingId,
-    createdAt,
-    tracePath: null,
-  });
+  const text = await timeline.package(
+    {
+      recordingId,
+      createdAt,
+      // Relative to the project, with forward slashes, as the released
+      // recorder writes it.
+      tracePath: trace ? `.ayme/recordings/${recordingId}/trace.zip` : null,
+    },
+    trace?.positions
+  );
   if (text === null) return null;
   const recordings = join(options.projectDir, ".ayme", "recordings");
   const folder = join(recordings, recordingId);
@@ -41,6 +70,7 @@ export async function saveRecording(
     await rm(temporaryFolder, { recursive: true, force: true });
     await mkdir(temporaryFolder, { recursive: true });
     await writeFile(join(temporaryFolder, "package.yaml"), text);
+    if (trace) await copyFile(trace.file, join(temporaryFolder, "trace.zip"));
     await writeFile(temporaryLatest, text);
     await rm(folder, { recursive: true, force: true });
     await rename(temporaryFolder, folder);

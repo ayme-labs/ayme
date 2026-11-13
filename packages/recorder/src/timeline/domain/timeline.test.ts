@@ -47,10 +47,13 @@ const click = (
   },
 });
 
-async function packageOf(additions: readonly TimelineAddition[]) {
+async function packageOf(
+  additions: readonly TimelineAddition[],
+  positions: Readonly<Record<string, string>> = {}
+) {
   const timeline = new Timeline();
   for (const addition of additions) await timeline.add(addition);
-  return timeline.package(header);
+  return timeline.package(header, positions);
 }
 
 // What the page looks like, as Playwright's AI-mode snapshot writes it.
@@ -77,6 +80,73 @@ describe("the timeline", () => {
     expect(await timeline.package(recording.header)).toBe(
       fixture("cart-flow.package.txt")
     );
+  });
+
+  describe("the trace", () => {
+    it("tells where an Interaction's snapshots are in the trace, as the stock trace tool numbers them", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          snapshot("snapshot_2", 20, savedPage),
+          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+        ],
+        { snapshot_1: "11", snapshot_2: "17" }
+      );
+
+      expect(text).toMatch(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "11"`,
+          `    afterSnapshotId: "17"`,
+          `    startedAt: 15`,
+          `    endedAt: 20`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("gives an Interaction that left its page a before and no after", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          click("snapshot_1", null, { ref: "e2", tree: idle }),
+        ],
+        { snapshot_1: "11" }
+      );
+
+      expect(text).toMatch(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "11"`,
+          `    startedAt: 15`,
+          `    endedAt: 15`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("lists the Interactions in the order they were recorded, each with its own positions", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          snapshot("snapshot_2", 20, savedPage),
+          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+          click("snapshot_2", null, { ref: "e2", tree: savedPage }),
+        ],
+        { snapshot_1: "11", snapshot_2: "17" }
+      );
+
+      expect(text).toMatch(
+        /interactionId: interaction_1[^]*interactionId: interaction_2\n {4}pageId: page_1\n {4}beforeSnapshotId: "17"\n/
+      );
+    });
   });
 
   it("has nothing to write while no page was read", async () => {
