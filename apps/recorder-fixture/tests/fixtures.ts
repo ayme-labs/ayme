@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
@@ -153,14 +153,22 @@ export const test = base.extend<{
   runRecorder: (args: string[], options?: { cwd?: string }) => Promise<Run>;
   /** Starts a recorder in this process on a fixture page such as
    * `/cart.html`. Its project is a folder of the test's own inside this
-   * app, so the app's Playwright is the one it finds. */
+   * app, so the app's Playwright is the one it finds; or, when
+   * AYME_RECORDER_PLAYWRIGHT_PROJECT names a project with another
+   * Playwright installed, a folder of the test's own inside that one. */
   startRecording: (path: string) => Promise<Recording>;
 }>({
   startRecording: async ({ fixturePages }, use, testInfo) => {
     const ends: (() => Promise<unknown>)[] = [];
+    /** Project folders made inside another project, removed at the end. */
+    const madeInside: string[] = [];
     await use(async (path) => {
-      const projectDir = testInfo.outputPath("project");
+      const otherPlaywright = process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT;
+      const projectDir = otherPlaywright
+        ? await mkdtemp(join(otherPlaywright, "recorder-fixture-"))
+        : testInfo.outputPath("project");
       await mkdir(projectDir, { recursive: true });
+      if (otherPlaywright) madeInside.push(projectDir);
       const debugPort = await freePort();
       const url = fixturePages.url(path);
       const recorder = await startRecorder({
@@ -186,6 +194,8 @@ export const test = base.extend<{
       return { recorder, page, person: personAt(session), projectDir };
     });
     for (const end of ends) await end();
+    for (const folder of madeInside)
+      await rm(folder, { recursive: true, force: true });
   },
 
   // eslint-disable-next-line no-empty-pattern

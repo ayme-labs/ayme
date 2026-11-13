@@ -32,6 +32,7 @@ jobs:
       uncached_builds: ${{ steps.detect.outputs.uncached_builds }}
       e2e_suites: ${{ steps.detect.outputs.e2e_suites }}
       live_goals: ${{ steps.detect.outputs.live_goals }}
+      recorder_playwright: ${{ steps.detect.outputs.recorder_playwright }}
       docs_checks: ${{ steps.compatibility.outputs.docs_checks }}
       compatibility_matrix: ${{ steps.compatibility.outputs.matrix }}
     steps:
@@ -65,6 +66,9 @@ jobs:
           # Run live goals when the Vue example or a dependency is affected.
           packages=$(pnpm exec turbo ls $affected --output=json)
           echo "live_goals=$(jq -r '[.packages.items[].name] | index("@ayme-dev/example-vue") != null' <<< "$packages")" >> "$GITHUB_OUTPUT"
+          # Run the recorder on each supported Playwright when it, its CLI or
+          # its fixture app is affected.
+          echo "recorder_playwright=$(jq -r '[.packages.items[].name] | index("@ayme-dev/recorder-fixture") != null' <<< "$packages")" >> "$GITHUB_OUTPUT"
 
           tasks=$(pnpm exec turbo run build lint typecheck test test:e2e $affected --dry=json \
             | jq '[.tasks[] | select(.command != "<NONEXISTENT>")]')
@@ -313,11 +317,71 @@ jobs:
           path: ${{ matrix.dir }}/test-results
           if-no-files-found: ignore
 
+  # The recorder runs on the project's own Playwright, so its contract with
+  # stock Playwright and its main end-to-end test run once per supported
+  # version, as packages/recorder/playwright-range.json states the range. One
+  # job installs each version in turn into a project folder of its own,
+  # rather than one runner per version repeating the setup.
+  recorder-playwright:
+    name: Recorder on each supported Playwright
+    needs: [changes, build]
+    if: needs.changes.outputs.recorder_playwright == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run build --filter=@ayme-dev/recorder-fixture^...
+      - name: Run the contract suite and the main end-to-end test per version
+        shell: bash
+        run: |
+          set -o pipefail
+          range=packages/recorder/playwright-range.json
+          major=$(jq -r '.floor | split(".")[0]' "$range")
+          from=$(jq -r '.floor | split(".")[1]' "$range")
+          to=$(jq -r '.lastVerified | split(".")[1]' "$range")
+          failed=
+          for minor in $(seq "$from" "$to"); do
+            version="$major.$minor"
+            echo "::group::Playwright $version"
+            # A project with only that Playwright, outside the repository,
+            # and the headless Chromium it launches.
+            project="$RUNNER_TEMP/playwright-$version"
+            mkdir -p "$project"
+            (cd "$project" && npm init -y > /dev/null \
+              && npm install --no-audit --no-fund "playwright@$version" \
+              && npx --no-install playwright install chromium-headless-shell) \
+              && AYME_RECORDER_PLAYWRIGHT_PROJECT="$project" \
+                pnpm --filter @ayme-dev/recorder test:contract \
+              && AYME_RECORDER_PLAYWRIGHT_PROJECT="$project" \
+                pnpm --filter @ayme-dev/recorder-fixture exec playwright test \
+                  -g "Finish writes the released Recording Package" \
+              || failed="$failed $version"
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::The recorder failed on Playwright$failed"
+            exit 1
+          fi
+      - name: Upload browser test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results-recorder-playwright
+          path: apps/recorder-fixture/test-results
+          if-no-files-found: ignore
+
   # Branch protection requires this job instead of the jobs above, because
   # skipped and matrix jobs report under names that change with the run.
   check:
     name: Check
-    needs: [changes, build, static, unit, e2e]
+    needs: [changes, build, static, unit, e2e, recorder-playwright]
     if: always()
     runs-on: ubuntu-latest
     steps:
