@@ -14,12 +14,15 @@ import { expect, test } from "./fixtures";
 // with a person's input.
 
 /** Where the recorder's highlight is drawn on the recorded page; null when
- * it draws none. */
-async function highlightOn(page: Page) {
-  const host = page.locator("ayme-recorder-highlight");
-  if ((await host.count()) === 0) return null;
-  return host.boundingBox();
-}
+ * it draws none. Read in one step, which never waits: the highlight can be
+ * cleared at any moment, and a locator's box would wait for it to come back. */
+const highlightOn = (page: Page) =>
+  page.evaluate(`(() => {
+    const host = document.querySelector("ayme-recorder-highlight");
+    if (!host) return null;
+    const { x, y, width, height } = host.getBoundingClientRect();
+    return { x, y, width, height };
+  })()`);
 
 /** The box of an element in the page's coordinates. */
 async function boxOf(element: Locator) {
