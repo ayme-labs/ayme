@@ -278,15 +278,22 @@ describe("a recording", () => {
     });
   });
 
-  it("fails its end when the package cannot be written, and still lets the browser go", async () => {
+  it("ends 'failed' with the reason when the package cannot be written, and still lets the browser go", async () => {
     // The project's `.ayme` is a file: no folder can be made in it.
     await writeFile(join(projectDir, ".ayme"), "");
     const { recorder, browser } = await start();
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
     await recorder.send({ type: "record" });
 
     await recorder.send({ type: "finish" });
 
-    await expect(recorder.done).rejects.toThrow(/ENOTDIR|EEXIST/);
+    const outcome = await recorder.done;
+    expect(outcome).toEqual({
+      kind: "failed",
+      reason: expect.stringMatching(/ENOTDIR|EEXIST/),
+    });
+    expect(updates.at(-1)!.state).toMatchObject({ phase: "ended", outcome });
     expect(browser.released).toBe(true);
   });
 });

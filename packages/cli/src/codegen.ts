@@ -26,10 +26,19 @@ export function launchOptions(
 
 /** What the terminal is told when the recorder has ended. */
 export function outcomeLine(outcome: RecordingOutcome): string {
-  return outcome.kind === "saved"
-    ? `Recording package: ${join(outcome.folder, "package.yaml")}\n`
-    : "Nothing was recorded.\n";
+  switch (outcome.kind) {
+    case "saved":
+      return `Recording package: ${join(outcome.folder, "package.yaml")}\n`;
+    case "empty":
+      return "Nothing was recorded.\n";
+    case "failed":
+      return `The recorder failed: ${outcome.reason}\n`;
+  }
 }
+
+/** The process's exit code for an outcome. */
+export const exitCode = (outcome: RecordingOutcome): number =>
+  outcome.kind === "failed" ? 1 : 0;
 
 /** Starts the recorder in the project the command was started in. A start
  * error is printed and gives no recorder. */
@@ -62,6 +71,8 @@ export async function codegen(url: string): Promise<number> {
   );
 
   const outcome = await recorder.done;
-  process.stdout.write(outcomeLine(outcome));
-  return 0;
+  (outcome.kind === "failed" ? process.stderr : process.stdout).write(
+    outcomeLine(outcome)
+  );
+  return exitCode(outcome);
 }

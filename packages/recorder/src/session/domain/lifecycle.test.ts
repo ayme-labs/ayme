@@ -595,6 +595,40 @@ describe("the lifecycle", () => {
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
+    // A breakdown.
+    {
+      name: "a recorder that breaks down ends 'failed' with the reason",
+      happened: [
+        opened,
+        record,
+        finish,
+        gateOff,
+        taken("snapshot_1"),
+        { kind: "brokeDown", reason: "ENOSPC: no space left on device" },
+      ],
+      todo: [
+        [
+          {
+            kind: "end",
+            outcome: {
+              kind: "failed",
+              reason: "ENOSPC: no space left on device",
+            },
+          },
+        ],
+      ],
+      state: {
+        phase: "ended",
+        outcome: { kind: "failed", reason: "ENOSPC: no space left on device" },
+      },
+    },
+    {
+      name: "a breakdown after the end changes nothing",
+      happened: [outsideEnd, { kind: "brokeDown", reason: "too late" }],
+      todo: [[]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+
     // An end from outside while recording.
     {
       name: "an outside end while recording wraps up and saves, as Finish does",

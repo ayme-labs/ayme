@@ -1,4 +1,4 @@
-import { Clock, Context, Deferred, Effect, Layer, Queue } from "effect";
+import { Cause, Clock, Context, Deferred, Effect, Layer, Queue } from "effect";
 
 import type {
   CommandResult,
@@ -51,9 +51,8 @@ export class RecorderSession extends Context.Service<
     readonly subscribe: (
       listener: (update: RecorderUpdate) => void
     ) => () => void;
-    /** Waits for the recorder's end. It fails when the recorder broke down,
-     * as when the package could not be written. */
-    readonly done: Effect.Effect<RecordingOutcome, unknown>;
+    /** Waits for the recorder's end. */
+    readonly done: Effect.Effect<RecordingOutcome>;
   }
 >()("@ayme-dev/recorder/session/RecorderSession") {
   static readonly layer = (options: { readonly save: SaveRecording }) =>
@@ -62,7 +61,7 @@ export class RecorderSession extends Context.Service<
       Effect.gen(function* () {
         const browser = yield* RecordedBrowser;
         const queue = yield* Queue.unbounded<Queued>();
-        const done = yield* Deferred.make<RecordingOutcome, unknown>();
+        const done = yield* Deferred.make<RecordingOutcome>();
         const listeners = new Set<(update: RecorderUpdate) => void>();
         const timeline = new Timeline();
         let state = initialState;
@@ -124,12 +123,22 @@ export class RecorderSession extends Context.Service<
           Effect.forever,
           Effect.forkScoped
         );
-        // The one worker. If it breaks down, the recorder's end fails with
-        // what broke it, so that nobody waits for an end that cannot come.
+        // The one worker. If carrying something out breaks it, as when the
+        // package cannot be written, the lifecycle is told, and the recorder
+        // ends "failed": nobody waits for an end that cannot come.
         yield* Queue.take(queue).pipe(
           Effect.flatMap(handle),
           Effect.forever,
-          Effect.catchCause((cause) => Deferred.failCause(done, cause)),
+          Effect.catchCause((cause) => {
+            const broken = Cause.squash(cause);
+            return handle({
+              happening: {
+                kind: "brokeDown",
+                reason:
+                  broken instanceof Error ? broken.message : String(broken),
+              },
+            });
+          }),
           Effect.forkScoped
         );
 

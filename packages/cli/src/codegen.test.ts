@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { launchOptions, outcomeLine } from "./codegen";
+import { exitCode, launchOptions, outcomeLine } from "./codegen";
 
 describe("how codegen launches the browser", () => {
   it("opens the URL in a browser with a window", () => {
@@ -24,6 +24,18 @@ describe("how codegen launches the browser", () => {
 });
 
 describe("what the terminal is told at the end", () => {
+  it("says why the recorder failed", () => {
+    expect(
+      outcomeLine({ kind: "failed", reason: "ENOSPC: no space left on device" })
+    ).toBe("The recorder failed: ENOSPC: no space left on device\n");
+  });
+
+  it("exits with an error only when the recorder failed", () => {
+    expect(exitCode({ kind: "failed", reason: "ENOSPC" })).toBe(1);
+    expect(exitCode({ kind: "empty" })).toBe(0);
+    expect(exitCode({ kind: "saved", folder: "/project/rec" })).toBe(0);
+  });
+
   it("says that nothing was recorded", () => {
     expect(outcomeLine({ kind: "empty" })).toBe("Nothing was recorded.\n");
   });

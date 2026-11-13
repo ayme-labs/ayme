@@ -95,7 +95,9 @@ export type Happening =
   | { readonly kind: "timeLimitPassed" }
   /** A "save" is done. `folder` is the package's folder, or null when there
    * was nothing to save. */
-  | { readonly kind: "saved"; readonly folder: string | null };
+  | { readonly kind: "saved"; readonly folder: string | null }
+  /** The recorder cannot go on: something it was carrying out broke. */
+  | { readonly kind: "brokeDown"; readonly reason: string };
 
 /** One thing the worker carries out after a step, in the list's order. */
 export type ToDo =
@@ -214,6 +216,18 @@ export function step(state: LifecycleState, happening: Happening): Step {
       const without = withoutPage(state, happening.page);
       if (happening.pagesLeft === 0) return endFromOutside(without);
       return isActive(without) ? proceed(without, []) : stay(without);
+    }
+    case "brokeDown": {
+      // Whatever it was doing, it ends here, and says why.
+      if (state.phase === "ended") return stay(state);
+      const outcome: RecordingOutcome = {
+        kind: "failed",
+        reason: happening.reason,
+      };
+      return {
+        state: { phase: "ended", pages: state.pages, outcome },
+        todo: [{ kind: "end", outcome }],
+      };
     }
     case "timeLimitPassed":
       // Whatever is still owed is left out.

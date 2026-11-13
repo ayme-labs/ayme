@@ -23,9 +23,9 @@ export interface Recorder {
   /** Ends the recorder from outside, as the terminal's stop does. Calling it
    * again, at any time, is harmless. */
   end(): void;
-  /** Settles when the recorder has ended, whoever ended it, and its browser
-   * is let go. It rejects when the recorder broke down, as when the package
-   * could not be written. */
+  /** Resolves when the recorder has ended, whoever ended it, and its browser
+   * is let go. It never rejects: a recorder that broke down after it had
+   * started ends with the outcome "failed". */
   readonly done: Promise<RecordingOutcome>;
 }
 
@@ -58,21 +58,11 @@ export async function startRecorderOn(
   // The runtime is closed once the recorder has ended: that lets the browser
   // go. Nothing runs on it after, so what is asked then is answered here.
   let ended = false;
-  const close = async () => {
+  const done = runtime.runPromise(session.done).then(async (outcome) => {
     ended = true;
     await runtime.dispose();
-  };
-  const done = runtime.runPromise(session.done).then(
-    async (outcome) => {
-      await close();
-      return outcome;
-    },
-    // The recorder broke down, as when the package could not be written.
-    async (error: unknown) => {
-      await close();
-      throw error;
-    }
-  );
+    return outcome;
+  });
   const run = <A>(effect: Effect.Effect<A>, afterTheEnd: A): Promise<A> =>
     ended ? Promise.resolve(afterTheEnd) : runtime.runPromise(effect);
   return {

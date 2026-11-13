@@ -8,7 +8,10 @@ export type RecordingOutcome =
   | { readonly kind: "empty" }
   /** A Recording Package was written. `folder` is its folder, as an absolute
    * path: `package.yaml` is in it. */
-  | { readonly kind: "saved"; readonly folder: string };
+  | { readonly kind: "saved"; readonly folder: string }
+  /** The recorder broke down after it had started, as when the package
+   * could not be written. `reason` says what went wrong, for a person. */
+  | { readonly kind: "failed"; readonly reason: string };
 
 /** What the recorder is doing now. */
 export type RecorderState =
