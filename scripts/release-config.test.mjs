@@ -15,26 +15,35 @@ const config = readJson("release-please-config.json");
 const manifest = readJson(".release-please-manifest.json");
 const linked = config.plugins.find(({ type }) => type === "linked-versions");
 
-const packagePaths = fs
+const isPrivate = (dir) => readJson(`${dir}/package.json`).private === true;
+const publishedPaths = fs
   .readdirSync(path.join(repoRoot, "packages"))
   .map((dir) => `packages/${dir}`)
-  .filter((dir) => fs.existsSync(path.join(repoRoot, dir, "package.json")));
-const isPrivate = (dir) => readJson(`${dir}/package.json`).private === true;
-const publishedPaths = packagePaths.filter((dir) => !isPrivate(dir)).sort();
+  .filter((dir) => fs.existsSync(path.join(repoRoot, dir, "package.json")))
+  .filter((dir) => !isPrivate(dir))
+  .sort();
 
-test("Release Please releases every package that is not private, and the manifest names the same packages", () => {
-  const configured = Object.keys(config.packages).sort();
-  for (const dir of publishedPaths) assert.ok(configured.includes(dir), dir);
-  assert.deepEqual(Object.keys(manifest).sort(), configured);
+// Packages that are built and checked but not released yet. Each is private
+// and absent from the release configuration, so that nothing tags or
+// publishes it. docs/releasing.md ("A package that is built but held back")
+// lists what releases one.
+const HELD_BACK = ["packages/cli"];
+
+test("Release Please releases exactly the packages that are not private", () => {
+  assert.deepEqual(Object.keys(config.packages).sort(), publishedPaths);
+  assert.deepEqual(Object.keys(manifest).sort(), publishedPaths);
 });
 
-// A private package may be named here to be ready for release: it is held
-// back until its package.json drops `"private": true`, which is the one change
-// that releases it. The packed-consumer check packs it but keeps its tarball
-// out of what the release publishes.
-test("a package named in the release configuration that is private is a package of this repository", () => {
-  for (const dir of Object.keys(config.packages))
-    assert.ok(packagePaths.includes(dir), dir);
+test("a held-back package is private and absent from the release configuration", () => {
+  for (const dir of HELD_BACK) {
+    assert.equal(isPrivate(dir), true, `${dir} must stay private`);
+    assert.equal(config.packages[dir], undefined, `${dir} in packages`);
+    assert.equal(manifest[dir], undefined, `${dir} in the manifest`);
+    assert.ok(
+      !linked.components.includes(path.basename(dir)),
+      `${dir} in the linked group`
+    );
+  }
 });
 
 test("every released package is in the linked group", () => {
