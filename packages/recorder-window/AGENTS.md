@@ -14,7 +14,7 @@ Slices:
 
 Layers: `domain` (pure rules), `application` (the ports), `infrastructure` (the network), `presentation` (hooks), `view` (components that take props).
 
-The build (`tsdown.config.ts`) writes `dist/window/`: `index.html` and one script with React, the channel's client and the stylesheet inside, which leaves nothing to resolve where it is served. `src/build.test.ts` checks the built script carries no Node built-in, no package import and no engine code. `./window/index.html` is the export through which the CLI finds that folder.
+The build (`tsdown.config.ts`) writes `dist/window/`: `index.html` and one script with React, the channel's client and the stylesheet inside, which leaves nothing to resolve where it is served. `src/build.test.ts` checks the built script carries no Node built-in, no package import and no engine code. `./window/index.html` is the export through which the end-to-end tests find that folder. The CLI's build copies it beside the command's file, and the build also writes `dist/bundled-packages.json`, the third-party packages the script holds, which the CLI's build reads for its `THIRD_PARTY_NOTICES.txt`.
 
 ## Testing
 
