@@ -1339,6 +1339,21 @@ export function inPageContract(lane: InPageLane) {
       ).toEqual(refs);
     });
 
+    it("a key names no element moved into another document, though it stays connected there", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<button id="b">Save</button><iframe></iframe>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const [ref] = await inPageOf.mint(page.locator("#b"));
+      const [keyed] = await inPageOf.elementKeys([ref!]);
+
+      await page.evaluate(
+        'document.querySelector("iframe").contentDocument.body.append(document.querySelector("#b"))'
+      );
+
+      expect(await inPageOf.keyedRefs([keyed!.key])).toEqual([undefined]);
+      expect(await inPageOf.elementKeys([ref!])).toEqual([undefined]);
+    });
+
     it.runIf(lane.hostsOutliveLoads)(
       "a key names no element of the next document, though that document gives its element the same ref",
       async () => {

@@ -284,9 +284,14 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   const refs = createRefWorld(captureAriaSnapshot);
   // Each Page Object Root's element by a key no rename retires.
   const elementKeys = createElementKeys(token);
-  /** The ref `element` has now, while it is in the document. */
+  /**
+   * The ref `element` has now, while it is in the document: one moved into
+   * a frame's document stays connected, and is in this document no longer.
+   */
   const refNow = (element: Element | undefined) =>
-    element?.isConnected ? refs.lastRefOf(element) : undefined;
+    element?.isConnected && element.ownerDocument === document
+      ? refs.lastRefOf(element)
+      : undefined;
   const reach = createReach(refs.nameOf);
   // Each host's picking that is on, to end it.
   const pickings = new Map<string, () => void>();
