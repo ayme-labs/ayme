@@ -667,3 +667,100 @@ it("reports files chosen in a file input as an upload, with their names", async 
   });
   expect(report.values).not.toHaveProperty("text");
 });
+
+// Assert visibility (ticket #1278): Playwright's own picking mode, switched
+// and heard through private parts of Playwright.
+
+const CLICKABLE = `
+  <h1>Orders</h1>
+  <button id="first" onclick="window.clicks = (window.clicks ?? 0) + 1">First</button>
+  <div id="card" style="cursor: pointer" onclick="window.clicks = (window.clicks ?? 0) + 1">
+    <span>Open the card</span>
+    <p>Details</p>
+  </div>
+  <p>Plain text</p>
+  <a href="#more">More</a>`;
+
+it("switches Playwright's recorder into its picking mode and out of it, and tells of each change of its mode", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await reporting(browser);
+
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+
+  await browser.ask({ kind: "pick", on: false });
+  await browser.toldOf("picking", ({ on }) => !on);
+  expect(
+    browser.told
+      .filter((signal) => signal.kind === "picking")
+      .map((signal) => signal.on)
+  ).toEqual([true, false]);
+});
+
+it("reports the element a person picks as an assertion, leaves picking by itself, and the click reaches neither the page nor the gate", async () => {
+  const browser = await onStockPlaywright(CLICKABLE);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+
+  await browser.click(browser.page.locator("#first"));
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report).toMatchObject({
+    type: "assertVisible",
+    selector: expect.stringContaining("First"),
+  });
+  await browser.toldOf("picking", ({ on }) => !on);
+  expect(browser.told.map(({ kind }) => kind)).not.toContain("inputHeld");
+  expect(await browser.page.evaluate("window.clicks ?? 0")).toBe(0);
+});
+
+it("leaves the gate holding clicks again once picking is over", async () => {
+  const browser = await onStockPlaywright(CLICKABLE);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+  await browser.click(browser.page.locator("#first"));
+  await browser.toldOf("picking", ({ on }) => !on);
+  await browser.ask({ kind: "pick", on: false });
+
+  await browser.click(browser.page.locator("#first"));
+
+  await browser.toldOf("inputHeld");
+});
+
+it("marks the same elements as clickable in a snapshot before, during and after an assertion", async () => {
+  const browser = await onStockPlaywright(CLICKABLE);
+  await reporting(browser);
+  /** The lines of a snapshot that mark an element as clickable, without
+   * refs, which are each snapshot's own. */
+  const clickable = async (snapshot: string) => {
+    await browser.ask({ kind: "takeSnapshot", snapshot, page: "page_1" });
+    const { snapshot: taken } = await browser.toldOf(
+      "snapshotTaken",
+      (told) => told.snapshot.id === snapshot
+    );
+    return taken.tree
+      .split("\n")
+      .filter((line) => line.includes("[cursor=pointer]"))
+      .map((line) => line.replaceAll(/ \[(ref=\w+|active)\]/g, ""));
+  };
+  const before = await clickable("before");
+  // The card and the link, and nothing in the card.
+  expect(before).toEqual([
+    expect.stringMatching(/^ {2}- generic /),
+    expect.stringContaining(`link "More"`),
+  ]);
+
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+  expect(await clickable("during")).toEqual(before);
+
+  await browser.click(browser.page.locator("#first"));
+  await browser.toldOf("picking", ({ on }) => !on);
+  expect(await clickable("after")).toEqual(before);
+});

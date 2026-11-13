@@ -21,6 +21,7 @@ import {
 import type { InteractionReport } from "../../timeline/domain";
 import {
   hidePlaywrightOverlay,
+  keepCursorsAsTheyAre,
   installActivityWatch,
   installGate,
   installTargetWatch,
@@ -233,7 +234,10 @@ function theOnePage(browser: Browser): Page {
  */
 type PlaywrightRecorderMode = {
   mode(): string;
-  setMode(mode: "none" | "recording"): Promise<void>;
+  setMode(mode: "none" | "recording" | typeof PICKING_MODE): Promise<void>;
+  /** Tells of each change of the mode, whoever made it. Without it, Assert
+   * visibility is never shown on. */
+  on?(event: "modeChanged", listener: (mode: string) => void): void;
   /** 1.64 and later: reports a click it holds back for a while, to see
    * whether a double click follows, at once. */
   flushPendingActions?(): void;
@@ -434,6 +438,7 @@ async function openPage(
   await context.addInitScript(installGate, heldBinding);
   await context.addInitScript(installActivityWatch, changedBinding);
   await context.addInitScript(hidePlaywrightOverlay);
+  await context.addInitScript(keepCursorsAsTheyAre);
   // The toolbar's page function first, then its script: each document
   // shows it before it first paints, and before Playwright's own overlay
   // could.
@@ -495,6 +500,7 @@ async function openPage(
           frame.evaluate(installGate, heldBinding),
           frame.evaluate(installActivityWatch, changedBinding),
           frame.evaluate(hidePlaywrightOverlay),
+          frame.evaluate(keepCursorsAsTheyAre),
           // It shows only in the top document, and leaves the others be.
           ...(toolbar && !frame.parentFrame()
             ? [frame.evaluate(toolbar.script)]
@@ -661,6 +667,9 @@ async function openPage(
         });
       case "stopTrace":
         return stopTrace(request.keep);
+      // Assert visibility.
+      case "pick":
+        return pick(request.on);
       case "waitForSettled": {
         const open = pages.get(request.page);
         // Core owns the quiet window, the deadline and what "settled" is.
@@ -694,12 +703,61 @@ async function openPage(
   async function reportInteractions(on: boolean) {
     // A click made just before is reported before the answer, not after.
     if (recorderMode && !on) recorderMode.flushPendingActions?.();
-    if (recorderMode) await recorderMode.setMode(on ? "recording" : "none");
+    if (recorderMode)
+      await inModeOrder(() => recorderMode!.setMode(on ? "recording" : "none"));
     else if (on) {
       await startPlaywrightRecorder();
       recorderMode = await recorderModeOf(context);
+      // Whether it picks, whoever switched it: told when it changes.
+      let picking = false;
+      recorderMode.on?.("modeChanged", (mode) => {
+        if ((mode === PICKING_MODE) === picking) return;
+        picking = mode === PICKING_MODE;
+        tell({ kind: "picking", on: picking });
+      });
     }
     tell({ kind: "reportingInteractions", on });
+  }
+
+  /** Switching the mode of Playwright's recorder, one after the other, in
+   * the order asked: picking that is left right after it is asked ends
+   * left. */
+  let modeChanges: Promise<unknown> = Promise.resolve();
+  const inModeOrder = (run: () => Promise<void>): Promise<void> => {
+    const done = modeChanges.then(run);
+    modeChanges = done.catch(() => {});
+    return done;
+  };
+
+  /**
+   * Has Playwright's recorder pick an element, or stop picking, and every
+   * document leave inputs alone meanwhile. Playwright's recorder must be
+   * reporting: it picks only from its recording mode, and goes back to it.
+   */
+  async function pick(on: boolean) {
+    const gates = (picking: boolean) =>
+      Promise.all(
+        everyFrame().map((frame) =>
+          frame
+            .evaluate((on) => window.__aymeRecorderGate?.pick(on), picking)
+            .catch(() => {})
+        )
+      );
+    if (!on) {
+      await inModeOrder(async () => {
+        if (recorderMode?.mode() === PICKING_MODE)
+          await recorderMode.setMode("recording");
+      });
+      return void (await gates(false));
+    }
+    if (!recorderMode)
+      throw new Error(
+        "Playwright's recorder is not reporting: it cannot pick."
+      );
+    // The documents leave the picking click alone before Playwright waits
+    // for it.
+    await gates(true);
+    await inModeOrder(() => recorderMode!.setMode(PICKING_MODE));
   }
 
   async function startPlaywrightRecorder() {
@@ -733,9 +791,10 @@ async function openPage(
     });
     // A document that was open before the recorder started.
     await Promise.all(
-      everyFrame().map((frame) =>
-        frame.evaluate(hidePlaywrightOverlay).catch(() => {})
-      )
+      everyFrame().flatMap((frame) => [
+        frame.evaluate(hidePlaywrightOverlay).catch(() => {}),
+        frame.evaluate(keepCursorsAsTheyAre).catch(() => {}),
+      ])
     );
   }
 
@@ -856,6 +915,10 @@ function reportOf(action: PlaywrightAction): InteractionReport {
 const TOOLBAR_BINDING: ToolbarBinding = "__aymeRecorderToolbar";
 /** The event on the toolbar's host that takes it out of the page. */
 const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
+
+/** Playwright's recorder's mode in which it picks the element whose
+ * visibility is asserted. */
+const PICKING_MODE = "assertingVisibility";
 
 /** How long letting go of an attached browser may take. */
 const LET_GO_LIMIT_MS = 5_000;

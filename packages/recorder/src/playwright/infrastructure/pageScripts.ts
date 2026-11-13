@@ -58,6 +58,11 @@ export type Gate = {
   /** Lets what follows through, unless the document held an input after
    * the `upTo`th. */
   letThrough(upTo: number): void;
+  // Assert visibility.
+  /** Leaves every input alone while Playwright's recorder picks an element,
+   * or no longer: the picking click is Playwright's, and never reaches the
+   * page. It stops by itself after the picking click. */
+  pick(on: boolean): void;
 };
 
 declare global {
@@ -121,6 +126,8 @@ export function installGate(held: string): void {
   let released: (() => void) | undefined;
   /** The codes of held keys whose release is the gate's too. */
   const swallowKeyUp = new Set<string>();
+  /** Playwright's recorder picks an element: inputs are left to it. */
+  let picking = false;
   const arrived = () => {
     waiting = Math.max(0, waiting - 1);
     if (!on && waiting === 0) holding = false;
@@ -156,6 +163,9 @@ export function installGate(held: string): void {
     },
     letThrough: (upTo) => {
       if (seq <= upTo) holding = false;
+    },
+    pick: (on) => {
+      picking = on;
     },
   };
   const tell = (input: HeldByPage) =>
@@ -194,6 +204,11 @@ export function installGate(held: string): void {
 
   const onMouse = (event: MouseEvent) => {
     if (!event.isTrusted) return;
+    if (picking) {
+      // Playwright picks on this click, and goes back to recording.
+      if (event.type === "click" && event.button === 0) picking = false;
+      return;
+    }
     // The click sent on is known by its place and its count, and brings one
     // event of each type: whatever else the person does meanwhile is
     // theirs, as the second press of a double click at the same place.
@@ -291,6 +306,7 @@ export function installGate(held: string): void {
 
   const onKey = (event: KeyboardEvent) => {
     if (!event.isTrusted) return;
+    if (picking) return;
     if (event.type === "keyup") {
       if (swallowKeyUp.delete(event.code)) swallow(event);
       return;
@@ -384,6 +400,23 @@ export function installTargetWatch(tell: string): void {
       observer.disconnect();
       install();
     }).observe(document, { childList: true });
+}
+
+/**
+ * Takes away the mark Playwright's recorder leaves on the body when it
+ * picks an element (`data-pw-cursor`, a private part of Playwright), as soon
+ * as it is put there. Left there, it makes every element look clickable,
+ * and the page's structure loses its marks of what is clickable.
+ */
+export function keepCursorsAsTheyAre(): void {
+  const mark = "data-pw-cursor";
+  const take = () => document.body?.removeAttribute(mark);
+  new MutationObserver(take).observe(document, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: [mark],
+  });
+  take();
 }
 
 /** Hides what Playwright's recorder draws over the page. */
