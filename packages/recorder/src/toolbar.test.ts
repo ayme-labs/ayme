@@ -58,6 +58,34 @@ describe("the toolbar's way to the recorder", () => {
     ).resolves.toBe("ignored");
   });
 
+  it("takes Assert visibility from the toolbar, and shows the window's change as the window shows the toolbar's", async () => {
+    const { toolbar, recorder } = await start();
+    await recorder.send({ type: "record" });
+
+    await expect(
+      toolbar({ kind: "send", command: { type: "assertVisibility" } })
+    ).resolves.toBe("applied");
+    // Shown once Playwright is in its picking mode.
+    await expect
+      .poll(
+        async () =>
+          ((await toolbar({ kind: "update", after: -1 })) as RecorderUpdate)
+            .state
+      )
+      .toMatchObject({ phase: "recording", picking: true });
+    const picking = (await toolbar({
+      kind: "update",
+      after: -1,
+    })) as RecorderUpdate;
+
+    await recorder.send({ type: "leaveAssertVisibility" });
+    const left = (await toolbar({
+      kind: "update",
+      after: picking.revision,
+    })) as RecorderUpdate;
+    expect(left.state).not.toHaveProperty("picking");
+  });
+
   it("ignores a message that is none of the toolbar's", async () => {
     const { toolbar, recorder } = await start();
 

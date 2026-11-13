@@ -23,6 +23,9 @@ const COMMAND_TYPES = [
   "stop",
   "continue",
   "clear",
+  // Assert visibility.
+  "assertVisibility",
+  "leaveAssertVisibility",
 ] as const satisfies readonly RecorderCommandType[];
 /** A command, as the window and the toolbar send it. One that names an
  * entry is told by its type: the others carry no more. */

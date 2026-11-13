@@ -172,6 +172,18 @@ describe("the window's server", () => {
     await expect(command({ type: "restore", entry: 1 })).rejects.toThrow();
   });
 
+  it("takes Assert visibility and Leave Assert visibility from the window", async () => {
+    const { windowUrl } = await startWithWindow();
+    const { updates, send } = channel(windowUrl);
+    await send("record");
+
+    await expect(send("assertVisibility")).resolves.toBe("applied");
+    await expect
+      .poll(() => updates.at(-1)!.state)
+      .toMatchObject({ phase: "recording", picking: true });
+    await expect(send("leaveAssertVisibility")).resolves.toBe("applied");
+  });
+
   it("gives a window that opens again the full state as it is now", async () => {
     const { windowUrl } = await startWithWindow();
     const first = channel(windowUrl);
