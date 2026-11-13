@@ -81,7 +81,7 @@ npx @ayme-dev/cli install
 The recorder window and the toolbar on the page have the same controls and always show the same state. Use whichever is closer.
 
 - **Record** starts recording. A Visit appears for the page as it is.
-- **Stop** pauses. While paused, your input reaches the page and is not recorded. The status shows **Paused** once recording has really stopped; a click you make before that is still recorded.
+- **Stop** pauses. While paused, your input reaches the page and is not recorded, and neither is what the page changes meanwhile: after Continue, changes are counted from the page as it stood then. The status shows **Paused** once recording has really stopped; a click you make before that is still recorded.
 - **Continue** resumes in the same recording.
 - **Assert visibility** lets you click an element to record "this must be visible". That click does not reach your app. The button stays on until you click an element or press it again.
 - **Clear** throws away everything recorded so far, so you can start over.
