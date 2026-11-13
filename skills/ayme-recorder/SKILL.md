@@ -251,13 +251,28 @@ browser to draw the snapshot. Collect everything you need from one snapshot
 first, then read it in a single call, as above: one `eval` can return many
 elements.
 
+For a first look at a page whose selectors you do not know yet, read its body
+without the elements that are not the app's: the recorder's toolbar
+(`ayme-recorder-toolbar`) and highlight (`ayme-recorder-highlight`), and
+Playwright's own `x-pw-glass` and `template` elements, whose styles fill the
+output.
+
+```sh
+npx playwright trace snapshot 44 --phase after \
+  eval "(() => { const body = document.body.cloneNode(true); body.querySelectorAll('ayme-recorder-toolbar, ayme-recorder-highlight, x-pw-glass, template, script, style').forEach((element) => element.remove()); return body.outerHTML; })()" \
+  | sed -n '/^### Result/,/^### Ran/{//!p;}'
+```
+
 The trace does not carry the package's refs. Find an element by what the
 package says of it:
 
 - An interaction's target: its `targetSelector`. A CSS selector, such as
   `[data-test="username"]`, goes into `querySelector` as it is. A
-  Playwright selector such as `internal:role=button[name="Add item"i]` does
-  not: match the role and the name, for example
+  Playwright selector does not. `internal:role=button[name="Add item"i]`,
+  `internal:text="Items:"i`, `internal:label=…` and `internal:testid=…` are
+  what `getByRole`, `getByText`, `getByLabel` and `getByTestId` find; a
+  trailing `i` means the text is matched ignoring case, as part of a longer
+  text. In the snapshot, match the role and the text instead, for example
   `[...document.querySelectorAll('button')].filter(e => e.textContent.trim() === 'Add item')`.
 - Any other node: its role, name and text in the tree, and its ancestors.
 - A `targetRef` that is the nearest listed ancestor of the element the user
