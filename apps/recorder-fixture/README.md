@@ -85,8 +85,8 @@ Two environment variables exist for these tests, and `runRecorder` sets both:
   page through it.
 
 The Playwright project `attach` runs the first test of `recording.spec.ts`
-again on a running browser the recorder attaches to; the project `launch`
-runs every test.
+and the position-number test of `trace.spec.ts` again on a running browser
+the recorder attaches to; the project `launch` runs every test.
 
 `recording.spec.ts` runs on another Playwright version when
 `AYME_RECORDER_PLAYWRIGHT_PROJECT` names a project folder with that version
