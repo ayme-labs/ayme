@@ -668,7 +668,12 @@ const settle = (draft: Draft): Flow => ({
  * it needs is written down, and a wrap-up that has all it waited for saves. */
 function proceed(state: Active, done: readonly ToDo[]): Step {
   const draft: Draft = {
-    inputs: state.inputs,
+    // An input whose "before" could not be taken is not recorded. It was
+    // kept until its report came, so that no later input took the report
+    // for its own: now it is let go.
+    inputs: state.inputs.filter(
+      (input) => input.stage !== "settled" || !input.report || input.before
+    ),
     snapshotsAsked: state.snapshotsAsked,
     todo: [...done],
   };
@@ -681,24 +686,20 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       });
   }
   for (const input of draft.inputs) {
-    if (input.stage !== "settled" || !input.report) continue;
-    // One whose "before" could not be taken is not recorded. It was kept
-    // until its report came, so that no later input took the report for
-    // its own.
-    if (input.before)
-      draft.todo.push({
-        kind: "timeline",
-        add: {
-          kind: "interaction",
-          interaction: {
-            page: input.page,
-            report: input.report,
-            before: input.before,
-            after: input.after,
-            at: input.passedOnAt ?? 0,
-          },
+    if (input.stage !== "settled" || !input.report || !input.before) continue;
+    draft.todo.push({
+      kind: "timeline",
+      add: {
+        kind: "interaction",
+        interaction: {
+          page: input.page,
+          report: input.report,
+          before: input.before,
+          after: input.after,
+          at: input.passedOnAt ?? 0,
         },
-      });
+      },
+    });
     draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
   }
   if (state.phase === "recording")
