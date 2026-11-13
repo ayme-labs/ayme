@@ -640,3 +640,76 @@ describe("the trace of a recording", () => {
     await expect(stat(browser.traces[0]!)).rejects.toThrow(/ENOENT/);
   });
 });
+
+// The review of the whole recorder against the spec.
+describe("a wrap-up's time limit", () => {
+  it("is that wrap-up's own: the limit of an earlier Stop does not cut a later Finish short (rule 4)", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const phases = phasesOf(recorder);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    // Stop at 0 s, and the recorder pauses at once.
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => phases.at(-1)).toBe("paused");
+    await recorder.send({ type: "continue" });
+
+    // At 4.9 s a click waits for its "before", and Finish is pressed.
+    await browser.advanceTime(4_900);
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_4",
+      page: "page_1",
+    });
+    await recorder.send({ type: "finish" });
+    // 5 s after the Stop, 0.1 s after the Finish.
+    await browser.advanceTime(100);
+    // A command is answered after everything that happened before it.
+    await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
+    expect(phases.at(-1)).toBe("wrappingUp");
+
+    // The click is still within the Finish's own limit: it is saved.
+    await browser.advanceTime(4_800);
+    browser.releaseSnapshots();
+    await browser.asks({
+      kind: "waitForSettled",
+      page: "page_1",
+      input: "input_2",
+    });
+    browser.showPage(saved);
+    browser.settle();
+    browser.report(click);
+    const outcome = await recorder.done;
+
+    expect(
+      await readFile(
+        join((outcome as { folder: string }).folder, "package.yaml"),
+        "utf8"
+      )
+    ).toContain("id: interaction_2");
+  });
+
+  it("still ends a wrap-up that takes too long, also after an earlier one", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const phases = phasesOf(recorder);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "stop" });
+    await expect.poll(() => phases.at(-1)).toBe("paused");
+    await recorder.send({ type: "continue" });
+    await browser.advanceTime(4_900);
+    browser.holdSnapshots();
+    browser.holdClick();
+
+    await recorder.send({ type: "finish" });
+    await browser.advanceTime(4_999);
+    await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
+    expect(phases.at(-1)).toBe("wrappingUp");
+    await browser.advanceTime(1);
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "saved" });
+  });
+});
