@@ -18,9 +18,11 @@ see which requests the recorder's browser made. Add a spec file for a new
 concern and reuse `fixtures.ts`.
 
 - `codegen.spec.ts` runs the command with `runRecorder`. Assertions go through
-  what the command prints, its exit code and those requests.
-- `recording.spec.ts` records. While the recorder has no window, the command
-  has no way to press Record or Finish, so these tests start the engine in the
+  what the command prints, its exit code and those requests, and through the
+  browser's own list of its pages over `run.debugEndpoint`, which shows the
+  recorder window opened in a context of its own.
+- `recording.spec.ts` records. These tests press Record and Finish through
+  the engine's handle, not the window: they start the engine in the
   test's own process with `startRecording` and press both through its handle.
   The project is a folder of the test's own inside this app, which is where
   the package is saved. Input is a person's: `person` sends raw input events
@@ -50,6 +52,12 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   way: typing, key presses, a native select, a file upload, a double click,
   and clicks inside a frame, an open shadow root and on an element the page
   structure does not list.
+
+- `window.spec.ts` drives the recorder window through its page objects
+  (`@ayme-dev/recorder-window/testing`), served by the real server of a
+  recorder on the engine's scripted browser (`@ayme-dev/recorder/testing`):
+  the test plays the browser by hand, and opens the window's address in its
+  own page.
 
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
