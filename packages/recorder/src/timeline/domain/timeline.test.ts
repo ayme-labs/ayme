@@ -422,4 +422,63 @@ describe("the timeline", () => {
   it("leaves out a snapshot of a page that has no Visit", async () => {
     expect(await packageOf([snapshot("snapshot_1", 10, idle)])).toBeNull();
   });
+
+  describe("Visits", () => {
+    const cartUrl = "http://shop.test/cart";
+    const toCart: TimelineAddition = {
+      kind: "visit",
+      page: "page_1",
+      url: cartUrl,
+      cause: "navigate",
+    };
+    // After a cross-document navigation, Playwright prefixes the refs.
+    const cart = [
+      `- generic [ref=f1e1]:`,
+      `  - heading "Cart" [level=1] [ref=f1e2]`,
+      `  - button "Pay" [ref=f1e3]`,
+    ].join("\n");
+
+    it("writes an Interaction that leaves the page in its own Visit, with no Change Tree; the next Visit starts from the page it led to", async () => {
+      const text = await packageOf([
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        toCart,
+        snapshot("snapshot_2", 20, cart),
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      ]);
+
+      expect(text).toContain(
+        [
+          `  - visitId: visit_1`,
+          `    url: http://shop.test/`,
+          `    cause: initial`,
+          `    baselineTree:`,
+          `      - [ref=e1]:`,
+          `        - [ref=e2] button "Save"`,
+          `        - [ref=e3] paragraph: Not saved`,
+          `    timelineEntries:`,
+          `      - kind: interaction`,
+          `        timestamp: 15`,
+          `        interaction:`,
+          `          id: interaction_1`,
+          `          type: click`,
+          `          targetRef: e2`,
+          `          targetSelector: internal:role=button[name="Save"i]`,
+          `          button: left`,
+          `          modifiers: 0`,
+          `          clickCount: 1`,
+          `  - visitId: visit_2`,
+          `    url: http://shop.test/cart`,
+          `    cause: navigate`,
+          `    baselineTree:`,
+          `      - [ref=f1e1]:`,
+          `        - [ref=f1e2] heading "Cart" [level=1]`,
+          `        - [ref=f1e3] button "Pay"`,
+          `    timelineEntries: []`,
+          `traceActionPoints: []`,
+          ``,
+        ].join("\n")
+      );
+    });
+  });
 });

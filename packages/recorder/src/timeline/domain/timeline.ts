@@ -134,7 +134,13 @@ export class Timeline {
       }
       case "interaction": {
         const { interaction } = addition;
-        const visit = this.current.get(interaction.page);
+        // The Visit it started in: one that leaves the page has its "after"
+        // in the next Visit.
+        const visit = this.all.find((started) =>
+          started.snapshots.some(
+            (kept) => kept.snapshot.id === interaction.before
+          )
+        );
         if (!visit) return;
         visit.waiting.push({
           ...interaction,
