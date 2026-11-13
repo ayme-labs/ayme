@@ -47,6 +47,9 @@ export interface ScriptedBrowser {
   releaseSnapshots(): void;
   /** Moves the recorder's clock on. */
   advanceTime(ms: number): Promise<void>;
+  // Visits.
+  /** The page goes to another address, in a new document. */
+  goTo(url: string): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -64,7 +67,7 @@ export async function startScriptedRecorder(
   browser: ScriptedBrowser;
 }> {
   const page = "page_1";
-  const url = options.url ?? "http://scripted.test/";
+  let url = options.url ?? "http://scripted.test/";
   let signals: Queue.Queue<BrowserSignal> | undefined;
   let clock: TestClock.TestClock | undefined;
   let released = false;
@@ -180,6 +183,10 @@ export async function startScriptedRecorder(
         for (const take of held) take();
       },
       advanceTime: (ms) => Effect.runPromise(clock!.adjust(ms)),
+      goTo: (next) => {
+        url = next;
+        tell({ kind: "pageNavigated", page, url });
+      },
     },
   };
 }

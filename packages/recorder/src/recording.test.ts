@@ -265,6 +265,38 @@ describe("a recording", () => {
     ).toContain(savedClick);
   });
 
+  it("writes a click that leaves the page in its Visit, with no Change Tree, and starts the next Visit from the page it led to", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    browser.goTo("http://shop.test/cart");
+    browser.showPage(`- heading "Cart" [level=1] [ref=f1e1]`);
+    browser.settle();
+    browser.report(click);
+
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    expect(text).toContain(
+      [
+        `          clickCount: 1`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/cart`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+        `      - [ref=f1e1] heading "Cart" [level=1]`,
+        `    timelineEntries: []`,
+        `traceActionPoints: []`,
+        ``,
+      ].join("\n")
+    );
+  });
+
   it("takes Finish while a click's 'before' snapshot is outstanding: it wraps up, and the time limit runs", async () => {
     const { recorder, browser } = await start();
     await recorder.send({ type: "record" });
