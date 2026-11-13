@@ -51,6 +51,10 @@ type Visit = {
   /** The place in `snapshots` up to which entries are produced: what
    * changed from this snapshot on is not told yet. */
   through: number;
+  /** The place in `snapshots` of the Visit's starting picture: the page as
+   * it stood just before the first Interaction in the Visit. Null until
+   * there is one: the latest snapshot stands in until then. */
+  start: number | null;
   /** From every ref the browser used in this Visit to the element's first. */
   readonly firstRefs: Map<AriaRef, AriaRef>;
 };
@@ -61,7 +65,9 @@ type Visit = {
  * Package at the end. Visits and the identity of an element across snapshots
  * are core's observation session's; the Change Trees are core's.
  *
- * A Visit's first snapshot is its starting picture. From there on, what
+ * A Visit's starting picture is the snapshot just before its first
+ * Interaction, or its last one when it has none: what the page rendered
+ * before is no change. From there on, what
  * changed between a snapshot and the next is an Interaction's when the two
  * are its "before" and its "after", and a change of its own otherwise. An
  * Interaction's entry is produced when the Interaction is added. A change of
@@ -119,6 +125,7 @@ export class Timeline {
           waiting: [],
           entries: [],
           through: 0,
+          start: null,
           firstRefs: new Map(),
         };
         this.all.push(visit);
@@ -142,6 +149,12 @@ export class Timeline {
           )
         );
         if (!visit) return;
+        if (visit.start === null) {
+          visit.start = visit.snapshots.findIndex(
+            (kept) => kept.snapshot.id === interaction.before
+          );
+          visit.through = visit.start;
+        }
         visit.waiting.push({
           ...interaction,
           id: `interaction_${++this.interactions}`,
@@ -284,8 +297,10 @@ export class Timeline {
   async package(header: PackageHeader): Promise<string | null> {
     const visits = [];
     for (const visit of this.all) {
-      const [first] = visit.snapshots;
-      if (!first) continue;
+      if (visit.snapshots.length === 0) continue;
+      if (visit.start === null)
+        visit.through = visit.start = visit.snapshots.length - 1;
+      const first = visit.snapshots[visit.start]!;
       await this.produce(visit, visit.snapshots.length - 1);
       visits.push({
         visitId: visit.id,

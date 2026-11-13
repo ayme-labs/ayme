@@ -480,5 +480,55 @@ describe("the timeline", () => {
         ].join("\n")
       );
     });
+
+    // The cart page goes on rendering after it has loaded.
+    const cartWithOffer = [
+      `- generic [ref=f1e1]:`,
+      `  - heading "Cart" [level=1] [ref=f1e2]`,
+      `  - button "Pay" [ref=f1e3]`,
+      `  - paragraph [ref=f1e4]: Free delivery today`,
+    ].join("\n");
+    const paid = cartWithOffer.replace(`"Pay"`, `"Paid" [disabled]`);
+    const cartBaseline = [
+      `    baselineTree:`,
+      `      - [ref=f1e1]:`,
+      `        - [ref=f1e2] heading "Cart" [level=1]`,
+      `        - [ref=f1e3] button "Pay"`,
+      `        - [ref=f1e4] paragraph: Free delivery today`,
+    ].join("\n");
+    const leaving = [
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      toCart,
+      snapshot("snapshot_2", 20, cart),
+      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+    ];
+
+    it("starts a Visit from the page as it stood just before its first Interaction: what it rendered before that is no change", async () => {
+      const text = await packageOf([
+        ...leaving,
+        snapshot("snapshot_3", 30, cartWithOffer),
+        snapshot("snapshot_4", 40, paid),
+        click("snapshot_3", "snapshot_4", { ref: "f1e3", tree: cart }),
+      ]);
+
+      expect(text).toContain(
+        [`    cause: navigate`, cartBaseline, `    timelineEntries:`].join("\n")
+      );
+      expect(text).not.toContain("kind: change");
+    });
+
+    it("starts a Visit without Interactions from the page as it stood at the end", async () => {
+      const text = await packageOf([
+        ...leaving,
+        snapshot("snapshot_3", 30, cartWithOffer),
+      ]);
+
+      expect(text).toContain(
+        [`    cause: navigate`, cartBaseline, `    timelineEntries: []`].join(
+          "\n"
+        )
+      );
+    });
   });
 });
