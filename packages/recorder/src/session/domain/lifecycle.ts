@@ -8,6 +8,7 @@ import type {
   InteractionReport,
   PageSnapshot,
   TimelineAddition,
+  VisitCause,
 } from "../../timeline/domain";
 
 // The lifecycle of one recorder, as one pure function: the current state and
@@ -220,13 +221,17 @@ export function step(state: LifecycleState, happening: Happening): Step {
         ...state,
         pages: [...state.pages, { id: happening.page, url: happening.url }],
       });
-    case "pageNavigated":
-      return stay({
+    case "pageNavigated": {
+      const moved = {
         ...state,
         pages: state.pages.map((page) =>
           page.id === happening.page ? { ...page, url: happening.url } : page
         ),
-      });
+      };
+      return isActive(moved)
+        ? proceed(moved, [visitOf(happening.page, happening.url, "navigate")])
+        : stay(moved);
+    }
     case "pageClosed": {
       const without = withoutPage(state, happening.page);
       if (happening.pagesLeft === 0) return endFromOutside(without);
@@ -357,6 +362,18 @@ function save(state: LifecycleState, todo: readonly ToDo[]): Step {
     todo: [...todo, { kind: "save" }],
   };
 }
+
+// Visits.
+
+/**
+ * A Visit of a page at an address, while recording. Whether the address
+ * starts a new Visit is core's rule, which the timeline follows: a change of
+ * only the part after `?` or `#` stays in the Visit.
+ */
+const visitOf = (page: string, url: string, cause: VisitCause): ToDo => ({
+  kind: "timeline",
+  add: { kind: "visit", page, url, cause },
+});
 
 /** The state without a page that closed. An input held for it that has not
  * reached it is dropped; one that has keeps its "before" only. */

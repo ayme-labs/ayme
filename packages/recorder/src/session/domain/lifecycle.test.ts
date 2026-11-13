@@ -110,6 +110,21 @@ const wrapUp: ToDo[] = [
 ];
 const save: ToDo = { kind: "save" };
 
+// Visits.
+const navigated = (to: string, page = "page_1"): Happening => ({
+  kind: "pageNavigated",
+  page,
+  url: to,
+});
+const visitAt = (
+  at: string,
+  cause: "initial" | "navigate" | "openPage",
+  page = "page_1"
+): ToDo => ({
+  kind: "timeline",
+  add: { kind: "visit", page, url: at, cause },
+});
+
 /** One click from held to settled, with nothing else going on. */
 const oneClick = [
   clickHeld("input_1"),
@@ -738,6 +753,14 @@ describe("the lifecycle", () => {
       ],
       todo: [wrapUp, [save]],
       state: { phase: "saving" },
+    },
+
+    // Visits.
+    {
+      name: "a page that goes to another address while recording starts a Visit there",
+      happened: [opened, ...started, navigated("http://shop.test/cart")],
+      todo: [[visitAt("http://shop.test/cart", "navigate")]],
+      state: { phase: "recording" },
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
