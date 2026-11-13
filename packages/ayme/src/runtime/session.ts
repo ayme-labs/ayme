@@ -127,12 +127,13 @@ export type AymeTools = {
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
    * Starts a Run of an available tool for the Caller `by` names, `"app"`
-   * by default: every Caller, WebMCP and the Ayme MCP server included,
-   * starts its Runs here. Runs take turns, one at a time per page: an
-   * action's turn ends once the page has settled, a read's without a settle
-   * wait. Throws Ayme's errors, and `RuntimeStateError` for an empty `by`,
-   * while the session is not started, when no tool has the name, or when
-   * the tool is not available.
+   * by default. WebMCP and the Ayme MCP server start a Page Object Tool's
+   * Run in the same queue without coming through here, so the trees they
+   * read around the action share its turn. Runs take turns, one at a time
+   * per page: an action's turn ends once the page has settled, a read's
+   * without a settle wait. Throws Ayme's errors, and `RuntimeStateError`
+   * for an empty `by`, while the session is not started, when no tool has
+   * the name, or when the tool is not available.
    */
   run<N extends string>(
     name: N,
