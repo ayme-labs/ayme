@@ -32,10 +32,9 @@
  *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
  * directory and kept, so the release workflow publishes exactly the
- * artefacts these tests checked. A private package that the release
- * configuration names is held back: it is packed and checked here, but its
- * tarball goes elsewhere, so that nothing publishes it until its manifest
- * stops being private.
+ * artefacts these tests checked. A private package in the list is held
+ * back: it is packed and checked here, but its tarball goes elsewhere, so
+ * that nothing publishes it until its manifest stops being private.
  *
  * `AYME_PACKED_ONLY=cli` (names, comma-separated) packs only those packages,
  * for running one test with `-t`; the tests that look at every package then
@@ -78,8 +77,8 @@ const loadsConfig = (version: string) =>
   minorOf(version) <= minorOf(lastSupported);
 
 // Every package that is packed and checked: the ones that are not private,
-// which are published, and the ones that are private but named in the
-// release configuration, which are held back.
+// which are published, and the private ones listed here, which are held back
+// (docs/releasing.md).
 const PACKED_PACKAGES = [
   "ayme",
   "cli",
@@ -166,27 +165,19 @@ function readManifest(dir: string): Manifest {
   return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
 }
 
-const releasedPaths = Object.keys(
-  JSON.parse(
-    fs.readFileSync(path.join(repoRoot, "release-please-config.json"), "utf8")
-  ).packages as Record<string, unknown>
-);
-
-/** Whether a workspace package is held back: private, yet named in the
- * release configuration, so that dropping `"private": true` releases it. */
+/** Whether a workspace package is held back: built and checked here, but
+ * private, so that its tarball is not among those the release publishes. */
 const isHeldBack = (dir: string) =>
-  readManifest(path.join(packagesRoot, dir)).private === true &&
-  releasedPaths.includes(`packages/${dir}`);
+  readManifest(path.join(packagesRoot, dir)).private === true;
 
-/** Directories of the workspace packages that are not private, or are held
- * back. */
-function packableDirs() {
+/** Directories of the workspace packages that are not private. */
+function publishableDirs() {
   return fs
     .readdirSync(packagesRoot)
     .filter(
       (dir) =>
         fs.existsSync(path.join(packagesRoot, dir, "package.json")) &&
-        (!readManifest(path.join(packagesRoot, dir)).private || isHeldBack(dir))
+        !readManifest(path.join(packagesRoot, dir)).private
     );
 }
 
@@ -345,7 +336,10 @@ function tarballDependencies(names: string[]) {
 }
 
 it("every publishable package is packed, all with one shared version", () => {
-  expect(packableDirs().sort()).toEqual([...PACKED_PACKAGES].sort());
+  // Every package that is not private is packed, beside the held-back ones.
+  expect(PACKED_PACKAGES.filter((dir) => !isHeldBack(dir)).sort()).toEqual(
+    publishableDirs().sort()
+  );
   const versions = Object.values(packed).map(
     ({ dir }) => readManifest(dir).version
   );

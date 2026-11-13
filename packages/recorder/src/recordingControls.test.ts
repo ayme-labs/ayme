@@ -511,6 +511,48 @@ describe("saving", () => {
   });
 });
 
+describe("the .gitignore of .ayme", () => {
+  const ignoreFile = () => join(projectDir, ".ayme", ".gitignore");
+  const finishOneClick = async () => {
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    await recorder.send({ type: "finish" });
+    return recorder.done;
+  };
+
+  it("is written with the first save, listing what the recorder keeps there and itself", async () => {
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    // The released recorder's file, less what the rebuild keeps no longer:
+    // no browser profile, and its temporary files live in `recordings/`.
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "recordings/\n.gitignore\n"
+    );
+  });
+
+  it("is never overwritten, nor added to, when the project already has one", async () => {
+    await mkdir(join(projectDir, ".ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "# mine\nrecordings/old\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "# mine\nrecordings/old\n"
+    );
+  });
+
+  it("is not written when nothing is saved", async () => {
+    const { recorder } = await start();
+    await recorder.send({ type: "record" });
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+
+    await expect(readFile(ignoreFile(), "utf8")).rejects.toThrow(/ENOENT/);
+  });
+});
+
 // One trace for the whole recording: from the first Record to the save, with
 // every pause in it. Clear throws it away.
 describe("the trace of a recording", () => {
