@@ -6,7 +6,7 @@ import {
   type PageActivitySource,
 } from "@ayme-dev/core/structural-observation";
 import { Effect, Layer, Queue } from "effect";
-import type { Browser, Frame, Page } from "playwright-core";
+import type { Browser, BrowserContext, Frame, Page } from "playwright-core";
 
 import { RecordedBrowser } from "../../session/application";
 import {
@@ -73,12 +73,19 @@ export const stockBrowser = (options: {
       });
       return RecordedBrowser.of({
         signals,
-        // Handed over, never waited on: the answer is told as a signal. A
-        // request that cannot be carried out, as on a page that is gone, is
-        // answered by nothing.
+        // Handed over, never waited on: the answer is told as a signal, and
+        // so is a request that broke while it was carried out. One for a
+        // page that is gone is answered by nothing: the page's closing was
+        // told.
         ask: (request) =>
           Effect.sync(() => {
-            void recorded.carryOut(request).catch(() => {});
+            void recorded.carryOut(request).catch((cause: unknown) =>
+              Queue.offerUnsafe(signals, {
+                kind: "requestFailed",
+                request,
+                reason: cause instanceof Error ? cause.message : String(cause),
+              })
+            );
           }),
       });
     })
@@ -99,6 +106,46 @@ type PlaywrightRecorder = {
     }
   ): Promise<void>;
 };
+/**
+ * Playwright's recorder as it runs beside the context, with the mode it is
+ * in: a private part of Playwright. "recording" reports Interactions, and
+ * "none" reports nothing and leaves the page's input alone.
+ */
+type PlaywrightRecorderMode = {
+  mode(): string;
+  setMode(mode: "none" | "recording"): Promise<void>;
+};
+
+/**
+ * Reaches the recorder Playwright started on a context, on the connection
+ * the context is on: Playwright keeps it under a symbol of its own.
+ */
+async function recorderModeOf(
+  context: BrowserContext
+): Promise<PlaywrightRecorderMode> {
+  const server = (
+    context as unknown as {
+      _connection: { toImpl?(client: unknown): object | undefined };
+    }
+  )._connection.toImpl?.(context);
+  const key =
+    server &&
+    Object.getOwnPropertySymbols(server).find(
+      (symbol) => symbol.description === "recorderSymbol"
+    );
+  const recorder = key
+    ? await (
+        server as Record<symbol, Promise<Partial<PlaywrightRecorderMode>>>
+      )[key]
+    : undefined;
+  if (
+    typeof recorder?.setMode !== "function" ||
+    typeof recorder.mode !== "function"
+  )
+    throw new Error("Playwright's recorder has no mode to switch.");
+  return recorder as PlaywrightRecorderMode;
+}
+
 /** What Playwright's recorder says of one action. */
 type PlaywrightAction = {
   readonly name: string;
@@ -216,7 +263,7 @@ async function openPage(
   async function carryOut(request: BrowserRequest): Promise<void> {
     switch (request.kind) {
       case "reportInteractions":
-        return reportInteractions();
+        return reportInteractions(request.on);
       case "holdInputs":
         // A document that starts from now on starts so.
         await context.addInitScript(startGate, {
@@ -277,7 +324,25 @@ async function openPage(
     }
   }
 
-  async function reportInteractions() {
+  /** Playwright's recorder, once it has been started on the context. */
+  let recorderMode: PlaywrightRecorderMode | undefined;
+
+  /**
+   * Switches Playwright's recorder on or off by its mode. It is started
+   * once and never stopped: on Playwright 1.62 a recorder that was stopped
+   * and started again on the same context reports nothing afterwards.
+   * Switching the mode leaves a trace that is being recorded alone.
+   */
+  async function reportInteractions(on: boolean) {
+    if (recorderMode) await recorderMode.setMode(on ? "recording" : "none");
+    else if (on) {
+      await startPlaywrightRecorder();
+      recorderMode = await recorderModeOf(context);
+    }
+    tell({ kind: "reportingInteractions", on });
+  }
+
+  async function startPlaywrightRecorder() {
     await (context as unknown as PlaywrightRecorder)._startRecording(
       { language: "playwright-test" },
       {
@@ -310,7 +375,6 @@ async function openPage(
         frame.evaluate(hidePlaywrightOverlay).catch(() => {})
       )
     );
-    tell({ kind: "reportingInteractions" });
   }
 
   return { carryOut };

@@ -255,6 +255,10 @@ test.describe("Visits", () => {
     const recording = await startRecording("/leaving.html");
     const { recorder, page, person } = recording;
     await recorder.send({ type: "record" });
+    // A recording with no Interaction saves nothing: one comes first.
+    await person.click(page.locator("#stay"));
+    await expect(page.getByText("Stayed")).toBeVisible();
+    await person.pause();
 
     // The page goes elsewhere as the mouse is released, and the click is
     // held in the page it leaves.
