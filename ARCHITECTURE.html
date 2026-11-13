@@ -795,9 +795,9 @@
     "externals": [
       {
         "name": "Host application",
-        "provides": "the page Ayme observes and acts on, the Page Object Models it compiles, the bundler that runs the build plugin, the backend that mounts the Decision Endpoint, and the Node processes that pair as App Processes",
+        "provides": "the page Ayme observes and acts on, the Page Object Models it compiles, the bundler that runs the build plugin, the backend that mounts the Decision Endpoint, the Node processes that pair as App Processes, and the Playwright installation the Recorder loads",
         "evidence": {
-          "text": "verified: `docs/guide/reference/ayme.md`, `docs/guide/guides/server-rendering.md`",
+          "text": "verified: `docs/guide/reference/ayme.md`, `docs/guide/guides/server-rendering.md`, `packages/recorder/src/playwright/infrastructure/projectPlaywright.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -900,6 +900,16 @@
           "inferred": false,
           "mixed": false
         }
+      },
+      {
+        "name": "Recorder",
+        "responsibility": "one process per recording: opens a URL in a Chromium it launches with the Playwright the developer's project has installed, and ends when the last page is closed or it is stopped from the terminal. It records nothing yet, so it always ends with \"empty\", and it serves no window yet",
+        "technology": "Node CLI (`ayme-recorder codegen <url>` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose flows are written with Effect; both are private until the rebuild matches the released recorder. The engine loads Playwright from the project's folder and bundles none. `@ayme-dev/recorder-window`, the recorder window and in-page toolbar, is an empty shell",
+        "evidence": {
+          "text": "verified: `packages/cli/src/cli.ts`, `packages/cli/src/codegen.ts`, `packages/recorder/src/engine/startRecorder.ts`, `packages/recorder/src/session/application/recorderSession.ts`, `packages/recorder/src/playwright/infrastructure/stockBrowser.ts`, `packages/recorder-window/src/app/index.ts`, `docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md`",
+          "inferred": false,
+          "mixed": false
+        }
       }
     ],
     "connections": [
@@ -937,6 +947,25 @@
         ],
         "evidence": {
           "text": "verified: `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/inspector/README.md`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "App developers",
+        "to": "Recorder",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "`ayme-recorder codegen <url>`, started in their project's folder, and the terminal's stop"
+          },
+          {
+            "dir": "←",
+            "text": "whether anything was recorded, or the reason the recorder could not start"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/cli/src/readCommand.ts`, `packages/cli/src/codegen.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -1174,6 +1203,25 @@
         }
       },
       {
+        "from": "Recorder",
+        "to": "Host application",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "loading the Playwright installed in the project's folder, launching Chromium with it and opening the URL"
+          },
+          {
+            "dir": "←",
+            "text": "the closing of a page, and of the browser"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/recorder/src/playwright/infrastructure/projectPlaywright.ts`, `packages/recorder/src/playwright/infrastructure/stockBrowser.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
         "from": "App Process runtime",
         "to": "Ayme MCP server",
         "flows": [
@@ -1312,6 +1360,19 @@
             "optional": false,
             "evidence": {
               "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Recorder": {
+            "how": "does not run here yet: `@ayme-dev/cli` is private until the rebuild matches the released recorder",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `packages/cli/package.json`",
               "inferred": false,
               "mixed": false
             }
@@ -1455,6 +1516,19 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Recorder": {
+            "how": "does not run here; recording is a development tool",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "inferred: nothing of the recorder is part of an app's build",
+              "inferred": true,
+              "mixed": false
+            }
           }
         },
         "externals": {
@@ -1591,6 +1665,19 @@
             "optional": false,
             "evidence": {
               "text": "verified: `apps/example-vue/package.json`, `apps/example-vue/src/App.vue`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Recorder": {
+            "how": "the workspace build, `node packages/cli/dist/cli.mjs codegen <url>`, started in a folder with Playwright installed, such as `apps/recorder-fixture`",
+            "node": "a Node process on the contributor's machine, and the Chromium it launches",
+            "nodeKey": "a Node process on the contributor's machine, and the Chromium it launches",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `packages/cli/package.json`, `apps/recorder-fixture/README.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1733,6 +1820,19 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Recorder": {
+            "how": "started as a child process by the recorder fixture's end-to-end tests, with a headless Chromium",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/recorder-fixture/tests/fixtures.ts`, `.github/workflows/ci.yml`",
+              "inferred": false,
+              "mixed": false
+            }
           }
         },
         "externals": {
@@ -1869,6 +1969,19 @@
             "optional": false,
             "evidence": {
               "text": "verified: `.github/workflows/deploy-example-vue.yml`, `docs/guide/_config.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Recorder": {
+            "how": "does not run here; the site is static",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
               "inferred": false,
               "mixed": false
             }
