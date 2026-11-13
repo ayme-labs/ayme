@@ -78,6 +78,7 @@ function channel(windowUrl: string) {
   return {
     updates,
     send: (type: string) => client.mutation("send", { type }),
+    command: (command: object) => client.mutation("send", command),
   };
 }
 
@@ -147,6 +148,27 @@ describe("the window's server", () => {
     const { send } = channel(windowUrl);
 
     await expect(send("explode")).rejects.toThrow();
+  });
+
+  it("takes Discard and Restore with the entry they name, and refuses them without one", async () => {
+    const { windowUrl } = await startWithWindow();
+    const { updates, send, command } = channel(windowUrl);
+
+    // Not paused: it reaches the recorder, which answers it.
+    await expect(
+      command({ type: "discard", entry: "interaction_1" })
+    ).resolves.toBe("ignored");
+    await send("record");
+    await send("stop");
+    await expect.poll(() => updates.at(-1)!.state.phase).toBe("paused");
+    await expect(
+      command({ type: "discard", entry: "interaction_1" })
+    ).resolves.toBe("applied");
+    await expect(
+      command({ type: "restore", entry: "interaction_1" })
+    ).resolves.toBe("applied");
+    await expect(command({ type: "discard" })).rejects.toThrow();
+    await expect(command({ type: "restore", entry: 1 })).rejects.toThrow();
   });
 
   it("gives a window that opens again the full state as it is now", async () => {
