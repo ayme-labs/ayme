@@ -46,6 +46,30 @@ const patterns = [
   },
 ];
 
+/** The rules for `files`, which may import what `patterns` names. */
+function restricted(files, patterns, { ignores } = {}) {
+  return {
+    files,
+    ...(ignores ? { ignores } : {}),
+    rules: {
+      "no-restricted-imports": ["error", { patterns }],
+      // The same rules for a dynamic import(). esquery reads `/` as the end
+      // of a regex, so selectors match it as `\x2F`.
+      "no-restricted-syntax": [
+        "error",
+        ...patterns.map(({ regex, message }) => ({
+          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
+          message,
+        })),
+      ],
+    },
+  };
+}
+
+// The page objects take Playwright's types, as a test does.
+const pageObjects = ["src/testing/**/*.ts"];
+const playwrightPattern = patterns[2];
+
 export default [
   ...config,
   ...horizontalBoundaries({
@@ -81,16 +105,11 @@ export default [
           })),
         },
       ],
-      "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
-      "no-restricted-syntax": [
-        "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
-      ],
     },
   },
+  restricted([sourceFiles], patterns, { ignores: pageObjects }),
+  restricted(
+    pageObjects,
+    patterns.filter((pattern) => pattern !== playwrightPattern)
+  ),
 ];
