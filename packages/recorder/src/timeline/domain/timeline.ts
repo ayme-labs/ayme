@@ -271,11 +271,15 @@ export class Timeline {
   }
 
   /**
-   * The Recording Package's text, or null when no page was read: there is
-   * nothing to write then. Making it ends the recording: what changed after
-   * the last Interaction of each Visit becomes a change of its own.
+   * The Recording Package's text, or null when the recording is empty:
+   * there is nothing to write then. A recording is empty until an
+   * Interaction is recorded, as in the released recorder: a Visit alone,
+   * and what the page changed by itself, make no recording. Making the
+   * package ends the recording: what changed after the last Interaction of
+   * each Visit becomes a change of its own.
    */
   async package(header: PackageHeader): Promise<string | null> {
+    if (this.interactions === 0) return null;
     const visits = [];
     for (const visit of this.all) {
       const [first] = visit.snapshots;

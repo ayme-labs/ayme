@@ -1,4 +1,11 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -399,5 +406,60 @@ describe("Clear", () => {
 
     recorder.end();
     await recorder.done;
+  });
+});
+
+// What the released recorder does: a recording in which Playwright reported
+// no Interaction is empty, and no package is written for it.
+describe("a started recording with no Interactions", () => {
+  it("ends with 'empty' on Finish: no package is written, and an earlier 'latest' is left as it was", async () => {
+    await mkdir(recordings(), { recursive: true });
+    await writeFile(join(recordings(), "latest.yaml"), "earlier");
+    const { recorder, browser } = await start();
+    const phases = phasesOf(recorder);
+    await recorder.send({ type: "record" });
+    // The page changes by itself, and nobody does anything on it.
+    browser.showPage(saved);
+
+    await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    expect(phases.at(-1)).toBe("ended");
+    expect(await readdir(recordings())).toEqual(["latest.yaml"]);
+    expect(await readFile(join(recordings(), "latest.yaml"), "utf8")).toBe(
+      "earlier"
+    );
+  });
+
+  it("ends with 'empty' when it is ended from outside", async () => {
+    const { recorder } = await start();
+    await recorder.send({ type: "record" });
+
+    recorder.end();
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
+  });
+
+  it("ends with 'empty' when its only click was never reported by Playwright", async () => {
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    browser.holdClick();
+    await browser.asks({
+      kind: "waitForSettled",
+      page: "page_1",
+      input: "input_1",
+    });
+    browser.settle();
+
+    await recorder.send({ type: "finish" });
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_3",
+      page: "page_1",
+    });
+    await browser.advanceTime(5_000);
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
   });
 });
