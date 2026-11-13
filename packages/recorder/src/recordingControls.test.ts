@@ -463,3 +463,41 @@ describe("a started recording with no Interactions", () => {
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
   });
 });
+
+describe("saving", () => {
+  it("leaves no package behind when the save cannot be completed: it is written under a temporary name and renamed", async () => {
+    // "latest" cannot be replaced: a folder with something in it is there.
+    await mkdir(join(recordings(), "latest.yaml"), { recursive: true });
+    await writeFile(join(recordings(), "latest.yaml", "kept"), "");
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "failed" });
+    // Neither the package's folder nor anything half-written is there.
+    expect(await readdir(recordings())).toEqual(["latest.yaml"]);
+    expect(await readdir(join(recordings(), "latest.yaml"))).toEqual(["kept"]);
+  });
+
+  it("replaces what an earlier save that was cut short left under the temporary name", async () => {
+    const leftover = join(recordings(), ".rec_19700101T000000000Z.tmp");
+    await mkdir(leftover, { recursive: true });
+    await writeFile(join(leftover, "half"), "");
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    const outcome = await recorder.done;
+    const folder = join(recordings(), "rec_19700101T000000000Z");
+    expect(outcome).toEqual({ kind: "saved", folder });
+    expect((await readdir(recordings())).sort()).toEqual([
+      "latest.yaml",
+      "rec_19700101T000000000Z",
+    ]);
+    expect(await readdir(folder)).toEqual(["package.yaml"]);
+  });
+});
