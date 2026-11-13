@@ -1111,3 +1111,47 @@ it("holds a click behind an input that still waits to be passed on, also once th
     browser.told.filter((signal) => signal.kind === "inputHeld")
   ).toHaveLength(2);
 });
+
+it("holds as a press exactly the keys Playwright reports as a press: a letter typed in a field is typing; Enter, an arrow key, Control with a letter and Tab are presses", async () => {
+  const browser = await onStockPlaywright(
+    `<label>Item <input id="item" /></label>`
+  );
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.page.locator("#item").focus();
+
+  // Tab last: it takes the focus out of the field.
+  const keys = ["a", "Enter", "ArrowDown", "Control+a", "Tab"];
+  const seen: { key: string; gate: boolean; playwright: boolean }[] = [];
+  for (const key of keys) {
+    const before = browser.told.length;
+    // Given over the test's own connection, as a person's keys are. A page
+    // that holds inputs holds every key, saying whether it is a press.
+    await browser.page.keyboard.press(key);
+    const { input, held } = await browser.toldOf(
+      "inputHeld",
+      (signal) => browser.told.indexOf(signal) >= before
+    );
+    await browser.ask({ kind: "passOn", input });
+    await browser.toldOf("inputPassedOn", (signal) => signal.input === input);
+    // Playwright reports a key at once, holding nothing back.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const pressed = browser.told
+      .slice(before)
+      .some(
+        (signal) =>
+          signal.kind === "interactionReported" &&
+          signal.report.type === "press"
+      );
+    seen.push({ key, gate: held?.kind === "press", playwright: pressed });
+  }
+
+  expect(seen).toEqual([
+    { key: "a", gate: false, playwright: false },
+    { key: "Enter", gate: true, playwright: true },
+    { key: "ArrowDown", gate: true, playwright: true },
+    { key: "Control+a", gate: true, playwright: true },
+    { key: "Tab", gate: true, playwright: true },
+  ]);
+});
