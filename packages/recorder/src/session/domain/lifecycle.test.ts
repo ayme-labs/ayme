@@ -362,7 +362,7 @@ describe("the lifecycle", () => {
           report: { ...click, type: "fill" },
         },
       ],
-      todo: [[]],
+      todo: [[waitForSettled("reported_1")]],
       state: { phase: "recording" },
     },
     {
@@ -792,6 +792,41 @@ describe("the lifecycle, for every kind of input", () => {
     target: null,
     values: { key: "Enter", modifiers: 0 },
   };
+  const fill = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
+  const choose: InteractionReport = {
+    type: "select",
+    selector: "internal:role=combobox",
+    target: null,
+    values: { options: ["eggs"] },
+  };
+  const revised = (report: InteractionReport): Happening => ({
+    kind: "interactionRevised",
+    page: "page_1",
+    report,
+  });
+  const fromReport = (
+    report: InteractionReport,
+    before: string,
+    after: string
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: {
+        page: "page_1",
+        report,
+        before,
+        after,
+        at: 10,
+        beforeFromReport: true,
+      },
+    },
+  });
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
     page: "page_1",
@@ -1007,6 +1042,132 @@ describe("the lifecycle, for every kind of input", () => {
         [waitForSettled("input_1")],
         [takeSnapshot("snapshot_2")],
         [keep("snapshot_2"), letThrough("input_1")],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // What Playwright reports that the gate never holds.
+    {
+      name: "typing is written from the page's latest snapshot to its 'after' on a Settled Page, once the next input comes",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        clickHeld("input_2"),
+      ],
+      todo: [
+        [waitForSettled("reported_1")],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3")],
+        [
+          takeSnapshot("snapshot_4"),
+          fromReport(fill("m"), "snapshot_2", "snapshot_3"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "the wrap-up writes typing that has its 'after'",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        finish,
+      ],
+      todo: [
+        [
+          ...wrapUp,
+          fromReport(fill("m"), "snapshot_2", "snapshot_3"),
+          reply("applied"),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Playwright's revision of typing replaces its report",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        revised(fill("milk")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        finish,
+      ],
+      todo: [
+        [
+          ...wrapUp,
+          fromReport(fill("milk"), "snapshot_2", "snapshot_3"),
+          reply("applied"),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "typing revised after its 'after' was taken waits for the page again, and ends at the newer snapshot",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        revised(fill("milk")),
+        settled("reported_1"),
+        taken("snapshot_4"),
+        finish,
+      ],
+      todo: [
+        [waitForSettled("reported_1")],
+        [takeSnapshot("snapshot_4")],
+        [keep("snapshot_4")],
+        [
+          ...wrapUp,
+          fromReport(fill("milk"), "snapshot_2", "snapshot_4"),
+          reply("applied"),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a reported select with no snapshot of its page yet gets one to start from",
+      happened: [opened, ...started, reportedAs(choose), taken("snapshot_1")],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [keep("snapshot_1"), waitForSettled("reported_1"), letThrough(null)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click held while typing waits for its Settled Page closes the typing: one snapshot is the typing's 'after' and the click's 'before'",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        clickHeld("input_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [waitForSettled("reported_1")],
+        [takeSnapshot("snapshot_3")],
+        [
+          keep("snapshot_3"),
+          passOn("input_2"),
+          fromReport(fill("m"), "snapshot_2", "snapshot_3"),
+        ],
       ],
       state: { phase: "recording" },
     },

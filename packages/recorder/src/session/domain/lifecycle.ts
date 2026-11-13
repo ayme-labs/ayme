@@ -64,6 +64,13 @@ export type BrowserSignal =
       readonly kind: "interactionReported";
       readonly page: string;
       readonly report: InteractionReport;
+    }
+  /** Playwright revised the Interaction it reported last on the page, as it
+   * does with each key typed into the same field. */
+  | {
+      readonly kind: "interactionRevised";
+      readonly page: string;
+      readonly report: InteractionReport;
     };
 
 /** What a page held back. */
@@ -159,6 +166,10 @@ export const WRAP_UP_LIMIT_MS = 5_000;
 /** The reports a held click can lead to. */
 const HELD_CLICK_REPORTS = new Set(["click", "check", "uncheck"]);
 
+/** The reports of inputs the gate never holds: their "before" comes from
+ * the report's own picture of the page. */
+const REPORTED_ONLY = new Set(["fill", "select", "setInputFiles"]);
+
 /** The kind of held input a report belongs to, if any. */
 function heldKindOf(report: InteractionReport): HeldInput["kind"] | null {
   if (HELD_CLICK_REPORTS.has(report.type)) return "click";
@@ -172,7 +183,11 @@ type Page = { readonly id: string; readonly url: string };
 type Input = {
   readonly id: string;
   readonly page: string;
-  readonly held: HeldInput;
+  /** What the page held back, or "reported" for an input the gate never
+   * holds, known from Playwright's report only. */
+  readonly held: HeldInput | { readonly kind: "reported" };
+  /** Its report was revised while its "after" was being taken. */
+  readonly revised: boolean;
   /** The input whose report covers this one too, as the first click of a
    * double click covers the second. */
   readonly joins: string | null;
@@ -208,6 +223,8 @@ type Flow = {
   /** Of each page: whether it holds everything that follows, and its
    * latest snapshot. */
   readonly gates: readonly PageGate[];
+  /** How many inputs were known from Playwright's report only. */
+  readonly reportedOnly: number;
 };
 
 type PageGate = {
@@ -338,6 +355,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
           upTo: null,
           latest: null,
         })),
+        reportedOnly: 0,
       },
       todo: [
         ...state.pages.map((page, index): ToDo => ({
@@ -394,6 +412,7 @@ function wrapUp(state: Extract<LifecycleState, { phase: "recording" }>): Step {
       inputs: state.inputs,
       snapshotsAsked: state.snapshotsAsked,
       gates: state.gates,
+      reportedOnly: state.reportedOnly,
       gateOff: false,
       finals: null,
     },
@@ -447,6 +466,7 @@ type Draft = {
   inputs: readonly Input[];
   snapshotsAsked: number;
   gates: readonly PageGate[];
+  reportedOnly: number;
   readonly todo: ToDo[];
 };
 
@@ -501,6 +521,7 @@ function during(state: Active, happening: BrowserSignal): Step {
     inputs: state.inputs,
     snapshotsAsked: state.snapshotsAsked,
     gates: state.gates,
+    reportedOnly: state.reportedOnly,
     todo: [],
   };
   let next = state;
@@ -528,6 +549,7 @@ function during(state: Active, happening: BrowserSignal): Step {
         held: happening.held ?? { kind: "click", count: 1 },
         joins: null,
         unreported: false,
+        revised: false,
         stage: "waiting",
         asked: null,
         before: null,
@@ -560,12 +582,30 @@ function during(state: Active, happening: BrowserSignal): Step {
         latest: { id: snapshot.id, at: snapshot.at },
       });
       for (const owner of owners) {
-        if (owner.stage === "takingAfter") {
+        if (owner.stage === "takingAfter" && owner.revised) {
+          // Revised meanwhile: the page is given time again.
+          change(draft, owner.id, {
+            stage: "settling",
+            after: snapshot.id,
+            asked: null,
+            revised: false,
+          });
+          draft.todo.push(settleAfter(owner));
+        } else if (owner.stage === "takingAfter") {
           change(draft, owner.id, {
             stage: "settled",
             after: snapshot.id,
             asked: null,
           });
+        } else if (owner.held.kind === "reported") {
+          // It has a snapshot to start from: now the page is given time.
+          change(draft, owner.id, {
+            stage: "settling",
+            before: snapshot.id,
+            passedOnAt: snapshot.at,
+            asked: null,
+          });
+          draft.todo.push(settleAfter(owner));
         } else {
           // Its "before" is in: now it may reach the page.
           change(draft, owner.id, {
@@ -625,8 +665,45 @@ function during(state: Active, happening: BrowserSignal): Step {
       });
       break;
     }
+    case "interactionRevised": {
+      const open = draft.inputs.findLast(
+        (input) =>
+          input.page === happening.page && input.held.kind === "reported"
+      );
+      if (!open || open.report?.type !== happening.report.type) break;
+      change(draft, open.id, { report: happening.report });
+      if (open.stage === "takingAfter")
+        change(draft, open.id, { revised: true });
+      if (open.stage === "settled") {
+        change(draft, open.id, { stage: "settling" });
+        draft.todo.push(settleAfter(open));
+      }
+      break;
+    }
     case "interactionReported": {
       const kind = heldKindOf(happening.report);
+      if (kind === null && REPORTED_ONLY.has(happening.report.type)) {
+        giveUpEarlier(draft, happening.page, draft.inputs.length);
+        const latest = gateOf(draft, happening.page)?.latest ?? null;
+        draft.inputs = [
+          ...draft.inputs,
+          {
+            id: `reported_${++draft.reportedOnly}`,
+            page: happening.page,
+            held: { kind: "reported" },
+            revised: false,
+            joins: null,
+            unreported: false,
+            stage: "waiting",
+            asked: null,
+            before: latest?.id ?? null,
+            after: null,
+            passedOnAt: latest?.at ?? null,
+            report: happening.report,
+          },
+        ];
+        break;
+      }
       if (kind === null) break;
       // Reports come in the order of the inputs: this one belongs to the
       // oldest input of its page and its kind that has none, if that input
@@ -642,21 +719,33 @@ function during(state: Active, happening: BrowserSignal): Step {
         break;
       change(draft, input.id, { report: happening.report });
       coverFollowingClicks(draft, input, happening.report);
-      for (const earlier of draft.inputs.slice(
-        0,
+      giveUpEarlier(
+        draft,
+        input.page,
         draft.inputs.findIndex((held) => held.id === input.id)
-      ))
-        if (
-          earlier.page === input.page &&
-          earlier.report === null &&
-          earlier.joins === null
-        )
-          change(draft, earlier.id, { unreported: true });
+      );
       break;
     }
   }
   return proceed({ ...next, ...settle(draft) }, draft.todo);
 }
+
+/** Playwright reports in order: the inputs of a page held before the
+ * `index`th that have no report yet will get none. */
+function giveUpEarlier(draft: Draft, page: string, index: number) {
+  for (const earlier of draft.inputs.slice(0, index))
+    if (
+      earlier.page === page &&
+      earlier.report === null &&
+      earlier.joins === null
+    )
+      change(draft, earlier.id, { unreported: true });
+}
+
+const settleAfter = (input: Input): ToDo => ({
+  kind: "browser",
+  ask: { kind: "waitForSettled", page: input.page, input: input.id },
+});
 
 /**
  * Lets inputs reach a page that holds what follows, once nothing of it is
@@ -666,7 +755,13 @@ function during(state: Active, happening: BrowserSignal): Step {
  */
 function letThrough(draft: Draft) {
   for (const gate of draft.gates) {
-    if (!gate.holding || underWay(draft, gate.page)) continue;
+    const held = draft.inputs.some(
+      (input) =>
+        input.page === gate.page &&
+        input.held.kind !== "reported" &&
+        input.stage !== "settled"
+    );
+    if (!gate.holding || held) continue;
     if (!gate.latest) continue;
     changeGate(draft, gate.page, { holding: false });
     draft.todo.push({
@@ -711,6 +806,7 @@ const settle = (draft: Draft): Flow => ({
   inputs: draft.inputs,
   snapshotsAsked: draft.snapshotsAsked,
   gates: draft.gates,
+  reportedOnly: draft.reportedOnly,
 });
 
 /** What follows from a recording's state as it now stands, whatever
@@ -721,13 +817,17 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
     inputs: state.inputs,
     snapshotsAsked: state.snapshotsAsked,
     gates: state.gates,
+    reportedOnly: state.reportedOnly,
     todo: [...done],
   };
   for (const page of new Set(draft.inputs.map((input) => input.page))) {
     const next = underWay(draft, page);
     if (next?.stage !== "waiting") continue;
     // Typing needs no "before" once the page has a snapshot to start from.
-    if (next.held.kind === "typing" && gateOf(draft, page)?.latest) {
+    if (next.held.kind === "reported" && next.before) {
+      change(draft, next.id, { stage: "settling" });
+      draft.todo.push(settleAfter(next));
+    } else if (next.held.kind === "typing" && gateOf(draft, page)?.latest) {
       change(draft, next.id, { stage: "passingOn" });
       draft.todo.push({
         kind: "browser",
@@ -749,6 +849,19 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       continue;
     }
     if (input.stage !== "settled" || !input.report || !input.before) continue;
+    // An input known from its report only may still be revised: it is
+    // written once something newer happened on its page, or at the end.
+    const reportedOnly = input.held.kind === "reported";
+    if (
+      reportedOnly &&
+      state.phase === "recording" &&
+      !draft.inputs
+        .slice(draft.inputs.findIndex((held) => held.id === input.id) + 1)
+        .some(
+          (later) => later.page === input.page && later.held.kind !== "typing"
+        )
+    )
+      continue;
     // Entries keep the order of the inputs: an earlier input of the page
     // that is not written down yet goes first.
     const earlier = draft.inputs.slice(
@@ -770,6 +883,7 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
           before: input.before,
           after: covered.length > 0 ? after : input.after,
           at: input.passedOnAt ?? 0,
+          ...(reportedOnly ? { beforeFromReport: true } : {}),
         },
       },
     });

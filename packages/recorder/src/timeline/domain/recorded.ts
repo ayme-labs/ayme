@@ -44,6 +44,12 @@ export type RecordedInteraction = {
   readonly after: string | null;
   /** When the input reached the page, on the browser's monotonic clock. */
   readonly at: number;
+  /**
+   * For an input the gate never holds, as typing: `before` is the latest
+   * snapshot ahead of it, and the report's own picture tells how the page
+   * stood at the moment of the input.
+   */
+  readonly beforeFromReport?: boolean;
 };
 
 /** One thing added to the timeline, in the order it happened. */

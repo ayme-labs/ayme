@@ -14,6 +14,7 @@ import {
   type BrowserRequest,
   type BrowserSignal,
 } from "../../session/domain";
+import type { InteractionReport } from "../../timeline/domain";
 import {
   hidePlaywrightOverlay,
   installActivityWatch,
@@ -320,24 +321,25 @@ async function openPage(
       {
         actionAdded: (reported, action) => {
           const pageId = idOf.get(reported);
-          if (!pageId) return;
-          const { name, selector, ref, ariaSnapshot, signals, ...values } =
-            action;
-          void signals;
-          tell({
-            kind: "interactionReported",
-            page: pageId,
-            report: {
-              type: name,
-              selector: selector ?? null,
-              target: ref && ariaSnapshot ? { ref, tree: ariaSnapshot } : null,
-              values,
-            },
-          });
+          if (pageId)
+            tell({
+              kind: "interactionReported",
+              page: pageId,
+              report: reportOf(action),
+            });
         },
-        // A report that Playwright revises, as for a double click, and the
-        // signals it adds to one are not read yet.
-        actionUpdated: () => {},
+        // Playwright revises the report of typing with each key typed into
+        // the same field.
+        actionUpdated: (reported, action) => {
+          const pageId = idOf.get(reported);
+          if (pageId)
+            tell({
+              kind: "interactionRevised",
+              page: pageId,
+              report: reportOf(action),
+            });
+        },
+        // The signals it adds to a report are not read yet.
         signalAdded: () => {},
       }
     );
@@ -351,6 +353,18 @@ async function openPage(
   }
 
   return { carryOut };
+}
+
+/** A report of Playwright's recorder, in the engine's words. */
+function reportOf(action: PlaywrightAction): InteractionReport {
+  const { name, selector, ref, ariaSnapshot, signals, ...values } = action;
+  void signals;
+  return {
+    type: name,
+    selector: selector ?? null,
+    target: ref && ariaSnapshot ? { ref, tree: ariaSnapshot } : null,
+    values,
+  };
 }
 
 /** Sends a held input on to its page, as the press of the mouse or the
