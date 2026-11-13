@@ -112,9 +112,14 @@ export type RecorderWarning = {
    *   versions the recorder is verified on.
    * - traceWithoutPositions: the package carries its trace, but not the
    *   position numbers that open its snapshots.
+   * - uploadNamesUnknown: an upload is recorded with its first file's name
+   *   only, as the names of the others could not be read.
    */
   readonly kind:
-    "reportShape" | "playwrightUnverified" | "traceWithoutPositions";
+    | "reportShape"
+    | "playwrightUnverified"
+    | "traceWithoutPositions"
+    | "uploadNamesUnknown";
   /** A sentence for a person. */
   readonly message: string;
 };

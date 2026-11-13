@@ -346,8 +346,6 @@ export function installGate(held: string): void {
 export type TargetChain = {
   readonly type: string;
   readonly chain: readonly (string | null)[];
-  /** The names of the files chosen, when the target is a file input. */
-  readonly files?: readonly string[];
 };
 
 /**
@@ -361,11 +359,8 @@ export type TargetChain = {
  */
 export function installTargetWatch(tell: string): void {
   const read = (event: Event) => {
-    // Files chosen by another automation client come with an input event the
-    // page did not get from a person; reading it changes nothing.
-    if (!event.isTrusted && event.type !== "input") return;
+    if (!event.isTrusted) return;
     const chain: (string | null)[] = [];
-    const target = event.composedPath()[0];
     for (
       let node: Node | null = event.composedPath()[0] as Node | null;
       node && node.nodeType === Node.ELEMENT_NODE;
@@ -379,13 +374,7 @@ export function installTargetWatch(tell: string): void {
       );
     void (
       window as unknown as Record<string, (seen: TargetChain) => Promise<void>>
-    )[tell]!({
-      type: event.type,
-      chain,
-      ...(target instanceof HTMLInputElement && target.type === "file"
-        ? { files: [...(target.files ?? [])].map((file) => file.name) }
-        : {}),
-    });
+    )[tell]!({ type: event.type, chain });
   };
   // Playwright's recorder listens on the document as the event goes down;
   // a listener on the root element runs right after it.

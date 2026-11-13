@@ -598,7 +598,7 @@ it.runIf(attaching)(
     const debugPort = await freePort();
     // A launched browser keeps a default context with no page; the test's
     // page is in a context of its own.
-    const running = await chromium.launch({
+    const running = await projectChromium.launch({
       headless: true,
       args: [`--remote-debugging-port=${debugPort}`],
     });
@@ -623,7 +623,7 @@ it.runIf(attaching)(
   "does not attach to a browser with no page open, and says what it found",
   async () => {
     const debugPort = await freePort();
-    const running = await chromium.launch({
+    const running = await projectChromium.launch({
       headless: true,
       args: [`--remote-debugging-port=${debugPort}`],
     });
@@ -666,6 +666,38 @@ it("reports files chosen in a file input as an upload, with their names", async 
     values: { files: ["one.png", "two.png"] },
   });
   expect(report.values).not.toHaveProperty("text");
+});
+
+it("warns, and keeps the first name, when the file input of an upload cannot be read any more", async () => {
+  // The page takes the input away as soon as files are chosen in it.
+  const browser = await onStockPlaywright(
+    `<label>Photos <input id="photos" type="file" multiple oninput="this.remove()" /></label>`
+  );
+  await reporting(browser);
+
+  await browser.page.locator("#photos").setInputFiles([
+    { name: "one.png", mimeType: "image/png", buffer: Buffer.from("1") },
+    { name: "two.png", mimeType: "image/png", buffer: Buffer.from("2") },
+  ]);
+
+  const { warning } = await browser.toldOf("browserWarned");
+  expect(warning).toEqual({
+    kind: "uploadNamesUnknown",
+    message: expect.stringContaining(
+      "could not all be read: the upload is recorded with the first, one.png."
+    ),
+  });
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report).toMatchObject({
+    type: "setInputFiles",
+    values: { files: ["one.png"] },
+  });
+  // The warning comes before the report it is about.
+  expect(
+    browser.told.findIndex((signal) => signal.kind === "browserWarned")
+  ).toBeLessThan(
+    browser.told.findIndex((signal) => signal.kind === "interactionReported")
+  );
 });
 
 // Assert visibility (ticket #1278): Playwright's own picking mode, switched

@@ -367,15 +367,12 @@ async function openPage(
   /** The latest targets each page told of. */
   const chains = new Map<Page, TargetChain[]>();
   const chainBinding = "__aymeRecorderTarget";
-  /** Who waits for a document to tell of a target. */
-  const noting = new Set<() => void>();
   await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
-    for (const heard of [...noting]) heard();
   });
   /** A report, with the ancestors of a target its picture does not list. */
   const reportFrom = (page: Page, action: PlaywrightAction) => {
-    const report = asUpload(reportOf(action), page);
+    const report = reportOf(action);
     if (!action.ariaSnapshot) return report;
     const listed = (ref: string) =>
       action.ariaSnapshot!.includes(`[ref=${ref}]`);
@@ -397,49 +394,60 @@ async function openPage(
   /**
    * Files chosen in a file input, which Playwright 1.64 reports as typing
    * of the input's value, as an upload. A file input's value is always
-   * `C:\fakepath\` and the first file's name (HTML's rule for it); the
-   * other names come from what the document told of the input, when that
-   * has arrived.
+   * `C:\fakepath\` and the first file's name (HTML's rule for it). The
+   * names of all files are the input's own state, set before the event
+   * that Playwright reports: they are read from the input itself, however
+   * late the report comes. An input that can no longer be read, or that
+   * holds other files by then, leaves the first name only, and a warning.
    */
-  const asUpload = (
+  const asUpload = async (
     report: InteractionReport,
     page: Page
-  ): InteractionReport => {
-    const { text, ...values } = report.values;
+  ): Promise<InteractionReport> => {
     const first = firstFileOf(report);
-    if (first === undefined) return report;
+    if (first === undefined || report.selector === null) return report;
+    const { selector } = report;
+    const { text, ...values } = report.values;
     void text;
-    const told = filesTold(page, first);
+    // A call Playwright traces: never inside a snapshot's mark.
+    const read = markers.then(() =>
+      page
+        .locator(selector)
+        .evaluate(
+          (input) =>
+            input instanceof HTMLInputElement && input.files
+              ? [...input.files].map((file) => file.name)
+              : null,
+          undefined,
+          { timeout: UPLOAD_READ_MS }
+        )
+        .catch(() => null)
+    );
+    markers = read.catch(() => {});
+    const names = await read;
+    if (names?.[0] !== first)
+      tell({
+        kind: "browserWarned",
+        warning: {
+          kind: "uploadNamesUnknown",
+          message: `The names of the files chosen in ${selector} could not all be read: the upload is recorded with the first, ${first}.`,
+        },
+      });
     return {
       ...report,
       type: "setInputFiles",
-      values: { ...values, files: told ?? [first] },
+      values: {
+        ...values,
+        files: names?.[0] === first ? names : [first],
+      },
     };
   };
-  /** The names of the files the document told of, if its note on the
-   * upload whose first file is `first` has arrived. */
-  const filesTold = (page: Page, first: string) => {
-    const told = (chains.get(page) ?? []).findLast(
-      (chain) => chain.type === "input"
-    )?.files;
-    return told?.[0] === first ? told : undefined;
+  /** Reports are told in the order Playwright gave them, also when one
+   * waits for what is read of its target. */
+  let reports: Promise<unknown> = Promise.resolve();
+  const inReportOrder = (make: () => Promise<BrowserSignal>) => {
+    reports = reports.then(make).then(tell, () => {});
   };
-  /** Resolves once the document told of the upload, or after a while. */
-  const noteOf = (page: Page, first: string) =>
-    new Promise<void>((resolve) => {
-      const heard = () => {
-        if (!filesTold(page, first)) return;
-        noting.delete(heard);
-        clearTimeout(timer);
-        resolve();
-      };
-      const timer = setTimeout(() => {
-        noting.delete(heard);
-        resolve();
-      }, UPLOAD_NOTE_MS);
-      noting.add(heard);
-      heard();
-    });
   await context.addInitScript(installTargetWatch, chainBinding);
   // Every document gets the gate and the activity watch, both switched off,
   // before its own scripts run.
@@ -835,28 +843,25 @@ async function openPage(
       actionAdded: (reported, action) => {
         const pageId = idOf.get(reported);
         if (!pageId) return;
-        const told = () =>
-          tell({
-            kind: "interactionReported",
-            page: pageId,
-            report: reportFrom(reported, action),
-          });
-        // Playwright's report of an upload can come before the document's
-        // note with every file's name: it waits for that, a while at most.
-        const first = firstFileOf(reportOf(action));
-        if (first === undefined || filesTold(reported, first)) return told();
-        void noteOf(reported, first).then(told);
+        // What it names is read now, before anything else happens.
+        const report = reportFrom(reported, action);
+        inReportOrder(async () => ({
+          kind: "interactionReported",
+          page: pageId,
+          report: await asUpload(report, reported),
+        }));
       },
       // Playwright revises the report of typing with each key typed into
       // the same field.
       actionUpdated: (reported, action) => {
         const pageId = idOf.get(reported);
-        if (pageId)
-          tell({
-            kind: "interactionRevised",
-            page: pageId,
-            report: reportFrom(reported, action),
-          });
+        if (!pageId) return;
+        const report = reportFrom(reported, action);
+        inReportOrder(async () => ({
+          kind: "interactionRevised",
+          page: pageId,
+          report,
+        }));
       },
     });
     // A document that was open before the recorder started.
@@ -918,8 +923,10 @@ async function openPage(
 /** How a browser begins the value of a file input with a file chosen. */
 const FAKE_PATH = "C:\\fakepath\\";
 
-/** How long the report of an upload waits for the names of its files. */
-const UPLOAD_NOTE_MS = 200;
+/** How long reading the names of an upload's files may take before the
+ * input is taken to be gone: it is there when the files are chosen, and is
+ * only waited for when the page has taken it away. */
+const UPLOAD_READ_MS = 1_000;
 
 /** The first file's name, when Playwright reports a file input's value as
  * typing, as 1.64 does for files chosen in one. */
