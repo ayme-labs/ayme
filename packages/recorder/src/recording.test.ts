@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
+import {
+  SCRIPTED_TRACE,
+  startScriptedRecorder,
+  type ScriptedBrowser,
+} from "./testing";
 
 // A recording on the scripted browser, with a test clock: what the handle
 // answers and shows, what it asks of the browser, and the package on disk.
@@ -52,7 +56,13 @@ const savedClick = [
   `        changeTree:`,
   `          - [ref=e1]:`,
   `            - <added> [ref=e3] status: Saved`,
-  `traceActionPoints: []`,
+  `traceActionPoints:`,
+  `  - interactionId: interaction_1`,
+  `    pageId: page_1`,
+  `    beforeSnapshotId: "10"`,
+  `    afterSnapshotId: "20"`,
+  `    startedAt: 2`,
+  `    endedAt: 3`,
   ``,
 ].join("\n");
 
@@ -90,6 +100,7 @@ describe("a recording", () => {
       },
     });
     expect(browser.asked).toEqual([
+      { kind: "startTrace" },
       { kind: "reportInteractions", on: true },
       { kind: "holdInputs", on: true },
     ]);
@@ -101,7 +112,7 @@ describe("a recording", () => {
 
     browser.holdClick();
     await browser.asks(waitForSettled);
-    expect(browser.asked.slice(2)).toEqual([
+    expect(browser.asked.slice(3)).toEqual([
       { kind: "takeSnapshot", snapshot: "snapshot_1", page: "page_1" },
       { kind: "passOn", input: "input_1" },
       { kind: "waitForSettled", page: "page_1", input: "input_1" },
@@ -196,7 +207,7 @@ describe("a recording", () => {
         `mode: structural`,
         `createdAt: 1970-01-01T00:00:00.000Z`,
         `url: http://shop.test/`,
-        `tracePath: null`,
+        `tracePath: .ayme/recordings/${recordingId}/trace.zip`,
         `visits:`,
         `  - visitId: visit_1`,
         `    url: http://shop.test/`,
@@ -212,7 +223,14 @@ describe("a recording", () => {
     await expect(
       readFile(join(projectDir, ".ayme", "recordings", "latest.yaml"), "utf8")
     ).resolves.toBe(text);
-    expect(await readdir(folder)).toEqual(["package.yaml"]);
+    // The recording's trace is beside the package.
+    expect((await readdir(folder)).sort()).toEqual([
+      "package.yaml",
+      "trace.zip",
+    ]);
+    await expect(readFile(join(folder, "trace.zip"), "utf8")).resolves.toBe(
+      SCRIPTED_TRACE
+    );
   });
 
   it("replaces an earlier 'latest', and the semantic one of the released recorder", async () => {
@@ -275,6 +293,81 @@ describe("a recording", () => {
         "utf8"
       )
     ).toContain(savedClick);
+  });
+
+  it("writes a click that leaves the page in its Visit, with no Change Tree, and starts the next Visit from the page it led to", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    browser.goTo("http://shop.test/cart");
+    browser.showPage(`- heading "Cart" [level=1] [ref=f1e1]`);
+    browser.settle();
+    browser.report(click);
+
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    expect(text).toContain(
+      [
+        `          clickCount: 1`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/cart`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+        `      - [ref=f1e1] heading "Cart" [level=1]`,
+        `    timelineEntries: []`,
+        `traceActionPoints:`,
+        `  - interactionId: interaction_1`,
+        `    pageId: page_1`,
+        // A click that leaves the page has its "before" only.
+        `    beforeSnapshotId: "10"`,
+        `    startedAt: 2`,
+        `    endedAt: 3`,
+        ``,
+      ].join("\n")
+    );
+  });
+
+  it("drops a click held when its page goes away, never passes it on to the page after, and still saves", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    browser.showPage(saved);
+    browser.settle();
+    browser.report(click);
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_2",
+      page: "page_1",
+    });
+    // The page is slow to be read, and goes elsewhere meanwhile.
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_3",
+      page: "page_1",
+    });
+    browser.goTo("http://shop.test/cart");
+    browser.releaseSnapshots();
+    browser.report(click);
+
+    await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
+    const outcome = await recorder.done;
+    expect(browser.passedOn).toEqual(["input_1"]);
+    expect(outcome.kind).toBe("saved");
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    expect(text.match(/kind: interaction/g)).toHaveLength(1);
   });
 
   it("takes Finish while a click's 'before' snapshot is outstanding: it wraps up, and the time limit runs", async () => {

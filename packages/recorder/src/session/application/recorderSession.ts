@@ -6,7 +6,7 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../../contract";
-import { Timeline } from "../../timeline/domain";
+import { Timeline, type RecordingTrace } from "../../timeline/domain";
 import {
   initialState,
   offered,
@@ -18,14 +18,16 @@ import {
 import { RecordedBrowser } from "./recordedBrowser";
 
 /**
- * Writes a timeline as a Recording Package made at `createdAt`. Resolves
- * with the package's folder, or with null when there was nothing to write.
+ * Writes a timeline as a Recording Package made at `createdAt`, with the
+ * recording's trace beside it when it has one. Resolves with the package's
+ * folder, or with null when there was nothing to write.
  * The session is handed it: where and how a package is kept is not its to
  * know.
  */
 export type SaveRecording = (
   timeline: Timeline,
-  createdAt: Date
+  createdAt: Date,
+  trace: RecordingTrace | null
 ) => Promise<string | null>;
 
 /** One thing that happened, waiting for its turn, and where a command's
@@ -126,7 +128,7 @@ export class RecorderSession extends Context.Service<
             case "save": {
               const createdAt = new Date(yield* Clock.currentTimeMillis);
               const folder = yield* Effect.promise(() =>
-                options.save(timeline, createdAt)
+                options.save(timeline, createdAt, item.trace ?? null)
               );
               // What changed after the last Interaction is an entry now.
               yield* publishEntries;

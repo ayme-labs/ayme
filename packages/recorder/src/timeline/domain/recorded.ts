@@ -27,8 +27,14 @@ export type InteractionReport = {
    * The report's own picture of the page at the moment of the Interaction,
    * and the target's ref in that picture. It has the shape of a snapshot,
    * but its refs are its own: they are not the refs of a `PageSnapshot`.
+   * `ref` is null when the picture does not list the target; `ancestors`
+   * are the refs the picture gave the target's ancestors, nearest first.
    */
-  readonly target: { readonly ref: string; readonly tree: string } | null;
+  readonly target: {
+    readonly ref: string | null;
+    readonly tree: string;
+    readonly ancestors?: readonly string[];
+  } | null;
   /** Everything else Playwright said: the button, the modifiers and so on. */
   readonly values: Readonly<Record<string, unknown>>;
 };
@@ -44,6 +50,12 @@ export type RecordedInteraction = {
   readonly after: string | null;
   /** When the input reached the page, on the browser's monotonic clock. */
   readonly at: number;
+  /**
+   * For an input the gate never holds, as typing: `before` is the latest
+   * snapshot ahead of it, and the report's own picture tells how the page
+   * stood at the moment of the input.
+   */
+  readonly beforeFromReport?: boolean;
 };
 
 /** One thing added to the timeline, in the order it happened. */
@@ -56,3 +68,16 @@ export type TimelineAddition =
     }
   | { readonly kind: "snapshot"; readonly snapshot: PageSnapshot }
   | { readonly kind: "interaction"; readonly interaction: RecordedInteraction };
+
+/**
+ * A recording's trace, as the browser hands it over once it is stopped: the
+ * file, and where each of the recording's snapshots is in it. A position is
+ * the number the stock `playwright trace` tool takes to open that snapshot's
+ * page, and it is kept as the text it is printed as.
+ */
+export type RecordingTrace = {
+  /** An absolute path. The file is the recording's to keep or remove. */
+  readonly file: string;
+  /** From a snapshot's id to its position in the trace. */
+  readonly positions: Readonly<Record<string, string>>;
+};

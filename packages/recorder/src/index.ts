@@ -11,5 +11,10 @@ export type {
   RecordingOutcome,
   TimelineEntry,
 } from "./contract";
-export { startRecorder, type Recorder, type RecorderOptions } from "./engine";
+export {
+  runTrace,
+  startRecorder,
+  type Recorder,
+  type RecorderOptions,
+} from "./engine";
 export { RecorderStartError, type RecorderStartReason } from "./session/domain";

@@ -48,8 +48,12 @@ export async function startRecorderOn(
     RecorderSession.layer({
       // The composition root says where a package is kept: on the disk, in
       // the project.
-      save: (timeline, createdAt) =>
-        saveRecording(timeline, { projectDir: options.projectDir, createdAt }),
+      save: (timeline, createdAt, trace) =>
+        saveRecording(timeline, {
+          projectDir: options.projectDir,
+          createdAt,
+          trace,
+        }),
     }).pipe(Layer.provide(browser))
   );
   // A failed start rejects with what failed: the start error itself.

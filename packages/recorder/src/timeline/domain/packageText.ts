@@ -31,6 +31,22 @@ export type PackageHeader = {
 /** A Visit as the package shows it: with its starting picture. */
 export type PackageVisit = RecordedVisit & { readonly baselineTree: string };
 
+/**
+ * Where the trace holds one Interaction: the numbers the stock trace tool
+ * takes to open the snapshots around it, in the released fields. A position
+ * is text, as the released format keeps it.
+ */
+export type TracePoint = {
+  readonly interactionId: string;
+  readonly pageId: string;
+  readonly beforeSnapshotId?: string;
+  /** Absent when the Interaction left its page. */
+  readonly afterSnapshotId?: string;
+  /** Milliseconds on the recorded browser's monotonic clock. */
+  readonly startedAt: number;
+  readonly endedAt: number;
+};
+
 /** What Playwright says of an Interaction, in the order the package lists it. */
 const INTERACTION_VALUES = [
   "url",
@@ -141,7 +157,8 @@ const entryLines = (entry: TimelineEntry) => [
 /** The package's text. Its `url` is the first Visit's. */
 export function renderPackage(
   header: PackageHeader,
-  visits: readonly PackageVisit[]
+  visits: readonly PackageVisit[],
+  tracePoints: readonly TracePoint[]
 ): string {
   const lines = [
     ...fields({
@@ -163,8 +180,10 @@ export function renderPackage(
         ...list("timelineEntries", visit.entries.map(entryLines)),
       ])
     ),
-    // The trace's position numbers join with the trace file.
-    ...list("traceActionPoints", []),
+    ...list(
+      "traceActionPoints",
+      tracePoints.map((point) => fields(point))
+    ),
   ];
   return lines.join("\n") + "\n";
 }

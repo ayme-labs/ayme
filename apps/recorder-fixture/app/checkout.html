@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Checkout</title>
+  </head>
+  <body>
+    <h1>Checkout</h1>
+    <button id="pay">Pay</button>
+    <p id="state">Not paid</p>
+    <script>
+      // Every click this document gets: a click held in the page before
+      // it must never arrive here.
+      window.clicks = 0;
+      document.addEventListener("click", () => (window.clicks += 1), true);
+      document.getElementById("pay").addEventListener("click", () => {
+        document.getElementById("state").textContent = "Paid";
+      });
+      // The page goes on rendering by itself after it has loaded: a test
+      // calls this when it wants the late part to appear.
+      window.showOffer = () => {
+        const offer = document.createElement("p");
+        offer.textContent = "Free delivery today";
+        document.body.append(offer);
+      };
+    </script>
+  </body>
+</html>
