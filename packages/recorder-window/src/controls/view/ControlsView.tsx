@@ -4,7 +4,7 @@ import type {
   RecorderState,
 } from "@ayme-dev/recorder/contract";
 import { Button } from "@ayme-dev/design-system/components/button";
-import { Circle, ListX, Play, Square } from "lucide-react";
+import { Circle, Eye, ListX, Play, Square } from "lucide-react";
 
 import { statusText } from "../domain/status";
 
@@ -23,6 +23,21 @@ export function primaryOf(state: RecorderState) {
 }
 
 /**
+ * Assert visibility: on while the recorder says Playwright picks, and the
+ * command that applies now when pressed, entering or leaving it. Neither
+ * applies, and it cannot be pressed, while the recorder does not record.
+ */
+export function assertVisibilityOf(state: RecorderState | null) {
+  const picking = state?.phase === "recording" && state.picking === true;
+  const command = state?.commands.includes("leaveAssertVisibility")
+    ? ({ type: "leaveAssertVisibility" } as const)
+    : state?.commands.includes("assertVisibility")
+      ? ({ type: "assertVisibility" } as const)
+      : null;
+  return { picking, command, label: "Assert visibility", Icon: Eye } as const;
+}
+
+/**
  * The window's controls. Which can be pressed now comes from the engine
  * (`commands`): the window repeats none of its rules. While the recorder
  * wraps up, nothing can be pressed.
@@ -37,6 +52,7 @@ export function ControlsView({
   const applies = (type: RecorderCommandType) =>
     state?.commands.includes(type) ?? false;
   const primary = state && primaryOf(state);
+  const asserting = assertVisibilityOf(state);
   return (
     <header
       role="toolbar"
@@ -67,6 +83,15 @@ export function ControlsView({
       </p>
       {state && (
         <>
+          <Button
+            variant={asserting.picking ? "default" : "outline"}
+            aria-pressed={asserting.picking}
+            disabled={!asserting.command}
+            onClick={() => asserting.command && onCommand(asserting.command)}
+          >
+            <asserting.Icon />
+            {asserting.label}
+          </Button>
           <Button
             variant="ghost"
             size="icon"

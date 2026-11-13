@@ -7,7 +7,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { ListX } from "lucide-react";
 
 import { statusText } from "../domain/status";
-import { primaryOf } from "./ControlsView";
+import { assertVisibilityOf, primaryOf } from "./ControlsView";
 
 /**
  * The toolbar in a recorded page: the window's controls, small. Which can
@@ -24,6 +24,7 @@ export function ToolbarView({
   const applies = (type: RecorderCommandType) =>
     state?.commands.includes(type) ?? false;
   const primary = state && primaryOf(state);
+  const asserting = assertVisibilityOf(state);
   const control = (
     type: "record" | "stop" | "continue" | "clear" | "finish",
     label: string
@@ -62,9 +63,20 @@ export function ToolbarView({
       >
         {statusText(state)}
       </p>
-      {/* Assert visibility joins the controls here. */}
       {state && (
         <>
+          <Button
+            variant={asserting.picking ? "default" : "ghost"}
+            size="icon"
+            aria-label={asserting.label}
+            title={asserting.label}
+            aria-pressed={asserting.picking}
+            tabIndex={-1}
+            disabled={!asserting.command}
+            onClick={() => asserting.command && onCommand(asserting.command)}
+          >
+            <asserting.Icon />
+          </Button>
           <Button variant="ghost" size="icon" {...control("clear", "Clear")}>
             <ListX />
           </Button>

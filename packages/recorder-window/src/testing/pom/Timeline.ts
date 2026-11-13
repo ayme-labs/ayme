@@ -36,6 +36,16 @@ export class Entry {
     return this.root.getByRole("button", { name: "Restore", exact: true });
   }
 
+  /** Hovers the entry's target, which highlights its element on the page. */
+  async hoverTarget(): Promise<void> {
+    await this.target.hover();
+  }
+
+  /** Moves off the entry's target, to its title. */
+  async leaveTarget(): Promise<void> {
+    await this.title.hover();
+  }
+
   async discard(): Promise<void> {
     await this.discardButton.click();
   }

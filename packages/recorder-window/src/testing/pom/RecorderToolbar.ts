@@ -71,6 +71,8 @@ export class RecorderToolbar {
   readonly root: Locator;
   /** What the recorder is doing, in words: "Recording", "Paused" and so on. */
   readonly status: Locator;
+  /** Assert visibility: pressed, it enters picking, or leaves it. */
+  readonly assertVisibility: Locator;
 
   /** The toolbar in `page`, reached through `selectors`: `@playwright/test`'s,
    * of the same Playwright that reached the page. */
@@ -84,6 +86,16 @@ export class RecorderToolbar {
   ) {
     this.root = this.inside('[role="toolbar"]');
     this.status = this.inside('[role="status"]');
+    this.assertVisibility = this.inside(
+      'button[aria-label="Assert visibility"]'
+    );
+  }
+
+  /** Whether the toolbar shows Assert visibility on. */
+  async picking(): Promise<boolean> {
+    return (
+      (await this.assertVisibility.getAttribute("aria-pressed")) === "true"
+    );
   }
 
   /** A control, by the name a person reads on it. */

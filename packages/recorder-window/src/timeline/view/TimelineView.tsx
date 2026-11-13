@@ -7,6 +7,7 @@ import type {
 import { Button } from "@ayme-dev/design-system/components/button";
 import {
   Activity,
+  Eye,
   Globe,
   Keyboard,
   MousePointer2,
@@ -29,6 +30,7 @@ const ICONS: Record<string, LucideIcon> = {
   click: MousePointer2,
   press: Keyboard,
   fill: Type,
+  assertVisible: Eye,
 };
 
 /** The recording as the window lists it: one section per Visit, each with
@@ -147,6 +149,15 @@ function EntryCard({
             {target && (
               <span
                 data-testid="entry-target"
+                // Hovering the target highlights its element on the page.
+                onMouseEnter={() =>
+                  commands.includes("highlight") &&
+                  onCommand({ type: "highlight", entry: entry.id })
+                }
+                onMouseLeave={() =>
+                  commands.includes("clearHighlight") &&
+                  onCommand({ type: "clearHighlight" })
+                }
                 className="rounded-md bg-muted px-2 py-0.5 font-mono text-sm break-all"
               >
                 {target}

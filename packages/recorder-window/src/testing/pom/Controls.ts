@@ -15,9 +15,22 @@ const NAMES: readonly CommandName[] = [
 export class Controls {
   /** What the recorder is doing, in words: "Recording", "Paused" and so on. */
   readonly status: Locator;
+  /** Assert visibility: pressed, it enters picking, or leaves it. */
+  readonly assertVisibility: Locator;
 
   constructor(readonly root: Locator) {
     this.status = root.getByRole("status");
+    this.assertVisibility = root.getByRole("button", {
+      name: "Assert visibility",
+      exact: true,
+    });
+  }
+
+  /** Whether the window shows Assert visibility on. */
+  async picking(): Promise<boolean> {
+    return (
+      (await this.assertVisibility.getAttribute("aria-pressed")) === "true"
+    );
   }
 
   button(name: CommandName): Locator {

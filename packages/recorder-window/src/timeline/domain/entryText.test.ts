@@ -23,6 +23,12 @@ describe("how an Interaction reads in the window", () => {
     );
   });
 
+  it("names an assertion that an element is visible", () => {
+    expect(interactionTitle(interaction({ type: "assertVisible" }))).toBe(
+      "Assert visible"
+    );
+  });
+
   it("names any other kind by its own name", () => {
     expect(interactionTitle(interaction({ type: "uncheck" }))).toBe("Uncheck");
   });
