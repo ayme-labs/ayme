@@ -764,3 +764,152 @@ it("marks the same elements as clickable in a snapshot before, during and after 
   await browser.toldOf("picking", ({ on }) => !on);
   expect(await clickable("after")).toEqual(before);
 });
+
+// The hover highlight (ticket #1278): the recorder's own highlight, drawn
+// on the element a ref of the adapter's own latest snapshot names.
+
+const PLACES = `
+  <h1>Orders</h1>
+  <button id="main">Main</button>
+  <iframe style="margin-left: 40px; height: 80px" srcdoc="<button>In frame</button>"></iframe>
+  <shadow-place></shadow-place>
+  <script>
+    customElements.define("shadow-place", class extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: "open" }).innerHTML =
+          "<button style='margin-left: 80px'>In shadow</button>";
+      }
+    });
+  </script>`;
+
+/** The highlight drawn on the page now, in the page's coordinates; null
+ * when none is. */
+const drawn = (page: Page) =>
+  page.evaluate(() => {
+    const host = document.querySelector("ayme-recorder-highlight");
+    if (!host) return null;
+    const { x, y, width, height } = host.getBoundingClientRect();
+    return { x, y, width, height };
+  });
+
+/** Takes a snapshot, and gives the ref it names a button by. */
+async function refOf(browser: Harness, snapshot: string, name: string) {
+  await browser.ask({ kind: "takeSnapshot", snapshot, page: "page_1" });
+  const { snapshot: taken } = await browser.toldOf(
+    "snapshotTaken",
+    (told) => told.snapshot.id === snapshot
+  );
+  const ref = new RegExp(`button "${name}" \\[ref=(\\w+)\\]`).exec(
+    taken.tree
+  )?.[1];
+  if (!ref) throw new Error(`No button "${name}" in:\n${taken.tree}`);
+  return { ref, tree: taken.tree };
+}
+
+it("draws the highlight on the element a ref names, in the page, in a same-origin frame and in an open shadow root, and clears it", async () => {
+  const browser = await onStockPlaywright(PLACES);
+  const inFrame = browser.page.frameLocator("iframe").getByRole("button");
+  await inFrame.waitFor();
+  const elements: [string, Locator][] = [
+    ["Main", browser.page.locator("#main")],
+    ["In frame", inFrame],
+    ["In shadow", browser.page.getByRole("button", { name: "In shadow" })],
+  ];
+
+  for (const [index, [name, element]] of elements.entries()) {
+    const { ref } = await refOf(browser, `snapshot_${index + 1}`, name);
+    await browser.ask({
+      kind: "highlight",
+      highlight: index + 1,
+      target: { page: "page_1", ref, selector: null },
+    });
+
+    const { found } = await browser.toldOf(
+      "highlighted",
+      (told) => told.highlight === index + 1
+    );
+    expect(found).toBe(true);
+    const box = (await element.boundingBox())!;
+    await expect
+      .poll(() => drawn(browser.page))
+      .toEqual({
+        x: expect.closeTo(box.x, 0),
+        y: expect.closeTo(box.y, 0),
+        width: expect.closeTo(box.width, 0),
+        height: expect.closeTo(box.height, 0),
+      });
+  }
+
+  await browser.ask({ kind: "highlight", highlight: 4, target: null });
+  await expect.poll(() => drawn(browser.page)).toBeNull();
+});
+
+it("draws nothing, and says so, for an element the page no longer has", async () => {
+  const browser = await onStockPlaywright(PLACES);
+  const { ref } = await refOf(browser, "snapshot_1", "Main");
+  await browser.page.evaluate(() => document.querySelector("#main")!.remove());
+
+  await browser.ask({
+    kind: "highlight",
+    highlight: 1,
+    target: { page: "page_1", ref, selector: null },
+  });
+
+  const { found } = await browser.toldOf("highlighted");
+  expect(found).toBe(false);
+  expect(await drawn(browser.page)).toBeNull();
+});
+
+it("keeps the highlight out of the page's structure and out of the trace's numbering of snapshots", async () => {
+  const browser = await onStockPlaywright(PLACES);
+  await browser.ask({ kind: "startTrace" });
+  await browser.page.evaluate(() => {
+    document.querySelector("h1")!.textContent = "One";
+  });
+  const { ref, tree } = await refOf(browser, "snapshot_1", "Main");
+  await browser.ask({
+    kind: "highlight",
+    highlight: 1,
+    target: { page: "page_1", ref, selector: null },
+  });
+  await browser.toldOf("highlighted");
+  await expect.poll(() => drawn(browser.page)).not.toBeNull();
+
+  const { tree: highlightedTree } = await refOf(browser, "snapshot_2", "Main");
+  await browser.page.evaluate(() => {
+    document.querySelector("h1")!.textContent = "Two";
+  });
+  await refOf(browser, "snapshot_3", "Main");
+  await browser.ask({ kind: "stopTrace", keep: true });
+  const { trace } = await browser.toldOf("traceStopped");
+
+  expect(highlightedTree).toBe(tree);
+  const title = "document.querySelector('h1').textContent";
+  expect(
+    await stockToolEvaluates(trace.file, trace.positions.snapshot_1!, title)
+  ).toBe("One");
+  expect(
+    await stockToolEvaluates(trace.file, trace.positions.snapshot_3!, title)
+  ).toBe("Two");
+  await rm(dirname(trace.file), { recursive: true, force: true });
+});
+
+it.runIf(attaching)(
+  "leaves no highlight behind when it lets go of a browser it attached to",
+  async () => {
+    const browser = await onStockPlaywright(PLACES);
+    const { ref } = await refOf(browser, "snapshot_1", "Main");
+    await browser.ask({
+      kind: "highlight",
+      highlight: 1,
+      target: { page: "page_1", ref, selector: null },
+    });
+    await browser.toldOf("highlighted");
+    await expect.poll(() => drawn(browser.page)).not.toBeNull();
+
+    await browser.letGo();
+
+    expect(await drawn(browser.page)).toBeNull();
+  }
+);

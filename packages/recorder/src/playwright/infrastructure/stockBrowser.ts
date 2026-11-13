@@ -9,7 +9,13 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
-import type { Browser, BrowserContext, Frame, Page } from "playwright-core";
+import type {
+  Browser,
+  BrowserContext,
+  CDPSession,
+  Frame,
+  Page,
+} from "playwright-core";
 
 import type { ToolbarBinding } from "../../contract";
 import { RecordedBrowser } from "../../session/application";
@@ -20,6 +26,7 @@ import {
 } from "../../session/domain";
 import type { InteractionReport } from "../../timeline/domain";
 import {
+  drawHighlight,
   hidePlaywrightOverlay,
   keepCursorsAsTheyAre,
   installActivityWatch,
@@ -27,6 +34,7 @@ import {
   installTargetWatch,
   startGate,
   type HeldByPage,
+  type HighlightBox,
   type TargetChain,
 } from "./pageScripts";
 import {
@@ -670,6 +678,9 @@ async function openPage(
       // Assert visibility.
       case "pick":
         return pick(request.on);
+      // Highlight.
+      case "highlight":
+        return highlight(request);
       case "waitForSettled": {
         const open = pages.get(request.page);
         // Core owns the quiet window, the deadline and what "settled" is.
@@ -717,6 +728,65 @@ async function openPage(
       });
     }
     tell({ kind: "reportingInteractions", on });
+  }
+
+  /** The latest highlight asked: only it is drawn. */
+  let latestHighlight = 0;
+  /** A DevTools session of each page the highlight was drawn in: drawing
+   * through it is no call of Playwright, and leaves nothing in the trace. */
+  const drawers = new Map<Page, Promise<CDPSession>>();
+  const draw = (page: Page, box: HighlightBox | null) => {
+    let drawer = drawers.get(page);
+    if (!drawer) {
+      drawer = context.newCDPSession(page);
+      drawers.set(page, drawer);
+    }
+    return drawer.then((session) =>
+      session.send("Runtime.evaluate", {
+        expression: `(${drawHighlight.toString()})(${JSON.stringify(box)})`,
+      })
+    );
+  };
+
+  /**
+   * Draws the highlight on the element a ref of the adapter's own latest
+   * snapshot names, or a selector, in place of the one drawn before, and
+   * tells whether it found it: exactly one element, with a box. Finding it
+   * is Playwright's public locator, which the trace records; drawing is not.
+   */
+  async function highlight(
+    request: Extract<BrowserRequest, { kind: "highlight" }>
+  ) {
+    latestHighlight = Math.max(latestHighlight, request.highlight);
+    const latest = () => request.highlight === latestHighlight;
+    await Promise.all(
+      [...drawers.keys()]
+        .filter((page) => !page.isClosed())
+        .map((page) => draw(page, null).catch(() => {}))
+    );
+    const { target } = request;
+    if (!target) return;
+    const found = (box: HighlightBox | null) =>
+      tell({
+        kind: "highlighted",
+        highlight: request.highlight,
+        found: box !== null,
+      });
+    const open = pages.get(target.page);
+    const selector =
+      target.ref !== null ? `aria-ref=${target.ref}` : target.selector;
+    if (!open || selector === null || !latest()) return found(null);
+    const element = open.locator(selector);
+    const box =
+      (await element.count().catch(() => 0)) === 1
+        ? await element
+            .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
+            .catch(() => null)
+        : null;
+    // A later highlight replaced it meanwhile: it is not drawn.
+    if (!box || !latest()) return found(null);
+    await draw(open, box);
+    found(box);
   }
 
   /** Switching the mode of Playwright's recorder, one after the other, in
@@ -813,6 +883,7 @@ async function openPage(
           .evaluate((remove) => {
             window.__aymeRecorderGate?.set(false);
             window.__aymeRecorderActivity?.watch(false);
+            document.querySelector("ayme-recorder-highlight")?.remove();
             document
               .querySelector("ayme-recorder-toolbar")
               ?.dispatchEvent(new Event(remove));
@@ -919,6 +990,9 @@ const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
 /** Playwright's recorder's mode in which it picks the element whose
  * visibility is asserted. */
 const PICKING_MODE = "assertingVisibility";
+
+/** How long finding the element of a highlight may take. */
+const HIGHLIGHT_LOOKUP_MS = 500;
 
 /** How long letting go of an attached browser may take. */
 const LET_GO_LIMIT_MS = 5_000;
