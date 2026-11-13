@@ -3,7 +3,7 @@ import { startRecorderOn, type Recorder } from "./recorder";
 
 export type RecorderOptions = {
   /** The project's folder. Playwright is resolved from here; the engine
-   * brings none of its own. */
+   * brings none of its own. A recording is saved in its `.ayme/recordings`. */
   readonly projectDir: string;
   /** Launch a browser on a URL. */
   readonly browser: {
@@ -27,6 +27,7 @@ export type RecorderOptions = {
 export function startRecorder(options: RecorderOptions): Promise<Recorder> {
   const { url, headless = false, debugPort } = options.browser.launch;
   return startRecorderOn(
-    stockBrowser({ projectDir: options.projectDir, url, headless, debugPort })
+    stockBrowser({ projectDir: options.projectDir, url, headless, debugPort }),
+    { projectDir: options.projectDir }
   );
 }

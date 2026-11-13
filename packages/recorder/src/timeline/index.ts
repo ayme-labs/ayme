@@ -6,3 +6,4 @@ export type {
   VisitCause,
 } from "./domain/recorded";
 export { Timeline, type PackageHeader } from "./domain/timeline";
+export { saveRecording } from "./infrastructure/recordingStore";

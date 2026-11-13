@@ -26,7 +26,8 @@ export interface Recorder {
    * again, at any time, is harmless. */
   end(): void;
   /** Settles when the recorder has ended, whoever ended it, and its browser
-   * is let go. */
+   * is let go. It rejects when the recorder broke down, as when the package
+   * could not be written. */
   readonly done: Promise<RecordingOutcome>;
 }
 
@@ -35,10 +36,14 @@ export interface Recorder {
  * caller gets: the one place Effect becomes promises.
  */
 export async function startRecorderOn(
-  browser: Layer.Layer<RecordedBrowser, RecorderStartError>
+  browser: Layer.Layer<RecordedBrowser, RecorderStartError>,
+  options: {
+    /** The project's folder: a recording is saved in it. */
+    readonly projectDir: string;
+  }
 ): Promise<Recorder> {
   const runtime = ManagedRuntime.make(
-    RecorderSession.layer.pipe(Layer.provide(browser))
+    RecorderSession.layer(options).pipe(Layer.provide(browser))
   );
   // A failed start rejects with what failed: the start error itself.
   const session = await runtime
@@ -50,11 +55,21 @@ export async function startRecorderOn(
   // The runtime is closed once the recorder has ended: that lets the browser
   // go. Nothing runs on it after, so what is asked then is answered here.
   let ended = false;
-  const done = runtime.runPromise(session.done).then(async (outcome) => {
+  const close = async () => {
     ended = true;
     await runtime.dispose();
-    return outcome;
-  });
+  };
+  const done = runtime.runPromise(session.done).then(
+    async (outcome) => {
+      await close();
+      return outcome;
+    },
+    // The recorder broke down, as when the package could not be written.
+    async (error: unknown) => {
+      await close();
+      throw error;
+    }
+  );
   const run = <A>(effect: Effect.Effect<A>, afterTheEnd: A): Promise<A> =>
     ended ? Promise.resolve(afterTheEnd) : runtime.runPromise(effect);
   return {

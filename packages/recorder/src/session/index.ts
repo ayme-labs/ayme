@@ -1,6 +1,6 @@
 export { RecordedBrowser } from "./application/recordedBrowser";
 export { RecorderSession } from "./application/recorderSession";
-export type { BrowserSignal } from "./domain/lifecycle";
+export type { BrowserRequest, BrowserSignal } from "./domain/lifecycle";
 export {
   RecorderStartError,
   type RecorderStartReason,

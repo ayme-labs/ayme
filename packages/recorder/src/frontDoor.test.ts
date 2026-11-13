@@ -69,7 +69,12 @@ it(
   "the check finds an Effect type and a Playwright type where there is one",
   slow,
   () => {
-    expect(reachablePackages("src/session/index.ts")).toEqual(["effect"]);
+    // The session also reaches what the timeline is written with.
+    expect(reachablePackages("src/session/index.ts")).toEqual([
+      "effect",
+      "yaml",
+      "zod",
+    ]);
     expect(reachablePackages("src/playwright/index.ts")).toEqual([
       "effect",
       "playwright-core",
@@ -106,9 +111,13 @@ function importsOf(file: string, seen = new Set<string>()): string[] {
   );
 }
 
-it("the built engine imports Effect and Node, and nothing of Playwright", () => {
+it("the built engine imports Effect, core, a YAML writer and Node, and nothing of Playwright", () => {
   const packages = new Set(
     importsOf("index.mjs").filter((specifier) => !specifier.startsWith("node:"))
   );
-  expect([...packages]).toEqual(["effect"]);
+  expect([...packages].sort()).toEqual([
+    "@ayme-dev/core/structural-observation",
+    "effect",
+    "yaml",
+  ]);
 });

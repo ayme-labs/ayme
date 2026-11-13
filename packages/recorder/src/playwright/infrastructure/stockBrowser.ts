@@ -53,7 +53,8 @@ export const stockBrowser = (options: {
         try: () => openPage(browser, options.url, signals),
         catch: unavailable,
       });
-      return RecordedBrowser.of({ signals });
+      // Recording on stock Playwright follows: nothing is carried out yet.
+      return RecordedBrowser.of({ signals, ask: () => Effect.void });
     })
   );
 
