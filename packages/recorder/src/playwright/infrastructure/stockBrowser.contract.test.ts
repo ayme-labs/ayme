@@ -360,6 +360,8 @@ async function stockToolEvaluates(
 it("traces the recording, marks each snapshot, and numbers each mark as the stock trace tool does", async () => {
   const browser = await onStockPlaywright(BUTTONS);
   await browser.ask({ kind: "startTrace" });
+  // The engine asks for a snapshot once the trace is told started.
+  await browser.toldOf("traceStarted");
 
   await browser.page.evaluate(() => {
     document.querySelector("h1")!.textContent = "One";
@@ -405,8 +407,17 @@ it("traces the recording, marks each snapshot, and numbers each mark as the stoc
 it("tells of a trace that is kept, and of none that is thrown away, and starts a new one after it", async () => {
   const browser = await onStockPlaywright(BUTTONS);
   await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
+  // Each request is asked when the last is told: the adapter orders none.
   await browser.ask({ kind: "stopTrace", keep: false });
+  await browser.toldOf("traceDiscarded");
   await browser.ask({ kind: "startTrace" });
+  await expect
+    .poll(
+      () => browser.told.filter((signal) => signal.kind === "traceStarted"),
+      { timeout: 10_000 }
+    )
+    .toHaveLength(2);
   await browser.ask({
     kind: "takeSnapshot",
     snapshot: "snapshot_1",
@@ -876,6 +887,25 @@ it("draws the highlight on the element a ref names, in the page, in a same-origi
   await expect.poll(() => drawn(browser.page)).toBeNull();
 });
 
+it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
+  const browser = await onStockPlaywright(PLACES);
+  const { ref } = await refOf(browser, "snapshot_1", "Main");
+
+  // The clear is asked while the element of the first is looked up.
+  await Promise.all([
+    browser.ask({
+      kind: "highlight",
+      highlight: 1,
+      target: { page: "page_1", ref, selector: null },
+    }),
+    browser.ask({ kind: "highlight", highlight: 2, target: null }),
+  ]);
+
+  const { found } = await browser.toldOf("highlighted");
+  expect(found).toBe(false);
+  expect(await drawn(browser.page)).toBeNull();
+});
+
 it("draws nothing, and says so, for an element the page no longer has", async () => {
   const browser = await onStockPlaywright(PLACES);
   const { ref } = await refOf(browser, "snapshot_1", "Main");
@@ -895,6 +925,7 @@ it("draws nothing, and says so, for an element the page no longer has", async ()
 it("keeps the highlight out of the page's structure and out of the trace's numbering of snapshots", async () => {
   const browser = await onStockPlaywright(PLACES);
   await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
   await browser.page.evaluate(() => {
     document.querySelector("h1")!.textContent = "One";
   });
@@ -1039,4 +1070,44 @@ it("reports typing once, and revises that report with each key typed into the sa
     ["interactionRevised", "fill", "ab"],
     ["interactionRevised", "fill", "abc"],
   ]);
+});
+
+// The review of the whole recorder against the spec.
+it("holds a click behind an input that still waits to be passed on, also once the pages no longer hold inputs back: input reaches the page in the order it was given", async () => {
+  const browser = await onStockPlaywright(`${BUTTONS}
+    <script>
+      window.clicks = [];
+      document.addEventListener("click", (event) =>
+        window.clicks.push(event.target.id));
+    </script>`);
+  const clicks = () => browser.page.evaluate("window.clicks");
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.click(browser.page.locator("#first"));
+  const first = await browser.toldOf("inputHeld");
+
+  // The pages stop holding inputs back while the first click still waits.
+  await browser.ask({ kind: "holdInputs", on: false });
+  await browser.toldOf("inputsHeld", (signal) => !signal.on);
+  await browser.click(browser.page.locator("#second"));
+
+  // The second click is held behind the first: neither has reached the page.
+  const second = await browser.toldOf(
+    "inputHeld",
+    (signal) => signal.input !== first.input
+  );
+  expect(await clicks()).toEqual([]);
+  await browser.ask({ kind: "passOn", input: first.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === first.input);
+  await browser.ask({ kind: "passOn", input: second.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === second.input);
+  await expect.poll(clicks).toEqual(["first", "second"]);
+
+  // Nothing waits any more: the next click is the page's own.
+  await browser.click(browser.page.locator("#third"));
+  await expect.poll(clicks).toEqual(["first", "second", "third"]);
+  expect(
+    browser.told.filter((signal) => signal.kind === "inputHeld")
+  ).toHaveLength(2);
 });

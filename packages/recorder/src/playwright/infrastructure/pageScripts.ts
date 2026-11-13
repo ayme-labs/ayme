@@ -40,8 +40,8 @@ export type HeldByPage =
 export type Gate = {
   /** Holds inputs back from now on, or no longer. Switched on, it also holds
    * everything that follows, typing included, until it is let through.
-   * Switched off, it lets what follows through once nothing it held waits
-   * to be passed on. Returns what it was set to. */
+   * Switched off, it lets what follows through, clicks included, once
+   * nothing it held waits to be passed on. Returns what it was set to. */
   set(on: boolean): boolean;
   /** A held input is on its way: the click of this count to this point of
    * the viewport, or the key with this code. Lets it through; the gate
@@ -99,7 +99,8 @@ export function startGate(start: GateStart): void {
  * behave as they do without it. Once it has held an input, and from the
  * moment it is switched on, it holds every key after it, typing included,
  * until it is let through: input reaches the page in the order it was
- * given.
+ * given. Switched off, it goes on holding keys and clicks alike while an
+ * input it held still waits to be passed on.
  *
  * It listens on `window`, before anything of the page and before
  * Playwright's recorder, which listens on `document`: neither sees a held
@@ -234,7 +235,10 @@ export function installGate(held: string): void {
       pressed = false;
       released?.();
     }
-    if (!on) return;
+    // Switched off, it goes on holding clicks, as it does keys, while an
+    // input it held still waits to be passed on: a later click must not
+    // reach the page before it.
+    if (!on && !holding) return;
     if (event.type === "dblclick") {
       // It comes back with the second click, when that is sent on.
       if (swallowDoubleClick) swallow(event);

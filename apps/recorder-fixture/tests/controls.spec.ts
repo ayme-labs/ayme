@@ -51,9 +51,12 @@ test.describe("the recorder's controls", () => {
     const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
     expect(text.match(/visitId:/g)).toHaveLength(1);
     expect(text.match(/kind: interaction/g)).toHaveLength(2);
-    // The click made while paused shows as what the page looked like when
-    // recording went on: a change before the next Interaction.
-    expect(text).toContain('paragraph: "Items: 2"');
+    // What the page changed while paused is in no entry: neither a change
+    // of its own, nor part of what the next Interaction changed. The page
+    // as it stood at Continue is the point to compare from.
+    expect(text).not.toContain("Items: 2");
+    expect(text).not.toContain("kind: change");
+    expect(text).toContain('<changed> [ref=e3] paragraph: "Items: 3"');
   });
 
   test("Clear leaves no entry behind, and the next recording holds only what came after it", async ({

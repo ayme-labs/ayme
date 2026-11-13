@@ -36,6 +36,11 @@ concern and reuse `fixtures.ts`.
   with its page open before the recorder comes, and its connection is another
   automation client in that browser. `recordedBrowser: "attach"` has
   `startRecording` attach to such a browser instead of launching one.
+  Two of its tests run the command, `codegen --cdp-endpoint`, with
+  `runRecorder`: one shows it does not navigate the page and leaves the
+  browser open and usable, the other records the page through the recorder
+  window and reads the package the command saved. The third records through
+  the engine's handle, with clicks the other automation client gives.
 
 - `controls.spec.ts` stops, continues, clears and finishes a recording, the
   same way: through the engine's handle, with a person's input, reading the

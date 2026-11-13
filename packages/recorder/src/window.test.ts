@@ -1,5 +1,6 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { request } from "node:http";
+import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTRPCUntypedClient, createWSClient, wsLink } from "@trpc/client";
@@ -81,6 +82,124 @@ function channel(windowUrl: string) {
     command: (command: object) => client.mutation("send", command),
   };
 }
+
+/**
+ * Sends `text` as it is, over a connection of its own, and resolves with the
+ * first line of the answer: what any program on the machine could send.
+ */
+function raw(windowUrl: string, text: string) {
+  return new Promise<string>((resolve, reject) => {
+    const socket = connect(Number(new URL(windowUrl).port), "127.0.0.1", () =>
+      socket.write(text)
+    );
+    let answer = "";
+    socket.on("data", (chunk: Buffer) => (answer += chunk.toString()));
+    socket.on("close", () => resolve(answer.split("\r\n")[0]!));
+    socket.on("error", reject);
+  });
+}
+
+/** A request for `target`, as raw text, with these headers. */
+const rawRequest = (target: string, headers: Record<string, string>) =>
+  `GET ${target} HTTP/1.1\r\n${Object.entries(headers)
+    .map(([name, value]) => `${name}: ${value}\r\n`)
+    .join("")}Connection: close\r\n\r\n`;
+
+/** The same request, asking to become a WebSocket. */
+const rawUpgrade = (target: string, headers: Record<string, string>) =>
+  rawRequest(target, {
+    ...headers,
+    Upgrade: "websocket",
+    "Sec-WebSocket-Version": "13",
+    "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+  }).replace("Connection: close", "Connection: Upgrade");
+
+describe("what comes from outside never brings the window's server down", () => {
+  /** After each case, the server still serves the window. */
+  async function stillServes(windowUrl: string) {
+    expect((await get(windowUrl)).status).toBe(200);
+  }
+
+  it("answers an upgrade whose path does not parse as a bad request", async () => {
+    const { windowUrl } = await startWithWindow();
+    const host = new URL(windowUrl).host;
+
+    expect(await raw(windowUrl, rawUpgrade("//%", { Host: host }))).toBe(
+      "HTTP/1.1 400 Bad Request"
+    );
+    await stillServes(windowUrl);
+  });
+
+  it("refuses an upgrade from a host or an origin it does not accept before reading its path", async () => {
+    const { windowUrl } = await startWithWindow();
+    const host = new URL(windowUrl).host;
+
+    expect(
+      await raw(windowUrl, rawUpgrade("//%", { Host: "rebound.example" }))
+    ).toBe("HTTP/1.1 403 Forbidden");
+    expect(
+      await raw(
+        windowUrl,
+        rawUpgrade("//%", { Host: host, Origin: "http://elsewhere.example" })
+      )
+    ).toBe("HTTP/1.1 403 Forbidden");
+    await stillServes(windowUrl);
+  });
+
+  it("answers a request for a file whose path does not parse as a bad request", async () => {
+    const { windowUrl } = await startWithWindow();
+    const host = new URL(windowUrl).host;
+
+    for (const target of ["//%", "/%", "/%E0%A4%A", "/window.js%00.html"])
+      expect(
+        await raw(windowUrl, rawRequest(target, { Host: host })),
+        target
+      ).toBe("HTTP/1.1 400 Bad Request");
+    await stillServes(windowUrl);
+  });
+
+  it("refuses a request for a file from a host it does not accept before reading its path", async () => {
+    const { windowUrl } = await startWithWindow();
+
+    expect(
+      await raw(windowUrl, rawRequest("//%", { Host: "rebound.example" }))
+    ).toBe("HTTP/1.1 403 Forbidden");
+    await stillServes(windowUrl);
+  });
+
+  it("survives a program that asks to upgrade and is gone at once", async () => {
+    const { windowUrl } = await startWithWindow();
+
+    for (let attempt = 0; attempt < 20; attempt += 1)
+      await new Promise<void>((resolve) => {
+        const socket = connect(
+          Number(new URL(windowUrl).port),
+          "127.0.0.1",
+          () => {
+            socket.write(rawUpgrade("/channel", { Host: "rebound.example" }));
+            socket.resetAndDestroy();
+            resolve();
+          }
+        );
+      });
+    await stillServes(windowUrl);
+  });
+
+  it("survives a window's channel that sends what is no message", async () => {
+    const { windowUrl } = await startWithWindow();
+    const socket = new WebSocket(`${windowUrl.replace(/^http/, "ws")}channel`);
+    await new Promise((resolve) => socket.once("open", resolve));
+
+    socket.send("not a message");
+    socket.send(Buffer.from([0xff, 0x00, 0xfe]));
+    socket.send(JSON.stringify({ id: 1, method: "mutation" }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    socket.close();
+
+    await stillServes(windowUrl);
+    await expect(channel(windowUrl).send("finish")).resolves.toBe("ignored");
+  });
+});
 
 describe("the window's server", () => {
   it("serves the window's files at a local address", async () => {

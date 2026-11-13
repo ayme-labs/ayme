@@ -103,7 +103,12 @@ export type BrowserSignal =
       readonly kind: "highlighted";
       readonly highlight: number;
       readonly found: boolean;
-    };
+    }
+  // The trace's order.
+  /** The trace is started, as "startTrace" asked: snapshots may be marked. */
+  | { readonly kind: "traceStarted" }
+  /** The trace is thrown away, as "stopTrace" without `keep` asked. */
+  | { readonly kind: "traceDiscarded" };
 
 /** The element a highlight is drawn on, as the page now names it: by the
  * ref its latest snapshot gave it, or, for a target with no ref, by its
@@ -166,10 +171,12 @@ export type BrowserRequest =
       readonly page: string;
       readonly upTo: string | null;
     }
-  /** Start the recording's one trace. Not answered: only when it breaks. */
+  /** Start the recording's one trace. Answered by "traceStarted". */
   | { readonly kind: "startTrace" }
-  /** Stop the trace. Kept, it is answered by "traceStopped"; thrown away, it
-   * is not answered: only when it breaks, which changes nothing. */
+  /** Stop the trace. Kept, it is answered by "traceStopped"; thrown away, by
+   * "traceDiscarded". The browser holds neither request back behind another
+   * of its own: the lifecycle asks for the next one when the last is
+   * answered. */
   | { readonly kind: "stopTrace"; readonly keep: boolean }
   // Assert visibility.
   /** Have Playwright's recorder pick the element whose visibility is
@@ -348,6 +355,12 @@ type PageGate = {
   readonly upTo: string | null;
   /** The latest snapshot of the page. */
   readonly latest: { readonly id: string; readonly at: number } | null;
+  /** The page's next snapshot is its first since a pause: it is where
+   * recording resumes, the new point to compare from. */
+  readonly resumes?: boolean;
+  /** The snapshot asked for at Continue to be that one, while it is under
+   * way. */
+  readonly resuming?: string | null;
 };
 
 export type LifecycleState = {
@@ -365,6 +378,8 @@ export type LifecycleState = {
       readonly resumed: boolean;
       /** Assert visibility. */
       readonly picking: Picking;
+      /** The trace Record asked for is not started yet. */
+      readonly traceStarting: boolean;
     } & Flow)
   | ({
       readonly phase: "wrappingUp";
@@ -377,6 +392,11 @@ export type LifecycleState = {
       /** All that was under way is done, and Playwright's recorder is asked
        * to switch off: the wrap-up waits for nothing else. */
       readonly switchingOff: boolean;
+      /** The trace Record asked for is not started yet. */
+      readonly traceStarting: boolean;
+      /** The trace of a recording that is thrown away is asked to stop: the
+       * recording is over once it has. */
+      readonly discardingTrace: boolean;
     } & Flow)
   | {
       readonly phase: "saving";
@@ -424,6 +444,11 @@ export function shown(state: LifecycleState): RecorderPhase {
         then: state.then === "clearAndEnd" ? "clear" : state.then,
       };
     case "recording":
+      // Record, or Continue, is not answered yet: until Playwright reports
+      // and every page holds inputs back, a click is not recorded, so the
+      // recorder is not shown recording (rule 13).
+      if (state.starting)
+        return { phase: state.resumed ? "paused" : "notRecording" };
       return state.picking === "on"
         ? { phase: "recording", picking: true }
         : { phase: "recording" };
@@ -474,6 +499,10 @@ type Step = {
 const stay = (state: LifecycleState): Step => ({ state, todo: [] });
 const isActive = (state: LifecycleState): state is Active =>
   state.phase === "recording" || state.phase === "wrappingUp";
+/** A wrap-up whose recording is thrown away, and whose trace is asked to
+ * stop: the recording is over when that is answered. */
+const discarding = (state: LifecycleState) =>
+  state.phase === "wrappingUp" && state.discardingTrace;
 
 export function step(state: LifecycleState, happening: Happening): Step {
   const next = stepOf(state, happening);
@@ -562,6 +591,8 @@ function stepOf(state: LifecycleState, happening: Happening): Step {
       return failed(state, happening.request, happening.reason);
     case "traceStopped":
       return writePackage(state, happening.trace);
+    case "traceDiscarded":
+      return traceGone(state);
     case "picking":
       return pickingChanged(state, happening.on);
     case "located":
@@ -584,7 +615,9 @@ function stepOf(state: LifecycleState, happening: Happening): Step {
       };
     }
     default:
-      return isActive(state)
+      // A recording whose trace is being thrown away is over: what the pages
+      // still tell is not of it.
+      return isActive(state) && !discarding(state)
         ? during(state, happening)
         : aside(state, happening);
   }
@@ -635,6 +668,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             starting: true,
             resumed: false,
             picking: "off",
+            traceStarting: true,
             pages: atRecord(state.pages).pages,
             inputs: [],
             snapshotsAsked: 0,
@@ -652,9 +686,10 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             // recorded.
             //
             // The recording's one trace starts here, at the first Record:
-            // Continue goes on in the trace that is running.
+            // Continue goes on in the trace that is running. Playwright
+            // is asked to report when the trace is started: from then on
+            // a snapshot can be marked in it.
             { kind: "browser", ask: { kind: "startTrace" } },
-            { kind: "browser", ask: { kind: "reportInteractions", on: true } },
             { kind: "deferReply" },
           ],
         };
@@ -684,11 +719,17 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             starting: true,
             resumed: true,
             picking: "off",
+            traceStarting: false,
             pages: continued.pages,
             inputs: [],
             snapshotsAsked: state.snapshotsAsked,
-            // As at Record: the page may have changed while paused.
-            gates: freshGates(continued.pages),
+            // As at Record: the page may have changed while paused. What
+            // it changed then is not the recording's: each page's next
+            // snapshot is where recording resumes.
+            gates: freshGates(continued.pages).map((gate) => ({
+              ...gate,
+              resumes: true,
+            })),
             reportedOnly: 0,
           },
           todo: [
@@ -702,8 +743,23 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       // no last snapshot to take, which would show what the pause changed.
       if (asked.type === "clear")
         return {
-          state: { phase: "notRecording", pages: state.pages },
-          todo: [discardTrace, { kind: "clear" }, reply("applied")],
+          state: {
+            phase: "wrappingUp",
+            pages: state.pages,
+            inputs: [],
+            snapshotsAsked: state.snapshotsAsked,
+            gates: [],
+            reportedOnly: 0,
+            gateOff: true,
+            finals: [],
+            then: "clear",
+            switchingOff: true,
+            traceStarting: false,
+            discardingTrace: true,
+          },
+          // It is over, and everything is thrown away, when the trace is
+          // gone: until then Record is ignored.
+          todo: [discardTrace, reply("applied")],
         };
       // Answered first: the worker comes back from a save only when the
       // package is written.
@@ -787,6 +843,8 @@ function wrapUp(
       finals: null,
       then,
       switchingOff: false,
+      traceStarting: state.traceStarting,
+      discardingTrace: false,
     },
     [
       // Assert visibility is never left on: picking would swallow a click.
@@ -830,6 +888,26 @@ function writePackage(
   return {
     state: { ...state, stoppingTrace: false },
     todo: [trace ? { kind: "save", trace } : { kind: "save" }],
+  };
+}
+
+/** The trace of a recording that is thrown away is gone, or could not be
+ * stopped and nothing better can be had: the recording is thrown away, and
+ * what the wrap-up led to is next. */
+function traceGone(state: LifecycleState): Step {
+  if (state.phase !== "wrappingUp" || !state.discardingTrace)
+    return stay(state);
+  const { pages } = state;
+  if (state.then === "clearAndEnd") {
+    const outcome: RecordingOutcome = { kind: "empty" };
+    return {
+      state: { phase: "ended", pages, outcome },
+      todo: [{ kind: "clear" }, { kind: "end", outcome }],
+    };
+  }
+  return {
+    state: { phase: "notRecording", pages },
+    todo: [{ kind: "clear" }],
   };
 }
 
@@ -991,19 +1069,30 @@ function during(state: Active, happening: BrowserSignal): Step {
   };
   let next = state;
   switch (happening.kind) {
+    case "traceStarted":
+      if (state.traceStarting) {
+        next = { ...state, traceStarting: false };
+        // Playwright reports from the trace on; a wrap-up that began
+        // meanwhile has no more reports to ask for.
+        if (state.phase === "recording")
+          draft.todo.push({
+            kind: "browser",
+            ask: { kind: "reportInteractions", on: true },
+          });
+      }
+      break;
     case "reportingInteractions":
       if (state.phase === "recording" && state.starting && happening.on)
         draft.todo.push({
           kind: "browser",
           ask: { kind: "holdInputs", on: true },
         });
-      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on) {
-        // An input known from its last reports is finished first; then
-        // Playwright's recorder is switched off once more.
-        if (state.inputs.length > 0)
-          return proceed({ ...state, switchingOff: false }, []);
-        return wrappedUp(state, []);
-      }
+      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on)
+        // Nothing newer can be reported now: an input known from its report
+        // only is written, and the wrap-up is over. One that is not
+        // finished is finished first; then Playwright's recorder is
+        // switched off once more.
+        return proceed({ ...state, switchingOff: false }, [], true);
       break;
     case "inputsHeld":
       if (state.phase === "wrappingUp" && !happening.on)
@@ -1011,6 +1100,13 @@ function during(state: Active, happening: BrowserSignal): Step {
       if (state.phase === "recording" && state.starting && happening.on) {
         next = { ...state, starting: false };
         draft.todo.push({ kind: "replyDeferred", result: "applied" });
+        // After a pause every page is read as it stands now that its
+        // inputs are held back: from here on, what changes is recorded.
+        if (state.resumed)
+          for (const page of state.pages)
+            changeGate(draft, page.id, {
+              resuming: askSnapshot(draft, page.id),
+            });
       }
       break;
     case "inputHeld": {
@@ -1044,14 +1140,20 @@ function during(state: Active, happening: BrowserSignal): Step {
       );
       const finals = state.phase === "wrappingUp" ? state.finals : null;
       const isFinal = finals?.some((final) => final.snapshot === snapshot.id);
+      const gate = gateOf(draft, snapshot.page);
+      const resuming = gate?.resuming === snapshot.id;
       // A snapshot nobody waits for is of a page or an input that is gone.
-      if (owners.length === 0 && !isFinal) break;
+      if (owners.length === 0 && !isFinal && !resuming) break;
       draft.todo.push({
         kind: "timeline",
-        add: { kind: "snapshot", snapshot },
+        add: gate?.resumes
+          ? { kind: "snapshot", snapshot, resumes: true }
+          : { kind: "snapshot", snapshot },
       });
       changeGate(draft, snapshot.page, {
         latest: { id: snapshot.id, at: snapshot.at },
+        ...(gate?.resumes ? { resumes: false } : {}),
+        ...(resuming ? { resuming: null } : {}),
       });
       for (const owner of owners) {
         if (owner.stage === "takingAfter" && owner.revised) {
@@ -1246,6 +1348,34 @@ function carryOnReported(draft: Draft, id: string) {
           earlier.stage !== "settled"
       );
     if (reached) return;
+    // An earlier input known from its report only that has no "after" yet
+    // ends where this one starts: one snapshot is both, as between two held
+    // inputs. Starting from the page's latest snapshot instead would give
+    // the two one "before", and the earlier one an "after" that is later
+    // than this one's "before". An assertion's one snapshot is waited for
+    // in the same way.
+    const open = draft.inputs
+      .slice(0, index)
+      .findLast(
+        (earlier) =>
+          earlier.page === input.page &&
+          (earlier.held.kind === "reported" ||
+            earlier.held.kind === "asserted") &&
+          earlier.stage !== "settled"
+      );
+    if (open?.stage === "settling") {
+      askSharedSnapshot(draft, open, input);
+      return;
+    }
+    if (open?.stage === "takingAfter") {
+      // The snapshot under way is its last: what revised it meanwhile gets
+      // no further wait.
+      change(draft, open.id, { revised: false });
+      change(draft, id, { stage: "takingBefore", asked: open.asked });
+      return;
+    }
+    // It has no start of its own yet: this one waits for that.
+    if (open) return;
     const latest = gateOf(draft, input.page)?.latest;
     if (!latest) {
       change(draft, id, {
@@ -1397,7 +1527,12 @@ const settle = (draft: Draft): Flow => ({
 /** What follows from a recording's state as it now stands, whatever
  * happened: the next input of a free page starts, an input with everything
  * it needs is written down, and a wrap-up that has all it waited for saves. */
-function proceed(state: Active, done: readonly ToDo[]): Step {
+function proceed(
+  state: Active,
+  done: readonly ToDo[],
+  /** Playwright's recorder was just confirmed off. */
+  reportsOff = false
+): Step {
   const draft: Draft = {
     // An input whose "before" could not be taken is not recorded. It was
     // kept until its report came, so that no later input took the report
@@ -1431,6 +1566,77 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
   draft.inputs = draft.inputs.filter(
     (input) => input.held.kind !== "typing" || input.stage !== "settled"
   );
+  // While the recorder wraps up, an input known from its report only can
+  // still be revised, as typing goes on until "Paused" shows: it is written
+  // at the last, when nothing newer can be reported.
+  const atTheLast = (finals: readonly unknown[] | null) =>
+    state.phase === "wrappingUp" &&
+    finals?.length === 0 &&
+    (reportsOff || endsRecorder(state.then));
+  writeDown(draft, state.phase === "wrappingUp" && atTheLast(state.finals));
+  if (state.phase === "recording") letThrough(draft);
+  if (state.phase === "recording")
+    return {
+      state: { ...state, ...settle(draft), picking: pickNow(state, draft) },
+      todo: draft.todo,
+    };
+
+  let finals = state.finals;
+  if (
+    state.gateOff &&
+    finals === null &&
+    // A snapshot is marked in the trace, which a Finish pressed at once may
+    // not have started yet.
+    !state.traceStarting &&
+    draft.inputs.every((input) => input.stage === "settled")
+  )
+    // What changed after the last Interaction is picked up once, here.
+    finals = state.pages.map((page) => ({
+      page: page.id,
+      snapshot: askSnapshot(draft, page.id),
+    }));
+  // The last snapshots may be in just now, as when no page is left.
+  writeDown(draft, atTheLast(finals));
+  const next = { ...state, ...settle(draft), finals };
+  if (
+    finals?.length !== 0 ||
+    draft.inputs.some((input) => !awaitsTheLast(input)) ||
+    state.switchingOff ||
+    state.discardingTrace
+  )
+    return { state: next, todo: draft.todo };
+  // A recorder that ends is let go with its browser. One that lives on has
+  // Playwright's recorder switched off first: it is not recording any more.
+  if (draft.inputs.length === 0 && (reportsOff || endsRecorder(state.then)))
+    return wrappedUp(next, draft.todo);
+  return {
+    state: { ...next, switchingOff: true },
+    todo: [
+      ...draft.todo,
+      { kind: "browser", ask: { kind: "reportInteractions", on: false } },
+    ],
+  };
+}
+
+/** Whether a wrap-up ends the recorder: Playwright's recorder is then let
+ * go with the browser, and never switched off. */
+const endsRecorder = (then: AfterWrapUp) =>
+  then === "save" || then === "clearAndEnd";
+
+/** An input known from its report only that has all it needs, and waits to
+ * be written at the last. */
+const awaitsTheLast = (input: Input) =>
+  input.held.kind === "reported" &&
+  input.stage === "settled" &&
+  input.report !== null &&
+  input.before !== null;
+
+/**
+ * Writes down every input that has all it needs, in the order of the
+ * inputs. `last`: nothing newer can happen any more, so an input known from
+ * its report only is written too.
+ */
+function writeDown(draft: Draft, last: boolean) {
   for (const input of draft.inputs) {
     if (input.stage === "settled" && input.unreported) {
       draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
@@ -1438,11 +1644,11 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
     }
     if (input.stage !== "settled" || !input.report || !input.before) continue;
     // An input known from its report only may still be revised: it is
-    // written once something newer happened on its page, or at the end.
+    // written once something newer happened on its page, or at the last.
     const reportedOnly = input.held.kind === "reported";
     if (
       reportedOnly &&
-      state.phase === "recording" &&
+      !last &&
       !draft.inputs
         .slice(draft.inputs.findIndex((held) => held.id === input.id) + 1)
         .some(
@@ -1479,38 +1685,6 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       (held) => held.id !== input.id && held.joins !== input.id
     );
   }
-  if (state.phase === "recording") letThrough(draft);
-  if (state.phase === "recording")
-    return {
-      state: { ...state, ...settle(draft), picking: pickNow(state, draft) },
-      todo: draft.todo,
-    };
-
-  let finals = state.finals;
-  if (
-    state.gateOff &&
-    finals === null &&
-    draft.inputs.every((input) => input.stage === "settled")
-  )
-    // What changed after the last Interaction is picked up once, here.
-    finals = state.pages.map((page) => ({
-      page: page.id,
-      snapshot: askSnapshot(draft, page.id),
-    }));
-  const next = { ...state, ...settle(draft), finals };
-  if (finals?.length !== 0 || draft.inputs.length !== 0 || state.switchingOff)
-    return { state: next, todo: draft.todo };
-  // A recorder that ends is let go with its browser. One that lives on has
-  // Playwright's recorder switched off first: it is not recording any more.
-  if (state.then === "save" || state.then === "clearAndEnd")
-    return wrappedUp(next, draft.todo);
-  return {
-    state: { ...next, switchingOff: true },
-    todo: [
-      ...draft.todo,
-      { kind: "browser", ask: { kind: "reportInteractions", on: false } },
-    ],
-  };
 }
 
 /** What a wrap-up that is over leads to. */
@@ -1528,32 +1702,42 @@ function wrappedUp(
         todo,
       };
     case "clear":
+    case "clearAndEnd":
+      // Thrown away once the trace is gone, not before: the recorder takes
+      // no Record meanwhile. Whatever else tells that the wrap-up is over
+      // finds the trace already asked to stop.
+      if (state.discardingTrace) return { state, todo };
       return {
-        state: { phase: "notRecording", pages },
-        todo: [...todo, discardTrace, { kind: "clear" }],
+        state: { ...state, discardingTrace: true },
+        todo: [...todo, discardTrace],
       };
-    case "clearAndEnd": {
-      const outcome: RecordingOutcome = { kind: "empty" };
-      return {
-        state: { phase: "ended", pages, outcome },
-        todo: [
-          ...todo,
-          discardTrace,
-          { kind: "clear" },
-          { kind: "end", outcome },
-        ],
-      };
-    }
   }
 }
 
 /**
  * The wrap-up's time limit has passed: whatever is still owed is left out
- * of the recording. A click that is still held back is the page's all the
- * same, and is passed on. Nothing is waited for any more.
+ * of the recording, and what is complete is written. A click that is still
+ * held back is the page's all the same, and is passed on. Nothing is waited
+ * for any more.
  */
 function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
-  const todo = release(state.inputs);
+  // What is owed is only the trace, and it has its own answer.
+  if (state.discardingTrace) return stay(state);
+  // What has all it needs is written all the same; what is owed something
+  // is in nobody's way any more.
+  const draft: Draft = {
+    inputs: state.inputs.filter(
+      (input) =>
+        input.stage === "settled" &&
+        (input.report !== null || input.joins !== null)
+    ),
+    snapshotsAsked: state.snapshotsAsked,
+    gates: state.gates,
+    reportedOnly: state.reportedOnly,
+    todo: [],
+  };
+  writeDown(draft, true);
+  const todo = [...draft.todo, ...release(state.inputs)];
   const livesOn = state.then === "pause" || state.then === "clear";
   if (livesOn && !state.switchingOff)
     todo.push({
@@ -1612,13 +1796,15 @@ function failed(
     case "stopTrace":
       // A trace that cannot be had is no reason to lose the recording: the
       // package is written without one. A trace that is thrown away anyway
-      // is not missed.
-      return request.keep ? writePackage(state, null) : stay(state);
+      // is not missed, and its recording is over all the same.
+      return request.keep ? writePackage(state, null) : traceGone(state);
     case "startTrace":
       // Without its trace the recording would have no snapshots to open: it
-      // does not start. Once it has started, a trace that broke later is
-      // not told apart from one that had no file to give.
-      return cannotStart(state, request, reason);
+      // does not start. A wrap-up that began meanwhile goes on without it:
+      // it waited for the trace only to mark snapshots in it.
+      return state.phase === "wrappingUp"
+        ? step(state, { kind: "traceStarted" })
+        : cannotStart(state, request, reason);
     // Every kind of input.
     case "letInputsThrough":
       // The page goes on holding what follows: each key it holds is told

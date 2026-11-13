@@ -1,4 +1,13 @@
-import { Cause, Clock, Context, Deferred, Effect, Layer, Queue } from "effect";
+import {
+  Cause,
+  Clock,
+  Context,
+  Deferred,
+  Effect,
+  Fiber,
+  Layer,
+  Queue,
+} from "effect";
 
 import type {
   CommandResult,
@@ -104,6 +113,9 @@ export class RecorderSession extends Context.Service<
             yield* tell({ kind: "timelineWarned", warning });
           fromTimeline = warned.length;
         });
+        /** The time limit that is running: it is the wrap-up's that
+         * started it. */
+        let timeLimit: Fiber.Fiber<unknown> | undefined;
         /** The answer the lifecycle keeps for a later step. */
         let deferred: Queued["reply"];
         /** The answers the lifecycle keeps by a key of its own. */
@@ -131,11 +143,13 @@ export class RecorderSession extends Context.Service<
               yield* Effect.promise(() => timeline.add(item.add));
               return yield* publishEntries;
             case "startTimeLimit":
-              // It runs beside the queue, and ends with the recorder.
-              return yield* Effect.sleep(item.ms).pipe(
+              // It runs beside the queue, and ends with the wrap-up it is
+              // for, or with the recorder.
+              timeLimit = yield* Effect.sleep(item.ms).pipe(
                 Effect.andThen(tell({ kind: "timeLimitPassed" })),
                 Effect.forkScoped
               );
+              return;
             case "save": {
               const createdAt = new Date(yield* Clock.currentTimeMillis);
               const folder = yield* Effect.promise(() =>
@@ -203,6 +217,14 @@ export class RecorderSession extends Context.Service<
           )
             publish();
           for (const item of next.todo) yield* carryOut(item, reply);
+          // A time limit is one wrap-up's: once that is over, it must not
+          // pass for a later one, which has a limit of its own. One that
+          // passed already is in the queue ahead of whatever starts the
+          // next wrap-up, and is handled while none is under way.
+          if (timeLimit && state.phase !== "wrappingUp") {
+            yield* Fiber.interrupt(timeLimit);
+            timeLimit = undefined;
+          }
         });
 
         // What the browser told while it started comes before anything that

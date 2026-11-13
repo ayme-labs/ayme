@@ -9,7 +9,7 @@ import { expect, test } from "./fixtures";
 
 /** The window's address, once the command has printed it. */
 const windowUrlOf = (stdout: string) =>
-  /^Recorder window: (http:\/\/127\.0\.0\.1:\d+\/)$/m.exec(stdout)?.[1];
+  /^Recorder UI: (http:\/\/127\.0\.0\.1:\d+\/)$/m.exec(stdout)?.[1];
 
 test.describe("codegen <url>", () => {
   test("opens the page in Chromium and ends with 'empty' when it is stopped from the terminal", async ({
@@ -27,7 +27,9 @@ test.describe("codegen <url>", () => {
     run.interrupt();
 
     expect(await run.exit).toEqual({ code: 0, signal: null });
-    expect(run.stdout()).toContain("Nothing was recorded.");
+    expect(run.stdout()).toContain(
+      "Recording was empty; no recording package was created."
+    );
     expect(run.stderr()).toBe("");
   });
 
@@ -36,7 +38,7 @@ test.describe("codegen <url>", () => {
     runRecorder,
   }) => {
     const run = await runRecorder(["codegen", fixturePages.url()]);
-    await run.waitForStdout("Recorder window: ");
+    await run.waitForStdout("Recorder UI: ");
     const windowUrl = windowUrlOf(run.stdout());
     expect(windowUrl).toBeDefined();
 
@@ -95,7 +97,9 @@ test.describe("codegen <url>", () => {
     await run.closePage(fixturePages.url());
 
     expect(await run.exit).toEqual({ code: 0, signal: null });
-    expect(run.stdout()).toContain("Nothing was recorded.");
+    expect(run.stdout()).toContain(
+      "Recording was empty; no recording package was created."
+    );
     expect(run.stderr()).toBe("");
   });
 
@@ -104,7 +108,7 @@ test.describe("codegen <url>", () => {
     runRecorder,
   }) => {
     const run = await runRecorder(["codegen", fixturePages.url()]);
-    await run.waitForStdout("Recorder window: ");
+    await run.waitForStdout("Recorder UI: ");
     const windowUrl = windowUrlOf(run.stdout())!;
     const browser = await chromium.connectOverCDP(run.debugEndpoint);
     try {
@@ -123,7 +127,9 @@ test.describe("codegen <url>", () => {
 
       expect(await run.exit).toEqual({ code: 0, signal: null });
       await expect.poll(() => windowPage.isClosed()).toBe(true);
-      expect(run.stdout()).toContain("Nothing was recorded.");
+      expect(run.stdout()).toContain(
+        "Recording was empty; no recording package was created."
+      );
     } finally {
       await browser.close();
     }
@@ -140,7 +146,9 @@ test.describe("codegen <url>", () => {
     run.interrupt();
 
     expect(await run.exit).toEqual({ code: 0, signal: null });
-    expect(run.stdout()).toContain("Nothing was recorded.");
+    expect(run.stdout()).toContain(
+      "Recording was empty; no recording package was created."
+    );
   });
 
   test("fails with a reason, not a stack trace, in a project with no Playwright installed", async ({

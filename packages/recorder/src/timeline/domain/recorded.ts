@@ -66,7 +66,17 @@ export type TimelineAddition =
       readonly url: string;
       readonly cause: VisitCause;
     }
-  | { readonly kind: "snapshot"; readonly snapshot: PageSnapshot }
+  | {
+      readonly kind: "snapshot";
+      readonly snapshot: PageSnapshot;
+      /**
+       * The page's first snapshot since a pause: where recording resumes.
+       * What the page changed from the snapshot before it was not done
+       * while recording, and is no change of the recording: this snapshot is
+       * the new point to compare from.
+       */
+      readonly resumes?: boolean;
+    }
   | { readonly kind: "interaction"; readonly interaction: RecordedInteraction }
   /** The person leaves an entry out of the recording, by its `id`. An entry
    * the timeline does not have is left alone. */

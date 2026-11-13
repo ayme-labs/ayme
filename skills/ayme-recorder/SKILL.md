@@ -63,13 +63,22 @@ visits:                         # one per page load
     baselineTree:               # the page just before the first interaction
     timelineEntries:            # in order
       - kind: interaction       # or `change`
-        timestamp
+        timestamp               # see Timestamps below
         discarded: true         # a stub only; absent on a kept entry
         interaction:            # stub: id, type. Kept adds targetRef, values
         changeTree:             # a kept entry, only when something changed
 traceActionPoints:              # where the trace holds each interaction
-  - interactionId, pageId, beforeSnapshotId, afterSnapshotId, …
+  - interactionId, pageId, beforeSnapshotId, afterSnapshotId, startedAt, endedAt
 ```
+
+Timestamps are milliseconds on the recorder's own clock, counted from when it
+started; compare them only with each other. An interaction's `timestamp`, and
+its trace point's `startedAt`, is when its input reached the page; for typing,
+a select or an upload, which the recorder does not hold back, it is when the
+recorder read the page just before it. A `kind: change` entry's `timestamp` is
+when the recorder read the page that showed the change. A trace point's
+`endedAt` is when the interaction's "after" was read; with no "after", it
+equals `startedAt`.
 
 A package made by the 0.1 recorder differs in a few places; see
 [Packages from the 0.1 recorder](#packages-from-the-01-recorder).
@@ -118,7 +127,8 @@ button, `targetRef` is its nearest ancestor the tree lists, while
 `targetSelector` still names the element itself. `targetRef` is `null` with
 the selector present in two cases: an `assert*` interaction, whose target the
 recorder knows only by its selector, and a key pressed while nothing on the
-page had focus.
+page had focus, as the key then goes to the page's body, which the tree does
+not list.
 
 A `kind: change` entry is a change the recorder could not tie to an
 interaction. It is usually the late result of an earlier step, such as data
@@ -224,6 +234,14 @@ reading the page, so its `after` is the page at that moment. The flag that
 picks the phase is `--phase` from Playwright 1.63 and `--name` on 1.62; check
 the version with `npx playwright --version`.
 
+Do not look for the user's steps by name in `trace actions`. The list shows
+the recorder's own calls: its reads of the page (`Aria snapshot`, then a
+`snapshot_<n>` group whose one call inside has the number the package
+gives), and the mouse moves, presses and releases of the clicks it held
+back and sent on. Keys the recorder held back show as key presses; text the
+user typed or pasted otherwise is not an action there. Go to a step by the
+package's position numbers.
+
 ```sh
 npx playwright trace open .ayme/recordings/rec_…/trace.zip   # the package's tracePath
 npx playwright trace snapshot 44 --phase after \
@@ -285,8 +303,9 @@ a snapshot with refs of its own; they are not the package's refs.
 A click that leaves the page has a `beforeSnapshotId` and no
 `afterSnapshotId`: its result is the next visit's baseline. An `assert*`
 interaction has the same number in both. A pause is still part of the trace:
-what the user did while recording was stopped, typing included, can show in
-its screenshots and in later snapshots.
+the trace has screenshots of the page throughout, also of what was on screen
+while recording was stopped, and what the user did then, typing included, can
+show in them and in later snapshots.
 
 ## Packages from the 0.1 recorder
 
@@ -294,8 +313,9 @@ A package made by the 0.1 recorder, `@ayme-dev/cli` 0.1, has text such as
 `after@interaction_3` in `beforeSnapshotId` and `afterSnapshotId` rather than
 a number. Read it with these differences:
 
-- Its trace opens only with that recorder's own trace command, not with
-  `npx playwright trace`: `npx @ayme-dev/cli@0.1 trace open latest`, then
+- Its snapshots open only with that recorder's own trace command.
+  `npx playwright trace` opens the trace and lists its actions, but finds no
+  snapshots in it. Use `npx @ayme-dev/cli@0.1 trace open latest`, then
   `npx @ayme-dev/cli@0.1 trace snapshot <interaction id> --name after eval …`,
   named by the interaction's `id`. An interaction's `before` cannot be read.
 - In its trace each element carries its package ref as the attribute

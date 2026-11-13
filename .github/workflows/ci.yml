@@ -376,7 +376,11 @@ jobs:
               && npm install --no-audit --no-fund 'playwright@$version' \
               && npx --no-install playwright install chromium-headless-shell"
             export AYME_RECORDER_PLAYWRIGHT_PROJECT="$project"
-            part "contract suite" pnpm --filter @ayme-dev/recorder test:contract
+            # Passing is not enough: the suite's own check must also say that
+            # every project ran and that each skip is one it declares.
+            part "contract suite" bash -o pipefail -c '
+              pnpm --filter @ayme-dev/recorder test:contract 2>&1 | tee "$RUNNER_TEMP/contract.log" &&
+              grep -Fxq "Contract run: every test ran and passed where it belongs" "$RUNNER_TEMP/contract.log"'
             part "end-to-end test" pnpm --filter @ayme-dev/recorder-fixture \
               exec playwright test -g "Finish writes the released Recording Package"
             # The next run clears test-results: keep this version's.

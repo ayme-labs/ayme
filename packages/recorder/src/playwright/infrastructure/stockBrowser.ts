@@ -579,19 +579,15 @@ async function openPage(
   }
 
   /**
-   * The trace's own order. Starting and stopping it follow each other as
-   * they were asked, and so does a snapshot's marker after a start, so that
-   * a Record after a Clear never meets the trace that Clear is still
-   * throwing away. A snapshot's marker does not wait for a stop that is
-   * asked later, and a stop does not wait for a snapshot that cannot be read.
+   * Playwright groups every call of a context, so what is traced is done
+   * one at a time: a snapshot's mark, and the read of an upload's files,
+   * which is a traced call that must not land inside a mark. This is no
+   * order of the engine's requests, which the lifecycle decides: the
+   * engine asks for a trace to start before it asks for a mark, and for the
+   * next trace only when the last is told gone. It is the one context-wide
+   * resource that two things the engine cannot see, a mark and a read the
+   * adapter makes by itself, would otherwise share.
    */
-  let traceOps: Promise<unknown> = Promise.resolve();
-  const inTraceOrder = <T>(run: () => Promise<T>): Promise<T> => {
-    const done = traceOps.then(run);
-    traceOps = done.catch(() => {});
-    return done;
-  };
-  /** Playwright groups every call of a context: one marker at a time. */
   let markers: Promise<unknown> = Promise.resolve();
   /** The snapshots a mark was made for. A trace that is thrown away leaves
    * its ids here: the next one looks for them in its own list of actions,
@@ -608,7 +604,6 @@ async function openPage(
   async function mark(page: Page, snapshot: string) {
     marked.add(snapshot);
     const made = markers.then(async () => {
-      await traceOps;
       await context.tracing.group(snapshot);
       try {
         await page.evaluate(() => 0);
@@ -623,30 +618,28 @@ async function openPage(
   /** The trace is stopped. Kept, it is a file with the place of each mark
    * in it, as the stock trace tool numbers them. */
   async function stopTrace(keep: boolean) {
-    if (!keep)
-      return inTraceOrder(async () => {
-        await context.tracing.stop();
+    if (!keep) {
+      await context.tracing.stop();
+      return tell({ kind: "traceDiscarded" });
+    }
+    const file = join(
+      await mkdtemp(join(tmpdir(), "ayme-recorder-")),
+      "trace.zip"
+    );
+    await context.tracing.stop({ path: file });
+    const cli = projectPlaywrightCli(projectDir);
+    const positions = cli ? await snapshotPositions(cli, file, marked) : {};
+    // Warnings.
+    if (Object.keys(positions).length < marked.size)
+      tell({
+        kind: "browserWarned",
+        warning: {
+          kind: "traceWithoutPositions",
+          message:
+            "The project's `playwright trace` could not number the trace's snapshots: the package carries its trace, but not the position numbers that open them.",
+        },
       });
-    return inTraceOrder(async () => {
-      const file = join(
-        await mkdtemp(join(tmpdir(), "ayme-recorder-")),
-        "trace.zip"
-      );
-      await context.tracing.stop({ path: file });
-      const cli = projectPlaywrightCli(projectDir);
-      const positions = cli ? await snapshotPositions(cli, file, marked) : {};
-      // Warnings.
-      if (Object.keys(positions).length < marked.size)
-        tell({
-          kind: "browserWarned",
-          warning: {
-            kind: "traceWithoutPositions",
-            message:
-              "The project's `playwright trace` could not number the trace's snapshots: the package carries its trace, but not the position numbers that open them.",
-          },
-        });
-      tell({ kind: "traceStopped", trace: { file, positions } });
-    });
+    tell({ kind: "traceStopped", trace: { file, positions } });
   }
 
   async function carryOut(request: BrowserRequest): Promise<void> {
@@ -726,13 +719,12 @@ async function openPage(
         return;
       }
       case "startTrace":
-        return inTraceOrder(async () => {
-          await context.tracing.start({
-            name: "ayme-recording",
-            snapshots: true,
-            screenshots: true,
-          });
+        await context.tracing.start({
+          name: "ayme-recording",
+          snapshots: true,
+          screenshots: true,
         });
+        return tell({ kind: "traceStarted" });
       case "stopTrace":
         return stopTrace(request.keep);
       // Assert visibility.

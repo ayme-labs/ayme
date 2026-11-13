@@ -37,7 +37,7 @@ export function startLine(browser: RecorderOptions["browser"]): string {
 
 /** What the terminal is told of the recorder window: its address. */
 export function windowLine(url: string): string {
-  return `Recorder window: ${url}\n`;
+  return `Recorder UI: ${url}\n`;
 }
 
 /**
@@ -59,7 +59,7 @@ export function outcomeLine(outcome: RecordingOutcome): string {
     case "saved":
       return `Recording package: ${join(outcome.folder, "package.yaml")}\n`;
     case "empty":
-      return "Nothing was recorded.\n";
+      return "Recording was empty; no recording package was created.\n";
     case "failed":
       return `The recorder failed: ${outcome.reason}\n`;
   }
