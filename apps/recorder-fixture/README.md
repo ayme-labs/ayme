@@ -30,6 +30,11 @@ concern and reuse `fixtures.ts`.
   the throwaway prototype of pull request #1268 wrote for the same clicks,
   with what differs from run to run replaced.
 
+- `inputs.spec.ts` records every kind of input on `app/inputs.html` the same
+  way: typing, key presses, a native select, a file upload, a double click,
+  and clicks inside a frame, an open shadow root and on an element the page
+  structure does not list.
+
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
 - `AYME_RECORDER_HEADLESS=1` launches the browser without a window, since the
