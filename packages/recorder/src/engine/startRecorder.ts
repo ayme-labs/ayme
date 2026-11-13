@@ -55,7 +55,13 @@ export async function startRecorder(
     );
   const { url, headless = false, debugPort } = options.browser.launch;
   return startRecorderOn(
-    stockBrowser({ projectDir, url, headless, debugPort }),
+    stockBrowser({
+      projectDir,
+      url,
+      headless,
+      debugPort,
+      windowUrl: window?.url,
+    }),
     { projectDir, window }
   );
 }

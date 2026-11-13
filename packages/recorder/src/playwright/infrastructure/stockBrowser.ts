@@ -46,6 +46,9 @@ type Launch = {
   readonly url: string;
   readonly headless: boolean;
   readonly debugPort: number | undefined;
+  /** The recorder window's address, opened as a second window of the
+   * launched browser; none when no window is served. */
+  readonly windowUrl?: string;
 };
 
 /** A Chromium that is already running, reached at the address of its
@@ -123,6 +126,8 @@ export const stockBrowser = (
       // it was found: it stays open, in someone else's hands.
       if (attach)
         yield* Effect.addFinalizer(() => Effect.promise(recorded.letGo));
+      else if ((options as Launch).windowUrl)
+        openWindow(browser, (options as Launch).windowUrl!);
       return RecordedBrowser.of({
         signals,
         // Handed over, never waited on: the answer is told as a signal, and
@@ -157,6 +162,22 @@ const launchIn = (playwright: Playwright, options: Launch) =>
     handleSIGTERM: false,
     handleSIGHUP: false,
   });
+
+/**
+ * Opens the recorder window as a second window of a browser the recorder
+ * launched: a page in a context of its own. The recorded context's page
+ * hooks, Playwright's recorder and the trace are all that context's, so the
+ * window is never recorded, snapshotted or traced, and its closing is no
+ * page of the recording closing. It is a convenience: the address is
+ * printed all the same, so a window that cannot open is no reason to stop.
+ */
+function openWindow(browser: Browser, url: string): void {
+  void browser
+    .newContext({ viewport: null })
+    .then((context) => context.newPage())
+    .then((page) => page.goto(url))
+    .catch(() => {});
+}
 
 /** Milliseconds on the clock Playwright's own times are on. */
 const now = () => Math.floor(performance.now() * 1e3) / 1e3;
