@@ -1,4 +1,4 @@
-import { stockBrowser } from "../playwright";
+import { stockBrowser } from "../playwright/infrastructure";
 import { startRecorderOn, type Recorder } from "./recorder";
 
 export type RecorderOptions = {

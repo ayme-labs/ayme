@@ -6,7 +6,7 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../../contract";
-import { saveRecording, Timeline } from "../../timeline";
+import { Timeline } from "../../timeline/domain";
 import {
   initialState,
   shown,
@@ -15,6 +15,17 @@ import {
   type ToDo,
 } from "../domain/lifecycle";
 import { RecordedBrowser } from "./recordedBrowser";
+
+/**
+ * Writes a timeline as a Recording Package made at `createdAt`. Resolves
+ * with the package's folder, or with null when there was nothing to write.
+ * The session is handed it: where and how a package is kept is not its to
+ * know.
+ */
+export type SaveRecording = (
+  timeline: Timeline,
+  createdAt: Date
+) => Promise<string | null>;
 
 /** One thing that happened, waiting for its turn, and where a command's
  * answer goes. */
@@ -45,8 +56,7 @@ export class RecorderSession extends Context.Service<
     readonly done: Effect.Effect<RecordingOutcome, unknown>;
   }
 >()("@ayme-dev/recorder/session/RecorderSession") {
-  /** `projectDir` is where a recording is saved. */
-  static readonly layer = (options: { readonly projectDir: string }) =>
+  static readonly layer = (options: { readonly save: SaveRecording }) =>
     Layer.effect(
       RecorderSession,
       Effect.gen(function* () {
@@ -81,10 +91,7 @@ export class RecorderSession extends Context.Service<
             case "save": {
               const createdAt = new Date(yield* Clock.currentTimeMillis);
               const folder = yield* Effect.promise(() =>
-                saveRecording(timeline, {
-                  projectDir: options.projectDir,
-                  createdAt,
-                })
+                options.save(timeline, createdAt)
               );
               return yield* tell({ kind: "saved", folder });
             }

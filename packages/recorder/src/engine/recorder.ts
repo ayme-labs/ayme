@@ -6,11 +6,9 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../contract";
-import {
-  RecorderSession,
-  type RecordedBrowser,
-  type RecorderStartError,
-} from "../session";
+import { RecorderSession, type RecordedBrowser } from "../session/application";
+import type { RecorderStartError } from "../session/domain";
+import { saveRecording } from "../timeline/infrastructure";
 
 /** One started recorder. Promises, callbacks and plain data only. */
 export interface Recorder {
@@ -43,7 +41,12 @@ export async function startRecorderOn(
   }
 ): Promise<Recorder> {
   const runtime = ManagedRuntime.make(
-    RecorderSession.layer(options).pipe(Layer.provide(browser))
+    RecorderSession.layer({
+      // The composition root says where a package is kept: on the disk, in
+      // the project.
+      save: (timeline, createdAt) =>
+        saveRecording(timeline, { projectDir: options.projectDir, createdAt }),
+    }).pipe(Layer.provide(browser))
   );
   // A failed start rejects with what failed: the start error itself.
   const session = await runtime

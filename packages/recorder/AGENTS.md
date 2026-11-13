@@ -16,8 +16,12 @@ Slices, from the bottom up:
 
 Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (Playwright, the disk, the network). `contract`, `engine` and `testing` aren't layered.
 
-- Every file of a layered slice sits in a layer folder, except its `index.ts`.
-- Another slice is reached through its `index.ts`.
+The layer order holds across slices as it holds inside one ([ADR-0046](../../docs/adr/0046-the-layer-order-holds-across-slices-through-one-front-door-per-layer.md)): domain uses domain, application uses application and domain, and infrastructure uses any layer.
+
+- Every file of a layered slice sits in a layer folder. A layered slice has no `index.ts` of its own.
+- Each layer that other code uses has a front door, the `index.ts` inside that layer's folder. Another slice imports the door of the layer it uses, such as `../../timeline/domain`, so lint judges the import by that layer. Inside a slice, import the module itself.
+- An unlayered slice is reached through its own `index.ts`.
+- An application module never imports another slice's infrastructure. What it needs done on the disk or in the browser it is handed: the composition root (`engine/recorder.ts`) gives the session the function that saves a package, and the recorded browser as a layer.
 - `src/index.ts` is the package's front door. Nothing but promises, callbacks and plain data leaves it: `src/frontDoor.test.ts` fails when an Effect type or a Playwright type is reachable from the built entry.
 
 The lifecycle decides and the adapter only carries out. To add behaviour, add a state, a thing that happened or a thing to do to `session/domain/lifecycle.ts`, with a row in its table test. The worker needs a change only for a new kind of thing to do.

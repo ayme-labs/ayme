@@ -33,18 +33,78 @@ it(
     ]);
     expect(
       await lint(
-        "src/session/application/misplaced.ts",
-        'export { stockBrowser } from "../../playwright";\n'
+        "src/timeline/domain/misplaced.ts",
+        'export type { BrowserSignal } from "../../session/domain";\n'
       )
-    ).toEqual([expect.stringContaining("session may only use")]);
+    ).toEqual([expect.stringContaining("timeline may only use")]);
+  }
+);
+
+// ADR-0046: the layer order holds across slices, because a layered slice is
+// reached through the front door of the layer that is used.
+it(
+  "lint keeps the layer order across slices, through one front door per layer",
+  slow,
+  async () => {
+    // An application module may not act through another slice's
+    // infrastructure, such as the disk.
+    expect(
+      await lint(
+        "src/session/application/misplaced.ts",
+        'export { saveRecording } from "../../timeline/infrastructure";\n'
+      )
+    ).toEqual([
+      expect.stringContaining(
+        "application may only depend on the allowed horizontal layers"
+      ),
+    ]);
+    expect(
+      await lint(
+        "src/session/domain/misplaced.ts",
+        'export { RecorderSession } from "../../session/application";\n'
+      )
+    ).toContainEqual(
+      expect.stringContaining(
+        "domain may only depend on the allowed horizontal layers"
+      )
+    );
+    expect(
+      await lint(
+        "src/session/application/placed.ts",
+        'export { Timeline } from "../../timeline/domain";\n'
+      )
+    ).toEqual([]);
+    // A layered slice has no front door of its own to hide the layer behind.
+    expect(
+      await lint(
+        "src/engine/misplaced.ts",
+        'export { Timeline } from "../timeline";\n'
+      )
+    ).toEqual([expect.stringContaining("A layered slice has no index.ts")]);
+    // Past a front door.
     expect(
       await lint(
         "src/engine/misplaced.ts",
         'export { step } from "../session/domain/lifecycle";\n'
       )
     ).toEqual([
-      expect.stringContaining("Import another slice through its index.ts."),
+      expect.stringContaining("Import another slice through its front door"),
     ]);
+    expect(
+      await lint(
+        "src/session/application/misplaced.ts",
+        'export { startRecorderOn } from "../../engine/recorder";\n'
+      )
+    ).toContainEqual(
+      expect.stringContaining("Import another slice through its front door")
+    );
+    // The composition root uses the layers it puts together.
+    expect(
+      await lint(
+        "src/engine/placed.ts",
+        'export { saveRecording } from "../timeline/infrastructure";\nexport { RecorderSession } from "../session/application";\n'
+      )
+    ).toEqual([]);
   }
 );
 

@@ -8,4 +8,4 @@ export type {
   RecordingOutcome,
 } from "./contract";
 export { startRecorder, type Recorder, type RecorderOptions } from "./engine";
-export { RecorderStartError, type RecorderStartReason } from "./session";
+export { RecorderStartError, type RecorderStartReason } from "./session/domain";

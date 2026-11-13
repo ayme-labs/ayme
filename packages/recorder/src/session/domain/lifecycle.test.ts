@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { RecorderState } from "../../contract";
-import type { InteractionReport, PageSnapshot } from "../../timeline";
+import type { InteractionReport, PageSnapshot } from "../../timeline/domain";
 import {
   initialState,
   shown,

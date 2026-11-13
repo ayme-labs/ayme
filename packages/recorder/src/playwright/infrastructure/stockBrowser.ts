@@ -5,12 +5,12 @@ import {
 import { Effect, Layer, Queue } from "effect";
 import type { Browser, Frame, Page } from "playwright-core";
 
+import { RecordedBrowser } from "../../session/application";
 import {
-  RecordedBrowser,
   RecorderStartError,
   type BrowserRequest,
   type BrowserSignal,
-} from "../../session";
+} from "../../session/domain";
 import {
   hidePlaywrightOverlay,
   installGate,

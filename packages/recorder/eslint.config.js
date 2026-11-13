@@ -27,12 +27,37 @@ const layeredSlices = ["timeline", "session", "playwright", "server"];
 const sourceFiles = "src/**/*.ts";
 const testFiles = ["src/**/*.test.ts"];
 
-/** Relative imports beneath another slice, past its front door (its index.ts).
- * Only relative paths: a package such as `playwright-core/...` is no slice. */
-const frontDoor = (slice) => ({
-  regex: `^\\.\\.?/(.*/)?(${slices.filter((other) => other !== slice).join("|")})/(?!index(\\.[jt]s)?$)`,
-  message: "Import another slice through its index.ts.",
-});
+// ADR-0046: the layer order holds across slices. A layered slice has no
+// front door of its own: each of its layers that other code uses has one, an
+// index.ts inside that layer's folder, so the layer rule judges an import
+// through it by the layer it sits in. An unlayered slice's front door is its
+// own index.ts.
+const layers = ["domain", "application", "infrastructure"];
+const index = String.raw`index(\.[jt]s)?`;
+
+/** Relative imports beneath another slice, past its front doors. Only
+ * relative paths: a package such as `playwright-core/...` is no slice. */
+function frontDoors(slice) {
+  const others = (list) => list.filter((other) => other !== slice).join("|");
+  const unlayered = others(slices.filter((s) => !layeredSlices.includes(s)));
+  const layered = others(layeredSlices);
+  return [
+    {
+      regex: [
+        String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$)`,
+        String.raw`^\.\.?/(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
+      ].join("|"),
+      message:
+        "Import another slice through its front door: the index.ts of the layer you use in a layered slice, such as ../session/domain, or else the slice's index.ts.",
+    },
+    {
+      // Another slice's: inside a slice, a module may be named as a slice is.
+      regex: String.raw`^\.\.?/(.*/)?(${layered})(/${index})?$`,
+      message:
+        "A layered slice has no index.ts: import the front door of the layer you use, such as ../session/domain.",
+    },
+  ];
+}
 // Types included: no Playwright type leaves the slice either (ADR-0052).
 const playwright = {
   regex: "^(@playwright/|playwright(-core)?(/|$))",
@@ -78,7 +103,7 @@ function sliceRestrictions(slice) {
   const folder = slice ? `src/${slice}` : "src";
   const depth = slice ? "**/" : "";
   const always = [
-    frontDoor(slice),
+    ...frontDoors(slice),
     ...(slice === "playwright" ? [] : [playwright]),
   ];
   // Effect-free: the contract, the timeline's pure rules and the package's

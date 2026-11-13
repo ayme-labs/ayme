@@ -8,7 +8,7 @@ import type {
   InteractionReport,
   PageSnapshot,
   TimelineAddition,
-} from "../../timeline";
+} from "../../timeline/domain";
 
 // The lifecycle of one recorder, as one pure function: the current state and
 // one thing that happened in, the new state and a list of things to do out.

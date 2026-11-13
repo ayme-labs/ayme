@@ -70,15 +70,14 @@ it(
   slow,
   () => {
     // The session also reaches what the timeline is written with.
-    expect(reachablePackages("src/session/index.ts")).toEqual([
+    expect(reachablePackages("src/session/application/index.ts")).toEqual([
       "effect",
       "yaml",
       "zod",
     ]);
-    expect(reachablePackages("src/playwright/index.ts")).toEqual([
-      "effect",
-      "playwright-core",
-    ]);
+    expect(reachablePackages("src/playwright/infrastructure/index.ts")).toEqual(
+      ["effect", "playwright-core"]
+    );
   }
 );
 

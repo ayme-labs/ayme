@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { Effect } from "effect";
 import type * as PlaywrightCore from "playwright-core";
 
-import { RecorderStartError } from "../../session";
+import { RecorderStartError } from "../../session/domain";
 
 /** What the adapter uses of Playwright's module. */
 export type Playwright = Pick<typeof PlaywrightCore, "chromium">;

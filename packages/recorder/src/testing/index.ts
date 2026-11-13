@@ -4,12 +4,9 @@ import { Effect, Layer, Queue } from "effect";
 import { TestClock } from "effect/testing";
 
 import { startRecorderOn, type Recorder } from "../engine";
-import {
-  RecordedBrowser,
-  type BrowserRequest,
-  type BrowserSignal,
-} from "../session";
-import type { InteractionReport } from "../timeline";
+import { RecordedBrowser } from "../session/application";
+import type { BrowserRequest, BrowserSignal } from "../session/domain";
+import type { InteractionReport } from "../timeline/domain";
 
 // The `./testing` entry (ADR-0026): a recorder on a scripted browser, where a
 // test plays the browser by hand, with a clock the test moves.
