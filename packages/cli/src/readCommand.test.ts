@@ -3,11 +3,27 @@ import { describe, expect, it } from "vitest";
 import { readCommand, USAGE } from "./readCommand";
 
 describe("readCommand", () => {
+  it("lists the trace command in its usage text", () => {
+    expect(USAGE).toContain("trace");
+  });
+
   it("records the page at the URL for `codegen <url>`", () => {
     expect(readCommand(["codegen", "http://localhost:5173/cart"])).toEqual({
       kind: "codegen",
       url: "http://localhost:5173/cart",
     });
+  });
+
+  it.each([
+    { args: ["latest"] },
+    { args: ["rec_20261112T145047604Z"] },
+    { args: ["open", "latest"] },
+    // The stock tool's own words and flags are left as they are.
+    { args: ["snapshot", "4", "--phase", "after", "eval", "document.title"] },
+    { args: ["--help"] },
+    { args: [] },
+  ])("hands `trace $args` on to the stock trace tool as it is", ({ args }) => {
+    expect(readCommand(["trace", ...args])).toEqual({ kind: "trace", args });
   });
 
   it.each([["--help"], ["-h"], ["codegen", "--help"]])(

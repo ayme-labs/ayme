@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,6 +40,23 @@ export function runTraceTool(
           stderr,
         })
     );
+  });
+}
+
+/** Runs `playwright trace <args>` with the terminal as its own, in the
+ * folder the caller is in. Resolves with its exit code. */
+export function passThroughTraceTool(
+  cli: string,
+  args: readonly string[],
+  cwd: string
+): Promise<number> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [cli, "trace", ...args], {
+      cwd,
+      stdio: "inherit",
+    });
+    child.on("error", () => resolve(1));
+    child.on("close", (code) => resolve(code ?? 1));
   });
 }
 

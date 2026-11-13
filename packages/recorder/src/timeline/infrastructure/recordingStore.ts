@@ -1,4 +1,12 @@
-import { copyFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 
 import type { RecordingTrace } from "../domain";
@@ -89,4 +97,45 @@ async function write(
   // recording is the latest now.
   await rm(join(recordings, "latest.json"), { force: true });
   return folder;
+}
+
+/** Where the trace of a recording is, or why it cannot be had. */
+export type TraceLookup =
+  | { readonly kind: "found"; readonly file: string }
+  | { readonly kind: "missing"; readonly reason: string };
+
+/**
+ * The trace of the latest recording, for `latest`, or of the recording with
+ * this id. The package says where its trace is, relative to the project.
+ */
+export async function findTrace(
+  projectDir: string,
+  recording: string
+): Promise<TraceLookup> {
+  const recordings = join(projectDir, ".ayme", "recordings");
+  const latest = recording === "latest";
+  const text = await readFile(
+    join(recordings, latest ? "latest.yaml" : join(recording, "package.yaml")),
+    "utf8"
+  ).catch(() => undefined);
+  if (text === undefined)
+    return {
+      kind: "missing",
+      reason: latest
+        ? "No recording found in .ayme/recordings. Record a flow first."
+        : `No recording "${recording}" found in .ayme/recordings.`,
+    };
+  const field = (name: string) =>
+    new RegExp(`^${name}: (.*)$`, "m").exec(text)?.[1]?.trim();
+  const id = field("recordingId") ?? recording;
+  const tracePath = field("tracePath");
+  if (!tracePath || tracePath === "null")
+    return { kind: "missing", reason: `Recording "${id}" has no trace.` };
+  const file = join(projectDir, tracePath);
+  return (await stat(file).catch(() => undefined))?.isFile()
+    ? { kind: "found", file }
+    : {
+        kind: "missing",
+        reason: `The trace of recording "${id}" is gone: ${file} is not there.`,
+      };
 }
