@@ -19,6 +19,8 @@ export type HeldByPage =
       /** The click's count: 2 for the second click of a double click. */
       readonly detail: number;
       readonly modifiers: readonly Modifier[];
+      /** The document it was held in. */
+      readonly document: string;
     }
   | {
       readonly kind: "key";
@@ -30,6 +32,8 @@ export type HeldByPage =
       readonly key: string;
       readonly code: string;
       readonly modifiers: readonly Modifier[];
+      /** The document it was held in. */
+      readonly document: string;
     };
 
 /** The gate of one document, as the adapter reaches it. */
@@ -42,10 +46,13 @@ export type Gate = {
   /** A held input is on its way: the click of this count to this point of
    * the viewport, or the key with this code. Lets it through; the gate
    * closes again by itself when it has arrived. Resolves when the input may
-   * be sent: a click waits while the person holds a mouse button down. */
+   * be sent, as a click waits while the person holds a mouse button down:
+   * to false, letting nothing through, when the input was held in another
+   * document: that one is gone. */
   open(
-    input: { x: number; y: number; detail: number } | { code: string }
-  ): Promise<void>;
+    input: { x: number; y: number; detail: number } | { code: string },
+    document: string
+  ): Promise<boolean>;
   /** Closes the gate after an input that never arrived. */
   close(): void;
   /** Lets what follows through, unless the document held an input after
@@ -57,18 +64,37 @@ declare global {
   interface Window {
     __aymeRecorderGate?: Gate;
     __aymeRecorderActivity?: ActivityWatch;
+    __aymeRecorderGateStart?: GateStart;
   }
 }
 
+/** Whether a document's gate starts on, and the change that said so. */
+export type GateStart = { readonly on: boolean; readonly change: number };
+
 /**
- * Installs the gate in a document, switched off. Switched on, it holds back
- * the click that ends a press of the left mouse button and a key press that
+ * Says whether the gate of a document that starts from now on holds inputs
+ * back. The adapter adds it as one more script for every new document each
+ * time the gate is switched, since a script cannot be taken back on every
+ * Playwright: the latest change wins, in whatever order the scripts run.
+ */
+export function startGate(start: GateStart): void {
+  const now = window.__aymeRecorderGateStart;
+  if (now && now.change > start.change) return;
+  window.__aymeRecorderGateStart = start;
+  window.__aymeRecorderGate?.set(start.on);
+}
+
+/**
+ * Installs the gate in a document, switched on or off as `startGate` last
+ * said, and off when it never did. Switched on, it holds back the click
+ * that ends a press of the left mouse button and a key press that
  * Playwright records as a press, and tells the adapter through the binding
  * called `held`. Only the final click is held: the press and the release
  * reach the page as they come, so pressing, dragging and selecting text
- * behave as they do without it. Once it has held an input, it holds every
- * key after it, typing included, until it is let through: input reaches
- * the page in the order it was given.
+ * behave as they do without it. Once it has held an input, and from the
+ * moment it is switched on, it holds every key after it, typing included,
+ * until it is let through: input reaches the page in the order it was
+ * given.
  *
  * It listens on `window`, before anything of the page and before
  * Playwright's recorder, which listens on `document`: neither sees a held
@@ -78,8 +104,10 @@ export function installGate(held: string): void {
   // Every document has its own, frames included: a frame's click is sent
   // on at its place in the page.
   if (window.__aymeRecorderGate) return;
-  let on = false;
-  let holding = false;
+  let on = window.__aymeRecorderGateStart?.on ?? false;
+  let holding = on;
+  // Names this document: a held input is sent on to no other.
+  const thisDocument = `${Date.now()}:${Math.random()}`;
   /** How many inputs it held, and how many of those still wait. */
   let seq = 0;
   let waiting = 0;
@@ -104,10 +132,11 @@ export function installGate(held: string): void {
       else if (waiting === 0) holding = false;
       return on;
     },
-    open: async (input) => {
+    open: async (input, heldIn) => {
+      if (heldIn !== thisDocument) return false;
       if ("code" in input) {
         passingKey = input.code;
-        return;
+        return true;
       }
       // A click sent on while the person holds the button down would end
       // their press: it waits for the release, a second at most.
@@ -118,6 +147,7 @@ export function installGate(held: string): void {
         });
       released = undefined;
       passingOn = { ...input, seen: new Set() };
+      return true;
     },
     close: () => {
       if (passingOn || passingKey) arrived();
@@ -213,6 +243,7 @@ export function installGate(held: string): void {
       y: event.clientY,
       detail: event.detail,
       modifiers: modifiersOf(event),
+      document: thisDocument,
     });
   };
   for (const type of [
@@ -284,6 +315,7 @@ export function installGate(held: string): void {
       key: event.key,
       code: event.code,
       modifiers: modifiersOf(event),
+      document: thisDocument,
     });
   };
   window.addEventListener("keydown", onKey, true);

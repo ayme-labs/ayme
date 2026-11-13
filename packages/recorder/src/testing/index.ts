@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
@@ -14,6 +16,9 @@ import type { InteractionReport } from "../timeline/domain";
 
 // The `./testing` entry (ADR-0026): a recorder on a scripted browser, where a
 // test plays the browser by hand, with a clock the test moves.
+
+/** What the file of a scripted browser's trace holds. */
+export const SCRIPTED_TRACE = "a scripted trace";
 
 /**
  * The remote control of a scripted browser with one page, "page_1".
@@ -33,6 +38,9 @@ export interface ScriptedBrowser {
   readonly released: boolean;
   /** Everything the engine has asked of the browser, in order. */
   readonly asked: readonly BrowserRequest[];
+  /** The file of each trace it has handed over, in order. Snapshot number N
+   * is at position 10 times N in each of them. */
+  readonly traces: readonly string[];
   /** Resolves once the engine has asked exactly this. */
   asks(request: BrowserRequest): Promise<void>;
   /** What the page looks like from now on, in the notation of Playwright's
@@ -51,6 +59,18 @@ export interface ScriptedBrowser {
   releaseSnapshots(): void;
   /** Moves the recorder's clock on. */
   advanceTime(ms: number): Promise<void>;
+  /** From now on the pages do not confirm that they hold inputs back, or
+   * that they no longer do... */
+  holdConfirmations(): void;
+  /** ...until now. */
+  releaseConfirmations(): void;
+  // Visits.
+  /** The page goes to another address, in a new document: a click held in
+   * the one before can no longer reach it. */
+  goTo(url: string): void;
+  /** The held inputs that reached a page, in order. */
+  readonly passedOn: readonly string[];
+  // Every kind of input.
   /** The page holds an input back: a click of some count, a key press, or
    * a key typed while an earlier input was held. Numbered as `holdClick`
    * numbers. */
@@ -72,7 +92,7 @@ export async function startScriptedRecorder(
   browser: ScriptedBrowser;
 }> {
   const page = "page_1";
-  const url = options.url ?? "http://scripted.test/";
+  let url = options.url ?? "http://scripted.test/";
   let signals: Queue.Queue<BrowserSignal> | undefined;
   let clock: TestClock.TestClock | undefined;
   let released = false;
@@ -82,7 +102,15 @@ export async function startScriptedRecorder(
   let inputs = 0;
   let settling: Extract<BrowserRequest, { kind: "waitForSettled" }> | undefined;
   let snapshotsHeld: (() => void)[] | undefined;
+  let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
+  const traces: string[] = [];
+  /** The snapshots taken, which a stopped trace has positions for. */
+  const taken: string[] = [];
+  // Visits: the document each held input was held in.
+  let documents = 0;
+  const heldIn = new Map<string, number>();
+  const passedOn: string[] = [];
   const waiting: (() => void)[] = [];
   const tell = (signal: BrowserSignal) => {
     Queue.offerUnsafe(signals!, signal);
@@ -91,11 +119,16 @@ export async function startScriptedRecorder(
   const answer = (request: BrowserRequest) => {
     switch (request.kind) {
       case "reportInteractions":
-        return tell({ kind: "reportingInteractions" });
-      case "holdInputs":
-        return tell({ kind: "inputsHeld", on: request.on });
+        return tell({ kind: "reportingInteractions", on: request.on });
+      case "holdInputs": {
+        const confirm = () => tell({ kind: "inputsHeld", on: request.on });
+        if (confirmationsHeld) confirmationsHeld.push(confirm);
+        else confirm();
+        return;
+      }
       case "takeSnapshot": {
-        const take = () =>
+        const take = () => {
+          taken.push(request.snapshot);
           tell({
             kind: "snapshotTaken",
             snapshot: {
@@ -106,15 +139,35 @@ export async function startScriptedRecorder(
               tree,
             },
           });
+        };
         if (snapshotsHeld) snapshotsHeld.push(take);
         else take();
         return;
       }
       case "passOn":
+        if (heldIn.get(request.input) !== documents)
+          return tell({ kind: "inputGone", input: request.input });
+        passedOn.push(request.input);
         return tell({ kind: "inputPassedOn", input: request.input, at: ++now });
       case "waitForSettled":
         settling = request;
         return;
+      case "startTrace":
+        return;
+      case "stopTrace": {
+        // A thrown-away trace is not told of; a kept one is written, and
+        // told of once it is.
+        if (!request.keep) return;
+        const file = join(tmpdir(), `ayme-scripted-trace-${randomUUID()}.zip`);
+        const positions = Object.fromEntries(
+          taken.map((id) => [id, String(Number(id.split("_")[1]) * 10)])
+        );
+        void writeFile(file, SCRIPTED_TRACE).then(() => {
+          traces.push(file);
+          tell({ kind: "traceStopped", trace: { file, positions } });
+        });
+        return;
+      }
       // Every kind of input.
       case "letInputsThrough":
         // Nothing answers it.
@@ -161,6 +214,7 @@ export async function startScriptedRecorder(
         return released;
       },
       asked,
+      traces,
       asks: (request) =>
         new Promise((resolve) => {
           const wanted = JSON.stringify(request);
@@ -175,8 +229,11 @@ export async function startScriptedRecorder(
       showPage: (next) => {
         tree = next;
       },
-      holdClick: () =>
-        tell({ kind: "inputHeld", input: `input_${++inputs}`, page }),
+      holdClick: () => {
+        const input = `input_${++inputs}`;
+        heldIn.set(input, documents);
+        tell({ kind: "inputHeld", input, page });
+      },
       settle: () => {
         if (!settling) throw new Error("The engine waits for no Settled Page.");
         const { page: settled, input } = settling;
@@ -193,8 +250,26 @@ export async function startScriptedRecorder(
         for (const take of held) take();
       },
       advanceTime: (ms) => Effect.runPromise(clock!.adjust(ms)),
-      holdInput: (held) =>
-        tell({ kind: "inputHeld", input: `input_${++inputs}`, page, held }),
+      holdConfirmations: () => {
+        confirmationsHeld = [];
+      },
+      releaseConfirmations: () => {
+        const held = confirmationsHeld ?? [];
+        confirmationsHeld = undefined;
+        for (const confirm of held) confirm();
+      },
+      goTo: (next) => {
+        url = next;
+        documents += 1;
+        tell({ kind: "pageNavigated", page, url });
+      },
+      passedOn,
+      // Every kind of input.
+      holdInput: (held) => {
+        const input = `input_${++inputs}`;
+        heldIn.set(input, documents);
+        tell({ kind: "inputHeld", input, page, held });
+      },
     },
   };
 }

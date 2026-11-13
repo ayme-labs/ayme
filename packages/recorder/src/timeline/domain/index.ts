@@ -2,6 +2,7 @@ export type {
   InteractionReport,
   PageSnapshot,
   RecordedInteraction,
+  RecordingTrace,
   TimelineAddition,
   VisitCause,
 } from "./recorded";

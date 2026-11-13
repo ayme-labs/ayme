@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import range from "../playwright-range.json";
 import { RecorderStartError, startRecorder } from "./index";
 
 // Outside the repository, so no Playwright resolves from it: the engine
@@ -22,16 +23,23 @@ const start = (projectDir: string, launch: { debugPort?: number } = {}) =>
 
 /** Installs a stand-in for Playwright whose Chromium never launches, and
  * says what it was asked to launch with. */
-async function installPlaywrightWithoutChromium(root: string, name: string) {
+async function installPlaywrightWithoutChromium(
+  root: string,
+  name: string,
+  version = "1.64.0"
+) {
   const installed = join(root, "node_modules", name);
   await mkdir(installed, { recursive: true });
   await writeFile(
     join(installed, "package.json"),
-    JSON.stringify({ name, version: "1.64.0", main: "index.js" })
+    JSON.stringify({ name, version, main: "index.js" })
   );
   await writeFile(
     join(installed, "index.js"),
-    `exports.chromium = { launch: async (options) => { throw new Error("Cannot launch with " + JSON.stringify(options)); } };\n`
+    `exports.chromium = {
+  launch: async (options) => { throw new Error("Cannot launch with " + JSON.stringify(options)); },
+  connectOverCDP: async (endpoint, options) => { throw new Error("Cannot connect to " + endpoint + " with " + JSON.stringify(options)); },
+};\n`
   );
 }
 
@@ -62,6 +70,18 @@ it.each(["playwright", "@playwright/test", "playwright-core"])(
   }
 );
 
+it("fails to start, naming the supported range, when the project's Playwright is older than it", async () => {
+  await installPlaywrightWithoutChromium(folder, "@playwright/test", "1.61.1");
+
+  const failure = await start(folder);
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "playwright-too-old",
+    message: `${folder} has Playwright 1.61.1. The recorder needs Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}: update the project's Playwright, for example with "npm install -D @playwright/test@latest".`,
+  });
+});
+
 /** What the project's Playwright was asked to launch Chromium with. */
 async function launchOptions(launch: { debugPort?: number } = {}) {
   await installPlaywrightWithoutChromium(folder, "playwright");
@@ -85,6 +105,57 @@ it("opens the browser's DevTools protocol on the debug port it is given", async 
   });
 });
 
+const attach = (projectDir: string, cdpEndpoint: string) =>
+  startRecorder({ projectDir, browser: { attach: { cdpEndpoint } } }).catch(
+    (error: unknown) => error
+  );
+
+it("attaches to the running browser at the address it is given, leaving its default settings alone", async () => {
+  await installPlaywrightWithoutChromium(folder, "playwright");
+
+  const failure = await attach(folder, "http://127.0.0.1:9222");
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "browser-unavailable",
+    message:
+      'Playwright could not connect to the browser at http://127.0.0.1:9222. Cannot connect to http://127.0.0.1:9222 with {"noDefaults":true}',
+  });
+});
+
+it.each([
+  "http://localhost:9222",
+  "ws://127.0.0.1:9222/devtools/browser/abc",
+  "http://[::1]:9222",
+  "http://127.1.2.3:9222/",
+])("attaches to a browser on this machine at %s", async (cdpEndpoint) => {
+  await installPlaywrightWithoutChromium(folder, "playwright");
+
+  expect(await attach(folder, cdpEndpoint)).toMatchObject({
+    message: expect.stringContaining(`Cannot connect to ${cdpEndpoint}`),
+  });
+});
+
+it.each([
+  "http://192.168.1.20:9222",
+  "http://example.com:9222",
+  "https://127.0.0.1:9222",
+  "127.0.0.1:9222",
+])(
+  "fails to start, as the released recorder does, for an address that is not on this machine or not of the DevTools protocol: %s",
+  async (cdpEndpoint) => {
+    await installPlaywrightWithoutChromium(folder, "playwright");
+
+    const failure = await attach(folder, cdpEndpoint);
+
+    expect(failure).toBeInstanceOf(RecorderStartError);
+    expect(failure).toMatchObject({
+      reason: "browser-unavailable",
+      message: `The recorder attaches only to a browser on this machine, at an http:// or ws:// address on localhost or 127.0.0.1, such as http://127.0.0.1:9222. It was given ${cdpEndpoint}.`,
+    });
+  }
+);
+
 it("uses the Playwright installed above the project folder, as in a monorepo", async () => {
   await installPlaywrightWithoutChromium(folder, "playwright");
   const projectDir = join(folder, "packages", "app");
@@ -98,14 +169,18 @@ it("uses the Playwright installed above the project folder, as in a monorepo", a
 /**
  * Installs a stand-in for Playwright whose Chromium opens one page that can
  * never be read: a snapshot of it never comes. `control.holdClick()` plays
- * the page holding a click back.
+ * the page holding a click back. Its contexts start Playwright's recorder as
+ * 1.64 does, unless `withRecorder` is false.
  */
-async function installPlaywrightWithUnreadablePage(root: string) {
+async function installPlaywrightWithUnreadablePage(
+  root: string,
+  { version = "1.64.0", withRecorder = true } = {}
+) {
   const installed = join(root, "node_modules", "playwright");
   await mkdir(installed, { recursive: true });
   await writeFile(
     join(installed, "package.json"),
-    JSON.stringify({ name: "playwright", version: "1.64.0", main: "index.js" })
+    JSON.stringify({ name: "playwright", version, main: "index.js" })
   );
   await writeFile(
     join(installed, "index.js"),
@@ -128,7 +203,10 @@ exports.chromium = {
         url: () => "http://stand-in.test/",
         mainFrame: () => frame,
         frames: () => [frame],
-        ariaSnapshot: () => new Promise(() => {}),
+        ariaSnapshot: () =>
+          exports.control.readable
+            ? Promise.resolve('- button "Save" [ref=e1]')
+            : new Promise(() => {}),
       });
       context.pages = () => [page];
       context.addInitScript = async () => {};
@@ -137,7 +215,34 @@ exports.chromium = {
           exports.control.holdClick = () =>
             held({ page, frame }, { x: 1, y: 1, detail: 1, modifiers: [] });
       };
-      context._startRecording = async () => {};
+      exports.control.recorder = [];
+      // The context's trace, as the adapter drives it.
+      exports.control.tracing = [];
+      context.tracing = {
+        start: async () => {
+          if (exports.control.tracingBroken) throw new Error("No trace here.");
+          exports.control.tracing.push("start");
+        },
+        stop: async (options) => {
+          exports.control.tracing.push(options?.path ? "stop, kept" : "stop, thrown away");
+          if (options?.path) require("node:fs").writeFileSync(options.path, "a trace");
+        },
+        group: async (name) => void exports.control.tracing.push("group " + name),
+        groupEnd: async () => {},
+      };
+      if (${withRecorder})
+        context._startRecording = async () => {
+          if (exports.control.recorderBroken) throw new Error("No recorder here.");
+          exports.control.recorder.push("started");
+        };
+      // Playwright's recorder, as the adapter reaches it to switch its mode.
+      const recorder = {
+        mode: () => "recording",
+        setMode: async (mode) => void exports.control.recorder.push(mode),
+      };
+      context._connection = {
+        toImpl: () => ({ [Symbol("recorderSymbol")]: Promise.resolve(recorder) }),
+      };
       context.newPage = async () => {
         context.emit("page", page);
         return page;
@@ -151,7 +256,20 @@ exports.chromium = {
   );
   return (
     createRequire(import.meta.url)(installed) as {
-      control: { holdClick(): void };
+      control: {
+        holdClick(): void;
+        /** Set, Playwright's recorder cannot be started. */
+        recorderBroken?: boolean;
+        /** Set, the page can be read after all. */
+        readable?: boolean;
+        /** Set, the trace cannot be started. */
+        tracingBroken?: boolean;
+        /** What was done to the context's trace, in order. */
+        tracing: string[];
+        /** What was done to Playwright's recorder, in order: "started", or
+         * the mode it was switched to. */
+        recorder: string[];
+      };
     }
   ).control;
 }
@@ -180,5 +298,140 @@ it(
     expect(phases).toEqual(["notRecording", "recording", "wrappingUp"]);
 
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    // The save did not wait for the page: its trace was stopped all the same.
+    expect(control.tracing).toEqual(["start", "stop, kept"]);
   }
 );
+
+it("fails to start, naming the supported range, when Playwright's recorder is not found", async () => {
+  await installPlaywrightWithUnreadablePage(folder, {
+    version: "1.66.0",
+    withRecorder: false,
+  });
+
+  const failure = await start(folder);
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "playwright-recorder-not-found",
+    message: `The recorder could not find Playwright's own recorder in Playwright 1.66.0, in ${folder}. It needs Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}.`,
+  });
+});
+
+it(
+  "records on a Playwright newer than the verified range when it finds Playwright's recorder",
+  { timeout: 20_000 },
+  async () => {
+    await installPlaywrightWithUnreadablePage(folder, { version: "1.66.0" });
+    const recorder = await startRecorder({
+      projectDir: folder,
+      browser: { launch: { url: "http://stand-in.test/" } },
+    });
+
+    await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+
+    recorder.end();
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+  }
+);
+
+// A request the stock adapter cannot carry out is told, not swallowed:
+// Record must not wait until the recorder ends.
+it("answers Record 'ignored' and ends 'failed', with the reason, when Playwright's recorder cannot be started", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.recorderBroken = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+
+  await expect(recorder.send({ type: "record" })).resolves.toBe("ignored");
+
+  await expect(recorder.done).resolves.toEqual({
+    kind: "failed",
+    reason: "Recording could not start. No recorder here.",
+  });
+});
+
+it("answers Record 'ignored' and ends 'failed', with the reason, when the trace cannot be started", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.tracingBroken = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+
+  await expect(recorder.send({ type: "record" })).resolves.toBe("ignored");
+
+  await expect(recorder.done).resolves.toEqual({
+    kind: "failed",
+    reason: "Recording could not start. No trace here.",
+  });
+});
+
+it("traces from the first Record, through a pause, and starts a new trace after Clear", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.readable = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+  // The marks of the snapshots are another matter.
+  const started = () =>
+    control.tracing.filter((done) => !done.startsWith("group"));
+  let phase = "";
+  recorder.subscribe(({ state }) => {
+    phase = state.phase;
+  });
+
+  await recorder.send({ type: "record" });
+  await recorder.send({ type: "stop" });
+  await expect.poll(() => phase).toBe("paused");
+  await recorder.send({ type: "continue" });
+  expect(started()).toEqual(["start"]);
+
+  await recorder.send({ type: "clear" });
+  await expect.poll(() => phase).toBe("notRecording");
+  await recorder.send({ type: "record" });
+  expect(started()).toEqual(["start", "stop, thrown away", "start"]);
+
+  recorder.end();
+  await recorder.done;
+});
+
+it("switches Playwright's recorder off and on by its mode, and starts it once", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.readable = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+  let phase = "";
+  recorder.subscribe(({ state }) => {
+    phase = state.phase;
+  });
+
+  await recorder.send({ type: "record" });
+  expect(control.recorder).toEqual(["started"]);
+
+  await recorder.send({ type: "stop" });
+  await expect.poll(() => phase).toBe("paused");
+  expect(control.recorder).toEqual(["started", "none"]);
+
+  await expect(recorder.send({ type: "continue" })).resolves.toBe("applied");
+  expect(control.recorder).toEqual(["started", "none", "recording"]);
+
+  await recorder.send({ type: "clear" });
+  await expect.poll(() => phase).toBe("notRecording");
+  await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+  expect(control.recorder).toEqual([
+    "started",
+    "none",
+    "recording",
+    "none",
+    "recording",
+  ]);
+
+  recorder.end();
+  await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+});

@@ -6,7 +6,7 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../../contract";
-import { Timeline } from "../../timeline/domain";
+import { Timeline, type RecordingTrace } from "../../timeline/domain";
 import {
   initialState,
   shown,
@@ -17,14 +17,16 @@ import {
 import { RecordedBrowser } from "./recordedBrowser";
 
 /**
- * Writes a timeline as a Recording Package made at `createdAt`. Resolves
- * with the package's folder, or with null when there was nothing to write.
+ * Writes a timeline as a Recording Package made at `createdAt`, with the
+ * recording's trace beside it when it has one. Resolves with the package's
+ * folder, or with null when there was nothing to write.
  * The session is handed it: where and how a package is kept is not its to
  * know.
  */
 export type SaveRecording = (
   timeline: Timeline,
-  createdAt: Date
+  createdAt: Date,
+  trace: RecordingTrace | null
 ) => Promise<string | null>;
 
 /** One thing that happened, waiting for its turn, and where a command's
@@ -65,7 +67,7 @@ export class RecorderSession extends Context.Service<
         const queue = yield* Queue.unbounded<Queued>();
         const done = yield* Deferred.make<RecordingOutcome>();
         const listeners = new Set<(update: RecorderUpdate) => void>();
-        const timeline = new Timeline();
+        let timeline = new Timeline();
         let state = initialState;
         let visits = timeline.visits();
         let update: RecorderUpdate = {
@@ -120,7 +122,7 @@ export class RecorderSession extends Context.Service<
             case "save": {
               const createdAt = new Date(yield* Clock.currentTimeMillis);
               const folder = yield* Effect.promise(() =>
-                options.save(timeline, createdAt)
+                options.save(timeline, createdAt, item.trace ?? null)
               );
               // What changed after the last Interaction is an entry now.
               yield* publishEntries;
@@ -128,6 +130,11 @@ export class RecorderSession extends Context.Service<
             }
             case "end":
               return yield* Deferred.succeed(done, item.outcome);
+            case "clear":
+              // Nothing of the old recording is kept: no Visit, no entry
+              // and no element's identity.
+              timeline = new Timeline();
+              return publish();
           }
         });
 
@@ -139,8 +146,15 @@ export class RecorderSession extends Context.Service<
           state = next.state;
           // Only what shows from outside is told: a phase is one state
           // there. It is told before the step's list is carried out, so
-          // that "saving" shows while the package is written.
-          if (state.phase !== update.state.phase) publish();
+          // that "saving" shows while the package is written. A step that
+          // throws the recording away tells its phase with the empty
+          // timeline, in one update: the new phase never shows with the
+          // old entries.
+          if (
+            state.phase !== update.state.phase &&
+            !next.todo.some((item) => item.kind === "clear")
+          )
+            publish();
           for (const item of next.todo) yield* carryOut(item, reply);
         });
 

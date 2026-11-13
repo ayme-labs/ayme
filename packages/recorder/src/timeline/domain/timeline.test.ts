@@ -47,10 +47,13 @@ const click = (
   },
 });
 
-async function packageOf(additions: readonly TimelineAddition[]) {
+async function packageOf(
+  additions: readonly TimelineAddition[],
+  positions: Readonly<Record<string, string>> = {}
+) {
   const timeline = new Timeline();
   for (const addition of additions) await timeline.add(addition);
-  return timeline.package(header);
+  return timeline.package(header, positions);
 }
 
 // What the page looks like, as Playwright's AI-mode snapshot writes it.
@@ -79,22 +82,140 @@ describe("the timeline", () => {
     );
   });
 
+  describe("the trace", () => {
+    it("tells where an Interaction's snapshots are in the trace, as the stock trace tool numbers them", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          snapshot("snapshot_2", 20, savedPage),
+          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+        ],
+        { snapshot_1: "11", snapshot_2: "17" }
+      );
+
+      expect(text).toMatch(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "11"`,
+          `    afterSnapshotId: "17"`,
+          `    startedAt: 15`,
+          `    endedAt: 20`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("gives an Interaction that left its page a before and no after", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          click("snapshot_1", null, { ref: "e2", tree: idle }),
+        ],
+        { snapshot_1: "11" }
+      );
+
+      expect(text).toMatch(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "11"`,
+          `    startedAt: 15`,
+          `    endedAt: 15`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("gives an Interaction that left its Visit a before and no after: its after is the next Visit's first picture", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          {
+            kind: "visit",
+            page: "page_1",
+            url: `${url}cart`,
+            cause: "navigate",
+          },
+          snapshot("snapshot_2", 20, savedPage),
+          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+        ],
+        { snapshot_1: "11", snapshot_2: "17" }
+      );
+
+      expect(text).toContain(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "11"`,
+          `    startedAt: 15`,
+          `    endedAt: 20`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("lists the Interactions in the order they were recorded, each with its own positions", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot("snapshot_1", 10, idle),
+          snapshot("snapshot_2", 20, savedPage),
+          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+          click("snapshot_2", null, { ref: "e2", tree: savedPage }),
+        ],
+        { snapshot_1: "11", snapshot_2: "17" }
+      );
+
+      expect(text).toMatch(
+        /interactionId: interaction_1[^]*interactionId: interaction_2\n {4}pageId: page_1\n {4}beforeSnapshotId: "17"\n/
+      );
+    });
+  });
+
   it("has nothing to write while no page was read", async () => {
     expect(await packageOf([visit])).toBeNull();
   });
 
-  it("writes a Visit without Interactions with its first snapshot and no entries", async () => {
-    expect(await packageOf([visit, snapshot("snapshot_1", 10, idle)])).toBe(
+  it("has nothing to write while no Interaction was recorded, as the released recorder: a started recording without one is empty", async () => {
+    expect(
+      await packageOf([
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        snapshot("snapshot_2", 20, savedPage),
+      ])
+    ).toBeNull();
+  });
+
+  it("writes a Visit without Interactions, beside one that has one, with its first snapshot and no entries", async () => {
+    const text = await packageOf([
+      visit,
+      { kind: "visit", page: "page_2", url: `${url}help`, cause: "openPage" },
+      snapshot("snapshot_1", 10, idle),
+      {
+        kind: "snapshot",
+        snapshot: {
+          id: "snapshot_2",
+          page: "page_2",
+          url: `${url}help`,
+          at: 11,
+          tree: idle,
+        },
+      },
+      click("snapshot_1", null, null),
+    ]);
+
+    expect(text).toContain(
       [
-        `recordingId: rec_20261112T145047604Z`,
-        `mode: structural`,
-        `createdAt: 2026-11-12T14:50:47.604Z`,
-        `url: http://shop.test/`,
-        `tracePath: null`,
-        `visits:`,
-        `  - visitId: visit_1`,
-        `    url: http://shop.test/`,
-        `    cause: initial`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/help`,
+        `    cause: openPage`,
         `    baselineTree:`,
         `      - [ref=e1]:`,
         `        - [ref=e2] button "Save"`,
@@ -299,9 +420,13 @@ describe("the timeline", () => {
       visit,
       snapshot("snapshot_1", 10, idle),
       snapshot("snapshot_2", 20, idle),
+      snapshot("snapshot_3", 30, idle),
+      click("snapshot_2", "snapshot_3", null),
     ]);
 
-    expect(text).toContain(`    timelineEntries: []\n`);
+    expect(text).toContain("kind: interaction");
+    expect(text).not.toContain("kind: change");
+    expect(text).not.toContain("changeTree");
   });
 
   it("gives an Interaction whose page was gone before its 'after' no Change Tree", async () => {
@@ -421,6 +546,130 @@ describe("the timeline", () => {
 
   it("leaves out a snapshot of a page that has no Visit", async () => {
     expect(await packageOf([snapshot("snapshot_1", 10, idle)])).toBeNull();
+  });
+
+  describe("Visits", () => {
+    const cartUrl = "http://shop.test/cart";
+    const toCart: TimelineAddition = {
+      kind: "visit",
+      page: "page_1",
+      url: cartUrl,
+      cause: "navigate",
+    };
+    // After a cross-document navigation, Playwright prefixes the refs.
+    const cart = [
+      `- generic [ref=f1e1]:`,
+      `  - heading "Cart" [level=1] [ref=f1e2]`,
+      `  - button "Pay" [ref=f1e3]`,
+    ].join("\n");
+
+    it("writes an Interaction that leaves the page in its own Visit, with no Change Tree; the next Visit starts from the page it led to", async () => {
+      const text = await packageOf([
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        toCart,
+        snapshot("snapshot_2", 20, cart),
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      ]);
+
+      expect(text).toContain(
+        [
+          `  - visitId: visit_1`,
+          `    url: http://shop.test/`,
+          `    cause: initial`,
+          `    baselineTree:`,
+          `      - [ref=e1]:`,
+          `        - [ref=e2] button "Save"`,
+          `        - [ref=e3] paragraph: Not saved`,
+          `    timelineEntries:`,
+          `      - kind: interaction`,
+          `        timestamp: 15`,
+          `        interaction:`,
+          `          id: interaction_1`,
+          `          type: click`,
+          `          targetRef: e2`,
+          `          targetSelector: internal:role=button[name="Save"i]`,
+          `          button: left`,
+          `          modifiers: 0`,
+          `          clickCount: 1`,
+          `  - visitId: visit_2`,
+          `    url: http://shop.test/cart`,
+          `    cause: navigate`,
+          `    baselineTree:`,
+          `      - [ref=f1e1]:`,
+          `        - [ref=f1e2] heading "Cart" [level=1]`,
+          `        - [ref=f1e3] button "Pay"`,
+          `    timelineEntries: []`,
+          `traceActionPoints: []`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    // The cart page goes on rendering after it has loaded.
+    const cartWithOffer = [
+      `- generic [ref=f1e1]:`,
+      `  - heading "Cart" [level=1] [ref=f1e2]`,
+      `  - button "Pay" [ref=f1e3]`,
+      `  - paragraph [ref=f1e4]: Free delivery today`,
+    ].join("\n");
+    const paid = cartWithOffer.replace(`"Pay"`, `"Paid" [disabled]`);
+    const cartBaseline = [
+      `    baselineTree:`,
+      `      - [ref=f1e1]:`,
+      `        - [ref=f1e2] heading "Cart" [level=1]`,
+      `        - [ref=f1e3] button "Pay"`,
+      `        - [ref=f1e4] paragraph: Free delivery today`,
+    ].join("\n");
+    const leaving = [
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      toCart,
+      snapshot("snapshot_2", 20, cart),
+      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+    ];
+
+    it("starts a Visit from the page as it stood just before its first Interaction: what it rendered before that is no change", async () => {
+      const text = await packageOf([
+        ...leaving,
+        snapshot("snapshot_3", 30, cartWithOffer),
+        snapshot("snapshot_4", 40, paid),
+        click("snapshot_3", "snapshot_4", { ref: "f1e3", tree: cart }),
+      ]);
+
+      expect(text).toContain(
+        [`    cause: navigate`, cartBaseline, `    timelineEntries:`].join("\n")
+      );
+      expect(text).not.toContain("kind: change");
+    });
+
+    it("starts a Visit without Interactions from the page as it stood at the end", async () => {
+      const text = await packageOf([
+        ...leaving,
+        snapshot("snapshot_3", 30, cartWithOffer),
+      ]);
+
+      expect(text).toContain(
+        [`    cause: navigate`, cartBaseline, `    timelineEntries: []`].join(
+          "\n"
+        )
+      );
+    });
+
+    it("stays in the Visit when only the part of the address after '?' or '#' changes, as core decides", async () => {
+      const text = await packageOf([
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        { ...toCart, url: "http://shop.test/?tab=saved#top" },
+        snapshot("snapshot_2", 20, savedPage),
+        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      ]);
+
+      expect(text).not.toContain("visit_2");
+      expect(text).toContain(
+        `            - <changed> [ref=e3] paragraph: Saved`
+      );
+    });
   });
 });
 

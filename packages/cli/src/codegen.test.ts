@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exitCode, launchOptions, outcomeLine } from "./codegen";
+import { exitCode, launchOptions, outcomeLine, startLine } from "./codegen";
 
 describe("how codegen launches the browser", () => {
   it("opens the URL in a browser with a window", () => {
@@ -20,6 +20,22 @@ describe("how codegen launches the browser", () => {
     expect(
       launchOptions("http://localhost", { AYME_RECORDER_DEBUG_PORT: "9333" })
     ).toEqual({ url: "http://localhost", headless: false, debugPort: 9333 });
+  });
+});
+
+describe("what the terminal is told at the start", () => {
+  it("says which page it opened", () => {
+    expect(startLine({ launch: { url: "http://localhost:5173/cart" } })).toBe(
+      "Opened http://localhost:5173/cart. Close the browser, or press Ctrl+C here, to end.\n"
+    );
+  });
+
+  it("says which browser it attached to, and that the browser stays open", () => {
+    expect(
+      startLine({ attach: { cdpEndpoint: "http://127.0.0.1:9222" } })
+    ).toBe(
+      "Attached to the browser at http://127.0.0.1:9222. Close its page, or press Ctrl+C here, to end: the browser stays open.\n"
+    );
   });
 });
 

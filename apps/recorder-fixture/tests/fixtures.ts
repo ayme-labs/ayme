@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
@@ -9,6 +9,7 @@ import { startRecorder, type Recorder } from "@ayme-dev/recorder";
 import {
   chromium,
   test as base,
+  type BrowserContext,
   type CDPSession,
   type Locator,
   type Page,
@@ -108,6 +109,9 @@ export type Recording = {
   readonly person: Person;
   /** The project the recorder runs in, and saves to. */
   readonly projectDir: string;
+  /** The person at another page of the recorder's browser, such as one
+   * the recorded page opened. */
+  personOn(page: Page): Promise<Person>;
 };
 
 function personAt(session: CDPSession): Person {
@@ -192,22 +196,93 @@ function personAt(session: CDPSession): Person {
   return person;
 }
 
+/** A Chromium that runs before the recorder comes, as someone else's: the
+ * test launched it, and its connection is another automation client. */
+export type RunningBrowser = {
+  /** The address of its DevTools protocol. */
+  readonly cdpEndpoint: string;
+  /** Its one page, over the test's own connection. */
+  readonly page: Page;
+  readonly context: BrowserContext;
+};
+
 export const test = base.extend<{
+  /** Which browser `startRecording` records: one the recorder launches, or
+   * a running one it attaches to. The project "attach" sets it. */
+  recordedBrowser: "launch" | "attach";
+  /** Launches a running browser with one page open at `url`. It is closed
+   * at the end of the test, after every recorder. */
+  runningBrowser: (url: string) => Promise<RunningBrowser>;
   fixturePages: FixturePages;
   /** Runs `ayme-recorder` with these arguments in a project folder. */
   runRecorder: (args: string[], options?: { cwd?: string }) => Promise<Run>;
   /** Starts a recorder in this process on a fixture page such as
    * `/cart.html`. Its project is a folder of the test's own inside this
-   * app, so the app's Playwright is the one it finds. */
+   * app, so the app's Playwright is the one it finds; or, when
+   * AYME_RECORDER_PLAYWRIGHT_PROJECT names a project with another
+   * Playwright installed, a folder of the test's own inside that one. */
   startRecording: (path: string) => Promise<Recording>;
 }>({
-  startRecording: async ({ fixturePages }, use, testInfo) => {
-    const ends: (() => Promise<unknown>)[] = [];
-    await use(async (path) => {
-      const projectDir = testInfo.outputPath("project");
-      await mkdir(projectDir, { recursive: true });
+  recordedBrowser: ["launch", { option: true }],
+
+  // eslint-disable-next-line no-empty-pattern
+  runningBrowser: async ({}, use) => {
+    const running: BrowserContext[] = [];
+    await use(async (url) => {
       const debugPort = await freePort();
+      const context = await chromium.launchPersistentContext("", {
+        headless: true,
+        args: [`--remote-debugging-port=${debugPort}`],
+      });
+      running.push(context);
+      const page = context.pages()[0]!;
+      await page.goto(url);
+      return {
+        cdpEndpoint: `http://127.0.0.1:${debugPort}`,
+        page,
+        context,
+      };
+    });
+    for (const context of running) await context.close();
+  },
+
+  startRecording: async (
+    { fixturePages, recordedBrowser, runningBrowser },
+    use,
+    testInfo
+  ) => {
+    const ends: (() => Promise<unknown>)[] = [];
+    /** Project folders made inside another project, removed at the end. */
+    const madeInside: string[] = [];
+    await use(async (path) => {
+      const otherPlaywright = process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT;
+      const projectDir = otherPlaywright
+        ? await mkdtemp(join(otherPlaywright, "recorder-fixture-"))
+        : testInfo.outputPath("project");
+      await mkdir(projectDir, { recursive: true });
+      if (otherPlaywright) madeInside.push(projectDir);
       const url = fixturePages.url(path);
+      const personOn = async (other: Page) =>
+        personAt(await other.context().newCDPSession(other));
+      if (recordedBrowser === "attach") {
+        const { cdpEndpoint, page } = await runningBrowser(url);
+        const recorder = await startRecorder({
+          projectDir,
+          browser: { attach: { cdpEndpoint } },
+        });
+        ends.push(() => {
+          recorder.end();
+          return recorder.done.catch(() => {});
+        });
+        return {
+          recorder,
+          page,
+          person: await personOn(page),
+          projectDir,
+          personOn,
+        };
+      }
+      const debugPort = await freePort();
       const recorder = await startRecorder({
         projectDir,
         browser: { launch: { url, headless: true, debugPort } },
@@ -227,10 +302,17 @@ export const test = base.extend<{
         .find((candidate) => candidate.url() === url);
       if (!page)
         throw new Error(`No page at ${url} in the recorder's browser.`);
-      const session = await page.context().newCDPSession(page);
-      return { recorder, page, person: personAt(session), projectDir };
+      return {
+        recorder,
+        page,
+        person: await personOn(page),
+        projectDir,
+        personOn,
+      };
     });
     for (const end of ends) await end();
+    for (const folder of madeInside)
+      await rm(folder, { recursive: true, force: true });
   },
 
   // eslint-disable-next-line no-empty-pattern

@@ -1,13 +1,31 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { Effect } from "effect";
 import type * as PlaywrightCore from "playwright-core";
 
+import range from "../../../playwright-range.json";
 import { RecorderStartError } from "../../session/domain";
 
 /** What the adapter uses of Playwright's module. */
 export type Playwright = Pick<typeof PlaywrightCore, "chromium">;
+
+/** The Playwright versions the recorder supports, from the one place that
+ * states them: `playwright-range.json` beside this package. */
+export const SUPPORTED_PLAYWRIGHT = range;
+
+/** Where a version stands against the supported range, by its minor. */
+export function placeInRange(version: string): "below" | "within" | "above" {
+  const minor = (stated: string) => {
+    const [major = 0, minor = 0] = stated.split(".").map(Number);
+    return major * 1000 + minor;
+  };
+  if (minor(version) < minor(range.floor)) return "below";
+  return minor(version) > minor(range.lastVerified) ? "above" : "within";
+}
+
+/** The range as a sentence names it. */
+export const rangeText = `Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}`;
 
 // The names a project installs Playwright under. Each exports the same
 // browser types.
@@ -39,11 +57,28 @@ function installedIn(projectDir: string, name: string): string | undefined {
  */
 export const loadProjectPlaywright = (
   projectDir: string
-): Effect.Effect<Playwright, RecorderStartError> =>
+): Effect.Effect<
+  { readonly playwright: Playwright; readonly version: string },
+  RecorderStartError
+> =>
   Effect.suspend(() => {
     for (const name of PLAYWRIGHT_PACKAGES) {
       const folder = installedIn(projectDir, name);
-      if (folder) return Effect.succeed(requireFile(folder) as Playwright);
+      if (!folder) continue;
+      const { version } = JSON.parse(
+        readFileSync(join(folder, "package.json"), "utf8")
+      ) as { version: string };
+      if (placeInRange(version) === "below")
+        return Effect.fail(
+          new RecorderStartError(
+            "playwright-too-old",
+            `${projectDir} has Playwright ${version}. The recorder needs ${rangeText}: update the project's Playwright, for example with "npm install -D @playwright/test@latest".`
+          )
+        );
+      return Effect.succeed({
+        playwright: requireFile(folder) as Playwright,
+        version,
+      });
     }
     return Effect.fail(
       new RecorderStartError(
@@ -52,3 +87,19 @@ export const loadProjectPlaywright = (
       )
     );
   });
+
+/**
+ * The command line of the project's Playwright, `cli.js`: it runs the same
+ * `playwright trace` and the same `playwright install` the project's own
+ * `npx playwright` does. Undefined when none is installed.
+ */
+export function projectPlaywrightCli(projectDir: string): string | undefined {
+  for (const name of PLAYWRIGHT_PACKAGES) {
+    const folder = installedIn(projectDir, name);
+    if (folder) {
+      const cli = join(folder, "cli.js");
+      if (existsSync(cli)) return cli;
+    }
+  }
+  return undefined;
+}
