@@ -1909,8 +1909,8 @@ describe("live Page Object registry", () => {
       await registry.pageObjectIdsOf(["e1", "e2"]);
       await remove(0);
       // The element left the page: nothing names it any more.
-      latestStandIn()!.currentRefs = async (refs) =>
-        refs.map((ref) => (ref === "e1" ? undefined : ref));
+      latestStandIn()!.keyedRefs = async (keys) =>
+        keys.map((key) => (key === "e1" ? undefined : key));
 
       const call = tool.execute({ id: "po1" }, pomRunContext());
 

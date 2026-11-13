@@ -34,6 +34,8 @@ export function inPageDriver(
       locator.ariaSnapshot({ timeout: ARIA_SNAPSHOT_TIMEOUT_MS }),
     refs: (locator) => inPageOf().mint(locator),
     currentRefs: (refs) => inPageOf().currentRefs(refs),
+    elementKeys: (refs) => inPageOf().elementKeys(refs),
+    keyedRefs: (keys) => inPageOf().keyedRefs(keys),
     names: (locator, ref) => inPageOf().names(locator, ref),
     watch: (probe) => inPageOf().watch(probe),
     refresh: () => inPageOf().refresh(),

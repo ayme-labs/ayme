@@ -1293,6 +1293,74 @@ export function inPageContract(lane: InPageLane) {
     });
   });
 
+  describe("element keys", () => {
+    it("elementKeys() gives an element a key it keeps however often a capture renames it, and keyedRefs() answers the ref it has now, and nothing once it left", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<button id="b" aria-label="Name">x</button>');
+      const inPageOf = lane.createHost(page).inPage(page);
+      const [first] = await inPageOf.mint(page.locator("#b"));
+      const [keyed] = await inPageOf.elementKeys([first!]);
+      expect(keyed).toEqual({ key: expect.any(String), ref: first });
+
+      // More renames than the refs an element keeps.
+      let ref = first!;
+      for (let count = 0; count < 20; count += 1) {
+        await page.evaluate(
+          `document.querySelector("#b").setAttribute("aria-label", "Name ${count}")`
+        );
+        ref = refOf((await inPageOf.capture()).fullText, `"Name ${count}"`);
+      }
+
+      expect(await inPageOf.keyedRefs([keyed!.key])).toEqual([ref]);
+      expect(await inPageOf.elementKeys([ref, "e999"])).toEqual([
+        { key: keyed!.key, ref },
+        undefined,
+      ]);
+      // The key is no ref: no capture prints it, and it acts on nothing.
+      expect((await inPageOf.capture()).fullText).not.toContain(keyed!.key);
+
+      await page.evaluate('document.querySelector("#b").remove()');
+      expect(await inPageOf.keyedRefs([keyed!.key])).toEqual([undefined]);
+      expect(await inPageOf.elementKeys([ref])).toEqual([undefined]);
+    });
+
+    it("two hosts on one document get one key for one element, and another element another", async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<p>One</p><p>Two</p>");
+      const [one, other] = [lane.createHost(page), lane.createHost(page)];
+      const refs = await one.inPage(page).mint(page.locator("p"));
+
+      const keys = await one.inPage(page).elementKeys(refs);
+
+      expect(await other.inPage(page).elementKeys(refs)).toEqual(keys);
+      expect(keys[0]!.key).not.toBe(keys[1]!.key);
+      expect(
+        await other.inPage(page).keyedRefs(keys.map((keyed) => keyed!.key))
+      ).toEqual(refs);
+    });
+
+    it.runIf(lane.hostsOutliveLoads)(
+      "a key names no element of the next document, though that document gives its element the same ref",
+      async () => {
+        const page = await lane.newPage();
+        await setBody(page, '<button id="b">Save</button>');
+        const inPageOf = lane.createHost(page).inPage(page);
+        const [ref] = await inPageOf.mint(page.locator("#b"));
+        const [keyed] = await inPageOf.elementKeys([ref!]);
+
+        const next = await lane.reload(page);
+        await setBody(next, '<button id="b">Save</button>');
+        const [again] = await inPageOf.mint(next.locator("#b"));
+
+        expect(again).toBe(ref);
+        expect(await inPageOf.keyedRefs([keyed!.key])).toEqual([undefined]);
+        expect((await inPageOf.elementKeys([again!]))[0]!.key).not.toBe(
+          keyed!.key
+        );
+      }
+    );
+  });
+
   describe("watching the page", () => {
     it("names the element it matched by a ref it gave before, though the ref has changed since", async () => {
       const page = await lane.newPage();
@@ -1646,6 +1714,72 @@ export function inPageContract(lane: InPageLane) {
       expect((await inPageOf.capture()).roots).toEqual([]);
       dispose();
     });
+
+    /** The ids of the Page Objects the registry reads on the page now. */
+    const idsOn = async (registry: ReturnType<typeof createPomRegistry>) =>
+      (await registry.readPageObjectTree()).map(({ id }) => id);
+
+    it("keeps a root's id however often its name changes between two reads", async () => {
+      const page = await lane.newPage();
+      await setBody(
+        page,
+        '<section id="settings" aria-label="Settings">S</section>'
+      );
+      // Captured before any probe: the root is named by a capture's mark,
+      // which a later rename retires, not by a synthetic ref.
+      await lane.createHost(page).inPage(page).capture();
+      const { inPageOf, registry, available, dispose } =
+        registerSettingsPage(page);
+      await expect.poll(available).toEqual([toolName]);
+      expect(await idsOn(registry)).toEqual(["po1"]);
+
+      // More renames than the refs an element keeps, with no read between.
+      for (let count = 0; count < 20; count += 1) {
+        await page.evaluate(
+          `document.querySelector("#settings").setAttribute("aria-label", "Settings ${count}")`
+        );
+        await inPageOf.capture();
+      }
+
+      expect(await idsOn(registry)).toEqual(["po1"]);
+      dispose();
+    });
+
+    it("never gives the id of a root that left to the element that replaces it", async () => {
+      const page = await lane.newPage();
+      await setBody(page, '<section id="settings">S</section>');
+      const { registry, available, listed, dispose } =
+        registerSettingsPage(page);
+      await expect.poll(available).toEqual([toolName]);
+      expect(await idsOn(registry)).toEqual(["po1"]);
+
+      await setBody(page, "");
+      await expect.poll(listed).toEqual([[toolName, false, false]]);
+      expect(await idsOn(registry)).toEqual([]);
+      await setBody(page, '<section id="settings">S</section>');
+      await expect.poll(available).toEqual([toolName]);
+
+      expect(await idsOn(registry)).toEqual(["po2"]);
+      dispose();
+    });
+
+    it.runIf(lane.hostsOutliveLoads)(
+      "gives the root of the next document an id of its own, though it has the ref the earlier root had",
+      async () => {
+        const page = await lane.newPage();
+        await setBody(page, '<section id="settings">S</section>');
+        const { registry, available, dispose } = registerSettingsPage(page);
+        await expect.poll(available).toEqual([toolName]);
+        expect(await idsOn(registry)).toEqual(["po1"]);
+
+        const next = await lane.reload(page);
+        await setBody(next, '<section id="settings">S</section>');
+        await expect.poll(available).toEqual([toolName]);
+
+        expect(await idsOn(registry)).toEqual(["po2"]);
+        dispose();
+      }
+    );
 
     it("unregistering the last Page Object takes its root labels off the surviving DOM", async () => {
       const page = await lane.newPage();

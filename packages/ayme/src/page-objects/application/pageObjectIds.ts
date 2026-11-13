@@ -5,10 +5,12 @@ import type { PageDriver } from "./pageDriver";
  * Package-internal: the Page Object ids of one page. An id belongs to the
  * element of a Page Object Root: it is given when the root is first read,
  * in the order the roots are read, kept while that element stays on the
- * page, and never given to another root.
+ * page, however often captures rename it, and never given to another root.
  */
-export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
-  // Each id given and the Structural Ref its root's element had when last read.
+export function createPageObjectIds(
+  driver: Pick<PageDriver, "elementKeys" | "keyedRefs">
+) {
+  // Each id given and the key of its root's element.
   const roots = new Map<PageObjectId, string>();
   let given = 0;
   // One read at a time: two reads that both found a root unread would each
@@ -20,16 +22,20 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
     return ran;
   }
 
-  /** The id of each root still on the page, by the ref its element has now. */
-  async function current(): Promise<Map<string, PageObjectId>> {
+  /**
+   * The Structural Ref each root still on the page has now, by id. An id
+   * whose element left is forgotten, so its root is never read again.
+   */
+  async function current(): Promise<Map<PageObjectId, string>> {
     const known = [...roots];
-    const now = await driver.currentRefs(known.map(([, ref]) => ref));
+    const now = await driver.keyedRefs(known.map(([, key]) => key));
+    const refs = new Map<PageObjectId, string>();
     known.forEach(([id], index) => {
       const ref = now[index];
-      if (ref) roots.set(id, ref);
+      if (ref) refs.set(id, ref);
       else roots.delete(id);
     });
-    return new Map([...roots].map(([id, ref]) => [ref, id]));
+    return refs;
   }
 
   return {
@@ -43,17 +49,18 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
       rootRefs: readonly string[]
     ): Promise<({ id: PageObjectId; ref: string } | undefined)[]> {
       return inTurn(async () => {
-        const byRoot = await current();
-        const now = await driver.currentRefs(rootRefs);
-        return now.map((ref) => {
-          if (!ref) return undefined;
-          let id = byRoot.get(ref);
+        await current();
+        const byKey = new Map([...roots].map(([id, key]) => [key, id]));
+        const now = await driver.elementKeys(rootRefs);
+        return now.map((root) => {
+          if (!root) return undefined;
+          let id = byKey.get(root.key);
           if (!id) {
             id = pageObjectIdOf(++given);
-            roots.set(id, ref);
-            byRoot.set(ref, id);
+            roots.set(id, root.key);
+            byKey.set(root.key, id);
           }
-          return { id, ref };
+          return { id, ref: root.ref };
         });
       });
     },
@@ -64,8 +71,7 @@ export function createPageObjectIds(driver: Pick<PageDriver, "currentRefs">) {
     rootOf(id: string): Promise<string | undefined> {
       return inTurn(async () => {
         if (!roots.has(id as PageObjectId)) return undefined;
-        await current();
-        return roots.get(id as PageObjectId);
+        return (await current()).get(id as PageObjectId);
       });
     },
   };

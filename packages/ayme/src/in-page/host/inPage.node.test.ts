@@ -86,6 +86,7 @@ async function bundlePageRuntime(): Promise<string> {
                 "let ayme;",
                 "window.aymePageRuntime = {",
                 "  bound: () => inPage(createPage()).bound(),",
+                "  elementKeys: (refs) => inPage(createPage()).elementKeys(refs),",
                 "  start() { ayme = createAyme(); ayme.start(); },",
                 '  snapshot: async () => (await ayme.tools.run("snapshot", {})).structure,',
                 "};",
@@ -100,6 +101,7 @@ async function bundlePageRuntime(): Promise<string> {
 
 type PageRuntime = {
   bound(): Promise<Playwright.Bound>;
+  elementKeys: Playwright.InPage["elementKeys"];
   start(): void;
   snapshot(): Promise<string>;
 };
@@ -323,6 +325,26 @@ describe("the page's own runtime and a Node host on one document", () => {
     expect(node.installedBy).toBe(node.host);
     expect(runtime.document).toBe(node.document);
     expect(runtime.installedBy).toBe(node.host);
+  });
+
+  it("the page's own runtime and a Node host get one key for one element", async () => {
+    const page = await newPage();
+    await page.evaluate(() => {
+      document.body.innerHTML = "<button>Save</button>";
+    });
+    const node = built.inPage(page);
+    const refs = await node.mint(page.locator("button"));
+
+    const fromRuntime = await page.evaluate(
+      (refs) =>
+        (
+          window as unknown as { aymePageRuntime: PageRuntime }
+        ).aymePageRuntime.elementKeys(refs),
+      refs
+    );
+
+    expect(fromRuntime).toEqual(await node.elementKeys(refs));
+    expect(fromRuntime[0]?.key).toEqual(expect.any(String));
   });
 
   it("a Node host of another version gets a version error from the page's module", async () => {
