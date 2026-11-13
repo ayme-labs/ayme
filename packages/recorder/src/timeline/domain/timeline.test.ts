@@ -531,3 +531,84 @@ describe("the timeline, for an input known from its report", () => {
     ]);
   });
 });
+
+describe("the timeline, for a target the snapshot does not list", () => {
+  const listed = [
+    `- generic [ref=e5]:`,
+    `  - generic [ref=e6]:`,
+    `    - paragraph [ref=e7]: Not saved`,
+  ].join("\n");
+  const page = [
+    `- generic [ref=e1]:`,
+    `  - generic [ref=e2]:`,
+    `    - paragraph [ref=e3]: Not saved`,
+  ].join("\n");
+
+  it("marks a click on its nearest ancestor that is listed, and keeps the selector of the real element", async () => {
+    // The element clicked is a decoration with no role: Playwright's picture
+    // does not list it, nor its parent, but its grandparent.
+    const text = await packageOf([
+      visit,
+      snapshot("snapshot_1", 10, page),
+      snapshot("snapshot_2", 20, page),
+      {
+        kind: "interaction",
+        interaction: {
+          page: "page_1",
+          report: {
+            type: "click",
+            selector: "#star",
+            target: { ref: null, ancestors: ["e99", "e6", "e5"], tree: listed },
+            values: { clickCount: 1 },
+          },
+          before: "snapshot_1",
+          after: "snapshot_2",
+          at: 15,
+        },
+      },
+    ]);
+
+    expect(text).toContain(
+      [
+        `          type: click`,
+        `          targetRef: e2`,
+        `          targetSelector: "#star"`,
+        ``,
+      ].join("\n")
+    );
+  });
+
+  it("writes a null target ref for a key pressed with nothing focused, and keeps its selector", async () => {
+    const text = await packageOf([
+      visit,
+      snapshot("snapshot_1", 10, page),
+      snapshot("snapshot_2", 20, page),
+      {
+        kind: "interaction",
+        interaction: {
+          page: "page_1",
+          report: {
+            type: "press",
+            selector: "body",
+            target: { ref: null, ancestors: [], tree: listed },
+            values: { key: "Escape", modifiers: 0 },
+          },
+          before: "snapshot_1",
+          after: "snapshot_2",
+          at: 15,
+        },
+      },
+    ]);
+
+    expect(text).toContain(
+      [
+        `          type: press`,
+        `          targetRef: null`,
+        `          targetSelector: body`,
+        `          modifiers: 0`,
+        `          key: Escape`,
+        ``,
+      ].join("\n")
+    );
+  });
+});

@@ -27,8 +27,14 @@ export type InteractionReport = {
    * The report's own picture of the page at the moment of the Interaction,
    * and the target's ref in that picture. It has the shape of a snapshot,
    * but its refs are its own: they are not the refs of a `PageSnapshot`.
+   * `ref` is null when the picture does not list the target; `ancestors`
+   * are the refs the picture gave the target's ancestors, nearest first.
    */
-  readonly target: { readonly ref: string; readonly tree: string } | null;
+  readonly target: {
+    readonly ref: string | null;
+    readonly tree: string;
+    readonly ancestors?: readonly string[];
+  } | null;
   /** Everything else Playwright said: the button, the modifiers and so on. */
   readonly values: Readonly<Record<string, unknown>>;
 };

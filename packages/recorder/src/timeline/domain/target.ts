@@ -25,6 +25,23 @@ function pathTo(
 }
 
 /**
+ * The ref, in the report's own picture, of the element the report names:
+ * the target, or its nearest ancestor the picture lists when the target is
+ * missing from it.
+ */
+export function namedInPicture(
+  picture: StructuralTree,
+  target: NonNullable<InteractionReport["target"]>
+): AriaRef | undefined {
+  for (const candidate of [target.ref, ...(target.ancestors ?? [])]) {
+    if (candidate === null) continue;
+    const parsed = AriaRefSchema.safeParse(candidate);
+    if (parsed.success && picture.hasNode(parsed.data)) return parsed.data;
+  }
+  return undefined;
+}
+
+/**
  * The ref, in a snapshot's tree, of the element a report names.
  *
  * Playwright's recorder gives each report its own picture of the page, taken
@@ -43,7 +60,8 @@ export function locateTarget(
     target.tree,
     new SyntheticAriaRefFactory()
   );
-  const ref = AriaRefSchema.parse(target.ref);
+  const ref = namedInPicture(picture, target);
+  if (!ref) return undefined;
   const path = pathTo(picture.getRootNodes(), ref);
   const named = picture.getNode(ref);
   if (!path || !named) return undefined;

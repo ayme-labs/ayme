@@ -257,6 +257,57 @@ export function installGate(held: string): void {
   window.addEventListener("keyup", onKey, true);
 }
 
+/** What a document tells of an input's target: the refs Playwright's
+ * recorder gave the target and each of its ancestors, nearest first, null
+ * where it gave none. */
+export type TargetChain = {
+  readonly type: string;
+  readonly chain: readonly (string | null)[];
+};
+
+/**
+ * Installs the target watch in a document. Playwright's recorder takes its
+ * picture of the page while it handles an input, and leaves each element it
+ * lists tagged with its ref (`_ariaRef`, a private part of Playwright). Right
+ * after it, this reads those tags off the target and its ancestors, through
+ * open shadow roots, and tells them through the binding called `tell`: an
+ * element the picture does not list is then known by its nearest ancestor
+ * that it does.
+ */
+export function installTargetWatch(tell: string): void {
+  const read = (event: Event) => {
+    if (!event.isTrusted) return;
+    const chain: (string | null)[] = [];
+    for (
+      let node: Node | null = event.composedPath()[0] as Node | null;
+      node && node.nodeType === Node.ELEMENT_NODE;
+      node =
+        (node as Element).parentElement ??
+        ((node.getRootNode() as ShadowRoot).host || null)
+    )
+      chain.push(
+        (node as Element & { _ariaRef?: { ref?: string } })._ariaRef?.ref ??
+          null
+      );
+    void (
+      window as unknown as Record<string, (seen: TargetChain) => Promise<void>>
+    )[tell]!({ type: event.type, chain });
+  };
+  // Playwright's recorder listens on the document as the event goes down;
+  // a listener on the root element runs right after it.
+  const install = () => {
+    for (const type of ["click", "keydown", "input"])
+      document.documentElement.addEventListener(type, read, true);
+  };
+  if (document.documentElement) install();
+  else
+    new MutationObserver((_, observer) => {
+      if (!document.documentElement) return;
+      observer.disconnect();
+      install();
+    }).observe(document, { childList: true });
+}
+
 /** Hides what Playwright's recorder draws over the page. */
 export function hidePlaywrightOverlay(): void {
   const sheet = new CSSStyleSheet();

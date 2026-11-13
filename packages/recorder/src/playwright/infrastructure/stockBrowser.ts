@@ -19,7 +19,9 @@ import {
   hidePlaywrightOverlay,
   installActivityWatch,
   installGate,
+  installTargetWatch,
   type HeldByPage,
+  type TargetChain,
 } from "./pageScripts";
 import { loadProjectPlaywright } from "./projectPlaywright";
 
@@ -178,6 +180,34 @@ async function openPage(
   await context.exposeBinding(changedBinding, ({ page }) => {
     for (const heard of listening.get(page) ?? []) heard();
   });
+  /** The latest targets each page told of. */
+  const chains = new Map<Page, TargetChain[]>();
+  const chainBinding = "__aymeRecorderTarget";
+  await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
+    chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
+  });
+  /** A report, with the ancestors of a target its picture does not list. */
+  const reportFrom = (page: Page, action: PlaywrightAction) => {
+    const report = reportOf(action);
+    if (!action.ariaSnapshot) return report;
+    const listed = (ref: string) =>
+      action.ariaSnapshot!.includes(`[ref=${ref}]`);
+    if (action.ref && listed(action.ref)) return report;
+    const seen = (chains.get(page) ?? []).findLast((chain) =>
+      (CHAIN_TYPES[action.name] ?? []).includes(chain.type)
+    );
+    return {
+      ...report,
+      target: {
+        ref: null,
+        tree: action.ariaSnapshot,
+        ancestors: (seen?.chain.slice(1) ?? []).filter(
+          (ref): ref is string => ref !== null
+        ),
+      },
+    };
+  };
+  await context.addInitScript(installTargetWatch, chainBinding);
   // Every document gets the gate and the activity watch, both switched off,
   // before its own scripts run.
   await context.addInitScript(installGate, heldBinding);
@@ -325,7 +355,7 @@ async function openPage(
             tell({
               kind: "interactionReported",
               page: pageId,
-              report: reportOf(action),
+              report: reportFrom(reported, action),
             });
         },
         // Playwright revises the report of typing with each key typed into
@@ -336,7 +366,7 @@ async function openPage(
             tell({
               kind: "interactionRevised",
               page: pageId,
-              report: reportOf(action),
+              report: reportFrom(reported, action),
             });
         },
         // The signals it adds to a report are not read yet.
@@ -354,6 +384,16 @@ async function openPage(
 
   return { carryOut };
 }
+
+/** The events whose target a report of each kind names. */
+const CHAIN_TYPES: Readonly<Record<string, readonly string[]>> = {
+  click: ["click"],
+  check: ["click", "keydown"],
+  uncheck: ["click", "keydown"],
+  press: ["keydown"],
+  fill: ["input"],
+  select: ["input"],
+};
 
 /** A report of Playwright's recorder, in the engine's words. */
 function reportOf(action: PlaywrightAction): InteractionReport {
