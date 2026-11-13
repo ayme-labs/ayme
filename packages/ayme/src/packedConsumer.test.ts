@@ -1657,7 +1657,7 @@ function filesOf(dir: string) {
 
 const CLI = "@ayme-dev/cli";
 
-it("the packed CLI carries its engine, its window and its notices, and declares Playwright as the project's own", () => {
+it("the packed CLI carries its engine, its window, its toolbar and its notices, and declares Playwright as the project's own", () => {
   const { dir } = packed[CLI]!;
   const manifest = readManifest(dir) as ReturnType<typeof readManifest> & {
     bin?: Record<string, string>;
@@ -1669,6 +1669,7 @@ it("the packed CLI carries its engine, its window and its notices, and declares 
     "README.md",
     "dist/THIRD_PARTY_NOTICES.txt",
     "dist/cli.mjs",
+    "dist/toolbar/toolbar.js",
     "dist/window/index.html",
     "dist/window/window.js",
     "package.json",
@@ -1818,6 +1819,15 @@ it(
       // yet, and the address works either way.
       const window = await (await browser.newContext()).newPage();
       await window.goto(windowUrl);
+
+      // The in-page toolbar, which the packed command carries and puts in
+      // the recorded page: its host element is in the page, its contents in
+      // a closed shadow root.
+      await expect
+        .poll(() => page.locator("ayme-recorder-toolbar").count(), {
+          timeout: 30_000,
+        })
+        .toBe(1);
 
       await window.getByRole("button", { name: "Record", exact: true }).click();
       await expect
