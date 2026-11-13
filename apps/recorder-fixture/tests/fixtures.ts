@@ -95,6 +95,9 @@ export type Recording = {
   readonly person: Person;
   /** The project the recorder runs in, and saves to. */
   readonly projectDir: string;
+  /** The person at another page of the recorder's browser, such as one
+   * the recorded page opened. */
+  personOn(page: Page): Promise<Person>;
 };
 
 function personAt(session: CDPSession): Person {
@@ -182,8 +185,15 @@ export const test = base.extend<{
         .find((candidate) => candidate.url() === url);
       if (!page)
         throw new Error(`No page at ${url} in the recorder's browser.`);
-      const session = await page.context().newCDPSession(page);
-      return { recorder, page, person: personAt(session), projectDir };
+      const personOn = async (other: Page) =>
+        personAt(await other.context().newCDPSession(other));
+      return {
+        recorder,
+        page,
+        person: await personOn(page),
+        projectDir,
+        personOn,
+      };
     });
     for (const end of ends) await end();
   },
