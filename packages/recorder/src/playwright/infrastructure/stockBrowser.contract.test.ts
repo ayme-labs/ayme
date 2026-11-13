@@ -374,3 +374,61 @@ it.runIf(attaching)(
     ).toBeNull();
   }
 );
+
+it.runIf(attaching)(
+  "reports a click another automation client gives in the browser, held back and passed on like a person's",
+  async () => {
+    const browser = await onStockPlaywright(BUTTONS);
+    await reporting(browser);
+    await browser.ask({ kind: "holdInputs", on: true });
+    await browser.toldOf("inputsHeld");
+
+    // The browser's own client clicks through its Playwright API.
+    await browser.page.locator("#second").click();
+
+    const { input } = await browser.toldOf("inputHeld");
+    await browser.ask({ kind: "passOn", input });
+    const { report } = await browser.toldOf("interactionReported");
+    expect(report).toMatchObject({
+      type: "click",
+      selector: expect.stringContaining("Second"),
+      target: { tree: expect.stringContaining(`button "Second"`) },
+    });
+  }
+);
+
+it.runIf(attaching)(
+  "names a click's target by a ref of the recorder's own connection, not of another client's",
+  async () => {
+    const browser = await onStockPlaywright(BUTTONS);
+    // The other client reads the page, the page changes, and it reads it
+    // again: its refs are numbered on its own connection.
+    await browser.page.ariaSnapshot({ mode: "ai" });
+    await browser.page.evaluate(() =>
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        `<button id="zero">Zero</button>`
+      )
+    );
+    const theirs = await browser.page.ariaSnapshot({ mode: "ai" });
+    const theirRef = /button "Zero" \[ref=(\w+)\]/.exec(theirs)![1]!;
+    await reporting(browser);
+
+    await browser.click(browser.page.locator("#zero"));
+
+    const { report } = await browser.toldOf("interactionReported");
+    const ours = report.target!.ref;
+    expect(report.target!.tree).toMatch(
+      new RegExp(`button "Zero"[^\\n]*\\[ref=${ours}\\]`)
+    );
+    // The same element has another ref on the other connection, and the
+    // recorder's ref names another element there.
+    expect(ours).not.toBe(theirRef);
+    expect(
+      await browser.page
+        .locator(`aria-ref=${ours}`)
+        .evaluate((element) => element.id)
+        .catch(() => "none")
+    ).not.toBe("zero");
+  }
+);
