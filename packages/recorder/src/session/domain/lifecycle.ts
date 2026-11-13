@@ -33,6 +33,8 @@ export type BrowserSignal =
       readonly pagesLeft: number;
     }
   | { readonly kind: "browserGone" }
+  /** Playwright reports Interactions from now on. */
+  | { readonly kind: "reportingInteractions" }
   /** Every page confirms that it holds inputs back, or that it no longer does. */
   | { readonly kind: "inputsHeld"; readonly on: boolean }
   /** A page held an input back: it has not reached the page yet. */
@@ -62,10 +64,15 @@ export type BrowserSignal =
       readonly report: InteractionReport;
     };
 
-/** One thing the engine asks of the recorded browser. What comes of it is
- * told as a `BrowserSignal`. */
+/**
+ * One thing the engine asks of the recorded browser. The browser takes a
+ * request and returns at once; what comes of it is told later, as a
+ * `BrowserSignal`. Two requests that must follow each other are therefore
+ * two steps: the second is asked when the first is answered.
+ */
 export type BrowserRequest =
-  /** Have Playwright report Interactions from now on. */
+  /** Have Playwright report Interactions from now on. Answered by
+   * "reportingInteractions". */
   | { readonly kind: "reportInteractions" }
   /** Hold inputs back in every page, or stop doing so. Answered by
    * "inputsHeld" once every page has confirmed. */
@@ -103,6 +110,10 @@ export type Happening =
 export type ToDo =
   /** Answer the command this step handled. */
   | { readonly kind: "reply"; readonly result: CommandResult }
+  /** Keep the answer to the command this step handled for a later step. */
+  | { readonly kind: "deferReply" }
+  /** Give the answer that was kept. */
+  | { readonly kind: "replyDeferred"; readonly result: CommandResult }
   | { readonly kind: "browser"; readonly ask: BrowserRequest }
   | { readonly kind: "timeline"; readonly add: TimelineAddition }
   /** Tell the lifecycle "timeLimitPassed" after this long. */
@@ -158,7 +169,11 @@ type Flow = {
 
 export type LifecycleState = { readonly pages: readonly Page[] } & (
   | { readonly phase: "notRecording" }
-  | ({ readonly phase: "recording" } & Flow)
+  | ({
+      readonly phase: "recording";
+      /** Record is not answered yet: the pages do not all hold inputs back. */
+      readonly starting: boolean;
+    } & Flow)
   | ({
       readonly phase: "wrappingUp";
       /** Every page confirmed that it holds no input back any more. */
@@ -226,7 +241,7 @@ export function step(state: LifecycleState, happening: Happening): Step {
       };
       return {
         state: { phase: "ended", pages: state.pages, outcome },
-        todo: [{ kind: "end", outcome }],
+        todo: [...answerRecord(state), { kind: "end", outcome }],
       };
     }
     case "timeLimitPassed":
@@ -258,6 +273,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
     return {
       state: {
         phase: "recording",
+        starting: true,
         pages: state.pages,
         inputs: [],
         snapshotsAsked: 0,
@@ -273,10 +289,11 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
           },
         })),
         // Reports first: a click held before Playwright listens would be
-        // passed on without ever being reported.
+        // passed on without ever being reported. The pages are asked to hold
+        // inputs back when Playwright reports, and Record is answered when
+        // they do: "applied" means that a click is now recorded.
         { kind: "browser", ask: { kind: "reportInteractions" } },
-        { kind: "browser", ask: { kind: "holdInputs", on: true } },
-        reply("applied"),
+        { kind: "deferReply" },
       ],
     };
   if (asked.type === "finish" && state.phase === "recording") {
@@ -310,12 +327,28 @@ function endFromOutside(state: LifecycleState): Step {
  */
 function wrapUp(state: Extract<LifecycleState, { phase: "recording" }>): Step {
   return proceed(
-    { ...state, phase: "wrappingUp", gateOff: false, finals: null },
+    {
+      phase: "wrappingUp",
+      pages: state.pages,
+      inputs: state.inputs,
+      snapshotsAsked: state.snapshotsAsked,
+      gateOff: false,
+      finals: null,
+    },
     [
+      ...answerRecord(state),
       { kind: "browser", ask: { kind: "holdInputs", on: false } },
       { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
     ]
   );
+}
+
+/** The answer to a Record that still waits for the pages: recording did
+ * start, and whatever ends it must not leave Record unanswered. */
+function answerRecord(state: LifecycleState): ToDo[] {
+  return state.phase === "recording" && state.starting
+    ? [{ kind: "replyDeferred", result: "applied" }]
+    : [];
 }
 
 function save(state: LifecycleState, todo: readonly ToDo[]): Step {
@@ -391,9 +424,20 @@ function during(state: Active, happening: BrowserSignal): Step {
   };
   let next = state;
   switch (happening.kind) {
+    case "reportingInteractions":
+      if (state.phase === "recording" && state.starting)
+        draft.todo.push({
+          kind: "browser",
+          ask: { kind: "holdInputs", on: true },
+        });
+      break;
     case "inputsHeld":
       if (state.phase === "wrappingUp" && !happening.on)
         next = { ...state, gateOff: true };
+      if (state.phase === "recording" && state.starting && happening.on) {
+        next = { ...state, starting: false };
+        draft.todo.push({ kind: "replyDeferred", result: "applied" });
+      }
       break;
     case "inputHeld": {
       const earlier = underWay(draft, happening.page);

@@ -18,6 +18,10 @@ const url = "http://shop.test/";
 const opened: Happening = { kind: "pageOpened", page: "page_1", url };
 const record: Happening = { kind: "command", command: { type: "record" } };
 const finish: Happening = { kind: "command", command: { type: "finish" } };
+const reporting: Happening = { kind: "reportingInteractions" };
+const holding: Happening = { kind: "inputsHeld", on: true };
+/** Record, up to the pages holding inputs back. */
+const started = [record, reporting, holding];
 const outsideEnd: Happening = { kind: "outsideEnd" };
 const clickHeld = (input: string): Happening => ({
   kind: "inputHeld",
@@ -87,15 +91,19 @@ const interaction = (before: string, after: string | null, at = 20): ToDo => ({
     interaction: { page: "page_1", report: click, before, after, at },
   },
 });
-const startRecording: ToDo[] = [
-  {
-    kind: "timeline",
-    add: { kind: "visit", page: "page_1", url, cause: "initial" },
-  },
-  { kind: "browser", ask: { kind: "reportInteractions" } },
-  { kind: "browser", ask: { kind: "holdInputs", on: true } },
-  reply("applied"),
-];
+const startVisit: ToDo = {
+  kind: "timeline",
+  add: { kind: "visit", page: "page_1", url, cause: "initial" },
+};
+const reportInteractions: ToDo = {
+  kind: "browser",
+  ask: { kind: "reportInteractions" },
+};
+const holdInputs: ToDo = {
+  kind: "browser",
+  ask: { kind: "holdInputs", on: true },
+};
+const recordApplied: ToDo = { kind: "replyDeferred", result: "applied" };
 const wrapUp: ToDo[] = [
   { kind: "browser", ask: { kind: "holdInputs", on: false } },
   { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
@@ -191,9 +199,21 @@ describe("the lifecycle", () => {
 
     // Record.
     {
-      name: "Record starts a Visit for the open page, has Interactions reported, then holds inputs",
+      name: "Record starts a Visit for the open page and has Interactions reported; its answer waits",
       happened: [opened, record],
-      todo: [startRecording],
+      todo: [[startVisit, reportInteractions, { kind: "deferReply" }]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "once Playwright reports Interactions, the pages are asked to hold inputs back",
+      happened: [opened, record, reporting],
+      todo: [[holdInputs]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "once the pages hold inputs back, Record is answered",
+      happened: [opened, record, reporting, holding],
+      todo: [[recordApplied]],
       state: { phase: "recording" },
     },
     {
@@ -214,7 +234,8 @@ describe("the lifecycle", () => {
               cause: "initial",
             },
           },
-          ...startRecording.slice(1),
+          reportInteractions,
+          { kind: "deferReply" },
         ],
       ],
       state: { phase: "recording" },
@@ -227,9 +248,47 @@ describe("the lifecycle", () => {
     },
     {
       name: "Record while recording is ignored",
-      happened: [opened, record, record],
+      happened: [opened, ...started, record],
       todo: [[reply("ignored")]],
       state: { phase: "recording" },
+    },
+    {
+      name: "Record pressed again before the first is answered is ignored, and the first still waits",
+      happened: [opened, record, record, reporting, holding],
+      todo: [[reply("ignored")], [holdInputs], [recordApplied]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click held before every page has confirmed is recorded like any other",
+      happened: [opened, record, reporting, clickHeld("input_1")],
+      todo: [[takeSnapshot("snapshot_1")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Finish before the pages hold inputs back answers Record, then wraps up",
+      happened: [opened, record, finish, reporting, holding],
+      todo: [[recordApplied, ...wrapUp, reply("applied")], [], []],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "an outside end before the pages hold inputs back answers Record, then wraps up",
+      happened: [opened, record, outsideEnd],
+      todo: [[recordApplied, ...wrapUp]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a breakdown before the pages hold inputs back answers Record",
+      happened: [opened, record, { kind: "brokeDown", reason: "no recorder" }],
+      todo: [
+        [
+          recordApplied,
+          { kind: "end", outcome: { kind: "failed", reason: "no recorder" } },
+        ],
+      ],
+      state: {
+        phase: "ended",
+        outcome: { kind: "failed", reason: "no recorder" },
+      },
     },
     {
       name: "a click before Record is not the recorder's: nothing is held, and its report is ignored",
@@ -241,7 +300,7 @@ describe("the lifecycle", () => {
     // A held click.
     {
       name: "a held click gets its 'before', is passed on, and gets its 'after' once the page is settled",
-      happened: [opened, record, ...oneClick],
+      happened: [opened, ...started, ...oneClick],
       todo: [
         [takeSnapshot("snapshot_1")],
         [keep("snapshot_1"), passOn("input_1")],
@@ -253,7 +312,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "the Interaction is written down when Playwright's report arrives after the 'after'",
-      happened: [opened, record, ...oneClick, reported],
+      happened: [opened, ...started, ...oneClick, reported],
       todo: [[interaction("snapshot_1", "snapshot_2")]],
       state: { phase: "recording" },
     },
@@ -261,7 +320,7 @@ describe("the lifecycle", () => {
       name: "the Interaction is written down with its 'after' when the report came first",
       happened: [
         opened,
-        record,
+        ...started,
         clickHeld("input_1"),
         taken("snapshot_1"),
         passedOn("input_1", 33),
@@ -278,7 +337,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "a report with no held input to belong to is ignored",
-      happened: [opened, record, reported],
+      happened: [opened, ...started, reported],
       todo: [[]],
       state: { phase: "recording" },
     },
@@ -286,7 +345,7 @@ describe("the lifecycle", () => {
       name: "a report of an input the gate does not hold claims no held click",
       happened: [
         opened,
-        record,
+        ...started,
         ...oneClick,
         {
           kind: "interactionReported",
@@ -301,7 +360,7 @@ describe("the lifecycle", () => {
       name: "a second click waits while the first is given its 'before' and passed on, then one snapshot is the first's 'after' and the second's 'before'",
       happened: [
         opened,
-        record,
+        ...started,
         clickHeld("input_1"),
         clickHeld("input_2"),
         taken("snapshot_1"),
@@ -321,7 +380,7 @@ describe("the lifecycle", () => {
       name: "a click held while the page is still settling ends the wait: its 'before' is the earlier click's 'after'",
       happened: [
         opened,
-        record,
+        ...started,
         clickHeld("input_1"),
         taken("snapshot_1"),
         passedOn("input_1"),
@@ -342,7 +401,7 @@ describe("the lifecycle", () => {
       name: "a click held while the earlier click's 'after' is being taken gets a 'before' of its own",
       happened: [
         opened,
-        record,
+        ...started,
         clickHeld("input_1"),
         taken("snapshot_1"),
         passedOn("input_1"),
@@ -363,7 +422,7 @@ describe("the lifecycle", () => {
       name: "reports go to held clicks in the order the clicks were held",
       happened: [
         opened,
-        record,
+        ...started,
         clickHeld("input_1"),
         taken("snapshot_1"),
         passedOn("input_1", 21),
@@ -383,7 +442,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "a snapshot nobody waits for is not kept",
-      happened: [opened, record, taken("snapshot_9")],
+      happened: [opened, ...started, taken("snapshot_9")],
       todo: [[]],
       state: { phase: "recording" },
     },
@@ -392,7 +451,7 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         { kind: "pageOpened", page: "page_2", url },
-        record,
+        ...started,
         clickHeld("input_1"),
         { kind: "pageClosed", page: "page_1", pagesLeft: 1 },
         taken("snapshot_1"),
@@ -405,7 +464,7 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         { kind: "pageOpened", page: "page_2", url },
-        record,
+        ...started,
         clickHeld("input_1"),
         taken("snapshot_1"),
         passedOn("input_1"),
@@ -419,13 +478,20 @@ describe("the lifecycle", () => {
     // Finish.
     {
       name: "Finish stops holding inputs and starts the wrap-up time limit",
-      happened: [opened, record, finish],
+      happened: [opened, ...started, finish],
       todo: [[...wrapUp, reply("applied")]],
       state: { phase: "wrappingUp" },
     },
     {
       name: "once the pages confirm that no input is held, the wrap-up takes a last snapshot, then saves",
-      happened: [opened, record, finish, gateOff, taken("snapshot_1"), saved],
+      happened: [
+        opened,
+        ...started,
+        finish,
+        gateOff,
+        taken("snapshot_1"),
+        saved,
+      ],
       todo: [
         [takeSnapshot("snapshot_1")],
         [keep("snapshot_1"), save],
@@ -438,7 +504,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "the recorder shows that it is saving while the package is written",
-      happened: [opened, record, finish, gateOff, taken("snapshot_1")],
+      happened: [opened, ...started, finish, gateOff, taken("snapshot_1")],
       todo: [[keep("snapshot_1"), save]],
       state: { phase: "saving" },
     },
@@ -446,7 +512,7 @@ describe("the lifecycle", () => {
       name: "Finish after a recorded click saves once the last snapshot is in",
       happened: [
         opened,
-        record,
+        ...started,
         ...oneClick,
         reported,
         finish,
@@ -464,7 +530,7 @@ describe("the lifecycle", () => {
       name: "Finish while a click is held: the click is passed on and is in the package",
       happened: [
         opened,
-        record,
+        ...started,
         clickHeld("input_1"),
         finish,
         gateOff,
@@ -492,7 +558,7 @@ describe("the lifecycle", () => {
       name: "a click held after Finish, before the pages confirm, is still passed on and recorded",
       happened: [
         opened,
-        record,
+        ...started,
         finish,
         clickHeld("input_1"),
         gateOff,
@@ -511,7 +577,7 @@ describe("the lifecycle", () => {
       name: "the wrap-up waits for the report of a click that was already passed on",
       happened: [
         opened,
-        record,
+        ...started,
         ...oneClick,
         finish,
         gateOff,
@@ -529,7 +595,7 @@ describe("the lifecycle", () => {
       name: "when the time limit passes, the wrap-up saves without the report that never came",
       happened: [
         opened,
-        record,
+        ...started,
         ...oneClick,
         finish,
         gateOff,
@@ -543,7 +609,7 @@ describe("the lifecycle", () => {
       name: "the time limit passing after the save has begun does nothing",
       happened: [
         opened,
-        record,
+        ...started,
         finish,
         gateOff,
         taken("snapshot_1"),
@@ -554,13 +620,20 @@ describe("the lifecycle", () => {
     },
     {
       name: "Finish pressed twice saves once: the second is ignored while wrapping up",
-      happened: [opened, record, finish, finish],
+      happened: [opened, ...started, finish, finish],
       todo: [[reply("ignored")]],
       state: { phase: "wrappingUp" },
     },
     {
       name: "Finish pressed twice saves once: the second is ignored while saving",
-      happened: [opened, record, finish, gateOff, taken("snapshot_1"), finish],
+      happened: [
+        opened,
+        ...started,
+        finish,
+        gateOff,
+        taken("snapshot_1"),
+        finish,
+      ],
       todo: [[reply("ignored")]],
       state: { phase: "saving" },
     },
@@ -568,7 +641,7 @@ describe("the lifecycle", () => {
       name: "Finish after the package is saved is ignored",
       happened: [
         opened,
-        record,
+        ...started,
         finish,
         gateOff,
         taken("snapshot_1"),
@@ -585,7 +658,7 @@ describe("the lifecycle", () => {
       name: "a recording with nothing to save ends with 'empty'",
       happened: [
         opened,
-        record,
+        ...started,
         finish,
         gateOff,
         taken("snapshot_1"),
@@ -600,7 +673,7 @@ describe("the lifecycle", () => {
       name: "a recorder that breaks down ends 'failed' with the reason",
       happened: [
         opened,
-        record,
+        ...started,
         finish,
         gateOff,
         taken("snapshot_1"),
@@ -632,13 +705,13 @@ describe("the lifecycle", () => {
     // An end from outside while recording.
     {
       name: "an outside end while recording wraps up and saves, as Finish does",
-      happened: [opened, record, outsideEnd, gateOff, taken("snapshot_1")],
+      happened: [opened, ...started, outsideEnd, gateOff, taken("snapshot_1")],
       todo: [wrapUp, [takeSnapshot("snapshot_1")], [keep("snapshot_1"), save]],
       state: { phase: "saving" },
     },
     {
       name: "an outside end while wrapping up joins the wrap-up already running",
-      happened: [opened, record, finish, outsideEnd],
+      happened: [opened, ...started, finish, outsideEnd],
       todo: [[]],
       state: { phase: "wrappingUp" },
     },
@@ -646,7 +719,7 @@ describe("the lifecycle", () => {
       name: "an outside end while saving joins the save already running",
       happened: [
         opened,
-        record,
+        ...started,
         finish,
         gateOff,
         taken("snapshot_1"),
@@ -659,7 +732,7 @@ describe("the lifecycle", () => {
       name: "closing the last page while recording saves what was recorded, with no last snapshot of it",
       happened: [
         opened,
-        record,
+        ...started,
         { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
         gateOff,
       ],
@@ -675,7 +748,7 @@ describe("the lifecycle", () => {
   it("saves once, however often Finish is pressed", () => {
     const { todo } = run([
       opened,
-      record,
+      ...started,
       finish,
       finish,
       gateOff,

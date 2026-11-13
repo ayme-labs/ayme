@@ -18,9 +18,10 @@ export class RecordedBrowser extends Context.Service<
     /** Everything the browser tells the engine, in the order it happened. */
     readonly signals: Queue.Dequeue<BrowserSignal>;
     /**
-     * Carries out one request. It completes once the browser has done it, or
-     * could not: a page that is gone answers nothing. Only a wait for a
-     * Settled Page completes at once and goes on beside the queue.
+     * Takes one request and completes at once, whatever the request: the
+     * browser carries it out in its own time, and the engine's one worker
+     * never waits on it. A request the browser could not carry out, as on a
+     * page that is gone, is answered by nothing.
      */
     readonly ask: (request: BrowserRequest) => Effect.Effect<void>;
   }

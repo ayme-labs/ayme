@@ -14,9 +14,13 @@ import type { InteractionReport } from "../timeline/domain";
 /**
  * The remote control of a scripted browser with one page, "page_1".
  *
- * It answers by itself what a browser answers at once: a snapshot, an input
- * passed on, inputs held back or not. A test plays what takes the page's or
- * Playwright's time: a click, the page being settled, a report.
+ * It keeps the seam's contract as the stock adapter does: a request is taken
+ * and returns at once, and its answer is told as a signal. It answers by
+ * itself what a browser answers soon: Interactions being reported, a
+ * snapshot, an input passed on, inputs held back or not. A test plays what
+ * takes the page's or Playwright's time: a click, the page being settled, a
+ * report; and it can keep snapshots back to play a page that is slow to
+ * read.
  */
 export interface ScriptedBrowser {
   /** A page is closed, and `pagesLeft` pages stay open. */
@@ -79,7 +83,7 @@ export async function startScriptedRecorder(
   const answer = (request: BrowserRequest) => {
     switch (request.kind) {
       case "reportInteractions":
-        return;
+        return tell({ kind: "reportingInteractions" });
       case "holdInputs":
         return tell({ kind: "inputsHeld", on: request.on });
       case "takeSnapshot": {

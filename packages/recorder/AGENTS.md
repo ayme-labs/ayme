@@ -30,7 +30,9 @@ The engine asks the browser and the browser tells the engine, and both are plain
 
 - A new thing the browser can do is a member of `BrowserRequest`. The stock adapter and the scripted browser each carry it out in their one `switch`, and do nothing else there: no request leads to another, and no order is decided.
 - A new thing the browser can tell is a member of `BrowserSignal`. What comes of a request is told that way too, never returned: the browser's signals are one stream, so the lifecycle sees an answer in order with what the browser noticed by itself.
-- A request completes when the browser has done it. Only what takes the page's own time, the wait for a Settled Page, completes at once and is answered later.
+- `ask` returns at once, for every request and in both adapters, and the answer comes later as a signal. The one worker never waits on the browser, so a page that is slow or stuck cannot keep a command or a time limit from being handled. A request that cannot be carried out is answered by nothing.
+- Requests are carried out side by side. When one must follow another, the lifecycle asks for the second when the first is answered, as Record does: Playwright reports Interactions, then the pages hold inputs back, then Record is answered.
+- A command is answered in the step that handles it, or, when its answer depends on the browser, kept with `deferReply` and given with `replyDeferred`. Every path out of that state gives the answer.
 - A new thing the timeline keeps is a member of `TimelineAddition`, which the lifecycle lists like any other thing to do.
 
 ## Effect
@@ -50,5 +52,5 @@ Run from this directory inside the repository's Devbox shell. `pnpm test` needs 
 - `timeline/domain/timeline.test.ts`: snapshots and reports in, package text out. Expected text comes from `timeline/domain/fixtures`, whose README says where each file is from, or is written out in the test; it is never produced by the code under test.
 - `src/recorder.test.ts`: the handle, on the scripted browser.
 - `src/recording.test.ts`: a recording on the scripted browser, where the test plays a click, a Settled Page and a report by hand and moves the clock, down to the package on disk.
-- `src/startRecorder.test.ts`: starting on stock Playwright, as far as it goes without a browser.
+- `src/startRecorder.test.ts`: starting on stock Playwright, as far as it goes without a browser, on stand-ins for Playwright that the test installs in a folder. One stand-in opens a page that can never be read, which shows that the stock adapter does not make the recorder wait.
 - The end-to-end tests, which run the built command on real Chromium, live in [`apps/recorder-fixture`](../../apps/recorder-fixture/README.md).

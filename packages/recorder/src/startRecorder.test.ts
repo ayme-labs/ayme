@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -93,3 +94,88 @@ it("uses the Playwright installed above the project folder, as in a monorepo", a
     reason: "browser-unavailable",
   });
 });
+
+/**
+ * Installs a stand-in for Playwright whose Chromium opens one page that can
+ * never be read: a snapshot of it never comes. `control.holdClick()` plays
+ * the page holding a click back.
+ */
+async function installPlaywrightWithUnreadablePage(root: string) {
+  const installed = join(root, "node_modules", "playwright");
+  await mkdir(installed, { recursive: true });
+  await writeFile(
+    join(installed, "package.json"),
+    JSON.stringify({ name: "playwright", version: "1.64.0", main: "index.js" })
+  );
+  await writeFile(
+    join(installed, "index.js"),
+    `
+const emitter = (target) => {
+  const listeners = {};
+  target.on = (event, listener) => void (listeners[event] ??= []).push(listener);
+  target.emit = (event, value) => (listeners[event] ?? []).forEach((listener) => listener(value));
+  return target;
+};
+exports.control = {};
+exports.chromium = {
+  launch: async () => {
+    const browser = emitter({ close: async () => {} });
+    browser.newContext = async () => {
+      const context = emitter({});
+      const frame = { evaluate: async () => undefined, url: () => "http://stand-in.test/" };
+      const page = emitter({
+        goto: async () => {},
+        url: () => "http://stand-in.test/",
+        mainFrame: () => frame,
+        frames: () => [frame],
+        ariaSnapshot: () => new Promise(() => {}),
+      });
+      context.pages = () => [page];
+      context.addInitScript = async () => {};
+      context.exposeBinding = async (name, held) => {
+        if (name === "__aymeRecorderHeld")
+          exports.control.holdClick = () =>
+            held({ page, frame }, { x: 1, y: 1, detail: 1, modifiers: [] });
+      };
+      context._startRecording = async () => {};
+      context.newPage = async () => {
+        context.emit("page", page);
+        return page;
+      };
+      return context;
+    };
+    return browser;
+  },
+};
+`
+  );
+  return (
+    createRequire(import.meta.url)(installed) as {
+      control: { holdClick(): void };
+    }
+  ).control;
+}
+
+// The stock adapter itself, on a page that never answers: the recorder must
+// not wait on the browser. The wrap-up's time limit is real time here.
+it(
+  "takes Finish while the page cannot be read, and ends when the wrap-up time limit has passed",
+  { timeout: 20_000 },
+  async () => {
+    const control = await installPlaywrightWithUnreadablePage(folder);
+    const recorder = await startRecorder({
+      projectDir: folder,
+      browser: { launch: { url: "http://stand-in.test/" } },
+    });
+    const phases: string[] = [];
+    recorder.subscribe((update) => phases.push(update.state.phase));
+    await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+    // Its "before" snapshot is asked for, and never comes.
+    control.holdClick();
+
+    await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
+    expect(phases).toEqual(["notRecording", "recording", "wrappingUp"]);
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+  }
+);

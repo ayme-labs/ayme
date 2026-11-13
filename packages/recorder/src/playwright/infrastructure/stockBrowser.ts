@@ -35,7 +35,6 @@ export const stockBrowser = (options: {
     Effect.gen(function* () {
       const playwright = yield* loadProjectPlaywright(options.projectDir);
       const signals = yield* Queue.unbounded<BrowserSignal>();
-      const scope = yield* Effect.scope;
       const unavailable = (cause: unknown) =>
         new RecorderStartError(
           "browser-unavailable",
@@ -70,16 +69,13 @@ export const stockBrowser = (options: {
       });
       return RecordedBrowser.of({
         signals,
+        // Handed over, never waited on: the answer is told as a signal. A
+        // request that cannot be carried out, as on a page that is gone, is
+        // answered by nothing.
         ask: (request) =>
-          request.kind === "waitForSettled"
-            ? // The page's own time: it goes on beside the queue.
-              Effect.asVoid(
-                Effect.forkIn(
-                  Effect.promise(() => recorded.carryOut(request)),
-                  scope
-                )
-              )
-            : Effect.promise(() => recorded.carryOut(request)),
+          Effect.sync(() => {
+            void recorded.carryOut(request).catch(() => {});
+          }),
       });
     })
   );
@@ -112,8 +108,9 @@ type PlaywrightAction = {
 /**
  * Opens the context and its page, and returns what carries out the engine's
  * requests on them. It decides nothing: each request is one thing done, and
- * `tell` says what came of it. A request it cannot carry out, as on a page
- * that is gone, is answered by nothing.
+ * `tell` says what came of it. Requests are carried out as they come, side
+ * by side: the lifecycle asks for the next of two that must follow each
+ * other only when the first is answered.
  */
 async function openPage(
   browser: Browser,
@@ -249,6 +246,7 @@ async function openPage(
         frame.evaluate(hidePlaywrightOverlay).catch(() => {})
       )
     );
+    tell({ kind: "reportingInteractions" });
   }
 
   return { carryOut };

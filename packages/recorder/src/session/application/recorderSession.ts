@@ -38,7 +38,9 @@ type Queued = {
  * One live recorder: one queue with one worker. Commands, the outside end,
  * the browser's signals, a time limit that passed and a save that is done all
  * go into the queue and are handled one at a time, each by one step of the
- * lifecycle. The worker then carries out the step's list, in its order.
+ * lifecycle. The worker then carries out the step's list, in its order. It
+ * never waits on the browser: a request is handed over, and its answer is
+ * one more thing that happens.
  */
 export class RecorderSession extends Context.Service<
   RecorderSession,
@@ -68,6 +70,8 @@ export class RecorderSession extends Context.Service<
         let update: RecorderUpdate = { revision: 0, state: shown(state) };
         const tell = (happening: Happening) =>
           Queue.offer(queue, { happening });
+        /** The answer the lifecycle keeps for a later step. */
+        let deferred: Queued["reply"];
 
         const carryOut = Effect.fnUntraced(function* (
           item: ToDo,
@@ -76,6 +80,13 @@ export class RecorderSession extends Context.Service<
           switch (item.kind) {
             case "reply":
               if (reply) yield* Deferred.succeed(reply, item.result);
+              return;
+            case "deferReply":
+              deferred = reply;
+              return;
+            case "replyDeferred":
+              if (deferred) yield* Deferred.succeed(deferred, item.result);
+              deferred = undefined;
               return;
             case "browser":
               return yield* browser.ask(item.ask);

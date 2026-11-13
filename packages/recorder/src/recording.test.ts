@@ -194,6 +194,29 @@ describe("a recording", () => {
     ).toContain(savedClick);
   });
 
+  it("takes Finish while a click's 'before' snapshot is outstanding: it wraps up, and the time limit runs", async () => {
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    const phases: string[] = [];
+    recorder.subscribe((update) => phases.push(update.state.phase));
+    // The page cannot be read: the snapshot the click waits for never comes.
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_1",
+      page: "page_1",
+    });
+
+    await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
+    expect(phases).toEqual(["recording", "wrappingUp"]);
+
+    await browser.advanceTime(5_000);
+    // No page was ever read, so there is nothing to write.
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    expect(phases).toEqual(["recording", "wrappingUp", "saving", "ended"]);
+  });
+
   it("shows the wrap-up and the save, and lets the browser go only after the package is written", async () => {
     const { recorder, browser } = await start();
     const phases: string[] = [];
