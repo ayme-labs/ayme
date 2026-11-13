@@ -15,16 +15,26 @@ const config = readJson("release-please-config.json");
 const manifest = readJson(".release-please-manifest.json");
 const linked = config.plugins.find(({ type }) => type === "linked-versions");
 
-const publishedPaths = fs
+const packagePaths = fs
   .readdirSync(path.join(repoRoot, "packages"))
   .map((dir) => `packages/${dir}`)
-  .filter((dir) => fs.existsSync(path.join(repoRoot, dir, "package.json")))
-  .filter((dir) => !readJson(`${dir}/package.json`).private)
-  .sort();
+  .filter((dir) => fs.existsSync(path.join(repoRoot, dir, "package.json")));
+const isPrivate = (dir) => readJson(`${dir}/package.json`).private === true;
+const publishedPaths = packagePaths.filter((dir) => !isPrivate(dir)).sort();
 
-test("Release Please releases exactly the packages that are not private", () => {
-  assert.deepEqual(Object.keys(config.packages).sort(), publishedPaths);
-  assert.deepEqual(Object.keys(manifest).sort(), publishedPaths);
+test("Release Please releases every package that is not private, and the manifest names the same packages", () => {
+  const configured = Object.keys(config.packages).sort();
+  for (const dir of publishedPaths) assert.ok(configured.includes(dir), dir);
+  assert.deepEqual(Object.keys(manifest).sort(), configured);
+});
+
+// A private package may be named here to be ready for release: it is held
+// back until its package.json drops `"private": true`, which is the one change
+// that releases it. The packed-consumer check packs it but keeps its tarball
+// out of what the release publishes.
+test("a package named in the release configuration that is private is a package of this repository", () => {
+  for (const dir of Object.keys(config.packages))
+    assert.ok(packagePaths.includes(dir), dir);
 });
 
 test("every released package is in the linked group", () => {
