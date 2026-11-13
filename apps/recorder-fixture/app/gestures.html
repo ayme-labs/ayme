@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gestures</title>
+    <style>
+      body {
+        margin: 20px;
+        font: 16px/1.5 sans-serif;
+      }
+      #hold {
+        width: 160px;
+        height: 40px;
+      }
+      #track {
+        position: relative;
+        width: 300px;
+        height: 24px;
+        margin: 20px 0;
+        background: #ddd;
+      }
+      #handle {
+        position: absolute;
+        left: 0;
+        width: 24px;
+        height: 24px;
+        background: #333;
+        touch-action: none;
+      }
+      #text {
+        width: 400px;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Reacts to the press itself, not to the click that follows it. -->
+    <button id="hold">Hold me</button>
+    <p id="held">Not pressed</p>
+    <!-- A slider moved by dragging its handle, with pointer events. -->
+    <div id="track"><div id="handle"></div></div>
+    <p id="position">Handle at 0</p>
+    <p id="text">The quick brown fox jumps over the lazy dog</p>
+    <script>
+      // Every press, release and click the page gets, in order: what the
+      // tests compare between a page that is recorded and one that is not.
+      window.events = [];
+      for (const type of [
+        "pointerdown",
+        "mousedown",
+        "pointerup",
+        "mouseup",
+        "click",
+        "dblclick",
+      ])
+        document.addEventListener(
+          type,
+          (event) =>
+            window.events.push(
+              `${type} ${event.target.id || event.target.nodeName}`
+            ),
+          true
+        );
+
+      const held = document.getElementById("held");
+      const hold = document.getElementById("hold");
+      let presses = 0;
+      hold.addEventListener("mousedown", () => {
+        presses += 1;
+        held.textContent = `Pressed ${presses}`;
+      });
+      hold.addEventListener("mouseup", () => {
+        held.textContent = `Released ${presses}`;
+      });
+
+      const handle = document.getElementById("handle");
+      const position = document.getElementById("position");
+      let grabbedAt = null;
+      handle.addEventListener("pointerdown", (event) => {
+        grabbedAt = event.clientX - handle.offsetLeft;
+        handle.setPointerCapture(event.pointerId);
+      });
+      handle.addEventListener("pointermove", (event) => {
+        if (grabbedAt === null) return;
+        const left = Math.max(0, Math.min(276, event.clientX - grabbedAt));
+        handle.style.left = `${left}px`;
+        position.textContent = `Handle at ${left}`;
+      });
+      handle.addEventListener("pointerup", () => {
+        grabbedAt = null;
+      });
+    </script>
+  </body>
+</html>

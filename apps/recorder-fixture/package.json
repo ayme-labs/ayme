@@ -11,6 +11,7 @@
   "devDependencies": {
     "@ayme-dev/cli": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/recorder": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.64.0",
     "@types/node": "^24.0.0",

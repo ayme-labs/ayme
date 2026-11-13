@@ -21,9 +21,11 @@
       wire();
       // Redraw replaces the "Add item" button with a new element that looks
       // the same: the page re-creates it, as a framework re-render does.
+      window.redraws = 0;
       document.getElementById("redraw").addEventListener("click", () => {
         actions.innerHTML = '<button id="add">Add item</button>';
         wire();
+        window.redraws += 1;
       });
     </script>
   </body>

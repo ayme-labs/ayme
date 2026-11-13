@@ -1,11 +1,18 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { test as base } from "@playwright/test";
+import { startRecorder, type Recorder } from "@ayme-dev/recorder";
+import {
+  chromium,
+  test as base,
+  type CDPSession,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 export { expect } from "@playwright/test";
 
@@ -59,11 +66,128 @@ export type Run = {
   readonly exit: Promise<{ code: number | null; signal: string | null }>;
 };
 
+/**
+ * A person at the recorded browser: input given as raw input events over
+ * the test's own connection, so that it reaches the page as a person's does
+ * and is no call of the Playwright that records.
+ */
+export type Person = {
+  /** Presses and releases the mouse on the middle of an element. */
+  click(target: Locator): Promise<void>;
+  /** Presses at one point of the page, moves, and releases at another. */
+  drag(from: Point, to: Point): Promise<void>;
+  /** The middle of an element, in the page's viewport. */
+  middleOf(target: Locator): Promise<Point>;
+  /**
+   * Waits as a person does between two things: long enough for the page to
+   * be a Settled Page and be read. The recorder gives no sign of that yet.
+   */
+  pause(): Promise<void>;
+};
+type Point = { x: number; y: number };
+
+/** A recorder started in this process, on a fixture page. */
+export type Recording = {
+  /** The engine's handle: commands go through it while there is no window. */
+  readonly recorder: Recorder;
+  /** The recorded page, over the test's own connection to the browser. */
+  readonly page: Page;
+  readonly person: Person;
+  /** The project the recorder runs in, and saves to. */
+  readonly projectDir: string;
+};
+
+function personAt(session: CDPSession): Person {
+  const mouse = (type: string, at: Point, more: Record<string, unknown> = {}) =>
+    session.send("Input.dispatchMouseEvent", {
+      type: type as "mouseMoved",
+      x: at.x,
+      y: at.y,
+      button: "none",
+      pointerType: "mouse",
+      ...more,
+    });
+  const held = { button: "left", buttons: 1, clickCount: 1 };
+  const released = { button: "left", buttons: 0, clickCount: 1 };
+  const wait = (ms: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
+  const person: Person = {
+    async middleOf(target) {
+      await target.scrollIntoViewIfNeeded();
+      const box = (await target.boundingBox())!;
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    },
+    async click(target) {
+      const at = await person.middleOf(target);
+      await mouse("mouseMoved", at);
+      await mouse("mousePressed", at, held);
+      await wait(70);
+      await mouse("mouseReleased", at, released);
+    },
+    async drag(from, to) {
+      await mouse("mouseMoved", from);
+      await mouse("mousePressed", from, held);
+      await wait(60);
+      const steps = 8;
+      for (let step = 1; step <= steps; step += 1) {
+        await mouse(
+          "mouseMoved",
+          {
+            x: from.x + ((to.x - from.x) * step) / steps,
+            y: from.y + ((to.y - from.y) * step) / steps,
+          },
+          { button: "left", buttons: 1 }
+        );
+        await wait(15);
+      }
+      await mouse("mouseReleased", to, released);
+    },
+    pause: () => wait(1_000),
+  };
+  return person;
+}
+
 export const test = base.extend<{
   fixturePages: FixturePages;
   /** Runs `ayme-recorder` with these arguments in a project folder. */
   runRecorder: (args: string[], options?: { cwd?: string }) => Promise<Run>;
+  /** Starts a recorder in this process on a fixture page such as
+   * `/cart.html`. Its project is a folder of the test's own inside this
+   * app, so the app's Playwright is the one it finds. */
+  startRecording: (path: string) => Promise<Recording>;
 }>({
+  startRecording: async ({ fixturePages }, use, testInfo) => {
+    const ends: (() => Promise<unknown>)[] = [];
+    await use(async (path) => {
+      const projectDir = testInfo.outputPath("project");
+      await mkdir(projectDir, { recursive: true });
+      const debugPort = await freePort();
+      const url = fixturePages.url(path);
+      const recorder = await startRecorder({
+        projectDir,
+        browser: { launch: { url, headless: true, debugPort } },
+      });
+      ends.push(() => {
+        recorder.end();
+        return recorder.done.catch(() => {});
+      });
+      // The test's own way into the recorder's browser.
+      const browser = await chromium.connectOverCDP(
+        `http://127.0.0.1:${debugPort}`
+      );
+      ends.unshift(() => browser.close());
+      const page = browser
+        .contexts()
+        .flatMap((context) => context.pages())
+        .find((candidate) => candidate.url() === url);
+      if (!page)
+        throw new Error(`No page at ${url} in the recorder's browser.`);
+      const session = await page.context().newCDPSession(page);
+      return { recorder, page, person: personAt(session), projectDir };
+    });
+    for (const end of ends) await end();
+  },
+
   // eslint-disable-next-line no-empty-pattern
   fixturePages: async ({}, use) => {
     const requests: { path: string; userAgent: string }[] = [];

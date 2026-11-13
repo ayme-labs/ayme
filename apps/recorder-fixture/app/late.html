@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Late</title>
+  </head>
+  <body>
+    <h1>Orders</h1>
+    <button id="refresh" autofocus>Refresh</button>
+    <p id="state">Never refreshed</p>
+    <script>
+      // The page goes on rendering by itself after it has loaded: a test
+      // calls this when it wants the late part to appear.
+      window.showOffer = () => {
+        const offer = document.createElement("p");
+        offer.id = "offer";
+        offer.textContent = "Free delivery today";
+        document.body.append(offer);
+      };
+      document.getElementById("refresh").addEventListener("click", () => {
+        document.getElementById("state").textContent = "Refreshed";
+      });
+    </script>
+  </body>
+</html>
