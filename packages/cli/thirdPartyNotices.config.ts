@@ -1,11 +1,33 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { Rolldown } from "tsdown";
 
-import {
-  packageOfModule,
-  type BundledPackage,
-} from "../recorder-window/bundledPackages.config.ts";
+/** A third-party package whose code a build holds, as the window's build
+ * lists it. */
+type BundledPackage = {
+  readonly name: string;
+  readonly version: string;
+  /** The package's folder. */
+  readonly dir: string;
+};
+
+/** The package a module of `node_modules` belongs to, or undefined for the
+ * code of this repository. */
+function packageOfModule(id: string): BundledPackage | undefined {
+  const marker = "/node_modules/";
+  const at = id.lastIndexOf(marker);
+  if (at < 0) return undefined;
+  const parts = id.slice(at + marker.length).split("/");
+  const name = parts[0]!.startsWith("@")
+    ? `${parts[0]}/${parts[1]}`
+    : parts[0]!;
+  const dir = id.slice(0, at + marker.length) + name;
+  const { version } = JSON.parse(
+    readFileSync(join(dir, "package.json"), "utf8")
+  ) as { version: string };
+  return { name, version, dir };
+}
 
 /** The licence text a package ships, or what its manifest says of it. */
 function licenceOf(pkg: BundledPackage): string {
@@ -24,20 +46,19 @@ function licenceOf(pkg: BundledPackage): string {
 /**
  * Writes `THIRD_PARTY_NOTICES.txt`: each third-party package whose code the
  * command's file or the window's script holds, with the licence it ships. The
- * window's packages come from the list its build writes
- * (`../recorder-window/dist/bundled-packages.json`). Ayme's own packages are
+ * window's packages come from the list its build writes, which the window
+ * package exports as `@ayme-dev/recorder-window/bundled-packages.json`. Ayme's own packages are
  * under the package's LICENSE.
  */
 export function thirdPartyNotices(): Rolldown.Plugin {
   return {
     name: "ayme-third-party-notices",
     generateBundle(_options, bundle) {
-      const windowList = join(
-        import.meta.dirname,
-        "../recorder-window/dist/bundled-packages.json"
+      // Resolved through the window's exports, as a package is: its build
+      // has to have run first.
+      const windowList = createRequire(import.meta.url).resolve(
+        "@ayme-dev/recorder-window/bundled-packages.json"
       );
-      if (!existsSync(windowList))
-        throw new Error(`Build @ayme-dev/recorder-window first: ${windowList}`);
       const packages = new Map<string, BundledPackage>();
       const add = (pkg: BundledPackage) => {
         if (!pkg.name.startsWith("@ayme-dev/"))
