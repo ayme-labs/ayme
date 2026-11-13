@@ -265,13 +265,13 @@ describe("the lifecycle", () => {
       todo: [
         [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
       ],
-      state: { phase: "recording" },
+      state: { phase: "notRecording" },
     },
     {
       name: "once Playwright reports Interactions, the pages are asked to hold inputs back",
       happened: [opened, record, reporting],
       todo: [[holdInputs]],
-      state: { phase: "recording" },
+      state: { phase: "notRecording" },
     },
     {
       name: "once the pages hold inputs back, Record is answered",
@@ -302,7 +302,7 @@ describe("the lifecycle", () => {
           { kind: "deferReply" },
         ],
       ],
-      state: { phase: "recording" },
+      state: { phase: "notRecording" },
     },
     {
       name: "Record with no page open is ignored",
@@ -326,7 +326,7 @@ describe("the lifecycle", () => {
       name: "a click held before every page has confirmed is recorded like any other",
       happened: [opened, record, reporting, clickHeld("input_1")],
       todo: [[takeSnapshot("snapshot_1")]],
-      state: { phase: "recording" },
+      state: { phase: "notRecording" },
     },
     {
       name: "Finish before the pages hold inputs back answers Record, then wraps up",
@@ -751,7 +751,7 @@ describe("the lifecycle", () => {
       name: "Continue goes on in the trace that is running",
       happened: [...stopped, resume],
       todo: [[reportInteractions, { kind: "deferReply" }]],
-      state: { phase: "recording" },
+      state: { phase: "paused" },
     },
     {
       name: "Finish while paused stops the trace, and the package is written once it is stopped",
@@ -801,7 +801,7 @@ describe("the lifecycle", () => {
       todo: [
         [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
       ],
-      state: { phase: "recording" },
+      state: { phase: "notRecording" },
     },
 
     // A breakdown.
@@ -966,7 +966,7 @@ describe("the lifecycle", () => {
           { kind: "deferReply" },
         ],
       ],
-      state: { phase: "recording" },
+      state: { phase: "paused" },
     },
     {
       name: "a page opened while paused starts a Visit of its own at Continue",
@@ -985,7 +985,7 @@ describe("the lifecycle", () => {
           { kind: "deferReply" },
         ],
       ],
-      state: { phase: "recording" },
+      state: { phase: "paused" },
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
@@ -1193,7 +1193,7 @@ describe("the lifecycle", () => {
       name: "Continue has Playwright report Interactions again, starts no Visit, and its answer waits",
       happened: [...stopped, resume],
       todo: [[reportInteractions, { kind: "deferReply" }]],
-      state: { phase: "recording" },
+      state: { phase: "paused" },
     },
     {
       name: "Continue is answered once the pages hold inputs back again",
@@ -1657,6 +1657,29 @@ describe("what the lifecycle shows", () => {
       name: "an outside end leaves a wrap-up that clears clearing",
       happened: [opened, ...started, clear, outsideEnd],
       shown: { phase: "wrappingUp", then: "clear" },
+    },
+    // Rule 13: "recording" is shown only once a click is certain to be
+    // recorded, when Record is answered. A click given before Playwright
+    // reports and the pages hold inputs back is the page's alone.
+    {
+      name: "while Record waits for Playwright to report, it still shows not recording",
+      happened: [opened, record],
+      shown: { phase: "notRecording" },
+    },
+    {
+      name: "while Record waits for the pages to hold inputs back, it still shows not recording",
+      happened: [opened, record, reporting],
+      shown: { phase: "notRecording" },
+    },
+    {
+      name: "once the pages hold inputs back, Record is answered and it shows recording",
+      happened: [opened, ...started],
+      shown: { phase: "recording" },
+    },
+    {
+      name: "while Continue waits for Playwright and the pages, it still shows paused",
+      happened: [...stopped, resume, reporting],
+      shown: { phase: "paused" },
     },
   ])("$name", ({ happened, shown }) => {
     expect(after(happened).shown).toEqual(shown);
@@ -2292,7 +2315,7 @@ describe("the lifecycle, for discard and restore", () => {
       name: "Continue after a discard goes on as it does without one: the decision is the timeline's, and nothing is thrown away",
       happened: [...stopped, discard("interaction_1"), resume],
       todo: [reportInteractions, { kind: "deferReply" }],
-      state: { phase: "recording" },
+      state: { phase: "paused" },
     },
     {
       name: "Finish after a discard saves as it does without one: the timeline writes the decisions",
@@ -2354,7 +2377,7 @@ describe("the lifecycle, for a page that is blank at Record", () => {
       { kind: "deferReply" },
     ]);
     expect(todo.at(-1)).toEqual([startVisit]);
-    expect(state).toEqual({ phase: "recording" });
+    expect(state).toEqual({ phase: "notRecording" });
   });
 });
 
@@ -2538,7 +2561,7 @@ describe("the lifecycle, for Assert visibility", () => {
       name: "Assert visibility while Record waits for the pages is ignored",
       happened: [opened, record, assertVisibility],
       todo: [reply("ignored")],
-      state: { phase: "recording" },
+      state: { phase: "notRecording" },
     },
     {
       name: "Assert visibility while paused is ignored",

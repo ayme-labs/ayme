@@ -331,7 +331,9 @@ describe("Clear", () => {
     // "Not recording" was never shown with the old entries still in it.
     expect(
       updates.filter(
-        ({ state }) => state.phase === "notRecording" && state.visits.length > 0
+        ({ state }) =>
+          state.phase === "notRecording" &&
+          state.visits.some((visit) => visit.entries.length > 0)
       )
     ).toEqual([]);
     expect(browser.asked.slice(-2)).toEqual([

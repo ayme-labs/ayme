@@ -61,11 +61,8 @@ test.describe("recording a running browser", () => {
 
     await window.controls.press("Record");
     await expect(window.controls.status).toHaveText("Recording");
-    // A person's moment between pressing Record and clicking. Without it, a
-    // click given at once after the window shows "Recording" in an attached
-    // browser is sometimes not recorded: the window says so a little before
-    // the page's input is recorded (found by the parity gate, #1283).
-    await page.waitForTimeout(500);
+    // At once: "Recording" is shown only when a click is certain to be
+    // recorded.
     await page.locator("#add").click();
     await expect(page.getByText("Items: 1")).toBeVisible();
     await expect(window.timeline.visit(0).entries).toHaveCount(1);
