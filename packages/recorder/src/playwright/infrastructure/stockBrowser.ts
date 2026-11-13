@@ -273,6 +273,10 @@ async function openPage(
   };
   /** Playwright groups every call of a context: one marker at a time. */
   let markers: Promise<unknown> = Promise.resolve();
+  /** The snapshots a mark was made for. A trace that is thrown away leaves
+   * its ids here: the next one looks for them in its own list of actions,
+   * where only the marks it made are. */
+  const marked = new Set<string>();
 
   /**
    * Leaves a mark in the trace for a snapshot just read: a group named for
@@ -282,6 +286,7 @@ async function openPage(
    * trace, and is no reason to lose the snapshot.
    */
   async function mark(page: Page, snapshot: string) {
+    marked.add(snapshot);
     const made = markers.then(async () => {
       await traceOps;
       await context.tracing.group(snapshot);
@@ -313,7 +318,7 @@ async function openPage(
         kind: "traceStopped",
         trace: {
           file,
-          positions: cli ? await snapshotPositions(cli, file) : {},
+          positions: cli ? await snapshotPositions(cli, file, marked) : {},
         },
       });
     });

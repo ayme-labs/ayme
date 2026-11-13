@@ -64,10 +64,12 @@ export function passThroughTraceTool(
  * Where each snapshot marker is, in the trace's own numbering. A marker is a
  * group named for a snapshot's id, with one call inside it, and a reader
  * opens the snapshot by the call's number: the group has no page of its own.
- * Lists a marker only when the call is there.
+ * Looks for the markers of `snapshots`, and lists one only when the call is
+ * there.
  */
 export function positionsOfSnapshots(
-  actions: string
+  actions: string,
+  snapshots: ReadonlySet<string>
 ): Readonly<Record<string, string>> {
   // "   4. 0:00.252    Evaluate   3ms": the number, the time, then the
   // action, indented one step further for each group it is inside.
@@ -75,9 +77,9 @@ export function positionsOfSnapshots(
   const rows = actions.split("\n").map((line) => row.exec(line));
   const positions: Record<string, string> = {};
   rows.forEach((marker, index) => {
-    const id = marker && /^(snapshot_\d+)$/.exec(marker[3]!)?.[1];
+    const id = marker?.[3];
     const call = rows[index + 1];
-    if (id && call && call[2]!.length > marker[2]!.length)
+    if (id && snapshots.has(id) && call && call[2]!.length > marker![2]!.length)
       positions[id] = call[1]!;
   });
   return positions;
@@ -91,14 +93,17 @@ export function positionsOfSnapshots(
  */
 export async function snapshotPositions(
   cli: string,
-  traceFile: string
+  traceFile: string,
+  snapshots: ReadonlySet<string>
 ): Promise<Readonly<Record<string, string>>> {
   const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-trace-"));
   try {
     const opened = await runTraceTool(cli, ["open", traceFile], cwd);
     if (opened.code !== 0) return {};
     const actions = await runTraceTool(cli, ["actions"], cwd);
-    return actions.code === 0 ? positionsOfSnapshots(actions.stdout) : {};
+    return actions.code === 0
+      ? positionsOfSnapshots(actions.stdout, snapshots)
+      : {};
   } finally {
     await runTraceTool(cli, ["close"], cwd);
     await rm(cwd, { recursive: true, force: true });

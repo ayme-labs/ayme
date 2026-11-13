@@ -1,12 +1,18 @@
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { Effect, ManagedRuntime, Queue } from "effect";
 import { chromium, type Locator, type Page } from "playwright-core";
 import { afterEach, expect, it } from "vitest";
 
 import { RecordedBrowser } from "../../session/application";
 import type { BrowserRequest, BrowserSignal } from "../../session/domain";
+import { projectPlaywrightCli } from "./projectPlaywright";
 import { stockBrowser } from "./stockBrowser";
 
 // The recorded browser's contract, on stock Playwright. Each private detail
@@ -262,4 +268,117 @@ it("switches Playwright's recorder off and on again by its mode", async () => {
   await expect
     .poll(reported, { timeout: 10_000 })
     .toEqual([expect.stringContaining("Second")]);
+});
+
+// The trace (ticket #1274): one trace for a recording, a mark for each
+// snapshot, and the stock trace tool's own number for each mark. The tool is
+// run as a reader runs it, on the project's own Playwright; it names the flag
+// that picks the phase of a snapshot differently on 1.62 than from 1.63.
+
+/** What `expression` gives on the page the stock trace tool opens at
+ * `position` of the trace in `file`, in the "after" phase. */
+async function stockToolEvaluates(
+  file: string,
+  position: string,
+  expression: string
+) {
+  const cli = projectPlaywrightCli(projectDir)!;
+  const { version } = JSON.parse(
+    await readFile(join(dirname(cli), "package.json"), "utf8")
+  ) as { version: string };
+  const [major, minor] = version.split(".").map(Number);
+  const phase = major === 1 && minor! <= 62 ? "--name" : "--phase";
+  // The tool keeps what it has opened in the folder it runs in.
+  const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-contract-"));
+  const tool = (...args: string[]) =>
+    promisify(execFile)(process.execPath, [cli, "trace", ...args], {
+      cwd,
+      maxBuffer: 1 << 26,
+    }).then(({ stdout }) => stdout);
+  try {
+    await tool("open", file);
+    const output = await tool(
+      "snapshot",
+      position,
+      phase,
+      "after",
+      "eval",
+      expression
+    );
+    return JSON.parse(/### Result\n(.*)\n/.exec(output)![1]!) as unknown;
+  } finally {
+    await tool("close").catch(() => {});
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+it("traces the recording, marks each snapshot, and numbers each mark as the stock trace tool does", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await browser.ask({ kind: "startTrace" });
+
+  await browser.page.evaluate(() => {
+    document.querySelector("h1")!.textContent = "One";
+  });
+  await browser.ask({
+    kind: "takeSnapshot",
+    snapshot: "snapshot_1",
+    page: "page_1",
+  });
+  await browser.toldOf(
+    "snapshotTaken",
+    ({ snapshot }) => snapshot.id === "snapshot_1"
+  );
+  await browser.page.evaluate(() => {
+    document.querySelector("h1")!.textContent = "Two";
+  });
+  await browser.ask({
+    kind: "takeSnapshot",
+    snapshot: "snapshot_2",
+    page: "page_1",
+  });
+  await browser.toldOf(
+    "snapshotTaken",
+    ({ snapshot }) => snapshot.id === "snapshot_2"
+  );
+  await browser.ask({ kind: "stopTrace", keep: true });
+  const { trace } = await browser.toldOf("traceStopped");
+
+  expect(Object.keys(trace.positions).sort()).toEqual([
+    "snapshot_1",
+    "snapshot_2",
+  ]);
+  const title = "document.querySelector('h1').textContent";
+  expect(
+    await stockToolEvaluates(trace.file, trace.positions.snapshot_1!, title)
+  ).toBe("One");
+  expect(
+    await stockToolEvaluates(trace.file, trace.positions.snapshot_2!, title)
+  ).toBe("Two");
+  await rm(dirname(trace.file), { recursive: true, force: true });
+});
+
+it("tells of a trace that is kept, and of none that is thrown away, and starts a new one after it", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await browser.ask({ kind: "startTrace" });
+  await browser.ask({ kind: "stopTrace", keep: false });
+  await browser.ask({ kind: "startTrace" });
+  await browser.ask({
+    kind: "takeSnapshot",
+    snapshot: "snapshot_1",
+    page: "page_1",
+  });
+  // The engine stops the trace once its snapshots are in.
+  await browser.toldOf("snapshotTaken");
+
+  await browser.ask({ kind: "stopTrace", keep: true });
+
+  const { trace } = await browser.toldOf("traceStopped");
+  expect(Object.keys(trace.positions)).toEqual(["snapshot_1"]);
+  expect(
+    browser.told.filter((signal) => signal.kind === "traceStopped")
+  ).toHaveLength(1);
+  expect(
+    browser.told.filter((signal) => signal.kind === "requestFailed")
+  ).toEqual([]);
+  await rm(dirname(trace.file), { recursive: true, force: true });
 });
