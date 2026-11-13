@@ -91,7 +91,7 @@ jobs:
           grep -Eq 'Tests +1 passed' config-loader.log
       # The whole suite, in a project with only that Playwright, outside the
       # repository: the recorder uses the project's own Playwright. Every
-      # test it lists must pass.
+      # test must pass in each project it belongs to.
       - name: Recorder contract suite
         id: recorder
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -106,8 +106,11 @@ jobs:
             && npx --no-install playwright install --with-deps chromium-headless-shell) 2>&1 | tee recorder-contract.log
           AYME_RECORDER_PLAYWRIGHT_PROJECT="$project" \
             pnpm --filter @ayme-dev/recorder test:contract 2>&1 | tee -a recorder-contract.log
-          grep -Eq '^ +Tests +[0-9]+ passed' recorder-contract.log
-          ! grep -Eq '^ +Tests .*(failed|skipped)' recorder-contract.log
+          # The suite skips on purpose a test that belongs to another of its
+          # projects. Its own check (packages/recorder/contractRunCheck.ts)
+          # prints this line only when every project ran and every skip is
+          # such a one.
+          grep -Fxq "Contract run: every test ran and passed where it belongs" recorder-contract.log
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

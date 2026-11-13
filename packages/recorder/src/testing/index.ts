@@ -94,6 +94,11 @@ export interface ScriptedBrowser {
    * is. It is drawn on an element whose ref the page shows now, or that has
    * a selector. */
   readonly highlighted: HighlightTarget | null;
+  // The trace's order.
+  /** From now on the trace is not told started, kept or thrown away... */
+  holdTraceAnswers(): void;
+  /** ...until now. */
+  releaseTraceAnswers(): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -127,6 +132,7 @@ export async function startScriptedRecorder(
   let inputs = 0;
   let settling: Extract<BrowserRequest, { kind: "waitForSettled" }> | undefined;
   let snapshotsHeld: (() => void)[] | undefined;
+  let traceAnswersHeld: (() => void)[] | undefined;
   let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
   const traces: string[] = [];
@@ -142,6 +148,12 @@ export async function startScriptedRecorder(
   let highlighted: HighlightTarget | null = null;
   const tell = (signal: BrowserSignal) => {
     Queue.offerUnsafe(signals!, signal);
+  };
+
+  /** Tells what came of a trace request, now or when a test lets it. */
+  const answerTrace = (told: () => void) => {
+    if (traceAnswersHeld) traceAnswersHeld.push(told);
+    else told();
   };
 
   const answer = (request: BrowserRequest) => {
@@ -181,18 +193,21 @@ export async function startScriptedRecorder(
         settling = request;
         return;
       case "startTrace":
-        return;
+        return answerTrace(() => tell({ kind: "traceStarted" }));
       case "stopTrace": {
-        // A thrown-away trace is not told of; a kept one is written, and
-        // told of once it is.
-        if (!request.keep) return;
+        // A thrown-away trace is told gone; a kept one is written, and told
+        // of once it is.
+        if (!request.keep)
+          return answerTrace(() => tell({ kind: "traceDiscarded" }));
         const file = join(tmpdir(), `ayme-scripted-trace-${randomUUID()}.zip`);
         const positions = Object.fromEntries(
           taken.map((id) => [id, String(Number(id.split("_")[1]) * 10)])
         );
         void writeFile(file, SCRIPTED_TRACE).then(() => {
           traces.push(file);
-          tell({ kind: "traceStopped", trace: { file, positions } });
+          answerTrace(() =>
+            tell({ kind: "traceStopped", trace: { file, positions } })
+          );
         });
         return;
       }
@@ -311,6 +326,14 @@ export async function startScriptedRecorder(
         const held = confirmationsHeld ?? [];
         confirmationsHeld = undefined;
         for (const confirm of held) confirm();
+      },
+      holdTraceAnswers: () => {
+        traceAnswersHeld = [];
+      },
+      releaseTraceAnswers: () => {
+        const held = traceAnswersHeld ?? [];
+        traceAnswersHeld = undefined;
+        for (const told of held) told();
       },
       goTo: (next) => {
         url = next;
