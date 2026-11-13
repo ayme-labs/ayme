@@ -3,6 +3,9 @@ name: Playwright canary
 # Runs the packed packages and the build plugin's config loader against the
 # newest @playwright/test, outside the supported peer range, so a minor that
 # breaks the private config loader shows up before the Renovate bump does.
+# It also runs the recorder's contract suite against the newest Playwright,
+# so a minor that breaks a private part the recorder uses shows up when it
+# ships.
 # It blocks nothing: a test failure opens, or comments on, one issue.
 on:
   schedule:
@@ -33,7 +36,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
-      tests-failed: ${{ steps.packed.outcome == 'failure' || steps.loader.outcome == 'failure' }}
+      tests-failed: ${{ steps.packed.outcome == 'failure' || steps.loader.outcome == 'failure' || steps.recorder.outcome == 'failure' }}
     env:
       SPEC: ${{ inputs.playwright || 'latest' }}
       # Vitest colours its summary on CI, which the pass-count checks below
@@ -86,6 +89,25 @@ jobs:
           pnpm --filter @ayme-dev/unplugin-ayme exec vitest run src/vite.test.ts \
             -t "loads top-level settings from a real config" 2>&1 | tee -a config-loader.log
           grep -Eq 'Tests +1 passed' config-loader.log
+      # The whole suite, in a project with only that Playwright, outside the
+      # repository: the recorder uses the project's own Playwright. Every
+      # test it lists must pass.
+      - name: Recorder contract suite
+        id: recorder
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        timeout-minutes: 10
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          project="$RUNNER_TEMP/playwright-$VERSION"
+          mkdir -p "$project"
+          (cd "$project" && npm init -y > /dev/null \
+            && npm install --no-audit --no-fund "playwright@$VERSION" \
+            && npx --no-install playwright install --with-deps chromium-headless-shell) 2>&1 | tee recorder-contract.log
+          AYME_RECORDER_PLAYWRIGHT_PROJECT="$project" \
+            pnpm --filter @ayme-dev/recorder test:contract 2>&1 | tee -a recorder-contract.log
+          grep -Eq '^ +Tests +[0-9]+ passed' recorder-contract.log
+          ! grep -Eq '^ +Tests .*(failed|skipped)' recorder-contract.log
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -116,7 +138,7 @@ jobs:
           title="Playwright canary: @playwright/test $VERSION breaks Ayme"
           {
             echo "The [Playwright canary run]($RUN_URL) failed against \`@playwright/test@$VERSION\`, installed outside the supported peer range with the config loader's version gate lifted."
-            for log in packed-consumer config-loader; do
+            for log in packed-consumer config-loader recorder-contract; do
               [ -f "$log.log" ] || continue
               printf '\n### %s\n\n```\n' "$log"
               tail -n 120 "$log.log"
