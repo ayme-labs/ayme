@@ -34,7 +34,6 @@ type Kept = {
 
 type Visit = {
   readonly id: string;
-  readonly page: string;
   readonly url: string;
   readonly cause: VisitCause;
   readonly snapshots: Kept[];
@@ -75,7 +74,6 @@ export class Timeline {
         if (registered.kind !== "visit-started") return;
         const visit: Visit = {
           id: registered.visit.id,
-          page: addition.page,
           url: addition.url,
           cause: addition.cause,
           snapshots: [],
@@ -215,7 +213,9 @@ export class Timeline {
           timestamp: interaction.at,
           id: interaction.id,
           report: interaction.report,
-          targetRef: targetRef && (from.firstRefs.get(targetRef) ?? targetRef),
+          targetRef: targetRef
+            ? (from.firstRefs.get(targetRef) ?? targetRef)
+            : null,
           changeTree: after ? await this.change(from, after) : null,
         });
       }

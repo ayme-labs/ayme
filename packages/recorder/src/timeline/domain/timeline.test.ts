@@ -154,7 +154,7 @@ describe("the timeline", () => {
     expect(text).toContain(`          targetRef: e2\n`);
   });
 
-  it("leaves the target ref out when the report's picture does not lead to the same element", async () => {
+  it("writes a null target ref when the report's picture does not lead to the same element", async () => {
     const otherPage = [
       `- generic [ref=e1]:`,
       `  - link "Home" [ref=e2]`,
@@ -171,9 +171,23 @@ describe("the timeline", () => {
     expect(text).toContain(
       [
         `          type: click`,
+        `          targetRef: null`,
         `          targetSelector: internal:role=button[name="Save"i]`,
         ``,
       ].join("\n")
+    );
+  });
+
+  it("writes a null target ref when the report names no target", async () => {
+    const text = await packageOf([
+      visit,
+      snapshot("snapshot_1", 10, idle),
+      snapshot("snapshot_2", 20, savedPage),
+      click("snapshot_1", "snapshot_2", null),
+    ]);
+
+    expect(text).toContain(
+      `          type: click\n          targetRef: null\n`
     );
   });
 

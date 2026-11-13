@@ -29,8 +29,8 @@ export type PackageEntry =
       readonly timestamp: number;
       readonly id: string;
       readonly report: InteractionReport;
-      /** Undefined when the target is not known in the tree. */
-      readonly targetRef: string | undefined;
+      /** Null when the target is not known in the tree. */
+      readonly targetRef: string | null;
       /** Null when no "after" was taken. */
       readonly changeTree: StructuralTree | null;
     }
@@ -137,7 +137,9 @@ function entryLines(entry: PackageEntry): string[] | undefined {
   const interaction: Record<string, unknown> = {
     id: entry.id,
     type: report.type,
-    ...(entry.targetRef ? { targetRef: entry.targetRef } : {}),
+    // Always written: a reader of the released format requires the field,
+    // and takes null for a target that is not known.
+    targetRef: entry.targetRef,
     ...(report.selector ? { targetSelector: report.selector } : {}),
   };
   for (const key of INTERACTION_VALUES)
