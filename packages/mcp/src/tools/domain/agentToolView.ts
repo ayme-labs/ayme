@@ -5,7 +5,7 @@ import { mcpPageTool } from "./toolResult";
 /**
  * What one agent has been shown of the page's and App Processes' tools:
  * the MCP tool list as last announced, the tools as of its last view of
- * them, and every name ever offered. The MCP server reports what happens
+ * them, and every name ever offered, with the group it was last offered in. The MCP server reports what happens
  * and asks it what to tell the agent.
  *
  * The MCP list leaves out a page tool that shares a server tool's name.
@@ -14,7 +14,8 @@ import { mcpPageTool } from "./toolResult";
  */
 export class AgentToolView {
   readonly #serverToolNames: ReadonlySet<string>;
-  readonly #offered = new Set<string>();
+  /** Each name ever offered, and the group it was last offered in. */
+  readonly #offered = new Map<string, string | undefined>();
   // The list as the agent last could read it, to tell a change to it from
   // a change in availability only.
   #announced = "[]";
@@ -40,7 +41,7 @@ export class AgentToolView {
    * list would churn (ADR-0035).
    */
   toolsChanged(tools: readonly PageTool[]): boolean {
-    for (const tool of tools) this.#offered.add(tool.name);
+    for (const tool of tools) this.#offered.set(tool.name, tool.group);
     const current = JSON.stringify(this.listed(tools).map(mcpPageTool));
     if (current === this.#announced) return false;
     this.#announced = current;
@@ -85,5 +86,13 @@ export class AgentToolView {
   /** Whether the connection ever offered a tool `name`, to tell a gone tool from an unknown one. */
   wasOffered(name: string): boolean {
     return this.#offered.has(name);
+  }
+
+  /**
+   * Whether the connection last offered `name` as a Page Object Tool, even
+   * while it offers no tool, as while the page's tab reconnects.
+   */
+  offeredAsPageObject(name: string): boolean {
+    return this.#offered.get(name) === "pageObject";
   }
 }

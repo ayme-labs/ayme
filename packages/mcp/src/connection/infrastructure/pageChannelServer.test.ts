@@ -95,6 +95,29 @@ it("sends the tab's calls to its new channel after the old one closed during a c
   expect(next).toMatchObject({ ok: true, result: "from the new channel" });
 });
 
+it("takes the old channel's answer that arrives after the tab's new page paired and reported its tools", async () => {
+  const { connection, url } = await startServer();
+  let finish!: (result: unknown) => void;
+  openPage(url, () => new Promise((resolve) => (finish = resolve)));
+  await expect.poll(() => connection.offers("click")).toBe(true);
+  const running = connection.call("click", {});
+  await expect.poll(() => finish).toBeDefined();
+
+  // The tab's new document pairs and reports its tools before the old
+  // document's answer reaches the server.
+  openPage(url, async () => "from the new channel", [
+    { ...CLICK, name: "onlyOnTheNewChannel" },
+  ]);
+  await expect.poll(() => connection.offers("onlyOnTheNewChannel")).toBe(true);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  finish({ settled: false, loading: "http://127.0.0.1/other" });
+
+  expect(await running).toMatchObject({
+    ok: true,
+    result: { settled: false, loading: "http://127.0.0.1/other" },
+  });
+});
+
 describe("the Inspector link of the paired page", () => {
   /** A page that answers each Inspector request with its method, in order. */
   function openInspectedPage(url: string, received: string[] = []) {

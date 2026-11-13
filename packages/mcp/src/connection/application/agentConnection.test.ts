@@ -183,14 +183,39 @@ describe("AgentConnection as a tab loads new documents", () => {
     expect(disconnect).not.toHaveBeenCalled();
   });
 
-  it("answers the earlier document's call once the tab's new page reports its tools, and ignores the earlier document afterwards", async () => {
+  it("takes the earlier document's own answer that arrives after the tab's new page reported its tools", async () => {
+    const connection = new AgentConnection();
+    const earlier = connection.attach(hello("a"), () => {})!;
+    earlier.publishTools([tool("click")]);
+    const call = connection.call("click", {});
+
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/other"), () => {})!
+      .publishTools([tool("snapshot")]);
+    await tick();
+    const loading = { settled: false, loading: "http://127.0.0.1:5173/other" };
+    earlier.answer({ callId: "1", ok: true, result: loading });
+
+    expect(await call).toEqual({ callId: "1", ok: true, result: loading });
+  });
+
+  it("answers the earlier document's call once its channel closed and the tab's new page reported its tools, and ignores the earlier document afterwards", async () => {
     const connection = new AgentConnection();
     const earlier = connection.attach(hello("a"), () => {})!;
     earlier.publishTools([tool("hold")]);
     const call = connection.call("hold", {});
+    let answered = false;
+    void call.then(() => (answered = true));
 
     const page = connection.attach(hello("a"), () => {})!;
     page.publishTools([tool("snapshot")]);
+    await tick();
+    expect(answered).toBe(false);
+    connection.navigating(earlier, {
+      url: "http://127.0.0.1:5173/",
+      reload: true,
+    });
+    connection.detach(earlier);
 
     expect(await errorOf(call)).toEqual({
       error:
@@ -199,14 +224,55 @@ describe("AgentConnection as a tab loads new documents", () => {
       loading: "http://127.0.0.1:5173/",
       tools: ["snapshot"],
     });
-    connection.navigating(earlier, {
-      url: "http://127.0.0.1:5173/",
-      reload: true,
-    });
-    connection.detach(earlier);
+    earlier.answer({ callId: "1", ok: true, result: "late" });
     void connection.call("snapshot", {});
     expect(connection.paired).toBe(true);
     expect(await sentCalls(page)).toEqual(["snapshot"]);
+  });
+
+  it("answers the earlier document's call when its channel stays open a wait past the tab's new page reporting its tools", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const earlier = connection.attach(hello("a"), () => {})!;
+    earlier.publishTools([tool("hold")]);
+    const call = connection.call("hold", {});
+
+    connection.attach(hello("a"), () => {})!.publishTools([tool("snapshot")]);
+    vi.advanceTimersByTime(RECONNECT_WAIT_MS);
+
+    expect(await errorOf(call)).toMatchObject({
+      error:
+        "The page reloaded before it answered, so the call's outcome is unknown.",
+      tools: ["snapshot"],
+    });
+    vi.useRealTimers();
+  });
+
+  it("names no tools in the answer to a Page Object Tool's call held while the tab reconnected, sent, and left unanswered by the next document", async () => {
+    const connection = new AgentConnection();
+    const first = connection.attach(hello("a"), () => {})!;
+    first.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
+    connection.detach(first);
+    const call = connection.call("ListPage.open", {});
+
+    const second = connection.attach(hello("a"), () => {})!;
+    second.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
+    expect(await sentCalls(second)).toEqual(["ListPage.open"]);
+    connection.navigating(second, {
+      url: "http://127.0.0.1:5173/counter",
+      reload: false,
+    });
+    connection.detach(second);
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/counter"), () => {})!
+      .publishTools([tool("snapshot")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/counter",
+    });
   });
 });
 

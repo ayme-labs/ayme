@@ -111,9 +111,9 @@ export function createMcpToolServer({
         name === "ayme_call" && typeof input.tool === "string"
           ? input.tool
           : name;
-      const pageObjectTool = connection.tools.some(
-        (tool) => tool.name === called && tool.group === "pageObject"
-      );
+      // Asked of the view, which keeps the tool's group while the page's tab
+      // reconnects and a held call waits for it.
+      const pageObjectTool = view.offeredAsPageObject(called);
       const result = await run(name, input);
       if (pageObjectTool) return result;
       // Taken once the result is ready.
