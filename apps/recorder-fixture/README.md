@@ -14,9 +14,21 @@ child process, as a developer would in their own project. The recorder loads
 this project's Playwright; the command brings none of its own.
 
 Each test serves the fixture pages on a free port (`fixturePages`), so it can
-see which requests the recorder's browser made, and runs the command with
-`runRecorder`. Assertions go through what the command prints, its exit code and
-those requests. Add a spec file for a new concern and reuse `fixtures.ts`.
+see which requests the recorder's browser made. Add a spec file for a new
+concern and reuse `fixtures.ts`.
+
+- `codegen.spec.ts` runs the command with `runRecorder`. Assertions go through
+  what the command prints, its exit code and those requests.
+- `recording.spec.ts` records. While the recorder has no window, the command
+  has no way to press Record or Finish, so these tests start the engine in the
+  test's own process with `startRecording` and press both through its handle.
+  The project is a folder of the test's own inside this app, which is where
+  the package is saved. Input is a person's: `person` sends raw input events
+  over the test's own connection to the browser, so it is no call of the
+  Playwright that records. Assertions read the Recording Package from disk.
+  `tests/expected/` holds expected package text; `cart.package.txt` is what
+  the throwaway prototype of pull request #1268 wrote for the same clicks,
+  with what differs from run to run replaced.
 
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
