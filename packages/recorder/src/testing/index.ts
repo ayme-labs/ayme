@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import { TestClock } from "effect/testing";
 
+import type { RecorderWarning } from "../contract";
 import { startRecorderOn, type Recorder } from "../engine";
 import { RecordedBrowser } from "../session/application";
 import type {
@@ -75,6 +76,9 @@ export interface ScriptedBrowser {
    * a key typed while an earlier input was held. Numbered as `holdClick`
    * numbers. */
   holdInput(held: HeldInput): void;
+  // Warnings.
+  /** The browser warns of something a person should know. */
+  warn(warning: RecorderWarning): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -270,6 +274,8 @@ export async function startScriptedRecorder(
         heldIn.set(input, documents);
         tell({ kind: "inputHeld", input, page, held });
       },
+      // Warnings.
+      warn: (warning) => tell({ kind: "browserWarned", warning }),
     },
   };
 }

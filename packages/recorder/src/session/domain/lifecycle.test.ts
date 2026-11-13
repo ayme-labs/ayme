@@ -2196,3 +2196,19 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
     expect(todo.at(-1)).toEqual([]);
   });
 });
+
+describe("the lifecycle, for a warning", () => {
+  const warning = {
+    kind: "playwrightUnverified",
+    message: "Playwright 1.99.0 is newer than the recorder is verified on.",
+  } as const;
+
+  it("passes on what the browser or the timeline warns of, whatever the phase", () => {
+    expect(run([{ kind: "browserWarned", warning }]).todo).toEqual([
+      [{ kind: "warn", warning }],
+    ]);
+    expect(
+      run([opened, ...started, { kind: "timelineWarned", warning }]).todo.at(-1)
+    ).toEqual([{ kind: "warn", warning }]);
+  });
+});

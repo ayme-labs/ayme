@@ -329,7 +329,15 @@ it(
     });
 
     await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+    let warnings: unknown;
+    recorder.subscribe((update) => (warnings = update.state.warnings));
 
+    expect(warnings).toEqual([
+      {
+        kind: "playwrightUnverified",
+        message: `Playwright 1.66.0 is newer than the recorder is verified on: it needs Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}. It records all the same, and may miss or misread an input.`,
+      },
+    ]);
     recorder.end();
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
   }

@@ -34,6 +34,7 @@ import {
 import { attachAddressRule, isAttachAddress } from "./attachAddress";
 import {
   loadProjectPlaywright,
+  placeInRange,
   projectPlaywrightCli,
   rangeText,
   type Playwright,
@@ -119,6 +120,15 @@ export const stockBrowser = (
               )
             : unavailable(cause),
       });
+      // Warnings.
+      if (placeInRange(version) === "above")
+        Queue.offerUnsafe(signals, {
+          kind: "browserWarned",
+          warning: {
+            kind: "playwrightUnverified",
+            message: `Playwright ${version} is newer than the recorder is verified on: it needs ${rangeText}. It records all the same, and may miss or misread an input.`,
+          },
+        });
       // Before its connection closes, an attached browser is put back as
       // it was found: it stays open, in someone else's hands.
       if (attach)
@@ -501,13 +511,18 @@ async function openPage(
       );
       await context.tracing.stop({ path: file });
       const cli = projectPlaywrightCli(projectDir);
-      tell({
-        kind: "traceStopped",
-        trace: {
-          file,
-          positions: cli ? await snapshotPositions(cli, file, marked) : {},
-        },
-      });
+      const positions = cli ? await snapshotPositions(cli, file, marked) : {};
+      // Warnings.
+      if (Object.keys(positions).length < marked.size)
+        tell({
+          kind: "browserWarned",
+          warning: {
+            kind: "traceWithoutPositions",
+            message:
+              "The project's `playwright trace` could not number the trace's snapshots: the package carries its trace, but not the position numbers that open them.",
+          },
+        });
+      tell({ kind: "traceStopped", trace: { file, positions } });
     });
   }
 

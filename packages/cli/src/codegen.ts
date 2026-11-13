@@ -4,6 +4,7 @@ import {
   startRecorder,
   type Recorder,
   type RecorderOptions,
+  type RecorderWarning,
   type RecordingOutcome,
 } from "@ayme-dev/recorder";
 
@@ -41,6 +42,21 @@ export function outcomeLine(outcome: RecordingOutcome): string {
     case "failed":
       return `The recorder failed: ${outcome.reason}\n`;
   }
+}
+
+/**
+ * Writes each warning the recorder tells of once, as it comes: the state
+ * carries every warning so far, and only the new ones are written.
+ */
+export function warningPrinter(
+  write: (text: string) => void
+): (warnings: readonly RecorderWarning[]) => void {
+  let printed = 0;
+  return (warnings) => {
+    for (const warning of warnings.slice(printed))
+      write(`Warning: ${warning.message}\n`);
+    printed = Math.max(printed, warnings.length);
+  };
 }
 
 /** The process's exit code for an outcome. */
@@ -83,6 +99,8 @@ export async function codegen(
   process.on("SIGINT", end);
   process.on("SIGTERM", end);
   process.stdout.write(startLine(browser));
+  const printWarnings = warningPrinter((text) => process.stderr.write(text));
+  recorder.subscribe((update) => printWarnings(update.state.warnings));
 
   const outcome = await recorder.done;
   (outcome.kind === "failed" ? process.stderr : process.stdout).write(

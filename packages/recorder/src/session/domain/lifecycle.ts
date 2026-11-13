@@ -2,6 +2,7 @@ import type {
   CommandResult,
   RecorderCommand,
   RecorderPhase,
+  RecorderWarning,
   RecordingOutcome,
 } from "../../contract";
 import type {
@@ -86,7 +87,10 @@ export type BrowserSignal =
   // Visits.
   /** A held input can no longer reach its page: the document it was held
    * in is gone. Told instead of "inputPassedOn". */
-  | { readonly kind: "inputGone"; readonly input: string };
+  | { readonly kind: "inputGone"; readonly input: string }
+  // Warnings.
+  /** Something a person should know about how the recording is made. */
+  | { readonly kind: "browserWarned"; readonly warning: RecorderWarning };
 
 /** What a page held back. */
 export type HeldInput =
@@ -158,7 +162,10 @@ export type Happening =
    * was nothing to save. */
   | { readonly kind: "saved"; readonly folder: string | null }
   /** The recorder cannot go on: something it was carrying out broke. */
-  | { readonly kind: "brokeDown"; readonly reason: string };
+  | { readonly kind: "brokeDown"; readonly reason: string }
+  // Warnings.
+  /** The timeline made something of the recording a person should know of. */
+  | { readonly kind: "timelineWarned"; readonly warning: RecorderWarning };
 
 /** One thing the worker carries out after a step, in the list's order. */
 export type ToDo =
@@ -178,7 +185,10 @@ export type ToDo =
   /** The recorder has ended: let the browser go and report the outcome. */
   | { readonly kind: "end"; readonly outcome: RecordingOutcome }
   /** Throw away everything recorded: the timeline starts empty again. */
-  | { readonly kind: "clear" };
+  | { readonly kind: "clear" }
+  // Warnings.
+  /** Tell every subscriber of a warning, once. */
+  | { readonly kind: "warn"; readonly warning: RecorderWarning };
 
 /**
  * How long a wrap-up may take. It is there for a report that never comes:
@@ -392,6 +402,10 @@ export function step(state: LifecycleState, happening: Happening): Step {
         todo: [...answerRecord(state), { kind: "end", outcome }],
       };
     }
+    // Warnings: a person is told, whatever the recorder is doing.
+    case "browserWarned":
+    case "timelineWarned":
+      return { state, todo: [{ kind: "warn", warning: happening.warning }] };
     case "timeLimitPassed":
       return state.phase === "wrappingUp" ? giveUp(state) : stay(state);
     case "requestFailed":
