@@ -134,7 +134,12 @@ export const WRAP_UP_LIMIT_MS = 5_000;
 /** The reports a held click can lead to. */
 const HELD_CLICK_REPORTS = new Set(["click", "check", "uncheck"]);
 
-type Page = { readonly id: string; readonly url: string };
+type Page = {
+  readonly id: string;
+  readonly url: string;
+  /** Opened blank while recording: its Visit starts where it goes first. */
+  readonly blank?: true;
+};
 
 /** One input the gate held back, until it is written down or dropped. */
 type Input = {
@@ -216,20 +221,39 @@ export function step(state: LifecycleState, happening: Happening): Step {
     case "outsideEnd":
     case "browserGone":
       return endFromOutside(state);
-    case "pageOpened":
-      return stay({
+    case "pageOpened": {
+      const blank = isActive(state) && happening.url === BLANK;
+      const opened = {
         ...state,
-        pages: [...state.pages, { id: happening.page, url: happening.url }],
-      });
+        pages: [
+          ...state.pages,
+          {
+            id: happening.page,
+            url: happening.url,
+            ...(blank ? { blank: true as const } : {}),
+          },
+        ],
+      };
+      return isActive(opened) && !blank
+        ? proceed(opened, [visitOf(happening.page, happening.url, "openPage")])
+        : stay(opened);
+    }
     case "pageNavigated": {
+      const page = state.pages.find((open) => open.id === happening.page);
       const moved = {
         ...state,
-        pages: state.pages.map((page) =>
-          page.id === happening.page ? { ...page, url: happening.url } : page
+        pages: state.pages.map((open) =>
+          open === page ? { id: open.id, url: happening.url } : open
         ),
       };
       return isActive(moved)
-        ? proceed(moved, [visitOf(happening.page, happening.url, "navigate")])
+        ? proceed(moved, [
+            visitOf(
+              happening.page,
+              happening.url,
+              page?.blank ? "openPage" : "navigate"
+            ),
+          ])
         : stay(moved);
     }
     case "pageClosed": {
@@ -364,6 +388,9 @@ function save(state: LifecycleState, todo: readonly ToDo[]): Step {
 }
 
 // Visits.
+
+/** Where a page opened by the page before it starts, before it goes anywhere. */
+const BLANK = "about:blank";
 
 /**
  * A Visit of a page at an address, while recording. Whether the address

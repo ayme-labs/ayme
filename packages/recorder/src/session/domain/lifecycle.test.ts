@@ -762,6 +762,38 @@ describe("the lifecycle", () => {
       todo: [[visitAt("http://shop.test/cart", "navigate")]],
       state: { phase: "recording" },
     },
+    {
+      name: "a page opened while recording starts a Visit of its own",
+      happened: [
+        opened,
+        ...started,
+        { kind: "pageOpened", page: "page_2", url: "http://shop.test/help" },
+      ],
+      todo: [[visitAt("http://shop.test/help", "openPage", "page_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page opened blank while recording starts its Visit at the first address it goes to",
+      happened: [
+        opened,
+        ...started,
+        { kind: "pageOpened", page: "page_2", url: "about:blank" },
+        navigated("http://shop.test/help", "page_2"),
+        navigated("http://shop.test/faq", "page_2"),
+      ],
+      todo: [
+        [],
+        [visitAt("http://shop.test/help", "openPage", "page_2")],
+        [visitAt("http://shop.test/faq", "navigate", "page_2")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page that goes elsewhere while not recording starts no Visit",
+      happened: [opened, navigated("http://shop.test/cart")],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
