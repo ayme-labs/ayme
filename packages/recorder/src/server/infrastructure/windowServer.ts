@@ -51,15 +51,22 @@ function isLoopback(request: IncomingMessage): boolean {
   return origin === undefined || origin === `http://${host}`;
 }
 
-/** The file a request's path names inside `folder`, or null when it names
- * none there. */
-function fileFor(folder: string, url: string | undefined): string | null {
-  let path: string;
+/** The path a request names, decoded, or null when it does not parse.
+ * Whatever a request says is untrusted: this never throws. */
+function pathOf(url: string | undefined): string | null {
   try {
-    path = decodeURIComponent(new URL(url ?? "/", "http://window").pathname);
+    const path = decodeURIComponent(
+      new URL(url ?? "/", "http://window").pathname
+    );
+    return path.includes("\0") ? null : path;
   } catch {
     return null;
   }
+}
+
+/** The file a path names inside `folder`, or null when it names none
+ * there. */
+function fileFor(folder: string, path: string): string | null {
   const file = resolve(folder, `.${path === "/" ? "/index.html" : path}`);
   return file.startsWith(folder + sep) ? file : null;
 }
@@ -81,17 +88,17 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
   };
 
   const server = createServer((request, response) => {
-    const file = isLoopback(request) ? fileFor(root, request.url) : undefined;
-    if (file === undefined) {
-      response.statusCode = 403;
-      response.end("Not a loopback request.");
-      return;
-    }
     const send = (status: number, type: string, body: string | Buffer) => {
       response.statusCode = status;
       response.setHeader("content-type", type);
       response.end(body);
     };
+    // Who asks comes first: nothing else of a request from elsewhere is read.
+    if (!isLoopback(request))
+      return send(403, "text/plain", "Not a loopback request.");
+    const path = pathOf(request.url);
+    if (path === null) return send(400, "text/plain", "Bad request.");
+    const file = fileFor(root, path);
     if (file === null) return send(404, "text/plain", "Not found.");
     readFile(file).then(
       (body) =>
@@ -110,11 +117,16 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
     createContext: () => ({ target, subscriptions }),
   });
   server.on("upgrade", (request, socket, head) => {
-    const path = new URL(request.url ?? "/", "http://window").pathname;
-    if (!isLoopback(request) || path !== CHANNEL_PATH) {
-      socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
-      return;
-    }
+    // The socket is ours from here: a program that is gone before it is
+    // answered must not bring the recorder down.
+    socket.on("error", () => socket.destroy());
+    const refuse = (status: string) =>
+      socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
+    // Who asks comes first: nothing else of a request from elsewhere is read.
+    if (!isLoopback(request)) return refuse("403 Forbidden");
+    const path = pathOf(request.url);
+    if (path === null) return refuse("400 Bad Request");
+    if (path !== CHANNEL_PATH) return refuse("403 Forbidden");
     sockets.handleUpgrade(request, socket, head, (ws) =>
       handleConnection(ws, request)
     );
