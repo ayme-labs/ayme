@@ -432,3 +432,32 @@ it.runIf(attaching)(
     ).not.toBe("zero");
   }
 );
+
+it.runIf(attaching)(
+  "does not attach to a browser with more than one page open, and leaves its pages as they are",
+  async () => {
+    const debugPort = await freePort();
+    const running = await chromium.launchPersistentContext("", {
+      headless: true,
+      args: [`--remote-debugging-port=${debugPort}`],
+    });
+    ends.push(() => running.close());
+    await running.newPage();
+    const runtime = ManagedRuntime.make(
+      stockBrowser({ projectDir, cdpEndpoint: `http://127.0.0.1:${debugPort}` })
+    );
+    ends.push(() => runtime.dispose());
+
+    const failure = await runtime
+      .runPromise(RecordedBrowser)
+      .catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      reason: "browser-unavailable",
+      message: expect.stringContaining(
+        "The browser at this address has 2 pages in 1 context"
+      ),
+    });
+    expect(running.pages()).toHaveLength(2);
+  }
+);
