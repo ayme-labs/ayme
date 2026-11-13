@@ -137,7 +137,14 @@ exports.chromium = {
           exports.control.holdClick = () =>
             held({ page, frame }, { x: 1, y: 1, detail: 1, modifiers: [] });
       };
-      context._startRecording = async () => {};
+      context._startRecording = async () => {
+        if (exports.control.recorderBroken) throw new Error("No recorder here.");
+      };
+      // Playwright's recorder, as the adapter reaches it to switch its mode.
+      const recorder = { mode: () => "recording", setMode: async () => {} };
+      context._connection = {
+        toImpl: () => ({ [Symbol("recorderSymbol")]: Promise.resolve(recorder) }),
+      };
       context.newPage = async () => {
         context.emit("page", page);
         return page;
@@ -151,7 +158,11 @@ exports.chromium = {
   );
   return (
     createRequire(import.meta.url)(installed) as {
-      control: { holdClick(): void };
+      control: {
+        holdClick(): void;
+        /** Set, Playwright's recorder cannot be started. */
+        recorderBroken?: boolean;
+      };
     }
   ).control;
 }
@@ -182,3 +193,21 @@ it(
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
   }
 );
+
+// A request the stock adapter cannot carry out is told, not swallowed:
+// Record must not wait until the recorder ends.
+it("answers Record 'ignored' and ends 'failed', with the reason, when Playwright's recorder cannot be started", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.recorderBroken = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+
+  await expect(recorder.send({ type: "record" })).resolves.toBe("ignored");
+
+  await expect(recorder.done).resolves.toEqual({
+    kind: "failed",
+    reason: "Recording could not start. No recorder here.",
+  });
+});

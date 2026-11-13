@@ -80,7 +80,7 @@ describe("a recording", () => {
       },
     });
     expect(browser.asked).toEqual([
-      { kind: "reportInteractions" },
+      { kind: "reportInteractions", on: true },
       { kind: "holdInputs", on: true },
     ]);
   });

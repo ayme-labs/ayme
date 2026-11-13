@@ -65,7 +65,7 @@ export class RecorderSession extends Context.Service<
         const queue = yield* Queue.unbounded<Queued>();
         const done = yield* Deferred.make<RecordingOutcome>();
         const listeners = new Set<(update: RecorderUpdate) => void>();
-        const timeline = new Timeline();
+        let timeline = new Timeline();
         let state = initialState;
         let visits = timeline.visits();
         let update: RecorderUpdate = {
@@ -128,6 +128,11 @@ export class RecorderSession extends Context.Service<
             }
             case "end":
               return yield* Deferred.succeed(done, item.outcome);
+            case "clear":
+              // Nothing of the old recording is kept: no Visit, no entry
+              // and no element's identity.
+              timeline = new Timeline();
+              return publish();
           }
         });
 
@@ -139,8 +144,15 @@ export class RecorderSession extends Context.Service<
           state = next.state;
           // Only what shows from outside is told: a phase is one state
           // there. It is told before the step's list is carried out, so
-          // that "saving" shows while the package is written.
-          if (state.phase !== update.state.phase) publish();
+          // that "saving" shows while the package is written. A step that
+          // throws the recording away tells its phase with the empty
+          // timeline, in one update: the new phase never shows with the
+          // old entries.
+          if (
+            state.phase !== update.state.phase &&
+            !next.todo.some((item) => item.kind === "clear")
+          )
+            publish();
           for (const item of next.todo) yield* carryOut(item, reply);
         });
 
