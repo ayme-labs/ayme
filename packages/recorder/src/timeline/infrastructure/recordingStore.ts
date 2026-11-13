@@ -19,6 +19,7 @@ import type { Timeline } from "../domain/timeline";
  *     .ayme/recordings/<recordingId>/package.yaml
  *     .ayme/recordings/<recordingId>/trace.zip   when the recording has one
  *     .ayme/recordings/latest.yaml      the same text as the package
+ *     .ayme/.gitignore                  when the project has none
  *
  * Resolves with the package's folder, or with null when the timeline has
  * nothing to write: nothing is written then.
@@ -68,6 +69,7 @@ async function write(
     trace?.positions
   );
   if (text === null) return null;
+  await ignoreWhatIsKept(join(options.projectDir, ".ayme"));
   const recordings = join(options.projectDir, ".ayme", "recordings");
   const folder = join(recordings, recordingId);
   const temporaryFolder = join(recordings, `.${recordingId}.tmp`);
@@ -97,6 +99,21 @@ async function write(
   // recording is the latest now.
   await rm(join(recordings, "latest.json"), { force: true });
   return folder;
+}
+
+/**
+ * Keeps `.ayme` out of the project's commits, as the released recorder does:
+ * a `.gitignore` there lists the recordings folder, where the recorder also
+ * keeps its temporary files, and itself. A project's own file is never
+ * overwritten, nor added to.
+ */
+async function ignoreWhatIsKept(ayme: string): Promise<void> {
+  await mkdir(ayme, { recursive: true });
+  await writeFile(join(ayme, ".gitignore"), "recordings/\n.gitignore\n", {
+    flag: "wx",
+  }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== "EEXIST") throw error;
+  });
 }
 
 /** Where the trace of a recording is, or why it cannot be had. */

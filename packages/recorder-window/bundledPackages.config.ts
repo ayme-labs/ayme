@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { Rolldown } from "tsdown";
 
 /** A third-party package whose code a build holds. */
-export type BundledPackage = {
+type BundledPackage = {
   readonly name: string;
   readonly version: string;
   /** The package's folder. */
@@ -11,9 +11,9 @@ export type BundledPackage = {
 };
 
 /** The package a module of `node_modules` belongs to, or undefined for the
- * code of this repository. The configs import this file with its .ts
- * extension so Node's type stripping can load it. */
-export function packageOfModule(id: string): BundledPackage | undefined {
+ * code of this repository. The CLI's notices build holds its own copy, since
+ * a package may not import another's files. */
+function packageOfModule(id: string): BundledPackage | undefined {
   const marker = "/node_modules/";
   const at = id.lastIndexOf(marker);
   if (at < 0) return undefined;

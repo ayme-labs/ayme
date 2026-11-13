@@ -13,7 +13,6 @@
       "components": [
         "angular",
         "ayme",
-        "cli",
         "inspector",
         "mcp",
         "react",
@@ -28,7 +27,6 @@
   "packages": {
     "packages/angular": { "component": "angular" },
     "packages/ayme": { "component": "ayme" },
-    "packages/cli": { "component": "cli" },
     "packages/inspector": { "component": "inspector" },
     "packages/mcp": { "component": "mcp" },
     "packages/react": { "component": "react" },
