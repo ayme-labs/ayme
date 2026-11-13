@@ -161,12 +161,4 @@ describe("a recorder", () => {
     await recorder.done;
     await expect(recorder.send({ type: "finish" })).resolves.toBe("ignored");
   });
-
-  it("serves no window yet", async () => {
-    const { recorder } = await startScriptedRecorder();
-
-    expect(recorder.windowUrl).toBeNull();
-    recorder.end();
-    await recorder.done;
-  });
 });

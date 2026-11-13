@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import { TestClock } from "effect/testing";
 
-import { startRecorderOn, type Recorder } from "../engine";
+import { serveWindow, startRecorderOn, type Recorder } from "../engine";
 import { RecordedBrowser } from "../session/application";
 import type { BrowserRequest, BrowserSignal } from "../session/domain";
 import type { InteractionReport } from "../timeline/domain";
@@ -63,6 +63,9 @@ export async function startScriptedRecorder(
     readonly projectDir?: string;
     /** The address of the browser's one page. */
     readonly url?: string;
+    /** Serve the recorder window, whose built files are in `folder`, as
+     * the CLI has the engine do. */
+    readonly window?: { readonly folder: string };
   } = {}
 ): Promise<{
   recorder: Recorder;
@@ -146,6 +149,9 @@ export async function startScriptedRecorder(
     {
       projectDir:
         options.projectDir ?? join(tmpdir(), "ayme-recorder-scripted"),
+      window: options.window
+        ? await serveWindow(options.window.folder)
+        : undefined,
     }
   );
 

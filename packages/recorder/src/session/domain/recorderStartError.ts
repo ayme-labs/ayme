@@ -3,7 +3,9 @@ export type RecorderStartReason =
   /** No Playwright resolves from the project folder. */
   | "playwright-not-found"
   /** Playwright could not launch its browser. */
-  | "browser-unavailable";
+  | "browser-unavailable"
+  /** The recorder window's server could not listen on a local port. */
+  | "port-in-use";
 
 /**
  * The one way starting a recorder fails. Its message is a sentence for the

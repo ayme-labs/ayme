@@ -111,13 +111,17 @@ function importsOf(file: string, seen = new Set<string>()): string[] {
   );
 }
 
-it("the built engine imports Effect, core, a YAML writer and Node, and nothing of Playwright", () => {
+it("the built engine imports Effect, core, a YAML writer, the window's server and Node, and nothing of Playwright", () => {
   const packages = new Set(
     importsOf("index.mjs").filter((specifier) => !specifier.startsWith("node:"))
   );
   expect([...packages].sort()).toEqual([
     "@ayme-dev/core/structural-observation",
+    "@trpc/server",
+    "@trpc/server/adapters/ws",
     "effect",
+    "ws",
     "yaml",
+    "zod/mini",
   ]);
 });

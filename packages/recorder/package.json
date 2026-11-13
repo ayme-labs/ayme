@@ -33,8 +33,11 @@
   },
   "dependencies": {
     "@ayme-dev/core": "workspace:*",
+    "@trpc/server": "^11.19.0",
     "effect": "^4.1.4",
-    "yaml": "^2.9.0"
+    "ws": "^8.22.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
@@ -42,7 +45,9 @@
     "@ayme-dev/typescript-config": "workspace:*",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@trpc/client": "^11.19.0",
     "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.1",
     "playwright-core": "^1.64.0",

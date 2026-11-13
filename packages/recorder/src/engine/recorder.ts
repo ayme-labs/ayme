@@ -6,6 +6,7 @@ import type {
   RecorderUpdate,
   RecordingOutcome,
 } from "../contract";
+import type { WindowServer } from "../server/infrastructure";
 import { RecorderSession, type RecordedBrowser } from "../session/application";
 import type { RecorderStartError } from "../session/domain";
 import { saveRecording } from "../timeline/infrastructure";
@@ -38,6 +39,9 @@ export async function startRecorderOn(
   options: {
     /** The project's folder: a recording is saved in it. */
     readonly projectDir: string;
+    /** The window's server, started: it serves this recorder from now on,
+     * and is closed when the recorder has ended. */
+    readonly window?: WindowServer;
   }
 ): Promise<Recorder> {
   const runtime = ManagedRuntime.make(
@@ -53,6 +57,7 @@ export async function startRecorderOn(
     .runPromise(RecorderSession)
     .catch(async (error: unknown) => {
       await runtime.dispose();
+      await options.window?.close();
       throw error;
     });
   // The runtime is closed once the recorder has ended: that lets the browser
@@ -61,13 +66,19 @@ export async function startRecorderOn(
   const done = runtime.runPromise(session.done).then(async (outcome) => {
     ended = true;
     await runtime.dispose();
+    await options.window?.close();
     return outcome;
   });
   const run = <A>(effect: Effect.Effect<A>, afterTheEnd: A): Promise<A> =>
     ended ? Promise.resolve(afterTheEnd) : runtime.runPromise(effect);
+  const send = (command: RecorderCommand) =>
+    run(session.send(command), "ignored" as CommandResult);
+  // The one place the window's commands and subscriptions cross into the
+  // engine: through the same handle every caller gets.
+  options.window?.attach({ send, subscribe: session.subscribe });
   return {
-    windowUrl: null,
-    send: (command) => run(session.send(command), "ignored"),
+    windowUrl: options.window?.url ?? null,
+    send,
     subscribe: session.subscribe,
     end: () => void run(session.end, undefined),
     done,
