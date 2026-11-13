@@ -22,8 +22,9 @@ const record: Happening = { kind: "command", command: { type: "record" } };
 const finish: Happening = { kind: "command", command: { type: "finish" } };
 const reporting: Happening = { kind: "reportingInteractions", on: true };
 const holding: Happening = { kind: "inputsHeld", on: true };
+const traceStarted: Happening = { kind: "traceStarted" };
 /** Record, up to the pages holding inputs back. */
-const started = [record, reporting, holding];
+const started = [record, traceStarted, reporting, holding];
 const outsideEnd: Happening = { kind: "outsideEnd" };
 const clickHeld = (input: string): Happening => ({
   kind: "inputHeld",
@@ -121,6 +122,7 @@ const discardTrace: ToDo = {
   ask: { kind: "stopTrace", keep: false },
 };
 const traceStopped: Happening = { kind: "traceStopped", trace };
+const traceDiscarded: Happening = { kind: "traceDiscarded" };
 const save: ToDo = { kind: "save", trace };
 
 // Ticket #1273: the commands, and Playwright's recorder switched off.
@@ -262,20 +264,24 @@ describe("the lifecycle", () => {
     {
       name: "Record starts a Visit for the open page and has Interactions reported; its answer waits",
       happened: [opened, record],
-      todo: [
-        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
-      ],
+      todo: [[startVisit, startTrace, { kind: "deferReply" }]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "once the trace is started, Playwright is asked to report Interactions",
+      happened: [opened, record, traceStarted],
+      todo: [[reportInteractions]],
       state: { phase: "recording" },
     },
     {
       name: "once Playwright reports Interactions, the pages are asked to hold inputs back",
-      happened: [opened, record, reporting],
+      happened: [opened, record, traceStarted, reporting],
       todo: [[holdInputs]],
       state: { phase: "recording" },
     },
     {
       name: "once the pages hold inputs back, Record is answered",
-      happened: [opened, record, reporting, holding],
+      happened: [opened, record, traceStarted, reporting, holding],
       todo: [[recordApplied]],
       state: { phase: "recording" },
     },
@@ -298,7 +304,6 @@ describe("the lifecycle", () => {
             },
           },
           startTrace,
-          reportInteractions,
           { kind: "deferReply" },
         ],
       ],
@@ -318,20 +323,25 @@ describe("the lifecycle", () => {
     },
     {
       name: "Record pressed again before the first is answered is ignored, and the first still waits",
-      happened: [opened, record, record, reporting, holding],
-      todo: [[reply("ignored")], [holdInputs], [recordApplied]],
+      happened: [opened, record, record, traceStarted, reporting, holding],
+      todo: [
+        [reply("ignored")],
+        [reportInteractions],
+        [holdInputs],
+        [recordApplied],
+      ],
       state: { phase: "recording" },
     },
     {
       name: "a click held before every page has confirmed is recorded like any other",
-      happened: [opened, record, reporting, clickHeld("input_1")],
+      happened: [opened, record, traceStarted, reporting, clickHeld("input_1")],
       todo: [[takeSnapshot("snapshot_1")]],
       state: { phase: "recording" },
     },
     {
       name: "Finish before the pages hold inputs back answers Record, then wraps up",
-      happened: [opened, record, finish, reporting, holding],
-      todo: [[recordApplied, ...wrapUp, reply("applied")], [], []],
+      happened: [opened, record, finish, traceStarted, reporting, holding],
+      todo: [[recordApplied, ...wrapUp, reply("applied")], [], [], []],
       state: { phase: "wrappingUp" },
     },
     {
@@ -786,7 +796,7 @@ describe("the lifecycle", () => {
     {
       name: "a trace that is thrown away and cannot be stopped changes nothing",
       happened: [...stopped, clear, failed(discardTrace)],
-      todo: [[]],
+      todo: [[{ kind: "clear" }]],
       state: { phase: "notRecording" },
     },
     {
@@ -797,11 +807,122 @@ describe("the lifecycle", () => {
     },
     {
       name: "a new recording after Clear starts a new trace",
-      happened: [...stopped, clear, record],
-      todo: [
-        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
-      ],
+      happened: [...stopped, clear, traceDiscarded, record],
+      todo: [[startVisit, startTrace, { kind: "deferReply" }]],
       state: { phase: "recording" },
+    },
+
+    // The trace's order (review of ticket #1274): the lifecycle decides it,
+    // and the browser only carries it out. A trace is started before the
+    // recorder reports, and thrown away before Clear is over.
+    {
+      name: "a wrap-up does not take its last snapshots before the trace is started: a mark needs a trace",
+      happened: [opened, record, finish, gateOff],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "once the trace is started, the wrap-up that waited takes its last snapshots",
+      happened: [opened, record, finish, gateOff, traceStarted],
+      todo: [[takeSnapshot("snapshot_1")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Clear is not over before the trace is confirmed gone: the recorder is still wrapping up",
+      happened: [
+        opened,
+        ...started,
+        clear,
+        gateOff,
+        taken("snapshot_1"),
+        reportingOff,
+      ],
+      todo: [[discardTrace]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Record pressed while the trace is being thrown away is answered 'ignored'",
+      happened: [
+        opened,
+        ...started,
+        clear,
+        gateOff,
+        taken("snapshot_1"),
+        reportingOff,
+        record,
+      ],
+      todo: [[reply("ignored")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "once the trace is gone, Clear is over, and Record starts a new trace",
+      happened: [
+        opened,
+        ...started,
+        clear,
+        gateOff,
+        taken("snapshot_1"),
+        reportingOff,
+        traceDiscarded,
+        record,
+      ],
+      todo: [[startVisit, startTrace, { kind: "deferReply" }]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a trace that cannot be thrown away still ends Clear: nothing waits for an answer that cannot come",
+      happened: [
+        opened,
+        ...started,
+        clear,
+        gateOff,
+        taken("snapshot_1"),
+        reportingOff,
+        failed(discardTrace),
+      ],
+      todo: [[{ kind: "clear" }]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "Clear while paused waits for the trace too, and answers Record 'ignored' meanwhile",
+      happened: [...stopped, clear, record],
+      todo: [[reply("ignored")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "the answer that the trace is gone is told once: a second one changes nothing",
+      happened: [...stopped, clear, traceDiscarded, traceDiscarded],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "the wrap-up's time limit passing while the trace is thrown away does not ask for it again",
+      happened: [
+        opened,
+        ...started,
+        clear,
+        gateOff,
+        taken("snapshot_1"),
+        reportingOff,
+        { kind: "timeLimitPassed" },
+      ],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "an outside end while the trace is thrown away ends 'empty' once it is gone",
+      happened: [
+        opened,
+        ...started,
+        clear,
+        gateOff,
+        taken("snapshot_1"),
+        reportingOff,
+        outsideEnd,
+        traceDiscarded,
+      ],
+      todo: [[{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
     // A breakdown.
@@ -1242,12 +1363,14 @@ describe("the lifecycle", () => {
         gateOff,
         taken("snapshot_3"),
         reportingOff,
+        traceDiscarded,
       ],
       todo: [
         [...wrapUp, reply("applied")],
         [takeSnapshot("snapshot_3")],
         [keep("snapshot_3"), stopReporting],
-        [discardTrace, { kind: "clear" }],
+        [discardTrace],
+        [{ kind: "clear" }],
       ],
       state: { phase: "notRecording" },
     },
@@ -1279,13 +1402,16 @@ describe("the lifecycle", () => {
         taken("snapshot_3"),
         { kind: "timeLimitPassed" },
         reported,
+        traceDiscarded,
         ...started,
         reported,
       ],
       todo: [
-        [stopReporting, discardTrace, { kind: "clear" }],
+        [stopReporting, discardTrace],
         [],
-        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
+        [{ kind: "clear" }],
+        [startVisit, startTrace, { kind: "deferReply" }],
+        [reportInteractions],
         [holdInputs],
         [recordApplied],
         [],
@@ -1293,16 +1419,23 @@ describe("the lifecycle", () => {
       state: { phase: "recording" },
     },
     {
-      name: "Clear while paused throws everything away at once",
-      happened: [...stopped, clear],
-      todo: [[discardTrace, { kind: "clear" }, reply("applied")]],
+      name: "Clear while paused is answered at once, and throws everything away when the trace is gone",
+      happened: [...stopped, clear, traceDiscarded],
+      todo: [[discardTrace, reply("applied")], [{ kind: "clear" }]],
       state: { phase: "notRecording" },
     },
     {
       name: "after Clear, Record starts a recording of its own: a new Visit, and the first snapshot",
-      happened: [...stopped, clear, ...started, clickHeld("input_1")],
+      happened: [
+        ...stopped,
+        clear,
+        traceDiscarded,
+        ...started,
+        clickHeld("input_1"),
+      ],
       todo: [
-        [startVisit, startTrace, reportInteractions, { kind: "deferReply" }],
+        [startVisit, startTrace, { kind: "deferReply" }],
+        [reportInteractions],
         [holdInputs],
         [recordApplied],
         [takeSnapshot("snapshot_1")],
@@ -1374,30 +1507,27 @@ describe("the lifecycle", () => {
         outsideEnd,
         gateOff,
         taken("snapshot_1"),
+        traceDiscarded,
       ],
       todo: [
         [],
         [takeSnapshot("snapshot_1")],
-        [
-          keep("snapshot_1"),
-          discardTrace,
-          { kind: "clear" },
-          { kind: "end", outcome: { kind: "empty" } },
-        ],
+        [keep("snapshot_1"), discardTrace],
+        [{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }],
       ],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
       name: "an outside end after Clear ends with 'empty'",
-      happened: [...stopped, clear, outsideEnd],
-      todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
+      happened: [...stopped, clear, outsideEnd, traceDiscarded],
+      todo: [[{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
     // A request the browser could not carry out: nothing waits for ever.
     {
       name: "Record is answered 'ignored' and the recorder ends 'failed' when Playwright's recorder cannot be started",
-      happened: [opened, record, failed(reportInteractions)],
+      happened: [opened, record, traceStarted, failed(reportInteractions)],
       todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
       state: {
         phase: "ended",
@@ -1421,7 +1551,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "Record is answered 'ignored' and the recorder ends 'failed' when the pages cannot hold inputs back",
-      happened: [opened, record, reporting, failed(holdInputs)],
+      happened: [opened, record, traceStarted, reporting, failed(holdInputs)],
       todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
       state: {
         phase: "ended",
@@ -2302,8 +2432,8 @@ describe("the lifecycle, for discard and restore", () => {
     },
     {
       name: "Clear after a discard throws the timeline away, decisions with it (rule 5)",
-      happened: [...stopped, discard("interaction_1"), clear],
-      todo: [discardTrace, { kind: "clear" }, reply("applied")],
+      happened: [...stopped, discard("interaction_1"), clear, traceDiscarded],
+      todo: [{ kind: "clear" }],
       state: { phase: "notRecording" },
     },
   ])("$name", ({ happened, todo, state }) => {
@@ -2348,11 +2478,7 @@ describe("the lifecycle, for a page that is blank at Record", () => {
       { kind: "pageNavigated", page: "page_1", url },
     ]);
 
-    expect(todo.at(-2)).toEqual([
-      startTrace,
-      reportInteractions,
-      { kind: "deferReply" },
-    ]);
+    expect(todo.at(-2)).toEqual([startTrace, { kind: "deferReply" }]);
     expect(todo.at(-1)).toEqual([startVisit]);
     expect(state).toEqual({ phase: "recording" });
   });

@@ -360,7 +360,7 @@ describe("Clear", () => {
     expect(text).toContain("id: interaction_1");
   });
 
-  it("clears a paused recorder at once", async () => {
+  it("clears a paused recorder once its trace is gone", async () => {
     const { recorder, browser } = await start();
     browser.showPage(idle);
     const updates: RecorderUpdate[] = [];
@@ -372,12 +372,14 @@ describe("Clear", () => {
 
     await expect(recorder.send({ type: "clear" })).resolves.toBe("applied");
 
-    expect(updates.at(-1)!.state).toEqual({
-      phase: "notRecording",
-      visits: [],
-      commands: ["record"],
-      warnings: [],
-    });
+    await expect
+      .poll(() => updates.at(-1)!.state)
+      .toEqual({
+        phase: "notRecording",
+        visits: [],
+        commands: ["record"],
+        warnings: [],
+      });
     recorder.end();
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
     await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
@@ -612,12 +614,14 @@ describe("the trace of a recording", () => {
 
   it("is thrown away on Clear, and Record starts a new one", async () => {
     const { recorder, browser } = await start();
+    const phases = phasesOf(recorder);
     browser.showPage(idle);
     await recorder.send({ type: "record" });
     await clickOnce(browser, "input_1");
 
     await recorder.send({ type: "clear" });
     await expect.poll(() => asked(browser, "stopTrace")).toHaveLength(1);
+    await expect.poll(() => phases.at(-1)).toBe("notRecording");
     await recorder.send({ type: "record" });
 
     expect(asked(browser, "stopTrace")).toEqual([
@@ -625,6 +629,56 @@ describe("the trace of a recording", () => {
     ]);
     expect(asked(browser, "startTrace")).toHaveLength(2);
     await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
+    recorder.end();
+    await recorder.done;
+  });
+
+  // The trace's order (review of ticket #1274): the recorder does not take
+  // Record while the old trace is still being stopped. The browser holds no
+  // trace request back behind another: the recorder asks for the next when
+  // the last is answered.
+  it("keeps Clear unfinished until the trace is gone, and answers Record 'ignored' meanwhile", async () => {
+    const { recorder, browser } = await start();
+    const phases = phasesOf(recorder);
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    browser.holdTraceAnswers();
+
+    await expect(recorder.send({ type: "clear" })).resolves.toBe("applied");
+    await expect
+      .poll(() => asked(browser, "stopTrace"))
+      .toEqual([{ kind: "stopTrace", keep: false }]);
+
+    // The old trace is not gone: the recorder is still wrapping up.
+    expect(phases.at(-1)).toBe("wrappingUp");
+    await expect(recorder.send({ type: "record" })).resolves.toBe("ignored");
+    expect(asked(browser, "startTrace")).toHaveLength(1);
+
+    browser.releaseTraceAnswers();
+    await expect.poll(() => phases.at(-1)).toBe("notRecording");
+    await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+    expect(asked(browser, "startTrace")).toHaveLength(2);
+    recorder.end();
+    await recorder.done;
+  });
+
+  it("is started before Playwright is asked to report, and Record is answered once the pages hold inputs back", async () => {
+    const { recorder, browser } = await start();
+    browser.holdTraceAnswers();
+
+    const answer = recorder.send({ type: "record" });
+    await browser.asks({ kind: "startTrace" });
+    // Nothing more is asked until the trace is started.
+    expect(browser.asked).toEqual([{ kind: "startTrace" }]);
+    browser.releaseTraceAnswers();
+
+    await expect(answer).resolves.toBe("applied");
+    expect(browser.asked.map(({ kind }) => kind)).toEqual([
+      "startTrace",
+      "reportInteractions",
+      "holdInputs",
+    ]);
     recorder.end();
     await recorder.done;
   });

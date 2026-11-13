@@ -361,6 +361,8 @@ async function stockToolEvaluates(
 it("traces the recording, marks each snapshot, and numbers each mark as the stock trace tool does", async () => {
   const browser = await onStockPlaywright(BUTTONS);
   await browser.ask({ kind: "startTrace" });
+  // The engine asks for a snapshot once the trace is told started.
+  await browser.toldOf("traceStarted");
 
   await browser.page.evaluate(() => {
     document.querySelector("h1")!.textContent = "One";
@@ -406,8 +408,17 @@ it("traces the recording, marks each snapshot, and numbers each mark as the stoc
 it("tells of a trace that is kept, and of none that is thrown away, and starts a new one after it", async () => {
   const browser = await onStockPlaywright(BUTTONS);
   await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
+  // Each request is asked when the last is told: the adapter orders none.
   await browser.ask({ kind: "stopTrace", keep: false });
+  await browser.toldOf("traceDiscarded");
   await browser.ask({ kind: "startTrace" });
+  await expect
+    .poll(
+      () => browser.told.filter((signal) => signal.kind === "traceStarted"),
+      { timeout: 10_000 }
+    )
+    .toHaveLength(2);
   await browser.ask({
     kind: "takeSnapshot",
     snapshot: "snapshot_1",
@@ -896,6 +907,7 @@ it("draws nothing, and says so, for an element the page no longer has", async ()
 it("keeps the highlight out of the page's structure and out of the trace's numbering of snapshots", async () => {
   const browser = await onStockPlaywright(PLACES);
   await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
   await browser.page.evaluate(() => {
     document.querySelector("h1")!.textContent = "One";
   });
