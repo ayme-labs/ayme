@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import {
   RecorderStartError,
   startRecorder,
@@ -31,6 +32,20 @@ export function startLine(browser: RecorderOptions["browser"]): string {
     : `Opened ${browser.launch.url}. Close the browser, or press Ctrl+C here, to end.\n`;
 }
 
+/** What the terminal is told of the recorder window: its address. */
+export function windowLine(url: string): string {
+  return `Recorder window: ${url}\n`;
+}
+
+/** The folder of the recorder window's built files: the CLI is what knows
+ * both the engine and the window, and hands the one the other. */
+const windowFolder = () =>
+  dirname(
+    createRequire(import.meta.url).resolve(
+      "@ayme-dev/recorder-window/window/index.html"
+    )
+  );
+
 /** What the terminal is told when the recorder has ended. */
 export function outcomeLine(outcome: RecordingOutcome): string {
   switch (outcome.kind) {
@@ -53,7 +68,11 @@ async function start(
   browser: RecorderOptions["browser"]
 ): Promise<Recorder | undefined> {
   try {
-    return await startRecorder({ projectDir: process.cwd(), browser });
+    return await startRecorder({
+      projectDir: process.cwd(),
+      browser,
+      window: { folder: windowFolder() },
+    });
   } catch (error) {
     if (!(error instanceof RecorderStartError)) throw error;
     // Its message is a sentence for the terminal: no stack trace.
@@ -83,6 +102,7 @@ export async function codegen(
   process.on("SIGINT", end);
   process.on("SIGTERM", end);
   process.stdout.write(startLine(browser));
+  if (recorder.windowUrl) process.stdout.write(windowLine(recorder.windowUrl));
 
   const outcome = await recorder.done;
   (outcome.kind === "failed" ? process.stderr : process.stdout).write(

@@ -17,7 +17,8 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
-    "@ayme-dev/recorder": "workspace:*"
+    "@ayme-dev/recorder": "workspace:*",
+    "@ayme-dev/recorder-window": "workspace:*"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",

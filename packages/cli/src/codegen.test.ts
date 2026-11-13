@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { exitCode, launchOptions, outcomeLine, startLine } from "./codegen";
+import {
+  exitCode,
+  launchOptions,
+  outcomeLine,
+  startLine,
+  windowLine,
+} from "./codegen";
 
 describe("how codegen launches the browser", () => {
   it("opens the URL in a browser with a window", () => {
@@ -64,6 +70,14 @@ describe("what the terminal is told at the end", () => {
       })
     ).toBe(
       "Recording package: /project/.ayme/recordings/rec_20261112T145047604Z/package.yaml\n"
+    );
+  });
+});
+
+describe("what the terminal is told of the window", () => {
+  it("gives the recorder window's address, to open it in any browser", () => {
+    expect(windowLine("http://127.0.0.1:53124/")).toBe(
+      "Recorder window: http://127.0.0.1:53124/\n"
     );
   });
 });
