@@ -119,6 +119,30 @@ test.describe("the in-page toolbar", () => {
   });
 });
 
+test.describe("the in-page toolbar in a running browser", () => {
+  test.use({ recordedBrowser: "attach" });
+
+  test("shows in the page that was open before the recorder came, and is taken out when the recorder lets go", async ({
+    startRecording,
+  }) => {
+    const { page, person, recorder } = await startRecording("/cart.html");
+    const toolbar = await RecorderToolbar.on(page, selectors);
+    await expect(toolbar.status).toHaveText("Not recording");
+    await person.click(toolbar.button("Record"));
+    await expect(toolbar.status).toHaveText("Recording");
+
+    recorder.end();
+    await recorder.done;
+
+    await expect(page.locator("ayme-recorder-toolbar")).toHaveCount(0);
+    // Nothing puts it back, and the page goes on as before.
+    await person.pause();
+    await expect(page.locator("ayme-recorder-toolbar")).toHaveCount(0);
+    await person.click(page.locator("#add"));
+    await expect(page.getByText("Items: 1")).toBeVisible();
+  });
+});
+
 test.describe("the in-page toolbar on a scripted recorder", () => {
   // The engine's scripted browser keeps the recorder wrapping up for as long
   // as the test likes. The toolbar is put in the test's own page the way the
