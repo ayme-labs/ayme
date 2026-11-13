@@ -44,13 +44,15 @@ describe("the toolbar's way to the recorder", () => {
       kind: "update",
       after: -1,
     })) as RecorderUpdate;
-    const next = toolbar({ kind: "update", after: first.revision });
-
     await expect(
       toolbar({ kind: "send", command: { type: "record" } })
     ).resolves.toBe("applied");
 
-    const changed = (await next) as RecorderUpdate;
+    // Recording is shown once Record is answered.
+    const changed = (await toolbar({
+      kind: "update",
+      after: first.revision,
+    })) as RecorderUpdate;
     expect(changed.revision).toBeGreaterThan(first.revision);
     expect(changed.state.phase).toBe("recording");
     await expect(
