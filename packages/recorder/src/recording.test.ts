@@ -144,6 +144,7 @@ describe("a recording", () => {
     browser.report(click);
     const interaction = {
       kind: "interaction",
+      id: "interaction_1",
       timestamp: 2,
       interaction: {
         id: "interaction_1",
@@ -170,6 +171,7 @@ describe("a recording", () => {
       interaction,
       {
         kind: "change",
+        id: "change_1",
         timestamp: 4,
         changeTree: [
           `- [ref=e1]:`,

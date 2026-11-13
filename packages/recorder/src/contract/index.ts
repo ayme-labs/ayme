@@ -42,7 +42,7 @@ export type InteractionDetails = {
 
 /** One entry of a Visit's timeline. A Change Tree is text, in the compact
  * notation of the Recording Package. */
-export type TimelineEntry =
+export type TimelineEntry = (
   | {
       readonly kind: "interaction";
       /** Milliseconds on the recorded browser's monotonic clock. */
@@ -57,7 +57,19 @@ export type TimelineEntry =
       readonly kind: "change";
       readonly timestamp: number;
       readonly changeTree: string;
-    };
+    }
+) & {
+  /**
+   * The entry's identity: the same in every update, after a reload of the
+   * window and in the saved package, and the one a decision names. An
+   * Interaction's is its own id. Whatever kind of entry is added, it has one.
+   */
+  readonly id: string;
+  /** The person left it out of the recording. It stays where it is: what it
+   * changed is still here, and the package writes it as a stub. Absent when
+   * it is kept. */
+  readonly discarded?: true;
+};
 
 /** One Visit of the recording, with the entries recorded in it so far. */
 export type RecordedVisit = {
