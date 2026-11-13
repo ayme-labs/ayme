@@ -17,7 +17,10 @@ import { afterEach, expect, it } from "vitest";
 
 import { RecordedBrowser } from "../../session/application";
 import type { BrowserRequest, BrowserSignal } from "../../session/domain";
-import { projectPlaywrightCli } from "./projectPlaywright";
+import {
+  loadProjectPlaywright,
+  projectPlaywrightCli,
+} from "./projectPlaywright";
 import { stockBrowser } from "./stockBrowser";
 
 // The recorded browser's contract, on stock Playwright. Each private detail
@@ -40,6 +43,14 @@ const attaching = process.env.AYME_RECORDER_BROWSER === "attach";
 const projectDir =
   process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT ??
   fileURLToPath(new URL("../../..", import.meta.url));
+
+/** The Chromium of the Playwright under test, which starts the running
+ * browser an attaching recorder finds: each version needs only the browser
+ * build it installs. The test's own connections use this package's
+ * Playwright, which needs no browser to connect. */
+const { chromium: projectChromium } = (
+  await Effect.runPromise(loadProjectPlaywright(projectDir))
+).playwright;
 
 /** A recorded browser on stock Playwright, as the engine sees it. */
 type Harness = {
@@ -93,7 +104,7 @@ async function onStockPlaywright(html: string): Promise<Harness> {
   let running: BrowserContext | undefined;
   if (attaching) {
     // Someone else's browser, open on the page before the recorder comes.
-    running = await chromium.launchPersistentContext("", {
+    running = await projectChromium.launchPersistentContext("", {
       headless: true,
       args: [`--remote-debugging-port=${debugPort}`],
     });
@@ -556,7 +567,7 @@ it.runIf(attaching)(
   "does not attach to a browser with more than one page open, and leaves its pages as they are",
   async () => {
     const debugPort = await freePort();
-    const running = await chromium.launchPersistentContext("", {
+    const running = await projectChromium.launchPersistentContext("", {
       headless: true,
       args: [`--remote-debugging-port=${debugPort}`],
     });
