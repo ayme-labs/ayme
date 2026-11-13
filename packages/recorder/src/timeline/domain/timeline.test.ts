@@ -83,18 +83,39 @@ describe("the timeline", () => {
     expect(await packageOf([visit])).toBeNull();
   });
 
-  it("writes a Visit without Interactions with its first snapshot and no entries", async () => {
-    expect(await packageOf([visit, snapshot("snapshot_1", 10, idle)])).toBe(
+  it("has nothing to write while no Interaction was recorded, as the released recorder: a started recording without one is empty", async () => {
+    expect(
+      await packageOf([
+        visit,
+        snapshot("snapshot_1", 10, idle),
+        snapshot("snapshot_2", 20, savedPage),
+      ])
+    ).toBeNull();
+  });
+
+  it("writes a Visit without Interactions, beside one that has one, with its first snapshot and no entries", async () => {
+    const text = await packageOf([
+      visit,
+      { kind: "visit", page: "page_2", url: `${url}help`, cause: "openPage" },
+      snapshot("snapshot_1", 10, idle),
+      {
+        kind: "snapshot",
+        snapshot: {
+          id: "snapshot_2",
+          page: "page_2",
+          url: `${url}help`,
+          at: 11,
+          tree: idle,
+        },
+      },
+      click("snapshot_1", null, null),
+    ]);
+
+    expect(text).toContain(
       [
-        `recordingId: rec_20261112T145047604Z`,
-        `mode: structural`,
-        `createdAt: 2026-11-12T14:50:47.604Z`,
-        `url: http://shop.test/`,
-        `tracePath: null`,
-        `visits:`,
-        `  - visitId: visit_1`,
-        `    url: http://shop.test/`,
-        `    cause: initial`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/help`,
+        `    cause: openPage`,
         `    baselineTree:`,
         `      - [ref=e1]:`,
         `        - [ref=e2] button "Save"`,
@@ -299,9 +320,13 @@ describe("the timeline", () => {
       visit,
       snapshot("snapshot_1", 10, idle),
       snapshot("snapshot_2", 20, idle),
+      snapshot("snapshot_3", 30, idle),
+      click("snapshot_2", "snapshot_3", null),
     ]);
 
-    expect(text).toContain(`    timelineEntries: []\n`);
+    expect(text).toContain("kind: interaction");
+    expect(text).not.toContain("kind: change");
+    expect(text).not.toContain("changeTree");
   });
 
   it("gives an Interaction whose page was gone before its 'after' no Change Tree", async () => {

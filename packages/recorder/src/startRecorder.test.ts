@@ -149,7 +149,10 @@ exports.chromium = {
         url: () => "http://stand-in.test/",
         mainFrame: () => frame,
         frames: () => [frame],
-        ariaSnapshot: () => new Promise(() => {}),
+        ariaSnapshot: () =>
+          exports.control.readable
+            ? Promise.resolve('- button "Save" [ref=e1]')
+            : new Promise(() => {}),
       });
       context.pages = () => [page];
       context.addInitScript = async () => {};
@@ -158,7 +161,20 @@ exports.chromium = {
           exports.control.holdClick = () =>
             held({ page, frame }, { x: 1, y: 1, detail: 1, modifiers: [] });
       };
-      if (${withRecorder}) context._startRecording = async () => {};
+      exports.control.recorder = [];
+      if (${withRecorder})
+        context._startRecording = async () => {
+          if (exports.control.recorderBroken) throw new Error("No recorder here.");
+          exports.control.recorder.push("started");
+        };
+      // Playwright's recorder, as the adapter reaches it to switch its mode.
+      const recorder = {
+        mode: () => "recording",
+        setMode: async (mode) => void exports.control.recorder.push(mode),
+      };
+      context._connection = {
+        toImpl: () => ({ [Symbol("recorderSymbol")]: Promise.resolve(recorder) }),
+      };
       context.newPage = async () => {
         context.emit("page", page);
         return page;
@@ -172,7 +188,16 @@ exports.chromium = {
   );
   return (
     createRequire(import.meta.url)(installed) as {
-      control: { holdClick(): void };
+      control: {
+        holdClick(): void;
+        /** Set, Playwright's recorder cannot be started. */
+        recorderBroken?: boolean;
+        /** Set, the page can be read after all. */
+        readable?: boolean;
+        /** What was done to Playwright's recorder, in order: "started", or
+         * the mode it was switched to. */
+        recorder: string[];
+      };
     }
   ).control;
 }
@@ -235,3 +260,58 @@ it(
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
   }
 );
+
+// A request the stock adapter cannot carry out is told, not swallowed:
+// Record must not wait until the recorder ends.
+it("answers Record 'ignored' and ends 'failed', with the reason, when Playwright's recorder cannot be started", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.recorderBroken = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+
+  await expect(recorder.send({ type: "record" })).resolves.toBe("ignored");
+
+  await expect(recorder.done).resolves.toEqual({
+    kind: "failed",
+    reason: "Recording could not start. No recorder here.",
+  });
+});
+
+it("switches Playwright's recorder off and on by its mode, and starts it once", async () => {
+  const control = await installPlaywrightWithUnreadablePage(folder);
+  control.readable = true;
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+  });
+  let phase = "";
+  recorder.subscribe(({ state }) => {
+    phase = state.phase;
+  });
+
+  await recorder.send({ type: "record" });
+  expect(control.recorder).toEqual(["started"]);
+
+  await recorder.send({ type: "stop" });
+  await expect.poll(() => phase).toBe("paused");
+  expect(control.recorder).toEqual(["started", "none"]);
+
+  await expect(recorder.send({ type: "continue" })).resolves.toBe("applied");
+  expect(control.recorder).toEqual(["started", "none", "recording"]);
+
+  await recorder.send({ type: "clear" });
+  await expect.poll(() => phase).toBe("notRecording");
+  await expect(recorder.send({ type: "record" })).resolves.toBe("applied");
+  expect(control.recorder).toEqual([
+    "started",
+    "none",
+    "recording",
+    "none",
+    "recording",
+  ]);
+
+  recorder.end();
+  await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+});

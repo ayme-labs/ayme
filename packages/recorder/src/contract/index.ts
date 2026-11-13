@@ -17,10 +17,14 @@ export type RecordingOutcome =
 export type RecorderPhase =
   | { readonly phase: "notRecording" }
   | { readonly phase: "recording" }
-  /** Finishing what is under way before the package is saved: commands wait. */
+  /** Finishing what is under way before the recording is paused, cleared or
+   * saved: commands are ignored meanwhile. */
   | { readonly phase: "wrappingUp" }
   | { readonly phase: "saving" }
-  | { readonly phase: "ended"; readonly outcome: RecordingOutcome };
+  | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
+  /** Stopped for now: nothing is recorded, and the page gets its input
+   * untouched. What was recorded is kept, and Continue goes on from it. */
+  | { readonly phase: "paused" };
 
 /** One Interaction as it is recorded, and as the Recording Package lists it. */
 export type InteractionDetails = {
@@ -82,7 +86,14 @@ export type RecorderUpdate = {
 
 /** Something a person asks of the recorder. */
 export type RecorderCommand =
-  { readonly type: "record" } | { readonly type: "finish" };
+  | { readonly type: "record" }
+  | { readonly type: "finish" }
+  /** Pauses the recording. */
+  | { readonly type: "stop" }
+  /** Goes on recording after a pause, into the same timeline. */
+  | { readonly type: "continue" }
+  /** Throws away everything recorded so far. */
+  | { readonly type: "clear" };
 
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */

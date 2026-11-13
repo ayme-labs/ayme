@@ -136,7 +136,7 @@ const BUTTONS = `
 
 /** Playwright reports Interactions from now on. */
 async function reporting(browser: Harness) {
-  await browser.ask({ kind: "reportInteractions" });
+  await browser.ask({ kind: "reportInteractions", on: true });
   await browser.toldOf("reportingInteractions");
 }
 
@@ -233,4 +233,33 @@ it("reports a click the page held back once, after it is passed on", async () =>
       .filter((signal) => signal.kind === "interactionReported")
       .map(({ report }) => report.selector)
   ).toEqual([expect.stringContaining("First")]);
+});
+
+it("switches Playwright's recorder off and on again by its mode", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await reporting(browser);
+  const reported = () =>
+    browser.told
+      .filter((signal) => signal.kind === "interactionReported")
+      .map(({ report }) => report.selector);
+
+  await browser.ask({ kind: "reportInteractions", on: false });
+  await browser.toldOf("reportingInteractions", ({ on }) => !on);
+  await browser.click(browser.page.locator("#first"));
+  await new Promise((resolve) => setTimeout(resolve, 1_000));
+  expect(reported()).toEqual([]);
+
+  await browser.ask({ kind: "reportInteractions", on: true });
+  await expect
+    .poll(
+      () =>
+        browser.told.filter(
+          (signal) => signal.kind === "reportingInteractions" && signal.on
+        ).length
+    )
+    .toBe(2);
+  await browser.click(browser.page.locator("#second"));
+  await expect
+    .poll(reported, { timeout: 10_000 })
+    .toEqual([expect.stringContaining("Second")]);
 });

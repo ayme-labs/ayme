@@ -47,6 +47,11 @@ export interface ScriptedBrowser {
   releaseSnapshots(): void;
   /** Moves the recorder's clock on. */
   advanceTime(ms: number): Promise<void>;
+  /** From now on the pages do not confirm that they hold inputs back, or
+   * that they no longer do... */
+  holdConfirmations(): void;
+  /** ...until now. */
+  releaseConfirmations(): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -74,6 +79,7 @@ export async function startScriptedRecorder(
   let inputs = 0;
   let settling: Extract<BrowserRequest, { kind: "waitForSettled" }> | undefined;
   let snapshotsHeld: (() => void)[] | undefined;
+  let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
   const waiting: (() => void)[] = [];
   const tell = (signal: BrowserSignal) => {
@@ -83,9 +89,13 @@ export async function startScriptedRecorder(
   const answer = (request: BrowserRequest) => {
     switch (request.kind) {
       case "reportInteractions":
-        return tell({ kind: "reportingInteractions" });
-      case "holdInputs":
-        return tell({ kind: "inputsHeld", on: request.on });
+        return tell({ kind: "reportingInteractions", on: request.on });
+      case "holdInputs": {
+        const confirm = () => tell({ kind: "inputsHeld", on: request.on });
+        if (confirmationsHeld) confirmationsHeld.push(confirm);
+        else confirm();
+        return;
+      }
       case "takeSnapshot": {
         const take = () =>
           tell({
@@ -180,6 +190,14 @@ export async function startScriptedRecorder(
         for (const take of held) take();
       },
       advanceTime: (ms) => Effect.runPromise(clock!.adjust(ms)),
+      holdConfirmations: () => {
+        confirmationsHeld = [];
+      },
+      releaseConfirmations: () => {
+        const held = confirmationsHeld ?? [];
+        confirmationsHeld = undefined;
+        for (const confirm of held) confirm();
+      },
     },
   };
 }

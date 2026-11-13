@@ -30,6 +30,10 @@ concern and reuse `fixtures.ts`.
   the throwaway prototype of pull request #1268 wrote for the same clicks,
   with what differs from run to run replaced.
 
+- `controls.spec.ts` stops, continues, clears and finishes a recording, the
+  same way: through the engine's handle, with a person's input, reading the
+  package from disk.
+
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
 - `AYME_RECORDER_HEADLESS=1` launches the browser without a window, since the

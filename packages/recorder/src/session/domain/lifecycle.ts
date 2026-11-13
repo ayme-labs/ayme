@@ -33,8 +33,8 @@ export type BrowserSignal =
       readonly pagesLeft: number;
     }
   | { readonly kind: "browserGone" }
-  /** Playwright reports Interactions from now on. */
-  | { readonly kind: "reportingInteractions" }
+  /** Playwright reports Interactions from now on, or no longer does. */
+  | { readonly kind: "reportingInteractions"; readonly on: boolean }
   /** Every page confirms that it holds inputs back, or that it no longer does. */
   | { readonly kind: "inputsHeld"; readonly on: boolean }
   /** A page held an input back: it has not reached the page yet. */
@@ -62,6 +62,13 @@ export type BrowserSignal =
       readonly kind: "interactionReported";
       readonly page: string;
       readonly report: InteractionReport;
+    }
+  /** A request broke while the browser carried it out: no other answer to
+   * it comes. `reason` says what went wrong, for a person. */
+  | {
+      readonly kind: "requestFailed";
+      readonly request: BrowserRequest;
+      readonly reason: string;
     };
 
 /**
@@ -71,9 +78,9 @@ export type BrowserSignal =
  * two steps: the second is asked when the first is answered.
  */
 export type BrowserRequest =
-  /** Have Playwright report Interactions from now on. Answered by
-   * "reportingInteractions". */
-  | { readonly kind: "reportInteractions" }
+  /** Have Playwright report Interactions from now on, or no longer: its own
+   * recorder is switched on or off. Answered by "reportingInteractions". */
+  | { readonly kind: "reportInteractions"; readonly on: boolean }
   /** Hold inputs back in every page, or stop doing so. Answered by
    * "inputsHeld" once every page has confirmed. */
   | { readonly kind: "holdInputs"; readonly on: boolean }
@@ -121,7 +128,9 @@ export type ToDo =
   /** Write the Recording Package, then tell the lifecycle "saved". */
   | { readonly kind: "save" }
   /** The recorder has ended: let the browser go and report the outcome. */
-  | { readonly kind: "end"; readonly outcome: RecordingOutcome };
+  | { readonly kind: "end"; readonly outcome: RecordingOutcome }
+  /** Throw away everything recorded: the timeline starts empty again. */
+  | { readonly kind: "clear" };
 
 /**
  * How long a wrap-up may take. It is there for a report that never comes:
@@ -173,6 +182,8 @@ export type LifecycleState = { readonly pages: readonly Page[] } & (
       readonly phase: "recording";
       /** Record is not answered yet: the pages do not all hold inputs back. */
       readonly starting: boolean;
+      /** It goes on after a pause: Continue started it, not Record. */
+      readonly resumed: boolean;
     } & Flow)
   | ({
       readonly phase: "wrappingUp";
@@ -180,10 +191,26 @@ export type LifecycleState = { readonly pages: readonly Page[] } & (
       readonly gateOff: boolean;
       /** The last snapshots still under way; null until they are asked for. */
       readonly finals: readonly { page: string; snapshot: string }[] | null;
+      /** What the wrap-up leads to. */
+      readonly then: AfterWrapUp;
+      /** All that was under way is done, and Playwright's recorder is asked
+       * to switch off: the wrap-up waits for nothing else. */
+      readonly switchingOff: boolean;
     } & Flow)
   | { readonly phase: "saving" }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
+  /** Nothing is under way. The count of snapshots goes on after Continue:
+   * the timeline is the same one. */
+  | { readonly phase: "paused"; readonly snapshotsAsked: number }
 );
+
+/**
+ * What a wrap-up leads to: the package is saved and the recorder ends; the
+ * recorder is paused; everything recorded is thrown away, and the recorder
+ * is not recording again; or it is thrown away and the recorder ends
+ * "empty", when a clearing recorder is ended from outside.
+ */
+type AfterWrapUp = "save" | "pause" | "clear" | "clearAndEnd";
 
 type Active = Extract<LifecycleState, { phase: "recording" | "wrappingUp" }>;
 
@@ -245,8 +272,9 @@ export function step(state: LifecycleState, happening: Happening): Step {
       };
     }
     case "timeLimitPassed":
-      // Whatever is still owed is left out.
-      return state.phase === "wrappingUp" ? save(state, []) : stay(state);
+      return state.phase === "wrappingUp" ? giveUp(state) : stay(state);
+    case "requestFailed":
+      return failed(state, happening.request, happening.reason);
     case "saved": {
       if (state.phase !== "saving") return stay(state);
       const outcome: RecordingOutcome =
@@ -259,73 +287,152 @@ export function step(state: LifecycleState, happening: Happening): Step {
       };
     }
     default:
-      return isActive(state) ? during(state, happening) : stay(state);
+      return isActive(state)
+        ? during(state, happening)
+        : aside(state, happening);
   }
+}
+
+/** What the browser tells while no recording is under way. */
+function aside(state: LifecycleState, happening: BrowserSignal): Step {
+  // A page that had not heard in time that recording is over held a click
+  // back: it is the page's, and reaches it now. Nothing of it is recorded.
+  if (happening.kind === "inputHeld" && state.phase !== "ended")
+    return {
+      state,
+      todo: [
+        { kind: "browser", ask: { kind: "passOn", input: happening.input } },
+      ],
+    };
+  return stay(state);
 }
 
 function command(state: LifecycleState, asked: RecorderCommand): Step {
   const reply = (result: CommandResult): ToDo => ({ kind: "reply", result });
-  if (
-    asked.type === "record" &&
-    state.phase === "notRecording" &&
-    state.pages.length > 0
-  )
-    return {
-      state: {
-        phase: "recording",
-        starting: true,
-        pages: state.pages,
-        inputs: [],
-        snapshotsAsked: 0,
-      },
-      todo: [
-        ...state.pages.map((page, index): ToDo => ({
-          kind: "timeline",
-          add: {
-            kind: "visit",
-            page: page.id,
-            url: page.url,
-            cause: index === 0 ? "initial" : "openPage",
+  /** A command that starts a wrap-up is answered at once: the buttons wait
+   * for the phase, not for the answer. */
+  const applied = (next: Step): Step => ({
+    state: next.state,
+    todo: [...next.todo, reply("applied")],
+  });
+  switch (state.phase) {
+    case "notRecording":
+      if (asked.type === "record" && state.pages.length > 0)
+        return {
+          state: {
+            phase: "recording",
+            starting: true,
+            resumed: false,
+            pages: state.pages,
+            inputs: [],
+            snapshotsAsked: 0,
           },
-        })),
-        // Reports first: a click held before Playwright listens would be
-        // passed on without ever being reported. The pages are asked to hold
-        // inputs back when Playwright reports, and Record is answered when
-        // they do: "applied" means that a click is now recorded.
-        { kind: "browser", ask: { kind: "reportInteractions" } },
-        { kind: "deferReply" },
-      ],
-    };
-  if (asked.type === "finish" && state.phase === "recording") {
-    const wrapping = wrapUp(state);
-    return {
-      state: wrapping.state,
-      todo: [...wrapping.todo, reply("applied")],
-    };
+          todo: [
+            ...state.pages.map((page, index): ToDo => ({
+              kind: "timeline",
+              add: {
+                kind: "visit",
+                page: page.id,
+                url: page.url,
+                cause: index === 0 ? "initial" : "openPage",
+              },
+            })),
+            // Reports first: a click held before Playwright listens would
+            // be passed on without ever being reported. The pages are asked
+            // to hold inputs back when Playwright reports, and Record is
+            // answered when they do: "applied" means that a click is now
+            // recorded.
+            { kind: "browser", ask: { kind: "reportInteractions", on: true } },
+            { kind: "deferReply" },
+          ],
+        };
+      break;
+    case "recording":
+      if (asked.type === "finish") return applied(wrapUp(state, "save"));
+      if (asked.type === "stop") return applied(wrapUp(state, "pause"));
+      if (asked.type === "clear") return applied(wrapUp(state, "clear"));
+      break;
+    case "paused":
+      // It starts as Record does, into the timeline that is there.
+      if (asked.type === "continue")
+        return {
+          state: {
+            phase: "recording",
+            starting: true,
+            resumed: true,
+            pages: state.pages,
+            inputs: [],
+            snapshotsAsked: state.snapshotsAsked,
+          },
+          todo: [
+            { kind: "browser", ask: { kind: "reportInteractions", on: true } },
+            { kind: "deferReply" },
+          ],
+        };
+      // Nothing is under way while paused: there is nothing to wrap up, and
+      // no last snapshot to take, which would show what the pause changed.
+      if (asked.type === "clear")
+        return {
+          state: { phase: "notRecording", pages: state.pages },
+          todo: [{ kind: "clear" }, reply("applied")],
+        };
+      // Answered first: the worker comes back from a save only when the
+      // package is written.
+      if (asked.type === "finish") return save(state, [reply("applied")]);
+      break;
   }
-  // A command that does not apply now changes nothing.
+  // A command that does not apply now changes nothing: it is never kept for
+  // later, and never read as the opposite one.
   return { state, todo: [reply("ignored")] };
 }
 
-/** An end from outside. With nothing recorded, the recorder ends "empty";
- * a recording is wrapped up and saved; a wrap-up or a save under way goes on. */
+/**
+ * An end from outside. With nothing recorded, the recorder ends "empty"; a
+ * recording is wrapped up and saved, and a paused one is saved as it is. A
+ * wrap-up under way goes on, and now ends the recorder: one that would have
+ * paused saves, and one that would have cleared ends "empty". A save under
+ * way goes on: a second end joins it.
+ */
 function endFromOutside(state: LifecycleState): Step {
-  if (state.phase === "recording") return wrapUp(state);
-  if (state.phase !== "notRecording") return stay(state);
-  const outcome: RecordingOutcome = { kind: "empty" };
-  return {
-    state: { phase: "ended", pages: state.pages, outcome },
-    todo: [{ kind: "end", outcome }],
-  };
+  switch (state.phase) {
+    case "notRecording": {
+      const outcome: RecordingOutcome = { kind: "empty" };
+      return {
+        state: { phase: "ended", pages: state.pages, outcome },
+        todo: [{ kind: "end", outcome }],
+      };
+    }
+    case "recording":
+      return wrapUp(state, "save");
+    case "wrappingUp":
+      return stay({
+        ...state,
+        then:
+          state.then === "pause"
+            ? "save"
+            : state.then === "clear"
+              ? "clearAndEnd"
+              : state.then,
+      });
+    case "paused":
+      return save(state, []);
+    default:
+      return stay(state);
+  }
 }
 
 /**
- * Starts the wrap-up before a save. It is over when every page has confirmed
- * that it holds no input back, every held input has been passed on and has
- * its "after", a last snapshot of every page is in, and Playwright's report
- * for every input is in; or when the time limit passes.
+ * Starts the wrap-up that ends a stretch of recording. It is over when every
+ * page has confirmed that it holds no input back, every held input has been
+ * passed on and has its "after", a last snapshot of every page is in, and
+ * Playwright's report for every input is in; or when the time limit passes.
+ * Until then the recorder records: a click a page still holds back is
+ * recorded like any other.
  */
-function wrapUp(state: Extract<LifecycleState, { phase: "recording" }>): Step {
+function wrapUp(
+  state: Extract<LifecycleState, { phase: "recording" }>,
+  then: AfterWrapUp
+): Step {
   return proceed(
     {
       phase: "wrappingUp",
@@ -334,6 +441,8 @@ function wrapUp(state: Extract<LifecycleState, { phase: "recording" }>): Step {
       snapshotsAsked: state.snapshotsAsked,
       gateOff: false,
       finals: null,
+      then,
+      switchingOff: false,
     },
     [
       ...answerRecord(state),
@@ -425,11 +534,13 @@ function during(state: Active, happening: BrowserSignal): Step {
   let next = state;
   switch (happening.kind) {
     case "reportingInteractions":
-      if (state.phase === "recording" && state.starting)
+      if (state.phase === "recording" && state.starting && happening.on)
         draft.todo.push({
           kind: "browser",
           ask: { kind: "holdInputs", on: true },
         });
+      if (state.phase === "wrappingUp" && state.switchingOff && !happening.on)
+        return wrappedUp(state, []);
       break;
     case "inputsHeld":
       if (state.phase === "wrappingUp" && !happening.on)
@@ -557,7 +668,12 @@ const settle = (draft: Draft): Flow => ({
  * it needs is written down, and a wrap-up that has all it waited for saves. */
 function proceed(state: Active, done: readonly ToDo[]): Step {
   const draft: Draft = {
-    inputs: state.inputs,
+    // An input whose "before" could not be taken is not recorded. It was
+    // kept until its report came, so that no later input took the report
+    // for its own: now it is let go.
+    inputs: state.inputs.filter(
+      (input) => input.stage !== "settled" || !input.report || input.before
+    ),
     snapshotsAsked: state.snapshotsAsked,
     todo: [...done],
   };
@@ -600,7 +716,205 @@ function proceed(state: Active, done: readonly ToDo[]): Step {
       page: page.id,
       snapshot: askSnapshot(draft, page.id),
     }));
-  if (finals?.length === 0 && draft.inputs.length === 0)
-    return save(state, draft.todo);
-  return { state: { ...state, ...settle(draft), finals }, todo: draft.todo };
+  const next = { ...state, ...settle(draft), finals };
+  if (finals?.length !== 0 || draft.inputs.length !== 0 || state.switchingOff)
+    return { state: next, todo: draft.todo };
+  // A recorder that ends is let go with its browser. One that lives on has
+  // Playwright's recorder switched off first: it is not recording any more.
+  if (state.then === "save" || state.then === "clearAndEnd")
+    return wrappedUp(next, draft.todo);
+  return {
+    state: { ...next, switchingOff: true },
+    todo: [
+      ...draft.todo,
+      { kind: "browser", ask: { kind: "reportInteractions", on: false } },
+    ],
+  };
+}
+
+/** What a wrap-up that is over leads to. */
+function wrappedUp(
+  state: Extract<LifecycleState, { phase: "wrappingUp" }>,
+  todo: readonly ToDo[]
+): Step {
+  const { pages } = state;
+  switch (state.then) {
+    case "save":
+      return save(state, todo);
+    case "pause":
+      return {
+        state: { phase: "paused", pages, snapshotsAsked: state.snapshotsAsked },
+        todo,
+      };
+    case "clear":
+      return {
+        state: { phase: "notRecording", pages },
+        todo: [...todo, { kind: "clear" }],
+      };
+    case "clearAndEnd": {
+      const outcome: RecordingOutcome = { kind: "empty" };
+      return {
+        state: { phase: "ended", pages, outcome },
+        todo: [...todo, { kind: "clear" }, { kind: "end", outcome }],
+      };
+    }
+  }
+}
+
+/**
+ * The wrap-up's time limit has passed: whatever is still owed is left out
+ * of the recording. A click that is still held back is the page's all the
+ * same, and is passed on. Nothing is waited for any more.
+ */
+function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
+  const todo = release(state.inputs);
+  const livesOn = state.then === "pause" || state.then === "clear";
+  if (livesOn && !state.switchingOff)
+    todo.push({
+      kind: "browser",
+      ask: { kind: "reportInteractions", on: false },
+    });
+  return wrappedUp(state, todo);
+}
+
+/** Lets every input that is still held back reach its page. */
+function release(inputs: readonly Input[]): ToDo[] {
+  return inputs
+    .filter(
+      (input) => input.stage === "waiting" || input.stage === "takingBefore"
+    )
+    .map((input) => ({
+      kind: "browser",
+      ask: { kind: "passOn", input: input.id },
+    }));
+}
+
+/**
+ * The browser could not carry out a request, and no other answer to it
+ * comes. Nothing may wait for one: each request has what follows when it
+ * breaks.
+ */
+function failed(
+  state: LifecycleState,
+  request: BrowserRequest,
+  reason: string
+): Step {
+  switch (request.kind) {
+    case "reportInteractions":
+    case "holdInputs":
+      if (request.on) return cannotStart(state, request, reason);
+      // Switching off cannot be confirmed, and nothing better can be had:
+      // it counts as done. A click a page holds back all the same is passed
+      // on when it tells of it, and a report that comes all the same is
+      // ignored.
+      return step(
+        state,
+        request.kind === "holdInputs"
+          ? { kind: "inputsHeld", on: false }
+          : { kind: "reportingInteractions", on: false }
+      );
+    case "waitForSettled":
+      // The wait is over: the page is read as it is.
+      return step(state, {
+        kind: "pageSettled",
+        page: request.page,
+        input: request.input,
+      });
+    case "takeSnapshot":
+    case "passOn":
+      return isActive(state) ? unanswered(state, request) : stay(state);
+  }
+}
+
+/**
+ * Recording cannot start: Playwright's recorder does not report, or the
+ * pages do not hold inputs back. After Continue the recorder is paused
+ * again, with what it recorded, and Continue is answered "ignored". After
+ * Record there is nothing to go back to that could record: the recorder
+ * ends "failed", and says why.
+ */
+function cannotStart(
+  state: LifecycleState,
+  request: Extract<
+    BrowserRequest,
+    { kind: "reportInteractions" | "holdInputs" }
+  >,
+  reason: string
+): Step {
+  if (state.phase !== "recording" || !state.starting) return stay(state);
+  const ignored: ToDo = { kind: "replyDeferred", result: "ignored" };
+  if (!state.resumed) {
+    const outcome: RecordingOutcome = {
+      kind: "failed",
+      reason: `Recording could not start. ${reason}`,
+    };
+    return {
+      state: { phase: "ended", pages: state.pages, outcome },
+      todo: [ignored, { kind: "end", outcome }],
+    };
+  }
+  return {
+    state: {
+      phase: "paused",
+      pages: state.pages,
+      snapshotsAsked: state.snapshotsAsked,
+    },
+    todo: [
+      ...release(state.inputs),
+      // What Continue had switched on is switched off again.
+      ...(request.kind === "holdInputs"
+        ? ([
+            { kind: "browser", ask: { kind: "holdInputs", on: false } },
+            { kind: "browser", ask: { kind: "reportInteractions", on: false } },
+          ] satisfies ToDo[])
+        : []),
+      ignored,
+    ],
+  };
+}
+
+/** A snapshot that could not be taken, or an input that could not be passed
+ * on, while a recording is under way. */
+function unanswered(
+  state: Active,
+  request: Extract<BrowserRequest, { kind: "takeSnapshot" | "passOn" }>
+): Step {
+  const draft: Draft = {
+    inputs: state.inputs,
+    snapshotsAsked: state.snapshotsAsked,
+    todo: [],
+  };
+  let next = state;
+  if (request.kind === "passOn") {
+    // It cannot reach its page: it is dropped, as one whose page is gone.
+    draft.inputs = draft.inputs.filter(
+      (input) => input.id !== request.input || input.stage !== "passingOn"
+    );
+  } else {
+    for (const owner of draft.inputs.filter(
+      (input) => input.asked === request.snapshot
+    )) {
+      if (owner.stage === "takingAfter") {
+        // It keeps its "before" only, as when its page is gone.
+        change(draft, owner.id, { stage: "settled", asked: null });
+      } else {
+        // Without a "before" it cannot be recorded. It is the page's all
+        // the same: it is passed on, and goes its way like any other, so
+        // that the inputs behind it keep their order.
+        change(draft, owner.id, { stage: "passingOn", asked: null });
+        draft.todo.push({
+          kind: "browser",
+          ask: { kind: "passOn", input: owner.id },
+        });
+      }
+    }
+    if (state.phase === "wrappingUp" && state.finals)
+      next = {
+        ...state,
+        finals: state.finals.filter(
+          (final) => final.snapshot !== request.snapshot
+        ),
+      };
+  }
+  return proceed({ ...next, ...settle(draft) }, draft.todo);
 }

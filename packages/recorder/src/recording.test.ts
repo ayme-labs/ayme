@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
 
 // A recording on the scripted browser, with a test clock: what the handle
 // answers and shows, what it asks of the browser, and the package on disk.
@@ -56,6 +56,15 @@ const savedClick = [
   ``,
 ].join("\n");
 
+/** One reported click, from held to its "after". A recording needs one to
+ * be saved: without an Interaction it is empty. */
+async function recordClick(browser: ScriptedBrowser, input = "input_1") {
+  browser.holdClick();
+  await browser.asks({ kind: "waitForSettled", page: "page_1", input });
+  browser.settle();
+  browser.report(click);
+}
+
 describe("a recording", () => {
   it("starts on Record: Playwright reports Interactions and the pages hold inputs back", async () => {
     const { recorder, browser } = await start();
@@ -80,7 +89,7 @@ describe("a recording", () => {
       },
     });
     expect(browser.asked).toEqual([
-      { kind: "reportInteractions" },
+      { kind: "reportInteractions", on: true },
       { kind: "holdInputs", on: true },
     ]);
   });
@@ -209,6 +218,7 @@ describe("a recording", () => {
     const recordings = join(projectDir, ".ayme", "recordings");
     const first = await start();
     await first.recorder.send({ type: "record" });
+    await recordClick(first.browser);
     await first.recorder.send({ type: "finish" });
     await first.recorder.done;
     await writeFile(join(recordings, "latest.json"), "{}");
@@ -216,6 +226,7 @@ describe("a recording", () => {
 
     const second = await start();
     await second.recorder.send({ type: "record" });
+    await recordClick(second.browser);
     await second.recorder.send({ type: "finish" });
     const outcome = await second.recorder.done;
 
@@ -315,8 +326,9 @@ describe("a recording", () => {
   });
 
   it("saves once when Finish is pressed twice", async () => {
-    const { recorder } = await start();
+    const { recorder, browser } = await start();
     await recorder.send({ type: "record" });
+    await recordClick(browser);
 
     const answers = await Promise.all([
       recorder.send({ type: "finish" }),
@@ -336,10 +348,11 @@ describe("a recording", () => {
     const { recorder, browser } = await start();
     browser.showPage(idle);
     await recorder.send({ type: "record" });
+    await recordClick(browser);
     browser.holdClick();
-    await browser.asks(waitForSettled);
+    await browser.asks({ ...waitForSettled, input: "input_2" });
     browser.settle();
-    // Playwright never reports this click.
+    // Playwright never reports this second click.
     const phases: string[] = [];
     recorder.subscribe(({ state }) => {
       // A phase is told again with each entry: once is enough here.
@@ -350,7 +363,7 @@ describe("a recording", () => {
     // Everything else is done: the last snapshot is in.
     await browser.asks({
       kind: "takeSnapshot",
-      snapshot: "snapshot_3",
+      snapshot: "snapshot_5",
       page: "page_1",
     });
     await browser.advanceTime(4_999);
@@ -361,16 +374,19 @@ describe("a recording", () => {
 
     expect(outcome.kind).toBe("saved");
     expect(
-      await readFile(
-        join((outcome as { folder: string }).folder, "package.yaml"),
-        "utf8"
-      )
-    ).toContain(`    timelineEntries: []\ntraceActionPoints: []\n`);
+      (
+        await readFile(
+          join((outcome as { folder: string }).folder, "package.yaml"),
+          "utf8"
+        )
+      ).match(/kind: interaction/g)
+    ).toHaveLength(1);
   });
 
   it("saves a recording that is ended from outside, as Finish does", async () => {
-    const { recorder } = await start();
+    const { recorder, browser } = await start();
     await recorder.send({ type: "record" });
+    await recordClick(browser);
 
     recorder.end();
     recorder.end();
@@ -388,6 +404,7 @@ describe("a recording", () => {
     const updates: RecorderUpdate[] = [];
     recorder.subscribe((update) => updates.push(update));
     await recorder.send({ type: "record" });
+    await recordClick(browser);
 
     await recorder.send({ type: "finish" });
 
