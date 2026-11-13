@@ -1787,9 +1787,9 @@ it(
     const { chromium } = await import("playwright");
     try {
       await expect
-        .poll(() => /Recorder window: \S+\n/.test(stdout), { timeout: 30_000 })
+        .poll(() => /Recorder UI: \S+\n/.test(stdout), { timeout: 30_000 })
         .toBe(true);
-      const windowUrl = /Recorder window: (\S+)/.exec(stdout)![1]!;
+      const windowUrl = /Recorder UI: (\S+)/.exec(stdout)![1]!;
       // The address is printed as soon as the recorder has started, which
       // does not wait for the browser: it may not listen yet.
       let connection: Awaited<ReturnType<typeof chromium.connectOverCDP>>;

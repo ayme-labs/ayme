@@ -34,7 +34,7 @@ Opens `<url>` in Chromium, with a recorder window beside it and a small toolbar 
 npx @ayme-dev/cli codegen http://localhost:3000
 ```
 
-The terminal prints the address of the recorder window, such as `Recorder window: http://127.0.0.1:52011/`. When the recording is saved it prints `Recording package: <path>`, or `Nothing was recorded.` when there was nothing to save.
+The terminal prints the address of the recorder window, such as `Recorder UI: http://127.0.0.1:52011/`. When the recording is saved it prints `Recording package: <path>`, or `Recording was empty; no recording package was created.` when there was nothing to save.
 
 - `--headed`: open Chromium with a visible window. This is the default.
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
