@@ -47,11 +47,21 @@ export function isRefusedAutoPairProbe(text: string) {
  * server that runs on this machine, such as another suite's: it answers
  * their auto-pair scan as if none ran (`ignoreAutoPairScan`). Every example
  * spec uses it, or `test`, which builds on it.
+ *
+ * `limitScan` is whether it does so; on unless a spec turns it off. Once a
+ * context routes any WebSocket, Playwright relays every WebSocket of its
+ * pages, and a message a page sends as it unloads is lost. A spec whose
+ * pages always pair by link, so never scan, turns it off to test what the
+ * page says as it leaves.
  */
-export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
+export const exampleTest = base.extend<{
+  ignoreAutoPairScan: void;
+  limitScan: boolean;
+}>({
+  limitScan: [true, { option: true }],
   ignoreAutoPairScan: [
-    async ({ context }, use) => {
-      await ignoreAutoPairScan(context);
+    async ({ context, limitScan }, use) => {
+      if (limitScan) await ignoreAutoPairScan(context);
       await use();
     },
     { auto: true },
@@ -128,6 +138,11 @@ async function openCounter(
     waitUntil: "networkidle",
   });
   expect(response?.status()).toBe(200);
+  await counterReady(page, inspector);
+}
+
+/** Waits until the counter page publishes its tools and shows the counter. */
+async function counterReady(page: Page, inspector: boolean | undefined) {
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active",
     { timeout: 15_000 }
@@ -146,15 +161,13 @@ async function openCounter(
 }
 
 /**
- * The answer to a call that started a full load: the page's own, which says
- * it has not settled and where it is loading, or the server's error result
- * when the page went (or another page connected) before it could answer.
+ * The answer to a call that started a full load is the page's own, which
+ * says it has not settled and where it is loading, and not the server's for
+ * a page that went before it answered.
  */
 function expectAnswered(answer: unknown, loading: string) {
-  const { error } = answer as { error?: string };
-  if (error === undefined)
-    expect(answer).toMatchObject({ settled: false, loading });
-  else expect(error).toContain("the call's outcome is unknown");
+  expect(answer).not.toHaveProperty("error");
+  expect(answer).toMatchObject({ settled: false, loading });
 }
 
 /** `url` without its fragment, which a connect link adds and a router may drop. */
@@ -193,9 +206,7 @@ async function answerAcrossFullLoad(
 ): Promise<unknown> {
   const answer = agent.call(name, input);
   await expect(loaded).toBeVisible();
-  // The call is answered, never left hanging: by the page before its
-  // document goes, or by the server once the page has gone. Either way the
-  // answer says the page has not settled and where it is loading.
+  // The page answers before its document goes.
   return JSON.parse((await answer).text);
 }
 
@@ -357,6 +368,28 @@ export function counterTests({
       await expect(count(page)).toHaveText("1");
     });
 
+    test("removes the page's tools on navigation and restores them on return", async ({
+      page,
+    }) => {
+      if (!navigation) return test.skip(true, "The app has one page.");
+      await page.getByRole("link", { name: navigation.away }).click();
+      await expect(page.getByText(navigation.awayText)).toBeVisible();
+      await expect.poll(() => counterTools(page)).toEqual([]);
+      await page.getByRole("link", { name: navigation.back }).click();
+      await expect.poll(() => counterTools(page)).toEqual(allCounterTools);
+      await expect(
+        page.getByRole("status", { name: "Publication" })
+      ).toHaveText("Publication: active");
+      await page.getByRole("button", { name: "Call Page Object" }).click();
+      await expect(count(page)).toHaveText("1");
+    });
+  });
+
+  // A page here pairs by link as it loads, so it never scans, and the tests
+  // read what it says as it leaves.
+  test.describe("full page loads through ayme mcp", () => {
+    test.use({ limitScan: false });
+
     /** Pairs the page with an agent's server for the test, closed after it. */
     const agents: AgentServer[] = [];
     test.afterEach(async ({ page }) => {
@@ -365,21 +398,28 @@ export function counterTests({
       if (agents.length) await page.goto("about:blank");
       await Promise.all(agents.splice(0).map((agent) => agent.close()));
     });
-    const paired = async (page: Page, baseURL: string | undefined) => {
+    const paired = async (
+      context: BrowserContext,
+      page: Page,
+      baseURL: string | undefined
+    ) => {
       test.skip(
         !agentConnection(),
         "The app turns the Agent Connection off here."
       );
+      await recordPublishedTools(context);
       const agent = await pairAgent(page, baseURL);
       agents.push(agent);
+      await counterReady(page, inspector);
       return agent;
     };
 
     test("answers a click on a full page load link before the new page loads", async ({
+      context,
       page,
       baseURL,
     }) => {
-      const agent = await paired(page, baseURL);
+      const agent = await paired(context, page, baseURL);
       const loading = new URL("/other", page.url()).href;
       const answer = await answerAcrossFullLoad(
         agent,
@@ -392,10 +432,11 @@ export function counterTests({
     });
 
     test("answers navigate to the other page before it loads, and the other page publishes its tools", async ({
+      context,
       page,
       baseURL,
     }) => {
-      const agent = await paired(page, baseURL);
+      const agent = await paired(context, page, baseURL);
       const loading = new URL("/other", page.url()).href;
       const answer = await answerAcrossFullLoad(
         agent,
@@ -409,10 +450,11 @@ export function counterTests({
     });
 
     test("answers navigate_back to the previous document before it loads", async ({
+      context,
       page,
       baseURL,
     }) => {
-      const agent = await paired(page, baseURL);
+      const agent = await paired(context, page, baseURL);
       const loading = withoutHash(page.url());
       await page.getByRole("link", { name: "Full page load" }).click();
       await expect(otherPage(page)).toBeVisible();
@@ -434,10 +476,11 @@ export function counterTests({
     });
 
     test("answers reload before the page loads anew", async ({
+      context,
       page,
       baseURL,
     }) => {
-      const agent = await paired(page, baseURL);
+      const agent = await paired(context, page, baseURL);
       await page
         .getByRole("button", { name: "Increment", exact: true })
         .click();
@@ -451,22 +494,6 @@ export function counterTests({
       );
       expect(withoutHash(page.url())).toBe(loading);
       expectAnswered(answer, loading);
-    });
-
-    test("removes the page's tools on navigation and restores them on return", async ({
-      page,
-    }) => {
-      if (!navigation) return test.skip(true, "The app has one page.");
-      await page.getByRole("link", { name: navigation.away }).click();
-      await expect(page.getByText(navigation.awayText)).toBeVisible();
-      await expect.poll(() => counterTools(page)).toEqual([]);
-      await page.getByRole("link", { name: navigation.back }).click();
-      await expect.poll(() => counterTools(page)).toEqual(allCounterTools);
-      await expect(
-        page.getByRole("status", { name: "Publication" })
-      ).toHaveText("Publication: active");
-      await page.getByRole("button", { name: "Call Page Object" }).click();
-      await expect(count(page)).toHaveText("1");
     });
   });
 }
