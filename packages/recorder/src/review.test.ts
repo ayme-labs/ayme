@@ -104,6 +104,8 @@ describe("discard and restore", () => {
       "clear",
       "discard",
       "restore",
+      "highlight",
+      "clearHighlight",
     ]);
     await expect(
       recorder.send({ type: "discard", entry: "interaction_1" })

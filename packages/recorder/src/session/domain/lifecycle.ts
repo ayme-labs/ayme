@@ -95,7 +95,24 @@ export type BrowserSignal =
   // Assert visibility.
   /** Playwright's recorder is in its picking mode now, or no longer is,
    * whoever switched it: it leaves it by itself once the element is picked. */
-  | { readonly kind: "picking"; readonly on: boolean };
+  | { readonly kind: "picking"; readonly on: boolean }
+  // Highlight.
+  /** The browser drew the highlight asked for, or found no element for it
+   * for certain and drew nothing. */
+  | {
+      readonly kind: "highlighted";
+      readonly highlight: number;
+      readonly found: boolean;
+    };
+
+/** The element a highlight is drawn on, as the page now names it: by the
+ * ref its latest snapshot gave it, or, for a target with no ref, by its
+ * selector. */
+export type HighlightTarget = {
+  readonly page: string;
+  readonly ref: string | null;
+  readonly selector: string | null;
+};
 
 /** What a page held back. */
 export type HeldInput =
@@ -160,7 +177,17 @@ export type BrowserRequest =
    * alone meanwhile: it is Playwright's, and never reaches the page. Picking
    * that starts is answered by "picking"; one that is asked to stop needs no
    * answer. */
-  | { readonly kind: "pick"; readonly on: boolean };
+  | { readonly kind: "pick"; readonly on: boolean }
+  // Highlight.
+  /** Draw the recorder's own highlight on this element of the page, in
+   * place of any other, or on none. Drawn only while no later highlight was
+   * asked. One on an element is answered by "highlighted"; one on none needs
+   * no answer. */
+  | {
+      readonly kind: "highlight";
+      readonly highlight: number;
+      readonly target: HighlightTarget | null;
+    };
 
 /** One thing that happened. Everything reaches the lifecycle as one of these. */
 export type Happening =
@@ -177,7 +204,16 @@ export type Happening =
   | { readonly kind: "brokeDown"; readonly reason: string }
   // Warnings.
   /** The timeline made something of the recording a person should know of. */
-  | { readonly kind: "timelineWarned"; readonly warning: RecorderWarning };
+  | { readonly kind: "timelineWarned"; readonly warning: RecorderWarning }
+  // Highlight.
+  /** The timeline found the element of the entry a highlight names, as the
+   * page now names it; null when it is gone, of an earlier Visit, or not
+   * known for certain. */
+  | {
+      readonly kind: "located";
+      readonly highlight: number;
+      readonly target: HighlightTarget | null;
+    };
 
 /** One thing the worker carries out after a step, in the list's order. */
 export type ToDo =
@@ -200,7 +236,24 @@ export type ToDo =
   | { readonly kind: "clear" }
   // Warnings.
   /** Tell every subscriber of a warning, once. */
-  | { readonly kind: "warn"; readonly warning: RecorderWarning };
+  | { readonly kind: "warn"; readonly warning: RecorderWarning }
+  // Highlight.
+  /** Ask the timeline where the element of an entry is now, then tell the
+   * lifecycle "located". */
+  | {
+      readonly kind: "locate";
+      readonly entry: string;
+      readonly highlight: number;
+    }
+  /** Keep the answer to the command this step handled under `key`, beside
+   * any other kept: highlights come one after another. */
+  | { readonly kind: "keepReply"; readonly key: string }
+  /** Give the answer kept under `key`. */
+  | {
+      readonly kind: "replyKept";
+      readonly key: string;
+      readonly result: CommandResult;
+    };
 
 /**
  * How long a wrap-up may take. It is there for a report that never comes:
@@ -297,7 +350,12 @@ type PageGate = {
   readonly latest: { readonly id: string; readonly at: number } | null;
 };
 
-export type LifecycleState = { readonly pages: readonly Page[] } & (
+export type LifecycleState = {
+  readonly pages: readonly Page[];
+  /** How many highlights were asked: the latest is the one drawn. It goes
+   * from one phase to the next. */
+  readonly highlights?: number;
+} & (
   | { readonly phase: "notRecording" }
   | ({
       readonly phase: "recording";
@@ -385,12 +443,17 @@ const COMMANDS: readonly RecorderCommandType[] = [
   // Assert visibility.
   "assertVisibility",
   "leaveAssertVisibility",
+  // Highlight.
+  "highlight",
+  "clearHighlight",
 ];
 
 /** A command of this type, to ask whether it applies: the answer does not
  * depend on which entry it names. */
 const probe = (type: RecorderCommandType): RecorderCommand =>
-  type === "discard" || type === "restore" ? { type, entry: "" } : { type };
+  type === "discard" || type === "restore" || type === "highlight"
+    ? { type, entry: "" }
+    : { type };
 
 /** The commands that apply in a state: those the lifecycle would not answer
  * "ignored". The window offers these, and no rule of its own. */
@@ -413,6 +476,24 @@ const isActive = (state: LifecycleState): state is Active =>
   state.phase === "recording" || state.phase === "wrappingUp";
 
 export function step(state: LifecycleState, happening: Happening): Step {
+  const next = stepOf(state, happening);
+  const highlights = next.state.highlights ?? state.highlights ?? 0;
+  // A highlight is drawn only while recording or paused: what is drawn is
+  // cleared when the recorder leaves both.
+  const leaves =
+    highlights > 0 &&
+    reviewable(state) &&
+    !reviewable(next.state) &&
+    next.state.phase !== "ended";
+  return {
+    state: { ...next.state, highlights: leaves ? highlights + 1 : highlights },
+    todo: leaves
+      ? [...next.todo, drawHighlight(highlights + 1, null)]
+      : next.todo,
+  };
+}
+
+function stepOf(state: LifecycleState, happening: Happening): Step {
   switch (happening.kind) {
     case "command":
       return command(state, happening.command);
@@ -483,6 +564,14 @@ export function step(state: LifecycleState, happening: Happening): Step {
       return writePackage(state, happening.trace);
     case "picking":
       return pickingChanged(state, happening.on);
+    case "located":
+      return located(state, happening.highlight, happening.target);
+    case "highlighted":
+      return answerHighlight(
+        state,
+        happening.highlight,
+        happening.found ? "applied" : "notFound"
+      );
     case "saved": {
       if (state.phase !== "saving") return stay(state);
       const outcome: RecordingOutcome =
@@ -527,6 +616,10 @@ const freshGates = (pages: readonly Page[]): PageGate[] =>
 
 function command(state: LifecycleState, asked: RecorderCommand): Step {
   const reply = (result: CommandResult): ToDo => ({ kind: "reply", result });
+  if (asked.type === "highlight" || asked.type === "clearHighlight")
+    return reviewable(state)
+      ? highlight(state, asked)
+      : { state, todo: [reply("ignored")] };
   /** A command that starts a wrap-up is answered at once: the buttons wait
    * for the phase, not for the answer. */
   const applied = (next: Step): Step => ({
@@ -1536,6 +1629,12 @@ function failed(
       // Picking that cannot start is off; picking that cannot be left
       // counts as left, as switching Playwright's recorder off does.
       return request.on ? pickingChanged(state, false, false) : stay(state);
+    // Highlight.
+    case "highlight":
+      // Nothing is drawn: there is nothing to clear.
+      return request.target
+        ? answerHighlight(state, request.highlight, "notFound")
+        : stay(state);
   }
 }
 
@@ -1724,4 +1823,77 @@ function asserted(draft: Draft, page: string, report: InteractionReport) {
   draft.inputs = [...draft.inputs, assertion];
   if (earlier?.stage === "settling")
     askSharedSnapshot(draft, earlier, assertion);
+}
+
+// Highlight.
+
+/** Whether the recording can be reviewed now, and its entries highlighted:
+ * while recording or paused. */
+const reviewable = (state: LifecycleState) =>
+  state.phase === "recording" || state.phase === "paused";
+
+const drawHighlight = (n: number, target: HighlightTarget | null): ToDo => ({
+  kind: "browser",
+  ask: { kind: "highlight", highlight: n, target },
+});
+
+const keyOf = (n: number) => `highlight_${n}`;
+
+/** A highlight, or Clear highlight: each replaces the highlight before it. */
+function highlight(
+  state: LifecycleState,
+  asked: Extract<RecorderCommand, { type: "highlight" | "clearHighlight" }>
+): Step {
+  const n = (state.highlights ?? 0) + 1;
+  const next = { ...state, highlights: n };
+  if (asked.type === "clearHighlight")
+    return {
+      state: next,
+      todo: [drawHighlight(n, null), { kind: "reply", result: "applied" }],
+    };
+  // The element is the timeline's to find, and then the browser's.
+  return {
+    state: next,
+    todo: [
+      { kind: "keepReply", key: keyOf(n) },
+      { kind: "locate", entry: asked.entry, highlight: n },
+    ],
+  };
+}
+
+/** The timeline found the element of highlight `n`, or found none. */
+function located(
+  state: LifecycleState,
+  n: number,
+  target: HighlightTarget | null
+): Step {
+  if (n !== state.highlights || !reviewable(state))
+    return answerHighlight(state, n, "ignored");
+  if (!target)
+    return {
+      state,
+      todo: [
+        { kind: "replyKept", key: keyOf(n), result: "notFound" },
+        drawHighlight(n, null),
+      ],
+    };
+  return { state, todo: [drawHighlight(n, target)] };
+}
+
+/** Answers highlight `n`: one that a later one replaced is "ignored". */
+function answerHighlight(
+  state: LifecycleState,
+  n: number,
+  result: CommandResult
+): Step {
+  return {
+    state,
+    todo: [
+      {
+        kind: "replyKept",
+        key: keyOf(n),
+        result: n === state.highlights ? result : "ignored",
+      },
+    ],
+  };
 }

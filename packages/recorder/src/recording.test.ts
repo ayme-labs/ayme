@@ -97,7 +97,14 @@ describe("a recording", () => {
             entries: [],
           },
         ],
-        commands: ["finish", "stop", "clear", "assertVisibility"],
+        commands: [
+          "finish",
+          "stop",
+          "clear",
+          "assertVisibility",
+          "highlight",
+          "clearHighlight",
+        ],
         warnings: [],
       },
     });

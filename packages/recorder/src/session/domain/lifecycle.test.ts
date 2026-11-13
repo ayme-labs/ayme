@@ -1670,14 +1670,21 @@ describe("what the lifecycle shows", () => {
       offered: ["record"],
     },
     {
-      name: "recording: Finish, Stop, Clear and Assert visibility",
+      name: "recording: Finish, Stop, Clear, Assert visibility and the highlight",
       happened: [opened, ...started],
-      offered: ["finish", "stop", "clear", "assertVisibility"],
+      offered: [
+        "finish",
+        "stop",
+        "clear",
+        "assertVisibility",
+        "highlight",
+        "clearHighlight",
+      ],
     },
     {
-      name: "while Record waits for the pages: Finish, Stop and Clear",
+      name: "while Record waits for the pages: Finish, Stop, Clear and the highlight",
       happened: [opened, record],
-      offered: ["finish", "stop", "clear"],
+      offered: ["finish", "stop", "clear", "highlight", "clearHighlight"],
     },
     {
       name: "wrapping up: nothing applies",
@@ -1685,9 +1692,17 @@ describe("what the lifecycle shows", () => {
       offered: [],
     },
     {
-      name: "paused: Finish, Continue, Clear, Discard and Restore",
+      name: "paused: Finish, Continue, Clear, Discard, Restore and the highlight",
       happened: stopped,
-      offered: ["finish", "continue", "clear", "discard", "restore"],
+      offered: [
+        "finish",
+        "continue",
+        "clear",
+        "discard",
+        "restore",
+        "highlight",
+        "clearHighlight",
+      ],
     },
     {
       name: "saving: nothing applies",
@@ -2309,6 +2324,8 @@ describe("the lifecycle, for discard and restore", () => {
       "clear",
       "discard",
       "restore",
+      "highlight",
+      "clearHighlight",
     ]);
     expect(after([opened, ...started])).not.toContain("discard");
     expect(after([opened, ...started, stop])).not.toContain("restore");
@@ -2649,5 +2666,183 @@ describe("the lifecycle, for Assert visibility", () => {
     ).toContain("leaveAssertVisibility");
     expect(after(stopped)).not.toContain("assertVisibility");
     expect(after([opened])).not.toContain("assertVisibility");
+  });
+});
+
+// Ticket #1278: hovering an entry's target in the window highlights its
+// element on the page. Highlighting is a command, never an entry.
+describe("the lifecycle, for the highlight", () => {
+  const highlight = (entry: string): Happening => ({
+    kind: "command",
+    command: { type: "highlight", entry },
+  });
+  const clearHighlight: Happening = {
+    kind: "command",
+    command: { type: "clearHighlight" },
+  };
+  const target = { page: "page_1", ref: "e2", selector: null };
+  const located = (n: number, found = true): Happening => ({
+    kind: "located",
+    highlight: n,
+    target: found ? target : null,
+  });
+  const highlighted = (n: number, found = true): Happening => ({
+    kind: "highlighted",
+    highlight: n,
+    found,
+  });
+  const locate = (entry: string, n: number): ToDo => ({
+    kind: "locate",
+    entry,
+    highlight: n,
+  });
+  const keepReply = (n: number): ToDo => ({
+    kind: "keepReply",
+    key: `highlight_${n}`,
+  });
+  const replyKept = (
+    n: number,
+    result: "applied" | "ignored" | "notFound"
+  ): ToDo => ({ kind: "replyKept", key: `highlight_${n}`, result });
+  const draw = (n: number, drawn: typeof target | null = target): ToDo => ({
+    kind: "browser",
+    ask: { kind: "highlight", highlight: n, target: drawn },
+  });
+  const recording = [opened, ...started];
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[];
+  }>([
+    {
+      name: "a highlight while recording keeps its answer and has the timeline find the entry's element",
+      happened: [...recording, highlight("interaction_1")],
+      todo: [keepReply(1), locate("interaction_1", 1)],
+    },
+    {
+      name: "a highlight while paused does the same: reviewing is when it is used most",
+      happened: [...stopped, highlight("interaction_1")],
+      todo: [keepReply(1), locate("interaction_1", 1)],
+    },
+    {
+      name: "an element the timeline finds is drawn by the browser",
+      happened: [...recording, highlight("interaction_1"), located(1)],
+      todo: [draw(1)],
+    },
+    {
+      name: "the browser drawing it answers 'applied'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        highlighted(1),
+      ],
+      todo: [replyKept(1, "applied")],
+    },
+    {
+      name: "an element the browser cannot find for certain is answered 'notFound'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        highlighted(1, false),
+      ],
+      todo: [replyKept(1, "notFound")],
+    },
+    {
+      name: "an element the timeline cannot find, gone or of an earlier Visit, is answered 'notFound', and what was drawn is cleared",
+      happened: [...recording, highlight("interaction_1"), located(1, false)],
+      todo: [replyKept(1, "notFound"), draw(1, null)],
+    },
+    {
+      name: "a highlight that a later one replaced is answered 'ignored'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        highlight("interaction_2"),
+        located(1),
+      ],
+      todo: [replyKept(1, "ignored")],
+    },
+    {
+      name: "the browser's answer to a highlight that a later one replaced is 'ignored'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        highlight("interaction_2"),
+        highlighted(1),
+      ],
+      todo: [replyKept(1, "ignored")],
+    },
+    {
+      name: "Clear highlight has the browser draw nothing, and replaces a highlight on its way",
+      happened: [...recording, highlight("interaction_1"), clearHighlight],
+      todo: [draw(2, null), reply("applied")],
+    },
+    {
+      name: "a highlight while not recording is ignored: there is no entry",
+      happened: [opened, highlight("interaction_1")],
+      todo: [reply("ignored")],
+    },
+    {
+      name: "a highlight while the recorder wraps up is ignored",
+      happened: [...recording, stop, highlight("interaction_1")],
+      todo: [reply("ignored")],
+    },
+    {
+      name: "a highlight that is still drawn is cleared when the recording stops",
+      happened: [...recording, highlight("interaction_1"), stop],
+      todo: [...wrapUp, reply("applied"), draw(2, null)],
+    },
+    {
+      name: "a highlight is cleared when a paused recording is saved",
+      happened: [...stopped, highlight("interaction_1"), finish],
+      todo: [reply("applied"), stopTrace, draw(2, null)],
+    },
+    {
+      name: "the browser's answer is given whatever the recorder does meanwhile",
+      happened: [
+        ...stopped,
+        highlight("interaction_1"),
+        located(1),
+        finish,
+        highlighted(1),
+      ],
+      todo: [replyKept(1, "ignored")],
+    },
+    {
+      name: "a highlight the browser could not carry out is answered 'notFound'",
+      happened: [
+        ...recording,
+        highlight("interaction_1"),
+        located(1),
+        {
+          kind: "requestFailed",
+          request: { kind: "highlight", highlight: 1, target },
+          reason: "It broke.",
+        },
+      ],
+      todo: [replyKept(1, "notFound")],
+    },
+  ])("$name", ({ happened, todo }) => {
+    expect(run(happened).todo.at(-1)).toEqual(todo);
+  });
+
+  it("offers the highlight while recording and while paused", () => {
+    const after = (happened: readonly Happening[]) => {
+      let state = initialState;
+      for (const happening of happened) state = step(state, happening).state;
+      return offered(state);
+    };
+    expect(after(recording)).toEqual(
+      expect.arrayContaining(["highlight", "clearHighlight"])
+    );
+    expect(after(stopped)).toEqual(
+      expect.arrayContaining(["highlight", "clearHighlight"])
+    );
+    expect(after([opened])).toEqual(["record"]);
+    expect(after([...recording, stop])).toEqual([]);
   });
 });

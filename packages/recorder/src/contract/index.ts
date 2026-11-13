@@ -148,11 +148,24 @@ export type RecorderCommand =
    * effect once no input is held back. */
   | { readonly type: "assertVisibility" }
   /** While Assert visibility is on, or waits to be: turns it off. */
-  | { readonly type: "leaveAssertVisibility" };
+  | { readonly type: "leaveAssertVisibility" }
+  // Highlight.
+  /** While recording or paused: highlights the element of the entry's
+   * target on the page, in place of any other. Answered "notFound" when the
+   * element is gone, belongs to an earlier Visit, or cannot be found for
+   * certain: nothing is highlighted then. It changes no entry. */
+  | { readonly type: "highlight"; readonly entry: string }
+  /** While recording or paused: highlights nothing. */
+  | { readonly type: "clearHighlight" };
 
 /** The answer to a command. One that does not apply now is "ignored": it
  * changes nothing, and is never queued or read as a toggle. */
-export type CommandResult = "applied" | "ignored";
+export type CommandResult =
+  | "applied"
+  | "ignored"
+  /** A highlight whose element could not be found for certain: nothing is
+   * highlighted. */
+  | "notFound";
 
 /** The name of a command, as the state lists the ones that apply now. */
 export type RecorderCommandType = RecorderCommand["type"];

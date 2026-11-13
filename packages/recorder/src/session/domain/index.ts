@@ -1,4 +1,9 @@
-export type { BrowserRequest, BrowserSignal, HeldInput } from "./lifecycle";
+export type {
+  BrowserRequest,
+  BrowserSignal,
+  HeldInput,
+  HighlightTarget,
+} from "./lifecycle";
 export {
   RecorderStartError,
   type RecorderStartReason,
