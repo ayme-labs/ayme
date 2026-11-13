@@ -382,3 +382,41 @@ it("tells of a trace that is kept, and of none that is thrown away, and starts a
   ).toEqual([]);
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
+
+// Visits.
+
+it("starts a document the page goes to with the gate as it was last set", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  await browser.page.goto(`${browser.page.url()}?next`);
+  await browser.click(browser.page.locator("#first"));
+
+  await browser.toldOf("inputHeld");
+});
+
+it("tells of a held click whose document is gone, and never sends it to the next", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.click(browser.page.locator("#first"));
+  const { input } = await browser.toldOf("inputHeld");
+
+  await browser.page.goto(`${browser.page.url()}?next`);
+  await browser.page.evaluate(() => {
+    (window as unknown as { clicks: number }).clicks = 0;
+    document.addEventListener(
+      "click",
+      () => ((window as unknown as { clicks: number }).clicks += 1),
+      true
+    );
+  });
+  await browser.ask({ kind: "passOn", input });
+
+  await browser.toldOf("inputGone", (gone) => gone.input === input);
+  expect(browser.told.map(({ kind }) => kind)).not.toContain("inputPassedOn");
+  expect(await browser.page.evaluate("window.clicks")).toBe(0);
+});

@@ -148,6 +148,20 @@ const stopped = [
   taken("snapshot_1"),
   reportingOff,
 ];
+// Visits.
+const navigated = (to: string, page = "page_1"): Happening => ({
+  kind: "pageNavigated",
+  page,
+  url: to,
+});
+const visitAt = (
+  at: string,
+  cause: "initial" | "navigate" | "openPage",
+  page = "page_1"
+): ToDo => ({
+  kind: "timeline",
+  add: { kind: "visit", page, url: at, cause },
+});
 
 /** One click from held to settled, with nothing else going on. */
 const oneClick = [
@@ -852,6 +866,114 @@ describe("the lifecycle", () => {
       ],
       todo: [wrapUp, [stopTrace]],
       state: { phase: "saving" },
+    },
+
+    // Visits.
+    {
+      name: "a page that goes to another address while recording starts a Visit there",
+      happened: [opened, ...started, navigated("http://shop.test/cart")],
+      todo: [[visitAt("http://shop.test/cart", "navigate")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page opened while recording starts a Visit of its own",
+      happened: [
+        opened,
+        ...started,
+        { kind: "pageOpened", page: "page_2", url: "http://shop.test/help" },
+      ],
+      todo: [[visitAt("http://shop.test/help", "openPage", "page_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page opened blank while recording starts its Visit at the first address it goes to",
+      happened: [
+        opened,
+        ...started,
+        { kind: "pageOpened", page: "page_2", url: "about:blank" },
+        navigated("http://shop.test/help", "page_2"),
+        navigated("http://shop.test/faq", "page_2"),
+      ],
+      todo: [
+        [],
+        [visitAt("http://shop.test/help", "openPage", "page_2")],
+        [visitAt("http://shop.test/faq", "navigate", "page_2")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page that goes elsewhere while not recording starts no Visit",
+      happened: [opened, navigated("http://shop.test/cart")],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a held click whose document is gone before it reaches it is dropped, and the next click goes on",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        clickHeld("input_2"),
+        taken("snapshot_1"),
+        navigated("http://shop.test/cart"),
+        { kind: "inputGone", input: "input_1" },
+        // A report of the click is of no held click any more.
+        reported,
+      ],
+      todo: [
+        [keep("snapshot_1"), passOn("input_1")],
+        [visitAt("http://shop.test/cart", "navigate")],
+        [takeSnapshot("snapshot_2")],
+        [],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a held click whose document is gone while wrapping up is dropped, and the recording saves",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        taken("snapshot_1"),
+        finish,
+        gateOff,
+        { kind: "inputGone", input: "input_1" },
+        taken("snapshot_2"),
+      ],
+      todo: [[takeSnapshot("snapshot_2")], [keep("snapshot_2"), stopTrace]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a page that went elsewhere while paused starts a Visit there at Continue",
+      happened: [...stopped, navigated("http://shop.test/cart"), resume],
+      todo: [
+        [],
+        [
+          visitAt("http://shop.test/cart", "navigate"),
+          reportInteractions,
+          { kind: "deferReply" },
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page opened while paused starts a Visit of its own at Continue",
+      happened: [
+        ...stopped,
+        { kind: "pageOpened", page: "page_2", url: "about:blank" },
+        navigated("http://shop.test/help", "page_2"),
+        resume,
+      ],
+      todo: [
+        [],
+        [],
+        [
+          visitAt("http://shop.test/help", "openPage", "page_2"),
+          reportInteractions,
+          { kind: "deferReply" },
+        ],
+      ],
+      state: { phase: "recording" },
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);

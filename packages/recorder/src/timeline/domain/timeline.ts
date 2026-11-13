@@ -52,6 +52,10 @@ type Visit = {
   /** The place in `snapshots` up to which entries are produced: what
    * changed from this snapshot on is not told yet. */
   through: number;
+  /** The place in `snapshots` of the Visit's starting picture: the page as
+   * it stood just before the first Interaction in the Visit. Null until
+   * there is one: the latest snapshot stands in until then. */
+  start: number | null;
   /** From every ref the browser used in this Visit to the element's first. */
   readonly firstRefs: Map<AriaRef, AriaRef>;
 };
@@ -62,7 +66,9 @@ type Visit = {
  * Package at the end. Visits and the identity of an element across snapshots
  * are core's observation session's; the Change Trees are core's.
  *
- * A Visit's first snapshot is its starting picture. From there on, what
+ * A Visit's starting picture is the snapshot just before its first
+ * Interaction, or its last one when it has none: what the page rendered
+ * before is no change. From there on, what
  * changed between a snapshot and the next is an Interaction's when the two
  * are its "before" and its "after", and a change of its own otherwise. An
  * Interaction's entry is produced when the Interaction is added. A change of
@@ -84,9 +90,12 @@ export class Timeline {
   /** The Visit each page is in. */
   private readonly current = new Map<string, Visit>();
   private interactions = 0;
-  /** Every Interaction taken in, in order, for the trace's sake. */
-  private readonly recorded: (RecordedInteraction & { readonly id: string })[] =
-    [];
+  /** Every Interaction taken in, in order, for the trace's sake: whether it
+   * left its Visit says whether its "after" is a picture of the same one. */
+  private readonly recorded: (RecordedInteraction & {
+    readonly id: string;
+    readonly leftVisit: boolean;
+  })[] = [];
   /** When each snapshot was read. */
   private readonly readAt = new Map<string, number>();
   private told: readonly RecordedVisit[] = [];
@@ -125,6 +134,7 @@ export class Timeline {
           waiting: [],
           entries: [],
           through: 0,
+          start: null,
           firstRefs: new Map(),
         };
         this.all.push(visit);
@@ -141,14 +151,33 @@ export class Timeline {
       }
       case "interaction": {
         const { interaction } = addition;
-        const visit = this.current.get(interaction.page);
+        // The Visit it started in: one that leaves the page has its "after"
+        // in the next Visit.
+        const visit = this.all.find((started) =>
+          started.snapshots.some(
+            (kept) => kept.snapshot.id === interaction.before
+          )
+        );
         if (!visit) return;
+        if (visit.start === null) {
+          visit.start = visit.snapshots.findIndex(
+            (kept) => kept.snapshot.id === interaction.before
+          );
+          visit.through = visit.start;
+        }
         const recorded = {
           ...interaction,
           id: `interaction_${++this.interactions}`,
         };
         visit.waiting.push(recorded);
-        this.recorded.push(recorded);
+        this.recorded.push({
+          ...recorded,
+          leftVisit:
+            interaction.after !== null &&
+            !visit.snapshots.some(
+              (kept) => kept.snapshot.id === interaction.after
+            ),
+        });
         // Everything up to it is settled now: what changed before it, and
         // what it changed.
         await this.produce(
@@ -298,8 +327,10 @@ export class Timeline {
     if (this.interactions === 0) return null;
     const visits = [];
     for (const visit of this.all) {
-      const [first] = visit.snapshots;
-      if (!first) continue;
+      if (visit.snapshots.length === 0) continue;
+      if (visit.start === null)
+        visit.through = visit.start = visit.snapshots.length - 1;
+      const first = visit.snapshots[visit.start]!;
       await this.produce(visit, visit.snapshots.length - 1);
       visits.push({
         visitId: visit.id,
@@ -322,8 +353,12 @@ export class Timeline {
     if (Object.keys(positions).length === 0) return [];
     return this.recorded.map((interaction) => {
       const before = positions[interaction.before];
+      // An Interaction that left its Visit has no "after" in it: the next
+      // Visit's first picture shows where it led.
       const after =
-        interaction.after === null ? undefined : positions[interaction.after];
+        interaction.after === null || interaction.leftVisit
+          ? undefined
+          : positions[interaction.after];
       return {
         interactionId: interaction.id,
         pageId: interaction.page,

@@ -170,3 +170,106 @@ test.describe("recording", () => {
     expect(text.match(/kind: interaction/g)).toHaveLength(3);
   });
 });
+
+test.describe("Visits", () => {
+  test("a click that leaves the page starts a new Visit, which starts from the page as it stood just before its first Interaction", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/shop.html");
+    const { recorder, page, person } = recording;
+    await recorder.send({ type: "record" });
+
+    await person.click(page.locator("#checkout"));
+    await page.waitForURL(/checkout\.html$/);
+    await person.pause();
+    // The new page goes on rendering before anything is done on it.
+    await page.evaluate("window.showOffer()");
+    await expect(page.getByText("Free delivery today")).toBeVisible();
+    // Its first click is held like any other.
+    await person.click(page.locator("#pay"));
+    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+
+    const { text } = await finish(recording);
+    // The click that left carries no Change Tree: the next Visit shows
+    // where it led.
+    expect(text).toMatch(
+      /type: click\n\s+targetRef: e\d+\n\s+targetSelector: .*Go to checkout.*\n(\s+\w+: .*\n)* {2}- visitId: visit_2\n/
+    );
+    expect(text).toContain(
+      [
+        `  - visitId: visit_2`,
+        `    url: ${page.url()}`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+      ].join("\n")
+    );
+    const second = text.slice(text.indexOf("visit_2"));
+    expect(second).toMatch(
+      /baselineTree:(\n {6}.*)*paragraph: Free delivery today/
+    );
+    expect(second).toMatch(
+      /changeTree:\n(.*\n)*.*<changed> \[ref=\w+\] paragraph: Paid/
+    );
+    expect(text).not.toContain("kind: change");
+  });
+
+  test("a page opened while recording starts a Visit of its own, and its first click is held", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/shop.html");
+    const { recorder, page, person, personOn } = recording;
+    await recorder.send({ type: "record" });
+
+    const opening = page.context().waitForEvent("page");
+    await person.click(page.locator("#help"));
+    const help = await opening;
+    await help.waitForURL(/help\.html$/);
+    await help.locator("#thanks").waitFor();
+    await person.pause();
+    await (await personOn(help)).click(help.locator("#thanks"));
+    await expect(help.getByText("Thanked 1")).toBeVisible();
+
+    const { text } = await finish(recording);
+    const opened = text.slice(text.indexOf(`    url: ${help.url()}`));
+    expect(opened).toMatch(/^ {4}url: .*\n {4}cause: openPage\n/);
+    expect(opened).toMatch(
+      /type: click\n.*\n\s+targetSelector: .*Thanks.*\n(.*\n)*?\s+changeTree:\n(.*\n)*.*paragraph: Thanked 1/
+    );
+  });
+
+  test("while not recording, the first click on a new page reaches it untouched", async ({
+    startRecording,
+  }) => {
+    const { page, person } = await startRecording("/shop.html");
+
+    await person.click(page.locator("#checkout"));
+    await page.waitForURL(/checkout\.html$/);
+    await page.locator("#pay").waitFor();
+    await person.click(page.locator("#pay"));
+
+    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+  });
+
+  test("a click held when its page goes away is never passed on to the page after it, and the recording still saves", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/leaving.html");
+    const { recorder, page, person } = recording;
+    await recorder.send({ type: "record" });
+    // A recording with no Interaction saves nothing: one comes first.
+    await person.click(page.locator("#stay"));
+    await expect(page.getByText("Stayed")).toBeVisible();
+    await person.pause();
+
+    // The page goes elsewhere as the mouse is released, and the click is
+    // held in the page it leaves.
+    await person.click(page.locator("#leave"));
+    await page.waitForURL(/checkout\.html$/);
+    await page.locator("#pay").waitFor();
+    await person.pause();
+
+    expect(await page.evaluate("window.clicks")).toBe(0);
+    const { text } = await finish(recording);
+    expect(text).toContain("  - visitId: visit_2");
+  });
+});

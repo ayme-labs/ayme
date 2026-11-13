@@ -12,6 +12,8 @@ export type HeldClick = {
   /** The click's count: 2 for the second click of a double click. */
   readonly detail: number;
   readonly modifiers: readonly ("Alt" | "Control" | "Meta" | "Shift")[];
+  /** The document it was held in. */
+  readonly document: string;
 };
 
 /** The gate of one document, as the adapter reaches it. */
@@ -19,8 +21,10 @@ export type Gate = {
   /** Holds inputs back from now on, or no longer. Returns what it was set to. */
   set(on: boolean): boolean;
   /** A held click is on its way to this point of the viewport: let it
-   * through. The gate closes again by itself when the click has arrived. */
-  open(at: { x: number; y: number }): void;
+   * through. The gate closes again by itself when the click has arrived.
+   * Returns false, and lets nothing through, when the click was held in
+   * another document: that one is gone. */
+  open(at: { x: number; y: number }, document: string): boolean;
   /** Closes the gate after a click that never arrived. */
   close(): void;
 };
@@ -29,11 +33,29 @@ declare global {
   interface Window {
     __aymeRecorderGate?: Gate;
     __aymeRecorderActivity?: ActivityWatch;
+    __aymeRecorderGateStart?: GateStart;
   }
 }
 
+/** Whether a document's gate starts on, and the change that said so. */
+export type GateStart = { readonly on: boolean; readonly change: number };
+
 /**
- * Installs the gate in a document, switched off. Switched on, it holds back
+ * Says whether the gate of a document that starts from now on holds inputs
+ * back. The adapter adds it as one more script for every new document each
+ * time the gate is switched, since a script cannot be taken back on every
+ * Playwright: the latest change wins, in whatever order the scripts run.
+ */
+export function startGate(start: GateStart): void {
+  const now = window.__aymeRecorderGateStart;
+  if (now && now.change > start.change) return;
+  window.__aymeRecorderGateStart = start;
+  window.__aymeRecorderGate?.set(start.on);
+}
+
+/**
+ * Installs the gate in a document, switched on or off as `startGate` last
+ * said, and off when it never did. Switched on, it holds back
  * the click that ends a press of the left mouse button, and tells the
  * adapter through the binding called `held`. Only that final click is held:
  * the press and the release reach the page as they come, so pressing,
@@ -47,13 +69,17 @@ export function installGate(held: string): void {
   // Only the top document for now: a click in a frame would need its place
   // in the page.
   if (window.__aymeRecorderGate || window.top !== window) return;
-  let on = false;
+  let on = window.__aymeRecorderGateStart?.on ?? false;
+  // Names this document: a held click is sent on to no other.
+  const thisDocument = `${Date.now()}:${Math.random()}`;
   let passingOn: { x: number; y: number } | undefined;
   let swallowDoubleClick = false;
   window.__aymeRecorderGate = {
     set: (next) => (on = next),
-    open: (at) => {
+    open: (at, heldIn) => {
+      if (heldIn !== thisDocument) return false;
       passingOn = at;
+      return true;
     },
     close: () => {
       passingOn = undefined;
@@ -125,6 +151,7 @@ export function installGate(held: string): void {
       y: event.clientY,
       detail: event.detail,
       modifiers,
+      document: thisDocument,
     };
     void (
       window as unknown as Record<string, (click: HeldClick) => Promise<void>>

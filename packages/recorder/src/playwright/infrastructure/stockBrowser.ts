@@ -21,6 +21,7 @@ import {
   hidePlaywrightOverlay,
   installActivityWatch,
   installGate,
+  startGate,
   type HeldClick,
 } from "./pageScripts";
 import { playwrightRecorderOf } from "./playwrightRecorder";
@@ -177,6 +178,8 @@ async function openPage(
   /** The inputs the pages hold back, until they are passed on. */
   const held = new Map<string, { frame: Frame; click: HeldClick }>();
   let inputs = 0;
+  /** How often the gate was switched. */
+  let gateChanges = 0;
 
   context.on("page", (page) => {
     const id = `page_${idOf.size + 1}`;
@@ -329,6 +332,11 @@ async function openPage(
       case "reportInteractions":
         return reportInteractions(request.on);
       case "holdInputs":
+        // A document that starts from now on starts so.
+        await context.addInitScript(startGate, {
+          on: request.on,
+          change: ++gateChanges,
+        });
         // A frame that is gone holds nothing back.
         await Promise.all(
           everyFrame().map((frame) =>
@@ -360,7 +368,8 @@ async function openPage(
         const input = held.get(request.input);
         held.delete(request.input);
         if (!input) return;
-        await passOn(input.frame, input.click);
+        if (!(await passOn(input.frame, input.click)))
+          return tell({ kind: "inputGone", input: request.input });
         return tell({ kind: "inputPassedOn", input: request.input, at: now() });
       }
       case "startTrace":
@@ -443,14 +452,20 @@ async function openPage(
   return { carryOut };
 }
 
-/** Sends a held click on to its page, as the press of the mouse it was. */
-async function passOn(frame: Frame, click: HeldClick) {
+/** Sends a held click on to its page, as the press of the mouse it was.
+ * Returns false when the document it was held in is gone: it is sent to no
+ * other. */
+async function passOn(frame: Frame, click: HeldClick): Promise<boolean> {
   const page = frame.page();
   const clickCount = Math.max(1, click.detail);
-  await frame.evaluate((at) => window.__aymeRecorderGate?.open(at), {
-    x: click.x,
-    y: click.y,
-  });
+  const open = await frame
+    .evaluate(
+      ({ at, document }) =>
+        window.__aymeRecorderGate?.open(at, document) ?? false,
+      { at: { x: click.x, y: click.y }, document: click.document }
+    )
+    .catch(() => false);
+  if (!open) return false;
   try {
     for (const modifier of click.modifiers) await page.keyboard.down(modifier);
     await page.mouse.move(click.x, click.y);
@@ -464,4 +479,5 @@ async function passOn(frame: Frame, click: HeldClick) {
       .evaluate(() => window.__aymeRecorderGate?.close())
       .catch(() => {});
   }
+  return true;
 }

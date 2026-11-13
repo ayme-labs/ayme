@@ -9,6 +9,7 @@ import type {
   PageSnapshot,
   RecordingTrace,
   TimelineAddition,
+  VisitCause,
 } from "../../timeline/domain";
 
 // The lifecycle of one recorder, as one pure function: the current state and
@@ -72,7 +73,11 @@ export type BrowserSignal =
       readonly reason: string;
     }
   /** The trace is stopped and kept, as "stopTrace" asked. */
-  | { readonly kind: "traceStopped"; readonly trace: RecordingTrace };
+  | { readonly kind: "traceStopped"; readonly trace: RecordingTrace }
+  // Visits.
+  /** A held input can no longer reach its page: the document it was held
+   * in is gone. Told instead of "inputPassedOn". */
+  | { readonly kind: "inputGone"; readonly input: string };
 
 /**
  * One thing the engine asks of the recorded browser. The browser takes a
@@ -151,7 +156,14 @@ export const WRAP_UP_LIMIT_MS = 5_000;
 /** The reports a held click can lead to. */
 const HELD_CLICK_REPORTS = new Set(["click", "check", "uncheck"]);
 
-type Page = { readonly id: string; readonly url: string };
+type Page = {
+  readonly id: string;
+  readonly url: string;
+  /** What became of it while it had no Visit at its address: it opened,
+   * blank while recording or while paused, or it went elsewhere while
+   * paused. Its Visit starts when it is at an address while recording. */
+  readonly since?: "opened" | "moved";
+};
 
 /** One input the gate held back, until it is written down or dropped. */
 type Input = {
@@ -255,18 +267,41 @@ export function step(state: LifecycleState, happening: Happening): Step {
     case "outsideEnd":
     case "browserGone":
       return endFromOutside(state);
-    case "pageOpened":
-      return stay({
+    case "pageOpened": {
+      const page: Page = { id: happening.page, url: happening.url };
+      const opened = { ...state, pages: [...state.pages, page] };
+      if (isActive(opened) && page.url !== BLANK)
+        return proceed(opened, [visitOf(page.id, page.url, "openPage")]);
+      return stay(
+        isActive(opened) || opened.phase === "paused"
+          ? { ...opened, pages: [...state.pages, { ...page, since: "opened" }] }
+          : opened
+      );
+    }
+    case "pageNavigated": {
+      const page = state.pages.find((open) => open.id === happening.page);
+      if (!page) return stay(state);
+      const at = { ...page, url: happening.url };
+      const moved = (next: Page) => ({
         ...state,
-        pages: [...state.pages, { id: happening.page, url: happening.url }],
+        pages: state.pages.map((open) => (open === page ? next : open)),
       });
-    case "pageNavigated":
-      return stay({
-        ...state,
-        pages: state.pages.map((page) =>
-          page.id === happening.page ? { ...page, url: happening.url } : page
-        ),
-      });
+      if (isActive(state) && at.url !== BLANK)
+        return proceed(
+          {
+            ...state,
+            pages: state.pages.map((open) =>
+              open === page ? visited(at) : open
+            ),
+          },
+          [visitOf(at.id, at.url, causeOf(at))]
+        );
+      return stay(
+        moved(
+          state.phase === "paused" ? { ...at, since: at.since ?? "moved" } : at
+        )
+      );
+    }
     case "pageClosed": {
       const without = withoutPage(state, happening.page);
       if (happening.pagesLeft === 0) return endFromOutside(without);
@@ -338,7 +373,7 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
             phase: "recording",
             starting: true,
             resumed: false,
-            pages: state.pages,
+            pages: state.pages.map(visited),
             inputs: [],
             snapshotsAsked: 0,
           },
@@ -373,21 +408,24 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
       break;
     case "paused":
       // It starts as Record does, into the timeline that is there.
-      if (asked.type === "continue")
+      if (asked.type === "continue") {
+        const continued = continueVisits(state.pages);
         return {
           state: {
             phase: "recording",
             starting: true,
             resumed: true,
-            pages: state.pages,
+            pages: continued.pages,
             inputs: [],
             snapshotsAsked: state.snapshotsAsked,
           },
           todo: [
+            ...continued.todo,
             { kind: "browser", ask: { kind: "reportInteractions", on: true } },
             { kind: "deferReply" },
           ],
         };
+      }
       // Nothing is under way while paused: there is nothing to wrap up, and
       // no last snapshot to take, which would show what the pause changed.
       if (asked.type === "clear")
@@ -509,6 +547,39 @@ const discardTrace: ToDo = {
   kind: "browser",
   ask: { kind: "stopTrace", keep: false },
 };
+
+// Visits.
+
+/** Where a page opened by the page before it starts, before it goes anywhere. */
+const BLANK = "about:blank";
+
+/**
+ * A Visit of a page at an address, while recording. Whether the address
+ * starts a new Visit is core's rule, which the timeline follows: a change of
+ * only the part after `?` or `#` stays in the Visit.
+ */
+const visitOf = (page: string, url: string, cause: VisitCause): ToDo => ({
+  kind: "timeline",
+  add: { kind: "visit", page, url, cause },
+});
+
+const causeOf = (page: Page): VisitCause =>
+  page.since === "opened" ? "openPage" : "navigate";
+
+/** The page, with a Visit at its address. */
+const visited = ({ id, url }: Page): Page => ({ id, url });
+
+/** Continue starts a Visit for each page that went elsewhere, or opened,
+ * while paused: what it does next is done there. */
+function continueVisits(pages: readonly Page[]) {
+  const starts = (page: Page) => page.since !== undefined && page.url !== BLANK;
+  return {
+    pages: pages.map((page) => (starts(page) ? visited(page) : page)),
+    todo: pages
+      .filter(starts)
+      .map((page) => visitOf(page.id, page.url, causeOf(page))),
+  };
+}
 
 /** The state without a page that closed. An input held for it that has not
  * reached it is dropped; one that has keeps its "before" only. */
@@ -685,6 +756,12 @@ function during(state: Active, happening: BrowserSignal): Step {
       });
       break;
     }
+    case "inputGone":
+      // Never passed on to the document that came after it.
+      draft.inputs = draft.inputs.filter(
+        (held) => held.id !== happening.input || held.passedOnAt !== null
+      );
+      break;
     case "interactionReported": {
       if (!HELD_CLICK_REPORTS.has(happening.report.type)) break;
       // Reports come in the order of the inputs: this one belongs to the
