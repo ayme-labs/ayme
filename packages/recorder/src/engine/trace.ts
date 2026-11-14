@@ -27,8 +27,8 @@ export async function traceInvocation(
   args: readonly string[]
 ): Promise<TraceInvocation> {
   const [first, second] = args;
-  const opened = (target: string | undefined, more: readonly string[]) =>
-    target !== undefined && isRecording(target)
+  const opened = (target: string, more: readonly string[]) =>
+    isRecording(target)
       ? openRecording(projectDir, target, more)
       : Promise.resolve<TraceInvocation>({ kind: "run", args });
   if (first === "open") return opened(second ?? "latest", args.slice(2));
