@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cart</title>
+  </head>
+  <body>
+    <h1>Cart</h1>
+    <p id="count">Items: 0</p>
+    <div id="actions"><button id="add" autofocus>Add item</button></div>
+    <button id="redraw">Redraw</button>
+    <script>
+      let items = 0;
+      const count = document.getElementById("count");
+      const actions = document.getElementById("actions");
+      const wire = () =>
+        document.getElementById("add").addEventListener("click", () => {
+          items += 1;
+          count.textContent = `Items: ${items}`;
+        });
+      wire();
+      // Redraw replaces the "Add item" button with a new element that looks
+      // the same: the page re-creates it, as a framework re-render does.
+      window.redraws = 0;
+      document.getElementById("redraw").addEventListener("click", () => {
+        actions.innerHTML = '<button id="add">Add item</button>';
+        wire();
+        window.redraws += 1;
+      });
+    </script>
+  </body>
+</html>

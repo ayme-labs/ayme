@@ -39,9 +39,11 @@ in-browser agents and the app's own code call on the running page.
 
 - **Host application**
   - Provides: the page Ayme observes and acts on, the Page Object Models it compiles, the
-    bundler that runs the build plugin, the backend that mounts the Decision Endpoint, and
-    the Node processes that pair as App Processes
-  - Evidence: verified: [docs/guide/reference/ayme.md](docs/guide/reference/ayme.md), [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
+    bundler that runs the build plugin, the backend that mounts the Decision Endpoint,
+    the Node processes that pair as App Processes, the Playwright installation the
+    Recorder loads, and the project folder a recording is saved in
+  - Evidence: verified: [docs/guide/reference/ayme.md](docs/guide/reference/ayme.md), [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md),
+    [packages/recorder/src/playwright/infrastructure/projectPlaywright.ts](packages/recorder/src/playwright/infrastructure/projectPlaywright.ts)
 - **Decision model provider**
   - Provides: Jev, the System One decision model the Goal Loop asks at each step, served by
     TypeSafe directly or through OpenRouter
@@ -150,6 +152,37 @@ in-browser agents and the app's own code call on the running page.
   Jekyll from [docs/guide](docs/guide)
 - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 
+### Recorder
+
+- Responsibility: one process per recording: opens a URL in a Chromium it launches with
+  the Playwright the developer's project has installed, or attaches to a running Chromium,
+  and records the input given on the page as Interactions with what each changed. It
+  serves the recorder window at a local address it prints, which shows the recording live
+  and holds Record, Stop, Continue, Assert visibility, Clear and Finish, discard and
+  restore of an entry while paused, and a highlight on the page of an entry's element
+  while its target is hovered; when it launched the browser, it opens the window there as
+  a second window, apart from what it records. Every recorded page also gets an in-page
+  toolbar with the same controls, kept out of the page's structure. It ends when Finish is
+  pressed, the last page is closed or it is stopped from the terminal. A recording that
+  was started ends by writing a Recording Package, with its trace beside it, into the
+  project's `.ayme/recordings`; without one it ends with "empty". `ayme-recorder trace`
+  opens a recording's trace with the project's own `playwright trace`, and
+  `ayme-recorder install` installs a browser with the project's own Playwright
+- Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`,
+  `trace` and `install` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose
+  flows are written with Effect; all three packages are private until the rebuild matches
+  the released recorder. The engine loads Playwright from the project's folder and bundles
+  none, and runs the project's own `playwright trace` as a separate process. It keeps
+  Visits and element identity and compares page structures with `@ayme-dev/core`, which
+  also runs its wait for a Settled Page. `@ayme-dev/recorder-window` is the window, React
+  with the design system, built to one page and one script that the engine serves on plain
+  Node `http` and `ws`; the window talks to the engine over tRPC on a WebSocket, and knows
+  it only through the engine's plain-data contract. The same package builds the toolbar,
+  one script with React and the design system in a closed shadow root, which the engine
+  runs in every recorded document; the toolbar sends commands and pulls the state through
+  one page function the engine exposes in the page
+- Evidence: verified: [packages/cli/src/cli.ts](packages/cli/src/cli.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/engine/startRecorder.ts](packages/recorder/src/engine/startRecorder.ts), [packages/recorder/src/session/application/recorderSession.ts](packages/recorder/src/session/application/recorderSession.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/domain/timeline.ts](packages/recorder/src/timeline/domain/timeline.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts), [packages/recorder/src/server/infrastructure/windowServer.ts](packages/recorder/src/server/infrastructure/windowServer.ts), [packages/recorder-window/src/app/main.tsx](packages/recorder-window/src/app/main.tsx), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts), [packages/recorder-window/src/app/toolbar.tsx](packages/recorder-window/src/app/toolbar.tsx), [docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md](docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
+
 ## Communication
 
 - **App developers → Browser runtime**
@@ -183,6 +216,20 @@ in-browser agents and the app's own code call on the running page.
     - ← the Inspector page and script, and the answers and events relayed from the paired page
   - Evidence: verified: [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
     [packages/inspector/README.md](packages/inspector/README.md)
+- **App developers → Recorder**
+  - Flows:
+    - → `ayme-recorder codegen <url>` or `codegen --cdp-endpoint <address>`, started in
+      their project's folder, and the terminal's stop; `ayme-recorder trace <target>`
+    - → in the recorder window, Record, Stop, Continue, Assert visibility, Clear, Finish,
+      discard and restore of an entry, and the highlight of a hovered entry's element,
+      sent over tRPC on a WebSocket at `/channel`; the same controls in the in-page
+      toolbar, sent through the page function the engine exposes there
+    - ← the window's address, where the Recording Package was saved, that nothing was
+      recorded, or the reason the recorder could not start or failed
+    - ← in the recorder window and the toolbar, the recorder's state as it changes: its
+      phase, the commands that apply now, and the Visits with their entries
+  - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/server/infrastructure/windowChannelRouter.ts](packages/recorder/src/server/infrastructure/windowChannelRouter.ts),
+    [packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts](packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts)
 - **Playground visitors → Playground**
   - Flows:
     - → list edits and Inspector runs
@@ -236,6 +283,22 @@ in-browser agents and the app's own code call on the running page.
       and clicks, fills and key presses through Playwright
     - ← the page structure captured into Structural Page State, and action results
   - Evidence: verified: [packages/ayme/src/playwright.ts](packages/ayme/src/playwright.ts), [packages/ayme/src/in-page/host/](packages/ayme/src/in-page/host/)
+- **Recorder → Host application**
+  - Flows:
+    - → loading the Playwright installed in the project's folder, launching Chromium with
+      it and opening the URL, or attaching to a running Chromium at its DevTools protocol
+      address; in the page, holding a click or key press back and sending it on, and
+      reading the page's structure; running the toolbar's script and its page function in
+      every document, switching Playwright's own recorder into picking for Assert
+      visibility, and drawing a highlight through a DevTools session of the page; tracing
+      the recording, and writing the Recording Package with its trace into the project's
+      `.ayme/recordings`; running the project's own `playwright trace` as a separate
+      process
+    - ← the opening, navigating and closing of a page, and the closing of the browser; a
+      click or key press the page held back, the page's activity, the Interactions and
+      assertions Playwright's own recorder reports, the toolbar's commands and requests
+      for the state, and the trace's position numbers
+  - Evidence: verified: [packages/recorder/src/playwright/infrastructure/projectPlaywright.ts](packages/recorder/src/playwright/infrastructure/projectPlaywright.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/in-page/gate.ts](packages/recorder/src/playwright/infrastructure/in-page/gate.ts), [packages/recorder/src/playwright/infrastructure/in-page/watches.ts](packages/recorder/src/playwright/infrastructure/in-page/watches.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts)
 - **App Process runtime → Ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results
@@ -287,6 +350,9 @@ hosting its playground.
     - Evidence: verified: [docs/guide/guides/goals-with-jev.md](docs/guide/guides/goals-with-jev.md)
   - **Playground**: does not run here; it is Ayme's own app
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+  - **Recorder**: does not run here yet: `@ayme-dev/cli` is private until the rebuild
+    matches the released recorder
+    - Evidence: verified: [packages/cli/package.json](packages/cli/package.json)
 - External systems:
   - **Host application**: the developer's own app, served by its dev server
     - Evidence: verified: [docs/guide/start/install.md](docs/guide/start/install.md)
@@ -327,6 +393,8 @@ hosting its playground.
     - Evidence: verified: [docs/guide/reference/decision-endpoint.md](docs/guide/reference/decision-endpoint.md)
   - **Playground**: does not run here
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
+  - **Recorder**: does not run here; recording is a development tool
+    - Evidence: inferred: nothing of the recorder is part of an app's build
 - External systems:
   - **Host application**: the app itself, in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
@@ -375,6 +443,11 @@ hosting its playground.
     wizard unless `VITE_AGENT_CONNECTION=false`
     - Deployment node: the playground's Vite dev server
     - Evidence: verified: [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
+  - **Recorder**: the workspace build, `node packages/cli/dist/cli.mjs codegen <url>`,
+    started in a folder with Playwright installed, such as `apps/recorder-fixture`
+    - Deployment node: a Node process on the contributor's machine, and the Chromium it
+      launches
+    - Evidence: verified: [packages/cli/package.json](packages/cli/package.json), [apps/recorder-fixture/README.md](apps/recorder-fixture/README.md)
 - External systems:
   - **Host application**: the playground's list app on 4190, and the React, Next.js, Nuxt,
     SvelteKit and Angular examples on 4191, 4192, 4193, 4194 and 4196
@@ -420,6 +493,10 @@ hosting its playground.
     - Deployment node: a GitHub Actions runner
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/package.json](apps/example-vue/package.json),
       [apps/example-vue/scripts/verify-browser-output.mjs](apps/example-vue/scripts/verify-browser-output.mjs)
+  - **Recorder**: started by the recorder fixture's end-to-end tests, as a child process
+    and, to record, in the test's own process, with a headless Chromium
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [apps/recorder-fixture/tests/fixtures.ts](apps/recorder-fixture/tests/fixtures.ts), [.github/workflows/ci.yml](.github/workflows/ci.yml)
 - External systems:
   - **Host application**: the fixture and example apps in [apps/](apps/)
     - Evidence: verified: [docs/testing.md](docs/testing.md)
@@ -459,6 +536,8 @@ hosting its playground.
     - Deployment nodes: the ayme-labs.github.io/ayme GitHub Pages site, and its
       `/playground/` copy that ayme.dev/playground/ proxies to
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [docs/guide/_config.yml](docs/guide/_config.yml)
+  - **Recorder**: does not run here; the site is static
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 - External systems:
   - **Host application**: the playground's own list app
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)

@@ -21,7 +21,13 @@ import { Linter } from "eslint";
 import { builtinRules } from "eslint/use-at-your-own-risk";
 import tseslint from "typescript-eslint";
 
-import { isProductionSource } from "../packages/test-config/analysis.js";
+import {
+  isMutated,
+  isProductionSource,
+  isScored,
+  measuredOtherwise,
+  measuredOtherwiseGroup,
+} from "../packages/test-config/analysis.js";
 
 /** Functions above this CRAP score are flagged. */
 export const CRAP_CAP = 15;
@@ -30,8 +36,19 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT = path.join(ROOT, "reports", "analyze-changed.md");
 const PACKAGE_DIR = /^packages\/[^/]+/;
 
+/**
+ * Room for what git prints: a pull request's diff and a file at the base
+ * grow with the pull request, and execFileSync's default of 1 MB fails with
+ * ENOBUFS past it.
+ */
+const GIT_OUTPUT_LIMIT = 1024 ** 3;
+
 function git(...args) {
-  return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
+  return execFileSync("git", args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: GIT_OUTPUT_LIMIT,
+  });
 }
 
 function parseArgs(argv) {
@@ -103,7 +120,7 @@ export function diffAgainst(base, cwd = ROOT) {
       "--",
       "packages",
     ],
-    { cwd, encoding: "utf8" }
+    { cwd, encoding: "utf8", maxBuffer: GIT_OUTPUT_LIMIT }
   );
 }
 
@@ -306,7 +323,24 @@ export function reusedResults(log) {
     : undefined;
 }
 
-function render({
+/**
+ * The changed files a folder sends to another measure, by group, in the
+ * order the shared analysis settings list the groups. Groups with no
+ * changed file are left out.
+ */
+export function measuredOtherwiseRows(files) {
+  return measuredOtherwise
+    .map((group) => ({
+      pattern: group.pattern,
+      how: group.how,
+      files: files
+        .filter((file) => measuredOtherwiseGroup(file) === group)
+        .sort(),
+    }))
+    .filter((row) => row.files.length > 0);
+}
+
+export function render({
   base,
   packages,
   skipped,
@@ -314,6 +348,7 @@ function render({
   mutantRows,
   mutation,
   reuse,
+  otherwise = [],
 }) {
   const out = [`# Change analysis against ${base}`, ""];
   out.push(`Packages: ${packages.join(", ") || "none"}`, "");
@@ -343,6 +378,18 @@ function render({
     out.push(
       `- ${row.file}:${row.line} ${row.status} ${row.mutator}: \`${row.replacement}\``
     );
+  }
+  if (otherwise.length > 0) {
+    out.push(
+      "",
+      "## Changed files measured otherwise",
+      "",
+      "A folder sends these to another measure, by `measuredOtherwise` in `packages/test-config/analysis.js`; the sections above leave out what it says they leave out."
+    );
+    for (const row of otherwise) {
+      out.push("", `\`${row.pattern}\`: ${row.how}.`, "");
+      for (const file of row.files) out.push(`- ${file}`);
+    }
   }
   if (reuse && reuse.length > 0) {
     const counts = reuse.map(({ name, result }) =>
@@ -406,11 +453,13 @@ function main() {
       )
     );
     for (const [file, lines] of files) {
+      if (!isScored(file)) continue;
       crapRows.push(
         ...crapFindings(file, lines, base, coverageOf(coverage, file))
       );
     }
-    if (args.mutation) {
+    const mutated = new Map([...files].filter(([file]) => isMutated(file)));
+    if (args.mutation && mutated.size > 0) {
       const log = path.join(ROOT, dir, "stryker.log");
       fs.rmSync(log, { force: true });
       run(
@@ -420,14 +469,14 @@ function main() {
           "stryker",
           "run",
           "--mutate",
-          mutateTargets(dir, files).join(","),
+          mutateTargets(dir, mutated).join(","),
           ...(args.incremental
             ? ["--incremental", "--fileLogLevel", "info"]
             : []),
         ],
         path.join(ROOT, dir)
       );
-      mutantRows.push(...survivors(dir, files));
+      mutantRows.push(...survivors(dir, mutated));
       if (args.incremental) {
         reuse.push({
           name,
@@ -447,6 +496,7 @@ function main() {
     ),
     mutation: args.mutation,
     reuse: args.mutation && args.incremental ? reuse : undefined,
+    otherwise: measuredOtherwiseRows([...changes.keys()]),
   });
   fs.mkdirSync(path.dirname(REPORT), { recursive: true });
   fs.writeFileSync(REPORT, report);

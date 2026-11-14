@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Leaving</title>
+  </head>
+  <body>
+    <h1>Leaving</h1>
+    <!-- Goes elsewhere as the mouse is released, before the click that
+         follows: the recorder holds that click in a document that is about
+         to go. -->
+    <button id="leave">Leave</button>
+    <button id="stay">Stay</button>
+    <p id="stayed">Not stayed</p>
+    <script>
+      document.getElementById("stay").addEventListener("click", () => {
+        document.getElementById("stayed").textContent = "Stayed";
+      });
+      document.getElementById("leave").addEventListener("mouseup", () => {
+        location.href = "/checkout.html";
+      });
+    </script>
+  </body>
+</html>

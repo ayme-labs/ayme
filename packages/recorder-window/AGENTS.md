@@ -1,0 +1,28 @@
+# Recorder window source layout
+
+The Recorder's window: React with the design system, served by the engine (`packages/recorder`) from the folder of this package's built files, which the CLI hands it. It knows the engine only through `@ayme-dev/recorder/contract`, the engine's plain data, and never imports engine code. The in-page toolbar is a second build here: React with the design system in a closed shadow root, whose script the engine runs in every recorded document.
+
+`src/` is cut into slices named for what they do, with layers inside a slice only where it needs them, as in `packages/inspector`. [`eslint.config.js`](eslint.config.js) is the source of truth for which slices each may use and what may be imported; `src/layout.test.ts` checks that lint flags a misplaced import.
+
+Slices:
+
+- `channel`: the window's channel to the recorder. `infrastructure` opens it over tRPC on a WebSocket at `/channel` beside the page (the mutation `send`, the subscription `updates`); `infrastructure` also holds the toolbar's channel, through the one page function the engine puts in every recorded page: it pulls the first update above the newest it heard, again and again. `domain` keeps the newest state heard and ignores an older one; `presentation` is the hook the window and the toolbar read it through.
+- `timeline`: the recording as the window lists it. `domain` reads an entry's Change Tree, text in the Recording Package's compact notation, down to the roots of what changed (only the topmost marked nodes: the engine's Change Tree stays complete), and names an Interaction and its target. `view` shows each Visit with its entries. An entry's header has the control that discards it, or restores it when it is discarded: dimmed, with its changes hidden. Each shows only while the state's `commands` lists it, and names the entry by its `id`. Hovering an entry's target asks the engine to highlight its element on the page, and leaving it to clear the highlight.
+- `controls`: the controls and the line that says what the recorder does. Which can be pressed comes from the state's `commands`: the window repeats none of the engine's rules. Assert visibility is shown on while the state says Playwright picks (`picking`), and sends whichever of entering and leaving it the state offers. `ToolbarView` is the same controls, small, for the toolbar; its buttons take no focus from the page.
+- `app`: the composition root: `RecorderWindow.tsx` puts the controls above the timeline and `main.tsx` mounts it, `window.css` is its stylesheet, `index.html` its page. `RecorderToolbar.tsx` is the toolbar's controls on the same channel hook. `toolbar.tsx` mounts the toolbar in the top document on a host that hides from the page's structure, with a closed shadow root, and stops every input given to it at the window; `toolbar.css` is its stylesheet, adopted in the shadow root only.
+- `testing`: the window's and the toolbar's page objects, the `./testing` entry (ADR-0026). Only they may name Playwright's types. The toolbar's page object reaches into its closed shadow root through a selector engine it registers itself, once its page is open: Playwright gives an engine registered earlier to no context it reaches over the DevTools protocol.
+
+Layers: `domain` (pure rules), `application` (the ports), `infrastructure` (the network), `presentation` (hooks), `view` (components that take props).
+
+The build (`tsdown.config.ts`) writes `dist/window/`: `index.html` and one script with React, the channel's client and the stylesheet inside, which leaves nothing to resolve where it is served. `src/build.test.ts` checks the built script carries no Node built-in, no package import and no engine code. `./window/index.html` is the export through which the end-to-end tests find that folder. The CLI's build copies it beside the command's file, and the build also writes `dist/bundled-packages.json`, the third-party packages the script holds, which the CLI's build reads for its `THIRD_PARTY_NOTICES.txt`. It also writes `dist/toolbar/toolbar.js`, one classic script with React, the design system and its stylesheet inside and no socket client, which the CLI's build copies beside the command's file too, and its own list, `dist/toolbar-bundled-packages.json`, since the builds run side by side. `src/build.test.ts` checks both scripts.
+
+## Testing
+
+Run from this directory inside the repository's Devbox shell. `pnpm test` runs two projects ([`vitest.config.ts`](vitest.config.ts)), and reads the build: Turbo's `test` task builds first.
+
+- `unit`, in Node (`*.test.ts`): the plain rules, the window's channel against a stand-in tRPC server, the build and the layout.
+- `component`, in headless Chromium (`*.browser.test.tsx`): the window and the toolbar, mounted as their scripts mount them against a channel or page function the test plays, read and pressed through these page objects on playwright-lite, as the Inspector's component tests are. playwright-lite's input is synthetic; the toolbar stops only a person's trusted input, so its tests give that through Vitest's Playwright provider (`userEvent` from `vitest/browser`) at the point of a control.
+
+The scripts (`src/app/main.tsx`, `src/app/toolbar.tsx`) only mount: what they decide is in `mountWindow.tsx` and `toolbarMount.tsx`, which the component tests call.
+
+End to end, the window is tested in [`apps/recorder-fixture`](../../apps/recorder-fixture/README.md) (`tests/window.spec.ts`): the real server of a recorder on the engine's scripted browser, driven through these page objects. The toolbar is tested there too (`tests/toolbar.spec.ts`), in pages a real recorder records.

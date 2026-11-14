@@ -9,6 +9,8 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 - `packages/ayme/`: read [its AGENTS.md](packages/ayme/AGENTS.md) before adding or moving a source file.
 - `packages/inspector/`: read [its AGENTS.md](packages/inspector/AGENTS.md) before adding or moving a source file.
 - `packages/mcp/`: read [its AGENTS.md](packages/mcp/AGENTS.md) before adding or moving a source file.
+- `packages/recorder/`: read [its AGENTS.md](packages/recorder/AGENTS.md) before adding or moving a source file.
+- `packages/recorder-window/`: read [its AGENTS.md](packages/recorder-window/AGENTS.md) before adding or moving a source file.
 - `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only Ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers.
@@ -58,7 +60,7 @@ Commit messages follow Conventional Commits. `commitlint.config.ts` defines the 
 
 ## Moving the supported Playwright range
 
-`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range.
+`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range. The Recorder's own range lives in `packages/recorder/playwright-range.json`.
 
 ## Updating the Playwright Lite fork
 
@@ -71,7 +73,7 @@ Playwright Lite matches Playwright's behaviour; the fork holds only what ayme ne
 - A fork change never makes Lite differ from Playwright. When ayme needs other behaviour than Playwright's, ayme provides it on top of Lite.
 
 1. To pick up upstream changes, first produce a new tag by following `docs/fork/SYNC.md` in the fork. Read it from the latest `ayme-*` [tag](https://github.com/ayme-labs/playwright-lite/tags); the fork's `main` mirrors upstream and does not contain it.
-2. Replace the old SHA with the new tag's SHA everywhere and reinstall: `git grep -l <old-sha> -- ':!pnpm-lock.yaml' | xargs perl -pi -e 's/<old-sha>/<new-sha>/g' && pnpm install`. This covers the three `package.json` files, `allowBuilds` in `pnpm-workspace.yaml`, the ledger link in `docs/guide/reference/playwright-in-the-browser.md`, and `packages/ayme/THIRD_PARTY_NOTICES.txt`. `git grep <old-sha>` must then find nothing. pnpm rewrites the lockfile unformatted, so run `pnpm exec prettier --write pnpm-lock.yaml`; the lockfile diff should be a few lines. Then run `pnpm --filter @ayme-dev/ayme sync:injected`, which copies the new tag's generated InjectedScript into `packages/ayme/build/generated/` for the in-page module's build, review it, and update the size and hash in `packages/ayme/build/pinnedAriaSnapshot.ts`.
+2. Replace the old SHA with the new tag's SHA everywhere and reinstall: `git grep -l <old-sha> -- ':!pnpm-lock.yaml' | xargs perl -pi -e 's/<old-sha>/<new-sha>/g' && pnpm install`. This covers the four `package.json` files, `allowBuilds` in `pnpm-workspace.yaml`, the ledger link in `docs/guide/reference/playwright-in-the-browser.md`, and `packages/ayme/THIRD_PARTY_NOTICES.txt`. `git grep <old-sha>` must then find nothing. pnpm rewrites the lockfile unformatted, so run `pnpm exec prettier --write pnpm-lock.yaml`; the lockfile diff should be a few lines. Then run `pnpm --filter @ayme-dev/ayme sync:injected`, which copies the new tag's generated InjectedScript into `packages/ayme/build/generated/` for the in-page module's build, review it, and update the size and hash in `packages/ayme/build/pinnedAriaSnapshot.ts`.
 3. Run `pnpm check`. Review the upstream changelog for behaviour changes that affect POMs.
 
 ## Development environment

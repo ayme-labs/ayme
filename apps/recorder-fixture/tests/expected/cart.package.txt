@@ -1,0 +1,83 @@
+recordingId: rec_<id>
+mode: structural
+createdAt: <time>
+url: http://127.0.0.1:<port>/cart.html
+tracePath: .ayme/recordings/rec_<id>/trace.zip
+visits:
+  - visitId: visit_1
+    url: http://127.0.0.1:<port>/cart.html
+    cause: initial
+    baselineTree:
+      - [ref=e1]:
+        - [ref=e2] heading "Cart" [level=1]
+        - [ref=e3] paragraph: "Items: 0"
+        - [ref=e5] button "Add item" [active]
+        - [ref=e6] button "Redraw"
+    timelineEntries:
+      - kind: interaction
+        timestamp: <time>
+        interaction:
+          id: interaction_1
+          type: click
+          targetRef: e5
+          targetSelector: internal:role=button[name="Add item"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e3] paragraph: "Items: 1"
+      - kind: change
+        timestamp: <time>
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e5] button "Add item"
+            - <changed> [ref=e6] button "Redraw" [active]
+      - kind: interaction
+        timestamp: <time>
+        interaction:
+          id: interaction_2
+          type: click
+          targetRef: e6
+          targetSelector: internal:role=button[name="Redraw"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+      - kind: change
+        timestamp: <time>
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e5] button "Add item" [active]
+            - <changed> [ref=e6] button "Redraw"
+      - kind: interaction
+        timestamp: <time>
+        interaction:
+          id: interaction_3
+          type: click
+          targetRef: e5
+          targetSelector: internal:role=button[name="Add item"i]
+          button: left
+          modifiers: 0
+          clickCount: 1
+        changeTree:
+          - [ref=e1]:
+            - <changed> [ref=e3] paragraph: "Items: 2"
+traceActionPoints:
+  - interactionId: interaction_1
+    pageId: page_1
+    beforeSnapshotId: "<position>"
+    afterSnapshotId: "<position>"
+    startedAt: <time>
+    endedAt: <time>
+  - interactionId: interaction_2
+    pageId: page_1
+    beforeSnapshotId: "<position>"
+    afterSnapshotId: "<position>"
+    startedAt: <time>
+    endedAt: <time>
+  - interactionId: interaction_3
+    pageId: page_1
+    beforeSnapshotId: "<position>"
+    afterSnapshotId: "<position>"
+    startedAt: <time>
+    endedAt: <time>

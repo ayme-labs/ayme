@@ -1,0 +1,59 @@
+{
+  "name": "@ayme-dev/recorder",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The engine of the Ayme Recorder: starts a recorder on the project's own Playwright and ends it with an outcome",
+  "license": "FSL-1.1-ALv2",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./contract": {
+      "types": "./dist/contract.d.mts",
+      "import": "./dist/contract.mjs",
+      "default": "./dist/contract.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.mts",
+      "import": "./dist/testing.mjs",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run",
+    "test:contract": "vitest run --config vitest.contract.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test:crap": "vitest run --config vitest.crap.config.ts --coverage",
+    "test:mutation": "stryker run"
+  },
+  "dependencies": {
+    "@ayme-dev/core": "workspace:*",
+    "@trpc/server": "^11.19.0",
+    "effect": "^4.1.4",
+    "ws": "^8.22.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/test-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@trpc/client": "^11.19.0",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "^10.9.1",
+    "playwright-core": "^1.64.0",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test:crap": {
+      "dependsOn": ["build", "^build"]
+    },
+    "test:mutation": {
+      "dependsOn": ["build", "^build"]
+    }
+  }
+}

@@ -1,0 +1,106 @@
+# Recorder fixture
+
+The end-to-end tests of the Recorder and the fixture pages they record. It is
+private and never published.
+
+```
+app/         the fixture pages
+tests/       the shared fixtures (fixtures.ts) and one spec per concern
+```
+
+This folder is also the project the recorder runs in: it has Playwright
+installed, and the tests start the built `ayme-recorder` command here as a
+child process, as a developer would in their own project. The recorder loads
+this project's Playwright; the command brings none of its own.
+
+Each test serves the fixture pages on a free port (`fixturePages`), so it can
+see which requests the recorder's browser made. Add a spec file for a new
+concern and reuse `fixtures.ts`.
+
+- `codegen.spec.ts` runs the command with `runRecorder`. Assertions go through
+  what the command prints, its exit code and those requests, and through the
+  browser's own list of its pages over `run.debugEndpoint`, which shows the
+  recorder window opened in a context of its own.
+- `recording.spec.ts` records. These tests press Record and Finish through
+  the engine's handle, not the window: they start the engine in the
+  test's own process with `startRecording` and press both through its handle.
+  The project is a folder of the test's own inside this app, which is where
+  the package is saved. Input is a person's: `person` sends raw input events
+  over the test's own connection to the browser, so it is no call of the
+  Playwright that records. Assertions read the Recording Package from disk.
+  `tests/expected/` holds expected package text; `cart.package.txt` is what
+  the throwaway prototype of pull request #1268 wrote for the same clicks,
+  with what differs from run to run replaced.
+
+- `attach.spec.ts` records a running browser: `runningBrowser` launches one
+  with its page open before the recorder comes, and its connection is another
+  automation client in that browser. `recordedBrowser: "attach"` has
+  `startRecording` attach to such a browser instead of launching one.
+  Two of its tests run the command, `codegen --cdp-endpoint`, with
+  `runRecorder`: one shows it does not navigate the page and leaves the
+  browser open and usable, the other records the page through the recorder
+  window and reads the package the command saved. The third records through
+  the engine's handle, with clicks the other automation client gives.
+
+- `controls.spec.ts` stops, continues, clears and finishes a recording, the
+  same way: through the engine's handle, with a person's input, reading the
+  package from disk.
+
+- `trace.spec.ts` opens a recording's trace with the stock `playwright trace`
+  of the project's own Playwright (`stockTrace.ts`), as a reader does: by the
+  position numbers the package gives, and through `ayme-recorder trace
+latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
+  a snapshot's phase by the installed version: `--name` on Playwright 1.62,
+  `--phase` from 1.63.
+
+- `inputs.spec.ts` records every kind of input on `app/inputs.html` the same
+  way: typing, key presses, a native select, a file upload, a double click,
+  and clicks inside a frame, an open shadow root and on an element the page
+  structure does not list.
+
+- `toolbar.spec.ts` drives the in-page toolbar through its page object
+  (`@ayme-dev/recorder-window/testing`), with a person's input, in pages a
+  real recorder records, beside the window when `startRecording` is asked to
+  serve it; and once on the engine's scripted browser, to hold a wrap-up for
+  as long as the test likes. Every recording `startRecording` starts has the
+  toolbar, as the CLI gives it.
+
+- `window.spec.ts` drives the recorder window through its page objects
+  (`@ayme-dev/recorder-window/testing`), served by the real server of a
+  recorder on the engine's scripted browser (`@ayme-dev/recorder/testing`):
+  the test plays the browser by hand, and opens the window's address in its
+  own page.
+
+- `assert.spec.ts` uses Assert visibility from the toolbar and the window,
+  and hovers entries' targets in the window, in pages a real recorder
+  records: the highlight is read off the recorded page.
+
+- `review.spec.ts` discards and restores entries while paused, through the
+  engine's handle on real Chromium, and reads the package from disk.
+  `windowReview.spec.ts` does it in the recorder window, through its page
+  objects, on the scripted browser.
+
+Two environment variables exist for these tests, and `runRecorder` sets both:
+
+- `AYME_RECORDER_HEADLESS=1` launches the browser without a window, since the
+  tests run where there is no screen.
+- `AYME_RECORDER_DEBUG_PORT=<port>` also opens the browser's DevTools protocol
+  on that local port, so a test can act in the recorded browser over a
+  connection of its own, as the person would: `run.closePage(url)` closes a
+  page through it.
+
+The Playwright project `attach` runs the first test of `recording.spec.ts`
+and the position-number test of `trace.spec.ts` again on a running browser
+the recorder attaches to; the project `launch` runs every test.
+
+`recording.spec.ts` runs on another Playwright version when
+`AYME_RECORDER_PLAYWRIGHT_PROJECT` names a project folder with that version
+installed: each test's project is then a folder inside that one, so the
+recorder finds that Playwright. CI runs the first test of that file this way
+once per supported version, in both projects; the range is in
+[`packages/recorder/playwright-range.json`](../../packages/recorder/playwright-range.json).
+
+## Running
+
+Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
+tests the built packages, so build first; Turbo's `test:e2e` task does.
