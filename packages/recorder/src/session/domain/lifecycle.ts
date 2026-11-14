@@ -706,141 +706,181 @@ const freshGates = (pages: readonly Page[]): PageGate[] =>
     latest: null,
   }));
 
+const reply = (result: CommandResult): ToDo => ({ kind: "reply", result });
+
+/** A command that starts a wrap-up is answered at once: the buttons wait
+ * for the phase, not for the answer. */
+const applied = (next: Step): Step => ({
+  state: next.state,
+  todo: [...next.todo, reply("applied")],
+});
+
 function command(state: LifecycleState, asked: RecorderCommand): Step {
-  const reply = (result: CommandResult): ToDo => ({ kind: "reply", result });
   if (asked.type === "highlight" || asked.type === "clearHighlight")
     return reviewable(state)
       ? highlight(state, asked)
       : { state, todo: [reply("ignored")] };
-  /** A command that starts a wrap-up is answered at once: the buttons wait
-   * for the phase, not for the answer. */
-  const applied = (next: Step): Step => ({
-    state: next.state,
-    todo: [...next.todo, reply("applied")],
-  });
-  switch (state.phase) {
-    case "notRecording":
-      if (asked.type === "record" && state.pages.length > 0)
-        return {
-          state: {
-            phase: "recording",
-            starting: true,
-            resumed: false,
-            picking: "off",
-            traceStarting: true,
-            pages: atRecord(state.pages).pages,
-            inputs: [],
-            snapshotsAsked: 0,
-            // A page holds what follows from Record on, until its first
-            // input has a "before".
-            gates: freshGates(state.pages),
-            reportedOnly: 0,
-          },
-          todo: [
-            ...atRecord(state.pages).todo,
-            // Reports first: a click held before Playwright listens would
-            // be passed on without ever being reported. The pages are asked
-            // to hold inputs back when Playwright reports, and Record is
-            // answered when they do: "applied" means that a click is now
-            // recorded.
-            //
-            // The recording's one trace starts here, at the first Record:
-            // Continue goes on in the trace that is running. Playwright
-            // is asked to report when the trace is started: from then on
-            // a snapshot can be marked in it.
-            { kind: "browser", ask: { kind: "startTrace" } },
-            { kind: "deferReply" },
-          ],
-        };
-      break;
-    case "recording":
-      if (asked.type === "finish") return applied(wrapUp(state, "save"));
-      if (asked.type === "stop") return applied(wrapUp(state, "pause"));
-      if (asked.type === "clear") return applied(wrapUp(state, "clear"));
-      if (asked.type === "assertVisibility" && !state.starting)
-        return assertVisibility(state);
-      if (asked.type === "leaveAssertVisibility" && state.picking !== "off")
-        return {
-          state: { ...state, picking: "off" },
-          todo: [
-            ...(state.picking === "waiting" ? [] : [pickRequest(false)]),
-            reply("applied"),
-          ],
-        };
-      break;
-    case "paused":
-      // It starts as Record does, into the timeline that is there.
-      if (asked.type === "continue") {
-        const continued = continueVisits(state.pages);
-        return {
-          state: {
-            phase: "recording",
-            starting: true,
-            resumed: true,
-            picking: "off",
-            traceStarting: false,
-            pages: continued.pages,
-            inputs: [],
-            snapshotsAsked: state.snapshotsAsked,
-            // As at Record: the page may have changed while paused. What
-            // it changed then is not the recording's: each page's next
-            // snapshot is where recording resumes.
-            gates: freshGates(continued.pages).map((gate) => ({
-              ...gate,
-              resumes: true,
-            })),
-            reportedOnly: 0,
-          },
-          todo: [
-            ...continued.todo,
-            { kind: "browser", ask: { kind: "reportInteractions", on: true } },
-            { kind: "deferReply" },
-          ],
-        };
-      }
-      // Nothing is under way while paused: there is nothing to wrap up, and
-      // no last snapshot to take, which would show what the pause changed.
-      if (asked.type === "clear")
-        return {
-          state: {
-            phase: "wrappingUp",
-            pages: state.pages,
-            inputs: [],
-            snapshotsAsked: state.snapshotsAsked,
-            gates: [],
-            reportedOnly: 0,
-            gateOff: true,
-            finals: [],
-            then: "clear",
-            switchingOff: true,
-            traceStarting: false,
-            discardingTrace: true,
-          },
-          // It is over, and everything is thrown away, when the trace is
-          // gone: until then Record is ignored.
-          todo: [discardTrace, reply("applied")],
-        };
-      // Answered first: the worker comes back from a save only when the
-      // package is written.
-      if (asked.type === "finish") return save(state, [reply("applied")]);
-      // The only time an entry may be left out or put back: nothing is under
-      // way, and Continue and Finish keep the decision with the timeline.
-      if (asked.type === "discard" || asked.type === "restore")
-        return {
-          state,
-          todo: [
-            {
-              kind: "timeline",
-              add: { kind: asked.type, entry: asked.entry },
-            },
-            reply("applied"),
-          ],
-        };
-      break;
-  }
   // A command that does not apply now changes nothing: it is never kept for
   // later, and never read as the opposite one.
-  return { state, todo: [reply("ignored")] };
+  return commandIn(state, asked) ?? { state, todo: [reply("ignored")] };
+}
+
+/** What a command does in the phase it is asked in; null when it does not
+ * apply there. */
+function commandIn(state: LifecycleState, asked: RecorderCommand): Step | null {
+  switch (state.phase) {
+    case "notRecording":
+      return asked.type === "record" && state.pages.length > 0
+        ? record(state.pages)
+        : null;
+    case "recording":
+      return whileRecording(state, asked);
+    case "paused":
+      return whilePaused(state, asked);
+    default:
+      return null;
+  }
+}
+
+/** Record: a recording starts, with a Visit for each page at an address. */
+function record(pages: readonly Page[]): Step {
+  return {
+    state: {
+      phase: "recording",
+      starting: true,
+      resumed: false,
+      picking: "off",
+      traceStarting: true,
+      pages: atRecord(pages).pages,
+      inputs: [],
+      snapshotsAsked: 0,
+      // A page holds what follows from Record on, until its first input has
+      // a "before".
+      gates: freshGates(pages),
+      reportedOnly: 0,
+    },
+    todo: [
+      ...atRecord(pages).todo,
+      // Reports first: a click held before Playwright listens would be
+      // passed on without ever being reported. The pages are asked to hold
+      // inputs back when Playwright reports, and Record is answered when
+      // they do: "applied" means that a click is now recorded.
+      //
+      // The recording's one trace starts here, at the first Record: Continue
+      // goes on in the trace that is running. Playwright is asked to report
+      // when the trace is started: from then on a snapshot can be marked in
+      // it.
+      { kind: "browser", ask: { kind: "startTrace" } },
+      { kind: "deferReply" },
+    ],
+  };
+}
+
+/** A command asked while recording. */
+function whileRecording(
+  state: Extract<LifecycleState, { phase: "recording" }>,
+  asked: RecorderCommand
+): Step | null {
+  switch (asked.type) {
+    case "finish":
+      return applied(wrapUp(state, "save"));
+    case "stop":
+      return applied(wrapUp(state, "pause"));
+    case "clear":
+      return applied(wrapUp(state, "clear"));
+    case "assertVisibility":
+      return state.starting ? null : assertVisibility(state);
+    case "leaveAssertVisibility":
+      return leaveAssertVisibility(state);
+    default:
+      return null;
+  }
+}
+
+/** A command asked while paused. */
+function whilePaused(
+  state: Extract<LifecycleState, { phase: "paused" }>,
+  asked: RecorderCommand
+): Step | null {
+  switch (asked.type) {
+    case "continue":
+      return resume(state);
+    case "clear":
+      return clearPaused(state);
+    case "finish":
+      // Answered first: the worker comes back from a save only when the
+      // package is written.
+      return save(state, [reply("applied")]);
+    // The only time an entry may be left out or put back: nothing is under
+    // way, and Continue and Finish keep the decision with the timeline.
+    case "discard":
+    case "restore":
+      return {
+        state,
+        todo: [
+          { kind: "timeline", add: { kind: asked.type, entry: asked.entry } },
+          reply("applied"),
+        ],
+      };
+    default:
+      return null;
+  }
+}
+
+/** Continue: it starts as Record does, into the timeline that is there. */
+function resume(state: Extract<LifecycleState, { phase: "paused" }>): Step {
+  const continued = continueVisits(state.pages);
+  return {
+    state: {
+      phase: "recording",
+      starting: true,
+      resumed: true,
+      picking: "off",
+      traceStarting: false,
+      pages: continued.pages,
+      inputs: [],
+      snapshotsAsked: state.snapshotsAsked,
+      // As at Record: the page may have changed while paused. What it
+      // changed then is not the recording's: each page's next snapshot is
+      // where recording resumes.
+      gates: freshGates(continued.pages).map((gate) => ({
+        ...gate,
+        resumes: true,
+      })),
+      reportedOnly: 0,
+    },
+    todo: [
+      ...continued.todo,
+      { kind: "browser", ask: { kind: "reportInteractions", on: true } },
+      { kind: "deferReply" },
+    ],
+  };
+}
+
+/** Clear while paused. Nothing is under way: there is nothing to wrap up,
+ * and no last snapshot to take, which would show what the pause changed. */
+function clearPaused(
+  state: Extract<LifecycleState, { phase: "paused" }>
+): Step {
+  return {
+    state: {
+      phase: "wrappingUp",
+      pages: state.pages,
+      inputs: [],
+      snapshotsAsked: state.snapshotsAsked,
+      gates: [],
+      reportedOnly: 0,
+      gateOff: true,
+      finals: [],
+      then: "clear",
+      switchingOff: true,
+      traceStarting: false,
+      discardingTrace: true,
+    },
+    // It is over, and everything is thrown away, when the trace is gone:
+    // until then Record is ignored.
+    todo: [discardTrace, reply("applied")],
+  };
 }
 
 /**
@@ -2079,14 +2119,30 @@ const anyHeld = (inputs: readonly Input[]) =>
 function assertVisibility(
   state: Extract<LifecycleState, { phase: "recording" }>
 ): Step {
-  const reply: ToDo = { kind: "reply", result: "ignored" };
-  if (state.picking !== "off") return { state, todo: [reply] };
-  const applied: ToDo = { kind: "reply", result: "applied" };
+  if (state.picking !== "off") return { state, todo: [reply("ignored")] };
   if (anyHeld(state.inputs))
-    return { state: { ...state, picking: "waiting" }, todo: [applied] };
+    return {
+      state: { ...state, picking: "waiting" },
+      todo: [reply("applied")],
+    };
   return {
     state: { ...state, picking: "asked" },
-    todo: [pickRequest(true), applied],
+    todo: [pickRequest(true), reply("applied")],
+  };
+}
+
+/** Leave Assert visibility: picking that was asked of Playwright is taken
+ * back; one that still waited was never asked. */
+function leaveAssertVisibility(
+  state: Extract<LifecycleState, { phase: "recording" }>
+): Step | null {
+  if (state.picking === "off") return null;
+  return {
+    state: { ...state, picking: "off" },
+    todo: [
+      ...(state.picking === "waiting" ? [] : [pickRequest(false)]),
+      reply("applied"),
+    ],
   };
 }
 
