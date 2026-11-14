@@ -81,6 +81,51 @@ describe("the Recording Package's text", () => {
     ]);
   });
 
+  it("lists everything Playwright can say of an Interaction in the released order", async () => {
+    const timeline = await clicked({
+      before: idle,
+      after: idle,
+      // In no order of the package's.
+      values: {
+        options: ["Large"],
+        files: ["report.pdf"],
+        key: "Enter",
+        position: { x: 3, y: 4 },
+        clickCount: 1,
+        modifiers: 0,
+        button: "left",
+        text: "milk",
+        value: "Large",
+        url: "http://shop.test/cart",
+      },
+    });
+
+    const [entry] = timeline.visits()[0]!.entries;
+    if (entry?.kind !== "interaction") throw new Error("No Interaction.");
+    expect(Object.keys(entry.interaction)).toEqual([
+      "id",
+      "type",
+      "targetRef",
+      "url",
+      "value",
+      "text",
+      "button",
+      "modifiers",
+      "clickCount",
+      "position",
+      "key",
+      "files",
+      "options",
+    ]);
+    expect(entry.interaction).toMatchObject({
+      url: "http://shop.test/cart",
+      value: "Large",
+      position: { x: 3, y: 4 },
+      files: ["report.pdf"],
+      options: ["Large"],
+    });
+  });
+
   it("writes a long selector on one line, as the released recorder does", async () => {
     const selector =
       'internal:role=button[name="Add the selected item to the shopping cart and continue to the checkout page"i]';

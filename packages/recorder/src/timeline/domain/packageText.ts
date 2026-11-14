@@ -98,12 +98,17 @@ const tree = (key: string, text: string) =>
     ? [`${key}: []`]
     : [`${key}:`, ...text.split("\n").map((line) => "  " + line)];
 
-// Stryker disable OptionalChaining: equivalent, since core gives every node of a reconciled tree a status
-const changedItself = (node: StructuralNode) =>
-  node.status?.kind === "added" ||
-  node.status?.kind === "removed" ||
-  (node.status?.kind === "updated" && node.status.selfChanged);
-// Stryker restore OptionalChaining
+/** Whether a node of a Change Tree was added, removed or changed itself,
+ * and does not only lead to a change below it. */
+const changedItself = (node: StructuralNode) => {
+  // Only a node that was updated says whether it changed itself.
+  const { kind, selfChanged } = {
+    kind: undefined,
+    selfChanged: false,
+    ...node.status,
+  };
+  return kind === "added" || kind === "removed" || selfChanged;
+};
 const isNode = (child: StructuralNode | string) => typeof child !== "string";
 
 /** The package's trees list no property of a node, such as a link's URL. */

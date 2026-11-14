@@ -155,6 +155,23 @@ describe("finding a recording's trace", () => {
     });
   });
 
+  it("reads a field's value as YAML does, without the blanks around it", async () => {
+    await recording(
+      "rec_1",
+      packageOf(`recordingId: rec_1  `, `tracePath:  ${tracePath}\t`)
+    );
+    await writeFile(join(project, tracePath), "a trace");
+
+    expect(await findTrace(project, "latest")).toEqual({
+      kind: "found",
+      file: join(project, tracePath),
+    });
+    await rm(join(project, tracePath));
+    expect(await findTrace(project, "latest")).toMatchObject({
+      reason: `The trace of recording "rec_1" is gone: ${join(project, tracePath)} is not there.`,
+    });
+  });
+
   it("says that there is no recording, or which one it could not find", async () => {
     expect(await findTrace(project, "latest")).toEqual({
       kind: "missing",

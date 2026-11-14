@@ -87,9 +87,10 @@ async function write(
     renamed = true;
     await rename(temporaryLatest, join(recordings, "latest.yaml"));
   } catch (error) {
-    // Whatever the clean-up meets, the save failed for its own reason.
+    // Whatever the clean-up meets, such as nothing to remove, the save
+    // failed for its own reason.
     const remove = (path: string) =>
-      rm(path, { recursive: true, force: true }).catch(() => {});
+      rm(path, { recursive: true }).catch(() => {});
     await remove(temporaryFolder);
     await remove(temporaryLatest);
     if (renamed) await remove(folder);
