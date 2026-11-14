@@ -243,7 +243,7 @@ describe("a solution-style tsconfig", () => {
     ).toThrow(
       // The whole message, so the suffix appears once.
       expect.objectContaining({
-        message: `Unsupported Page Object Tool input type for KindPicker.pick(kind): Kind. Compiled with ${nodeConfig}.`,
+        message: `${join(project, "src/pom/kindPicker.ts")}:8:14: Unsupported Page Object Tool input type for KindPicker.pick(kind): Kind. Compiled with ${nodeConfig}.`,
       })
     );
   });

@@ -1,8 +1,8 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type * as esbuild from "esbuild";
+import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
 
 import { PageObjectsBuildError } from "../domain/buildFailure";
@@ -234,4 +234,67 @@ it("watches only the file it compiled when the compile throws before it reads an
   );
 
   expect(await onLoad({ path: file })).toMatchObject({ watchFiles: [file] });
+});
+
+// Compiled modules have no source map; resolution errors must not quote their coordinates.
+it.each([
+  'const before = 1;\nimport { nope } from "./does-not-exist";\nnope();',
+  'const é = "😀"; import { nope } from "./does-not-exist"; nope();',
+])(
+  "omits generated positions for an unresolved import in %s",
+  async (source) => {
+    const file = await realpath(await pomFile(source));
+    const outcomes = buildOutcomes({
+      entry: file,
+      folder: join(file, ".."),
+      outdir: join(file, "..", "out"),
+      log: () => {},
+    });
+    try {
+      await esbuild
+        .build({
+          entryPoints: [file],
+          bundle: true,
+          write: false,
+          logLevel: "silent",
+          plugins: [
+            pageObjectModels({
+              compile: () => ({
+                code: '\n\nimport { nope } from "./does-not-exist"; nope();',
+                dependencies: [],
+              }),
+              invalidate: () => {},
+            }),
+            outcomes.plugin,
+          ],
+        })
+        .catch(() => {});
+      expect(
+        await failedPageObjects(file, buildWith(outcomes.modules))
+      ).toEqual({
+        entry: file,
+        error: `${file}: Could not resolve "./does-not-exist"`,
+        watching: true,
+      });
+    } finally {
+      await rm(join(file, ".."), { recursive: true, force: true });
+    }
+  }
+);
+
+it("keeps a compiler error's original child file and parameter position", async () => {
+  const file = await pomFile("class Page {}");
+  const text =
+    "/project/Child.ts:8:14: Unsupported Page Object Tool input type for Child.pick(callback): () => void.";
+  const { onLoad } = setUp(
+    pageObjectModels({
+      compile: () => {
+        throw new Error(text);
+      },
+      invalidate: () => {},
+    })
+  );
+  expect(await onLoad({ path: file })).toMatchObject({
+    errors: [{ text, location: null }],
+  });
 });

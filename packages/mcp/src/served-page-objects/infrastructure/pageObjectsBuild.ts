@@ -106,11 +106,32 @@ export async function watchPageObjects(
 export function pageObjectModels(
   compiler: ReturnType<PomCompilerEntry["createPomCompiler"]>
 ): esbuild.Plugin {
+  const compiled = new Set<string>();
   return {
     name: "ayme-served-page-object-models",
     setup(build) {
       // A rebuild compiles afresh, so an edited dependency reaches the manifest.
-      build.onStart(() => compiler.invalidate());
+      build.onStart(() => {
+        compiled.clear();
+        compiler.invalidate();
+      });
+      build.onEnd(({ errors }) => {
+        for (const error of errors) {
+          const location = error.location;
+          if (
+            location &&
+            compiled.has(
+              resolve(
+                build.initialOptions.absWorkingDir ?? process.cwd(),
+                location.file
+              )
+            )
+          ) {
+            // The compiler returns no source map: generated coordinates name no source position.
+            error.location = { ...location, line: 0, column: 0 };
+          }
+        }
+      });
       build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
         if (path.split(sep).includes("node_modules")) return;
         // What the compile read before it threw, such as a tsconfig.json.
@@ -122,15 +143,20 @@ export function pageObjectModels(
             onDependencies: (dependencies) => (read = dependencies),
           });
         } catch (error) {
+          const text = (error as Error).message;
           // Thrown, it would point at esbuild's own code, not at the file.
           return {
             errors: [
-              { text: (error as Error).message, location: { file: path } },
+              {
+                text,
+                location: /^.+:\d+:\d+: /.test(text) ? null : { file: path },
+              },
             ],
             watchFiles: [path, ...read],
           };
         }
         if (pom === null) return;
+        compiled.add(path);
         return {
           contents: pom.code,
           loader: "js",

@@ -1593,7 +1593,18 @@ describe("derivePomManifests", () => {
         } catch (error) {
           thrown = error;
         }
-        expect((thrown as Error | undefined)?.message).toBe(message);
+        const positions: Record<string, number> = {
+          indexSignaturePatternPom: 8,
+          stringPatternPom: 11,
+          tupleUnionPom: 8,
+          correlatedTuplePom: 8,
+        };
+        const column = positions[fixture];
+        expect((thrown as Error | undefined)?.message).toBe(
+          column
+            ? `${path.resolve(`src/compiler/fixtures/unsupportedPatterns/${fixture}.ts`)}:6:${column}: ${message}`
+            : message
+        );
       });
 
       it("takes an object pattern's quoted keys with their defaults, and its computed ones from the type", () => {
