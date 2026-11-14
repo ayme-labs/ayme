@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { RecorderPhase } from "../../contract";
 import type { InteractionReport, PageSnapshot } from "../../timeline/domain";
 import {
+  awaitsAnswer,
   initialState,
   offered,
   shown,
   step,
+  TRACE_STOP_LIMIT_MS,
   WRAP_UP_LIMIT_MS,
   type Happening,
   type HeldInput,
@@ -113,13 +115,17 @@ const wrapUp: ToDo[] = [
   { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
 ];
 const trace = { file: "/tmp/trace.zip", positions: { snapshot_1: "11" } };
+// Stopping a trace is given a time: a browser that never answers keeps
+// neither a save nor a Clear waiting for ever.
 const stopTrace: ToDo = {
   kind: "browser",
   ask: { kind: "stopTrace", keep: true },
+  within: TRACE_STOP_LIMIT_MS,
 };
 const discardTrace: ToDo = {
   kind: "browser",
   ask: { kind: "stopTrace", keep: false },
+  within: TRACE_STOP_LIMIT_MS,
 };
 const traceStopped: Happening = { kind: "traceStopped", trace };
 const traceDiscarded: Happening = { kind: "traceDiscarded" };
@@ -3503,5 +3509,77 @@ describe("the lifecycle, for what the review against the spec found", () => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
+  });
+});
+
+// An end from outside always finishes: stopping the trace is given a time,
+// and that time is one stop's own.
+describe("the lifecycle, for the time an answer is given", () => {
+  /** Where the lifecycle stands after these things happened. */
+  const after = (happened: readonly Happening[]) =>
+    happened.reduce(
+      (state, happening) => step(state, happening).state,
+      initialState
+    );
+  const askOf = (todo: ToDo) => {
+    if (todo.kind !== "browser") throw new Error("Not a request.");
+    return todo.ask;
+  };
+  const saving = [...stopped, finish];
+  const discarding = [...stopped, clear];
+
+  it.each<{ name: string; happened: Happening[]; of: ToDo; awaited: boolean }>([
+    {
+      name: "a save waits for its trace to be stopped",
+      happened: saving,
+      of: stopTrace,
+      awaited: true,
+    },
+    {
+      name: "a save that has its trace waits for it no more",
+      happened: [...saving, traceStopped],
+      of: stopTrace,
+      awaited: false,
+    },
+    {
+      name: "a save does not wait for a trace to be thrown away",
+      happened: saving,
+      of: discardTrace,
+      awaited: false,
+    },
+    {
+      name: "a Clear waits for its trace to be gone",
+      happened: discarding,
+      of: discardTrace,
+      awaited: true,
+    },
+    {
+      name: "a Clear whose trace is gone waits for it no more, also once Record is pressed again",
+      happened: [...discarding, { kind: "traceDiscarded" }, record],
+      of: discardTrace,
+      awaited: false,
+    },
+    {
+      name: "no other request's answer is given a time",
+      happened: [opened, ...started, stop],
+      of: wrapUp[0]!,
+      awaited: false,
+    },
+  ])("$name", ({ happened, of, awaited }) => {
+    expect(awaitsAnswer(after(happened), askOf(of))).toBe(awaited);
+  });
+
+  it("writes the package without its trace when the stop was not answered in time, as when it broke", () => {
+    const { todo, state } = run([...saving, failed(stopTrace)]);
+
+    expect(todo.at(-1)).toEqual([{ kind: "save" }]);
+    expect(state).toEqual({ phase: "saving" });
+  });
+
+  it("is over with a cleared recording when its trace was not gone in time, as when it broke", () => {
+    const { todo, state } = run([...discarding, failed(discardTrace)]);
+
+    expect(todo.at(-1)).toEqual([{ kind: "clear" }]);
+    expect(state).toEqual({ phase: "notRecording" });
   });
 });

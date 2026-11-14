@@ -76,8 +76,9 @@ export type BrowserSignal =
       readonly page: string;
       readonly report: InteractionReport;
     }
-  /** A request broke while the browser carried it out: no other answer to
-   * it comes. `reason` says what went wrong, for a person. */
+  /** A request broke while the browser carried it out, or the time it was
+   * given for its answer has passed: no other answer to it is waited for.
+   * `reason` says what went wrong, for a person. */
   | {
       readonly kind: "requestFailed";
       readonly request: BrowserRequest;
@@ -230,7 +231,18 @@ export type ToDo =
   | { readonly kind: "deferReply" }
   /** Give the answer that was kept. */
   | { readonly kind: "replyDeferred"; readonly result: CommandResult }
-  | { readonly kind: "browser"; readonly ask: BrowserRequest }
+  | {
+      readonly kind: "browser";
+      readonly ask: BrowserRequest;
+      /**
+       * How long the answer may take. When that has passed and the lifecycle
+       * still waits for it (`awaitsAnswer`), the lifecycle is told
+       * "requestFailed" for the request, as when the browser says that it
+       * could not: a browser that answers nothing keeps no state waiting
+       * for ever.
+       */
+      readonly within?: number;
+    }
   | { readonly kind: "timeline"; readonly add: TimelineAddition }
   /** Tell the lifecycle "timeLimitPassed" after this long. */
   | { readonly kind: "startTimeLimit"; readonly ms: number }
@@ -268,6 +280,29 @@ export type ToDo =
  * can take two seconds.
  */
 export const WRAP_UP_LIMIT_MS = 5_000;
+
+/**
+ * How long stopping a trace may take, kept or thrown away: Playwright writes
+ * the file, and the stock trace tool reads the snapshots' positions from it.
+ * It is there for a browser that never answers: the package is then written
+ * without its trace, and a cleared recording is over all the same.
+ */
+export const TRACE_STOP_LIMIT_MS = 60_000;
+
+/**
+ * Whether the state still waits for the answer to a request that was given
+ * a time for it (`within`). The worker ends the time of a request that is no
+ * longer waited for, so that it cannot pass for a later one of its kind.
+ */
+export function awaitsAnswer(
+  state: LifecycleState,
+  request: BrowserRequest
+): boolean {
+  if (request.kind !== "stopTrace") return false;
+  return request.keep
+    ? state.phase === "saving" && state.stoppingTrace
+    : state.phase === "wrappingUp" && state.discardingTrace;
+}
 
 /** The reports a held click can lead to. */
 const HELD_CLICK_REPORTS = new Set(["click", "check", "uncheck"]);
@@ -867,13 +902,18 @@ function answerRecord(state: LifecycleState): ToDo[] {
 }
 
 /** The recorded stretch is over for good: the trace is stopped and kept, and
- * the package is written when it is. */
+ * the package is written when it is, or when that has taken too long: the
+ * save waits on no browser for ever. */
 function save(state: LifecycleState, todo: readonly ToDo[]): Step {
   return {
     state: { phase: "saving", pages: state.pages, stoppingTrace: true },
     todo: [
       ...todo,
-      { kind: "browser", ask: { kind: "stopTrace", keep: true } },
+      {
+        kind: "browser",
+        ask: { kind: "stopTrace", keep: true },
+        within: TRACE_STOP_LIMIT_MS,
+      },
     ],
   };
 }
@@ -911,10 +951,12 @@ function traceGone(state: LifecycleState): Step {
   };
 }
 
-/** The trace of a recording that is thrown away goes with it. */
+/** The trace of a recording that is thrown away goes with it. The recording
+ * is over when it is gone, or when that has taken too long. */
 const discardTrace: ToDo = {
   kind: "browser",
   ask: { kind: "stopTrace", keep: false },
+  within: TRACE_STOP_LIMIT_MS,
 };
 
 // Visits.

@@ -18,10 +18,12 @@ import type {
 } from "../../contract";
 import { Timeline, type RecordingTrace } from "../../timeline/domain";
 import {
+  awaitsAnswer,
   initialState,
   offered,
   shown,
   step,
+  type BrowserRequest,
   type Happening,
   type ToDo,
 } from "../domain/lifecycle";
@@ -116,6 +118,12 @@ export class RecorderSession extends Context.Service<
         /** The time limit that is running: it is the wrap-up's that
          * started it. */
         let timeLimit: Fiber.Fiber<unknown> | undefined;
+        /** The requests whose answer was given a time, with that time
+         * running. */
+        let timed: {
+          readonly request: BrowserRequest;
+          readonly time: Fiber.Fiber<unknown>;
+        }[] = [];
         /** The answer the lifecycle keeps for a later step. */
         let deferred: Queued["reply"];
         /** The answers the lifecycle keeps by a key of its own. */
@@ -137,6 +145,23 @@ export class RecorderSession extends Context.Service<
               deferred = undefined;
               return;
             case "browser":
+              // An answer that is given a time counts as "could not" once
+              // the time has passed. The time runs beside the queue, as a
+              // time limit does.
+              if (item.within !== undefined)
+                timed.push({
+                  request: item.ask,
+                  time: yield* Effect.sleep(item.within).pipe(
+                    Effect.andThen(
+                      tell({
+                        kind: "requestFailed",
+                        request: item.ask,
+                        reason: "The browser did not answer in time.",
+                      })
+                    ),
+                    Effect.forkScoped
+                  ),
+                });
               return yield* browser.ask(item.ask);
             case "timeline":
               // An entry is told as soon as it is produced.
@@ -225,6 +250,12 @@ export class RecorderSession extends Context.Service<
             yield* Fiber.interrupt(timeLimit);
             timeLimit = undefined;
           }
+          // The same goes for the time an answer was given: once the
+          // lifecycle no longer waits for it, it must not pass for a later
+          // request of its kind.
+          for (const { request, time } of timed)
+            if (!awaitsAnswer(state, request)) yield* Fiber.interrupt(time);
+          timed = timed.filter(({ request }) => awaitsAnswer(state, request));
         });
 
         // What the browser told while it started comes before anything that

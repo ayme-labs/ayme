@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import { TestClock } from "effect/testing";
 
-import type { RecorderWarning } from "../contract";
+import type { RecorderWarning, RecordingOutcome } from "../contract";
 import {
   serveWindow,
   startRecorderOn,
@@ -99,6 +99,11 @@ export interface ScriptedBrowser {
   holdTraceAnswers(): void;
   /** ...until now. */
   releaseTraceAnswers(): void;
+  // Ending.
+  /** From now on the browser answers nothing it is asked, and tells nothing
+   * by itself: a browser that hangs. What a test plays by hand is still
+   * told. */
+  goSilent(): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -120,6 +125,14 @@ export async function startScriptedRecorder(
   /** What a recorded page's toolbar calls with a message, as the stock
    * adapter exposes it to every page. */
   toolbar: (message: unknown) => Promise<unknown>;
+  /**
+   * Ends the recorder from outside and moves its clock on, a second at a
+   * time, until it has ended: whatever was left unanswered runs into its
+   * time limit. Rejects when the recorder has not ended once `ms` of its
+   * clock have passed. A fixture ends its recorder with it, so that a test
+   * that left the browser holding an answer back cannot keep it from ending.
+   */
+  endWithin: (ms: number) => Promise<RecordingOutcome>;
 }> {
   const page = "page_1";
   let url = options.url ?? "http://scripted.test/";
@@ -133,6 +146,7 @@ export async function startScriptedRecorder(
   let settling: Extract<BrowserRequest, { kind: "waitForSettled" }> | undefined;
   let snapshotsHeld: (() => void)[] | undefined;
   let traceAnswersHeld: (() => void)[] | undefined;
+  let silent = false;
   let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
   const traces: string[] = [];
@@ -254,7 +268,7 @@ export async function startScriptedRecorder(
           ask: (request) =>
             Effect.sync(() => {
               asked.push(request);
-              answer(request);
+              if (!silent) answer(request);
               for (const check of [...waiting]) check();
             }),
         });
@@ -273,7 +287,32 @@ export async function startScriptedRecorder(
   return {
     recorder,
     toolbar: toolbar.answer,
+    endWithin: async (ms) => {
+      let outcome: RecordingOutcome | undefined;
+      void recorder.done.then((ended) => {
+        outcome = ended;
+      });
+      recorder.end();
+      /** Lets what the clock set off run, the package's write included. */
+      const turn = (wait: number) =>
+        new Promise((resolve) => setTimeout(resolve, wait));
+      for (let passed = 0; passed < ms && !outcome; passed += 1_000) {
+        await turn(0);
+        await Effect.runPromise(clock!.adjust(Math.min(1_000, ms - passed)));
+      }
+      // The clock has done its part: what is left is the disk's.
+      for (let waited = 0; waited < 100 && !outcome; waited += 1)
+        await turn(20);
+      if (!outcome)
+        throw new Error(
+          `The recorder had not ended ${ms} ms after it was ended from outside.`
+        );
+      return outcome;
+    },
     browser: {
+      goSilent: () => {
+        silent = true;
+      },
       closePage: ({ pagesLeft }) =>
         tell({ kind: "pageClosed", page, pagesLeft }),
       get released() {
