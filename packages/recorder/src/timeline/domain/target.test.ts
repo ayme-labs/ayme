@@ -234,6 +234,58 @@ describe("the target a report names", () => {
       ).toBe("f2e2");
     });
 
+    // From Playwright 1.63 a target two or more frames deep is written with
+    // an "any frame" step first, and only as many frame-entering steps as it
+    // needs: it is in a frame at least that deep.
+    describe("written by any frame", () => {
+      const anyFrame =
+        'internal:control=any-frame >> internal:role=button[name="Pay"i]';
+      const nested = (outer: string) =>
+        lines(
+          `- generic [ref=e1]:`,
+          `  - button "Pay" [ref=e2]`,
+          `  - iframe [ref=e3]:`,
+          `    - generic [ref=f1e1]:`,
+          `      - button "${outer}" [ref=f1e2]`,
+          `      - iframe [ref=f1e3]:`,
+          `        - generic [ref=f2e1]:`,
+          `          - button "Pay" [ref=f2e2]`
+        );
+
+      it("is looked for in every frame, and found in the one frame of a frame that has it", async () => {
+        expect(
+          await targetOf({
+            before: nested("Back"),
+            picture: ofFrame,
+            ref: "e21",
+            selector: anyFrame,
+          })
+        ).toBe("f2e2");
+      });
+
+      it("is looked for only as deep as the frame-entering steps after it say, at least", async () => {
+        expect(
+          await targetOf({
+            before: nested("Pay"),
+            picture: ofFrame,
+            ref: "e21",
+            selector: `internal:control=any-frame >> iframe >> internal:control=enter-frame >> internal:role=button[name="Pay"i]`,
+          })
+        ).toBe("f2e2");
+      });
+
+      it("is not known when two frames both have it, nor looked for in the page", async () => {
+        expect(
+          await targetOf({
+            before: nested("Pay"),
+            picture: ofFrame,
+            ref: "e21",
+            selector: anyFrame,
+          })
+        ).toBeNull();
+      });
+    });
+
     it("is not known for a report with no selector: nothing says which document the input was given to", async () => {
       expect(
         await targetOf({
