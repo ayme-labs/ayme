@@ -99,6 +99,16 @@ describe("which key Playwright records as a press, not as typing", () => {
       true,
     ],
     ["Insert alone is a press", { key: "Insert", code: "Insert" }, true],
+    [
+      "an L on the page is a press",
+      { key: "l", code: "KeyL", target: "other" },
+      true,
+    ],
+    [
+      "an arrow key with Shift is a press",
+      { key: "ArrowDown", code: "ArrowDown", shift: true },
+      true,
+    ],
   ])("%s", (_, facts, press) => {
     expect(recordedAsPress(key(facts))).toBe(press);
   });
@@ -125,7 +135,7 @@ describe("what kind of target a key goes to", () => {
 });
 
 describe("which click the gate holds back", () => {
-  const button = { nodeName: "BUTTON", inputType: null };
+  const button = { nodeName: "BUTTON", inputType: "" };
 
   it("holds the left button's click on an element", () => {
     expect(clickHeld({ button: 0, detail: 1, target: button })).toBe(true);
@@ -141,7 +151,7 @@ describe("which click the gate holds back", () => {
       clickHeld({
         button: 0,
         detail: 1,
-        target: { nodeName: "SELECT", inputType: null },
+        target: { nodeName: "SELECT", inputType: "" },
       })
     ).toBe(false);
     expect(clickHeld({ button: 0, detail: 1, target: null })).toBe(false);
@@ -153,11 +163,11 @@ describe("which targets the gate leaves alone", () => {
     ["no element", null, true],
     [
       "the recorder's toolbar",
-      { nodeName: "AYME-RECORDER-TOOLBAR", inputType: null },
+      { nodeName: "AYME-RECORDER-TOOLBAR", inputType: "" },
       true,
     ],
-    ["a native list", { nodeName: "SELECT", inputType: null }, true],
-    ["one of its options", { nodeName: "OPTION", inputType: null }, true],
+    ["a native list", { nodeName: "SELECT", inputType: "" }, true],
+    ["one of its options", { nodeName: "OPTION", inputType: "" }, true],
     ["a file input", { nodeName: "INPUT", inputType: "file" }, true],
     ["a colour picker", { nodeName: "INPUT", inputType: "color" }, true],
     ["a date picker", { nodeName: "INPUT", inputType: "date" }, true],
@@ -172,7 +182,7 @@ describe("which targets the gate leaves alone", () => {
     ["a week picker", { nodeName: "INPUT", inputType: "week" }, true],
     ["a checkbox", { nodeName: "INPUT", inputType: "checkbox" }, false],
     ["a text field", { nodeName: "INPUT", inputType: "text" }, false],
-    ["a button", { nodeName: "BUTTON", inputType: null }, false],
+    ["a button", { nodeName: "BUTTON", inputType: "" }, false],
   ])("%s", (_, target, alone) => {
     expect(leftAlone(target)).toBe(alone);
   });
@@ -270,5 +280,26 @@ describe("a page function sent with the rules it uses", () => {
     const inPage = new Function(`return (${String(sent)})(5);`) as () => number;
 
     expect(inPage()).toBe(20);
+  });
+
+  it("is sent with each of several rules, and with none it does not need", () => {
+    const add = (value: number) => value + 1;
+    const both = (
+      value: number,
+      rules: {
+        quadruple: (value: number) => number;
+        add: (value: number) => number;
+      }
+    ) => rules.add(rules.quadruple(value));
+    const sent = withRules(both, { quadruple, add }, [double]);
+    const alone = withRules(
+      (value: number, rules: { add: typeof add }) => rules.add(value),
+      { add }
+    );
+    const run = (fn: (value: number) => number) =>
+      (new Function(`return (${String(fn)})(2);`) as () => number)();
+
+    expect(run(sent)).toBe(9);
+    expect(run(alone)).toBe(3);
   });
 });

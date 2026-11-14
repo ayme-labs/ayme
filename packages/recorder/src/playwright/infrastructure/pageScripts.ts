@@ -154,8 +154,8 @@ export function keyTarget(
 /** A click's target, as the gate reads it: null when it is no element. */
 export type ClickTarget = {
   readonly nodeName: string;
-  /** An input's type; null for another element. */
-  readonly inputType: string | null;
+  /** An input's type; empty for another element. */
+  readonly inputType: string;
 } | null;
 
 /** Whether the gate leaves a target's clicks to the page: the recorder's own
@@ -173,7 +173,7 @@ export function leftAlone(target: ClickTarget): boolean {
     "range",
     "time",
     "week",
-  ].includes(target.inputType ?? "");
+  ].includes(target.inputType);
 }
 
 /** Whether the gate holds a click back: the left button's, with a count (a
@@ -257,7 +257,7 @@ export function withRules<
   const sent = (arg: A) => main(arg, rules);
   const declared = [...helpers, ...Object.values(rules)]
     .map((rule) => `const ${rule.name} = ${String(rule)};`)
-    .join("\n");
+    .join("");
   const given = Object.entries(rules)
     .map(([name, rule]) => `${JSON.stringify(name)}: ${rule.name}`)
     .join(", ");
@@ -420,7 +420,7 @@ function gateIn(held: string, rules: GateRules): void {
       detail: event.detail,
       target: target && {
         nodeName: target.nodeName,
-        inputType: target instanceof HTMLInputElement ? target.type : null,
+        inputType: target instanceof HTMLInputElement ? target.type : "",
       },
     };
     if (!rules.clickHeld(click)) return;
