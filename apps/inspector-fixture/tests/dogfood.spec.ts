@@ -27,7 +27,7 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
   );
 
   await executePublishedTool(page, "Navigator.showLens", {
-    ref: await new AgentView(page).ref('navigation "Navigator"'),
+    id: await new AgentView(page).id("Navigator"),
     args: { name: "Tools" },
   });
 
@@ -44,7 +44,7 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
   // A search in progress does not stop the agent from opening a run card,
   // and the card's own actions come alive with it.
   await executePublishedTool(page, "Navigator.search", {
-    ref: await new AgentView(page).ref('navigation "Navigator"'),
+    id: await new AgentView(page).id("Navigator"),
     args: { query: "addItem" },
   });
   await executePublishedTool(page, "Inspector.tool", {
@@ -70,7 +70,7 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
     await executePublishedTool(page, "Inspector.tool", { name: tool });
     await expect.poll(toolNames).toContain(`${card}.openArguments`);
     await executePublishedTool(page, `${card}.openArguments`, {
-      ref: await agent.ref(`form "${tool.split(".").at(-1)}"`),
+      id: await agent.id("RunCard"),
     });
     await expect
       .poll(toolNames)
@@ -83,9 +83,9 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   const form = inspector.detail.toolPage.card.fillForm;
   await expect(form.control("Urgent")).not.toBeChecked();
   // The editor's root surrounds the list that stays out of page state.
-  const editorRef = await agent.ref('form "fill_form"');
+  const editorId = await agent.id("FillForm");
   await executePublishedTool(page, `FillForm.set`, {
-    ref: editorRef,
+    id: editorId,
     args: { name: "Urgent", value: true },
   });
   await expect(form.control("Urgent")).toBeChecked();
@@ -114,10 +114,10 @@ test("the page state an agent reads includes the panel", async ({
   inspector,
 }) => {
   await expect(inspector.panel).toBeVisible();
-  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
+  const { structure } = (await new AgentView(page).run("snapshot", {})) as {
     structure: string;
   };
-  expect(structure).toContain('complementary "ayme"');
+  expect(structure).toMatch(/PanelShell po\d+ "ayme"/);
 });
 
 test("the panel's renderings of the page stay out of the page state", async ({
@@ -126,7 +126,7 @@ test("the panel's renderings of the page stay out of the page state", async ({
 }) => {
   const agent = new AgentView(page);
   const snapshot = async () =>
-    ((await agent.call("snapshot", {})) as { structure: string }).structure;
+    ((await agent.run("snapshot", {})) as { structure: string }).structure;
 
   await inspector.navigator.showLens("Structure");
   await expect(inspector.structure.tree).toBeVisible();

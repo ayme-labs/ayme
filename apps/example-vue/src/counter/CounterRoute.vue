@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { AymeProvider } from "@ayme-dev/vue";
 import CounterPageView from "./CounterPageView.vue";
+
+// The certification pairs a coding agent with the page, in dev only.
+const dev = import.meta.env.DEV;
 </script>
 
 <!--
@@ -11,7 +14,7 @@ import CounterPageView from "./CounterPageView.vue";
 <template>
   <main>
     <h1>Ayme Vue counter</h1>
-    <AymeProvider :webMCP="{ enabled: true }">
+    <AymeProvider :webMCP="{ enabled: true }" :agentConnection="dev">
       <CounterPageView />
     </AymeProvider>
   </main>

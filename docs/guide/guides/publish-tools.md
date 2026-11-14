@@ -50,7 +50,7 @@ npm install @ayme-dev/webmcp
 The call that starts Ayme decides whether its tools are published through WebMCP.
 
 - `webMCP.enabled` turns publication on. The session then loads `@ayme-dev/webmcp` when it starts in the browser; with the option off, the page requests none of its code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
-- `webMCP.toolNamePrefix` is prepended to every published tool name: the agent's tools, Browser Tools, Custom Tools and Page Object Tools. It is empty by default. It applies at publication only: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
+- `webMCP.toolNamePrefix` is prepended to every published tool name: `page_objects` and the Page Object Tools. It is empty by default. It applies at publication only: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
 
 ```ts
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
@@ -64,7 +64,7 @@ Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chr
 
 ## What gets published
 
-With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now, because a click would not reach the root or its [availability predicate](ayme-page-objects.md#aymeaction) says so, stays published; a call is refused with its reason before anything runs, as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
+With publication on, an agent sees `page_objects`, which returns the [Page Objects on the page as a tree](page-state.md#page-object-ids), and the Page Object Tools of every registered Page Object on the page. WebMCP publishes nothing else: not the Browser Tools, `snapshot`, `goal`, your Custom Tools or the Peek Tools, and no option brings them back. `ayme.tools` and Ayme's MCP server still offer them as [Connect an agent](connect-an-agent.md) and [`ayme.tools`](../reference/ayme.md#aymetools) describe. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now, because a click would not reach the root or its [availability predicate](ayme-page-objects.md#aymeaction) says so, stays published; a call is refused with its reason before anything runs, as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
 
 ## Publication status
 

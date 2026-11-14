@@ -57,7 +57,12 @@ function sessionOn(
   {
     loads,
     restart,
-  }: { loads?: string; restart?: (url: string) => InteractionHistory },
+    rootIds,
+  }: {
+    loads?: string;
+    restart?: (url: string) => InteractionHistory;
+    rootIds?: (refs: readonly string[]) => Promise<(string | undefined)[]>;
+  },
   ...captures: (PageCapture | Error)[]
 ) {
   let taken = 0;
@@ -107,7 +112,8 @@ function sessionOn(
     }),
     next,
     actionPage,
-    restart
+    restart,
+    rootIds
   );
   return { session, count: () => taken };
 }
@@ -155,6 +161,71 @@ describe("a capture of another document than the session's", () => {
     // Not "Old" turning into "New" under the recycled refs e1 and e2.
     expect(result).not.toHaveProperty("changes_before");
     expect(result.page_changed).toBe(false);
+  });
+});
+
+describe("the page state a reader receives", () => {
+  const list = capture(
+    [
+      "- list [ref=e1]:",
+      "  - listitem [ref=e2]: Milk",
+      "  - listitem [ref=e3]: Eggs",
+      "  - listitem [ref=e4]: Tea",
+    ].join("\n"),
+    // As the registry found the roots, which is not the tree's order.
+    new Map([
+      [ref("e3"), ["ListItem"]],
+      [ref("e1"), ["ListPage", "Panel"]],
+      [ref("e2"), ["ListItem"]],
+    ])
+  );
+
+  it("prints each Page Object Root's id beside its class, asking for them in the tree's order", async () => {
+    const asked: string[][] = [];
+    const ids: Record<string, string> = { e1: "po3", e2: "po1", e3: "po2" };
+    const { session } = sessionOn(
+      {
+        rootIds: async (refs) => {
+          asked.push([...refs]);
+          return refs.map((root) => ids[root]);
+        },
+      },
+      list
+    );
+
+    const state = await session.getPageState(cursor());
+
+    expect(state.text).toBe(
+      [
+        "- e1 list:",
+        '  - /pom: ["ListPage","Panel"]',
+        "  - /id: po3",
+        "  - e2 ListItem po1: Milk",
+        "  - e3 ListItem po2: Eggs",
+        "  - e4 listitem: Tea",
+      ].join("\n")
+    );
+    expect(asked).toEqual([["e1", "e2", "e3"]]);
+  });
+
+  it("prints a root that has no id with its class alone", async () => {
+    const { session } = sessionOn(
+      { rootIds: async (refs) => refs.map(() => undefined) },
+      list
+    );
+
+    const state = await session.getPageState(cursor());
+
+    expect(state.text).toContain("  - e2 ListItem: Milk");
+  });
+
+  it("prints no id when nothing gives the roots one", async () => {
+    const { session } = sessionOver(list);
+
+    const state = await session.getPageState(cursor());
+
+    expect(state.text).toContain("  - e2 ListItem: Milk");
+    expect(state.text).not.toContain("id:");
   });
 });
 

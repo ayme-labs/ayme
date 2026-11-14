@@ -17,6 +17,11 @@ export type PageDriver = {
    * Inside a probe run of `watch`, it also labels the root in later captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;
+  /**
+   * The aria snapshot of the one element `locator` resolves to now, as
+   * Playwright renders it, without refs.
+   */
+  ariaSnapshot(locator: Locator): Promise<string>;
   /** The Structural Ref of each element `locator` resolves to now. */
   refs(locator: Locator): Promise<string[]>;
   /**
@@ -25,6 +30,20 @@ export type PageDriver = {
    * to the capture's. Undefined for one whose element left the page.
    */
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /**
+   * The key of the element each of `refs`, now or before, names, and the
+   * Structural Ref it has now, in the order given: a key names its element
+   * for as long as it lives, however often captures rename it, and never an
+   * element of another document. Undefined for one whose element left.
+   */
+  elementKeys(
+    refs: readonly string[]
+  ): Promise<({ key: string; ref: string } | undefined)[]>;
+  /**
+   * The Structural Ref the element each of `keys` names has now, in the
+   * order given. Undefined once it left the page.
+   */
+  keyedRefs(keys: readonly string[]): Promise<(string | undefined)[]>;
   /** Whether `ref`, now or before, names the one element `locator` resolves to. */
   names(locator: Locator, ref: string): Promise<boolean>;
   /**

@@ -101,7 +101,7 @@ describe("a stored startup suite", () => {
   }
 
   const report = (suiteId: string, publish: boolean) =>
-    reportSuite(suiteId, { publish, openRouterApiKey: undefined });
+    reportSuite(suiteId, { publish });
 
   it("rebuilds the per-scenario summary beside its manifest, without publishing", async () => {
     const suiteId = await store([

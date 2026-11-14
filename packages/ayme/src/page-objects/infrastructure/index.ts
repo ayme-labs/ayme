@@ -10,6 +10,7 @@ export {
   listRegisteredPoms,
   listRegisteredPomTargets,
   listRegisteredPomTools,
+  pageObjectIdsOf,
   probeRegisteredPomMembers,
   registerPageObject,
   browserRegistry,

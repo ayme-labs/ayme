@@ -3,6 +3,7 @@ import {
   latestPageStateRefNamed,
   onPageStateRecorded,
   pageOfDocument,
+  providePageObjectIds,
   providePageObjectProbe,
 } from "../../page-state/infrastructure";
 import type { PomRegistry } from "../application/pomRegistry";
@@ -40,6 +41,7 @@ export function browserRegistry(): PomRegistry {
         onPageStateRecorded: (listener) =>
           onPageStateRecorded(document, listener),
         providePageObjectProbe,
+        providePageObjectIds,
       },
     }
   );
@@ -57,6 +59,8 @@ export const listRegisteredPomTools: PomRegistry["listRegisteredPomTools"] =
   () => browserRegistry().listRegisteredPomTools();
 export const listRegisteredPoms: PomRegistry["listRegisteredPoms"] = () =>
   browserRegistry().listRegisteredPoms();
+export const pageObjectIdsOf: PomRegistry["pageObjectIdsOf"] = (rootRefs) =>
+  browserRegistry().pageObjectIdsOf(rootRefs);
 export const probeRegisteredPomMembers: PomRegistry["probeRegisteredPomMembers"] =
   () => browserRegistry().probeRegisteredPomMembers();
 export const registerPageObject: PomRegistry["registerPageObject"] = (

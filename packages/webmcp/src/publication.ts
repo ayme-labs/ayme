@@ -40,7 +40,7 @@ const DRIVER_WAIT_MS = 2_000;
 /**
  * Publish `tools` through the page's WebMCP driver until `signal` aborts,
  * starting the first attempt now. An attempt waits for the driver, then keeps
- * the driver's tools in sync with the source's publishable ones; `onStatus`
+ * the driver's tools in sync with the source's; `onStatus`
  * hears where it stands.
  */
 export function startWebMcpPublication(

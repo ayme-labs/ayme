@@ -12,6 +12,7 @@ import type { GoalLoopStepRecord, JsonSchema } from "../../shared";
 import type { DecisionRequest, DecisionResponse } from "../domain/decisionWire";
 import type { PageCapture, PageStateCapture } from "../../page-state/domain";
 import type { RootedToolInstance } from "../../page-objects/application";
+import type { PageObjectId } from "../../page-objects/domain";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -170,8 +171,11 @@ export const lookalikeClickTool: GoalLoopOperation = {
   ],
 };
 
+/** A collection item as a test writes it: `archiveTool` gives it its Page Object id. */
+export type TestRoot = Omit<RootedToolInstance, "id">;
+
 /** A collection item the tool is unavailable on, so never offered. */
-export const archivedItem: RootedToolInstance = {
+export const archivedItem: TestRoot = {
   ref: "e99",
   present: true,
   available: false,
@@ -184,7 +188,7 @@ export const archivedItem: RootedToolInstance = {
  */
 export const collectionTool = (
   capture: PageStateCapture,
-  unavailable: RootedToolInstance[] = []
+  unavailable: TestRoot[] = []
 ): GoalLoopOperation =>
   archiveTool([
     ...capture.tree.getAllRefs().map((ref) => ({
@@ -197,22 +201,27 @@ export const collectionTool = (
 
 /**
  * A tool that goes through a collection over exactly `roots`, in their
- * order, so items left out can come before the ones offered.
+ * order, so items left out can come before the ones offered. The item at
+ * index `n - 1` has the Page Object id `po<n>`.
  */
-export const archiveTool = (
-  roots: readonly RootedToolInstance[]
-): GoalLoopOperation => ({
+export const archiveTool = (roots: readonly TestRoot[]): GoalLoopOperation => ({
   name: "List.archive",
   className: "List",
   description: "Archive an item.",
   execute: async () => null,
-  requiredParams: ["ref"],
+  requiredParams: ["id"],
   args: [
     {
-      name: "ref",
-      path: ["ref"],
+      name: "id",
+      path: ["id"],
       optional: false,
-      closedSet: { kind: "instance", roots },
+      closedSet: {
+        kind: "instance",
+        roots: roots.map((root, index) => ({
+          ...root,
+          id: `po${index + 1}` as PageObjectId,
+        })),
+      },
     },
   ],
 });

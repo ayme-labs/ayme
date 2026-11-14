@@ -9,7 +9,10 @@ import {
   type PageObjectConstructor,
 } from "../page-objects/application";
 import { getPomDefinitionsOf } from "../page-objects/infrastructure";
-import { requiredDescription } from "../page-objects/domain";
+import {
+  renderPageObjectTree,
+  requiredDescription,
+} from "../page-objects/domain";
 import {
   configureCustomToolsOf,
   configureRouterNavigateOf,
@@ -18,6 +21,7 @@ import {
 import type { peeksOf } from "../tools/infrastructure";
 import {
   getPageContextTool,
+  pageObjectsTool,
   peekToolName,
   recordAgentImageRun,
   type CustomTool,
@@ -69,6 +73,7 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
+import { pageObjectToolSource } from "./pageObjectToolSource";
 import {
   callers,
   checkedToolInput,
@@ -122,12 +127,13 @@ export type AymeTools = {
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
    * Starts a Run of an available tool for the Caller `by` names, `"app"`
-   * by default: every Caller, WebMCP and the Ayme MCP server included,
-   * starts its Runs here. Runs take turns, one at a time per page: an
-   * action's turn ends once the page has settled, a read's without a settle
-   * wait. Throws Ayme's errors, and `RuntimeStateError` for an empty `by`,
-   * while the session is not started, when no tool has the name, or when
-   * the tool is not available.
+   * by default. WebMCP and the Ayme MCP server start a Page Object Tool's
+   * Run in the same queue without coming through here, so the trees they
+   * read around the action share its turn. Runs take turns, one at a time
+   * per page: an action's turn ends once the page has settled, a read's
+   * without a settle wait. Throws Ayme's errors, and `RuntimeStateError`
+   * for an empty `by`, while the session is not started, when no tool has
+   * the name, or when the tool is not available.
    */
   run<N extends string>(
     name: N,
@@ -604,18 +610,41 @@ export function createAymeOn(
     for (const listener of toolListeners) listener(tools);
   };
   /**
-   * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
-   * calls as `webmcp` Runs. The package decides which of them it publishes.
+   * The Page Object Tools and their answers as the agent channels take them,
+   * their calls made by `by`: the one source WebMCP publication and the
+   * Ayme MCP server share.
    */
+  const pageObjectToolsFor = (by: Caller) =>
+    pageObjectToolSource({
+      list: () => ayme.tools.list(),
+      subscribe: (listener) => ayme.tools.subscribe(listener),
+      run: (name, input) => ayme.tools.run(name, input as never, { by }),
+      inTurn: (turn) =>
+        takeTurn(() =>
+          turn({
+            run: (name, input) =>
+              recordTopLevelRun(name, input, by, probeAfterAction),
+            readPageObjectTree: () => target.registry().readPageObjectTree(),
+            url: () => target.rawPage().url(),
+          })
+        ),
+    });
+
+  /**
+   * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
+   * calls as `webmcp` Runs, a Page Object Tool's answered as the agent
+   * channels answer it. It lists the Page Object Tools and `page_objects`
+   * only, so that is all WebMCP publishes.
+   */
+  const webMcpPageObjectTools = pageObjectToolsFor(callers.webmcp);
   const webMcpTools = {
     list: () =>
-      ayme.tools.list().map((tool) => ({
+      webMcpPageObjectTools.list().map((tool) => ({
         ...tool,
         description: requiredDescription(tool),
       })),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
-    run: (name: string, input: unknown) =>
-      ayme.tools.run(name, input as never, { by: callers.webmcp }),
+    run: webMcpPageObjectTools.run,
   };
 
   /**
@@ -724,14 +753,15 @@ export function createAymeOn(
     input: unknown,
     by: Caller
   ): Promise<unknown> {
-    return takeTurn(() =>
-      recordTopLevelRun(name, input, by, () =>
-        target
-          .registry()
-          .probeRegisteredPomMembers()
-          .catch(() => {})
-      )
-    );
+    return takeTurn(() => recordTopLevelRun(name, input, by, probeAfterAction));
+  }
+
+  /** A probe of the Page Objects after an action, which never fails the Run. */
+  function probeAfterAction(): Promise<void> {
+    return target
+      .registry()
+      .probeRegisteredPomMembers()
+      .catch(() => {});
   }
 
   /**
@@ -762,6 +792,7 @@ export function createAymeOn(
         {
           reads:
             tool === getPageContextTool ||
+            tool === pageObjectsTool ||
             (target.peeks()?.isPeekTool(tool) ?? false),
         },
         () =>
@@ -832,6 +863,8 @@ export function createAymeOn(
         ...(routerNavigate ? { routerNavigate } : {}),
         pomDefinitions: (...names) =>
           getPomDefinitionsOf(target.registry(), ...names),
+        pageObjectTree: async () =>
+          renderPageObjectTree(await target.registry().readPageObjectTree()),
         pageStateSession: target.pageState().session,
         reach,
       });
@@ -843,14 +876,15 @@ export function createAymeOn(
 
   /**
    * The session's tools as the Ayme MCP server's client reaches them: its
-   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller.
+   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller, and a Page
+   * Object Tool's answered as the agent channels answer it.
    */
+  const aymeMcpPageObjectTools = pageObjectToolsFor(callers.aymeMcp);
   const aymeMcpTools = {
     list: () => ayme.tools.list().map(forAymeMcp),
     subscribe: (listener: (tools: readonly AymeMcpTool[]) => void) =>
       ayme.tools.subscribe((tools) => listener(tools.map(forAymeMcp))),
-    run: (name: string, input: unknown) =>
-      ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
+    run: aymeMcpPageObjectTools.run,
   };
 
   const pom: AymePom = {

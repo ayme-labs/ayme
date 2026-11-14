@@ -96,9 +96,10 @@ describe("Ayme over a Playwright Page", () => {
     const { structure } = (await ayme.tools.run("snapshot", {})) as {
       structure: string;
     };
-    const ref = /(e\d+)[^\n]*Counter/.exec(structure)?.[1];
+    const id = /Counter (po\d+)/.exec(structure)?.[1];
+    expect(id, structure).toBeDefined();
 
-    const result = await ayme.tools.run("Counter.press", { ref } as never);
+    const result = await ayme.tools.run("Counter.press", { id } as never);
 
     expect(JSON.stringify(result)).toContain("1");
     expect(await page.locator("output").textContent()).toBe("1");

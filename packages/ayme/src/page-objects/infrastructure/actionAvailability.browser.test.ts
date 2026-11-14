@@ -1,5 +1,5 @@
 import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -123,13 +123,13 @@ describe("Action Availability", () => {
         if (!("reason" in expected))
           expect(published("Panel.remove")).not.toHaveProperty("reason");
         // The refusal carries the reason, or ends without one.
-        const ref = await rootRef("Panel");
+        const id = await rootId("Panel");
         await expect(
-          session.tools.run("Panel.remove", { ref, args: {} })
+          session.tools.run("Panel.remove", { id, args: {} })
         ).rejects.toThrow(
           "reason" in expected
-            ? `Panel on ref "${ref}" is unavailable: ${expected.reason}.`
-            : `Panel on ref "${ref}" is unavailable.`
+            ? `Panel "${id}" is unavailable: ${expected.reason}.`
+            : `Panel "${id}" is unavailable.`
         );
       }
     }
@@ -179,15 +179,13 @@ describe("Action Availability", () => {
       reason: "No item is selected",
     });
     expect(published("Panel.duplicate")).toMatchObject({ available: true });
-    const ref = await rootRef("Panel");
+    const id = await rootId("Panel");
     await expect(
-      session.tools.run("Panel.remove", { ref, args: {} })
-    ).rejects.toThrow(
-      `Panel on ref "${ref}" is unavailable: No item is selected.`
-    );
+      session.tools.run("Panel.remove", { id, args: {} })
+    ).rejects.toThrow(`Panel "${id}" is unavailable: No item is selected.`);
     expect(panel.removed).toBe(0);
     await session.tools.run("Panel.duplicate", {
-      ref: await rootRef("Panel"),
+      id: await rootId("Panel"),
       args: {},
     });
   });
@@ -349,23 +347,23 @@ describe("Action Availability", () => {
     expect(judged).not.toContain(outbox.items[2]);
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      [...state.text.matchAll(/(e\d+) Item\b/g)][index]?.[1];
+      [...state.text.matchAll(/e\d+ Item (po\d+)/g)][index]?.[1];
     const draft = refOf(0);
     const sent = refOf(1);
-    if (!draft || !sent) throw new Error("Expected refs for both items.");
+    if (!draft || !sent) throw new Error("Expected ids for both items.");
 
     expect(published("Message.recall")).toMatchObject({ available: true });
     expect(published("Message.recall")).not.toHaveProperty("reason");
     const { tool } = listed("Message.recall")!;
     await expect(
-      tool.execute({ ref: draft, args: {} }, runContext())
+      tool.execute({ id: draft, args: {} }, runContext())
     ).rejects.toThrow(
-      `Item on ref "${draft}" is unavailable: Only a sent item can be recalled.`
+      `Item "${draft}" is unavailable: Only a sent item can be recalled.`
     );
     expect(document.querySelector("#sent")!.getAttribute("data-state")).toBe(
       "sent"
     );
-    await tool.execute({ ref: sent, args: {} }, runContext());
+    await tool.execute({ id: sent, args: {} }, runContext());
     expect(document.querySelector("#sent")!.getAttribute("data-state")).toBe(
       "recalled"
     );
@@ -377,7 +375,7 @@ describe("Action Availability", () => {
     });
   });
 
-  it("judges each item of a collection by its own root: offers the tool, refuses the covered item's ref with its reason, and lists each item's verdict", async () => {
+  it("judges each item of a collection by its own root: offers the tool, refuses the covered item's id with its reason, and lists each item's verdict", async () => {
     document.body.style.margin = "0";
     document.body.innerHTML = `
       <ul style="margin:0;padding:0;list-style:none">
@@ -422,7 +420,7 @@ describe("Action Availability", () => {
     const { text } = await agent.getPageState();
     const refOf = (pattern: string) =>
       text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
-    const covered = [...text.matchAll(/(e\d+) Row\b/g)][1]?.[1];
+    const covered = [...text.matchAll(/e\d+ Row (po\d+)/g)][1]?.[1];
     const busy = refOf('dialog "Busy"');
     if (!covered || !busy)
       throw new Error("Expected refs for the row and the dialog.");
@@ -431,10 +429,10 @@ describe("Action Availability", () => {
     expect(published("Row.archive")).toMatchObject({ available: true });
     await expect(
       listed("Row.archive")!.tool.execute(
-        { ref: covered, args: {} },
+        { id: covered, args: {} },
         runContext()
       )
-    ).rejects.toThrow(`Row on ref "${covered}" is unavailable: ${reason}.`);
+    ).rejects.toThrow(`Row "${covered}" is unavailable: ${reason}.`);
     expect(archived).not.toHaveBeenCalled();
     expect(
       (await listRootedToolInstances())
@@ -582,22 +580,20 @@ describe("Action Availability", () => {
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
     const refOf = (index: number) =>
-      [...state.text.matchAll(/(e\d+) Editor\b/g)][index]?.[1];
+      [...state.text.matchAll(/e\d+ Editor (po\d+)/g)][index]?.[1];
     const clean = refOf(0);
     const dirty = refOf(1);
-    if (!clean || !dirty) throw new Error("Expected refs for both items.");
+    if (!clean || !dirty) throw new Error("Expected ids for both items.");
 
-    // The ref names the editor, whose own availability decides the call.
+    // The id names the editor, whose own availability decides the call.
     expect(published("Editor.save")).toMatchObject({
       available: true,
     });
     const { tool } = listed("Editor.save")!;
     await expect(
-      tool.execute({ ref: clean, args: {} }, runContext())
-    ).rejects.toThrow(
-      `Editor on ref "${clean}" is unavailable: Nothing to save.`
-    );
-    await tool.execute({ ref: dirty, args: {} }, runContext());
+      tool.execute({ id: clean, args: {} }, runContext())
+    ).rejects.toThrow(`Editor "${clean}" is unavailable: Nothing to save.`);
+    await tool.execute({ id: dirty, args: {} }, runContext());
     expect(
       document.querySelector("#dirty-save")!.hasAttribute("data-dirty")
     ).toBe(false);
@@ -822,14 +818,14 @@ describe("Action Availability", () => {
     // the registry's subscribers hear nothing.
     const changes = vi.fn();
     const unsubscribe = subscribeToRegisteredPoms(changes);
-    const panelRef = await rootRef("Panel");
+    const panelId = await rootId("Panel");
     expect(changes).not.toHaveBeenCalled();
     unsubscribe();
 
     // The page did not change, so no observation ran between the predicate
     // changing its mind and the call: the call goes by the last observation.
     verdict = "Nothing is selected";
-    await listed("Panel.remove")!.tool.execute({ ref: panelRef }, runContext());
+    await listed("Panel.remove")!.tool.execute({ id: panelId }, runContext());
     expect(panel.removed).toBe(1);
 
     await probeRegisteredPomMembers();
@@ -984,16 +980,14 @@ describe("Action Availability", () => {
     const state = await agent.getPageState();
     // A shared element's node lists its members under a /pom line.
     const draft = state.text.match(
-      /(e\d+) listitem:\n\s+- \/pom: \["Message","Preview"\]/
+      /\/pom: \["Message","Preview"\]\n\s+- \/id: (po\d+)/
     )?.[1];
-    if (!draft) throw new Error("Expected a ref for the draft.");
+    if (!draft) throw new Error("Expected an id for the draft.");
 
     const { tool } = listed("Message.recall")!;
     await expect(
-      tool.execute({ ref: draft, args: {} }, runContext())
-    ).rejects.toThrow(
-      `Message on ref "${draft}" is unavailable: Not sent yet.`
-    );
+      tool.execute({ id: draft, args: {} }, runContext())
+    ).rejects.toThrow(`Message "${draft}" is unavailable: Not sent yet.`);
     expect(outbox.items[0]!.recalled).toBe(false);
   });
 
@@ -1022,7 +1016,7 @@ describe("Action Availability", () => {
     expect(published("Panel.act")).toMatchObject({ available: true });
     expect(window.scrollY).toBe(0);
     await session.tools.run("Panel.act", {
-      ref: await rootRef("Panel"),
+      id: await rootId("Panel"),
       args: {},
     });
     expect(acted).toHaveBeenCalledOnce();
@@ -1098,11 +1092,11 @@ describe("Action Availability", () => {
     expect(cover).toBeDefined();
 
     expect(published("Panel.act")).toMatchObject({ available: true });
-    const ref = await rootRef("Panel");
+    const id = await rootId("Panel");
     await expect(
-      session.tools.run("Panel.act", { ref, args: {} })
+      session.tools.run("Panel.act", { id, args: {} })
     ).rejects.toThrow(
-      `Panel on ref "${ref}" is unavailable: a click would not reach it; ${cover} is in the way.`
+      `Panel "${id}" is unavailable: a click would not reach it; ${cover} is in the way.`
     );
     expect(acted).not.toHaveBeenCalled();
     expect(window.scrollY).toBeGreaterThan(0);

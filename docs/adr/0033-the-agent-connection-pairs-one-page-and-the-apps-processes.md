@@ -1,6 +1,7 @@
 ---
 status: accepted
 supersedes: ADR-0032
+amended-by: ADR-0055
 ---
 
 # Each coding agent's Ayme MCP server pairs with one page and with the app's own processes, and a local process pairs without a token

@@ -1,5 +1,7 @@
 # Goal
 
+`goal` is listed only when `ayme mcp` was started with `--browser-tools`.
+
 To use `goal`, pass every value the task names in `values`, as strings or
 numbers each labelled in plain words, such as `{ "survey name": "Q4 Feedback" }`. The Goal Loop takes
 free text only from `values`; when a step needs text you did not pass, it hands

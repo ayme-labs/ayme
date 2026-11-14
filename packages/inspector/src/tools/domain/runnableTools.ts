@@ -157,7 +157,7 @@ function pageObjectTool(
   };
   if (!tool.rooted)
     return { ...base, argumentsSchema: schemaOf(tool.parameters) };
-  // A rooted action takes { ref, args }; the item picker gives the ref.
+  // A rooted action takes { id, args }; the item picker gives the id.
   const args = tool.parameters.find((parameter) => parameter.name === "args");
   return {
     ...base,

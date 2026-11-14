@@ -22,7 +22,13 @@ import {
   listRegisteredPomTargets,
   getPomDefinitions,
   createPage,
+  pageObjectIdsOf,
+  browserRegistry,
 } from "../page-objects/infrastructure";
+import {
+  renderPageObjectTree,
+  type PageObjectId,
+} from "../page-objects/domain";
 import { resolveTools, sessionReach } from "../runtime";
 import { callers } from "../shared";
 import type { RunContext } from "../runs/application";
@@ -72,6 +78,8 @@ export function runContext(
     navigation: documentNavigation(globalThis.document),
     ...(routerNavigate() ? { routerNavigate: routerNavigate() } : {}),
     pomDefinitions: getPomDefinitions,
+    pageObjectTree: async () =>
+      renderPageObjectTree(await browserRegistry().readPageObjectTree()),
     get pageStateSession() {
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },
@@ -124,4 +132,11 @@ export async function rootRef(label: string): Promise<string> {
     : [];
   if (!ref) throw new Error(`No root ref for ${label}.`);
   return ref;
+}
+
+/** A rooted test caller reads its instance's Page Object id without moving its cursor. */
+export async function rootId(label: string): Promise<PageObjectId> {
+  const [id] = await pageObjectIdsOf([await rootRef(label)]);
+  if (!id) throw new Error(`No Page Object id for ${label}.`);
+  return id;
 }

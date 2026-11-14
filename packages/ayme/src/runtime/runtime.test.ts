@@ -673,6 +673,7 @@ it("runs goal as the application while publication is unavailable", async () => 
       page: expect.any(Object),
       navigation: expect.any(Object),
       pomDefinitions: expect.any(Function),
+      pageObjectTree: expect.any(Function),
       pageStateSession: getPageStateSession(document),
       // A session handed no Reach measures Chromium's geometry.
       reach: pageState.geometryReach,
@@ -944,7 +945,7 @@ it("loads nothing while webMCP.enabled is unset", async () => {
   });
 });
 
-it("hands publication the session's tools, and runs an agent's call as a webmcp Run", async () => {
+it("hands publication the Page Object Tools, and runs an agent's call as a webmcp Run", async () => {
   class Saver {
     save() {}
   }
@@ -966,8 +967,9 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
   await publicationStarts();
   const { tools } = published();
   const names = () => tools.list().map(({ name }) => name);
-  expect(names()).toEqual(runtime.tools.list().map(({ name }) => name));
-  expect(names()).toContain("click");
+  // Only the Page Object Tools and page_objects, though the session lists more.
+  expect(names()).toEqual(["page_objects"]);
+  expect(runtime.tools.list().map(({ name }) => name)).toContain("click");
 
   const listener = vi.fn();
   const unsubscribe = tools.subscribe(listener);

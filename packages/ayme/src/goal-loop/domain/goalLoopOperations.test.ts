@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { requiredParamsOf } from "./goalLoopOperations";
+import type { PageObjectId } from "../../page-objects/domain";
+import { requiredParamsOf, specsOfRootedTool } from "./goalLoopOperations";
 
 describe("the parameters an operation requires", () => {
-  it("requires a collection tool's ref and the required parameters in its args, whole", () => {
+  it("requires a rooted tool's Page Object id and the required parameters in its args, whole", () => {
     expect(
       requiredParamsOf(
         [
-          { name: "ref", optional: false, schema: { type: "string" } },
+          { name: "id", optional: false, schema: { type: "string" } },
           {
             name: "args",
             optional: false,
@@ -27,7 +28,7 @@ describe("the parameters an operation requires", () => {
         ],
         true
       )
-    ).toEqual(["ref", "args.value", "args.payload"]);
+    ).toEqual(["id", "args.value", "args.payload"]);
   });
 
   it("requires the parameters that are not optional, outside a collection", () => {
@@ -40,5 +41,40 @@ describe("the parameters an operation requires", () => {
         false
       )
     ).toEqual(["value"]);
+  });
+});
+
+describe("the arguments of a rooted tool", () => {
+  it("are the Page Object id of one of its instances and the action's own", () => {
+    const roots = [
+      {
+        id: "po1" as PageObjectId,
+        ref: "e2",
+        present: true,
+        available: true,
+      },
+    ];
+
+    const specs = specsOfRootedTool(
+      [
+        { name: "id", optional: false, schema: { type: "string" } },
+        {
+          name: "args",
+          optional: false,
+          schema: {
+            type: "object",
+            properties: { note: { type: "string" } },
+            required: ["note"],
+          },
+        },
+      ],
+      roots
+    );
+
+    expect(specs.map(({ path, optional }) => [path, optional])).toEqual([
+      [["id"], false],
+      [["args", "note"], false],
+    ]);
+    expect(specs[0]?.closedSet).toEqual({ kind: "instance", roots });
   });
 });

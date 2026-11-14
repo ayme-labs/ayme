@@ -183,3 +183,13 @@ it("tells a tool the connection offered and that went from one it never offered"
   expect(agent.wasOffered("Panel.copy")).toBe(true);
   expect(agent.wasOffered("Panel.paste")).toBe(false);
 });
+
+it("knows a Page Object Tool by the group it was last offered in, while no tool is offered", () => {
+  const agent = view([tool("ListPage.add", { group: "pageObject" })]);
+  agent.toolsChanged([tool("click", { group: "browser" })]);
+  agent.toolsChanged([]);
+
+  expect(agent.offeredAsPageObject("ListPage.add")).toBe(true);
+  expect(agent.offeredAsPageObject("click")).toBe(false);
+  expect(agent.offeredAsPageObject("Panel.paste")).toBe(false);
+});

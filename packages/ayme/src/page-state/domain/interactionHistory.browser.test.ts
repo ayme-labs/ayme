@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../test-utils/agentCalls.testSupport";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   AriaRefSchema,
@@ -192,7 +192,7 @@ describe("Interaction history in Chromium", () => {
     const actionsBefore = history().actions().size;
 
     const result = await act("App.add", {
-      ref: await rootRef("App"),
+      id: await rootId("App"),
       args: {},
     });
 
@@ -388,7 +388,7 @@ describe("Interaction history in Chromium", () => {
       // An agent tool call while the run is pending stays the agent's. It
       // waits for the Handover: one top-level Run at a time.
       if (!first)
-        agentCall = act("App.noop", { ref: await rootRef("App"), args: {} });
+        agentCall = act("App.noop", { id: await rootId("App"), args: {} });
       return {
         model: "typesafe/jev-1.13",
         answers: {

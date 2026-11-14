@@ -134,16 +134,11 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes every listed tool but Peek Tools and screenshot", async () => {
-    const tools = toolSource([
-      tool("snapshot", undefined, { group: "agent" }),
-      tool("screenshot", undefined, { group: "browser" }),
-      tool("peek.cart", undefined, { group: "peek" }),
-      tool("Dialog.close"),
-    ]);
+  it("publishes every tool its source lists", async () => {
+    const tools = toolSource([tool("page_objects"), tool("Dialog.close")]);
     await publish(tools.source).retry();
 
-    expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
+    expect(driver.names()).toEqual(["page_objects", "Dialog.close"]);
   });
 
   it("follows the source: withdraws what it stops listing and registers what it adds", async () => {

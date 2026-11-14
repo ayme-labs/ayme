@@ -10,16 +10,17 @@ import { modelOption } from "../domain/decorators";
 import { methodArguments, patternViolations } from "../domain/actionTool";
 import {
   assertAvailable,
-  refFailure,
   unavailableError,
   type ActionResult,
   type ToolAvailability,
 } from "../../page-state/domain";
 import { assertLocatorReachable } from "../../page-state/infrastructure";
 import {
+  asSentence,
   RefResolutionError,
   refuseViolations,
   RuntimeStateError,
+  ToolInputError,
 } from "../../shared";
 import {
   availabilityOf,
@@ -48,6 +49,10 @@ import {
   type PageObjectConstructor,
 } from "./compiledPoms";
 import type { PageDriver } from "./pageDriver";
+import { createPageObjectIds, type PageObjectIds } from "./pageObjectIds";
+import { readPageObjectTree as readTree } from "./pageObjectTree";
+import type { PageObjectTreeNode } from "../domain/pageObjectTreeText";
+import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
 
 /**
@@ -101,9 +106,13 @@ type ObservedRegisteredPom = Omit<RegisteredPom, "tools"> & {
 
 /**
  * A rooted tool's instance, whether the tool would run on it and why not:
- * `ref` is the Structural Ref its root's element has now.
+ * `id` is its Page Object id, which the tool takes, and `ref` the Structural
+ * Ref its root's element has now.
  */
-export type RootedToolInstance = { ref: string } & ToolAvailability;
+export type RootedToolInstance = {
+  id: PageObjectId;
+  ref: string;
+} & ToolAvailability;
 
 /**
  * What a runtime session adds to the registry of its page, which reads the
@@ -121,11 +130,22 @@ export type PomPageStates = {
    * registry observes it; cleared when it stops.
    */
   providePageObjectProbe(probe: (() => Promise<void>) | undefined): void;
+  /**
+   * What the page's state text reads the id of each Page Object Root from,
+   * by Structural Ref, set while the registry observes it; cleared when it
+   * stops.
+   */
+  providePageObjectIds(
+    idsOf:
+      | ((rootRefs: readonly string[]) => Promise<(string | undefined)[]>)
+      | undefined
+  ): void;
 };
 
 const noPageStates: PomPageStates = {
   onPageStateRecorded: () => () => {},
   providePageObjectProbe: () => {},
+  providePageObjectIds: () => {},
 };
 
 /**
@@ -144,6 +164,9 @@ export function createPomRegistry(
   const subscribers = new Set<() => void>();
   let stopWatchingPage: (() => void) | undefined;
   let stopWatchingPageStates: (() => void) | undefined;
+  // The ids of this page's Page Objects, which outlive a registration: an id
+  // is never given to another Page Object.
+  const pageObjectIds = createPageObjectIds(driver);
 
   /**
    * Package-internal: unregisters every Page Object, as a runtime session
@@ -253,6 +276,7 @@ export function createPomRegistry(
     );
     // A capture waits for the roots of a completed probe run.
     pageStates.providePageObjectProbe(probeRegisteredPomMembers);
+    pageStates.providePageObjectIds(pageObjectIdsOf);
   }
 
   function stopObservingPage() {
@@ -261,6 +285,7 @@ export function createPomRegistry(
     stopWatchingPageStates?.();
     stopWatchingPageStates = undefined;
     pageStates.providePageObjectProbe(undefined);
+    pageStates.providePageObjectIds(undefined);
   }
 
   /**
@@ -363,7 +388,8 @@ export function createPomRegistry(
             driver,
             pomToolFacts(component.className, rooted, action),
             action,
-            instancesOf
+            instancesOf,
+            pageObjectIds
           )
         )
       );
@@ -392,6 +418,27 @@ export function createPomRegistry(
     return found.flatMap(({ mark }, index) =>
       current[index] ? [{ mark, ref: current[index]! }] : []
     );
+  }
+
+  /**
+   * Package-internal: the Page Object id of each Page Object Root `rootRefs`
+   * name by Structural Ref, in the order given. A root read for the first
+   * time gets the next id; one whose element is not on the page has none.
+   */
+  async function pageObjectIdsOf(
+    rootRefs: readonly string[]
+  ): Promise<(PageObjectId | undefined)[]> {
+    return (await pageObjectIds.rootsOf(rootRefs)).map((root) => root?.id);
+  }
+
+  /**
+   * Package-internal: the Page Object Tree of the page now, after a probe
+   * run that began after this call: each present Page Object, nested as
+   * the models nest, with the Page Object id of each one with a root.
+   */
+  async function readPageObjectTree(): Promise<PageObjectTreeNode[]> {
+    await probeRegisteredPomMembers();
+    return readTree(driver, [...registeredPoms], pageObjectIds);
   }
 
   /**
@@ -470,7 +517,7 @@ export function createPomRegistry(
    * tool name, marked as the page state marks them, each with whether
    * the tool would run on it now and why not. Root-less tools have no items.
    * Reads the page once the probe the page's changes made due has run, and
-   * names each root by the ref its element has now.
+   * names each root by its Page Object id and the ref its element has now.
    */
   async function listRootedToolInstances(): Promise<
     Map<string, RootedToolInstance[]>
@@ -486,16 +533,17 @@ export function createPomRegistry(
           ]
         : []
     );
-    const current = await driver.currentRefs(
-      rooted.flatMap(({ instances }) => instances.map(({ ref }) => ref))
+    const observed = rooted.flatMap(({ instances }) =>
+      instances.map(({ ref }) => ref)
     );
+    const current = await pageObjectIds.rootsOf(observed);
     let next = 0;
     return new Map(
       rooted.map(({ tool, instances }) => [
         tool.name,
         instances.flatMap((instance) => {
-          const ref = current[next++];
-          return ref ? [{ ...instance, ref }] : [];
+          const root = current[next++];
+          return root ? [{ ...instance, ...root }] : [];
         }),
       ])
     );
@@ -553,7 +601,9 @@ export function createPomRegistry(
     listRegisteredPomTargets,
     listRegisteredPomTools,
     listRegisteredPoms,
+    pageObjectIdsOf,
     probeRegisteredPomMembers,
+    readPageObjectTree,
     registerPageObject,
     resetRegisteredPoms,
     subscribeToRegisteredPoms,
@@ -582,7 +632,7 @@ function rootedInstancesOf(
   driver: PageDriver,
   instances: readonly PomInstanceObservation[],
   tool: RegisteredPomTool
-): RootedToolInstance[] {
+): Omit<RootedToolInstance, "id">[] {
   return instances.flatMap((instance) => {
     const { root } = instance;
     return instance.present && root?.present && root.ref
@@ -616,12 +666,13 @@ function reachableClasses(manifest: PomManifest) {
   return classes.values();
 }
 
-/** Runs a rooted instance by ref, or the sole root-less instance directly. */
+/** Runs a rooted instance by its Page Object id, or the sole root-less instance directly. */
 function createTool(
   driver: PageDriver,
   facts: RegisteredPomTool,
   action: ToolManifest,
-  instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[]
+  instancesOf: (tool: RegisteredPomTool) => readonly PomInstanceObservation[],
+  pageObjectIds: PageObjectIds
 ): CallerAwarePomTool {
   const tool: CallerAwarePomTool = {
     ...facts,
@@ -644,27 +695,36 @@ function createTool(
       const instances = instancesOf(tool);
       let observed: PomInstanceObservation | undefined = instances[0];
       if (tool.rooted) {
-        const { ref, args: actionArgs = {} } = input as {
-          ref: string;
+        const { id: given, args: actionArgs = {} } = input as {
+          id?: unknown;
           args?: object;
         };
         args = actionArgs;
         const label = `call ${tool.name} on`;
-        const { ref: resolved } = await context.pageStateSession.resolveRef(
-          ref,
-          label
-        );
+        const id = givenPageObjectId(given);
+        // A capture Ayme makes for itself, which moves no cursor: the call
+        // is judged against the page as it is now.
+        await context.pageStateSession.getPageStateCapture();
+        const resolved = await pageObjectIds.rootOf(id);
+        if (resolved === undefined)
+          throw new RefResolutionError(
+            pageObjectFailure(label, id, "it is not on the page")
+          );
         const previous = await rootedAt(driver, instances, resolved);
         observed = await rootedAt(driver, instancesOf(tool), resolved);
-        // Ref resolution captures the page and may observe a replacement
-        // model. Keep the pre-call verdict only for the same live instance.
+        // That capture may observe a replacement model. Keep the pre-call
+        // verdict only for the same live instance.
         if (previous && (!observed || previous.instance === observed.instance))
           observed = previous;
         if (!observed)
           throw new RefResolutionError(
-            refFailure(label, ref, `it is not a root of ${tool.className}`)
+            pageObjectFailure(
+              label,
+              id,
+              `it is not ${article(tool.className)} ${tool.className} on the page`
+            )
           );
-        targetName = `${tool.className} on ref "${ref}"`;
+        targetName = `${tool.className} "${id}"`;
         assertAvailable(
           targetName,
           availabilityNow(driver, observed, tool.methodName)
@@ -675,6 +735,33 @@ function createTool(
     },
   };
   return tool;
+}
+
+/**
+ * The Page Object id a rooted tool's input gives. Refused as wrong input
+ * when it gives none, or one that is not written as an id.
+ */
+function givenPageObjectId(id: unknown): PageObjectId {
+  if (id === undefined)
+    throw new ToolInputError("Input property id is required.");
+  const parsed = parsePageObjectId(id);
+  if (parsed === undefined)
+    throw new ToolInputError(
+      `Input property id is not a Page Object id, written po<n>: ${JSON.stringify(id)}.`
+    );
+  return parsed;
+}
+
+/** "a" or "an", as `name` reads after it. */
+const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a");
+
+/** The message for a Page Object a call cannot run on, with the reason alone. */
+function pageObjectFailure(
+  label: string,
+  id: PageObjectId,
+  reason: string
+): string {
+  return asSentence(`Cannot ${label} Page Object "${id}": ${reason}`);
 }
 
 /**
