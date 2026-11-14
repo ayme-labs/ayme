@@ -394,3 +394,21 @@ it("opens its channel on the server that serves it, at /channel", () => {
     "ws://127.0.0.1:53124/channel"
   );
 });
+
+it("leaves nothing of itself in the document once it is taken out", async () => {
+  const before = document.head.innerHTML;
+  const root = document.createElement("div");
+  document.body.append(root);
+  const { channel, tell } = scriptedChannel();
+  const unmount = mountWindow(root, channel);
+  tell({ phase: "notRecording", commands: ["record"] });
+  await expect
+    .poll(() => recorderWindow.controls.offered())
+    .toEqual(["Record"]);
+
+  unmount();
+  root.remove();
+
+  expect(document.head.innerHTML).toBe(before);
+  expect(await recorderWindow.controls.status.count()).toBe(0);
+});
