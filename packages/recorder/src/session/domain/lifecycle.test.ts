@@ -4597,6 +4597,18 @@ describe("the lifecycle, for the clicks one report covers", () => {
       todo: [written(clickOf(2), "snapshot_1", "snapshot_3", 21)],
     },
     {
+      name: "three clicks reported one by one are each written: a report gives up on no click behind its own",
+      happened: [
+        opened,
+        ...started,
+        ...three([1, 1, 1]),
+        reportedOn(clickOf(1)),
+        reportedOn(clickOf(1)),
+        reportedOn(clickOf(1)),
+      ],
+      todo: [written(clickOf(1), "snapshot_3", "snapshot_4", 23)],
+    },
+    {
       name: "a report of count three covers all three clicks",
       happened: [
         opened,
@@ -4648,5 +4660,623 @@ describe("the lifecycle, for the clicks one report covers", () => {
     },
   ])("$name", ({ happened, todo }) => {
     expect(run(happened).todo.at(-1)).toEqual(todo);
+  });
+});
+
+// The change analysis of the branch, second batch: rules of the lifecycle
+// that no row reached, each named by what it keeps.
+describe("the lifecycle, for rules no row reached", () => {
+  const url2 = "http://shop.test/help";
+  const opened2: Happening = { kind: "pageOpened", page: "page_2", url: url2 };
+  const closed2: Happening = {
+    kind: "pageClosed",
+    page: "page_2",
+    pagesLeft: 1,
+  };
+  const held = (
+    input: string,
+    what: HeldInput,
+    page = "page_1"
+  ): Happening => ({
+    kind: "inputHeld",
+    input,
+    page,
+    held: what,
+  });
+  const clickOn = (page: string, input: string) =>
+    held(input, { kind: "click", count: 1 }, page);
+  const takenOf = (id: string, page: string): Happening => ({
+    kind: "snapshotTaken",
+    snapshot: { ...snapshot(id), page },
+  });
+  const snap = (id: string, page: string): ToDo => ({
+    kind: "browser",
+    ask: { kind: "takeSnapshot", snapshot: id, page },
+  });
+  const kept = (id: string, page: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "snapshot", snapshot: { ...snapshot(id), page } },
+  });
+  const settledOn = (page: string, input: string): Happening => ({
+    kind: "pageSettled",
+    page,
+    input,
+  });
+  const waitOn = (page: string, input: string): ToDo => ({
+    kind: "browser",
+    ask: { kind: "waitForSettled", page, input },
+  });
+  const through = (page: string, upTo: string | null): ToDo => ({
+    kind: "browser",
+    ask: { kind: "letInputsThrough", page, upTo },
+  });
+  const typed = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
+  const choice: InteractionReport = {
+    type: "select",
+    selector: "internal:role=combobox",
+    target: null,
+    values: { options: ["eggs"] },
+  };
+  const visible: InteractionReport = {
+    type: "assertVisible",
+    selector: "internal:role=heading",
+    target: null,
+    values: {},
+  };
+  const clickOf = (count: number): InteractionReport => ({
+    ...click,
+    values: { button: "left", clickCount: count },
+  });
+  const reportedOn = (
+    report: InteractionReport,
+    page = "page_1"
+  ): Happening => ({
+    kind: "interactionReported",
+    page,
+    report,
+  });
+  const written = (
+    report: InteractionReport,
+    before: string,
+    after: string | null,
+    at = 20,
+    more: { page?: string; beforeFromReport?: true } = {}
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: {
+        page: more.page ?? "page_1",
+        report,
+        before,
+        after,
+        at,
+        ...(more.beforeFromReport ? { beforeFromReport: true } : {}),
+      },
+    },
+  });
+  const fromReport = (
+    report: InteractionReport,
+    before: string,
+    after: string
+  ) => written(report, before, after, 10, { beforeFromReport: true });
+  const assert: Happening = {
+    kind: "command",
+    command: { type: "assertVisibility" },
+  };
+  const picking = (on: boolean): Happening => ({ kind: "picking", on });
+  const pick = (on: boolean): ToDo => ({
+    kind: "browser",
+    ask: { kind: "pick", on },
+  });
+  const timeLimit: Happening = { kind: "timeLimitPassed" };
+  /** A click that reached its page and waits for its Settled Page. */
+  const clickSettling = [
+    clickHeld("input_1"),
+    taken("snapshot_1"),
+    passedOn("input_1"),
+  ];
+  /** The first click of a double click reported with its count while the
+   * second is on its way. */
+  const doubleReportedEarly = [
+    held("input_1", { kind: "click", count: 1 }),
+    held("input_2", { kind: "click", count: 2 }),
+    taken("snapshot_1"),
+    passedOn("input_1", 21),
+    reportedOn(clickOf(2)),
+    taken("snapshot_2"),
+  ];
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    // Pages.
+    {
+      name: "a page that opened while recording is read at the end like the others",
+      happened: [opened, ...started, opened2, finish, gateOff],
+      todo: [[snap("snapshot_1", "page_1"), snap("snapshot_2", "page_2")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a click held on a page that closes before it is passed on is waited for no more: the wrap-up ends",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        clickOn("page_2", "input_1"),
+        closed2,
+        finish,
+        gateOff,
+        takenOf("snapshot_2", "page_1"),
+      ],
+      todo: [[kept("snapshot_2", "page_1"), stopTrace]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a page that closes during a wrap-up before the last snapshots are asked for changes nothing else",
+      happened: [opened, opened2, ...started, finish, closed2],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a snapshot nobody asked for is not kept while a wrap-up waits for its last snapshots",
+      happened: [opened, ...started, finish, gateOff, taken("snapshot_9")],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a click reported while wrapping up is recorded on whichever open page it was made",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        stop,
+        gateOff,
+        takenOf("snapshot_1", "page_1"),
+        takenOf("snapshot_2", "page_2"),
+        reportedOn(click, "page_2"),
+      ],
+      todo: [[waitOn("page_2", "reported_1")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a click reported while wrapping up on a page that is not open is not recorded",
+      happened: [
+        opened,
+        ...started,
+        stop,
+        gateOff,
+        taken("snapshot_1"),
+        reportedOn(click, "page_9"),
+      ],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+
+    // The trace.
+    {
+      name: "a trace told stopped a second time writes no second package",
+      happened: [...stopped, finish, traceStopped, traceStopped],
+      todo: [[save], []],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a wrap-up that waits for its trace to start goes on without it when the trace cannot be started",
+      happened: [opened, record, finish, gateOff, failed(startTrace)],
+      todo: [[], [takeSnapshot("snapshot_1")]],
+      state: { phase: "wrappingUp" },
+    },
+
+    // Whose report it is.
+    {
+      name: "a report that comes while a click's 'before' is still being taken is not that click's: it has not reached the page",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        reported,
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        settled("input_1"),
+        taken("snapshot_2"),
+      ],
+      todo: [[keep("snapshot_2"), letThrough("input_1")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a report that comes while a click still waits behind another is not that click's",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        taken("snapshot_1"),
+        clickHeld("input_2"),
+        reported,
+        reported,
+        passedOn("input_1"),
+        taken("snapshot_2"),
+        passedOn("input_2", 22),
+        settled("input_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [
+          keep("snapshot_2"),
+          passOn("input_2"),
+          interaction("snapshot_1", "snapshot_2"),
+        ],
+        [waitForSettled("input_2")],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3"), letThrough("input_2")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a key pressed on a focused element keeps the target Playwright names",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "press" }),
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        settled("input_1"),
+        taken("snapshot_2"),
+        reportedOn({
+          type: "press",
+          selector: "internal:role=textbox",
+          target: { ref: "e1", tree: "- textbox [ref=e1]" },
+          values: { key: "Enter" },
+        }),
+      ],
+      todo: [
+        [
+          written(
+            {
+              type: "press",
+              selector: "internal:role=textbox",
+              target: { ref: "e1", tree: "- textbox [ref=e1]" },
+              values: { key: "Enter" },
+            },
+            "snapshot_1",
+            "snapshot_2"
+          ),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // Where an input that is not held back starts and ends.
+    {
+      name: "a choice reported on one page starts at once, whatever still settles on another",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        clickOn("page_1", "input_1"),
+        takenOf("snapshot_1", "page_1"),
+        passedOn("input_1"),
+        reportedOn(choice, "page_2"),
+      ],
+      todo: [[snap("snapshot_2", "page_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing on one page is not ended by a click held on another",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        reportedOn(typed("m"), "page_1"),
+        takenOf("snapshot_1", "page_1"),
+        clickOn("page_2", "input_1"),
+        takenOf("snapshot_2", "page_2"),
+        settledOn("page_1", "reported_1"),
+      ],
+      todo: [
+        [snap("snapshot_2", "page_2")],
+        [kept("snapshot_2", "page_2"), passOn("input_1")],
+        [snap("snapshot_3", "page_1")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing that has its 'after' is not written for a click held on another page: nothing newer happened on its own",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        reportedOn(typed("m"), "page_1"),
+        takenOf("snapshot_1", "page_1"),
+        settledOn("page_1", "reported_1"),
+        takenOf("snapshot_2", "page_1"),
+        clickOn("page_2", "input_1"),
+      ],
+      todo: [[snap("snapshot_3", "page_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing that has its 'after' is not written for a key typed after it: that key may be its own next",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedOn(typed("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        held("input_2", { kind: "typing" }),
+      ],
+      todo: [[passOn("input_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a key that reached its page and is never reported does not keep the wrap-up waiting",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        held("input_2", { kind: "typing" }),
+        passedOn("input_2"),
+        finish,
+        gateOff,
+        taken("snapshot_3"),
+      ],
+      todo: [[keep("snapshot_3"), stopTrace]],
+      state: { phase: "saving" },
+    },
+
+    // Each page has a gate of its own.
+    {
+      name: "a page is let through after its own click, whatever is still held on another page",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        clickOn("page_1", "input_1"),
+        clickOn("page_2", "input_2"),
+        takenOf("snapshot_2", "page_2"),
+        passedOn("input_2"),
+        settledOn("page_2", "input_2"),
+        takenOf("snapshot_3", "page_2"),
+      ],
+      todo: [[kept("snapshot_3", "page_2"), through("page_2", "input_2")]],
+      state: { phase: "recording" },
+    },
+
+    // The clicks one report covers.
+    {
+      name: "a double click reported before its second click has settled is written once that has, ending where it does",
+      happened: [
+        opened,
+        ...started,
+        ...doubleReportedEarly,
+        passedOn("input_2", 22),
+        settled("input_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [keep("snapshot_2"), passOn("input_2")],
+        [waitForSettled("input_2")],
+        [takeSnapshot("snapshot_3")],
+        [
+          keep("snapshot_3"),
+          written(clickOf(2), "snapshot_1", "snapshot_3", 21),
+          letThrough("input_2"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // The time limit of a wrap-up.
+    {
+      name: "when the time limit passes, a double click whose second click never settled is written with what its first click changed",
+      happened: [opened, ...started, ...doubleReportedEarly, stop, timeLimit],
+      todo: [
+        [written(clickOf(2), "snapshot_1", "snapshot_2", 21), stopReporting],
+      ],
+      state: { phase: "paused" },
+    },
+    {
+      name: "when the time limit passes, an assertion behind a click whose report never came is written all the same",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reportedOn(visible),
+        taken("snapshot_3"),
+        stop,
+        timeLimit,
+      ],
+      todo: [[written(visible, "snapshot_3", "snapshot_3", 10), stopReporting]],
+      state: { phase: "paused" },
+    },
+
+    // A request the browser could not carry out.
+    {
+      name: "a page that cannot be let through goes on holding: nothing else is asked",
+      happened: [opened, ...started, failed(letThrough(null))],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "picking that cannot start is off again, and nothing is taken back: Assert visibility applies anew",
+      happened: [opened, ...started, assert, failed(pick(true)), assert],
+      todo: [[], [pick(true), reply("applied")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "picking that cannot be left counts as left",
+      happened: [opened, ...started, failed(pick(false))],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click that cannot be passed on is dropped by itself: one on its way on another page goes on",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        clickOn("page_1", "input_1"),
+        clickOn("page_2", "input_2"),
+        takenOf("snapshot_1", "page_1"),
+        takenOf("snapshot_2", "page_2"),
+        failed(passOn("input_1")),
+        passedOn("input_2"),
+      ],
+      // Its page has nothing under way any more, and is let through.
+      todo: [[through("page_1", "input_1")], [waitOn("page_2", "input_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click told not passed on after it was told passed on is recorded all the same",
+      happened: [
+        opened,
+        ...started,
+        ...clickSettling,
+        failed(passOn("input_1")),
+        settled("input_1"),
+        taken("snapshot_2"),
+        reported,
+      ],
+      todo: [[interaction("snapshot_1", "snapshot_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a 'before' that cannot be taken passes on its own click only",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        clickOn("page_1", "input_1"),
+        clickOn("page_2", "input_2"),
+        failed(snap("snapshot_1", "page_1")),
+      ],
+      todo: [[passOn("input_1")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a 'before' that cannot be taken during a wrap-up, before its last snapshots are asked for, passes the click on",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        finish,
+        failed(takeSnapshot("snapshot_1")),
+      ],
+      todo: [[passOn("input_1")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a last snapshot that cannot be taken leaves the other pages' to be waited for",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        finish,
+        gateOff,
+        failed(snap("snapshot_1", "page_1")),
+      ],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+
+    // Assert visibility.
+    {
+      name: "Assert visibility waits while a key press is held back",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "press" }),
+        assert,
+      ],
+      todo: [[reply("applied")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility waits while a typed key is held back",
+      happened: [
+        opened,
+        ...started,
+        held("input_1", { kind: "typing" }),
+        assert,
+      ],
+      todo: [[reply("applied")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility does not wait for an input the pages never held",
+      happened: [opened, ...started, reportedOn(choice), assert],
+      todo: [[pick(true), reply("applied")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Assert visibility that waited and was then asked of Playwright is taken back by a wrap-up",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        assert,
+        taken("snapshot_1"),
+        passedOn("input_1"),
+        stop,
+      ],
+      todo: [
+        [waitForSettled("input_1"), pick(true)],
+        [pick(false), ...wrapUp, reply("applied")],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Playwright told out of picking while paused is asked nothing",
+      happened: [...stopped, picking(false)],
+      todo: [[]],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Playwright told out of picking while Assert visibility is off is asked nothing",
+      happened: [opened, ...started, picking(false)],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "once Playwright has left picking, the pages hold inputs again and Assert visibility applies anew",
+      happened: [
+        opened,
+        ...started,
+        assert,
+        picking(true),
+        picking(false),
+        assert,
+      ],
+      todo: [[pick(false)], [pick(true), reply("applied")]],
+      state: { phase: "recording" },
+    },
+
+    // Highlight.
+    {
+      name: "an element found for a highlight once the recorder has ended is answered 'ignored'",
+      happened: [
+        opened,
+        ...started,
+        { kind: "command", command: { type: "highlight", entry: "one" } },
+        { kind: "brokeDown", reason: "It broke." },
+        { kind: "located", highlight: 1, target: null },
+      ],
+      todo: [[{ kind: "replyKept", key: "highlight_1", result: "ignored" }]],
+      state: { phase: "ended" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
   });
 });
