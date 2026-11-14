@@ -297,13 +297,25 @@ export class Timeline {
       pageId,
       (ledger) => {
         const now = new Map<AriaRef, AriaRef>();
+        /** The element of this snapshot each first ref names: one only. */
+        const holder = new Map<AriaRef, AriaRef>();
+        // Oldest first: a ref comes before every ref that later stood for
+        // the same element, so the element that first had it claims it
+        // first.
         for (const [ref, first] of visit.firstRefs) {
           // The ledger stands at this snapshot: a ref it resolves is under a
           // ref this tree has.
           const resolved = ledger.resolve(ref);
-          // Stryker disable next-line ConditionalExpression: "true" is equivalent, since a ref that is not resolved has no current ref and what is kept under none is never read
-          if (resolved.status === "resolved")
-            now.set(resolved.currentRef, first);
+          // Stryker disable next-line ConditionalExpression: "false" is equivalent, since a ref that is not resolved has no current ref: what is kept under none is never read, and it holds no first ref against another
+          if (resolved.status !== "resolved") continue;
+          const current = resolved.currentRef;
+          // Core once took two refs for one element, as when the page
+          // re-created it, and now has both in one snapshot: two elements.
+          // The one that claimed the first ref keeps it; the other is left
+          // to its own ref, below, from here on.
+          if ((holder.get(first) ?? current) !== current) continue;
+          holder.set(first, current);
+          now.set(current, first);
         }
         for (const ref of tree.getAllRefs()) {
           if (!now.has(ref)) now.set(ref, ref);
@@ -321,13 +333,30 @@ export class Timeline {
     };
   }
 
+  /**
+   * A tree with each element under its first ref, and no ref twice: one ref
+   * names one element in a tree. A tree of what changed between two
+   * snapshots can hold an element that stood under another's first ref in
+   * the earlier one beside that other, as when the page re-created an
+   * element and the original is back. The element that first had the ref
+   * keeps it there, and the other is written under its own.
+   */
   private underFirstRefs(
     tree: StructuralTree,
     firstRefs: ReadonlyMap<AriaRef, AriaRef>
   ): StructuralTree {
+    const first = (ref: AriaRef) => firstRefs.get(ref) ?? ref;
+    // The ref an element first had is its own ref: it claims it ahead of
+    // every other element of the tree.
+    const holder = new Map<AriaRef, AriaRef>();
+    for (const ref of tree.getAllRefs())
+      if (first(ref) === ref) holder.set(ref, ref);
+    for (const ref of tree.getAllRefs())
+      if (!holder.has(first(ref))) holder.set(first(ref), ref);
     const rename = (node: StructuralNode): StructuralNode =>
       node.copy({
-        ref: firstRefs.get(node.ref) ?? node.ref,
+        ref:
+          holder.get(first(node.ref)) === node.ref ? first(node.ref) : node.ref,
         children: node.children.map((child) =>
           typeof child === "string" ? child : rename(child)
         ),
