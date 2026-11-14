@@ -590,6 +590,50 @@ export function agentConnectionTests({
       }
     );
 
+    for (const alreadyLoaded of [false, true]) {
+      exampleTest(
+        `keeps the tab id and calls working across reload after pairing ${alreadyLoaded ? "an already loaded tab" : "as the tab loads"}`,
+        async ({ page, baseURL }) => {
+          exampleTest.skip(
+            !enabled(),
+            "The app turns the Agent Connection off here."
+          );
+          const agent = await startAgent("--port", String(await freePort()));
+          try {
+            const url = new URL("/", baseURL).href;
+            if (alreadyLoaded)
+              await page.goto(url, { waitUntil: "networkidle" });
+            await connectPage(agent, page, url, { timeout: 45_000 });
+            if (!alreadyLoaded) await expect(page).toHaveURL(url);
+            const storedTab = () =>
+              page.evaluate((key) => {
+                const stored = sessionStorage.getItem(key);
+                return stored
+                  ? (JSON.parse(stored) as { tab: string }).tab
+                  : null;
+              }, agentConnectionMarker);
+            const tab = await storedTab();
+            expect(tab).toEqual(expect.any(String));
+
+            const navigated = page.waitForEvent("load");
+            const answer = await agent.call("reload");
+            expect(answer.text).not.toContain("Another tab connected");
+            if (!alreadyLoaded)
+              expect(JSON.parse(answer.text)).toMatchObject({ loading: url });
+            await navigated;
+            if (!alreadyLoaded) await expect(page).toHaveURL(url);
+            await expect.poll(() => agent.toolNames()).toContain("snapshot");
+            const snapshot = await agent.call("snapshot");
+            expect(snapshot.text).not.toContain("Another tab connected");
+            expect(snapshot.isError, snapshot.text).toBe(false);
+            expect(await storedTab()).toBe(tab);
+          } finally {
+            await agent.close();
+          }
+        }
+      );
+    }
+
     exampleTest(
       "lets a coding agent read the counter's Peek while it is mounted",
       async ({ page, baseURL }) => {

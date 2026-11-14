@@ -34,11 +34,12 @@ function readStoredPairing(): StoredPairing | undefined {
 
 /**
  * Keeps `pairing` in sessionStorage for the tab. A pairing without a tab
- * id, such as one a connect link just gave, gets a new one. Without
- * storage, the pairing still holds for the document.
+ * id, such as one a connect link just gave, keeps the stored id when its
+ * address and token match, or gets a new one. Without storage, the pairing
+ * still holds for the document.
  */
 export function storePairing(pairing: Pairing | StoredPairing) {
-  const tab = "tab" in pairing ? pairing.tab : newTabId();
+  const tab = "tab" in pairing ? pairing.tab : storedTabId(pairing);
   try {
     window.sessionStorage.setItem(
       PAIRING_STORAGE_KEY,
