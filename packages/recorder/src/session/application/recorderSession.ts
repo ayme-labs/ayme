@@ -180,11 +180,10 @@ export class RecorderSession extends Context.Service<
           item: Extract<ToDo, { kind: "browser" }>
         ) {
           // Stryker disable next-line ConditionalExpression: a time started for a request that was given none is ended in the same step, by the rule that ends a time nobody waits for
-          const hasTime = item.within !== undefined;
-          if (hasTime)
+          if (item.within !== undefined)
             timed.push({
               request: item.ask,
-              time: yield* Effect.sleep(item.within!).pipe(
+              time: yield* Effect.sleep(item.within).pipe(
                 Effect.andThen(
                   tell({
                     kind: "requestFailed",
