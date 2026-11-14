@@ -55,6 +55,22 @@ it(
 );
 
 it(
+  "lint lets a test, and no production code, use the page objects",
+  slow,
+  async () => {
+    const code =
+      'import { RecorderWindow } from "../testing";\nexport const Used = RecorderWindow;\n';
+    expect(await lint("src/app/placed.browser.test.tsx", code)).toEqual([]);
+    expect(await lint("src/app/misplaced.tsx", code)).toEqual([
+      expect.stringContaining("Only test files may import a testing entry"),
+      expect.stringContaining(
+        "app may only use controls, timeline, channel, itself."
+      ),
+    ]);
+  }
+);
+
+it(
   "lint lets the page objects, and only them, take Playwright's types",
   slow,
   async () => {
