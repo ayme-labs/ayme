@@ -346,13 +346,12 @@ export class Timeline {
     firstRefs: ReadonlyMap<AriaRef, AriaRef>
   ): StructuralTree {
     const first = (ref: AriaRef) => firstRefs.get(ref) ?? ref;
-    // The ref an element first had is its own ref: it claims it ahead of
-    // every other element of the tree.
+    // The first to claim a ref holds it, unless the element whose own ref it
+    // is comes after: that one first had it, and takes it.
     const holder = new Map<AriaRef, AriaRef>();
     for (const ref of tree.getAllRefs())
-      if (first(ref) === ref) holder.set(ref, ref);
-    for (const ref of tree.getAllRefs())
-      if (!holder.has(first(ref))) holder.set(first(ref), ref);
+      if (!holder.has(first(ref)) || first(ref) === ref)
+        holder.set(first(ref), ref);
     const rename = (node: StructuralNode): StructuralNode =>
       node.copy({
         ref:
