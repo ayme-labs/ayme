@@ -299,9 +299,9 @@ export function awaitsAnswer(
   request: BrowserRequest
 ): boolean {
   if (request.kind !== "stopTrace") return false;
-  return request.keep
-    ? state.phase === "saving" && state.stoppingTrace
-    : state.phase === "wrappingUp" && state.discardingTrace;
+  return Boolean(
+    request.keep ? savingOf(state)?.stoppingTrace : discarding(state)
+  );
 }
 
 /** The reports a held click can lead to. */
@@ -525,10 +525,18 @@ type Step = {
 const stay = (state: LifecycleState): Step => ({ state, todo: [] });
 const isActive = (state: LifecycleState): state is Active =>
   state.phase === "recording" || state.phase === "wrappingUp";
+// The state as one of a phase, or null in any other phase: what belongs to
+// one phase only is read through these.
+const recordingOf = (state: LifecycleState) =>
+  state.phase === "recording" ? state : null;
+const wrappingUpOf = (state: LifecycleState) =>
+  state.phase === "wrappingUp" ? state : null;
+const savingOf = (state: LifecycleState) =>
+  state.phase === "saving" ? state : null;
 /** A wrap-up whose recording is thrown away, and whose trace is asked to
  * stop: the recording is over when that is answered. */
 const discarding = (state: LifecycleState) =>
-  state.phase === "wrappingUp" && state.discardingTrace;
+  wrappingUpOf(state)?.discardingTrace;
 
 export function step(state: LifecycleState, happening: Happening): Step {
   const next = stepOf(state, happening);
@@ -963,9 +971,7 @@ function wrapUp(
 /** The answer to a Record that still waits for the pages: recording did
  * start, and whatever ends it must not leave Record unanswered. */
 function answerRecord(state: LifecycleState): ToDo[] {
-  // Stryker disable next-line ConditionalExpression: only a recording has a Record to answer; the check is for the type
-  const recording = state.phase === "recording" ? state : null;
-  return recording?.starting
+  return recordingOf(state)?.starting
     ? [{ kind: "replyDeferred", result: "applied" }]
     : [];
 }
@@ -993,9 +999,10 @@ function writePackage(
   state: LifecycleState,
   trace: RecordingTrace | null
 ): Step {
-  if (state.phase !== "saving" || !state.stoppingTrace) return stay(state);
+  const saving = savingOf(state);
+  if (!saving?.stoppingTrace) return stay(state);
   return {
-    state: { ...state, stoppingTrace: false },
+    state: { ...saving, stoppingTrace: false },
     todo: [trace ? { kind: "save", trace } : { kind: "save" }],
   };
 }
@@ -1004,10 +1011,10 @@ function writePackage(
  * stopped and nothing better can be had: the recording is thrown away, and
  * what the wrap-up led to is next. */
 function traceGone(state: LifecycleState): Step {
-  if (state.phase !== "wrappingUp" || !state.discardingTrace)
-    return stay(state);
-  const { pages } = state;
-  if (state.then === "clearAndEnd") {
+  const clearing = wrappingUpOf(state);
+  if (!clearing?.discardingTrace) return stay(state);
+  const { pages } = clearing;
+  if (clearing.then === "clearAndEnd") {
     const outcome: RecordingOutcome = { kind: "empty" };
     return {
       state: { phase: "ended", pages, outcome },
@@ -1100,15 +1107,11 @@ function withoutPage(state: LifecycleState, page: string): LifecycleState {
     return [{ ...input, stage: "settled", asked: null }];
   });
   const gates = state.gates.filter((gate) => gate.page !== page);
-  return state.phase === "recording"
-    ? { ...state, pages, inputs, gates }
-    : {
-        ...state,
-        pages,
-        inputs,
-        gates,
-        finals: state.finals?.filter((final) => final.page !== page) ?? null,
-      };
+  const wrapping = wrappingUpOf(state);
+  if (!wrapping) return { ...state, pages, inputs, gates };
+  // Its last snapshot is waited for no more.
+  const finals = wrapping.finals?.filter((final) => final.page !== page);
+  return { ...wrapping, pages, inputs, gates, finals: finals ?? null };
 }
 
 /** A recording being changed within one step. */
@@ -1174,13 +1177,13 @@ function during(state: Active, happening: BrowserSignal): Step {
   // Nothing newer can be reported now: an input known from its report only
   // is written, and the wrap-up is over. One that is not finished is
   // finished first; then Playwright's recorder is switched off once more.
+  const wrapping = wrappingUpOf(state);
   if (
     happening.kind === "reportingInteractions" &&
     !happening.on &&
-    state.phase === "wrappingUp" &&
-    state.switchingOff
+    wrapping?.switchingOff
   )
-    return proceed({ ...state, switchingOff: false }, [], true);
+    return proceed({ ...wrapping, switchingOff: false }, [], true);
   const draft: Draft = {
     inputs: state.inputs,
     snapshotsAsked: state.snapshotsAsked,
@@ -1246,7 +1249,7 @@ function traceStarted(state: Active, draft: Draft): Active {
 
 /** Playwright reports Interactions, or no longer does. */
 function reporting(state: Active, draft: Draft, on: boolean): Active {
-  if (state.phase === "recording" && state.starting && on)
+  if (recordingOf(state)?.starting && on)
     draft.todo.push({
       kind: "browser",
       ask: { kind: "holdInputs", on: true },
@@ -1305,8 +1308,7 @@ function snapshotTaken(
   snapshot: PageSnapshot
 ): Active {
   const owners = draft.inputs.filter((input) => input.asked === snapshot.id);
-  // Stryker disable next-line ConditionalExpression: only a wrap-up has last snapshots; the check is for the type
-  const wrapping = state.phase === "wrappingUp" ? state : null;
+  const wrapping = wrappingUpOf(state);
   const finals = wrapping?.finals;
   const isFinal = finals?.some((final) => final.snapshot === snapshot.id);
   const gate = gateOf(draft, snapshot.page);
@@ -1433,7 +1435,10 @@ function interactionRevised(
   const open = draft.inputs.findLast(
     (input) => input.page === page && input.held.kind === "reported"
   );
-  if (!open || open.report?.type !== report.type) return;
+  if (!open) return;
+  // Stryker disable next-line OptionalChaining: an input known from its report has one; the check is for the type
+  const reportedAs = open.report?.type;
+  if (reportedAs !== report.type) return;
   change(draft, open.id, { report });
   if (open.stage === "takingAfter") change(draft, open.id, { revised: true });
   if (open.stage === "settled") {
@@ -1490,10 +1495,11 @@ function reportOfHeld(
   if (input.stage === "waiting" || input.stage === "takingBefore") return;
   // A key pressed with nothing focused has no target, whatever element
   // Playwright names for it.
-  const report =
-    input.held.kind === "press" && input.held.nothingFocused
-      ? { ...reported, target: null }
-      : reported;
+  // Stryker disable next-line ConditionalExpression: only a press says that nothing was focused; the check is for the type
+  const press = input.held.kind === "press" ? input.held : null;
+  const report = press?.nothingFocused
+    ? { ...reported, target: null }
+    : reported;
   change(draft, input.id, { report });
   coverFollowingClicks(draft, input, report);
   giveUpEarlier(
@@ -1761,8 +1767,10 @@ function startNext(draft: Draft) {
   for (const page of new Set(draft.inputs.map((input) => input.page))) {
     const next = underWay(draft, page);
     if (next?.stage !== "waiting") continue;
+    // Stryker disable next-line OptionalChaining: a page that held an input has a gate; the check is for the type
+    const latest = gateOf(draft, page)?.latest;
     // Typing needs no "before" once the page has a snapshot to start from.
-    if (next.held.kind === "typing" && gateOf(draft, page)?.latest) {
+    if (next.held.kind === "typing" && latest) {
       change(draft, next.id, { stage: "passingOn" });
       draft.todo.push({
         kind: "browser",
@@ -1803,9 +1811,6 @@ function goOnWrappingUp(
   // still be revised, as typing goes on until "Paused" shows: it is written
   // at the last, when nothing newer can be reported.
   const nothingNewer = reportsOff || endsRecorder(state.then);
-  const atTheLast = (finals: readonly unknown[] | null) =>
-    finals?.length === 0 && nothingNewer;
-  writeDown(draft, atTheLast(state.finals));
   let finals = state.finals;
   if (
     state.gateOff &&
@@ -1821,7 +1826,7 @@ function goOnWrappingUp(
       snapshot: askSnapshot(draft, page.id),
     }));
   // The last snapshots may be in just now, as when no page is left.
-  writeDown(draft, atTheLast(finals));
+  writeDown(draft, finals?.length === 0 && nothingNewer);
   const next = { ...state, ...settle(draft), finals };
   if (
     finals?.length !== 0 ||
@@ -1832,8 +1837,7 @@ function goOnWrappingUp(
     return { state: next, todo: draft.todo };
   // A recorder that ends is let go with its browser. One that lives on has
   // Playwright's recorder switched off first: it is not recording any more.
-  if (draft.inputs.length === 0 && nothingNewer)
-    return wrappedUp(next, draft.todo);
+  if (nothingNewer) return wrappedUp(next, draft.todo);
   return {
     state: { ...next, switchingOff: true },
     todo: [
@@ -1851,10 +1855,7 @@ const endsRecorder = (then: AfterWrapUp) =>
 /** An input known from its report only that has all it needs, and waits to
  * be written at the last. */
 const awaitsTheLast = (input: Input) =>
-  input.held.kind === "reported" &&
-  input.stage === "settled" &&
-  input.report !== null &&
-  input.before !== null;
+  input.held.kind === "reported" && input.stage === "settled";
 
 /**
  * Writes down every input that has all it needs, in the order of the
@@ -1926,9 +1927,7 @@ function wrappedUp(
     case "clear":
     case "clearAndEnd":
       // Thrown away once the trace is gone, not before: the recorder takes
-      // no Record meanwhile. Whatever else tells that the wrap-up is over
-      // finds the trace already asked to stop.
-      if (state.discardingTrace) return { state, todo };
+      // no Record meanwhile.
       return {
         state: { ...state, discardingTrace: true },
         todo: [...todo, discardTrace],
@@ -2075,26 +2074,27 @@ function cannotStart(
   >,
   reason: string
 ): Step {
-  if (state.phase !== "recording" || !state.starting) return stay(state);
+  const recording = recordingOf(state);
+  if (!recording?.starting) return stay(state);
   const ignored: ToDo = { kind: "replyDeferred", result: "ignored" };
-  if (!state.resumed) {
+  if (!recording.resumed) {
     const outcome: RecordingOutcome = {
       kind: "failed",
       reason: `Recording could not start. ${reason}`,
     };
     return {
-      state: { phase: "ended", pages: state.pages, outcome },
+      state: { phase: "ended", pages: recording.pages, outcome },
       todo: [ignored, { kind: "end", outcome }],
     };
   }
   return {
     state: {
       phase: "paused",
-      pages: state.pages,
-      snapshotsAsked: state.snapshotsAsked,
+      pages: recording.pages,
+      snapshotsAsked: recording.snapshotsAsked,
     },
     todo: [
-      ...release(state.inputs),
+      ...release(recording.inputs),
       // What Continue had switched on is switched off again.
       ...(request.kind === "holdInputs"
         ? ([
@@ -2146,10 +2146,11 @@ function unanswered(
         });
       }
     }
-    if (state.phase === "wrappingUp" && state.finals)
+    const wrapping = wrappingUpOf(state);
+    if (wrapping?.finals)
       next = {
-        ...state,
-        finals: state.finals.filter(
+        ...wrapping,
+        finals: wrapping.finals.filter(
           (final) => final.snapshot !== request.snapshot
         ),
       };
@@ -2228,11 +2229,12 @@ function pickNow(
  * request to pick is what broke.
  */
 function pickingChanged(state: LifecycleState, on: boolean, tell = true): Step {
-  if (state.phase !== "recording") return stay(state);
-  if (on) return stay({ ...state, picking: "on" });
-  if (state.picking === "off") return stay(state);
+  const recording = recordingOf(state);
+  if (!recording) return stay(state);
+  if (on) return stay({ ...recording, picking: "on" });
+  if (recording.picking === "off") return stay(state);
   return {
-    state: { ...state, picking: "off" },
+    state: { ...recording, picking: "off" },
     todo: tell ? [pickRequest(false)] : [],
   };
 }
