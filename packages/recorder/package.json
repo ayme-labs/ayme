@@ -29,7 +29,7 @@
     "test": "vitest run",
     "test:contract": "vitest run --config vitest.contract.config.ts",
     "typecheck": "tsc --noEmit",
-    "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
+    "test:crap": "vitest run --config vitest.crap.config.ts --coverage",
     "test:mutation": "stryker run"
   },
   "dependencies": {
