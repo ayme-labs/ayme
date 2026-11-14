@@ -407,6 +407,7 @@ async function openPage(
       page
         .locator(selector)
         .evaluate(
+          // Stryker disable all
           (element) => {
             const refs: (string | null)[] = [];
             for (
@@ -424,6 +425,7 @@ async function openPage(
               );
             return refs;
           },
+          // Stryker restore all
           undefined,
           { timeout: ANCESTOR_READ_MS }
         )
@@ -463,10 +465,12 @@ async function openPage(
       page
         .locator(selector)
         .evaluate(
+          // Stryker disable all
           (input) =>
             input instanceof HTMLInputElement && input.files
               ? [...input.files].map((file) => file.name)
               : null,
+          // Stryker restore all
           undefined,
           { timeout: UPLOAD_READ_MS }
         )
@@ -524,7 +528,12 @@ async function openPage(
       const watch = (frame: Frame, on: boolean) =>
         // A frame that is gone has nothing to tell.
         void frame
-          .evaluate((on) => window.__aymeRecorderActivity?.watch(on), on)
+          .evaluate(
+            // Stryker disable all
+            (on) => window.__aymeRecorderActivity?.watch(on),
+            // Stryker restore all
+            on
+          )
           .catch(() => {});
       const onNavigated = (frame: Frame) => {
         onActivity();
@@ -603,7 +612,11 @@ async function openPage(
     const made = markers.then(async () => {
       await context.tracing.group(snapshot);
       try {
-        await page.evaluate(() => 0);
+        await page.evaluate(
+          // Stryker disable all
+          () => 0
+          // Stryker restore all
+        );
       } finally {
         await context.tracing.groupEnd();
       }
@@ -653,7 +666,12 @@ async function openPage(
         await Promise.all(
           everyFrame().map((frame) =>
             frame
-              .evaluate((on) => window.__aymeRecorderGate?.set(on), request.on)
+              .evaluate(
+                // Stryker disable all
+                (on) => window.__aymeRecorderGate?.set(on),
+                // Stryker restore all
+                request.on
+              )
               .catch(() => {})
           )
         );
@@ -697,21 +715,21 @@ async function openPage(
                 known.findIndex((input) => input.id === request.upTo) + 1
               );
         await Promise.all(
-          open
-            .frames()
-            .map((frame) =>
-              frame
-                .evaluate(
-                  (seq) => window.__aymeRecorderGate?.letThrough(seq),
-                  Math.max(
-                    0,
-                    ...upTo
-                      .filter((input) => input.frame === frame)
-                      .map((input) => input.seq)
-                  )
+          open.frames().map((frame) =>
+            frame
+              .evaluate(
+                // Stryker disable all
+                (seq) => window.__aymeRecorderGate?.letThrough(seq),
+                // Stryker restore all
+                Math.max(
+                  0,
+                  ...upTo
+                    .filter((input) => input.frame === frame)
+                    .map((input) => input.seq)
                 )
-                .catch(() => {})
-            )
+              )
+              .catch(() => {})
+          )
         );
         return;
       }
@@ -883,7 +901,12 @@ async function openPage(
       Promise.all(
         everyFrame().map((frame) =>
           frame
-            .evaluate((on) => window.__aymeRecorderGate?.pick(on), picking)
+            .evaluate(
+              // Stryker disable all
+              (on) => window.__aymeRecorderGate?.pick(on),
+              // Stryker restore all
+              picking
+            )
             .catch(() => {})
         )
       );
@@ -954,14 +977,19 @@ async function openPage(
     const putBack = Promise.all([
       ...frames.map((frame) =>
         frame
-          .evaluate((remove) => {
-            window.__aymeRecorderGate?.set(false);
-            window.__aymeRecorderActivity?.watch(false);
-            document.querySelector("ayme-recorder-highlight")?.remove();
-            document
-              .querySelector("ayme-recorder-toolbar")
-              ?.dispatchEvent(new Event(remove));
-          }, TOOLBAR_REMOVE)
+          .evaluate(
+            // Stryker disable all
+            (remove) => {
+              window.__aymeRecorderGate?.set(false);
+              window.__aymeRecorderActivity?.watch(false);
+              document.querySelector("ayme-recorder-highlight")?.remove();
+              document
+                .querySelector("ayme-recorder-toolbar")
+                ?.dispatchEvent(new Event(remove));
+            },
+            // Stryker restore all
+            TOOLBAR_REMOVE
+          )
           .catch(() => {})
       ),
       ...[...held.values()].map(({ frame, input }) =>
@@ -1035,15 +1063,19 @@ async function placeInPage(frame: Frame, at: { x: number; y: number }) {
     inner = inner.parentFrame()
   ) {
     const element = await inner.frameElement();
-    const offset = await element.evaluate((node) => {
-      const iframe = node as Element;
-      const box = iframe.getBoundingClientRect();
-      const style = getComputedStyle(iframe);
-      return {
-        x: box.left + iframe.clientLeft + parseFloat(style.paddingLeft),
-        y: box.top + iframe.clientTop + parseFloat(style.paddingTop),
-      };
-    });
+    const offset = await element.evaluate(
+      // Stryker disable all
+      (node) => {
+        const iframe = node as Element;
+        const box = iframe.getBoundingClientRect();
+        const style = getComputedStyle(iframe);
+        return {
+          x: box.left + iframe.clientLeft + parseFloat(style.paddingLeft),
+          y: box.top + iframe.clientTop + parseFloat(style.paddingTop),
+        };
+      }
+      // Stryker restore all
+    );
     await element.dispose();
     point = { x: point.x + offset.x, y: point.y + offset.y };
   }
@@ -1077,6 +1109,8 @@ const HIGHLIGHT_LOOKUP_MS = 500;
 /** How long letting go of an attached browser may take. */
 const LET_GO_LIMIT_MS = 5_000;
 
+// Run inside a page: Node's coverage and Stryker cannot reach them.
+// Stryker disable all
 /**
  * Runs in a document once Playwright's recorder has been switched off:
  * resolves when the document's part of it has heard so, and takes away the
@@ -1100,6 +1134,7 @@ async function noLongerRecording(): Promise<void> {
   if (state) await state();
   document.body?.removeAttribute("data-pw-cursor");
 }
+// Stryker restore all
 
 /** Sends a held input on to its page, as the press of the mouse or the
  * key it was. Returns false when the document it was held in is gone: it
@@ -1108,8 +1143,10 @@ async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
   const page = frame.page();
   const open = await frame
     .evaluate(
+      // Stryker disable all
       ({ at, document }) =>
         window.__aymeRecorderGate?.open(at, document) ?? false,
+      // Stryker restore all
       {
         at:
           input.kind === "click"
@@ -1141,7 +1178,11 @@ async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
     // The gate closed by itself if the click arrived. The click may also
     // have taken the page elsewhere: that document's gate is gone with it.
     await frame
-      .evaluate(() => window.__aymeRecorderGate?.close())
+      .evaluate(
+        // Stryker disable all
+        () => window.__aymeRecorderGate?.close()
+        // Stryker restore all
+      )
       .catch(() => {});
   }
   return true;
