@@ -129,8 +129,20 @@ export class RecorderSession extends Context.Service<
         /** The answers the lifecycle keeps by a key of its own. */
         const kept = new Map<string, NonNullable<Queued["reply"]>>();
 
-        const carryOut = Effect.fnUntraced(function* (
-          item: ToDo,
+        /** Gives a command's answer, now or as the lifecycle keeps it for
+         * later: the one it defers, or one under a key of its own. */
+        const answer = Effect.fnUntraced(function* (
+          item: Extract<
+            ToDo,
+            {
+              kind:
+                | "reply"
+                | "deferReply"
+                | "replyDeferred"
+                | "keepReply"
+                | "replyKept";
+            }
+          >,
           reply: Queued["reply"]
         ) {
           switch (item.kind) {
@@ -144,25 +156,66 @@ export class RecorderSession extends Context.Service<
               if (deferred) yield* Deferred.succeed(deferred, item.result);
               deferred = undefined;
               return;
+            // Highlight.
+            case "keepReply":
+              if (reply) kept.set(item.key, reply);
+              return;
+            case "replyKept": {
+              const waiting = kept.get(item.key);
+              kept.delete(item.key);
+              if (waiting) yield* Deferred.succeed(waiting, item.result);
+              return;
+            }
+          }
+        });
+
+        /** Hands a request to the browser. An answer that is given a time
+         * counts as "could not" once the time has passed: the time runs
+         * beside the queue, as a time limit does. */
+        const ask = Effect.fnUntraced(function* (
+          item: Extract<ToDo, { kind: "browser" }>
+        ) {
+          if (item.within !== undefined)
+            timed.push({
+              request: item.ask,
+              time: yield* Effect.sleep(item.within).pipe(
+                Effect.andThen(
+                  tell({
+                    kind: "requestFailed",
+                    request: item.ask,
+                    reason: "The browser did not answer in time.",
+                  })
+                ),
+                Effect.forkScoped
+              ),
+            });
+          return yield* browser.ask(item.ask);
+        });
+
+        /** Tells every subscriber of a warning, once. */
+        const warn = (warning: RecorderWarning) => {
+          const told = warnings.some(
+            (one) =>
+              one.kind === warning.kind && one.message === warning.message
+          );
+          if (told) return;
+          warnings = [...warnings, warning];
+          publish();
+        };
+
+        const carryOut = Effect.fnUntraced(function* (
+          item: ToDo,
+          reply: Queued["reply"]
+        ) {
+          switch (item.kind) {
+            case "reply":
+            case "deferReply":
+            case "replyDeferred":
+            case "keepReply":
+            case "replyKept":
+              return yield* answer(item, reply);
             case "browser":
-              // An answer that is given a time counts as "could not" once
-              // the time has passed. The time runs beside the queue, as a
-              // time limit does.
-              if (item.within !== undefined)
-                timed.push({
-                  request: item.ask,
-                  time: yield* Effect.sleep(item.within).pipe(
-                    Effect.andThen(
-                      tell({
-                        kind: "requestFailed",
-                        request: item.ask,
-                        reason: "The browser did not answer in time.",
-                      })
-                    ),
-                    Effect.forkScoped
-                  ),
-                });
-              return yield* browser.ask(item.ask);
+              return yield* ask(item);
             case "timeline":
               // An entry is told as soon as it is produced.
               yield* Effect.promise(() => timeline.add(item.add));
@@ -193,15 +246,6 @@ export class RecorderSession extends Context.Service<
               fromTimeline = 0;
               return publish();
             // Highlight.
-            case "keepReply":
-              if (reply) kept.set(item.key, reply);
-              return;
-            case "replyKept": {
-              const waiting = kept.get(item.key);
-              kept.delete(item.key);
-              if (waiting) yield* Deferred.succeed(waiting, item.result);
-              return;
-            }
             case "locate":
               return yield* tell({
                 kind: "located",
@@ -209,17 +253,7 @@ export class RecorderSession extends Context.Service<
                 target: timeline.liveTarget(item.entry),
               });
             case "warn":
-              // Each is told once.
-              if (
-                warnings.some(
-                  (told) =>
-                    told.kind === item.warning.kind &&
-                    told.message === item.warning.message
-                )
-              )
-                return;
-              warnings = [...warnings, item.warning];
-              return publish();
+              return warn(item.warning);
           }
         });
 
