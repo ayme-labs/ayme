@@ -105,7 +105,7 @@ const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) => {
  * page's listeners and Playwright's recorder do not take an untrusted click
  * for a person's.
  */
-export function stopperFor(host: HTMLElement, root: ShadowRoot) {
+function stopperFor(host: HTMLElement, root: ShadowRoot) {
   const press = (event: MouseEvent) => {
     const button = buttonAt(root, event);
     if (button && !button.disabled) button.click();

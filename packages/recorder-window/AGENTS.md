@@ -18,6 +18,11 @@ The build (`tsdown.config.ts`) writes `dist/window/`: `index.html` and one scrip
 
 ## Testing
 
-Run from this directory inside the repository's Devbox shell. `pnpm test` runs the unit tests, and reads the build: Turbo's `test` task builds first.
+Run from this directory inside the repository's Devbox shell. `pnpm test` runs two projects ([`vitest.config.ts`](vitest.config.ts)), and reads the build: Turbo's `test` task builds first.
 
-The window itself is tested in [`apps/recorder-fixture`](../../apps/recorder-fixture/README.md) (`tests/window.spec.ts`): the real server of a recorder on the engine's scripted browser, driven through these page objects. The toolbar is tested there too (`tests/toolbar.spec.ts`), in pages a real recorder records.
+- `unit`, in Node (`*.test.ts`): the plain rules, the window's channel against a stand-in tRPC server, the build and the layout.
+- `component`, in headless Chromium (`*.browser.test.tsx`): the window and the toolbar, mounted as their scripts mount them against a channel or page function the test plays, read and pressed through these page objects on playwright-lite, as the Inspector's component tests are. playwright-lite's input is synthetic; the toolbar stops only a person's trusted input, so its tests give that through Vitest's Playwright provider (`userEvent` from `vitest/browser`) at the point of a control.
+
+The scripts (`src/app/main.tsx`, `src/app/toolbar.tsx`) only mount: what they decide is in `mountWindow.tsx` and `toolbarMount.tsx`, which the component tests call.
+
+End to end, the window is tested in [`apps/recorder-fixture`](../../apps/recorder-fixture/README.md) (`tests/window.spec.ts`): the real server of a recorder on the engine's scripted browser, driven through these page objects. The toolbar is tested there too (`tests/toolbar.spec.ts`), in pages a real recorder records.
