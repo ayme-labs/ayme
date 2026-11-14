@@ -1001,30 +1001,18 @@ it("names a click on an element its snapshot does not list by the nearest ancest
   ).toBe("star");
 });
 
-/**
- * What the Playwright under test does with a left click it may hold back
- * to see whether a double click follows, when its recorder is switched off
- * right after it:
- * - flushes: 1.64 and later hold it back, and report it when asked to;
- * - reportsAtOnce: 1.62 holds nothing back;
- * - holdsBack: 1.63 holds it back and cannot be asked to report it, so the
- *   click can be lost (the documented limit).
- */
-const clickHeldBack = (() => {
-  const [major = 0, minor = 0] = underTest.version.split(".").map(Number);
-  if (major > 1 || minor >= 64) return "flushes";
-  return minor <= 62 ? "reportsAtOnce" : "holdsBack";
-})();
-
-it(`reports a click made just before Playwright's recorder is switched off ${clickHeldBack === "holdsBack" ? "only after the switch-off is answered, if at all" : "before the switch-off is answered"} (Playwright ${underTest.version}: ${clickHeldBack})`, async () => {
+// Playwright holds a left click back to see whether a double click follows
+// (1.63 and later; 1.62 holds nothing back), and reports it when its
+// recorder is switched off. The click's report can still be on its way from
+// the page then, most of all on a browser reached over a WebSocket, as an
+// attached one: the adapter lets it arrive first.
+it("reports a click made just before Playwright's recorder is switched off before the switch-off is answered", async () => {
   const browser = await onStockPlaywright(BUTTONS);
   await reporting(browser);
 
   await browser.click(browser.page.locator("#second"));
   await browser.ask({ kind: "reportInteractions", on: false });
   await browser.toldOf("reportingInteractions", (signal) => !signal.on);
-  // Longer than Playwright holds a click back.
-  await new Promise((resolve) => setTimeout(resolve, 1_000));
 
   const reported = browser.told.findIndex(
     (signal) => signal.kind === "interactionReported"
@@ -1032,12 +1020,8 @@ it(`reports a click made just before Playwright's recorder is switched off ${cli
   const answered = browser.told.findIndex(
     (signal) => signal.kind === "reportingInteractions" && !signal.on
   );
-  if (clickHeldBack === "holdsBack")
-    expect(reported === -1 || reported > answered).toBe(true);
-  else {
-    expect(reported).toBeGreaterThanOrEqual(0);
-    expect(reported).toBeLessThan(answered);
-  }
+  expect(reported).toBeGreaterThanOrEqual(0);
+  expect(reported).toBeLessThan(answered);
 });
 
 it("reports typing once, and revises that report with each key typed into the same field", async () => {
