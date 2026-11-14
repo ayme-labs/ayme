@@ -5075,6 +5075,96 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
+    {
+      name: "a choice reported while a click is on its way and another waits behind it goes between the two: it starts where the first ends, and ends where the second starts",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        taken("snapshot_1"),
+        clickHeld("input_2"),
+        reportedOn(choice),
+        passedOn("input_1"),
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_2")],
+        [
+          keep("snapshot_2"),
+          waitForSettled("reported_1"),
+          takeSnapshot("snapshot_3"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing whose wait for a Settled Page ends while a click's 'before' is being taken still ends at that snapshot, and takes none of its own",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedOn(typed("m")),
+        clickHeld("input_2"),
+        settled("reported_1"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [],
+        [
+          keep("snapshot_3"),
+          passOn("input_2"),
+          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click whose report comes after the report of a later choice on its page is given up, whatever is held on another page",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        clickOn("page_1", "input_1"),
+        clickOn("page_2", "input_2"),
+        takenOf("snapshot_2", "page_2"),
+        passedOn("input_2"),
+        settledOn("page_2", "input_2"),
+        takenOf("snapshot_3", "page_2"),
+        reportedOn(choice, "page_2"),
+        reportedOn(click, "page_2"),
+      ],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click that another one's report covers takes no report of its own: a second report of the double click is written nowhere",
+      happened: [
+        opened,
+        ...started,
+        ...doubleReportedEarly,
+        reportedOn(clickOf(1)),
+        passedOn("input_2", 22),
+        settled("input_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [
+          keep("snapshot_3"),
+          written(clickOf(2), "snapshot_1", "snapshot_3", 21),
+          letThrough("input_2"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a request to start that fails when no recording is starting changes nothing",
+      happened: [...stopped, failed(reportInteractions), failed(holdInputs)],
+      todo: [[], []],
+      state: { phase: "paused" },
+    },
+
     // Each page has a gate of its own.
     {
       name: "a page is let through after its own click, whatever is still held on another page",

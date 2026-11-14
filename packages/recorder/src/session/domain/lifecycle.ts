@@ -530,8 +530,10 @@ const isActive = (state: LifecycleState): state is Active =>
 const recordingOf = (state: LifecycleState) =>
   state.phase === "recording" ? state : null;
 const wrappingUpOf = (state: LifecycleState) =>
+  // Stryker disable next-line ConditionalExpression: no other phase has what is read of a wrap-up, so it reads as absent either way; the check is for the type
   state.phase === "wrappingUp" ? state : null;
 const savingOf = (state: LifecycleState) =>
+  // Stryker disable next-line ConditionalExpression: no other phase has what is read of a save, so it reads as absent either way; the check is for the type
   state.phase === "saving" ? state : null;
 /** A wrap-up whose recording is thrown away, and whose trace is asked to
  * stop: the recording is over when that is answered. */
@@ -1250,6 +1252,7 @@ function heard(state: Active, draft: Draft, happening: BrowserSignal): Active {
     case "interactionReported":
       interactionReported(state, draft, happening.page, happening.report);
       return state;
+    // Stryker disable next-line ConditionalExpression: every signal that comes here has its case above; the default is for the type
     default:
       return state;
   }
@@ -1549,6 +1552,7 @@ function startReported(draft: Draft, index: number): boolean {
   const reached = earlier.some(
     (before) =>
       before.held.kind !== "reported" &&
+      // Stryker disable next-line ConditionalExpression: a held input that is still on its way makes this one wait too: it hands this one its snapshot when it arrives, whichever start this one had
       before.passedOnAt !== null &&
       before.stage !== "settled"
   );
@@ -1560,9 +1564,7 @@ function startReported(draft: Draft, index: number): boolean {
   // this one's "before". An assertion's one snapshot is waited for in the
   // same way.
   const open = earlier.findLast(
-    (before) =>
-      (before.held.kind === "reported" || before.held.kind === "asserted") &&
-      before.stage !== "settled"
+    (before) => neverHeld(before) && before.stage !== "settled"
   );
   if (open) {
     shareWithOpen(draft, open, input);
@@ -1584,14 +1586,17 @@ function startReported(draft: Draft, index: number): boolean {
  * still open ends, when that one has a start itself. */
 function shareWithOpen(draft: Draft, open: Input, input: Input) {
   if (open.stage === "settling") askSharedSnapshot(draft, open, input);
-  if (open.stage === "takingAfter") {
-    // The snapshot under way is its last: what revised it meanwhile gets no
-    // further wait.
-    change(draft, open.id, { revised: false });
-    change(draft, input.id, { stage: "takingBefore", asked: open.asked });
-  }
+  // The snapshot under way is its last: what revised it meanwhile gets no
+  // further wait. This one starts from that snapshot when it is in.
+  if (open.stage === "takingAfter") change(draft, open.id, { revised: false });
   // Otherwise it has no start of its own yet: this one waits for that.
 }
+
+/** An input the pages never held: one known from its report, or an
+ * assertion. */
+const neverHeld = (input: Input) =>
+  // Stryker disable next-line ConditionalExpression,LogicalOperator: a held input ahead that is still on its way makes a reported one wait as well, and hands it its snapshot when it arrives
+  input.held.kind === "reported" || input.held.kind === "asserted";
 
 /** Ends an input known from its report only where the next held input of
  * its page starts; with none, once the page is settled and no held input
@@ -1652,11 +1657,9 @@ function knownFromReport(
  * `index`th that have no report yet will get none. */
 function giveUpEarlier(draft: Draft, page: string, index: number) {
   for (const earlier of draft.inputs.slice(0, index))
-    if (
-      earlier.page === page &&
-      earlier.report === null &&
-      earlier.joins === null
-    )
+    // A click another one's report covers has none either: it goes with
+    // the click that covers it, whatever is said of it here.
+    if (earlier.page === page && earlier.report === null)
       change(draft, earlier.id, { unreported: true });
 }
 
@@ -1948,9 +1951,7 @@ function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
   // is in nobody's way any more.
   const draft: Draft = {
     inputs: state.inputs.filter(
-      (input) =>
-        input.stage === "settled" &&
-        (input.report !== null || input.joins !== null)
+      (input) => input.stage === "settled" && input.report !== null
     ),
     snapshotsAsked: state.snapshotsAsked,
     gates: state.gates,
@@ -2014,6 +2015,7 @@ function failed(
     case "startTrace":
       return traceNotStarted(state, request, reason);
     // Every kind of input.
+    // Stryker disable next-line ConditionalExpression: without its own line it falls to the next case, which asks nothing either
     case "letInputsThrough":
       // The page goes on holding what follows: each key it holds is told
       // of, passed on, and lets the page through once more.
