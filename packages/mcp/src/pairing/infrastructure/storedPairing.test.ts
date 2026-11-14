@@ -64,11 +64,20 @@ it("keeps an explicit tab id when replacing a stored pairing", () => {
 
 it("adds a tab id to a legacy stored pairing and keeps it for the link", () => {
   storage.set(PAIRING_STORAGE_KEY, JSON.stringify(pairing));
-  const tab = storedTabId(pairing);
+  vi.stubGlobal("crypto", {
+    getRandomValues: vi
+      .fn()
+      .mockImplementationOnce((bytes: Uint8Array) => bytes.fill(0x12))
+      .mockImplementation((bytes: Uint8Array) => bytes.fill(0x34)),
+  });
+  storedTabId(pairing);
 
   storePairing(pairing);
 
-  expect(stored()).toEqual({ ...pairing, tab });
+  expect(stored()).toEqual({
+    ...pairing,
+    tab: "12121212121212121212121212121212",
+  });
 });
 
 it("still accepts a link when sessionStorage is unavailable", () => {
