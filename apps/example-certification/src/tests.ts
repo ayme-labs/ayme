@@ -618,7 +618,11 @@ export function agentConnectionTests({
             await agent.call("reload");
             await navigated;
             // Wait for the new document to reconnect before reading its storage.
-            await agent.call("snapshot");
+            const { text, isError } = await agent.call("snapshot");
+            expect(isError, text).toBe(false);
+            expect(
+              (JSON.parse(text) as { structure: string }).structure
+            ).toContain(snapshotText);
             expect(await storedTab()).toBe(tab);
           } finally {
             await agent.close();
