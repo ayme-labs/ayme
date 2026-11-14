@@ -80,7 +80,12 @@ function AssertButton({
   if (!control) return null;
   return (
     <Button
-      variant={control.pressed ? "default" : "ghost"}
+      variant={
+        control.pressed
+          ? // Stryker disable next-line StringLiteral: the button's variants fall back to "default" for an empty name
+            "default"
+          : "ghost"
+      }
       size="icon"
       aria-pressed={control.pressed}
       {...props(control, onCommand)}

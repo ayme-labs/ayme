@@ -29,6 +29,17 @@ describe("how an Interaction reads in the window", () => {
     );
   });
 
+  it("names a key press with no key, or typing with no text, by its kind alone", () => {
+    expect(interactionTitle(interaction({ type: "press" }))).toBe("Press");
+    expect(interactionTitle(interaction({ type: "fill" }))).toBe("Fill");
+  });
+
+  it("names another kind by its own name, whatever key or text it carries", () => {
+    expect(
+      interactionTitle(interaction({ type: "click", key: "Enter", text: "Go" }))
+    ).toBe("Click");
+  });
+
   it("names any other kind by its own name", () => {
     expect(interactionTitle(interaction({ type: "uncheck" }))).toBe("Uncheck");
   });

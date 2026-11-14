@@ -1292,6 +1292,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../eslint-config
+      "@ayme-dev/playwright-lite":
+        specifier: github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb(@playwright/test@1.64.0)
       "@ayme-dev/recorder":
         specifier: workspace:*
         version: link:../recorder
@@ -1325,6 +1328,12 @@ importers:
       "@types/react-dom":
         specifier: ^19.0.0
         version: 19.2.7(@types/react@19.2.18)
+      "@types/ws":
+        specifier: ^8.18.2
+        version: 8.18.2
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.64.0)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -1334,6 +1343,9 @@ importers:
       lucide-react:
         specifier: ^1.0.0
         version: 1.48.0(react@19.2.8)
+      playwright:
+        specifier: ^1.64.0
+        version: 1.64.0
       radix-ui:
         specifier: ^1.6.7
         version: 1.6.7(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1358,6 +1370,9 @@ importers:
       vitest:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.0
 
   packages/svelte:
     dependencies:
