@@ -52,6 +52,9 @@ type Kept = {
   readonly resumes: boolean;
 };
 
+/** An Interaction that has no entry yet. */
+type Waiting = RecordedInteraction & { readonly id: string };
+
 type Visit = {
   readonly id: string;
   /** The page it is a Visit of. */
@@ -60,7 +63,7 @@ type Visit = {
   readonly cause: VisitCause;
   readonly snapshots: Kept[];
   /** The Interactions that have no entry yet. */
-  readonly waiting: (RecordedInteraction & { readonly id: string })[];
+  readonly waiting: Waiting[];
   /** The entries produced so far, in order. */
   readonly entries: TimelineEntry[];
   /** The place in `snapshots` up to which entries are produced: what
@@ -73,6 +76,10 @@ type Visit = {
   /** From every ref the browser used in this Visit to the element's first. */
   readonly firstRefs: Map<AriaRef, AriaRef>;
 };
+
+/** The place of a snapshot among a Visit's; negative when it is not there. */
+const placeIn = (visit: Visit, snapshot: string | null) =>
+  visit.snapshots.findIndex((kept) => kept.snapshot.id === snapshot);
 
 /**
  * The timeline of one recording: Visits, snapshots and Interactions in, the
@@ -397,80 +404,117 @@ export class Timeline {
    * own for every other step from one snapshot to the next.
    */
   private async produce(visit: Visit, upTo: number): Promise<void> {
-    const { snapshots, entries } = visit;
-    const before = entries.length;
-    for (;;) {
-      const through = snapshots[visit.through];
-      if (!through) break;
-      // An Interaction starts at this snapshot. One that starts at a
-      // snapshot the entries have passed is written all the same, from its
-      // own start: no Interaction is left out for where it starts.
-      const place = (id: string | null) =>
-        snapshots.findIndex((kept) => kept.snapshot.id === id);
-      const starting = visit.waiting.findIndex(
-        (interaction) => place(interaction.before) <= visit.through
-      );
-      if (starting >= 0) {
-        const [interaction] = visit.waiting.splice(starting, 1);
-        const from = snapshots[place(interaction!.before)]!;
-        const end = place(interaction!.after);
-        let targetRef = locateTarget(from.tree, interaction!.report.target);
-        let change =
-          end < 0 ? "" : changeText(await this.change(from, snapshots[end]!));
-        if (interaction!.beforeFromReport && end >= 0) {
-          const read = await this.fromPicture(
-            from,
-            snapshots[end]!,
-            interaction!
-          );
-          if (read) {
-            targetRef = read.target;
-            change = read.changedByIt;
-            if (read.changedBefore !== "")
-              entries.push({
-                kind: "change",
-                id: `change_${++this.changes}`,
-                timestamp: interaction!.at,
-                changeTree: read.changedBefore,
-              });
-          } else
-            this.warned.push({
-              kind: "reportShape",
-              message: `Playwright's report of ${interaction!.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
-            });
-        }
-        entries.push({
-          kind: "interaction",
-          id: interaction!.id,
-          timestamp: interaction!.at,
-          interaction: interactionDetails(
-            interaction!.id,
-            interaction!.report,
-            targetRef ? (from.firstRefs.get(targetRef) ?? targetRef) : null
-          ),
-          changeTree: change === "" ? null : change,
-        });
-        if (end > visit.through) visit.through = end;
-        continue;
-      }
-      const next = snapshots[visit.through + 1];
-      if (visit.through >= upTo || !next) break;
-      // What changed while the recorder was paused is left out: the
-      // snapshot where recording resumes is compared with nothing before it.
-      const change = next.resumes
-        ? ""
-        : changeText(await this.change(through, next));
-      // Nothing changed: there is nothing to tell.
-      if (change !== "")
-        entries.push({
-          kind: "change",
-          id: `change_${++this.changes}`,
-          timestamp: next.snapshot.at,
-          changeTree: change,
-        });
-      visit.through += 1;
+    const before = visit.entries.length;
+    while (visit.snapshots[visit.through]) {
+      const interaction = this.takeStarting(visit);
+      if (interaction) await this.writeInteraction(visit, interaction);
+      else if (!(await this.writeStep(visit, upTo))) break;
     }
-    if (entries.length > before) this.tell();
+    if (visit.entries.length > before) this.tell();
+  }
+
+  /**
+   * Takes the waiting Interaction that starts at the snapshot the entries
+   * stand at. One that starts at a snapshot the entries have passed is taken
+   * all the same, and written from its own start: no Interaction is left out
+   * for where it starts.
+   */
+  private takeStarting(visit: Visit): Waiting | undefined {
+    const starting = visit.waiting.findIndex(
+      (interaction) => placeIn(visit, interaction.before) <= visit.through
+    );
+    return starting < 0 ? undefined : visit.waiting.splice(starting, 1)[0];
+  }
+
+  /** Writes an Interaction's entry, and moves the entries on to its "after". */
+  private async writeInteraction(
+    visit: Visit,
+    interaction: Waiting
+  ): Promise<void> {
+    const from = visit.snapshots[placeIn(visit, interaction.before)]!;
+    const end = placeIn(visit, interaction.after);
+    const { target, change } = await this.effectOf(
+      visit,
+      interaction,
+      from,
+      visit.snapshots[end]
+    );
+    visit.entries.push({
+      kind: "interaction",
+      id: interaction.id,
+      timestamp: interaction.at,
+      interaction: interactionDetails(
+        interaction.id,
+        interaction.report,
+        target ? (from.firstRefs.get(target) ?? target) : null
+      ),
+      changeTree: change === "" ? null : change,
+    });
+    if (end > visit.through) visit.through = end;
+  }
+
+  /**
+   * An Interaction's target and what it changed, from its "before" to its
+   * "after"; nothing when it has no "after" in its Visit. For an input known
+   * from its report, the report's picture says how the page stood at the
+   * moment of the input: what had changed by then is written as a change of
+   * its own, ahead of the Interaction. A picture that cannot be read so is
+   * warned of, and the input is taken as one the gate held.
+   */
+  private async effectOf(
+    visit: Visit,
+    interaction: Waiting,
+    from: Kept,
+    to: Kept | undefined
+  ): Promise<{ target: AriaRef | undefined; change: string }> {
+    const held = {
+      target: locateTarget(from.tree, interaction.report.target),
+      change: to ? changeText(await this.change(from, to)) : "",
+    };
+    if (!interaction.beforeFromReport || !to) return held;
+    const read = await this.fromPicture(from, to, interaction);
+    if (!read) {
+      this.warned.push({
+        kind: "reportShape",
+        message: `Playwright's report of ${interaction.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
+      });
+      return held;
+    }
+    if (read.changedBefore !== "")
+      visit.entries.push({
+        kind: "change",
+        id: `change_${++this.changes}`,
+        timestamp: interaction.at,
+        changeTree: read.changedBefore,
+      });
+    return { target: read.target, change: read.changedByIt };
+  }
+
+  /**
+   * Writes the step from the snapshot the entries stand at to the next one
+   * as a change of its own, if anything changed, and moves the entries on.
+   * False when there is no step to write: the entries have come to `upTo`,
+   * or to the Visit's last snapshot.
+   */
+  private async writeStep(visit: Visit, upTo: number): Promise<boolean> {
+    const through = visit.snapshots[visit.through]!;
+    const next = visit.snapshots[visit.through + 1];
+    if (visit.through >= upTo || !next) return false;
+    // What changed while the recorder was paused is left out: the
+    // snapshot where recording resumes is compared with nothing before it.
+    const change = next.resumes
+      ? ""
+      : changeText(await this.change(through, next));
+    // Nothing changed: there is nothing to tell.
+    if (change !== "")
+      visit.entries.push({
+        kind: "change",
+        id: `change_${++this.changes}`,
+        timestamp: next.snapshot.at,
+        changeTree: change,
+      });
+    visit.through += 1;
+    return true;
   }
 
   /**
