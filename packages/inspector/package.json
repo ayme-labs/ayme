@@ -74,8 +74,8 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser-playwright": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "lucide-react": "^1.0.0",
@@ -85,6 +85,6 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }

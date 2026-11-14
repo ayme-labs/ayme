@@ -18,11 +18,13 @@ export function useRecorder(channel: RecorderChannel): {
   useEffect(
     () =>
       channel.subscribe((heard) => setUpdate((shown) => newest(shown, heard))),
+    // Stryker disable next-line ArrayDeclaration: a window or a toolbar keeps its one channel while it is mounted
     [channel]
   );
   // The answer needs nothing done: the state that follows shows it.
   const send = useCallback(
     (command: RecorderCommand) => void channel.send(command).catch(() => {}),
+    // Stryker disable next-line ArrayDeclaration: a window or a toolbar keeps its one channel while it is mounted
     [channel]
   );
   return { state: update?.state ?? null, send };

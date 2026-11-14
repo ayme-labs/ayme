@@ -66,18 +66,14 @@ function restricted(files, patterns, { ignores } = {}) {
   };
 }
 
-// The page objects take Playwright's types, as a test does.
-const pageObjects = ["src/testing/**/*.ts"];
-const playwrightPattern = patterns[2];
+const testFiles = ["src/**/*.test.{ts,tsx}"];
 
-export default [
-  ...config,
-  ...horizontalBoundaries({
-    packageRoot,
-    enforcedSlices: slices.filter((slice) => !unlayered.includes(slice)),
-  }),
-  {
-    files: [sourceFiles],
+/** Which slices the files of each slice may use. A test may also use
+ * `testing`, the page objects; production code may not. */
+function sliceBoundaries(files, { ignores, tests = false } = {}) {
+  return {
+    files,
+    ...(ignores ? { ignores } : {}),
     plugins: { "slice-boundaries": boundariesPlugin },
     rules: {
       "slice-boundaries/dependencies": [
@@ -95,18 +91,34 @@ export default [
                     slice: slices.filter(
                       (target) =>
                         target !== slice &&
+                        !(tests && target === "testing") &&
                         !allowedSlices[slice].includes(target)
                     ),
                   },
                 },
               },
             },
-            message: `${slice} may only use ${[...allowedSlices[slice], "itself"].join(", ")}.`,
+            message: `${slice} may only use ${[...allowedSlices[slice], "itself"].join(", ")}${tests ? ", and testing in a test" : ""}.`,
           })),
         },
       ],
     },
-  },
+  };
+}
+
+// The page objects take Playwright's types, as a test does.
+const pageObjects = ["src/testing/**/*.ts"];
+const playwrightPattern = patterns[2];
+
+export default [
+  ...config,
+  ...horizontalBoundaries({
+    packageRoot,
+    enforcedSlices: slices.filter((slice) => !unlayered.includes(slice)),
+  }),
+  sliceBoundaries([sourceFiles], { ignores: testFiles }),
+  // Tests may also use the page objects (ADR-0026).
+  sliceBoundaries(testFiles, { tests: true }),
   restricted([sourceFiles], patterns, { ignores: pageObjects }),
   restricted(
     pageObjects,

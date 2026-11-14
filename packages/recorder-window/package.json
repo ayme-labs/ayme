@@ -27,6 +27,7 @@
   "devDependencies": {
     "@ayme-dev/design-system": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb",
     "@ayme-dev/recorder": "workspace:*",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
@@ -38,9 +39,12 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@types/ws": "^8.18.2",
+    "@vitest/browser-playwright": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "lucide-react": "^1.0.0",
+    "playwright": "^1.64.0",
     "radix-ui": "^1.6.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -48,6 +52,7 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0",
+    "ws": "^8.22.0"
   }
 }
