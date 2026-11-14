@@ -138,6 +138,15 @@ recorded action explains can also come from a hover, or from anything the page
 does on its own in between, such as an async update. Read it together with the
 steps around it.
 
+A recording can have pauses: the user pressed Stop, did something, and pressed
+Continue. What the page changed during a pause is not in the package at all,
+neither as a `kind: change` entry nor in the next step's `changeTree`. After
+Continue, changes are counted from the page as it stood then. So after a pause
+the baseline plus the Change Trees no longer add up to the page: a node can be
+there, or be gone, with no entry saying so. When a step after a pause acts on
+an element nothing in the package added, read the page from the trace, at that
+step's `beforeSnapshotId`.
+
 ## Discarded entries
 
 The user can discard a whole interaction or unassigned change. It stays in the

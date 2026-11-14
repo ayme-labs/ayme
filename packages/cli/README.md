@@ -41,6 +41,8 @@ The terminal prints the address of the recorder window, such as `Recorder UI: ht
 
 To end, press **Finish**, close the browser, or press Ctrl+C in the terminal. Closing the browser or pressing Ctrl+C while recording or paused saves what was recorded so far, as Finish does; before you press Record there is nothing to save. Pressing Ctrl+C a second time does not cut the save short.
 
+Ending always finishes. If the browser stops answering, the recorder waits a few seconds for the steps still under way and leaves out those that are not complete, then saves the rest. If the trace cannot be written either, it gives up waiting after a minute and saves the package without its trace. If nothing was recorded, it ends with nothing saved.
+
 ### `codegen --cdp-endpoint <address>`
 
 Records a Chromium that is already running, such as one you prepared by hand or one an automation script drives. Start that browser with its DevTools protocol open, for example with `--remote-debugging-port=9222`, and pass the address:
@@ -82,11 +84,11 @@ npx @ayme-dev/cli install
 
 The recorder window and the toolbar on the page have the same controls and always show the same state. Use whichever is closer.
 
-- **Record** starts recording. A Visit appears for the page as it is.
-- **Stop** pauses. While paused, your input reaches the page and is not recorded, and neither is what the page changes meanwhile: after Continue, changes are counted from the page as it stood then. The status shows **Paused** once recording has really stopped; a click you make before that is still recorded.
+- **Record** starts recording. A Visit appears for the page as it is. The status says **Recording** only once the recorder really records: for a moment after you press Record, or Continue, it still shows the state before. Wait for it before your first step; input given before it is not recorded.
+- **Stop** pauses. While paused, your input reaches the page and is not recorded, and neither is what the page changes meanwhile: after Continue, changes are counted from the page as it stood then. The status shows **Paused** once recording has really stopped; a click you make before that is still recorded. Text you were typing appears as a step when **Paused** shows, not when you press Stop: the recorder waits until the text can no longer change.
 - **Continue** resumes in the same recording.
 - **Assert visibility** lets you click an element to record "this must be visible". That click does not reach your app. The button stays on until you click an element or press it again.
-- **Clear** throws away everything recorded so far, so you can start over.
+- **Clear** throws away everything recorded so far, so you can start over. Record works again once the old trace is gone.
 - **Finish** saves the recording, including your last step, without pressing Stop first. Pressing it twice saves once.
 
 While the recorder finishes a step, the status says **Wrapping up** and the buttons wait.
@@ -139,4 +141,6 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.
 - **The window's change rows say what appeared, was removed or changed, but not the old and the new value.** The package has the full picture.
 - **An Assert visibility step has no ref for its element, only a selector.** Playwright reports the element it picked by a selector alone.
+- **When the recorder stops waiting, inputs it still held back are sent on together** and can reach the page out of order. This happens only when ending or pausing runs out of time, after about five seconds, with several inputs held.
+- **A click that reached the page but has no "after" when that time runs out is not recorded,** even if Playwright reported it.
 - **Recording is Chromium only.**
