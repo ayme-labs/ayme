@@ -17,14 +17,14 @@ import type {
   Page,
 } from "playwright-core";
 
-import type { ToolbarBinding } from "../../contract";
-import { RecordedBrowser } from "../../session/application";
+import type { ToolbarBinding } from "../../../contract";
+import { RecordedBrowser } from "../../../session/application";
 import {
   RecorderStartError,
   type BrowserRequest,
   type BrowserSignal,
-} from "../../session/domain";
-import type { InteractionReport } from "../../timeline/domain";
+} from "../../../session/domain";
+import type { InteractionReport } from "../../../timeline/domain";
 import {
   drawHighlight,
   hidePlaywrightOverlay,
@@ -36,20 +36,20 @@ import {
   type HeldByPage,
   type HighlightBox,
   type TargetChain,
-} from "./pageScripts";
+} from "../pageScripts";
 import {
   playwrightRecorderOf,
   type PlaywrightAction,
-} from "./playwrightRecorder";
-import { attachAddressRule, isAttachAddress } from "./attachAddress";
+} from "../playwrightRecorder";
+import { attachAddressRule, isAttachAddress } from "../attachAddress";
 import {
   loadProjectPlaywright,
   placeInRange,
   projectPlaywrightCli,
   rangeText,
   type Playwright,
-} from "./projectPlaywright";
-import { snapshotPositions } from "./traceTool";
+} from "../projectPlaywright";
+import { snapshotPositions } from "../traceTool";
 
 /** Chromium launched by the project's own Playwright on a URL. */
 type Launch = {

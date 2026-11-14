@@ -15,13 +15,13 @@ import {
 } from "playwright-core";
 import { afterEach, expect, it } from "vitest";
 
-import { RecordedBrowser } from "../../session/application";
-import type { BrowserRequest, BrowserSignal } from "../../session/domain";
-import { Timeline } from "../../timeline/domain";
+import { RecordedBrowser } from "../../../session/application";
+import type { BrowserRequest, BrowserSignal } from "../../../session/domain";
+import { Timeline } from "../../../timeline/domain";
 import {
   loadProjectPlaywright,
   projectPlaywrightCli,
-} from "./projectPlaywright";
+} from "../projectPlaywright";
 import { stockBrowser } from "./stockBrowser";
 
 // The recorded browser's contract, on stock Playwright. Each private detail
@@ -43,7 +43,7 @@ const attaching = process.env.AYME_RECORDER_BROWSER === "attach";
 
 const projectDir =
   process.env.AYME_RECORDER_PLAYWRIGHT_PROJECT ??
-  fileURLToPath(new URL("../../..", import.meta.url));
+  fileURLToPath(new URL("../../../..", import.meta.url));
 
 /** The Chromium of the Playwright under test, which starts the running
  * browser an attaching recorder finds: each version needs only the browser
