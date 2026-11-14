@@ -267,7 +267,7 @@ for (const [kind, edit, error] of [
 ] as const) {
   // Playwright reads a test's fixtures from this pattern.
   // eslint-disable-next-line no-empty-pattern
-  test(`a ${kind} error names the source file without generated coordinates`, async ({}, testInfo) => {
+  test(`an ${kind} error names the source file without generated coordinates`, async ({}, testInfo) => {
     const project = testInfo.outputPath("project");
     await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
     await editPlainPage(project, edit);
@@ -280,7 +280,7 @@ for (const [kind, edit, error] of [
       const failure = await agent.call("ayme_list_tools");
       expect(failure.isError).toBe(true);
       expect(failure.text).toMatch(error);
-      expect(agent.log).toMatch(error);
+      await expect.poll(() => agent.log, REBUILT_WITHIN).toMatch(error);
       if (kind === "unresolved import") {
         expect(failure.text).not.toMatch(/PlainPage\.ts:\d+:\d+:/);
         expect(agent.log).not.toMatch(/PlainPage\.ts:\d+:\d+:/);
