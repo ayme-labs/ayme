@@ -131,7 +131,8 @@ export class RecorderSession extends Context.Service<
         const kept = new Map<string, Queued["reply"]>();
         /** Gives an answer to the command that waits for it. */
         const give = (to: Queued["reply"], result: CommandResult) =>
-          // Stryker disable next-line ConditionalExpression: every answer the lifecycle gives follows a command, which waits for it; the check is for the type
+          // Every answer the lifecycle gives follows a command, which waits
+          // for it: the check is for the type.
           to ? Deferred.succeed(to, result) : Effect.void;
 
         /** Gives a command's answer, now or as the lifecycle keeps it for
