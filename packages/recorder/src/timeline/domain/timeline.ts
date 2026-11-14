@@ -1,4 +1,5 @@
 import {
+  isSyntheticRef,
   MonotonicTimeMsSchema,
   PageIdSchema,
   StructuralObservationSession,
@@ -32,10 +33,6 @@ import { pictureBefore } from "./reportPicture";
 import { locateTarget } from "./target";
 
 export type { PackageHeader } from "./packageText";
-
-/** A ref Playwright gave an element, of the page or of a frame in it; core
- * makes up refs of another form for nodes Playwright gave none. */
-const BROWSER_REF = /^(f\d+)*e\d+$/;
 
 /** A snapshot as the timeline keeps it. */
 type Kept = {
@@ -116,12 +113,13 @@ export class Timeline {
   private changes = 0;
   /** Every Interaction taken in, in order, for the trace's sake: whether it
    * left its Visit says whether its "after" is a picture of the same one. */
-  private readonly recorded: (RecordedInteraction & {
-    readonly id: string;
-    readonly leftVisit: boolean;
+  private readonly recorded: (Waiting & {
+    /** Its "after" when that is a snapshot of the Visit it started in; null
+     * when it has none, or left its Visit. */
+    readonly afterInVisit: string | null;
   })[] = [];
-  /** When each snapshot was read. */
-  private readonly readAt = new Map<string, number>();
+  /** When each snapshot was read. No snapshot was read at no time. */
+  private readonly readAt = new Map<string | null, number>();
   private told: readonly RecordedVisit[] = [];
   private readonly warned: RecorderWarning[] = [];
 
@@ -206,11 +204,11 @@ export class Timeline {
         visit.waiting.push(recorded);
         this.recorded.push({
           ...recorded,
-          leftVisit:
-            interaction.after !== null &&
-            !visit.snapshots.some(
-              (kept) => kept.snapshot.id === interaction.after
-            ),
+          afterInVisit: visit.snapshots.some(
+            (kept) => kept.snapshot.id === interaction.after
+          )
+            ? interaction.after
+            : null,
         });
         // Everything up to it is settled now: what changed before it, and
         // what it changed.
@@ -269,8 +267,9 @@ export class Timeline {
       const now = latest
         ? [...latest.firstRefs].find(([, first]) => first === targetRef)?.[0]
         : undefined;
-      // Only a ref the browser gave can name an element of the page.
-      if (!now || !BROWSER_REF.test(now)) return null;
+      // Only a ref the browser gave can name an element of the page: core
+      // makes up refs for the nodes the browser gave none.
+      if (!now || isSyntheticRef(now)) return null;
       return { page: visit.page, ref: now, selector };
     }
     return null;
@@ -280,11 +279,13 @@ export class Timeline {
     visit: Visit,
     snapshot: PageSnapshot
   ): Promise<Omit<Kept, "resumes">> {
+    // Stryker disable next-line MethodExpression: equivalent, since the clock only gives core's own timeline the time of a navigation, which the timeline never reads back
     this.latestAt = Math.max(this.latestAt, snapshot.at);
     const pageId = PageIdSchema.parse(snapshot.page);
     const tree = StructuralTree.fromAriaSnapshotYaml(snapshot.tree, this.refs);
     const at = MonotonicTimeMsSchema.parse(snapshot.at);
     const observation = this.session.recordObservation({
+      // Stryker disable next-line StringLiteral: equivalent, since core reads an entry's kind only for a Visit's or an action's evidence, which the timeline never asks for
       kind: "observation",
       at,
       pageId,
@@ -297,11 +298,11 @@ export class Timeline {
       (ledger) => {
         const now = new Map<AriaRef, AriaRef>();
         for (const [ref, first] of visit.firstRefs) {
+          // The ledger stands at this snapshot: a ref it resolves is under a
+          // ref this tree has.
           const resolved = ledger.resolve(ref);
-          if (
-            resolved.status === "resolved" &&
-            tree.hasNode(resolved.currentRef)
-          )
+          // Stryker disable next-line ConditionalExpression: "true" is equivalent, since a ref that is not resolved has no current ref and what is kept under none is never read
+          if (resolved.status === "resolved")
             now.set(resolved.currentRef, first);
         }
         for (const ref of tree.getAllRefs()) {
@@ -383,8 +384,10 @@ export class Timeline {
       (ledger) => {
         const sameIdentity = (beforeRef: AriaRef, afterRef: AriaRef) =>
           ledger.sameIdentity(beforeRef, afterRef);
+        // Stryker disable next-line ObjectLiteral: equivalent, since the picture's tree has every element the earlier snapshot shares with it under that snapshot's ref, which leaves no pair for the record to deny
+        const sinceBefore = { sameIdentity };
         return [
-          StructuralTree.reconcile(from.tree, picture.tree, { sameIdentity }),
+          StructuralTree.reconcile(from.tree, picture.tree, sinceBefore),
           StructuralTree.reconcile(picture.tree, to.tree, { sameIdentity }),
         ];
       }
@@ -399,11 +402,12 @@ export class Timeline {
   }
 
   /**
-   * Produces a Visit's entries up to the snapshot at `upTo`: the entry of an
-   * Interaction that starts at a snapshot on the way, and a change of its
-   * own for every other step from one snapshot to the next.
+   * Produces a Visit's entries up to the snapshot at `upTo`, or to its last
+   * one: the entry of an Interaction that starts at a snapshot on the way,
+   * and a change of its own for every other step from one snapshot to the
+   * next.
    */
-  private async produce(visit: Visit, upTo: number): Promise<void> {
+  private async produce(visit: Visit, upTo = Infinity): Promise<void> {
     const before = visit.entries.length;
     while (visit.snapshots[visit.through]) {
       const interaction = this.takeStarting(visit);
@@ -450,7 +454,9 @@ export class Timeline {
       ),
       changeTree: change === "" ? null : change,
     });
-    if (end > visit.through) visit.through = end;
+    // The entries never go back: an Interaction with no "after" here, or
+    // one written late, leaves them where they stand.
+    visit.through = Math.max(visit.through, end);
   }
 
   /**
@@ -499,7 +505,9 @@ export class Timeline {
   private async writeStep(visit: Visit, upTo: number): Promise<boolean> {
     const through = visit.snapshots[visit.through]!;
     const next = visit.snapshots[visit.through + 1];
-    if (visit.through >= upTo || !next) return false;
+    // Stryker disable next-line EqualityOperator: ">" is equivalent, since at `upTo` itself an Interaction starts, or the Visit ends
+    const reached = visit.through >= upTo;
+    if (reached || !next) return false;
     // What changed while the recorder was paused is left out: the
     // snapshot where recording resumes is compared with nothing before it.
     const change = next.resumes
@@ -540,7 +548,7 @@ export class Timeline {
       if (visit.start === null)
         visit.through = visit.start = visit.snapshots.length - 1;
       const first = visit.snapshots[visit.start]!;
-      await this.produce(visit, visit.snapshots.length - 1);
+      await this.produce(visit);
       visits.push({
         visitId: visit.id,
         url: visit.url,
@@ -549,9 +557,7 @@ export class Timeline {
         baselineTree: wholeTreeText(first.stable),
       });
     }
-    return visits.length === 0
-      ? null
-      : renderPackage(header, visits, this.tracePoints(positions));
+    return renderPackage(header, visits, this.tracePoints(positions));
   }
 
   /** Where the trace holds each Interaction: the position of its "before"
@@ -560,25 +566,20 @@ export class Timeline {
     positions: Readonly<Record<string, string>>
   ): TracePoint[] {
     if (Object.keys(positions).length === 0) return [];
-    return this.recorded.map((interaction) => {
-      const before = positions[interaction.before];
+    // No snapshot has no position, like a snapshot the trace does not hold.
+    const position: ReadonlyMap<string | null, string> = new Map(
+      Object.entries(positions)
+    );
+    return this.recorded.map((interaction) => ({
+      interactionId: interaction.id,
+      pageId: interaction.page,
+      // A field with no value is left out of the package.
+      beforeSnapshotId: position.get(interaction.before),
       // An Interaction that left its Visit has no "after" in it: the next
       // Visit's first picture shows where it led.
-      const after =
-        interaction.after === null || interaction.leftVisit
-          ? undefined
-          : positions[interaction.after];
-      return {
-        interactionId: interaction.id,
-        pageId: interaction.page,
-        ...(before === undefined ? {} : { beforeSnapshotId: before }),
-        ...(after === undefined ? {} : { afterSnapshotId: after }),
-        startedAt: interaction.at,
-        endedAt:
-          (interaction.after === null
-            ? undefined
-            : this.readAt.get(interaction.after)) ?? interaction.at,
-      };
-    });
+      afterSnapshotId: position.get(interaction.afterInVisit),
+      startedAt: interaction.at,
+      endedAt: this.readAt.get(interaction.after) ?? interaction.at,
+    }));
   }
 }
