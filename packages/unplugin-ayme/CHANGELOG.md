@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/unplugin-ayme-v0.2.0...unplugin-ayme-v0.3.0) (2026-11-14)
+
+
+### Features
+
+* **ayme:** move the Page Object compiler behind a Node-only compiler entry ([#1222](https://github.com/ayme-labs/ayme/issues/1222)) ([9cacd7b](https://github.com/ayme-labs/ayme/commit/9cacd7bfe7fcd408ee6a4ed53e1c00f29234b894))
+
+
+### Bug Fixes
+
+* **mcp:** give served Page Object build failures a location and no advice ([e951220](https://github.com/ayme-labs/ayme/commit/e951220d5cac234556942ef03c9721946acc8c8a)), closes [#1247](https://github.com/ayme-labs/ayme/issues/1247) [#1248](https://github.com/ayme-labs/ayme/issues/1248)
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/unplugin-ayme-v0.1.1...unplugin-ayme-v0.2.0) (2026-11-04)
 
 

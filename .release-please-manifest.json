@@ -1,11 +1,11 @@
 {
-  "packages/angular": "0.2.0",
-  "packages/ayme": "0.2.0",
-  "packages/inspector": "0.2.0",
-  "packages/mcp": "0.2.0",
-  "packages/react": "0.2.0",
-  "packages/svelte": "0.2.0",
-  "packages/unplugin-ayme": "0.2.0",
-  "packages/vue": "0.2.0",
-  "packages/webmcp": "0.2.0"
+  "packages/angular": "0.3.0",
+  "packages/ayme": "0.3.0",
+  "packages/inspector": "0.3.0",
+  "packages/mcp": "0.3.0",
+  "packages/react": "0.3.0",
+  "packages/svelte": "0.3.0",
+  "packages/unplugin-ayme": "0.3.0",
+  "packages/vue": "0.3.0",
+  "packages/webmcp": "0.3.0"
 }
