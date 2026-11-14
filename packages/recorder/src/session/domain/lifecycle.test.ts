@@ -5548,6 +5548,11 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     warning: { kind: "notRecorded", message: what },
   });
   const timeLimit: Happening = { kind: "timeLimitPassed" };
+  /** The first snapshot of a second page. */
+  const snapshotOf2: ToDo = {
+    kind: "browser",
+    ask: { kind: "takeSnapshot", snapshot: "snapshot_1", page: "page_2" },
+  };
 
   it.each<{
     name: string;
@@ -5719,6 +5724,58 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         [
           waitForSettled("reported_2"),
           written(choice, "snapshot_2", null, 10, true),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    {
+      name: "a choice that is left out takes nothing else with it: typing that was to start where it ends is recorded with its 'after' only",
+      happened: [
+        opened,
+        ...started,
+        reportedAs(choice),
+        failed(takeSnapshot("snapshot_1")),
+        reportedAs(typed("m")),
+        failed(takeSnapshot("snapshot_2")),
+        settled("reported_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_2")],
+        [
+          notRecorded(
+            "Typing, a choice or an upload is not recorded: its page could not be read."
+          ),
+          waitForSettled("reported_2"),
+          afterOnly,
+        ],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3"), letThrough(null)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a choice whose first snapshot cannot be taken on a page that opened while recording, and held nothing, is recorded with its 'after' only",
+      happened: [
+        opened,
+        ...started,
+        { kind: "pageOpened", page: "page_2", url: "http://shop.test/help" },
+        { kind: "interactionReported", page: "page_2", report: choice },
+        failed(snapshotOf2),
+      ],
+      todo: [
+        [snapshotOf2],
+        [
+          {
+            kind: "browser",
+            ask: {
+              kind: "waitForSettled",
+              page: "page_2",
+              input: "reported_1",
+            },
+          },
+          afterOnly,
         ],
       ],
       state: { phase: "recording" },

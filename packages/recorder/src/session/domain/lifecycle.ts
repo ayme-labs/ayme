@@ -1578,6 +1578,7 @@ function startReported(draft: Draft, index: number): boolean {
   const latest = gateOf(draft, input.page)?.latest;
   if (!latest) {
     change(draft, input.id, {
+      // Stryker disable next-line StringLiteral: no rule reads this stage of an input no page held; it is only no longer "waiting", as with any other name
       stage: "takingBefore",
       asked: askSnapshot(draft, input.page),
     });
@@ -2185,7 +2186,8 @@ function leaveOut(draft: Draft, input: Input) {
       kind: "notRecorded",
       message:
         input.held.kind === "asserted"
-          ? `An assertion of ${input.report?.selector} is not recorded: its page could not be read.`
+          ? // Stryker disable next-line OptionalChaining: an assertion has its report; the check is for the type
+            `An assertion of ${input.report?.selector} is not recorded: its page could not be read.`
           : "Typing, a choice or an upload is not recorded: its page could not be read.",
     },
   });
