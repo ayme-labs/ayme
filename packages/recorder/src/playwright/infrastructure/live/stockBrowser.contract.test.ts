@@ -1246,3 +1246,94 @@ it(`gives a click in a frame inside a frame the target ref of its element, throu
     interaction: { type: "click", targetRef: deepRef },
   });
 });
+
+it("tells that the page is a Settled Page only once it has stopped changing, for the page and the input the wait was asked for", async () => {
+  // A click starts six changes, 150 ms apart: each comes within core's
+  // quiet window of the one before, and the last well before its deadline.
+  const browser = await onStockPlaywright(`
+    <button id="load">Load</button>
+    <ul id="items"></ul>
+    <script>
+      document.getElementById("load").addEventListener("click", () => {
+        let added = 0;
+        const add = () => {
+          const item = document.createElement("li");
+          item.textContent = "Item " + ++added;
+          document.getElementById("items").append(item);
+          window.lastChange = Date.now();
+          if (added < 6) setTimeout(add, 150);
+        };
+        add();
+      });
+    </script>`);
+  const items = () => browser.page.locator("#items li").count();
+
+  await browser.click(browser.page.locator("#load"));
+  await browser.ask({
+    kind: "waitForSettled",
+    page: "page_1",
+    input: "input_1",
+  });
+
+  expect(await browser.toldOf("pageSettled")).toEqual({
+    kind: "pageSettled",
+    page: "page_1",
+    input: "input_1",
+  });
+  const settled = Date.now();
+  expect(await items()).toBe(6);
+  expect(await browser.page.evaluate("window.lastChange")).toBeLessThan(
+    settled
+  );
+});
+
+it("holds every key while a held input waits, and lets keys reach the page again once asked to, unless the page held an input after the last one named", async () => {
+  const browser = await onStockPlaywright(
+    `<label>Item <input id="item" /></label>`
+  );
+  const typed = () => browser.page.locator("#item").inputValue();
+  const held = () =>
+    browser.told.filter((signal) => signal.kind === "inputHeld");
+  /** Types one key, and the gate's answer: the input it held, if any. */
+  const type = async (key: string) => {
+    const before = held().length;
+    await browser.page.keyboard.type(key);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return held()[before];
+  };
+  const passOn = async (input: string) => {
+    await browser.ask({ kind: "passOn", input });
+    await browser.toldOf("inputPassedOn", (signal) => signal.input === input);
+  };
+  /** Nothing answers the request: the next key waits a moment for it. */
+  const letThrough = async (upTo: string) => {
+    await browser.ask({ kind: "letInputsThrough", page: "page_1", upTo });
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  };
+  await reporting(browser);
+  await browser.page.locator("#item").focus();
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  // From Record on, every key is held, typing included.
+  const a = (await type("a"))!;
+  const b = (await type("b"))!;
+  expect(await typed()).toBe("");
+  await passOn(a.input);
+  await passOn(b.input);
+  await expect.poll(typed).toBe("ab");
+
+  // The page held b after a: letting through up to a still holds keys.
+  await letThrough(a.input);
+  const c = (await type("c"))!;
+  expect(c).toBeDefined();
+  expect(await typed()).toBe("ab");
+  await passOn(c.input);
+  await expect.poll(typed).toBe("abc");
+
+  // Up to the last input the page held: the next key is the page's own.
+  await letThrough(c.input);
+  expect(await type("d")).toBeUndefined();
+  await expect.poll(typed).toBe("abcd");
+  expect(held()).toHaveLength(3);
+});
