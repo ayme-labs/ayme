@@ -5132,6 +5132,47 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
     {
+      name: "a choice and then typing, both reported before their page has a snapshot, are written in that order: one snapshot is the choice's 'after' and the typing's 'before' (rules 11 and 12)",
+      happened: [
+        opened,
+        ...started,
+        reportedOn(choice),
+        reportedOn(typed("m")),
+        taken("snapshot_1"),
+        taken("snapshot_2"),
+        settled("reported_2"),
+        taken("snapshot_3"),
+        finish,
+        gateOff,
+        taken("snapshot_4"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [],
+        [
+          keep("snapshot_1"),
+          waitForSettled("reported_1"),
+          takeSnapshot("snapshot_2"),
+          letThrough(null),
+        ],
+        [
+          keep("snapshot_2"),
+          waitForSettled("reported_2"),
+          fromReport(choice, "snapshot_1", "snapshot_2"),
+        ],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_4")],
+        [
+          keep("snapshot_4"),
+          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+    {
       name: "typing whose wait for a Settled Page ends while a click's 'before' is being taken still ends at that snapshot, and takes none of its own",
       happened: [
         opened,
