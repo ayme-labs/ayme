@@ -508,21 +508,12 @@ const COMMANDS: readonly RecorderCommandType[] = [
   "clearHighlight",
 ];
 
-/** A command of this type, to ask whether it applies: the answer does not
- * depend on which entry it names. */
-const probe = (type: RecorderCommandType): RecorderCommand =>
-  type === "discard" || type === "restore" || type === "highlight"
-    ? { type, entry: "" }
-    : { type };
-
 /** The commands that apply in a state: those the lifecycle would not answer
- * "ignored". The window offers these, and no rule of its own. */
+ * "ignored". The window offers these, and no rule of its own. Whether one
+ * applies does not depend on which entry it names. */
 export function offered(state: LifecycleState): RecorderCommandType[] {
   return COMMANDS.filter(
-    (type) =>
-      !command(state, probe(type)).todo.some(
-        (item) => item.kind === "reply" && item.result === "ignored"
-      )
+    (type) => commandIn(state, { type, entry: "" } as RecorderCommand) !== null
   );
 }
 
@@ -716,18 +707,16 @@ const applied = (next: Step): Step => ({
 });
 
 function command(state: LifecycleState, asked: RecorderCommand): Step {
-  if (asked.type === "highlight" || asked.type === "clearHighlight")
-    return reviewable(state)
-      ? highlight(state, asked)
-      : { state, todo: [reply("ignored")] };
   // A command that does not apply now changes nothing: it is never kept for
   // later, and never read as the opposite one.
   return commandIn(state, asked) ?? { state, todo: [reply("ignored")] };
 }
 
-/** What a command does in the phase it is asked in; null when it does not
+/** What a command does in the state it is asked in; null when it does not
  * apply there. */
 function commandIn(state: LifecycleState, asked: RecorderCommand): Step | null {
+  if (asked.type === "highlight" || asked.type === "clearHighlight")
+    return reviewable(state) ? highlight(state, asked) : null;
   switch (state.phase) {
     case "notRecording":
       return asked.type === "record" && state.pages.length > 0
@@ -789,7 +778,10 @@ function whileRecording(
     case "clear":
       return applied(wrapUp(state, "clear"));
     case "assertVisibility":
-      return state.starting ? null : assertVisibility(state);
+      // It applies once Record is answered, and while it is not on already.
+      return state.starting || state.picking !== "off"
+        ? null
+        : assertVisibility(state);
     case "leaveAssertVisibility":
       return leaveAssertVisibility(state);
     default:
@@ -2174,7 +2166,6 @@ const anyHeld = (inputs: readonly Input[]) =>
 function assertVisibility(
   state: Extract<LifecycleState, { phase: "recording" }>
 ): Step {
-  if (state.picking !== "off") return { state, todo: [reply("ignored")] };
   if (anyHeld(state.inputs))
     return {
       state: { ...state, picking: "waiting" },
