@@ -28,6 +28,8 @@ async function read(input: {
   /** The target's ref in the picture. */
   target: string | null;
   type?: string;
+  /** What the page looked like earlier in the Visit, oldest first. */
+  earlier?: string[];
 }) {
   const timeline = new Timeline();
   const additions: TimelineAddition[] = [
@@ -37,6 +39,16 @@ async function read(input: {
       url: "http://shop.test/",
       cause: "initial",
     },
+    ...(input.earlier ?? []).map((tree, index): TimelineAddition => ({
+      kind: "snapshot",
+      snapshot: {
+        id: `earlier_${index + 1}`,
+        page: "page_1",
+        url: "http://shop.test/",
+        at: index + 1,
+        tree,
+      },
+    })),
     ...[input.before, input.after].map((tree, index): TimelineAddition => ({
       kind: "snapshot",
       snapshot: {
@@ -235,6 +247,108 @@ describe("the report's picture, matched to the snapshots around an input", () =>
         targetRef: "e3",
         warnings: [],
       });
+    });
+  });
+
+  it("credits the input with replacing two elements that look alike by a new one: none of the three is another's successor", async () => {
+    // Core cannot tell which of the two the new one would be, so it is
+    // neither: both were there at the moment of the input, and are gone.
+    expect(
+      await read({
+        before: page(
+          `- listitem [ref=e2]: Milk`,
+          `- listitem [ref=e3]: Milk`,
+          `- textbox "Item" [ref=e4]`
+        ),
+        picture: picture(
+          `- listitem [ref=e21]: Milk`,
+          `- listitem [ref=e22]: Milk`,
+          `- textbox "Item" [ref=e23]: m`
+        ),
+        after: page(
+          `- listitem [ref=e5]: Milk`,
+          `- textbox "Item" [ref=e4]: milk`
+        ),
+        target: "e23",
+      })
+    ).toEqual({
+      changedBefore: null,
+      changedByIt: changed(
+        `- <added> [ref=e5] listitem: Milk`,
+        `- <removed> [ref=e2] listitem: Milk`,
+        `- <removed> [ref=e3] listitem: Milk`,
+        `- <changed> [ref=e4] textbox "Item": milk`
+      ),
+      targetRef: "e4",
+      warnings: [],
+    });
+  });
+
+  it("credits the input with putting one element in the place of another that looks like it, when the recording has seen the two side by side", async () => {
+    // Two "Milk" earlier on; the page showed one of them before the input
+    // and at its moment, and shows the other one after it.
+    expect(
+      await read({
+        earlier: [
+          page(
+            `- listitem [ref=e2]: Milk`,
+            `- listitem [ref=e3]: Milk`,
+            `- textbox "Item" [ref=e4]`
+          ),
+        ],
+        before: page(`- listitem [ref=e2]: Milk`, `- textbox "Item" [ref=e4]`),
+        picture: picture(
+          `- listitem [ref=e21]: Milk`,
+          `- textbox "Item" [ref=e22]: m`
+        ),
+        after: page(
+          `- listitem [ref=e3]: Milk`,
+          `- textbox "Item" [ref=e4]: milk`
+        ),
+        target: "e22",
+      })
+    ).toEqual({
+      changedBefore: null,
+      changedByIt: changed(
+        `- <added> [ref=e3] listitem: Milk`,
+        `- <removed> [ref=e2] listitem: Milk`,
+        `- <changed> [ref=e4] textbox "Item": milk`
+      ),
+      targetRef: "e4",
+      warnings: [],
+    });
+  });
+
+  it("takes the target of an input that is neither typing nor a choice as the picture shows it", async () => {
+    // The list had finished loading when the file was chosen.
+    expect(
+      await read({
+        before: page(
+          `- group "Attachments" [ref=e2]:`,
+          `  - paragraph [ref=e3]: Loading`
+        ),
+        picture: picture(
+          `- group "Attachments" [ref=e21]:`,
+          `  - paragraph [ref=e22]: No file yet`
+        ),
+        after: page(
+          `- group "Attachments" [ref=e2]:`,
+          `  - paragraph [ref=e3]: report.pdf`
+        ),
+        target: "e21",
+        type: "setInputFiles",
+      })
+    ).toEqual({
+      changedBefore: changed(
+        `- [ref=e2] group "Attachments":`,
+        `  - <changed> [ref=e3] paragraph: No file yet`
+      ),
+      changedByIt: changed(
+        `- [ref=e2] group "Attachments":`,
+        `  - <changed> [ref=e3] paragraph: report.pdf`
+      ),
+      targetRef: "e2",
+      warnings: [],
     });
   });
 
