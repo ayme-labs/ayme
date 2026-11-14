@@ -28,6 +28,19 @@ export function launchOptions(
   };
 }
 
+/** The browser a target asks for: one launched on a URL, or the running one
+ * at an address. */
+export function browserOf(
+  target:
+    | { readonly url: string; readonly headless?: boolean | undefined }
+    | { readonly cdpEndpoint: string },
+  env: NodeJS.ProcessEnv
+): RecorderOptions["browser"] {
+  return "url" in target
+    ? { launch: launchOptions(target.url, env, target.headless) }
+    : { attach: { cdpEndpoint: target.cdpEndpoint } };
+}
+
 /** What the terminal is told once the recorder has started. */
 export function startLine(browser: RecorderOptions["browser"]): string {
   return "attach" in browser
@@ -38,6 +51,15 @@ export function startLine(browser: RecorderOptions["browser"]): string {
 /** What the terminal is told of the recorder window: its address. */
 export function windowLine(url: string): string {
   return `Recorder UI: ${url}\n`;
+}
+
+/** What the terminal is told once the recorder has started: where it is, and
+ * the address of its window when it serves one. */
+export function startLines(
+  browser: RecorderOptions["browser"],
+  windowUrl: string | null | undefined
+): string {
+  return startLine(browser) + (windowUrl ? windowLine(windowUrl) : "");
 }
 
 /**
@@ -84,6 +106,26 @@ export function warningPrinter(
 export const exitCode = (outcome: RecordingOutcome): number =>
   outcome.kind === "failed" ? 1 : 0;
 
+/** What to print for an outcome, on which stream, and the exit code. */
+export function outcomeReport(outcome: RecordingOutcome): {
+  stream: "stdout" | "stderr";
+  text: string;
+  code: number;
+} {
+  return {
+    stream: outcome.kind === "failed" ? "stderr" : "stdout",
+    text: outcomeLine(outcome),
+    code: exitCode(outcome),
+  };
+}
+
+/** What a person is told of an error that stopped the recorder from starting:
+ * its own sentence, with no stack trace. Nothing for any other error, which
+ * is not theirs to read. */
+export function startFailure(error: unknown): string | undefined {
+  return error instanceof RecorderStartError ? `${error.message}\n` : undefined;
+}
+
 /** Starts the recorder in the project the command was started in. A start
  * error is printed and gives no recorder. */
 async function start(
@@ -97,9 +139,9 @@ async function start(
       toolbar: { script: toolbarScript(import.meta.url) },
     });
   } catch (error) {
-    if (!(error instanceof RecorderStartError)) throw error;
-    // Its message is a sentence for the terminal: no stack trace.
-    process.stderr.write(`${error.message}\n`);
+    const told = startFailure(error);
+    if (told === undefined) throw error;
+    process.stderr.write(told);
     return undefined;
   }
 }
@@ -107,17 +149,15 @@ async function start(
 /**
  * Runs `codegen <url>`, or `codegen --cdp-endpoint <address>` when given
  * the running browser's address, to its end. Resolves with the process's
- * exit code.
+ * exit code. What it prints and which code it gives are decided above; this
+ * is the wiring to the terminal's signals and streams.
  */
 export async function codegen(
   target:
-    | { readonly url: string; readonly headless?: boolean }
+    | { readonly url: string; readonly headless?: boolean | undefined }
     | { readonly cdpEndpoint: string }
 ): Promise<number> {
-  const browser: RecorderOptions["browser"] =
-    "url" in target
-      ? { launch: launchOptions(target.url, process.env, target.headless) }
-      : { attach: { cdpEndpoint: target.cdpEndpoint } };
+  const browser = browserOf(target, process.env);
   const recorder = await start(browser);
   if (!recorder) return 1;
 
@@ -126,14 +166,11 @@ export async function codegen(
   const end = () => recorder.end();
   process.on("SIGINT", end);
   process.on("SIGTERM", end);
-  process.stdout.write(startLine(browser));
-  if (recorder.windowUrl) process.stdout.write(windowLine(recorder.windowUrl));
+  process.stdout.write(startLines(browser, recorder.windowUrl));
   const printWarnings = warningPrinter((text) => process.stderr.write(text));
   recorder.subscribe((update) => printWarnings(update.state.warnings));
 
-  const outcome = await recorder.done;
-  (outcome.kind === "failed" ? process.stderr : process.stdout).write(
-    outcomeLine(outcome)
-  );
-  return exitCode(outcome);
+  const { stream, text, code } = outcomeReport(await recorder.done);
+  process[stream].write(text);
+  return code;
 }

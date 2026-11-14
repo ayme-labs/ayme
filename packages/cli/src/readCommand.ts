@@ -42,18 +42,33 @@ export type Command =
 export function readCommand(args: string[]): Command {
   // The stock tool's own words and flags: none of them is read here.
   if (args[0] === "trace") return { kind: "trace", args: args.slice(1) };
-  if (args[0] === "install")
-    return {
-      kind: "install",
-      args: args.length > 1 ? args.slice(1) : ["chromium"],
-    };
+  if (args[0] === "install") return readInstall(args.slice(1));
+  return readCodegen(args);
+}
+
+/** `install`: the browser and flags for the project's own Playwright, which
+ * installs Chromium, the browser the recorder records in, unless told. */
+function readInstall(args: string[]): Command {
+  return { kind: "install", args: args.length > 0 ? args : ["chromium"] };
+}
+
+/** What `parseArgs` reads of the options `codegen` knows. */
+type Flags = {
+  help?: boolean;
+  headless?: boolean;
+  headed?: boolean;
+  "cdp-endpoint"?: string;
+};
+
+const fail = (message: string): Command => ({
+  kind: "error",
+  text: `${message}\n\n${USAGE}`,
+});
+
+/** `codegen`, or anything else this is not: its options and words. */
+function readCodegen(args: string[]): Command {
   let positionals: string[];
-  let values: {
-    help?: boolean;
-    headless?: boolean;
-    headed?: boolean;
-    "cdp-endpoint"?: string;
-  };
+  let values: Flags;
   try {
     ({ positionals, values } = parseArgs({
       args,
@@ -66,33 +81,42 @@ export function readCommand(args: string[]): Command {
       },
     }));
   } catch (error) {
-    return { kind: "error", text: `${(error as Error).message}\n\n${USAGE}` };
+    return fail((error as Error).message);
   }
   if (values.help) return { kind: "help", text: USAGE };
+  return flagConflict(values) ?? codegenCommand(positionals, values);
+}
+
+/** The error for options that cannot go together, if any do. */
+function flagConflict(values: Flags): Command | undefined {
+  if (values.headless && values.headed)
+    return fail("Give either --headless or --headed, not both.");
+  if (
+    values["cdp-endpoint"] !== undefined &&
+    (values.headless || values.headed)
+  )
+    return fail(
+      "--headless and --headed apply when the recorder opens the browser, not with --cdp-endpoint."
+    );
+  return undefined;
+}
+
+/** The words after the options: `codegen <url>`, or `codegen
+ * --cdp-endpoint <address>`. */
+function codegenCommand(positionals: string[], values: Flags): Command {
   const [word, url, ...more] = positionals;
   const cdpEndpoint = values["cdp-endpoint"];
-  if (values.headless && values.headed)
-    return {
-      kind: "error",
-      text: `Give either --headless or --headed, not both.\n\n${USAGE}`,
-    };
-  const windowSetting = values.headless || values.headed;
-  if (cdpEndpoint !== undefined && windowSetting)
-    return {
-      kind: "error",
-      text: `--headless and --headed apply when the recorder opens the browser, not with --cdp-endpoint.\n\n${USAGE}`,
-    };
-  if (word === "codegen" && cdpEndpoint !== undefined) {
+  if (word !== "codegen") return { kind: "error", text: USAGE };
+  if (cdpEndpoint !== undefined) {
     if (url === undefined) return { kind: "attach", cdpEndpoint };
     if (more.length === 0)
-      return {
-        kind: "error",
-        text: `Give either a URL or --cdp-endpoint, not both: attaching never navigates the page.\n\n${USAGE}`,
-      };
+      return fail(
+        "Give either a URL or --cdp-endpoint, not both: attaching never navigates the page."
+      );
   }
-  if (word !== "codegen" || url === undefined || more.length > 0)
+  if (url === undefined || more.length > 0)
     return { kind: "error", text: USAGE };
-  return windowSetting
+  return values.headless || values.headed
     ? { kind: "codegen", url, headless: values.headless === true }
     : { kind: "codegen", url };
 }
