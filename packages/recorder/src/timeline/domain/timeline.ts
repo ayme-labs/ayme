@@ -1,4 +1,5 @@
 import {
+  isSyntheticRef,
   MonotonicTimeMsSchema,
   PageIdSchema,
   StructuralObservationSession,
@@ -33,10 +34,6 @@ import { locateTarget } from "./target";
 
 export type { PackageHeader } from "./packageText";
 
-/** A ref Playwright gave an element, of the page or of a frame in it; core
- * makes up refs of another form for nodes Playwright gave none. */
-const BROWSER_REF = /^(f\d+)*e\d+$/;
-
 /** A snapshot as the timeline keeps it. */
 type Kept = {
   readonly snapshot: PageSnapshot;
@@ -52,6 +49,9 @@ type Kept = {
   readonly resumes: boolean;
 };
 
+/** An Interaction that has no entry yet. */
+type Waiting = RecordedInteraction & { readonly id: string };
+
 type Visit = {
   readonly id: string;
   /** The page it is a Visit of. */
@@ -60,7 +60,7 @@ type Visit = {
   readonly cause: VisitCause;
   readonly snapshots: Kept[];
   /** The Interactions that have no entry yet. */
-  readonly waiting: (RecordedInteraction & { readonly id: string })[];
+  readonly waiting: Waiting[];
   /** The entries produced so far, in order. */
   readonly entries: TimelineEntry[];
   /** The place in `snapshots` up to which entries are produced: what
@@ -73,6 +73,10 @@ type Visit = {
   /** From every ref the browser used in this Visit to the element's first. */
   readonly firstRefs: Map<AriaRef, AriaRef>;
 };
+
+/** The place of a snapshot among a Visit's; negative when it is not there. */
+const placeIn = (visit: Visit, snapshot: string | null) =>
+  visit.snapshots.findIndex((kept) => kept.snapshot.id === snapshot);
 
 /**
  * The timeline of one recording: Visits, snapshots and Interactions in, the
@@ -109,12 +113,13 @@ export class Timeline {
   private changes = 0;
   /** Every Interaction taken in, in order, for the trace's sake: whether it
    * left its Visit says whether its "after" is a picture of the same one. */
-  private readonly recorded: (RecordedInteraction & {
-    readonly id: string;
-    readonly leftVisit: boolean;
+  private readonly recorded: (Waiting & {
+    /** Its "after" when that is a snapshot of the Visit it started in; null
+     * when it has none, or left its Visit. */
+    readonly afterInVisit: string | null;
   })[] = [];
-  /** When each snapshot was read. */
-  private readonly readAt = new Map<string, number>();
+  /** When each snapshot was read. No snapshot was read at no time. */
+  private readonly readAt = new Map<string | null, number>();
   private told: readonly RecordedVisit[] = [];
   private readonly warned: RecorderWarning[] = [];
 
@@ -199,11 +204,11 @@ export class Timeline {
         visit.waiting.push(recorded);
         this.recorded.push({
           ...recorded,
-          leftVisit:
-            interaction.after !== null &&
-            !visit.snapshots.some(
-              (kept) => kept.snapshot.id === interaction.after
-            ),
+          afterInVisit: visit.snapshots.some(
+            (kept) => kept.snapshot.id === interaction.after
+          )
+            ? interaction.after
+            : null,
         });
         // Everything up to it is settled now: what changed before it, and
         // what it changed.
@@ -262,8 +267,9 @@ export class Timeline {
       const now = latest
         ? [...latest.firstRefs].find(([, first]) => first === targetRef)?.[0]
         : undefined;
-      // Only a ref the browser gave can name an element of the page.
-      if (!now || !BROWSER_REF.test(now)) return null;
+      // Only a ref the browser gave can name an element of the page: core
+      // makes up refs for the nodes the browser gave none.
+      if (!now || isSyntheticRef(now)) return null;
       return { page: visit.page, ref: now, selector };
     }
     return null;
@@ -273,11 +279,13 @@ export class Timeline {
     visit: Visit,
     snapshot: PageSnapshot
   ): Promise<Omit<Kept, "resumes">> {
+    // Stryker disable next-line MethodExpression: equivalent, since the clock only gives core's own timeline the time of a navigation, which the timeline never reads back
     this.latestAt = Math.max(this.latestAt, snapshot.at);
     const pageId = PageIdSchema.parse(snapshot.page);
     const tree = StructuralTree.fromAriaSnapshotYaml(snapshot.tree, this.refs);
     const at = MonotonicTimeMsSchema.parse(snapshot.at);
     const observation = this.session.recordObservation({
+      // Stryker disable next-line StringLiteral: equivalent, since core reads an entry's kind only for a Visit's or an action's evidence, which the timeline never asks for
       kind: "observation",
       at,
       pageId,
@@ -290,11 +298,11 @@ export class Timeline {
       (ledger) => {
         const now = new Map<AriaRef, AriaRef>();
         for (const [ref, first] of visit.firstRefs) {
+          // The ledger stands at this snapshot: a ref it resolves is under a
+          // ref this tree has.
           const resolved = ledger.resolve(ref);
-          if (
-            resolved.status === "resolved" &&
-            tree.hasNode(resolved.currentRef)
-          )
+          // Stryker disable next-line ConditionalExpression: "true" is equivalent, since a ref that is not resolved has no current ref and what is kept under none is never read
+          if (resolved.status === "resolved")
             now.set(resolved.currentRef, first);
         }
         for (const ref of tree.getAllRefs()) {
@@ -376,8 +384,10 @@ export class Timeline {
       (ledger) => {
         const sameIdentity = (beforeRef: AriaRef, afterRef: AriaRef) =>
           ledger.sameIdentity(beforeRef, afterRef);
+        // Stryker disable next-line ObjectLiteral: equivalent, since the picture's tree has every element the earlier snapshot shares with it under that snapshot's ref, which leaves no pair for the record to deny
+        const sinceBefore = { sameIdentity };
         return [
-          StructuralTree.reconcile(from.tree, picture.tree, { sameIdentity }),
+          StructuralTree.reconcile(from.tree, picture.tree, sinceBefore),
           StructuralTree.reconcile(picture.tree, to.tree, { sameIdentity }),
         ];
       }
@@ -392,85 +402,127 @@ export class Timeline {
   }
 
   /**
-   * Produces a Visit's entries up to the snapshot at `upTo`: the entry of an
-   * Interaction that starts at a snapshot on the way, and a change of its
-   * own for every other step from one snapshot to the next.
+   * Produces a Visit's entries up to the snapshot at `upTo`, or to its last
+   * one: the entry of an Interaction that starts at a snapshot on the way,
+   * and a change of its own for every other step from one snapshot to the
+   * next.
    */
-  private async produce(visit: Visit, upTo: number): Promise<void> {
-    const { snapshots, entries } = visit;
-    const before = entries.length;
-    for (;;) {
-      const through = snapshots[visit.through];
-      if (!through) break;
-      // An Interaction starts at this snapshot. One that starts at a
-      // snapshot the entries have passed is written all the same, from its
-      // own start: no Interaction is left out for where it starts.
-      const place = (id: string | null) =>
-        snapshots.findIndex((kept) => kept.snapshot.id === id);
-      const starting = visit.waiting.findIndex(
-        (interaction) => place(interaction.before) <= visit.through
-      );
-      if (starting >= 0) {
-        const [interaction] = visit.waiting.splice(starting, 1);
-        const from = snapshots[place(interaction!.before)]!;
-        const end = place(interaction!.after);
-        let targetRef = locateTarget(from.tree, interaction!.report.target);
-        let change =
-          end < 0 ? "" : changeText(await this.change(from, snapshots[end]!));
-        if (interaction!.beforeFromReport && end >= 0) {
-          const read = await this.fromPicture(
-            from,
-            snapshots[end]!,
-            interaction!
-          );
-          if (read) {
-            targetRef = read.target;
-            change = read.changedByIt;
-            if (read.changedBefore !== "")
-              entries.push({
-                kind: "change",
-                id: `change_${++this.changes}`,
-                timestamp: interaction!.at,
-                changeTree: read.changedBefore,
-              });
-          } else
-            this.warned.push({
-              kind: "reportShape",
-              message: `Playwright's report of ${interaction!.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
-            });
-        }
-        entries.push({
-          kind: "interaction",
-          id: interaction!.id,
-          timestamp: interaction!.at,
-          interaction: interactionDetails(
-            interaction!.id,
-            interaction!.report,
-            targetRef ? (from.firstRefs.get(targetRef) ?? targetRef) : null
-          ),
-          changeTree: change === "" ? null : change,
-        });
-        if (end > visit.through) visit.through = end;
-        continue;
-      }
-      const next = snapshots[visit.through + 1];
-      if (visit.through >= upTo || !next) break;
-      // What changed while the recorder was paused is left out: the
-      // snapshot where recording resumes is compared with nothing before it.
-      const change = next.resumes
-        ? ""
-        : changeText(await this.change(through, next));
-      // Nothing changed: there is nothing to tell.
-      if (change !== "")
-        entries.push({
-          kind: "change",
-          id: `change_${++this.changes}`,
-          timestamp: next.snapshot.at,
-          changeTree: change,
-        });
-      visit.through += 1;
+  private async produce(visit: Visit, upTo = Infinity): Promise<void> {
+    const before = visit.entries.length;
+    while (visit.snapshots[visit.through]) {
+      const interaction = this.takeStarting(visit);
+      if (interaction) await this.writeInteraction(visit, interaction);
+      else if (!(await this.writeStep(visit, upTo))) break;
     }
-    if (entries.length > before) this.tell();
+    if (visit.entries.length > before) this.tell();
+  }
+
+  /**
+   * Takes the waiting Interaction that starts at the snapshot the entries
+   * stand at. One that starts at a snapshot the entries have passed is taken
+   * all the same, and written from its own start: no Interaction is left out
+   * for where it starts.
+   */
+  private takeStarting(visit: Visit): Waiting | undefined {
+    const starting = visit.waiting.findIndex(
+      (interaction) => placeIn(visit, interaction.before) <= visit.through
+    );
+    return starting < 0 ? undefined : visit.waiting.splice(starting, 1)[0];
+  }
+
+  /** Writes an Interaction's entry, and moves the entries on to its "after". */
+  private async writeInteraction(
+    visit: Visit,
+    interaction: Waiting
+  ): Promise<void> {
+    const from = visit.snapshots[placeIn(visit, interaction.before)]!;
+    const end = placeIn(visit, interaction.after);
+    const { target, change } = await this.effectOf(
+      visit,
+      interaction,
+      from,
+      visit.snapshots[end]
+    );
+    visit.entries.push({
+      kind: "interaction",
+      id: interaction.id,
+      timestamp: interaction.at,
+      interaction: interactionDetails(
+        interaction.id,
+        interaction.report,
+        target ? (from.firstRefs.get(target) ?? target) : null
+      ),
+      changeTree: change === "" ? null : change,
+    });
+    // The entries never go back: an Interaction with no "after" here, or
+    // one written late, leaves them where they stand.
+    visit.through = Math.max(visit.through, end);
+  }
+
+  /**
+   * An Interaction's target and what it changed, from its "before" to its
+   * "after"; nothing when it has no "after" in its Visit. For an input known
+   * from its report, the report's picture says how the page stood at the
+   * moment of the input: what had changed by then is written as a change of
+   * its own, ahead of the Interaction. A picture that cannot be read so is
+   * warned of, and the input is taken as one the gate held.
+   */
+  private async effectOf(
+    visit: Visit,
+    interaction: Waiting,
+    from: Kept,
+    to: Kept | undefined
+  ): Promise<{ target: AriaRef | undefined; change: string }> {
+    const held = {
+      target: locateTarget(from.tree, interaction.report.target),
+      change: to ? changeText(await this.change(from, to)) : "",
+    };
+    if (!interaction.beforeFromReport || !to) return held;
+    const read = await this.fromPicture(from, to, interaction);
+    if (!read) {
+      this.warned.push({
+        kind: "reportShape",
+        message: `Playwright's report of ${interaction.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
+      });
+      return held;
+    }
+    if (read.changedBefore !== "")
+      visit.entries.push({
+        kind: "change",
+        id: `change_${++this.changes}`,
+        timestamp: interaction.at,
+        changeTree: read.changedBefore,
+      });
+    return { target: read.target, change: read.changedByIt };
+  }
+
+  /**
+   * Writes the step from the snapshot the entries stand at to the next one
+   * as a change of its own, if anything changed, and moves the entries on.
+   * False when there is no step to write: the entries have come to `upTo`,
+   * or to the Visit's last snapshot.
+   */
+  private async writeStep(visit: Visit, upTo: number): Promise<boolean> {
+    const through = visit.snapshots[visit.through]!;
+    const next = visit.snapshots[visit.through + 1];
+    // Stryker disable next-line EqualityOperator: ">" is equivalent, since at `upTo` itself an Interaction starts, or the Visit ends
+    const reached = visit.through >= upTo;
+    if (reached || !next) return false;
+    // What changed while the recorder was paused is left out: the
+    // snapshot where recording resumes is compared with nothing before it.
+    const change = next.resumes
+      ? ""
+      : changeText(await this.change(through, next));
+    // Nothing changed: there is nothing to tell.
+    if (change !== "")
+      visit.entries.push({
+        kind: "change",
+        id: `change_${++this.changes}`,
+        timestamp: next.snapshot.at,
+        changeTree: change,
+      });
+    visit.through += 1;
+    return true;
   }
 
   /**
@@ -496,7 +548,7 @@ export class Timeline {
       if (visit.start === null)
         visit.through = visit.start = visit.snapshots.length - 1;
       const first = visit.snapshots[visit.start]!;
-      await this.produce(visit, visit.snapshots.length - 1);
+      await this.produce(visit);
       visits.push({
         visitId: visit.id,
         url: visit.url,
@@ -505,9 +557,7 @@ export class Timeline {
         baselineTree: wholeTreeText(first.stable),
       });
     }
-    return visits.length === 0
-      ? null
-      : renderPackage(header, visits, this.tracePoints(positions));
+    return renderPackage(header, visits, this.tracePoints(positions));
   }
 
   /** Where the trace holds each Interaction: the position of its "before"
@@ -516,25 +566,20 @@ export class Timeline {
     positions: Readonly<Record<string, string>>
   ): TracePoint[] {
     if (Object.keys(positions).length === 0) return [];
-    return this.recorded.map((interaction) => {
-      const before = positions[interaction.before];
+    // No snapshot has no position, like a snapshot the trace does not hold.
+    const position: ReadonlyMap<string | null, string> = new Map(
+      Object.entries(positions)
+    );
+    return this.recorded.map((interaction) => ({
+      interactionId: interaction.id,
+      pageId: interaction.page,
+      // A field with no value is left out of the package.
+      beforeSnapshotId: position.get(interaction.before),
       // An Interaction that left its Visit has no "after" in it: the next
       // Visit's first picture shows where it led.
-      const after =
-        interaction.after === null || interaction.leftVisit
-          ? undefined
-          : positions[interaction.after];
-      return {
-        interactionId: interaction.id,
-        pageId: interaction.page,
-        ...(before === undefined ? {} : { beforeSnapshotId: before }),
-        ...(after === undefined ? {} : { afterSnapshotId: after }),
-        startedAt: interaction.at,
-        endedAt:
-          (interaction.after === null
-            ? undefined
-            : this.readAt.get(interaction.after)) ?? interaction.at,
-      };
-    });
+      afterSnapshotId: position.get(interaction.afterInVisit),
+      startedAt: interaction.at,
+      endedAt: this.readAt.get(interaction.after) ?? interaction.at,
+    }));
   }
 }

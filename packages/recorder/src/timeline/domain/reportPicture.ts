@@ -5,7 +5,7 @@ import {
   type StructuralNode,
 } from "@ayme-dev/core/structural-observation";
 
-import { fitsScope, scopesOf } from "./target";
+import { scopesOf } from "./target";
 
 // An input the gate never holds, as typing, has no snapshot of its own just
 // before it. Playwright's report carries a picture of the page taken at the
@@ -48,17 +48,20 @@ export function pictureBefore(options: {
     options.picture,
     new SyntheticAriaRefFactory()
   );
+  // An element as the earlier snapshot has it; null for one only the later
+  // snapshot has, whose ref the earlier one never used.
   const asBefore = (node: StructuralNode) =>
-    node.status?.kind === "added"
-      ? null
-      : (between.getBeforeNode(node.ref) ?? previous.getNode(node.ref));
+    between.getBeforeNode(node.ref) ?? previous.getNode(node.ref);
+  // Stryker disable next-line OptionalChaining: equivalent, since core gives every node of a reconciled tree a status
   const kind = (node: StructuralNode) => node.status?.kind;
-  // Among look-alikes, an element both snapshots have comes first.
+  // Among look-alikes, an element both snapshots have comes first, then one
+  // only the earlier snapshot has, then whatever is left: one only the later
+  // snapshot has.
   const tiers = [
     (node: StructuralNode) =>
       kind(node) !== "added" && kind(node) !== "removed",
     (node: StructuralNode) => kind(node) === "removed",
-    (node: StructuralNode) => kind(node) === "added",
+    () => true,
   ];
   const same = (seen: StructuralNode, node: StructuralNode) => {
     const before = asBefore(node);
@@ -71,8 +74,9 @@ export function pictureBefore(options: {
   const alike = (seen: StructuralNode, node: StructuralNode) =>
     seen.role === node.role && seen.name === node.name;
 
-  // What one reading of the picture has matched so far.
-  let matched = new Set<StructuralNode>();
+  // What one reading of the picture has matched so far, by the ref each
+  // element has in `between`.
+  let matched = new Set<AriaRef>();
   let target: AriaRef | undefined;
 
   function pair(seen: readonly StructuralNode[], known: StructuralNode[]) {
@@ -83,13 +87,13 @@ export function pictureBefore(options: {
         for (const tier of tiers) {
           const hit = known.find(
             (candidate) =>
-              !matched.has(candidate) &&
+              !matched.has(candidate.ref) &&
               tier(candidate) &&
               fits(node, candidate)
           );
           if (!hit) continue;
           pairs.set(node, hit);
-          matched.add(hit);
+          matched.add(hit.ref);
           break;
         }
       }
@@ -100,7 +104,7 @@ export function pictureBefore(options: {
     seen: StructuralNode,
     known: StructuralNode | undefined
   ): StructuralNode {
-    const isTarget = options.target !== null && seen.ref === options.target;
+    const isTarget = seen.ref === options.target;
     const ref = known?.ref ?? refs.create();
     if (isTarget) target = ref;
     // The picture never holds what is inside a frame; the target has
@@ -111,10 +115,7 @@ export function pictureBefore(options: {
     ) {
       const before = asBefore(known);
       if (before) {
-        before.walk((node) => {
-          const inBetween = between.getNode(node.ref);
-          if (inBetween) matched.add(inBetween);
-        });
+        before.walk((node) => matched.add(node.ref));
         return before;
       }
     }
@@ -131,15 +132,8 @@ export function pictureBefore(options: {
   }
 
   // The document the picture is of: the page, or one of its frames. The
-  // first whose top level it fits and whose elements it all has.
+  // first whose elements it all has.
   for (const scope of scopesOf(between)) {
-    if (
-      !fitsScope(
-        picture.getRootNodes(),
-        scope.roots.filter((node) => kind(node) !== "added")
-      )
-    )
-      continue;
     matched = new Set();
     target = undefined;
     const roots = pair(picture.getRootNodes(), scope.roots);
@@ -151,8 +145,10 @@ export function pictureBefore(options: {
     let complete = true;
     const check = (node: StructuralNode) => {
       if (kind(node) === "added" || kind(node) === "removed") return;
-      if (!matched.has(node)) complete = false;
-      if (node.role !== "iframe") nodes(node).forEach(check);
+      if (!matched.has(node.ref)) complete = false;
+      // A frame's elements stand as the earlier snapshot has them: they are
+      // matched with their frame.
+      nodes(node).forEach(check);
     };
     scope.roots.forEach(check);
     if (!complete) continue;

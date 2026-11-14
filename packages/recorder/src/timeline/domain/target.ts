@@ -45,7 +45,7 @@ export function scopesOf(tree: StructuralTree): {
 
 /** Whether a picture's top level is that of a scope: the same roles and
  * names, in order. */
-export function fitsScope(
+function fitsScope(
   picture: readonly StructuralNode[],
   roots: readonly StructuralNode[]
 ): boolean {
@@ -63,12 +63,14 @@ export function fitsScope(
  * the target, or its nearest ancestor the picture lists when the target is
  * missing from it.
  */
-export function namedInPicture(
+function namedInPicture(
   picture: StructuralTree,
   target: NonNullable<InteractionReport["target"]>
 ): AriaRef | undefined {
-  for (const candidate of [target.ref, ...(target.ancestors ?? [])]) {
-    if (candidate === null) continue;
+  // Stryker disable next-line ArrayDeclaration: equivalent, since a candidate that is no ref of the picture is passed over
+  const ancestors = target.ancestors ?? [];
+  for (const candidate of [target.ref, ...ancestors]) {
+    // A target the picture does not list has no ref: null is no ref.
     const parsed = AriaRefSchema.safeParse(candidate);
     if (parsed.success && picture.hasNode(parsed.data)) return parsed.data;
   }
@@ -97,9 +99,9 @@ export function locateTarget(
   );
   const ref = namedInPicture(picture, target);
   if (!ref) return undefined;
-  const path = pathTo(picture.getRootNodes(), ref);
-  const named = picture.getNode(ref);
-  if (!path || !named) return undefined;
+  // It is a ref of the picture: its node is there, and so is the way to it.
+  const path = pathTo(picture.getRootNodes(), ref)!;
+  const named = picture.getNode(ref)!;
   for (const scope of scopesOf(before)) {
     if (!fitsScope(picture.getRootNodes(), scope.roots)) continue;
     let level = scope.roots;
