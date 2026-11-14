@@ -1114,6 +1114,27 @@ function withoutPage(state: LifecycleState, page: string): LifecycleState {
   return { ...wrapping, pages, inputs, gates, finals: finals ?? null };
 }
 
+/** An input as it becomes known: nothing of it is under way yet. */
+const newInput = (
+  id: string,
+  page: string,
+  held: Input["held"],
+  report: InteractionReport | null = null
+): Input => ({
+  id,
+  page,
+  held,
+  joins: null,
+  unreported: false,
+  revised: false,
+  stage: "waiting",
+  asked: null,
+  before: null,
+  after: null,
+  passedOnAt: null,
+  report,
+});
+
 /** A recording being changed within one step. */
 type Draft = {
   inputs: readonly Input[];
@@ -1279,20 +1300,7 @@ function inputHeld(
   what: HeldInput | undefined
 ) {
   const earlier = underWay(draft, page);
-  const held: Input = {
-    id: input,
-    page,
-    held: what ?? { kind: "click", count: 1 },
-    joins: null,
-    unreported: false,
-    revised: false,
-    stage: "waiting",
-    asked: null,
-    before: null,
-    after: null,
-    passedOnAt: null,
-    report: null,
-  };
+  const held = newInput(input, page, what ?? { kind: "click", count: 1 });
   draft.inputs = [...draft.inputs, held];
   // The page holds everything after it now, by itself.
   changeGate(draft, page, { holding: true, upTo: held.id });
@@ -1629,21 +1637,13 @@ function knownFromReport(
   giveUpEarlier(draft, page, place);
   draft.inputs = [
     ...draft.inputs.slice(0, place),
-    {
-      id: `reported_${++draft.reportedOnly}`,
+    // Its start is found as it carries on.
+    newInput(
+      `reported_${++draft.reportedOnly}`,
       page,
-      held: { kind: "reported" },
-      revised: false,
-      joins: null,
-      unreported: false,
-      stage: "waiting",
-      asked: null,
-      // Its start is found as it carries on.
-      before: null,
-      after: null,
-      passedOnAt: null,
-      report,
-    },
+      { kind: "reported" },
+      report
+    ),
     ...draft.inputs.slice(place),
   ];
 }
@@ -2247,20 +2247,12 @@ function pickingChanged(state: LifecycleState, on: boolean, tell = true): Step {
  */
 function asserted(draft: Draft, page: string, report: InteractionReport) {
   const earlier = underWay(draft, page);
-  const assertion: Input = {
-    id: `reported_${++draft.reportedOnly}`,
+  const assertion = newInput(
+    `reported_${++draft.reportedOnly}`,
     page,
-    held: { kind: "asserted" },
-    joins: null,
-    unreported: false,
-    revised: false,
-    stage: "waiting",
-    asked: null,
-    before: null,
-    after: null,
-    passedOnAt: null,
-    report,
-  };
+    { kind: "asserted" },
+    report
+  );
   draft.inputs = [...draft.inputs, assertion];
   if (earlier?.stage === "settling")
     askSharedSnapshot(draft, earlier, assertion);
