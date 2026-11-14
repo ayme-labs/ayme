@@ -78,14 +78,17 @@ export const windowChannelRouter = t.router({
       closed = true;
       wake?.();
     });
-    signal?.addEventListener("abort", () => wake?.());
+    // tRPC gives a subscription a signal; one that never aborts stands in
+    // where it does not.
+    const leaving = signal ?? new AbortController().signal;
+    leaving.addEventListener("abort", () => wake?.());
     const target = await ctx.target;
     const unsubscribe = target.subscribe((update) => {
       newest = update;
       wake?.();
     });
     try {
-      while (!signal?.aborted) {
+      while (!leaving.aborted) {
         if (newest) {
           const update = newest;
           newest = undefined;
@@ -99,6 +102,7 @@ export const windowChannelRouter = t.router({
       }
     } finally {
       unsubscribe();
+      // Stryker disable next-line CallExpression: an ended subscription left in the set does not hold up closing; deleting it keeps the set small
       open.delete(subscription);
       ended();
     }

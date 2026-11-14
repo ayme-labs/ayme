@@ -53,6 +53,7 @@ export function toolbarBridge(): ToolbarBridge {
       if (closed) return null;
       await new Promise<void>((resolve) => {
         const wake = () => {
+          // Stryker disable next-line CallExpression: waking twice settles a promise that is settled; deleting it keeps the set small
           waiting.delete(wake);
           resolve();
         };
