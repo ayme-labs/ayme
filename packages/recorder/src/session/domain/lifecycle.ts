@@ -1695,24 +1695,27 @@ function coverFollowingClicks(
   report: InteractionReport
 ) {
   const count = report.values["clickCount"];
-  if (head.held.kind !== "click" || typeof count !== "number") return;
-  let last = head.held.count;
-  for (const input of draft.inputs.slice(
-    draft.inputs.findIndex((input) => input.id === head.id) + 1
-  )) {
-    if (input.page !== head.page) continue;
-    if (
-      input.report !== null ||
-      input.joins !== null ||
-      input.held.kind !== "click" ||
-      input.held.count !== last + 1 ||
-      input.held.count > count
-    )
-      break;
+  if (typeof count !== "number") return;
+  let last = clickCountOf(head);
+  // Stryker disable next-line ConditionalExpression: a report with a count is a click's, and so is its input; the check is for the type
+  if (last === null) return;
+  const following = draft.inputs
+    .slice(draft.inputs.findIndex((input) => input.id === head.id) + 1)
+    .filter((input) => input.page === head.page);
+  for (const input of following) {
+    // The run of clicks ends at the first input that is not the next click
+    // of it, and at the reported count. Reports come in order, so no input
+    // after the head has a report or is covered already.
+    if (clickCountOf(input) !== last + 1 || last + 1 > count) break;
     change(draft, input.id, { joins: head.id });
-    last = input.held.count;
+    last += 1;
   }
 }
+
+/** The count of a held click; null for any other input. */
+const clickCountOf = (input: Input) =>
+  // Stryker disable next-line ConditionalExpression: no other input has a count, so it reads as none either way
+  input.held.kind === "click" ? input.held.count : null;
 
 const settle = (draft: Draft): Flow => ({
   inputs: draft.inputs,

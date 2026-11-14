@@ -4392,6 +4392,55 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
       state: { phase: "recording" },
     },
 
+    // Where an input that is not held back starts and ends.
+    {
+      name: "a choice reported while typing waits for its 'before' does not end at the typing's snapshot: typing is not where an Interaction ends",
+      happened: [
+        opened,
+        ...started,
+        {
+          kind: "inputHeld",
+          input: "input_1",
+          page: "page_1",
+          held: { kind: "typing" },
+        },
+        reportedAs({ ...typed("x"), type: "select" }),
+        taken("snapshot_2"),
+        taken("snapshot_1"),
+        settled("reported_1"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [takeSnapshot("snapshot_2")],
+        [keep("snapshot_2"), waitForSettled("reported_1")],
+        [keep("snapshot_1"), passOn("input_1")],
+        [takeSnapshot("snapshot_3")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing reported while a click's 'before' is being taken ends at that snapshot, and is written before the click",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        clickHeld("input_2"),
+        reportedAs(typed("m")),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [],
+        [
+          keep("snapshot_3"),
+          passOn("input_2"),
+          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
     // What Playwright revises.
     {
       name: "a revision with nothing reported to revise changes nothing",
@@ -4459,5 +4508,145 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
+  });
+});
+
+// The change analysis of the branch: which held clicks one report covers.
+describe("the lifecycle, for the clicks one report covers", () => {
+  const url2 = "http://shop.test/help";
+  const held = (input: string, count: number, page = "page_1"): Happening => ({
+    kind: "inputHeld",
+    input,
+    page,
+    held: { kind: "click", count },
+  });
+  const takenOf = (id: string, page = "page_1"): Happening => ({
+    kind: "snapshotTaken",
+    snapshot: { ...snapshot(id), page },
+  });
+  const settledOn = (input: string, page = "page_1"): Happening => ({
+    kind: "pageSettled",
+    page,
+    input,
+  });
+  const clickOf = (count: number): InteractionReport => ({
+    ...click,
+    values: { button: "left", clickCount: count },
+  });
+  const reportedOn = (
+    report: InteractionReport,
+    page = "page_1"
+  ): Happening => ({
+    kind: "interactionReported",
+    page,
+    report,
+  });
+  const written = (
+    report: InteractionReport,
+    before: string,
+    after: string,
+    at: number,
+    page = "page_1"
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: { page, report, before, after, at },
+    },
+  });
+  /** Three clicks held one behind the other, the last one settled: each
+   * one's "after" is the next one's "before". */
+  const three = (counts: readonly [number, number, number]) => [
+    held("input_1", counts[0]),
+    held("input_2", counts[1]),
+    held("input_3", counts[2]),
+    takenOf("snapshot_1"),
+    passedOn("input_1", 21),
+    takenOf("snapshot_2"),
+    passedOn("input_2", 22),
+    takenOf("snapshot_3"),
+    passedOn("input_3", 23),
+    settledOn("input_3"),
+    takenOf("snapshot_4"),
+  ];
+
+  it.each<{ name: string; happened: Happening[]; todo: ToDo[] }>([
+    {
+      name: "a report without a count covers its own click only",
+      happened: [opened, ...started, ...three([1, 2, 3]), reportedOn(click)],
+      todo: [written(click, "snapshot_1", "snapshot_2", 21)],
+    },
+    {
+      name: "a report of count two covers no click that starts a count of its own",
+      happened: [
+        opened,
+        ...started,
+        ...three([1, 1, 2]),
+        reportedOn(clickOf(2)),
+      ],
+      todo: [written(clickOf(2), "snapshot_1", "snapshot_2", 21)],
+    },
+    {
+      name: "a report of count two covers the second click and not a third: it ends where the second does",
+      happened: [
+        opened,
+        ...started,
+        ...three([1, 2, 3]),
+        reportedOn(clickOf(2)),
+      ],
+      todo: [written(clickOf(2), "snapshot_1", "snapshot_3", 21)],
+    },
+    {
+      name: "a report of count three covers all three clicks",
+      happened: [
+        opened,
+        ...started,
+        ...three([1, 2, 3]),
+        reportedOn(clickOf(3)),
+      ],
+      todo: [written(clickOf(3), "snapshot_1", "snapshot_4", 21)],
+    },
+    {
+      name: "a report covers the clicks of its own page, whatever was held on another page between them",
+      happened: [
+        opened,
+        { kind: "pageOpened", page: "page_2", url: url2 },
+        ...started,
+        held("input_1", 1),
+        held("input_2", 1, "page_2"),
+        held("input_3", 2),
+        takenOf("snapshot_1"),
+        takenOf("snapshot_2", "page_2"),
+        passedOn("input_1", 21),
+        takenOf("snapshot_3"),
+        passedOn("input_3", 23),
+        settledOn("input_3"),
+        takenOf("snapshot_4"),
+        reportedOn(clickOf(2)),
+      ],
+      todo: [written(clickOf(2), "snapshot_1", "snapshot_4", 21)],
+    },
+    {
+      name: "a report covers the clicks behind its own, also when a click of another page was held before them",
+      happened: [
+        opened,
+        { kind: "pageOpened", page: "page_2", url: url2 },
+        ...started,
+        held("input_1", 1, "page_2"),
+        held("input_2", 1),
+        held("input_3", 2),
+        takenOf("snapshot_1", "page_2"),
+        takenOf("snapshot_2"),
+        passedOn("input_2", 22),
+        takenOf("snapshot_3"),
+        passedOn("input_3", 23),
+        settledOn("input_3"),
+        takenOf("snapshot_4"),
+        reportedOn(clickOf(2)),
+      ],
+      todo: [written(clickOf(2), "snapshot_2", "snapshot_4", 22)],
+    },
+  ])("$name", ({ happened, todo }) => {
+    expect(run(happened).todo.at(-1)).toEqual(todo);
   });
 });
