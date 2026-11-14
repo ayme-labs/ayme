@@ -25,7 +25,8 @@ export function changeRoots(changeTree: string): ChangeRoot[] {
   for (const line of changeTree.split("\n")) {
     const match = NODE.exec(line);
     if (!match) continue;
-    const depth = match[1]!.length / 2;
+    // Its indent: only which node is deeper matters.
+    const depth = match[1]!.length;
     if (inside !== null && depth > inside) continue;
     inside = null;
     let rest = match[2]!;
@@ -47,9 +48,14 @@ function describe(header: string): string {
   const colon = colonOutsideQuotes(header);
   const head = colon < 0 ? header : header.slice(0, colon);
   const text = colon < 0 ? "" : header.slice(colon + 1).trim();
-  const words = head.replace(/\[ref=[^\]]*\] ?/, "").trim();
-  const value = text.replace(/^"(.*)"$/, "$1");
-  const element = value ? `${words} "${value}"` : words;
+  const words = head.replace(/\[ref=[^\]]*\] ?/, "");
+  const value = text.replace(
+    // Stryker disable next-line Regex: the notation quotes a text whole or not at all, so either anchor alone matches the same
+    /^"(.*)"$/,
+    "$1"
+  );
+  const quoted = value ? `"${value}"` : "";
+  const element = [words, quoted].filter(Boolean).join(" ");
   return element === "" ? "element" : element;
 }
 
@@ -57,7 +63,12 @@ function describe(header: string): string {
  * quoted name is part of the name. */
 function colonOutsideQuotes(header: string): number {
   let quoted = false;
-  for (let index = 0; index < header.length; index += 1) {
+  for (
+    let index = 0;
+    // Stryker disable next-line EqualityOperator: one past the end reads undefined, which is no colon
+    index < header.length;
+    index += 1
+  ) {
     const char = header[index];
     if (char === "\\") index += 1;
     else if (char === '"') quoted = !quoted;

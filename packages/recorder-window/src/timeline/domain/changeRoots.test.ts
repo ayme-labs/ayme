@@ -82,6 +82,34 @@ describe("the roots of what changed", () => {
     ]);
   });
 
+  it("reads a colon or a quote after an escaped quote inside a name as the name's", () => {
+    expect(
+      changeRoots(
+        '- [ref=e1]:\n  - <added> [ref=e2] heading "Say \\"hi: there\\" now" [level=2]'
+      )
+    ).toEqual([
+      { kind: "added", element: 'heading "Say \\"hi: there\\" now" [level=2]' },
+    ]);
+  });
+
+  it("names a marked node that has only a text by its text", () => {
+    expect(changeRoots(`- [ref=e1]:\n  - <added>: Saved`)).toEqual([
+      { kind: "added", element: '"Saved"' },
+    ]);
+  });
+
+  it("takes a node marked only as the Interaction's target for no change", () => {
+    expect(
+      changeRoots('- [ref=e1]:\n  - <trigger> [ref=e2] button "Pay"')
+    ).toEqual([]);
+  });
+
+  it("passes over a line that is no node", () => {
+    expect(
+      changeRoots("- [ref=e1]:\n\n  - <changed> [ref=e3] status: Saved\n")
+    ).toEqual([{ kind: "changed", element: 'status "Saved"' }]);
+  });
+
   it("shows nothing for a tree that marks nothing", () => {
     expect(changeRoots(`- [ref=e1]:\n  - [ref=e2] text: Hello`)).toEqual([]);
   });

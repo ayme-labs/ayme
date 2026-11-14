@@ -70,7 +70,9 @@ export function controlsOf(state: RecorderState | null): Controls {
         "Assert visibility"
       ),
       enabled: leave || applies("assertVisibility"),
-      pressed: state.phase === "recording" && state.picking === true,
+      pressed:
+        // Stryker disable next-line ConditionalExpression: the contract sets picking only while recording
+        state.phase === "recording" && state.picking === true,
     },
     clear: control("clear", "Clear"),
     finish: control("finish", "Finish"),
