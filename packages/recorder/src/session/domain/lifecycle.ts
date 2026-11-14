@@ -1547,25 +1547,18 @@ function startReported(draft: Draft, index: number): boolean {
   const earlier = draft.inputs
     .slice(0, index)
     .filter((before) => before.page === input.page);
-  // A held input that reached the page before it has no "after" yet: it
-  // starts from that.
-  const reached = earlier.some(
-    (before) =>
-      before.held.kind !== "reported" &&
-      // Stryker disable next-line ConditionalExpression: a held input that is still on its way makes this one wait too: it hands this one its snapshot when it arrives, whichever start this one had
-      before.passedOnAt !== null &&
-      before.stage !== "settled"
-  );
-  if (reached) return false;
+  // The inputs of its page ahead of it that have no "after" yet.
+  const ahead = earlier.filter((before) => before.stage !== "settled");
+  // It starts from the "after" of an input the pages held, and from an
+  // assertion's one snapshot: it waits for that. A held input that is
+  // still on its way hands it its snapshot when it arrives.
+  if (ahead.some((before) => before.held.kind !== "reported")) return false;
   // An earlier input known from its report only that has no "after" yet
   // ends where this one starts: one snapshot is both, as between two held
   // inputs. Starting from the page's latest snapshot instead would give the
   // two one "before", and the earlier one an "after" that is later than
-  // this one's "before". An assertion's one snapshot is waited for in the
-  // same way.
-  const open = earlier.findLast(
-    (before) => neverHeld(before) && before.stage !== "settled"
-  );
+  // this one's "before".
+  const open = ahead.at(-1);
   if (open) {
     shareWithOpen(draft, open, input);
     return false;
@@ -1591,12 +1584,6 @@ function shareWithOpen(draft: Draft, open: Input, input: Input) {
   change(draft, open.id, { revised: false });
   if (open.stage === "settling") askSharedSnapshot(draft, open, input);
 }
-
-/** An input the pages never held: one known from its report, or an
- * assertion. */
-const neverHeld = (input: Input) =>
-  // Stryker disable next-line ConditionalExpression,LogicalOperator: a held input ahead that is still on its way makes a reported one wait as well, and hands it its snapshot when it arrives
-  input.held.kind === "reported" || input.held.kind === "asserted";
 
 /** Ends an input known from its report only where the next held input of
  * its page starts; with none, once the page is settled and no held input
