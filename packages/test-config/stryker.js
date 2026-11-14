@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-import { nonProductionPatterns } from "./analysis.js";
+import { nonProductionPatterns, notMutatedPatterns } from "./analysis.js";
 
 /**
  * The fast lane skips static mutants: code that runs when a module loads, such
@@ -50,7 +50,9 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
 
 const defaultMutate = [
   "src/**/*.{ts,tsx}",
-  ...nonProductionPatterns.map((pattern) => `!${pattern}`),
+  ...[...nonProductionPatterns, ...notMutatedPatterns].map(
+    (pattern) => `!${pattern}`
+  ),
 ];
 
 /**

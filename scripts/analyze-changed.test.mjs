@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
+import { isMutated, isScored } from "../packages/test-config/analysis.js";
+
 import {
   changedLines,
   classify,
@@ -12,7 +14,9 @@ import {
   crap,
   diffAgainst,
   functionsIn,
+  measuredOtherwiseRows,
   mutateTargets,
+  render,
   reusedResults,
   statementCoverage,
 } from "./analyze-changed.mjs";
@@ -182,5 +186,69 @@ test("reusedResults reads Stryker's incremental summary from its log", () => {
       "INFO ProjectReader No incremental result file found at reports/stryker-incremental.json, a full mutation testing run will be performed."
     ),
     undefined
+  );
+});
+
+test("a folder under a layer's infrastructure decides how its files are measured", () => {
+  const live =
+    "packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts";
+  const inPage =
+    "packages/recorder/src/playwright/infrastructure/in-page/gate.ts";
+  const plain = "packages/recorder/src/playwright/infrastructure/traceTool.ts";
+  // The ayme package's In-page Module is a slice, not such a folder: it is
+  // measured as before.
+  const aymeInPage = "packages/ayme/src/in-page/host/inPage.ts";
+
+  assert.deepEqual(
+    [live, inPage, plain, aymeInPage].map((file) => [
+      isMutated(file),
+      isScored(file),
+    ]),
+    [
+      [false, true],
+      [false, false],
+      [true, true],
+      [true, true],
+    ]
+  );
+  assert.deepEqual(
+    measuredOtherwiseRows([plain, inPage, live, aymeInPage]).map((row) => [
+      row.pattern,
+      row.files,
+    ]),
+    [
+      ["**/infrastructure/live/**", [live]],
+      ["**/infrastructure/in-page/**", [inPage]],
+    ]
+  );
+});
+
+test("the report lists the changed files measured otherwise, with how, under their own heading", () => {
+  const report = render({
+    base: "main",
+    packages: ["@ayme-dev/recorder"],
+    skipped: [],
+    crapRows: [],
+    mutantRows: [],
+    mutation: true,
+    otherwise: measuredOtherwiseRows([
+      "packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts",
+    ]),
+  });
+
+  assert.match(
+    report,
+    /## Changed files measured otherwise\n\n.*\n\n`\*\*\/infrastructure\/live\/\*\*`: drives a real browser from Node: not mutated; .*\.\n\n- packages\/recorder\/src\/playwright\/infrastructure\/live\/stockBrowser\.ts\n/
+  );
+  assert.doesNotMatch(
+    render({
+      base: "main",
+      packages: [],
+      skipped: [],
+      crapRows: [],
+      mutantRows: [],
+      mutation: false,
+    }),
+    /measured otherwise/
   );
 });
