@@ -30,6 +30,8 @@ async function read(input: {
   type?: string;
   /** What the page looked like earlier in the Visit, oldest first. */
   earlier?: string[];
+  /** Playwright's selector for the target; one of the page when not given. */
+  selector?: string;
 }) {
   const timeline = new Timeline();
   const additions: TimelineAddition[] = [
@@ -65,7 +67,7 @@ async function read(input: {
         page: "page_1",
         report: {
           type: input.type ?? "fill",
-          selector: "internal:role=textbox",
+          selector: input.selector ?? "internal:role=textbox",
           target: { ref: input.target, tree: input.picture },
           values: {},
         },
@@ -542,6 +544,60 @@ describe("the report's picture, matched to the snapshots around an input", () =>
       ...elements.map((line) => `    ${line}`),
     ];
 
+    const inFrame =
+      "iframe >> internal:control=enter-frame >> internal:role=textbox";
+
+    it("is not read from a picture that two frames both fit: the input's target is not known, it is written with its 'after' only, and warned of", async () => {
+      const card = (number: number, field: string) => [
+        `- iframe [ref=e${number + 1}]:`,
+        `  - generic [ref=f${number}e1]:`,
+        `    - textbox "Card number" [ref=f${number}e2]${field}`,
+      ];
+
+      expect(
+        await read({
+          before: page(...card(1, ""), ...card(2, "")),
+          // Of the frame the person typed in, which looks like the other.
+          picture: [
+            `- generic [ref=e20]:`,
+            `  - textbox "Card number" [ref=e21]: 4`,
+          ].join("\n"),
+          after: page(...card(1, ""), ...card(2, ": 4242")),
+          target: "e21",
+          selector: inFrame,
+        })
+      ).toEqual({
+        changedBefore: null,
+        changedByIt: changed(
+          `- [ref=e3] iframe:`,
+          `  - [ref=f2e1]:`,
+          `    - <changed> [ref=f2e2] textbox "Card number": 4242`
+        ),
+        targetRef: null,
+        warnings: ["reportShape"],
+      });
+    });
+
+    it("is not looked into for a picture of the page: an input in the page is not read as one in a frame that looks like the page", async () => {
+      expect(
+        await read({
+          before: page(
+            `- iframe [ref=e3]:`,
+            `  - generic [ref=f1e1]:`,
+            `    - textbox "Item" [ref=f1e2]`
+          ),
+          // Not of this page: it shows no frame. The selector is the page's.
+          picture: picture(`- textbox "Item" [ref=e21]: m`),
+          after: page(
+            `- iframe [ref=e3]:`,
+            `  - generic [ref=f1e1]:`,
+            `    - textbox "Item" [ref=f1e2]: milk`
+          ),
+          target: "e21",
+        })
+      ).toMatchObject({ targetRef: null, warnings: ["reportShape"] });
+    });
+
     it("stands as the earlier snapshot has it for an input in the page: the picture never holds what is in a frame", async () => {
       expect(
         await read({
@@ -607,6 +663,7 @@ describe("the report's picture, matched to the snapshots around an input", () =>
             `- paragraph [ref=e4]: Draft saved`
           ),
           target: "e22",
+          selector: inFrame,
         })
       ).toEqual({
         changedBefore: changed(
