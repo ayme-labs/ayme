@@ -1612,7 +1612,8 @@ function endReported(draft: Draft, index: number) {
 }
 
 /** An input known from Playwright's report only. It happened before every
- * input of its page that has not reached the page yet. */
+ * input its page still holds back, and after everything reported before
+ * it. */
 function knownFromReport(
   draft: Draft,
   page: string,
@@ -1621,8 +1622,10 @@ function knownFromReport(
   let place = draft.inputs.findIndex(
     (input) =>
       input.page === page &&
-      // An assertion was reported before it: it came first.
+      // What was reported before it came first: an assertion, and an input
+      // known from its report that still waits for its start.
       input.held.kind !== "asserted" &&
+      input.held.kind !== "reported" &&
       (input.stage === "waiting" || input.stage === "takingBefore")
   );
   if (place < 0) place = draft.inputs.length;

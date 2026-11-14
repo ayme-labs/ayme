@@ -5097,6 +5097,40 @@ describe("the lifecycle, for rules no row reached", () => {
       ],
       state: { phase: "recording" },
     },
+    // Inputs are written in the order the person gave them (rule 11), and
+    // each "after" is no later than the next "before" (rule 12), also for
+    // two inputs that are not held back and are reported one after the
+    // other.
+    {
+      name: "a choice and then typing, both reported while a click is on its way and another waits behind it, are written in that order between the two clicks (rules 11 and 12)",
+      happened: [
+        opened,
+        ...started,
+        clickHeld("input_1"),
+        taken("snapshot_1"),
+        clickHeld("input_2"),
+        reportedOn(choice),
+        reportedOn(typed("m")),
+        passedOn("input_1"),
+        taken("snapshot_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_2")],
+        [
+          keep("snapshot_2"),
+          waitForSettled("reported_1"),
+          takeSnapshot("snapshot_3"),
+        ],
+        [
+          keep("snapshot_3"),
+          passOn("input_2"),
+          fromReport(choice, "snapshot_2", "snapshot_3"),
+          fromReport(typed("m"), "snapshot_3", "snapshot_3"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
     {
       name: "typing whose wait for a Settled Page ends while a click's 'before' is being taken still ends at that snapshot, and takes none of its own",
       happened: [
