@@ -1,5 +1,5 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
-import { Agent, request, type RequestOptions } from "node:http";
+import { request, type RequestOptions } from "node:http";
 import { connect } from "node:net";
 import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -166,6 +166,23 @@ describe("who the window's server answers", () => {
       expect(await get(port, { headers: { origin } }), origin).toEqual(refused);
   });
 
+  it("refuses a request that names no host", async () => {
+    const { port } = await serve();
+
+    const answer = await new Promise<string>((resolve, reject) => {
+      // HTTP/1.0 needs no Host header.
+      const socket = connect(port, "127.0.0.1", () =>
+        socket.write("GET / HTTP/1.0\r\n\r\n")
+      );
+      let text = "";
+      socket.on("data", (chunk: Buffer) => (text += chunk.toString()));
+      socket.on("close", () => resolve(text.split("\r\n")[0]!));
+      socket.on("error", reject);
+    });
+
+    expect(answer).toBe("HTTP/1.1 403 Forbidden");
+  });
+
   it("takes a window's channel only from its loopback address, its own origin, and at its path", async () => {
     const { port } = await serve();
     const host = `127.0.0.1:${port}`;
@@ -284,11 +301,18 @@ describe("how the window's server closes", () => {
     expect(await closed).toEqual([1001, "The recorder ended."]);
   });
 
-  it("closes while a page keeps its connection open", async () => {
+  it("closes while a program is still sending its request", async () => {
     const server = await serve();
-    const agent = new Agent({ keepAlive: true });
-    ends.push(async () => agent.destroy());
-    await get(server.port, { agent });
+    // A request whose body is still on its way: the server waits for the
+    // rest of it.
+    const socket = connect(server.port, "127.0.0.1", () =>
+      socket.write(
+        `POST / HTTP/1.1\r\nHost: 127.0.0.1:${server.port}\r\nContent-Length: 100\r\n\r\nhalf`
+      )
+    );
+    socket.on("error", () => {});
+    ends.push(async () => socket.destroy());
+    await new Promise((resolve) => socket.once("connect", resolve));
 
     const closing = server.close();
 

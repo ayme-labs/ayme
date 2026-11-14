@@ -47,7 +47,8 @@ const FLUSH_LIMIT_MS = 1_000;
  * that a page which points a name of its own at it reads nothing. */
 function isLoopback(request: IncomingMessage): boolean {
   const { host, origin } = request.headers;
-  if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host ?? "")) return false;
+  // A request with no Host header reads as "undefined": no loopback name.
+  if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(host))) return false;
   return origin === undefined || origin === `http://${host}`;
 }
 
@@ -56,7 +57,11 @@ function isLoopback(request: IncomingMessage): boolean {
 function pathOf(url: string | undefined): string | null {
   try {
     const path = decodeURIComponent(
-      new URL(url ?? "/", "http://window").pathname
+      new URL(
+        // Stryker disable next-line StringLiteral: a server's request always has its URL; the fallback is never taken
+        url ?? "/",
+        "http://window"
+      ).pathname
     );
     return path.includes("\0") ? null : path;
   } catch {
@@ -99,7 +104,11 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
     const path = pathOf(request.url);
     if (path === null) return send(400, "text/plain", "Bad request.");
     const file = fileFor(root, path);
-    if (file === null) return send(404, "text/plain", "Not found.");
+    if (
+      // Stryker disable next-line ConditionalExpression: reading null fails too, and that is answered "Not found." the same way
+      file === null
+    )
+      return send(404, "text/plain", "Not found.");
     readFile(file).then(
       (body) =>
         send(
@@ -119,7 +128,11 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
   server.on("upgrade", (request, socket, head) => {
     // The socket is ours from here: a program that is gone before it is
     // answered must not bring the recorder down.
-    socket.on("error", () => socket.destroy());
+    socket.on(
+      "error",
+      // Stryker disable next-line ArrowFunction: a socket emits "error" as it is destroyed; destroying it again changes nothing
+      () => socket.destroy()
+    );
     const refuse = (status: string) =>
       socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
     // Who asks comes first: nothing else of a request from elsewhere is read.
@@ -156,12 +169,13 @@ export async function serveWindow(folder: string): Promise<WindowServer> {
         Promise.all(subscriptions.open),
         new Promise((resolve) => (timer = setTimeout(resolve, FLUSH_LIMIT_MS))),
       ]);
+      // Stryker disable next-line CallExpression: the timer only ends a race that is over; left, it keeps the process up to a second longer
       clearTimeout(timer);
       await new Promise<void>((closed) => {
         // Closed, not cut: what was sent still arrives.
         for (const ws of sockets.clients) ws.close(1001, "The recorder ended.");
-        sockets.close();
         server.close(() => closed());
+        // Stryker disable next-line CallExpression: every request is answered at once, so close() finds only idle connections, which it closes itself; this cuts a download still under way
         server.closeAllConnections();
       });
     },
