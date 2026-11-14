@@ -248,6 +248,49 @@ test("a Page Object that fails to compile is reported with its file, and the pag
   }
 });
 
+for (const [kind, edit, error] of [
+  [
+    "unresolved import",
+    (source: string) =>
+      `const é = "😀"; import { nope } from "./does-not-exist";\n${source.replace("return this.note.textContent();", "return nope();")}`,
+    /pom[\\/]PlainPage\.ts: Could not resolve "\.\/does-not-exist"/,
+  ],
+  [
+    "unsupported parameter",
+    (source: string) =>
+      source.replace(
+        "async readNote()",
+        "async readNote(callback: () => void)"
+      ),
+    /pom[\\/]PlainPage\.ts:18:18: Unsupported Page Object Tool input type for PlainPage\.readNote\(callback\): \(\) => void\./,
+  ],
+] as const) {
+  // Playwright reads a test's fixtures from this pattern.
+  // eslint-disable-next-line no-empty-pattern
+  test(`an ${kind} error names the source file without generated coordinates`, async ({}, testInfo) => {
+    const project = testInfo.outputPath("project");
+    await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+    await editPlainPage(project, edit);
+    const agent = await startAgent(
+      { cwd: project },
+      "--port",
+      String(await freePort())
+    );
+    try {
+      const failure = await agent.call("ayme_list_tools");
+      expect(failure.isError).toBe(true);
+      expect(failure.text).toMatch(error);
+      await expect.poll(() => agent.log, REBUILT_WITHIN).toMatch(error);
+      if (kind === "unresolved import") {
+        expect(failure.text).not.toMatch(/PlainPage\.ts:\d+:\d+:/);
+        expect(agent.log).not.toMatch(/PlainPage\.ts:\d+:\d+:/);
+      }
+    } finally {
+      await agent.close();
+    }
+  });
+}
+
 test("while the entry has never built, ayme_connect and the no-page answers say why, until a fix builds it", async ({
   context,
   page,
