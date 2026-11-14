@@ -30,7 +30,7 @@ const test = base.extend<{
   recording: async ({ page }, use, testInfo) => {
     const projectDir = testInfo.outputPath("project");
     await mkdir(projectDir, { recursive: true });
-    const { recorder, browser } = await startScriptedRecorder({
+    const { recorder, browser, endWithin } = await startScriptedRecorder({
       projectDir,
       url: "http://shop.test/",
       window: { folder: windowFolder },
@@ -38,8 +38,10 @@ const test = base.extend<{
     const window = new RecorderWindow(page);
     await window.open(recorder.windowUrl!);
     await use({ browser, window, finished: () => recorder.done });
-    recorder.end();
-    await recorder.done;
+    // The recorder's clock stands still unless it is moved: an end waits
+    // out whatever a test left unanswered on that clock, never on the
+    // test's own time.
+    await endWithin(600_000);
   },
 });
 
