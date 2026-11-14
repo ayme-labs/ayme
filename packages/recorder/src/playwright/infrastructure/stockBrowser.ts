@@ -246,9 +246,6 @@ type PlaywrightRecorderMode = {
   /** Tells of each change of the mode, whoever made it. Without it, Assert
    * visibility is never shown on. */
   on?(event: "modeChanged", listener: (mode: string) => void): void;
-  /** 1.64 and later: reports a click it holds back for a while, to see
-   * whether a double click follows, at once. */
-  flushPendingActions?(): void;
 };
 
 /**
@@ -764,8 +761,11 @@ async function openPage(
    * Switching the mode leaves a trace that is being recorded alone.
    */
   async function reportInteractions(on: boolean) {
-    // A click made just before is reported before the answer, not after.
-    if (recorderMode && !on) recorderMode.flushPendingActions?.();
+    // A click made just before is reported before the answer, not after:
+    // what every document already told Playwright's recorder reaches it
+    // first. Switching off reports a click it holds back to see whether a
+    // double click follows (1.63 and later; 1.62 holds nothing back).
+    if (recorderMode && !on) await everyReportDelivered();
     if (recorderMode)
       await inModeOrder(() => recorderMode!.setMode(on ? "recording" : "none"));
     else if (on) {
@@ -780,6 +780,28 @@ async function openPage(
       });
     }
     tell({ kind: "reportingInteractions", on });
+  }
+
+  /**
+   * Resolves once what every document has told Playwright's recorder so far
+   * has reached it. A document's report travels on its own way to
+   * Playwright, which on a browser reached over a WebSocket, as an attached
+   * one, can be overtaken by a switch-off from here; once switched off,
+   * Playwright drops it. Each document asks Playwright's recorder for its
+   * state (a private part of Playwright, as `noLongerRecording` says): the
+   * answer comes after the document's earlier reports were taken. A call
+   * Playwright traces: never inside a snapshot's mark.
+   */
+  async function everyReportDelivered() {
+    const asked = markers.then(() =>
+      Promise.all(
+        everyFrame().map((frame) =>
+          frame.evaluate(askRecorderState).catch(() => {})
+        )
+      )
+    );
+    markers = asked.catch(() => {});
+    await asked;
   }
 
   /** The latest highlight asked: only it is drawn. */
@@ -1064,6 +1086,13 @@ const LET_GO_LIMIT_MS = 5_000;
  * once more and getting the answer means the document's own earlier
  * question was answered first.
  */
+async function askRecorderState(): Promise<void> {
+  const state = (
+    window as unknown as { __pw_recorderState?: () => Promise<unknown> }
+  ).__pw_recorderState;
+  if (state) await state();
+}
+
 async function noLongerRecording(): Promise<void> {
   const state = (
     window as unknown as { __pw_recorderState?: () => Promise<unknown> }
