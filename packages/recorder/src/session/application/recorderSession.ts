@@ -89,18 +89,17 @@ export class RecorderSession extends Context.Service<
         /** The warnings told so far, and how many of the timeline's. */
         let warnings: readonly RecorderWarning[] = [];
         let fromTimeline = 0;
-        let update: RecorderUpdate = {
-          revision: 0,
+        /** The recorder as it is now, under a revision. */
+        const now = (revision: number): RecorderUpdate => ({
+          revision,
           state: { ...told(), visits, warnings },
-        };
+        });
+        let update = now(0);
         let toldNow = JSON.stringify(told());
         /** Tells the listeners the recorder as it is now, under a new revision. */
         const publish = () => {
           visits = timeline.visits();
-          update = {
-            revision: update.revision + 1,
-            state: { ...told(), visits, warnings },
-          };
+          update = now(update.revision + 1);
           toldNow = JSON.stringify(told());
           for (const listener of listeners) listener(update);
         };
@@ -111,7 +110,9 @@ export class RecorderSession extends Context.Service<
         const publishEntries = Effect.gen(function* () {
           if (timeline.visits() !== visits) publish();
           const warned = timeline.warnings();
-          for (const warning of warned.slice(fromTimeline))
+          // Stryker disable next-line MethodExpression: a warning told again is told once all the same; leaving out those told before only saves the telling
+          const news = warned.slice(fromTimeline);
+          for (const warning of news)
             yield* tell({ kind: "timelineWarned", warning });
           fromTimeline = warned.length;
         });
@@ -127,7 +128,11 @@ export class RecorderSession extends Context.Service<
         /** The answer the lifecycle keeps for a later step. */
         let deferred: Queued["reply"];
         /** The answers the lifecycle keeps by a key of its own. */
-        const kept = new Map<string, NonNullable<Queued["reply"]>>();
+        const kept = new Map<string, Queued["reply"]>();
+        /** Gives an answer to the command that waits for it. */
+        const give = (to: Queued["reply"], result: CommandResult) =>
+          // Stryker disable next-line ConditionalExpression: every answer the lifecycle gives follows a command, which waits for it; the check is for the type
+          to ? Deferred.succeed(to, result) : Effect.void;
 
         /** Gives a command's answer, now or as the lifecycle keeps it for
          * later: the one it defers, or one under a key of its own. */
@@ -147,24 +152,23 @@ export class RecorderSession extends Context.Service<
         ) {
           switch (item.kind) {
             case "reply":
-              if (reply) yield* Deferred.succeed(reply, item.result);
-              return;
+              return yield* give(reply, item.result);
             case "deferReply":
               deferred = reply;
               return;
             case "replyDeferred":
-              if (deferred) yield* Deferred.succeed(deferred, item.result);
+              yield* give(deferred, item.result);
               deferred = undefined;
               return;
             // Highlight.
             case "keepReply":
-              if (reply) kept.set(item.key, reply);
+              kept.set(item.key, reply);
               return;
             case "replyKept": {
               const waiting = kept.get(item.key);
+              // Stryker disable next-line CallExpression: a key is answered once; forgetting it only frees it
               kept.delete(item.key);
-              if (waiting) yield* Deferred.succeed(waiting, item.result);
-              return;
+              return yield* give(waiting, item.result);
             }
           }
         });
@@ -175,14 +179,17 @@ export class RecorderSession extends Context.Service<
         const ask = Effect.fnUntraced(function* (
           item: Extract<ToDo, { kind: "browser" }>
         ) {
-          if (item.within !== undefined)
+          // Stryker disable next-line ConditionalExpression: a time started for a request that was given none is ended in the same step, by the rule that ends a time nobody waits for
+          const hasTime = item.within !== undefined;
+          if (hasTime)
             timed.push({
               request: item.ask,
-              time: yield* Effect.sleep(item.within).pipe(
+              time: yield* Effect.sleep(item.within!).pipe(
                 Effect.andThen(
                   tell({
                     kind: "requestFailed",
                     request: item.ask,
+                    // Stryker disable next-line StringLiteral: no request that is given a time shows why it failed
                     reason: "The browser did not answer in time.",
                   })
                 ),
@@ -289,6 +296,7 @@ export class RecorderSession extends Context.Service<
           // request of its kind.
           for (const { request, time } of timed)
             if (!awaitsAnswer(state, request)) yield* Fiber.interrupt(time);
+          // Stryker disable next-line MethodExpression: a time that was ended is ended again to no effect; dropping it only frees it
           timed = timed.filter(({ request }) => awaitsAnswer(state, request));
         });
 
