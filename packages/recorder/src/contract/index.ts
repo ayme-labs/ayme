@@ -107,19 +107,23 @@ export type RecorderWarning = {
    * What it is about, stable for code to tell warnings apart:
    * - reportShape: typing, a choice or an upload is recorded with what it
    *   changed up to its "after" only, as Playwright's report of it was not
-   *   of the shape of a snapshot.
+   *   of the shape of a snapshot, or as its page could not be read when it
+   *   was reported.
    * - playwrightUnverified: the project's Playwright is newer than the
    *   versions the recorder is verified on.
    * - traceWithoutPositions: the package carries its trace, but not the
    *   position numbers that open its snapshots.
    * - uploadNamesUnknown: an upload is recorded with its first file's name
    *   only, as the names of the others could not be read.
+   * - notRecorded: an assertion, typing, a choice or an upload is left out
+   *   of the recording, as its page could not be read.
    */
   readonly kind:
     | "reportShape"
     | "playwrightUnverified"
     | "traceWithoutPositions"
-    | "uploadNamesUnknown";
+    | "uploadNamesUnknown"
+    | "notRecorded";
   /** A sentence for a person. */
   readonly message: string;
 };

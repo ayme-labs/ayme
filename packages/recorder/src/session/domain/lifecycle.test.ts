@@ -5486,3 +5486,317 @@ describe("the lifecycle, for rules no row reached", () => {
     expect(result.state).toMatchObject(state);
   });
 });
+
+// A snapshot that cannot be taken, as while a page goes elsewhere, for an
+// input no page held: an assertion, or an input known from its report.
+// Nothing is asked to be passed on that no page held, nothing behind it is
+// kept waiting, and what cannot be written is told as a warning.
+describe("the lifecycle, for a snapshot that cannot be taken for an input no page held", () => {
+  const reportedAs = (report: InteractionReport): Happening => ({
+    kind: "interactionReported",
+    page: "page_1",
+    report,
+  });
+  const visible: InteractionReport = {
+    type: "assertVisible",
+    selector: 'internal:role=heading[name="Cart"i]',
+    target: null,
+    values: {},
+  };
+  const choice: InteractionReport = {
+    type: "select",
+    selector: "internal:role=combobox",
+    target: null,
+    values: { options: ["eggs"] },
+  };
+  const typed = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
+  const written = (
+    report: InteractionReport,
+    before: string,
+    after: string | null,
+    at: number,
+    beforeFromReport = false
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: {
+        page: "page_1",
+        report,
+        before,
+        after,
+        at,
+        ...(beforeFromReport ? { beforeFromReport: true } : {}),
+      },
+    },
+  });
+  const afterOnly: ToDo = {
+    kind: "warn",
+    warning: {
+      kind: "reportShape",
+      message:
+        "A page could not be read when typing, a choice or an upload was reported on it: it is recorded with its 'after' only.",
+    },
+  };
+  const notRecorded = (what: string): ToDo => ({
+    kind: "warn",
+    warning: { kind: "notRecorded", message: what },
+  });
+  const timeLimit: Happening = { kind: "timeLimitPassed" };
+  /** The first snapshot of a second page. */
+  const snapshotOf2: ToDo = {
+    kind: "browser",
+    ask: { kind: "takeSnapshot", snapshot: "snapshot_1", page: "page_2" },
+  };
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    // An assertion.
+    {
+      name: "an assertion whose snapshot cannot be taken is written at its page's latest snapshot: nothing is passed on, and two clicks held afterwards are passed on and recorded as usual (rules 1 and 2)",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(visible),
+        failed(takeSnapshot("snapshot_3")),
+        clickHeld("input_2"),
+        clickHeld("input_3"),
+        taken("snapshot_4"),
+        passedOn("input_2", 22),
+        taken("snapshot_5"),
+        passedOn("input_3", 23),
+        settled("input_3"),
+        taken("snapshot_6"),
+        reported,
+        reported,
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [written(visible, "snapshot_2", "snapshot_2", 10)],
+        [takeSnapshot("snapshot_4")],
+        [],
+        [keep("snapshot_4"), passOn("input_2")],
+        [takeSnapshot("snapshot_5")],
+        [keep("snapshot_5"), passOn("input_3")],
+        [waitForSettled("input_3")],
+        [takeSnapshot("snapshot_6")],
+        [keep("snapshot_6"), letThrough("input_3")],
+        [interaction("snapshot_4", "snapshot_5", 22)],
+        [interaction("snapshot_5", "snapshot_6", 23)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "an assertion whose snapshot cannot be taken on a page that has none yet cannot be placed: it is left out, a person is told, and a click held afterwards goes on",
+      happened: [
+        opened,
+        ...started,
+        reportedAs(visible),
+        failed(takeSnapshot("snapshot_1")),
+        clickHeld("input_1"),
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [
+          notRecorded(
+            `An assertion of internal:role=heading[name="Cart"i] is not recorded: its page could not be read.`
+          ),
+        ],
+        [takeSnapshot("snapshot_2")],
+        [keep("snapshot_2"), passOn("input_1")],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // An input known from its report.
+    {
+      name: "a choice whose first snapshot cannot be taken is recorded with its 'after' only, with a warning; typing reported after it is still written, starting where the choice ends",
+      happened: [
+        opened,
+        ...started,
+        reportedAs(choice),
+        failed(takeSnapshot("snapshot_1")),
+        reportedAs(typed("m")),
+        taken("snapshot_2"),
+        settled("reported_2"),
+        taken("snapshot_3"),
+        finish,
+        gateOff,
+        taken("snapshot_4"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_1")],
+        [waitForSettled("reported_1"), afterOnly],
+        [takeSnapshot("snapshot_2")],
+        [
+          keep("snapshot_2"),
+          waitForSettled("reported_2"),
+          written(choice, "snapshot_2", "snapshot_2", 10),
+          letThrough(null),
+        ],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_4")],
+        [
+          keep("snapshot_4"),
+          written(typed("m"), "snapshot_2", "snapshot_3", 10, true),
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a choice whose first snapshot cannot be taken gets its one snapshot once the page is settled: it is its 'before' and its 'after'",
+      happened: [
+        opened,
+        ...started,
+        reportedAs(choice),
+        failed(takeSnapshot("snapshot_1")),
+        settled("reported_1"),
+        taken("snapshot_2"),
+        finish,
+        gateOff,
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [waitForSettled("reported_1"), afterOnly],
+        [takeSnapshot("snapshot_2")],
+        [keep("snapshot_2"), letThrough(null)],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_3")],
+        [
+          keep("snapshot_3"),
+          written(choice, "snapshot_2", "snapshot_2", 10),
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a choice whose 'after' cannot be taken either is left out, and a person is told: nothing behind it waits for it",
+      happened: [
+        opened,
+        ...started,
+        reportedAs(choice),
+        failed(takeSnapshot("snapshot_1")),
+        settled("reported_1"),
+        failed(takeSnapshot("snapshot_2")),
+        reportedAs(typed("m")),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_2")],
+        [
+          notRecorded(
+            "Typing, a choice or an upload is not recorded: its page could not be read."
+          ),
+        ],
+        [takeSnapshot("snapshot_3")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing that was to start at a snapshot shared with the choice before it starts at the page's latest snapshot when that one cannot be taken: nothing is passed on",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(choice),
+        reportedAs(typed("m")),
+        failed(takeSnapshot("snapshot_3")),
+      ],
+      todo: [
+        [waitForSettled("reported_1")],
+        [takeSnapshot("snapshot_3")],
+        [
+          waitForSettled("reported_2"),
+          written(choice, "snapshot_2", null, 10, true),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    {
+      name: "a choice that is left out takes nothing else with it: typing that was to start where it ends is recorded with its 'after' only",
+      happened: [
+        opened,
+        ...started,
+        reportedAs(choice),
+        failed(takeSnapshot("snapshot_1")),
+        reportedAs(typed("m")),
+        failed(takeSnapshot("snapshot_2")),
+        settled("reported_2"),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [takeSnapshot("snapshot_2")],
+        [
+          notRecorded(
+            "Typing, a choice or an upload is not recorded: its page could not be read."
+          ),
+          waitForSettled("reported_2"),
+          afterOnly,
+        ],
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3"), letThrough(null)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a choice whose first snapshot cannot be taken on a page that opened while recording, and held nothing, is recorded with its 'after' only",
+      happened: [
+        opened,
+        ...started,
+        { kind: "pageOpened", page: "page_2", url: "http://shop.test/help" },
+        { kind: "interactionReported", page: "page_2", report: choice },
+        failed(snapshotOf2),
+      ],
+      todo: [
+        [snapshotOf2],
+        [
+          {
+            kind: "browser",
+            ask: {
+              kind: "waitForSettled",
+              page: "page_2",
+              input: "reported_1",
+            },
+          },
+          afterOnly,
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // The time limit of a wrap-up.
+    {
+      name: "when the time limit passes while a choice waits for its first snapshot, nothing is asked to be passed on: no page held it",
+      happened: [opened, ...started, reportedAs(choice), stop, timeLimit],
+      todo: [[stopReporting]],
+      state: { phase: "paused" },
+    },
+    {
+      name: "when the time limit passes while an assertion waits for its snapshot, nothing is asked to be passed on",
+      happened: [opened, ...started, reportedAs(visible), stop, timeLimit],
+      todo: [[stopReporting]],
+      state: { phase: "paused" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+});
