@@ -259,6 +259,8 @@ it("offers Continue, Discard and Restore while paused, and dims a discarded entr
   await expect.poll(() => visit.entry(0).isDimmed()).toBe(true);
   expect(await visit.entry(0).discardedMark.isVisible()).toBe(true);
   expect(await visit.entry(0).changeRows()).toEqual([]);
+  // No empty list of what changed is shown in its place.
+  expect(await visit.entry(0).changes.count()).toBe(0);
   expect(await visit.entry(1).isDimmed()).toBe(false);
   expect(await visit.entry(1).discardedMark.count()).toBe(0);
   expect(await recorderWindow.controls.offered()).toEqual([
