@@ -128,6 +128,23 @@ describe("the toolbar", () => {
     ]);
   });
 
+  it("shows Assert visibility filled as Finish is while Playwright picks", async () => {
+    const { call, tell } = scriptedPage();
+    mount(call);
+    tell({
+      phase: "recording",
+      picking: true,
+      commands: ["stop", "finish", "leaveAssertVisibility"],
+    } as Partial<RecorderState>);
+    await expect.poll(() => toolbar.picking()).toBe(true);
+    const fill = (control: typeof toolbar.root) =>
+      control.evaluate((element) => getComputedStyle(element).backgroundColor);
+
+    expect(await fill(toolbar.assertVisibility)).toBe(
+      await fill(toolbar.button("Finish"))
+    );
+  });
+
   it("sits at the bottom right of the page, apart from the page's structure, layout and styles", async () => {
     const style = document.createElement("style");
     style.textContent = `${TOOLBAR_HOST} { opacity: 0.5 !important; position: static !important; }`;

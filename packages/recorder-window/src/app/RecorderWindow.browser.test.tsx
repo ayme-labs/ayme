@@ -6,6 +6,7 @@ import type {
   RecorderUpdate,
 } from "@ayme-dev/recorder/contract";
 import { createPage } from "@ayme-dev/playwright-lite";
+import type { Locator } from "@playwright/test";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { RecorderChannel } from "../channel";
@@ -221,6 +222,35 @@ it("offers Stop, Assert visibility, Clear and Finish while recording, and sends 
     { type: "clear" },
     { type: "finish" },
   ]);
+});
+
+/** How a control looks: its fill and its outline. */
+const looks = (control: { evaluate: Locator["evaluate"] }) =>
+  control.evaluate((element) => {
+    const shown = getComputedStyle(element);
+    return { fill: shown.backgroundColor, outline: shown.borderTopWidth };
+  });
+
+it("shows Assert visibility outlined while off, and filled as Finish is while on", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({
+    phase: "recording",
+    commands: ["stop", "finish", "assertVisibility"],
+  });
+  await expect.poll(() => recorderWindow.controls.picking()).toBe(false);
+  const finish = await looks(recorderWindow.controls.button("Finish"));
+
+  expect(await looks(recorderWindow.controls.assertVisibility)).toMatchObject({
+    outline: "1px",
+  });
+  tell({
+    phase: "recording",
+    picking: true,
+    commands: ["stop", "finish", "leaveAssertVisibility"],
+  } as Partial<RecorderState>);
+  await expect.poll(() => recorderWindow.controls.picking()).toBe(true);
+  expect(await looks(recorderWindow.controls.assertVisibility)).toEqual(finish);
 });
 
 it("shows Assert visibility on while Playwright picks, and leaves it when pressed", async () => {
