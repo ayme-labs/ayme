@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/react-v0.2.0...react-v0.3.0) (2026-11-14)
+
+
+### Features
+
+* **ayme:** one in-page module per document ([#1169](https://github.com/ayme-labs/ayme/issues/1169)) ([3b742de](https://github.com/ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b))
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/react-v0.1.1...react-v0.2.0) (2026-11-04)
 
 
