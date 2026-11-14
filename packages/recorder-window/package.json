@@ -39,6 +39,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.2",
     "@vitest/browser-playwright": "^4.1.11",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.1",
@@ -51,6 +52,7 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "ws": "^8.22.0"
   }
 }

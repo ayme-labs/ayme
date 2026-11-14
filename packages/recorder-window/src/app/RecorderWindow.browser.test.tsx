@@ -10,7 +10,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import type { RecorderChannel } from "../channel";
 import { RecorderWindow } from "../testing";
-import { mountWindow } from "./mountWindow";
+import { channelUrl, mountWindow } from "./mountWindow";
 
 // Component tests: the recorder window, mounted as its script mounts it,
 // showing what a scripted channel tells, and read and pressed through its
@@ -349,4 +349,10 @@ it("shows itself in the light scheme otherwise", async () => {
   mount(channel);
 
   expect(document.documentElement.classList.contains("dark")).toBe(false);
+});
+
+it("opens its channel on the server that serves it, at /channel", () => {
+  expect(channelUrl({ host: "127.0.0.1:53124" })).toBe(
+    "ws://127.0.0.1:53124/channel"
+  );
 });
