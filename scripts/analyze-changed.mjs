@@ -36,8 +36,19 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT = path.join(ROOT, "reports", "analyze-changed.md");
 const PACKAGE_DIR = /^packages\/[^/]+/;
 
+/**
+ * Room for what git prints: a pull request's diff and a file at the base
+ * grow with the pull request, and execFileSync's default of 1 MB fails with
+ * ENOBUFS past it.
+ */
+const GIT_OUTPUT_LIMIT = 1024 ** 3;
+
 function git(...args) {
-  return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
+  return execFileSync("git", args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: GIT_OUTPUT_LIMIT,
+  });
 }
 
 function parseArgs(argv) {
@@ -109,7 +120,7 @@ export function diffAgainst(base, cwd = ROOT) {
       "--",
       "packages",
     ],
-    { cwd, encoding: "utf8" }
+    { cwd, encoding: "utf8", maxBuffer: GIT_OUTPUT_LIMIT }
   );
 }
 

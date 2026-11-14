@@ -174,6 +174,36 @@ test("diffAgainst ignores the user's diff config", () => {
   }
 });
 
+test("diffAgainst reads a diff past execFileSync's default 1 MB", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "analyze-changed-"));
+  const env = {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  const git = (...args) => execFileSync("git", args, { cwd: dir, env });
+  const file = path.join(dir, "packages/core/src/a.ts");
+  try {
+    git("init", "-q");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "test");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, "a\n");
+    git("add", ".");
+    git("commit", "-qm", "base");
+    // About 1.2 MB of added lines.
+    const added = 40_000;
+    fs.writeFileSync(file, `a\n${"x".repeat(29).concat("\n").repeat(added)}`);
+
+    const diff = diffAgainst("HEAD", dir);
+
+    assert.ok(diff.length > 1024 ** 2);
+    assert.equal(changedLines(diff).get("packages/core/src/a.ts").size, added);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("reusedResults reads Stryker's incremental summary from its log", () => {
   const log = [
     "10:00:01 (42) INFO ProjectReader Found incremental report",
