@@ -93,11 +93,11 @@ function shadowRootFor(host: HTMLElement) {
 }
 
 /** The button of the toolbar under a click, if any. */
-const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) =>
-  root
-    .elementFromPoint(clientX, clientY)
-    // Stryker disable next-line OptionalChaining: a point whose input reaches the toolbar lies on one of its elements
-    ?.closest("button");
+const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) => {
+  const element = root.elementFromPoint(clientX, clientY);
+  // Stryker disable next-line OptionalChaining: a point whose input reaches the toolbar lies on one of its elements
+  return element?.closest("button");
+};
 
 /**
  * What stops a person's input on the toolbar at the window. A click is then
@@ -161,12 +161,8 @@ export function mountToolbar(call: ToolbarCall): HTMLElement {
   host.addEventListener(TOOLBAR_REMOVE, () => {
     keep.disconnect();
     for (const type of INPUT_TYPES)
-      window.removeEventListener(
-        type,
-        stop,
-        // Stryker disable next-line BooleanLiteral: a listener left behind never matches a host that is gone
-        true
-      );
+      // Stryker disable next-line CallExpression,BooleanLiteral: a listener left behind never matches a host that is gone
+      window.removeEventListener(type, stop, true);
     react.unmount();
     host.remove();
   });
