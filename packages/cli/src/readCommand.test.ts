@@ -116,6 +116,18 @@ describe("readCommand", () => {
     { name: "an unknown command", args: ["record", "http://localhost"] },
     { name: "codegen without a URL", args: ["codegen"] },
     { name: "codegen with two URLs", args: ["codegen", "a", "b"] },
+    {
+      name: "a running browser's address with no command",
+      args: ["--cdp-endpoint", "http://127.0.0.1:9222"],
+    },
+    {
+      name: "a running browser's address and another command",
+      args: ["record", "--cdp-endpoint", "http://127.0.0.1:9222"],
+    },
+    {
+      name: "a running browser's address and two URLs",
+      args: ["codegen", "a", "b", "--cdp-endpoint", "http://127.0.0.1:9222"],
+    },
   ])("fails with the usage text for $name", ({ args }) => {
     expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
   });

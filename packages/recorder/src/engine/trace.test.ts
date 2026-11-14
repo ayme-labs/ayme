@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { traceInvocation } from "./trace";
+import { runTrace, traceInvocation } from "./trace";
 
 // `trace` goes to the project's own `playwright trace`. What the engine
 // decides is which trace file the arguments name: the recording that is the
@@ -73,6 +73,23 @@ describe("the trace command", () => {
     });
   });
 
+  it("takes a name that only starts or ends like a recording's id for what it is", async () => {
+    await recording("rec_1", traceOf("rec_1"));
+    const file = join(project, "rec_1.zip");
+    await writeFile(file, "a trace");
+
+    // A file whose name begins with an id is a file, and a name that ends
+    // with one is the stock tool's own word.
+    expect(await traceInvocation(project, ["rec_1.zip"])).toEqual({
+      kind: "run",
+      args: ["open", file],
+    });
+    expect(await traceInvocation(project, ["old_rec_1"])).toEqual({
+      kind: "run",
+      args: ["old_rec_1"],
+    });
+  });
+
   it("takes the stock tool's `open` with `latest` or an id in place of the file, and no target for the latest", async () => {
     const file = await recording("rec_1", traceOf("rec_1"));
 
@@ -104,6 +121,15 @@ describe("the trace command", () => {
     expect(await traceInvocation(project, args)).toEqual({
       kind: "run",
       args,
+    });
+  });
+
+  it("leaves an argument that looks like a flag to the stock tool, though a file has that name", async () => {
+    await writeFile(join(project, "--trace.zip"), "a trace");
+
+    expect(await traceInvocation(project, ["--trace.zip"])).toEqual({
+      kind: "run",
+      args: ["--trace.zip"],
     });
   });
 
@@ -140,5 +166,92 @@ describe("the trace command", () => {
       kind: "error",
       message: expect.stringContaining("trace.zip"),
     });
+  });
+});
+
+// `trace` runs the project's own Playwright. The tests give it a stand-in
+// `cli.js` that writes down how it was run and exits with the code in
+// `exit-code`.
+describe("running the trace command", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  async function installPlaywright(exitCode = 0) {
+    const folder = join(project, "node_modules", "playwright");
+    await mkdir(folder, { recursive: true });
+    await writeFile(
+      join(folder, "package.json"),
+      JSON.stringify({ name: "playwright", version: "1.64.0" })
+    );
+    await writeFile(
+      join(folder, "cli.js"),
+      `require("node:fs").writeFileSync(
+  ${JSON.stringify(join(project, "ran.json"))},
+  JSON.stringify({ args: process.argv.slice(2) })
+);
+process.exit(${exitCode});\n`
+    );
+  }
+  const ran = async () =>
+    (
+      JSON.parse(await readFile(join(project, "ran.json"), "utf8")) as {
+        args: string[];
+      }
+    ).args;
+  /** What the command wrote to stderr while `run` ran. */
+  async function stderrOf(run: () => Promise<unknown>) {
+    const written: string[] = [];
+    vi.spyOn(process.stderr, "write").mockImplementation((text) => {
+      written.push(String(text));
+      return true;
+    });
+    await run();
+    return written.join("");
+  }
+
+  it("gives the project's Playwright `trace` and the trace file the arguments name, and its exit code", async () => {
+    await installPlaywright(3);
+    const file = await recording("rec_1", traceOf("rec_1"));
+
+    const code = await runTrace({ projectDir: project, args: ["latest"] });
+
+    expect(code).toBe(3);
+    expect(await ran()).toEqual(["trace", "open", file]);
+  });
+
+  it("gives it the arguments of one of its own commands as they are", async () => {
+    await installPlaywright();
+
+    expect(
+      await runTrace({ projectDir: project, args: ["actions", "--grep", "x"] })
+    ).toBe(0);
+    expect(await ran()).toEqual(["trace", "actions", "--grep", "x"]);
+  });
+
+  it("says what could not be found, without running Playwright, and exits with 1", async () => {
+    await installPlaywright();
+    let code: number | undefined;
+
+    const told = await stderrOf(async () => {
+      code = await runTrace({ projectDir: project, args: ["rec_other"] });
+    });
+
+    expect(code).toBe(1);
+    expect(told).toBe('No recording "rec_other" found in .ayme/recordings.\n');
+    await expect(readFile(join(project, "ran.json"), "utf8")).rejects.toThrow(
+      /ENOENT/
+    );
+  });
+
+  it("says that the project has no Playwright, with no stack trace, and exits with 1", async () => {
+    let code: number | undefined;
+
+    const told = await stderrOf(async () => {
+      code = await runTrace({ projectDir: project, args: ["latest"] });
+    });
+
+    expect(code).toBe(1);
+    expect(told).toBe(
+      `No Playwright is installed in ${project}. The trace tool is the project's own: install Playwright there, for example with "npm install -D @playwright/test".\n`
+    );
   });
 });

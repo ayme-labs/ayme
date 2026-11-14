@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import { RecorderStartError } from "@ayme-dev/recorder";
+
 import {
+  browserOf,
   exitCode,
   launchOptions,
   outcomeLine,
+  outcomeReport,
+  startFailure,
   startLine,
+  startLines,
   toolbarScript,
   warningPrinter,
   windowFolder,
@@ -127,5 +133,87 @@ describe("what the terminal is told of the window", () => {
     expect(windowLine("http://127.0.0.1:53124/")).toBe(
       "Recorder UI: http://127.0.0.1:53124/\n"
     );
+  });
+});
+
+describe("which browser a target asks for", () => {
+  it("launches a browser on a URL, with the window setting and the tests' variables", () => {
+    expect(
+      browserOf({ url: "http://localhost:3000", headless: true }, {})
+    ).toEqual({ launch: { url: "http://localhost:3000", headless: true } });
+    expect(
+      browserOf(
+        { url: "http://localhost:3000" },
+        { AYME_RECORDER_HEADLESS: "1", AYME_RECORDER_DEBUG_PORT: "9333" }
+      )
+    ).toEqual({
+      launch: { url: "http://localhost:3000", headless: true, debugPort: 9333 },
+    });
+  });
+
+  it("attaches to the running browser at an address", () => {
+    expect(
+      browserOf(
+        { cdpEndpoint: "http://127.0.0.1:9222" },
+        { AYME_RECORDER_HEADLESS: "1" }
+      )
+    ).toEqual({ attach: { cdpEndpoint: "http://127.0.0.1:9222" } });
+  });
+});
+
+describe("what the terminal is told once the recorder has started", () => {
+  const launched = { launch: { url: "http://localhost:3000" } };
+
+  it("is the start line and, when the recorder serves a window, its address", () => {
+    expect(startLines(launched, "http://127.0.0.1:53124/")).toBe(
+      "Opened http://localhost:3000. Close the browser, or press Ctrl+C here, to end.\nRecorder UI: http://127.0.0.1:53124/\n"
+    );
+  });
+
+  it("is the start line alone when there is no window", () => {
+    expect(startLines(launched, undefined)).toBe(
+      "Opened http://localhost:3000. Close the browser, or press Ctrl+C here, to end.\n"
+    );
+  });
+});
+
+describe("how a start error is told to a person", () => {
+  it("is the error's own sentence, with no stack trace", () => {
+    expect(
+      startFailure(
+        new RecorderStartError("playwright-not-found", "No Playwright in /p.")
+      )
+    ).toBe("No Playwright in /p.\n");
+  });
+
+  it("is nothing for any other error, which is not the person's to read", () => {
+    expect(startFailure(new Error("boom"))).toBeUndefined();
+    expect(startFailure("boom")).toBeUndefined();
+  });
+});
+
+describe("what to print, where, and the exit code, for an outcome", () => {
+  it("tells a saved recording on stdout, and exits with 0", () => {
+    expect(outcomeReport({ kind: "saved", folder: "/p/rec_1" })).toEqual({
+      stream: "stdout",
+      text: "Recording package: /p/rec_1/package.yaml\n",
+      code: 0,
+    });
+  });
+
+  it("tells an empty recording on stdout, and exits with 0", () => {
+    expect(outcomeReport({ kind: "empty" })).toEqual({
+      stream: "stdout",
+      text: "Recording was empty; no recording package was created.\n",
+      code: 0,
+    });
+  });
+
+  it("tells a failure on stderr, and exits with 1", () => {
+    expect(outcomeReport({ kind: "failed", reason: "ENOSPC" })).toEqual({
+      stream: "stderr",
+      text: "The recorder failed: ENOSPC\n",
+      code: 1,
+    });
   });
 });

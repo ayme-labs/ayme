@@ -87,9 +87,10 @@ async function write(
     renamed = true;
     await rename(temporaryLatest, join(recordings, "latest.yaml"));
   } catch (error) {
-    // Whatever the clean-up meets, the save failed for its own reason.
+    // Whatever the clean-up meets, such as nothing to remove, the save
+    // failed for its own reason.
     const remove = (path: string) =>
-      rm(path, { recursive: true, force: true }).catch(() => {});
+      rm(path, { recursive: true }).catch(() => {});
     await remove(temporaryFolder);
     await remove(temporaryLatest);
     if (renamed) await remove(folder);
@@ -133,6 +134,7 @@ export async function findTrace(
   const latest = recording === "latest";
   const text = await readFile(
     join(recordings, latest ? "latest.yaml" : join(recording, "package.yaml")),
+    // Stryker disable next-line StringLiteral: equivalent, since without an encoding the file is read as bytes, in which the search below finds the same text
     "utf8"
   ).catch(() => undefined);
   if (text === undefined)
@@ -142,8 +144,11 @@ export async function findTrace(
         ? "No recording found in .ayme/recordings. Record a flow first."
         : `No recording "${recording}" found in .ayme/recordings.`,
     };
-  const field = (name: string) =>
-    new RegExp(`^${name}: (.*)$`, "m").exec(text)?.[1]?.trim();
+  /** A field of the package's head; undefined when it has no such line. */
+  const field = (name: string) => {
+    const value = new RegExp(`^${name}: (.*)$`, "m").exec(text)?.[1];
+    return value?.trim();
+  };
   const id = field("recordingId") ?? recording;
   const tracePath = field("tracePath");
   if (!tracePath || tracePath === "null")

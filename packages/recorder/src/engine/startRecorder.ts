@@ -1,7 +1,12 @@
 import { readFile } from "node:fs/promises";
 
 import { stockBrowser } from "../playwright/infrastructure";
-import { serveWindow, toolbarBridge } from "../server/infrastructure";
+import {
+  serveWindow,
+  toolbarBridge,
+  type ToolbarBridge,
+  type WindowServer,
+} from "../server/infrastructure";
 import { startRecorderOn, type Recorder } from "./recorder";
 
 export type RecorderOptions = {
@@ -38,12 +43,50 @@ export type RecorderOptions = {
   readonly toolbar?: { readonly script: string };
 };
 
+/** The in-page toolbar: its script's text, and its way to the recorder. */
+export type ToolbarKit = {
+  readonly script: string;
+  readonly bridge: ToolbarBridge;
+};
+
 /** The toolbar's script and its way to the recorder, when it is asked for. */
-async function toolbarFor(options: RecorderOptions) {
+export async function toolbarFor(
+  options: RecorderOptions
+): Promise<ToolbarKit | undefined> {
   if (!options.toolbar) return undefined;
   // Read before anything opens: a CLI built without it fails at once.
   const script = await readFile(options.toolbar.script, "utf8");
   return { script, bridge: toolbarBridge() };
+}
+
+/** What the stock adapter is asked for, from the caller's options. */
+export function stockOptionsOf(
+  options: RecorderOptions,
+  windowUrl: string | undefined,
+  toolbar: ToolbarKit | undefined
+): Parameters<typeof stockBrowser>[0] {
+  const { projectDir } = options;
+  const shown = toolbar && {
+    script: toolbar.script,
+    answer: toolbar.bridge.answer,
+  };
+  if ("attach" in options.browser)
+    return {
+      projectDir,
+      cdpEndpoint: options.browser.attach.cdpEndpoint,
+      toolbar: shown,
+    };
+  const { url, headless = false, debugPort } = options.browser.launch;
+  return { projectDir, url, headless, debugPort, windowUrl, toolbar: shown };
+}
+
+/** What the recorder is started with, besides its browser. */
+export function recorderOptionsOf(
+  projectDir: string,
+  window: WindowServer | undefined,
+  toolbar: ToolbarKit | undefined
+): Parameters<typeof startRecorderOn>[1] {
+  return { projectDir, window, toolbar: toolbar?.bridge };
 }
 
 /**
@@ -54,34 +97,12 @@ async function toolbarFor(options: RecorderOptions) {
 export async function startRecorder(
   options: RecorderOptions
 ): Promise<Recorder> {
-  const { projectDir } = options;
   const toolbar = await toolbarFor(options);
   const window = options.window
     ? await serveWindow(options.window.folder)
     : undefined;
-  const shown = toolbar && {
-    script: toolbar.script,
-    answer: toolbar.bridge.answer,
-  };
-  if ("attach" in options.browser)
-    return startRecorderOn(
-      stockBrowser({
-        projectDir,
-        cdpEndpoint: options.browser.attach.cdpEndpoint,
-        toolbar: shown,
-      }),
-      { projectDir, window, toolbar: toolbar?.bridge }
-    );
-  const { url, headless = false, debugPort } = options.browser.launch;
   return startRecorderOn(
-    stockBrowser({
-      projectDir,
-      url,
-      headless,
-      debugPort,
-      windowUrl: window?.url,
-      toolbar: shown,
-    }),
-    { projectDir, window, toolbar: toolbar?.bridge }
+    stockBrowser(stockOptionsOf(options, window?.url, toolbar)),
+    recorderOptionsOf(options.projectDir, window, toolbar)
   );
 }

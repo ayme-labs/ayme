@@ -98,18 +98,30 @@ const tree = (key: string, text: string) =>
     ? [`${key}: []`]
     : [`${key}:`, ...text.split("\n").map((line) => "  " + line)];
 
-const changedItself = (node: StructuralNode) =>
-  node.status?.kind === "added" ||
-  node.status?.kind === "removed" ||
-  (node.status?.kind === "updated" && node.status.selfChanged);
+/** Whether a node of a Change Tree was added, removed or changed itself,
+ * and does not only lead to a change below it. */
+const changedItself = (node: StructuralNode) => {
+  // Only a node that was updated says whether it changed itself.
+  const { kind, selfChanged } = {
+    kind: undefined,
+    selfChanged: false,
+    ...node.status,
+  };
+  return kind === "added" || kind === "removed" || selfChanged;
+};
 const isNode = (child: StructuralNode | string) => typeof child !== "string";
 
-/** Every node, with no status mark and no property such as a link's URL. */
+/** The package's trees list no property of a node, such as a link's URL. */
+// Stryker disable next-line ArrayDeclaration: equivalent, since a made-up name of a property selects none either
+const noProperties: readonly string[] = [];
+
+/** Every node, with no property such as a link's URL. A snapshot's tree has
+ * no status to mark. */
 export function wholeTreeText(structuralTree: StructuralTree): string {
   return renderCompactStructuralNodeForest(
     projectStructuralNodeForest(
       structuralNodeForest(structuralTree.getRootNodes()),
-      { includeStatus: false, structuralProperties: [] }
+      { structuralProperties: noProperties }
     )
   );
 }
@@ -117,17 +129,9 @@ export function wholeTreeText(structuralTree: StructuralTree): string {
 /** A Change Tree's text: only the ways down to the nodes that were added,
  * removed or changed themselves. Empty when there is none. */
 export function changeText(change: StructuralTree): string {
-  const leads = new WeakMap<StructuralNode, boolean>();
-  const leadsToChange = (node: StructuralNode): boolean => {
-    let known = leads.get(node);
-    if (known === undefined) {
-      known =
-        changedItself(node) ||
-        node.children.some((child) => isNode(child) && leadsToChange(child));
-      leads.set(node, known);
-    }
-    return known;
-  };
+  const leadsToChange = (node: StructuralNode): boolean =>
+    changedItself(node) ||
+    node.children.some((child) => isNode(child) && leadsToChange(child));
   const forest = new StructuralNodeForest<StructuralNode>({
     roots: change.getRootNodes(),
     // A node that only leads to a change keeps no text of its own.
@@ -137,7 +141,7 @@ export function changeText(change: StructuralTree): string {
     withChildren: (node, children) => node.copy({ children: [...children] }),
   }).filter(leadsToChange);
   return renderCompactStructuralNodeForest(
-    projectStructuralNodeForest(forest, { structuralProperties: [] })
+    projectStructuralNodeForest(forest, { structuralProperties: noProperties })
   );
 }
 
@@ -162,20 +166,18 @@ const stubLines = (entry: TimelineEntry) =>
       : { kind: entry.kind, timestamp: entry.timestamp, discarded: true }
   );
 
-const keptLines = (entry: TimelineEntry) => [
-  ...fields(
-    entry.kind === "interaction"
-      ? {
-          kind: entry.kind,
-          timestamp: entry.timestamp,
-          interaction: entry.interaction,
-        }
-      : { kind: entry.kind, timestamp: entry.timestamp }
-  ),
-  ...(entry.changeTree === null ? [] : tree("changeTree", entry.changeTree)),
-];
+const keptLines = (entry: TimelineEntry) => {
+  // A change of its own has no Interaction, and a field with no value is
+  // left out.
+  const { kind, timestamp, interaction } = { interaction: undefined, ...entry };
+  return [
+    ...fields({ kind, timestamp, interaction }),
+    ...(entry.changeTree === null ? [] : tree("changeTree", entry.changeTree)),
+  ];
+};
 
-/** The package's text. Its `url` is the first Visit's. */
+/** The package's text, for a recording with a Visit at least. Its `url` is
+ * the first Visit's. */
 export function renderPackage(
   header: PackageHeader,
   visits: readonly PackageVisit[],
@@ -186,7 +188,7 @@ export function renderPackage(
       recordingId: header.recordingId,
       mode: "structural",
       createdAt: header.createdAt,
-      url: visits[0]?.url,
+      url: visits[0]!.url,
       tracePath: header.tracePath,
     }),
     ...list(
