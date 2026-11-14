@@ -39,7 +39,17 @@ A push that only merges the base branch into the pull request is not analyzed ag
 
 The fast lane is each package's `vitest.fast.config.ts`: its unit tests and its Vitest browser-mode tests, without `packedConsumer.test.ts`. Playwright e2e tests and the Native WebMCP tests are not in it, so code that only they exercise reads as uncovered. Stryker skips static mutants here, code that runs when a module loads such as tool descriptions, because no test owns them and each one would rerun every test. The shared settings live in [`packages/test-config`](../packages/test-config), including the one list of what is not production source (`analysis.js`) that Stryker, the coverage report and `analyze:changed` all read.
 
-Code serialized into the page, such as a `locator.evaluate` callback, reads as uncovered, and Stryker's instrumentation breaks it there. Wrap such a callback in `// Stryker disable all` and `// Stryker restore all`; without them, analysis of its file fails on its first test run.
+Code serialized into the page, such as a `locator.evaluate` callback, reads as uncovered, and Stryker's instrumentation breaks it there. Outside an `in-page/` folder ([below](#code-a-real-browser-runs)), wrap such a callback in `// Stryker disable all` and `// Stryker restore all`; without them, analysis of its file fails on its first test run.
+
+### Code a real browser runs
+
+Code that only a real browser can exercise is measured by the folder it sits in, under a layer's `infrastructure/`, as `measuredOtherwise` in [`packages/test-config/analysis.js`](../packages/test-config/analysis.js) says. A new file takes its folder's treatment.
+
+- `infrastructure/live/` drives a real browser from Node, as the recorder's stock adapter does. It is not mutated. Its measure is its contract suite on every supported Playwright version, and that suite's coverage counts in its CRAP score: the package's `test:crap` runs the suite beside the unit tests (the recorder's [`vitest.crap.config.ts`](../packages/recorder/vitest.crap.config.ts)), while a mutation run runs the unit tests only.
+- `infrastructure/in-page/` is sent into the page as text. It is neither mutated nor scored, since Node's coverage cannot see it run. Lint lets it import types only and caps each of its functions at a complexity of 4: a decision it needs is a plain rule outside the folder, unit-tested and mutated, and sent into the page with it.
+- Plain logic beside them imports neither folder, so it stays testable without a browser. The package's lint config enforces where each may be imported from.
+
+The change-analysis report lists the changed files these folders hold under a heading of their own, with how each is measured instead.
 
 Act on the report like this:
 
