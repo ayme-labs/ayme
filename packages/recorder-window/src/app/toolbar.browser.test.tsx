@@ -45,11 +45,13 @@ function scriptedPage() {
   let latest: RecorderUpdate | undefined;
   let revision = 0;
   const waiting = new Set<() => void>();
+  const asked = { updates: 0 };
   const call: ToolbarCall = async (message: ToolbarMessage) => {
     if (message.kind === "send") {
       sent.push(message.command);
       return "applied";
     }
+    asked.updates += 1;
     // The toolbar pulls the first update above the newest it heard.
     for (;;) {
       if (latest && latest.revision > message.after) return latest;
@@ -59,6 +61,7 @@ function scriptedPage() {
   return {
     call,
     sent,
+    asked,
     tell(state: Partial<RecorderState>) {
       latest = {
         revision: ++revision,
@@ -152,9 +155,12 @@ describe("the toolbar", () => {
   });
 
   it("shows itself in the dark scheme when the person's system asks for it", async () => {
-    vi.spyOn(globalThis, "matchMedia").mockReturnValue({
-      matches: true,
-    } as MediaQueryList);
+    vi.spyOn(globalThis, "matchMedia").mockImplementation(
+      (query) =>
+        ({
+          matches: query === "(prefers-color-scheme: dark)",
+        }) as MediaQueryList
+    );
     const { call, tell } = scriptedPage();
     mount(call);
     tell({ phase: "notRecording", commands: ["record"] });
@@ -166,9 +172,13 @@ describe("the toolbar", () => {
   });
 
   it("shows itself in the light scheme otherwise", async () => {
-    vi.spyOn(globalThis, "matchMedia").mockReturnValue({
-      matches: false,
-    } as MediaQueryList);
+    vi.spyOn(globalThis, "matchMedia").mockImplementation(
+      (query) =>
+        ({
+          // It answers any other question yes: only the scheme is asked.
+          matches: query !== "(prefers-color-scheme: dark)",
+        }) as MediaQueryList
+    );
     const { call, tell } = scriptedPage();
     mount(call);
     tell({ phase: "notRecording", commands: ["record"] });
@@ -193,6 +203,36 @@ describe("the toolbar", () => {
     expect(await toolbar.offered()).toEqual(["Record"]);
   });
 
+  it("keeps the page's own elements where the page puts them", async () => {
+    const { call, tell } = scriptedPage();
+    const host = mount(call);
+    tell({ phase: "notRecording", commands: ["record"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
+    const own = document.createElement("div");
+
+    document.documentElement.append(own);
+    removals.push(() => own.remove());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(document.documentElement.lastElementChild).toBe(own);
+    expect(host.nextElementSibling).toBe(own);
+  });
+
+  it("asks the recorder nothing more once the engine has let go of it", async () => {
+    const { call, asked, tell } = scriptedPage();
+    const host = mountToolbar(call);
+    tell({ phase: "notRecording", commands: ["record"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
+    // It waits for the next update, as it does all the time.
+    await expect.poll(() => asked.updates).toBe(2);
+
+    host.dispatchEvent(new Event(TOOLBAR_REMOVE));
+    tell({ phase: "recording", commands: ["stop"] });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(asked.updates).toBe(2);
+  });
+
   it("leaves the page when the engine lets go of it", async () => {
     const { call, tell } = scriptedPage();
     const host = mountToolbar(call);
@@ -208,6 +248,32 @@ describe("the toolbar", () => {
 });
 
 describe("a person's input on the toolbar", () => {
+  /** Every error the page sees thrown while the test runs. */
+  function pageErrors() {
+    const errors: string[] = [];
+    const listener = (event: ErrorEvent) => errors.push(event.message);
+    addEventListener("error", listener);
+    removals.push(() => removeEventListener("error", listener));
+    return errors;
+  }
+
+  it("presses nothing, and raises no error in the page, off the toolbar's buttons", async () => {
+    const { call, sent, tell } = scriptedPage();
+    const host = mount(call);
+    tell({ phase: "notRecording", commands: ["record"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
+    const box = (await toolbar.status.boundingBox())!;
+    const errors = pageErrors();
+
+    await userEvent.click(host, {
+      position: { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      force: true,
+    });
+
+    expect(sent).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
   /** Every input of the person's own the page hears, on its document. A
    * click the toolbar gives its own button is untrusted: the page's
    * listeners and Playwright's recorder take it for no person's. */
@@ -246,11 +312,13 @@ describe("a person's input on the toolbar", () => {
     removals.push(() => field.remove());
     field.focus();
     const heard = pageListens();
+    const errors = pageErrors();
 
     await personClicks(host, "Finish");
 
     expect(sent).toEqual([{ type: "finish" }]);
     expect(heard).toEqual([]);
+    expect(errors).toEqual([]);
     expect(document.activeElement).toBe(field);
   });
 

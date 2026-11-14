@@ -330,9 +330,12 @@ it("goes on after a command the recorder could not be asked", async () => {
 });
 
 it("shows itself in the dark scheme when the person's system asks for it", async () => {
-  vi.spyOn(globalThis, "matchMedia").mockReturnValue({
-    matches: true,
-  } as MediaQueryList);
+  vi.spyOn(globalThis, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches: query === "(prefers-color-scheme: dark)",
+      }) as MediaQueryList
+  );
   const { channel } = scriptedChannel();
 
   mount(channel);
@@ -341,9 +344,13 @@ it("shows itself in the dark scheme when the person's system asks for it", async
 });
 
 it("shows itself in the light scheme otherwise", async () => {
-  vi.spyOn(globalThis, "matchMedia").mockReturnValue({
-    matches: false,
-  } as MediaQueryList);
+  vi.spyOn(globalThis, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        // It answers any other question yes: only the scheme is asked.
+        matches: query !== "(prefers-color-scheme: dark)",
+      }) as MediaQueryList
+  );
   const { channel } = scriptedChannel();
 
   mount(channel);
