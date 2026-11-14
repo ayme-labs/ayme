@@ -14,7 +14,11 @@ export function isAttachAddress(address: string): boolean {
     return false;
   }
   if (url.protocol !== "http:" && url.protocol !== "ws:") return false;
-  const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  // A hostname holds brackets only around a whole IPv6 address, so the
+  // anchors change nothing.
+  // Stryker disable next-line Regex
+  const unbracketed = /^\[|\]$/g;
+  const host = url.hostname.replace(unbracketed, "").toLowerCase();
   if (host === "localhost" || host === "::1") return true;
   return isIPv4(host) && host.split(".")[0] === "127";
 }
