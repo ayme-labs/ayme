@@ -49,11 +49,11 @@
     "@trpc/client": "^11.19.0",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "playwright-core": "^1.64.0",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }
