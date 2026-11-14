@@ -547,6 +547,40 @@ describe("the report's picture, matched to the snapshots around an input", () =>
     const inFrame =
       "iframe >> internal:control=enter-frame >> internal:role=textbox";
 
+    it("is read in a frame of a frame when Playwright's selector starts by any frame, as from 1.63 it does that deep", async () => {
+      const nested = (field: string) =>
+        page(
+          `- textbox "Item" [ref=e2]`,
+          `- iframe [ref=e3]:`,
+          `  - generic [ref=f1e1]:`,
+          `    - button "Back" [ref=f1e2]`,
+          `    - iframe [ref=f1e3]:`,
+          `      - generic [ref=f2e1]:`,
+          `        - textbox "Item" [ref=f2e2]${field}`
+        );
+
+      expect(
+        await read({
+          before: nested(""),
+          picture: picture(`- textbox "Item" [ref=e21]: m`),
+          after: nested(": milk"),
+          target: "e21",
+          selector: "internal:control=any-frame >> internal:role=textbox",
+        })
+      ).toEqual({
+        changedBefore: null,
+        changedByIt: changed(
+          `- [ref=e3] iframe:`,
+          `  - [ref=f1e1]:`,
+          `    - [ref=f1e3] iframe:`,
+          `      - [ref=f2e1]:`,
+          `        - <changed> [ref=f2e2] textbox "Item": milk`
+        ),
+        targetRef: "f2e2",
+        warnings: [],
+      });
+    });
+
     it("is not read from a picture that two frames both fit: the input's target is not known, it is written with its 'after' only, and warned of", async () => {
       const card = (number: number, field: string) => [
         `- iframe [ref=e${number + 1}]:`,

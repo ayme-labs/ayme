@@ -33,30 +33,40 @@ export type Scope = {
 
 /** The step of Playwright's selector that goes into a frame. */
 const ENTERS_FRAME = "internal:control=enter-frame";
+/** The step that starts a selector found in any frame. */
+const ANY_FRAME = "internal:control=any-frame";
 
 /**
  * The documents of a snapshot an input may have been given to, from what its
- * report says of where it happened. Playwright's selector names every frame
+ * report says of where it happened. Playwright's selector names the frames
  * it enters on its way to the target, so it says how deep in frames the
  * target is: not at all for the page, which is then the one document; once
  * for a frame of the page, and so on, which leaves every frame that deep.
- * None for a report with no selector: nothing says where the input happened.
+ * From Playwright 1.63 a target two or more frames deep is written with an
+ * "any frame" step first and only as many frame-entering steps as are
+ * needed to find its frame: it is in a frame deeper than those steps, which
+ * leaves every such frame. None for a report with no selector: nothing says
+ * where the input happened.
  */
 export function scopesFor(
   tree: StructuralTree,
   selector: string | null
 ): Scope[] {
   if (selector === null) return [];
-  const deep = selector
-    .split(" >> ")
-    .filter((step) => step === ENTERS_FRAME).length;
-  if (deep === 0) return [{ frame: null, roots: tree.getRootNodes() }];
+  const steps = selector.split(" >> ");
+  const entered = steps.filter((step) => step === ENTERS_FRAME).length;
+  const anyFrame = steps[0] === ANY_FRAME;
+  if (entered === 0 && !anyFrame)
+    return [{ frame: null, roots: tree.getRootNodes() }];
+  // How many frames are around the iframe of a candidate document.
+  const fits = (around: number) =>
+    anyFrame ? around >= entered : around === entered - 1;
   const frames: StructuralNode[] = [];
   tree.walk((node) => {
     const around = tree
       .getAncestorsOf(node.ref)
       .filter((ancestor) => ancestor.role === "iframe").length;
-    if (node.role === "iframe" && around === deep - 1) frames.push(node);
+    if (node.role === "iframe" && fits(around)) frames.push(node);
   });
   return frames.map((frame) => ({ frame, roots: nodes(frame) }));
 }
