@@ -48,13 +48,17 @@ import {
 } from "../in-page/drawing";
 import { startGate } from "../in-page/gate";
 import { installActivityWatch, type TargetChain } from "../in-page/watches";
-import type { HeldByPage } from "../pageRules";
+import { letThroughUpTo, type HeldByPage } from "../pageRules";
 import { ancestorRefs, installGate, installTargetWatch } from "./pageFunctions";
 import {
   playwrightRecorderOf,
   type PlaywrightAction,
 } from "../playwrightRecorder";
-import { attachAddressRule, isAttachAddress } from "../attachAddress";
+import {
+  attachAddressRule,
+  isAttachAddress,
+  notOnePageMessage,
+} from "../attachAddress";
 import {
   loadProjectPlaywright,
   placeInRange,
@@ -243,9 +247,7 @@ class NotOnePage extends Error {}
 function theOnePage(browser: Browser): Page {
   const pages = browser.contexts().flatMap((context) => context.pages());
   if (pages.length === 1) return pages[0]!;
-  throw new NotOnePage(
-    `The recorder records a browser with exactly one page open, and leaves it as it is. The browser at this address has ${pages.length === 0 ? "no page" : `${pages.length} pages`} open: ${pages.length === 0 ? "open the page to record" : "close the others"} and attach again.`
-  );
+  throw new NotOnePage(notOnePageMessage(pages.length));
 }
 
 /**
@@ -699,29 +701,19 @@ async function openPage(
     if (!open) return;
     // What the engine knows the page held: up to `upTo`, by document.
     const known = heldBy.get(request.page) ?? [];
-    const upTo =
-      request.upTo === null
-        ? []
-        : known.slice(
-            0,
-            known.findIndex((input) => input.id === request.upTo) + 1
-          );
     await Promise.all(
-      open
-        .frames()
-        .map((frame) =>
-          frame
-            .evaluate(
-              letGateThrough,
-              Math.max(
-                0,
-                ...upTo
-                  .filter((input) => input.frame === frame)
-                  .map((input) => input.seq)
-              )
+      open.frames().map((frame) =>
+        frame
+          .evaluate(
+            letGateThrough,
+            letThroughUpTo(
+              known,
+              request.upTo,
+              (input) => input.frame === frame
             )
-            .catch(() => {})
-        )
+          )
+          .catch(() => {})
+      )
     );
   }
 

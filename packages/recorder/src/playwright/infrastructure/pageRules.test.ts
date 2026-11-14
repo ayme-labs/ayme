@@ -6,6 +6,7 @@ import {
   gateStartsOn,
   keyHeld,
   keyRoute,
+  letThroughUpTo,
   mouseRoute,
   keyTarget,
   leftAlone,
@@ -437,5 +438,31 @@ describe("the refs of a node and those above it", () => {
 
   it("are none from no node", () => {
     expect(chainFrom(null)).toEqual([]);
+  });
+});
+
+describe("up to which held input a document lets what follows through", () => {
+  // Held in order: a1 and a2 in document a, b1 in document b.
+  const known = [
+    { id: "input_1", seq: 1, document: "a" },
+    { id: "input_2", seq: 1, document: "b" },
+    { id: "input_3", seq: 2, document: "a" },
+  ];
+  const inA = (input: { document: string }) => input.document === "a";
+
+  it("is the last that document held up to and with the one named", () => {
+    expect(letThroughUpTo(known, "input_3", inA)).toBe(2);
+    expect(letThroughUpTo(known, "input_2", inA)).toBe(1);
+    expect(
+      letThroughUpTo(known, "input_2", (input) => input.document === "b")
+    ).toBe(1);
+  });
+
+  it("is 0 when the document held none of them, or none is named or known", () => {
+    expect(
+      letThroughUpTo(known, "input_1", (input) => input.document === "b")
+    ).toBe(0);
+    expect(letThroughUpTo(known, null, inA)).toBe(0);
+    expect(letThroughUpTo(known, "input_9", inA)).toBe(0);
   });
 });

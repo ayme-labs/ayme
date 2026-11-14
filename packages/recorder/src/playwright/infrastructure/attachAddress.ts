@@ -26,3 +26,11 @@ export function isAttachAddress(address: string): boolean {
 /** Why an address is not one the recorder attaches to, as a sentence. */
 export const attachAddressRule = (address: string) =>
   `The recorder attaches only to a browser on this machine, at an http:// or ws:// address on localhost or 127.0.0.1, such as http://127.0.0.1:9222. It was given ${address}.`;
+
+/** Why a browser with this many pages open is not one the recorder attaches
+ * to, as a sentence: it records the one page open, and leaves it as it is. */
+export function notOnePageMessage(pages: number): string {
+  const found = pages === 0 ? "no page" : `${pages} pages`;
+  const todo = pages === 0 ? "open the page to record" : "close the others";
+  return `The recorder records a browser with exactly one page open, and leaves it as it is. The browser at this address has ${found} open: ${todo} and attach again.`;
+}

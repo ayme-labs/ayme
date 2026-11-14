@@ -312,6 +312,27 @@ export function ancestorChain<N>(
   return chain;
 }
 
+/**
+ * Up to which of its held inputs a document's gate lets what follows
+ * through: the last one that document held up to and with `upTo`, in the
+ * order the page held them; 0, letting nothing it held after go first, when
+ * it held none of them or `upTo` is null. `inDocument` says whether a held
+ * input was held in that document.
+ */
+export function letThroughUpTo<
+  I extends { readonly id: string; readonly seq: number },
+>(
+  known: readonly I[],
+  upTo: string | null,
+  inDocument: (input: I) => boolean
+): number {
+  const through = known.slice(
+    0,
+    known.findIndex((input) => input.id === upTo) + 1
+  );
+  return Math.max(0, ...through.filter(inDocument).map((input) => input.seq));
+}
+
 /** The rules the gate is sent with. */
 export type GateRules = {
   readonly recordedAsPress: typeof recordedAsPress;
