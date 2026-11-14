@@ -26,17 +26,30 @@ import {
 } from "../../../session/domain";
 import type { InteractionReport } from "../../../timeline/domain";
 import {
+  askRecorderState,
+  closeGate,
+  fileNamesIn,
+  frameContentOffset,
+  letGateThrough,
+  markCall,
+  noLongerRecording,
+  openGate,
+  pickWithGate,
+  removeOwnElements,
+  setGate,
+  stopGateAndWatch,
+  watchActivity,
+} from "../in-page/calls";
+import {
   drawHighlight,
   hidePlaywrightOverlay,
   keepCursorsAsTheyAre,
-  installActivityWatch,
-  installGate,
-  installTargetWatch,
-  startGate,
-  type HeldByPage,
   type HighlightBox,
-  type TargetChain,
-} from "../pageScripts";
+} from "../in-page/drawing";
+import { startGate } from "../in-page/gate";
+import { installActivityWatch, type TargetChain } from "../in-page/watches";
+import type { HeldByPage } from "../pageRules";
+import { ancestorRefs, installGate, installTargetWatch } from "./pageFunctions";
 import {
   playwrightRecorderOf,
   type PlaywrightAction,
@@ -406,29 +419,7 @@ async function openPage(
     const read = markers.then(() =>
       page
         .locator(selector)
-        .evaluate(
-          // Stryker disable all
-          (element) => {
-            const refs: (string | null)[] = [];
-            for (
-              let node: Node | null =
-                element.parentElement ??
-                ((element.getRootNode() as ShadowRoot).host || null);
-              node && node.nodeType === Node.ELEMENT_NODE;
-              node =
-                (node as Element).parentElement ??
-                ((node.getRootNode() as ShadowRoot).host || null)
-            )
-              refs.push(
-                (node as Element & { _ariaRef?: { ref?: string } })._ariaRef
-                  ?.ref ?? null
-              );
-            return refs;
-          },
-          // Stryker restore all
-          undefined,
-          { timeout: ANCESTOR_READ_MS }
-        )
+        .evaluate(ancestorRefs, undefined, { timeout: ANCESTOR_READ_MS })
         .catch(() => null)
     );
     markers = read.catch(() => {});
@@ -464,16 +455,7 @@ async function openPage(
     const read = markers.then(() =>
       page
         .locator(selector)
-        .evaluate(
-          // Stryker disable all
-          (input) =>
-            input instanceof HTMLInputElement && input.files
-              ? [...input.files].map((file) => file.name)
-              : null,
-          // Stryker restore all
-          undefined,
-          { timeout: UPLOAD_READ_MS }
-        )
+        .evaluate(fileNamesIn, undefined, { timeout: UPLOAD_READ_MS })
         .catch(() => null)
     );
     markers = read.catch(() => {});
@@ -527,14 +509,7 @@ async function openPage(
     subscribe(onActivity) {
       const watch = (frame: Frame, on: boolean) =>
         // A frame that is gone has nothing to tell.
-        void frame
-          .evaluate(
-            // Stryker disable all
-            (on) => window.__aymeRecorderActivity?.watch(on),
-            // Stryker restore all
-            on
-          )
-          .catch(() => {});
+        void frame.evaluate(watchActivity, on).catch(() => {});
       const onNavigated = (frame: Frame) => {
         onActivity();
         // Its new document starts with the watch switched off.
@@ -612,11 +587,7 @@ async function openPage(
     const made = markers.then(async () => {
       await context.tracing.group(snapshot);
       try {
-        await page.evaluate(
-          // Stryker disable all
-          () => 0
-          // Stryker restore all
-        );
+        await page.evaluate(markCall);
       } finally {
         await context.tracing.groupEnd();
       }
@@ -690,16 +661,7 @@ async function openPage(
     await context.addInitScript(startGate, { on, change: ++gateChanges });
     // A frame that is gone holds nothing back.
     await Promise.all(
-      everyFrame().map((frame) =>
-        frame
-          .evaluate(
-            // Stryker disable all
-            (on) => window.__aymeRecorderGate?.set(on),
-            // Stryker restore all
-            on
-          )
-          .catch(() => {})
-      )
+      everyFrame().map((frame) => frame.evaluate(setGate, on).catch(() => {}))
     );
     tell({ kind: "inputsHeld", on });
   }
@@ -745,21 +707,21 @@ async function openPage(
             known.findIndex((input) => input.id === request.upTo) + 1
           );
     await Promise.all(
-      open.frames().map((frame) =>
-        frame
-          .evaluate(
-            // Stryker disable all
-            (seq) => window.__aymeRecorderGate?.letThrough(seq),
-            // Stryker restore all
-            Math.max(
-              0,
-              ...upTo
-                .filter((input) => input.frame === frame)
-                .map((input) => input.seq)
+      open
+        .frames()
+        .map((frame) =>
+          frame
+            .evaluate(
+              letGateThrough,
+              Math.max(
+                0,
+                ...upTo
+                  .filter((input) => input.frame === frame)
+                  .map((input) => input.seq)
+              )
             )
-          )
-          .catch(() => {})
-      )
+            .catch(() => {})
+        )
     );
   }
 
@@ -918,14 +880,7 @@ async function openPage(
     const gates = (picking: boolean) =>
       Promise.all(
         everyFrame().map((frame) =>
-          frame
-            .evaluate(
-              // Stryker disable all
-              (on) => window.__aymeRecorderGate?.pick(on),
-              // Stryker restore all
-              picking
-            )
-            .catch(() => {})
+          frame.evaluate(pickWithGate, picking).catch(() => {})
         )
       );
     if (!on) {
@@ -994,21 +949,10 @@ async function openPage(
     const frames = everyFrame();
     const putBack = Promise.all([
       ...frames.map((frame) =>
-        frame
-          .evaluate(
-            // Stryker disable all
-            (remove) => {
-              window.__aymeRecorderGate?.set(false);
-              window.__aymeRecorderActivity?.watch(false);
-              document.querySelector("ayme-recorder-highlight")?.remove();
-              document
-                .querySelector("ayme-recorder-toolbar")
-                ?.dispatchEvent(new Event(remove));
-            },
-            // Stryker restore all
-            TOOLBAR_REMOVE
-          )
-          .catch(() => {})
+        frame.evaluate(stopGateAndWatch).catch(() => {})
+      ),
+      ...frames.map((frame) =>
+        frame.evaluate(removeOwnElements, TOOLBAR_REMOVE).catch(() => {})
       ),
       ...[...held.values()].map(({ frame, input }) =>
         passOn(frame, input).catch(() => {})
@@ -1081,19 +1025,7 @@ async function placeInPage(frame: Frame, at: { x: number; y: number }) {
     inner = inner.parentFrame()
   ) {
     const element = await inner.frameElement();
-    const offset = await element.evaluate(
-      // Stryker disable all
-      (node) => {
-        const iframe = node as Element;
-        const box = iframe.getBoundingClientRect();
-        const style = getComputedStyle(iframe);
-        return {
-          x: box.left + iframe.clientLeft + parseFloat(style.paddingLeft),
-          y: box.top + iframe.clientTop + parseFloat(style.paddingTop),
-        };
-      }
-      // Stryker restore all
-    );
+    const offset = await element.evaluate(frameContentOffset);
     await element.dispose();
     point = { x: point.x + offset.x, y: point.y + offset.y };
   }
@@ -1127,52 +1059,19 @@ const HIGHLIGHT_LOOKUP_MS = 500;
 /** How long letting go of an attached browser may take. */
 const LET_GO_LIMIT_MS = 5_000;
 
-// Run inside a page: Node's coverage and Stryker cannot reach them.
-// Stryker disable all
-/**
- * Runs in a document once Playwright's recorder has been switched off:
- * resolves when the document's part of it has heard so, and takes away the
- * mark it leaves on the body, which makes every element look clickable.
- * Private parts of Playwright (ADR-0052): the document asks for the
- * recorder's state on its own, through a binding of Playwright's; asking
- * once more and getting the answer means the document's own earlier
- * question was answered first.
- */
-async function askRecorderState(): Promise<void> {
-  const state = (
-    window as unknown as { __pw_recorderState?: () => Promise<unknown> }
-  ).__pw_recorderState;
-  if (state) await state();
-}
-
-async function noLongerRecording(): Promise<void> {
-  const state = (
-    window as unknown as { __pw_recorderState?: () => Promise<unknown> }
-  ).__pw_recorderState;
-  if (state) await state();
-  document.body?.removeAttribute("data-pw-cursor");
-}
-// Stryker restore all
-
 /** Sends a held input on to its page, as the press of the mouse or the
  * key it was. Returns false when the document it was held in is gone: it
  * is sent to no other. */
 async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
   const page = frame.page();
   const open = await frame
-    .evaluate(
-      // Stryker disable all
-      ({ at, document }) =>
-        window.__aymeRecorderGate?.open(at, document) ?? false,
-      // Stryker restore all
-      {
-        at:
-          input.kind === "click"
-            ? { x: input.x, y: input.y, detail: Math.max(1, input.detail) }
-            : { code: input.code },
-        document: input.document,
-      }
-    )
+    .evaluate(openGate, {
+      at:
+        input.kind === "click"
+          ? { x: input.x, y: input.y, detail: Math.max(1, input.detail) }
+          : { code: input.code },
+      document: input.document,
+    })
     .catch(() => false);
   if (!open) return false;
   try {
@@ -1195,13 +1094,7 @@ async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
   } finally {
     // The gate closed by itself if the click arrived. The click may also
     // have taken the page elsewhere: that document's gate is gone with it.
-    await frame
-      .evaluate(
-        // Stryker disable all
-        () => window.__aymeRecorderGate?.close()
-        // Stryker restore all
-      )
-      .catch(() => {});
+    await frame.evaluate(closeGate).catch(() => {});
   }
   return true;
 }

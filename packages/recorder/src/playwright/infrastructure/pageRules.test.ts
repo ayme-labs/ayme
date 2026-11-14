@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ancestorChain,
   clickHeld,
+  gateStartsOn,
+  keyHeld,
+  keyRoute,
+  mouseRoute,
   keyTarget,
   leftAlone,
   modifiersOf,
@@ -10,7 +15,7 @@ import {
   replayedEffect,
   withRules,
   type KeyFacts,
-} from "./pageScripts";
+} from "./pageRules";
 
 // The rules the gate decides by, in Node. The page runs the same functions:
 // `withRules` sends them with the gate. The contract suite checks, per
@@ -301,5 +306,136 @@ describe("a page function sent with the rules it uses", () => {
 
     expect(run(sent)).toBe(9);
     expect(run(alone)).toBe(3);
+  });
+});
+
+describe("how the gate of a new document starts", () => {
+  it("as the latest start said, and off when none did", () => {
+    expect(gateStartsOn({ on: true })).toBe(true);
+    expect(gateStartsOn({ on: false })).toBe(false);
+    expect(gateStartsOn(undefined)).toBe(false);
+  });
+});
+
+describe("what the gate does with a mouse event", () => {
+  const trusted = { trusted: true, type: "click", button: 0 };
+  const gate = { picking: false, replayed: false, on: true, holding: true };
+
+  it("leaves an event no person gave alone", () => {
+    expect(mouseRoute({ ...trusted, trusted: false }, gate)).toBe("ignore");
+  });
+
+  it("while Playwright picks, leaves events to it, and ends the pick on the left button's click", () => {
+    const picking = { ...gate, picking: true };
+    expect(mouseRoute(trusted, picking)).toBe("endPicking");
+    expect(mouseRoute({ ...trusted, button: 2 }, picking)).toBe("ignore");
+    expect(mouseRoute({ ...trusted, type: "mousedown" }, picking)).toBe(
+      "ignore"
+    );
+  });
+
+  it("lets an event of the click it sends on through", () => {
+    expect(mouseRoute(trusted, { ...gate, replayed: true })).toBe("passOn");
+  });
+
+  it("only notes the button when it is off and holds nothing", () => {
+    expect(mouseRoute(trusted, { ...gate, on: false, holding: false })).toBe(
+      "noteOnly"
+    );
+  });
+
+  it("handles a click and a double click while it is on or still holds", () => {
+    expect(mouseRoute(trusted, { ...gate, on: false })).toBe("click");
+    expect(mouseRoute({ ...trusted, type: "dblclick" }, gate)).toBe(
+      "doubleClick"
+    );
+    expect(mouseRoute({ ...trusted, type: "pointerdown" }, gate)).toBe(
+      "noteOnly"
+    );
+  });
+});
+
+describe("what the gate does with a key event", () => {
+  const down = {
+    trusted: true,
+    type: "keydown",
+    key: "a",
+    code: "KeyA",
+    composing: false,
+  };
+  const gate = { picking: false, passingKey: undefined };
+
+  it("leaves a key no person gave, or one given while Playwright picks, alone", () => {
+    expect(keyRoute({ ...down, trusted: false }, gate)).toBe("ignore");
+    expect(keyRoute(down, { ...gate, picking: true })).toBe("ignore");
+  });
+
+  it("takes a release as a release", () => {
+    expect(keyRoute({ ...down, type: "keyup" }, gate)).toBe("keyUp");
+  });
+
+  it("knows the key it sends on by its code", () => {
+    expect(keyRoute(down, { ...gate, passingKey: "KeyA" })).toBe("arrived");
+    expect(keyRoute(down, { ...gate, passingKey: "KeyB" })).toBe("consider");
+  });
+
+  it("leaves a modifier on its own, and a key that composes text, alone", () => {
+    for (const key of ["Shift", "Control", "Meta", "Alt", "Process"])
+      expect(keyRoute({ ...down, key }, gate)).toBe("ignore");
+    expect(keyRoute({ ...down, composing: true }, gate)).toBe("ignore");
+  });
+
+  it("considers holding any other key", () => {
+    expect(keyRoute(down, gate)).toBe("consider");
+  });
+});
+
+describe("which key the gate holds, and whether it is typing", () => {
+  it("holds a key recorded as a press while it is on", () => {
+    expect(keyHeld({ on: true, press: true, holding: false })).toEqual({
+      held: true,
+      typing: false,
+    });
+  });
+
+  it("holds every key, as typing, once it holds anything", () => {
+    expect(keyHeld({ on: false, press: true, holding: true })).toEqual({
+      held: true,
+      typing: true,
+    });
+    expect(keyHeld({ on: true, press: false, holding: true })).toEqual({
+      held: true,
+      typing: true,
+    });
+  });
+
+  it("lets typing through, and any key while it is off and holds nothing", () => {
+    expect(keyHeld({ on: true, press: false, holding: false }).held).toBe(
+      false
+    );
+    expect(keyHeld({ on: false, press: true, holding: false }).held).toBe(
+      false
+    );
+  });
+});
+
+describe("the refs of a node and those above it", () => {
+  type Node = { ref: string | null; up: Node | null };
+  const top: Node = { ref: "e1", up: null };
+  const middle: Node = { ref: null, up: top };
+  const bottom: Node = { ref: "e3", up: middle };
+  const chainFrom = (node: Node | null) =>
+    ancestorChain(
+      node,
+      (at) => at.up,
+      (at) => at.ref
+    );
+
+  it("are listed nearest first, with null where a node has none", () => {
+    expect(chainFrom(bottom)).toEqual(["e3", null, "e1"]);
+  });
+
+  it("are none from no node", () => {
+    expect(chainFrom(null)).toEqual([]);
   });
 });
