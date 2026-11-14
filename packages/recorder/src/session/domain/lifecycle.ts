@@ -610,11 +610,13 @@ function pageOpened(state: LifecycleState, page: Page): Step {
   const opened = { ...state, pages: [...state.pages, page] };
   if (isActive(opened) && page.url !== BLANK)
     return proceed(opened, [visitOf(page.id, page.url, "openPage")]);
-  return stay(
-    isActive(opened) || opened.phase === "paused"
-      ? { ...opened, pages: [...state.pages, { ...page, since: "opened" }] }
-      : opened
-  );
+  // It has no Visit: one starts when it is at an address while recording.
+  // Record itself says which Visit its pages start, so the mark is read
+  // only for a page that opened blank while recording, or while paused.
+  return stay({
+    ...state,
+    pages: [...state.pages, { ...page, since: "opened" }],
+  });
 }
 
 /** A page's main frame is at another address. */
@@ -634,9 +636,11 @@ function pageNavigated(state: LifecycleState, id: string, url: string): Step {
       },
       [visitOf(at.id, at.url, causeOf(at))]
     );
-  return stay(
-    moved(state.phase === "paused" ? { ...at, since: at.since ?? "moved" } : at)
-  );
+  // It is elsewhere with no Visit there yet. Continue starts one for it;
+  // Record says which Visit its pages start, whatever became of them.
+  // Stryker disable next-line StringLiteral: every mark but "opened" and "blankAtRecord" starts a Visit by navigation
+  const since = at.since ?? "moved";
+  return stay(moved({ ...at, since }));
 }
 
 /** A page closed. The last one closing is an end from outside. */
@@ -849,6 +853,19 @@ function resume(state: Extract<LifecycleState, { phase: "paused" }>): Step {
   };
 }
 
+/** A wrap-up that has nothing left to wait for but its trace. Nothing reads
+ * these while the trace is thrown away: what the pages still tell is not of
+ * the recording any more. */
+const NOTHING_UNDER_WAY = {
+  inputs: [],
+  gates: [],
+  reportedOnly: 0,
+  gateOff: true,
+  finals: [],
+  switchingOff: true,
+  traceStarting: false,
+} as const;
+
 /** Clear while paused. Nothing is under way: there is nothing to wrap up,
  * and no last snapshot to take, which would show what the pause changed. */
 function clearPaused(
@@ -856,17 +873,11 @@ function clearPaused(
 ): Step {
   return {
     state: {
+      ...NOTHING_UNDER_WAY,
       phase: "wrappingUp",
       pages: state.pages,
-      inputs: [],
       snapshotsAsked: state.snapshotsAsked,
-      gates: [],
-      reportedOnly: 0,
-      gateOff: true,
-      finals: [],
       then: "clear",
-      switchingOff: true,
-      traceStarting: false,
       discardingTrace: true,
     },
     // It is over, and everything is thrown away, when the trace is gone:
@@ -952,7 +963,9 @@ function wrapUp(
 /** The answer to a Record that still waits for the pages: recording did
  * start, and whatever ends it must not leave Record unanswered. */
 function answerRecord(state: LifecycleState): ToDo[] {
-  return state.phase === "recording" && state.starting
+  // Stryker disable next-line ConditionalExpression: only a recording has a Record to answer; the check is for the type
+  const recording = state.phase === "recording" ? state : null;
+  return recording?.starting
     ? [{ kind: "replyDeferred", result: "applied" }]
     : [];
 }
@@ -1292,7 +1305,9 @@ function snapshotTaken(
   snapshot: PageSnapshot
 ): Active {
   const owners = draft.inputs.filter((input) => input.asked === snapshot.id);
-  const finals = state.phase === "wrappingUp" ? state.finals : null;
+  // Stryker disable next-line ConditionalExpression: only a wrap-up has last snapshots; the check is for the type
+  const wrapping = state.phase === "wrappingUp" ? state : null;
+  const finals = wrapping?.finals;
   const isFinal = finals?.some((final) => final.snapshot === snapshot.id);
   const gate = gateOf(draft, snapshot.page);
   const resuming = gate?.resuming === snapshot.id;
@@ -1307,15 +1322,14 @@ function snapshotTaken(
   changeGate(draft, snapshot.page, {
     latest: { id: snapshot.id, at: snapshot.at },
     ...(gate?.resumes ? { resumes: false } : {}),
-    ...(resuming ? { resuming: null } : {}),
   });
   for (const owner of owners) giveSnapshot(draft, owner, snapshot);
-  if (state.phase === "wrappingUp" && finals)
-    return {
-      ...state,
-      finals: finals.filter((final) => final.snapshot !== snapshot.id),
-    };
-  return state;
+  if (!wrapping || !finals) return state;
+  // The wrap-up waits for it no more.
+  return {
+    ...wrapping,
+    finals: finals.filter((final) => final.snapshot !== snapshot.id),
+  };
 }
 
 /** Gives a snapshot to an input that waited for it: as its "after", or as
