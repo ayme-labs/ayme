@@ -3505,6 +3505,77 @@ describe("the lifecycle, for what the review against the spec found", () => {
       ],
       state: { phase: "wrappingUp" },
     },
+
+    // The change analysis of the branch: behaviour no row pinned.
+    {
+      name: "a report of a kind the recorder does not record is ignored, while recording and while wrapping up",
+      happened: [
+        opened,
+        ...started,
+        reportedAs({ ...fill("x"), type: "navigate" }),
+        stop,
+        gateOff,
+        reportedAs({ ...fill("x"), type: "openPage" }),
+      ],
+      todo: [
+        [],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_1")],
+        [],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "an assertion reported before the report of a click made ahead of it is written after that click: entries keep the order of the inputs",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reportedAs(visible),
+        taken("snapshot_3"),
+        reported,
+      ],
+      todo: [
+        [takeSnapshot("snapshot_3")],
+        [keep("snapshot_3")],
+        [
+          interaction("snapshot_1", "snapshot_2"),
+          {
+            kind: "timeline",
+            add: {
+              kind: "interaction",
+              interaction: {
+                page: "page_1",
+                report: visible,
+                before: "snapshot_3",
+                after: "snapshot_3",
+                at: 10,
+              },
+            },
+          },
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing that waited to be revised is written when the last page closes: with no page left there is no last snapshot to wait for",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(fill("m")),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
+        gateOff,
+      ],
+      todo: [
+        wrapUp,
+        [fromReport(fill("m"), "snapshot_2", "snapshot_3"), stopTrace],
+      ],
+      state: { phase: "saving" },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
@@ -3565,6 +3636,18 @@ describe("the lifecycle, for the time an answer is given", () => {
       of: wrapUp[0]!,
       awaited: false,
     },
+    {
+      name: "a Clear that waits for its trace waits for no other request's answer",
+      happened: discarding,
+      of: wrapUp[0]!,
+      awaited: false,
+    },
+    {
+      name: "a Clear does not wait for a trace to be kept",
+      happened: discarding,
+      of: stopTrace,
+      awaited: false,
+    },
   ])("$name", ({ happened, of, awaited }) => {
     expect(awaitsAnswer(after(happened), askOf(of))).toBe(awaited);
   });
@@ -3581,5 +3664,400 @@ describe("the lifecycle, for the time an answer is given", () => {
 
     expect(todo.at(-1)).toEqual([{ kind: "clear" }]);
     expect(state).toEqual({ phase: "notRecording" });
+  });
+});
+
+// The change analysis of the branch: what the highlight does when the
+// recorder leaves recording and pausing.
+describe("the lifecycle, for a highlight that the recorder leaves behind", () => {
+  const highlight: Happening = {
+    kind: "command",
+    command: { type: "highlight", entry: "interaction_1" },
+  };
+
+  it("clears no highlight when the recorder ends at once: its browser is let go", () => {
+    const { todo, state } = run([
+      opened,
+      ...started,
+      highlight,
+      { kind: "brokeDown", reason: "It broke." },
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      { kind: "end", outcome: { kind: "failed", reason: "It broke." } },
+    ]);
+    expect(state.phase).toBe("ended");
+  });
+
+  it("numbers the next highlight after the one that cleared the last: an answer to an older one is not taken for it", () => {
+    const { todo } = run([
+      ...stopped.slice(0, 5),
+      highlight,
+      ...stopped.slice(5),
+      highlight,
+    ]);
+
+    // The first highlight, the clearing as the recorder left recording, and
+    // this one.
+    expect(todo.at(-1)).toEqual([
+      { kind: "keepReply", key: "highlight_3" },
+      { kind: "locate", entry: "interaction_1", highlight: 3 },
+    ]);
+  });
+});
+
+// The change analysis of the branch: rows for more than one page, which no
+// row had, and for what is told when nothing waits for it.
+describe("the lifecycle, with more than one page", () => {
+  const url2 = "http://shop.test/help";
+  const BLANK = "about:blank";
+  const opened2: Happening = { kind: "pageOpened", page: "page_2", url: url2 };
+  const blank = (page: string): Happening => ({
+    kind: "pageOpened",
+    page,
+    url: BLANK,
+  });
+  const closed2: Happening = {
+    kind: "pageClosed",
+    page: "page_2",
+    pagesLeft: 1,
+  };
+  const heldOn = (
+    page: string,
+    input: string,
+    held?: HeldInput
+  ): Happening => ({
+    kind: "inputHeld",
+    input,
+    page,
+    ...(held ? { held } : {}),
+  });
+  const snapshotOf = (id: string, page: string): PageSnapshot => ({
+    ...snapshot(id),
+    page,
+  });
+  const takenOf = (id: string, page: string): Happening => ({
+    kind: "snapshotTaken",
+    snapshot: snapshotOf(id, page),
+  });
+  const snap = (id: string, page: string): ToDo => ({
+    kind: "browser",
+    ask: { kind: "takeSnapshot", snapshot: id, page },
+  });
+  const kept = (id: string, page: string): ToDo => ({
+    kind: "timeline",
+    add: { kind: "snapshot", snapshot: snapshotOf(id, page) },
+  });
+  const settledOn = (page: string, input: string): Happening => ({
+    kind: "pageSettled",
+    page,
+    input,
+  });
+  const waitOn = (page: string, input: string): ToDo => ({
+    kind: "browser",
+    ask: { kind: "waitForSettled", page, input },
+  });
+  const through = (page: string, upTo: string | null): ToDo => ({
+    kind: "browser",
+    ask: { kind: "letInputsThrough", page, upTo },
+  });
+  const choice: InteractionReport = {
+    type: "select",
+    selector: "internal:role=combobox",
+    target: null,
+    values: { options: ["eggs"] },
+  };
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    // Visits.
+    {
+      name: "Record starts a Visit for every page at an address: the first is 'initial', the others 'openPage'",
+      happened: [opened, opened2, record],
+      todo: [
+        [
+          visitAt(url, "initial"),
+          visitAt(url2, "openPage", "page_2"),
+          startTrace,
+          { kind: "deferReply" },
+        ],
+      ],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a page that is blank at Record beside one at an address is not the first: its Visit is 'openPage' when it goes somewhere",
+      happened: [blank("page_1"), opened2, ...started, navigated(url)],
+      todo: [
+        [
+          visitAt(url2, "initial", "page_2"),
+          startTrace,
+          { kind: "deferReply" },
+        ],
+        [reportInteractions],
+        [holdInputs],
+        [recordApplied],
+        [visitAt(url, "openPage")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "of two pages that are blank at Record, the first one's Visit is 'initial' whenever it comes, and the other's 'openPage'",
+      happened: [
+        blank("page_1"),
+        blank("page_2"),
+        ...started,
+        navigated(url2, "page_2"),
+        navigated(url),
+      ],
+      todo: [[visitAt(url2, "openPage", "page_2")], [visitAt(url, "initial")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Continue starts no Visit for a page that opened while paused and is still blank",
+      happened: [...stopped, blank("page_2"), resume],
+      todo: [[reportInteractions, { kind: "deferReply" }]],
+      state: { phase: "paused" },
+    },
+    {
+      name: "a page the recorder does not know of that goes somewhere while recording starts no Visit",
+      happened: [opened, ...started, navigated(url2, "page_9")],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page that goes blank while recording starts no Visit there, and one by navigation where it goes next",
+      happened: [opened, ...started, navigated(BLANK), navigated(url2)],
+      todo: [[], [visitAt(url2, "navigate")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page that goes elsewhere stays the page it is: the wrap-up reads each open page once",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        navigated(`${url}cart`),
+        finish,
+        gateOff,
+      ],
+      todo: [[snap("snapshot_1", "page_1"), snap("snapshot_2", "page_2")]],
+      state: { phase: "wrappingUp" },
+    },
+
+    // A page that closes while another stays open.
+    {
+      name: "a click held on a page that stays open goes on when another page closes",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        heldOn("page_1", "input_1"),
+        closed2,
+        takenOf("snapshot_1", "page_1"),
+      ],
+      todo: [
+        [snap("snapshot_1", "page_1")],
+        [],
+        [kept("snapshot_1", "page_1"), passOn("input_1")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a page that closed is not read at the end: the wrap-up reads the pages that are left",
+      happened: [opened, opened2, ...started, closed2, finish, gateOff],
+      todo: [[snap("snapshot_1", "page_1")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a page that closes while the wrap-up waits for its last snapshot is waited for no more",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        finish,
+        gateOff,
+        closed2,
+        takenOf("snapshot_1", "page_1"),
+      ],
+      todo: [
+        [snap("snapshot_1", "page_1"), snap("snapshot_2", "page_2")],
+        [],
+        [kept("snapshot_1", "page_1"), stopTrace],
+      ],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a page that closes after Continue is waited for no more: its snapshot is not kept, and the other page's is where recording resumes",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        stop,
+        gateOff,
+        takenOf("snapshot_1", "page_1"),
+        takenOf("snapshot_2", "page_2"),
+        reportingOff,
+        resume,
+        reporting,
+        holding,
+        closed2,
+        takenOf("snapshot_4", "page_2"),
+        takenOf("snapshot_3", "page_1"),
+      ],
+      todo: [
+        [
+          recordApplied,
+          snap("snapshot_3", "page_1"),
+          snap("snapshot_4", "page_2"),
+        ],
+        [],
+        [],
+        [
+          {
+            kind: "timeline",
+            add: {
+              kind: "snapshot",
+              snapshot: snapshotOf("snapshot_3", "page_1"),
+              resumes: true,
+            },
+          },
+          through("page_1", null),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // Each page has a gate of its own.
+    {
+      name: "a click on a page that opened while recording is recorded there, and that page is let through after it",
+      happened: [
+        opened,
+        ...started,
+        opened2,
+        heldOn("page_2", "input_1"),
+        takenOf("snapshot_1", "page_2"),
+        passedOn("input_1"),
+        settledOn("page_2", "input_1"),
+        takenOf("snapshot_2", "page_2"),
+      ],
+      todo: [
+        [visitAt(url2, "openPage", "page_2")],
+        [snap("snapshot_1", "page_2")],
+        [kept("snapshot_1", "page_2"), passOn("input_1")],
+        [waitOn("page_2", "input_1")],
+        [snap("snapshot_2", "page_2")],
+        [kept("snapshot_2", "page_2"), through("page_2", "input_1")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a choice reported on a page that opened while recording gets a snapshot to start from; that page held nothing, so nothing is let through",
+      happened: [
+        opened,
+        ...started,
+        opened2,
+        { kind: "interactionReported", page: "page_2", report: choice },
+        takenOf("snapshot_1", "page_2"),
+      ],
+      todo: [
+        [snap("snapshot_1", "page_2")],
+        [kept("snapshot_1", "page_2"), waitOn("page_2", "reported_1")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "of two pages open at Record, only the one a click was made on is let through after it",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        heldOn("page_2", "input_1"),
+        takenOf("snapshot_1", "page_2"),
+        passedOn("input_1"),
+        settledOn("page_2", "input_1"),
+        takenOf("snapshot_2", "page_2"),
+      ],
+      todo: [[kept("snapshot_2", "page_2"), through("page_2", "input_1")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing held on a page that has no snapshot yet gets one of its own, whatever another page has",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        ...oneClick,
+        heldOn("page_2", "input_2", { kind: "typing" }),
+      ],
+      todo: [[snap("snapshot_3", "page_2")]],
+      state: { phase: "recording" },
+    },
+
+    // Told when nothing waits for it.
+    {
+      name: "a save that is told done when none was under way changes nothing",
+      happened: [opened, saved],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a click a page held back once the recorder has ended is asked of nobody: its browser is let go",
+      happened: [outsideEnd, clickHeld("input_1")],
+      todo: [[]],
+      state: { phase: "ended" },
+    },
+    {
+      name: "a trace told stopped, or gone, when none was asked to stop changes nothing",
+      happened: [opened, traceStopped, traceDiscarded],
+      todo: [[], []],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a trace told gone during a wrap-up that throws nothing away changes nothing",
+      happened: [opened, ...started, stop, traceDiscarded, traceStopped],
+      todo: [[], []],
+      state: { phase: "wrappingUp" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+});
+
+// The change analysis of the branch: Assert visibility around a pause.
+describe("the lifecycle, for Assert visibility that is left or resumed", () => {
+  const assert: Happening = {
+    kind: "command",
+    command: { type: "assertVisibility" },
+  };
+  const leave: Happening = {
+    kind: "command",
+    command: { type: "leaveAssertVisibility" },
+  };
+  const pick: ToDo = { kind: "browser", ask: { kind: "pick", on: true } };
+
+  it.each<{ name: string; happened: Happening[]; todo: ToDo[][] }>([
+    {
+      name: "Leave Assert visibility is ignored while Assert visibility is off",
+      happened: [opened, ...started, leave],
+      todo: [[reply("ignored")]],
+    },
+    {
+      name: "Assert visibility applies again once it was left",
+      happened: [opened, ...started, assert, leave, assert],
+      todo: [[pick, reply("applied")]],
+    },
+    {
+      name: "Assert visibility applies after Continue: a pause leaves it off",
+      happened: [...stopped, resume, reporting, holding, assert],
+      todo: [[pick, reply("applied")]],
+    },
+  ])("$name", ({ happened, todo }) => {
+    expect(run(happened).todo.slice(-todo.length)).toEqual(todo);
   });
 });
