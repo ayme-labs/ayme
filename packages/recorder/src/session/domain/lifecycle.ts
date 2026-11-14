@@ -368,6 +368,10 @@ type Input = {
   readonly after: string | null;
   readonly passedOnAt: number | null;
   readonly report: InteractionReport | null;
+  /** An input known from its report whose page could not be read when it
+   * was reported, and had no snapshot yet: its "after" is its "before" too,
+   * and Playwright's picture of the page is not set against it. */
+  readonly unread: boolean;
 };
 
 /** What a started recording keeps track of. */
@@ -1135,6 +1139,7 @@ const newInput = (
   after: null,
   passedOnAt: null,
   report,
+  unread: false,
 });
 
 /** A recording being changed within one step. */
@@ -1363,6 +1368,7 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
         stage: "settled",
         after: snapshot.id,
         asked: null,
+        ...startAt(owner, snapshot.id, snapshot.at),
       });
   } else if (owner.held.kind === "asserted") {
     // One snapshot, as the page stood when the element was picked.
@@ -1395,6 +1401,11 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
     });
   }
 }
+
+/** For an input whose page could not be read when it was reported: the
+ * snapshot it ends at is where it starts too. */
+const startAt = (input: Input, snapshot: string, at: number | null) =>
+  input.unread && !input.before ? { before: snapshot, passedOnAt: at } : {};
 
 /** A held input has reached its page. */
 function inputPassedOn(draft: Draft, id: string, at: number) {
@@ -1531,8 +1542,9 @@ function carryOnReported(draft: Draft, id: string) {
   const input = draft.inputs[index]!;
   if (input.held.kind !== "reported") return;
   if (input.stage !== "waiting" && input.stage !== "settling") return;
-  // Without a start it is waiting, and may find one now.
-  if (!input.before && !startReported(draft, index)) return;
+  // Without a start it is waiting, and may find one now. One whose page
+  // could not be read looks for none: it starts where it ends.
+  if (!input.before && !input.unread && !startReported(draft, index)) return;
   endReported(draft, index);
 }
 
@@ -1599,7 +1611,11 @@ function endReported(draft: Draft, index: number) {
         later.held.kind !== "reported"
     );
   if (next?.before) {
-    change(draft, input.id, { stage: "settled", after: next.before });
+    change(draft, input.id, {
+      stage: "settled",
+      after: next.before,
+      ...startAt(input, next.before, next.passedOnAt),
+    });
     return;
   }
   if (next?.stage === "takingBefore") {
@@ -1624,8 +1640,7 @@ function knownFromReport(
       input.page === page &&
       // What was reported before it came first: an assertion, and an input
       // known from its report that still waits for its start.
-      input.held.kind !== "asserted" &&
-      input.held.kind !== "reported" &&
+      heldByItsPage(input) &&
       (input.stage === "waiting" || input.stage === "takingBefore")
   );
   if (place < 0) place = draft.inputs.length;
@@ -1878,7 +1893,9 @@ function writeDown(draft: Draft, last: boolean) {
           // The clicks its report covers end where the last of them does.
           after: covered.at(-1)?.after ?? input.after,
           at: input.passedOnAt ?? 0,
-          ...(input.held.kind === "reported" ? { beforeFromReport: true } : {}),
+          ...(input.held.kind === "reported" && !input.unread
+            ? { beforeFromReport: true }
+            : {}),
         },
       },
     });
@@ -1959,11 +1976,18 @@ function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
   return wrappedUp(state, todo);
 }
 
+/** Whether a page held the input back: only such an input can be passed on.
+ * An assertion and an input known from its report were never held. */
+const heldByItsPage = (input: Input) =>
+  input.held.kind !== "asserted" && input.held.kind !== "reported";
+
 /** Lets every input that is still held back reach its page. */
 function release(inputs: readonly Input[]): ToDo[] {
   return inputs
     .filter(
-      (input) => input.stage === "waiting" || input.stage === "takingBefore"
+      (input) =>
+        heldByItsPage(input) &&
+        (input.stage === "waiting" || input.stage === "takingBefore")
     )
     .map((input) => ({
       kind: "browser",
@@ -2099,6 +2123,74 @@ function cannotStart(
   };
 }
 
+/** What becomes of an input whose snapshot could not be taken. */
+function withoutItsSnapshot(draft: Draft, owner: Input) {
+  if (owner.stage === "takingAfter") {
+    // It keeps its "before" only, as when its page is gone. One that was to
+    // start where it ends has neither now.
+    if (owner.unread) leaveOut(draft, owner);
+    else change(draft, owner.id, { stage: "settled", asked: null });
+    return;
+  }
+  if (heldByItsPage(owner)) {
+    // Without a "before" it cannot be recorded. It is the page's all the
+    // same: it is passed on, and goes its way like any other, so that the
+    // inputs behind it keep their order.
+    change(draft, owner.id, { stage: "passingOn", asked: null });
+    draft.todo.push({
+      kind: "browser",
+      ask: { kind: "passOn", input: owner.id },
+    });
+    return;
+  }
+  // No page held it: there is nothing to pass on, and nothing behind it is
+  // kept waiting on its account.
+  const latest = gateOf(draft, owner.page)?.latest;
+  if (owner.held.kind === "asserted") {
+    // An assertion needs no snapshot of its own to be true: it is written
+    // at the page as it was last read.
+    if (!latest) return leaveOut(draft, owner);
+    change(draft, owner.id, {
+      stage: "settled",
+      asked: null,
+      before: latest.id,
+      after: latest.id,
+      passedOnAt: latest.at,
+    });
+    return;
+  }
+  // It finds its start again: the page's latest snapshot when there is one.
+  change(draft, owner.id, { stage: "waiting", asked: null });
+  if (latest) return;
+  // With none, it is recorded with its "after" only: it waits for the
+  // Settled Page, and the one snapshot taken then is its start too.
+  change(draft, owner.id, { stage: "settling", unread: true });
+  draft.todo.push(settleAfter(owner), {
+    kind: "warn",
+    warning: {
+      kind: "reportShape",
+      message:
+        "A page could not be read when typing, a choice or an upload was reported on it: it is recorded with its 'after' only.",
+    },
+  });
+}
+
+/** Leaves an input out of the recording that cannot be placed in it, and
+ * has a person told. */
+function leaveOut(draft: Draft, input: Input) {
+  draft.inputs = draft.inputs.filter((kept) => kept.id !== input.id);
+  draft.todo.push({
+    kind: "warn",
+    warning: {
+      kind: "notRecorded",
+      message:
+        input.held.kind === "asserted"
+          ? `An assertion of ${input.report?.selector} is not recorded: its page could not be read.`
+          : "Typing, a choice or an upload is not recorded: its page could not be read.",
+    },
+  });
+}
+
 /** A snapshot that could not be taken, or an input that could not be passed
  * on. */
 function unanswered(
@@ -2123,21 +2215,8 @@ function unanswered(
   } else {
     for (const owner of draft.inputs.filter(
       (input) => input.asked === request.snapshot
-    )) {
-      if (owner.stage === "takingAfter") {
-        // It keeps its "before" only, as when its page is gone.
-        change(draft, owner.id, { stage: "settled", asked: null });
-      } else {
-        // Without a "before" it cannot be recorded. It is the page's all
-        // the same: it is passed on, and goes its way like any other, so
-        // that the inputs behind it keep their order.
-        change(draft, owner.id, { stage: "passingOn", asked: null });
-        draft.todo.push({
-          kind: "browser",
-          ask: { kind: "passOn", input: owner.id },
-        });
-      }
-    }
+    ))
+      withoutItsSnapshot(draft, owner);
     const wrapping = wrappingUpOf(state);
     if (wrapping?.finals)
       next = {
