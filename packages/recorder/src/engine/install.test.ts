@@ -62,6 +62,22 @@ describe("the install command", () => {
     }
   );
 
+  it("runs the next of them when the first one found has no command line", async () => {
+    // A `playwright` folder left without its `cli.js`, as a broken install.
+    const broken = join(project, "node_modules", "playwright");
+    await mkdir(broken, { recursive: true });
+    await writeFile(
+      join(broken, "package.json"),
+      JSON.stringify({ name: "playwright", version: "1.64.0" })
+    );
+    await installPlaywright("playwright-core");
+
+    expect(await runInstall({ projectDir: project, args: ["chromium"] })).toBe(
+      0
+    );
+    expect((await ran()).args).toEqual(["install", "chromium"]);
+  });
+
   it("exits with the exit code of the project's Playwright", async () => {
     await installPlaywright("playwright", 3);
 

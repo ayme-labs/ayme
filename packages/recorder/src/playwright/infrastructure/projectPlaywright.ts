@@ -21,7 +21,10 @@ export function placeInRange(version: string): "below" | "within" | "above" {
     return major * 1000 + minor;
   };
   if (minor(version) < minor(range.floor)) return "below";
-  return minor(version) > minor(range.lastVerified) ? "above" : "within";
+  if (minor(version) > minor(range.lastVerified)) return "above";
+  // Callers ask only whether a version is below or above the range.
+  // Stryker disable next-line StringLiteral
+  return "within";
 }
 
 /** The range as a sentence names it. */

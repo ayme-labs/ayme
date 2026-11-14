@@ -343,6 +343,32 @@ it(
   }
 );
 
+it.each([
+  { version: `${range.floor}.0`, warns: false },
+  { version: `${range.lastVerified}.9`, warns: false },
+  { version: "2.0.0", warns: true },
+])(
+  "on Playwright $version, starts, and warns that it is unverified: $warns",
+  async ({ version, warns }) => {
+    await installPlaywrightWithUnreadablePage(folder, { version });
+    const recorder = await startRecorder({
+      projectDir: folder,
+      browser: { launch: { url: "http://stand-in.test/" } },
+    });
+    let warnings: readonly { kind: string }[] = [];
+    recorder.subscribe((update) => (warnings = update.state.warnings));
+    // What the browser tells at its start is handled before Record is.
+    await recorder.send({ type: "record" });
+
+    expect(warnings.map(({ kind }) => kind)).toEqual(
+      warns ? ["playwrightUnverified"] : []
+    );
+    recorder.end();
+    await recorder.done;
+  },
+  20_000
+);
+
 // A request the stock adapter cannot carry out is told, not swallowed:
 // Record must not wait until the recorder ends.
 it("answers Record 'ignored' and ends 'failed', with the reason, when Playwright's recorder cannot be started", async () => {
