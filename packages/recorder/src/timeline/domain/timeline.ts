@@ -362,7 +362,7 @@ export class Timeline {
     changedByIt: string;
     target: AriaRef | undefined;
   } | null> {
-    const { target, type } = interaction.report;
+    const { target, type, selector } = interaction.report;
     if (!target) return null;
     const pageId = from.observation.pageId;
     const between = await this.session.readChange(
@@ -374,6 +374,7 @@ export class Timeline {
       previous: from.tree,
       between,
       picture: target.tree,
+      selector,
       target: target.ref,
       targetAsBefore: type === "fill" || type === "select",
       refs: this.refs,
@@ -474,7 +475,7 @@ export class Timeline {
     to: Kept | undefined
   ): Promise<{ target: AriaRef | undefined; change: string }> {
     const held = {
-      target: locateTarget(from.tree, interaction.report.target),
+      target: locateTarget(from.tree, interaction.report),
       change: to ? changeText(await this.change(from, to)) : "",
     };
     if (!interaction.beforeFromReport || !to) return held;

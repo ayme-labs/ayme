@@ -5,7 +5,7 @@ import {
   type StructuralNode,
 } from "@ayme-dev/core/structural-observation";
 
-import { scopesOf } from "./target";
+import { scopesFor } from "./target";
 
 // An input the gate never holds, as typing, has no snapshot of its own just
 // before it. Playwright's report carries a picture of the page taken at the
@@ -28,7 +28,9 @@ export type PictureBefore = {
  * snapshots give it: the earlier snapshot's ref for an element it has, the
  * later one's for an element only that one has, and a ref of its own for an
  * element neither has. Null when the picture is not of the shape of a
- * snapshot: an element both snapshots have is missing from it.
+ * snapshot: an element both snapshots have is missing from it. Null also
+ * when it cannot be told which document the picture is of: the report has no
+ * selector, or two frames fit it alike.
  *
  * `between` is the earlier snapshot reconciled with the later one. Typing
  * and a choice are reported once the field has changed, so with
@@ -38,6 +40,9 @@ export function pictureBefore(options: {
   readonly previous: StructuralTree;
   readonly between: StructuralTree;
   readonly picture: string;
+  /** Playwright's selector for the target: it says which document the input
+   * was given to, and so which document the picture is of. */
+  readonly selector: string | null;
   readonly target: string | null;
   readonly targetAsBefore: boolean;
   readonly refs: SyntheticAriaRefFactory;
@@ -131,9 +136,10 @@ export function pictureBefore(options: {
     });
   }
 
-  // The document the picture is of: the page, or one of its frames. The
-  // first whose elements it all has.
-  for (const scope of scopesOf(between)) {
+  // The document the picture is of: one the report's selector allows, whose
+  // elements the picture all has.
+  const readings: PictureBefore[] = [];
+  for (const scope of scopesFor(between, options.selector)) {
     matched = new Set();
     target = undefined;
     const roots = pair(picture.getRootNodes(), scope.roots);
@@ -152,10 +158,11 @@ export function pictureBefore(options: {
     };
     scope.roots.forEach(check);
     if (!complete) continue;
-    if (!scope.frame)
-      return built.length === 1
-        ? { tree: new StructuralTree(built[0]!, refs), target }
-        : null;
+    if (!scope.frame) {
+      if (built.length === 1)
+        readings.push({ tree: new StructuralTree(built[0]!, refs), target });
+      continue;
+    }
     // Outside the frame, the page stands as the earlier snapshot has it.
     const frame = scope.frame.ref;
     const outside = (node: StructuralNode): StructuralNode =>
@@ -166,7 +173,12 @@ export function pictureBefore(options: {
               typeof child === "string" ? child : outside(child)
             ),
           });
-    return { tree: new StructuralTree(outside(previous.root), refs), target };
+    readings.push({
+      tree: new StructuralTree(outside(previous.root), refs),
+      target,
+    });
   }
-  return null;
+  // Two frames the picture fits alike: which one the input was given to
+  // cannot be told, and a guess could name the wrong element.
+  return readings.length === 1 ? readings[0]! : null;
 }
