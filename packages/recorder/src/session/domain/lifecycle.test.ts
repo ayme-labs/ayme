@@ -5034,6 +5034,47 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "saving" },
     },
 
+    {
+      name: "a choice reported while one snapshot is taken for two clicks starts at that snapshot and ends there: the second click starts where it does",
+      happened: [
+        opened,
+        ...started,
+        ...clickSettling,
+        clickHeld("input_2"),
+        reportedOn(choice),
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [],
+        [
+          keep("snapshot_2"),
+          passOn("input_2"),
+          fromReport(choice, "snapshot_2", "snapshot_2"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a choice reported while the second click of a double click is on its way gives up on neither click: the double click ends where its second click does",
+      happened: [
+        opened,
+        ...started,
+        ...doubleReportedEarly,
+        reportedOn(choice),
+        passedOn("input_2", 22),
+        taken("snapshot_3"),
+      ],
+      todo: [
+        [
+          keep("snapshot_3"),
+          waitForSettled("reported_1"),
+          written(clickOf(2), "snapshot_1", "snapshot_3", 21),
+          letThrough("input_2"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
     // Each page has a gate of its own.
     {
       name: "a page is let through after its own click, whatever is still held on another page",
