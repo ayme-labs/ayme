@@ -128,21 +128,30 @@ describe("the toolbar", () => {
     ]);
   });
 
-  it("shows Assert visibility filled as Finish is while Playwright picks", async () => {
+  it("shows Assert visibility filled as Finish is while Playwright picks, and not while it does not", async () => {
     const { call, tell } = scriptedPage();
     mount(call);
+    const fill = (control: typeof toolbar.root) =>
+      control.evaluate((element) => getComputedStyle(element).backgroundColor);
+    tell({
+      phase: "recording",
+      commands: ["stop", "finish", "assertVisibility"],
+    });
+    await expect.poll(() => toolbar.offered()).toEqual(["Stop", "Finish"]);
+    expect(await fill(toolbar.assertVisibility)).not.toBe(
+      await fill(toolbar.button("Finish"))
+    );
+
     tell({
       phase: "recording",
       picking: true,
       commands: ["stop", "finish", "leaveAssertVisibility"],
     } as Partial<RecorderState>);
     await expect.poll(() => toolbar.picking()).toBe(true);
-    const fill = (control: typeof toolbar.root) =>
-      control.evaluate((element) => getComputedStyle(element).backgroundColor);
 
-    expect(await fill(toolbar.assertVisibility)).toBe(
-      await fill(toolbar.button("Finish"))
-    );
+    // Its fill eases from one to the other.
+    const finish = await fill(toolbar.button("Finish"));
+    await expect.poll(() => fill(toolbar.assertVisibility)).toBe(finish);
   });
 
   it("sits at the bottom right of the page, apart from the page's structure, layout and styles", async () => {
