@@ -392,6 +392,58 @@ async function openPage(
     };
   };
   /**
+   * The ancestors of a target the report's picture does not list, read off
+   * the element itself through Playwright's selector for it: the refs
+   * Playwright's recorder tagged it and each ancestor with (`_ariaRef`, a
+   * private part of Playwright) stay on them, so they are there however
+   * late the report comes. The page's own note of them, which can come
+   * after the report, is used only when the element is gone.
+   */
+  const withAncestors = async (
+    report: InteractionReport,
+    page: Page
+  ): Promise<InteractionReport> => {
+    const { target, selector } = report;
+    if (!target || target.ref !== null || selector === null) return report;
+    // A call Playwright traces: never inside a snapshot's mark.
+    const read = markers.then(() =>
+      page
+        .locator(selector)
+        .evaluate(
+          (element) => {
+            const refs: (string | null)[] = [];
+            for (
+              let node: Node | null =
+                element.parentElement ??
+                ((element.getRootNode() as ShadowRoot).host || null);
+              node && node.nodeType === Node.ELEMENT_NODE;
+              node =
+                (node as Element).parentElement ??
+                ((node.getRootNode() as ShadowRoot).host || null)
+            )
+              refs.push(
+                (node as Element & { _ariaRef?: { ref?: string } })._ariaRef
+                  ?.ref ?? null
+              );
+            return refs;
+          },
+          undefined,
+          { timeout: ANCESTOR_READ_MS }
+        )
+        .catch(() => null)
+    );
+    markers = read.catch(() => {});
+    const refs = await read;
+    if (!refs) return report;
+    return {
+      ...report,
+      target: {
+        ...target,
+        ancestors: refs.filter((ref): ref is string => ref !== null),
+      },
+    };
+  };
+  /**
    * Files chosen in a file input, which Playwright 1.64 reports as typing
    * of the input's value, as an upload. A file input's value is always
    * `C:\fakepath\` and the first file's name (HTML's rule for it). The
@@ -840,7 +892,10 @@ async function openPage(
         inReportOrder(async () => ({
           kind: "interactionReported",
           page: pageId,
-          report: await asUpload(report, reported),
+          report: await asUpload(
+            await withAncestors(report, reported),
+            reported
+          ),
         }));
       },
       // Playwright revises the report of typing with each key typed into
@@ -914,6 +969,10 @@ async function openPage(
 
 /** How a browser begins the value of a file input with a file chosen. */
 const FAKE_PATH = "C:\\fakepath\\";
+
+/** How long reading the ancestors of a target may take before the element
+ * is taken to be gone. */
+const ANCESTOR_READ_MS = 1_000;
 
 /** How long reading the names of an upload's files may take before the
  * input is taken to be gone: it is there when the files are chosen, and is
