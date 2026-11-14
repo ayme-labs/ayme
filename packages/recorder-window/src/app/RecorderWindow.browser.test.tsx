@@ -6,7 +6,6 @@ import type {
   RecorderUpdate,
 } from "@ayme-dev/recorder/contract";
 import { createPage } from "@ayme-dev/playwright-lite";
-import type { Locator } from "@playwright/test";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { RecorderChannel } from "../channel";
@@ -225,7 +224,7 @@ it("offers Stop, Assert visibility, Clear and Finish while recording, and sends 
 });
 
 /** How a control looks: its fill and its outline. */
-const looks = (control: { evaluate: Locator["evaluate"] }) =>
+const looks = (control: RecorderWindow["controls"]["assertVisibility"]) =>
   control.evaluate((element) => {
     const shown = getComputedStyle(element);
     return { fill: shown.backgroundColor, outline: shown.borderTopWidth };
