@@ -190,6 +190,20 @@ describe("the target a report names", () => {
       ).toBe("f2e2");
     });
 
+    it("is found in the frame whose top level is the picture's when the frames differ at the top by name only", async () => {
+      expect(
+        await targetOf({
+          before: withFrames(frame(1, `main "Shop"`), frame(2, `main "Card"`)),
+          picture: lines(
+            `- main "Card" [ref=e20]:`,
+            `  - button "Pay" [ref=e21]`
+          ),
+          ref: "e21",
+          selector: inFrame,
+        })
+      ).toBe("f2e2");
+    });
+
     it("is not known when two frames both have it: which of them the input was given to cannot be told", async () => {
       expect(
         await targetOf({

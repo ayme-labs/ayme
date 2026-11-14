@@ -234,4 +234,49 @@ describe("an element the page re-created, and the original back beside it", () =
       ].join("\n")
     );
   });
+
+  it("are not under one ref when the tree lists the one that stood in for the original ahead of it", async () => {
+    const note = `- paragraph [ref=e9]: Autosave is on`;
+    const timeline = await timelineOf([
+      visit,
+      snapshot("snapshot_1", 10, page(`- button "Save" [ref=e2]`, note)),
+      snapshot("snapshot_2", 20, page(`- button "Save" [ref=e8]`, note)),
+      click(
+        "snapshot_1",
+        "snapshot_2",
+        "e2",
+        page(`- button "Save" [ref=e2]`, note)
+      ),
+      snapshot(
+        "snapshot_3",
+        30,
+        page(`- button "Save" [ref=e8]`, note, `- button "Save" [ref=e2]`)
+      ),
+      // The new button, at the top, is gone; the first one is at the end.
+      snapshot("snapshot_4", 40, page(note, `- button "Save" [ref=e2]`)),
+      click(
+        "snapshot_2",
+        "snapshot_4",
+        "e8",
+        page(`- button "Save" [ref=e8]`, note)
+      ),
+    ]);
+
+    const text = (await timeline.package(header))!;
+    expect(refsTwiceInOneTree(text)).toEqual([]);
+    expect(text).toContain(
+      [
+        `          id: interaction_2`,
+        `          type: click`,
+        `          targetRef: e2`,
+        `          targetSelector: internal:role=button[name="Save"i]`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <removed> [ref=e8] button "Save"`,
+        `            - <added> [ref=e2] button "Save"`,
+        `traceActionPoints: []`,
+        ``,
+      ].join("\n")
+    );
+  });
 });
