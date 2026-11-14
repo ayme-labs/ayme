@@ -1,4 +1,4 @@
-import { expect, test, storedPairing } from "./fixtures";
+import { expect, test, storedPairing, holdCall, unanswered } from "./fixtures";
 
 test.describe("on the default port", () => {
   // Without --port the server takes a port of the range a page scans.
@@ -45,6 +45,34 @@ test("pasting the connect link into an open tab pairs it without a reload", asyn
 
   expect(await page.evaluate(() => "beforePairing" in window)).toBe(true);
   expect(await agent.pageToolNames()).toContain("snapshot");
+});
+
+test("a link arriving by hashchange in an already paired tab keeps its id through reload", async ({
+  agent,
+  connect,
+  page,
+}) => {
+  const link = await connect();
+  const stored = await storedPairing(page);
+  const { answer: call } = await holdCall(agent, page);
+
+  await page.evaluate(
+    (link) =>
+      new Promise<void>((resolve) => {
+        window.addEventListener("hashchange", () => resolve(), { once: true });
+        window.location.hash = new URL(link).hash;
+      }),
+    link
+  );
+
+  expect(await storedPairing(page)).toBe(stored);
+  await page.reload();
+
+  // The server recognizes the same tab; the held call reports a reload,
+  // rather than another tab taking over the connection.
+  const answer = unanswered(await call);
+  expect(answer.error).toMatch(/^The page reloaded .*outcome is unknown/);
+  expect(await storedPairing(page)).toBe(stored);
 });
 
 test("the server accepts a page only with its token", async ({

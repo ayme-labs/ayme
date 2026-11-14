@@ -181,6 +181,8 @@ the cases apart like this:
   the first tab's calls at once, the first tab forgets its pairing and does not
   reconnect, and the server works with the second tab.
 
+A duplicated tab keeps presenting the original tab's id, unlike a fresh second tab, and reopening a link with the same address and token does not give it a new id.
+
 While the page is away, no page is paired. A closed tab leaves it that way
 until a tab pairs again.
 

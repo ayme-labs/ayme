@@ -1,8 +1,15 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type * as esbuild from "esbuild";
+import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
 
 import { PageObjectsBuildError } from "../domain/buildFailure";
@@ -83,14 +90,15 @@ it("gives nothing once a build has succeeded", async () => {
 
 /** The callbacks a plugin registers, from a fake esbuild build. */
 function setUp(plugin: esbuild.Plugin) {
+  let onStart!: () => void;
   let onLoad!: (args: { path: string }) => Promise<unknown>;
   let onEnd!: (result: Partial<esbuild.BuildResult>) => void;
   void plugin.setup({
-    onStart: () => {},
+    onStart: (callback: typeof onStart) => (onStart = callback),
     onLoad: (_options: unknown, callback: typeof onLoad) => (onLoad = callback),
     onEnd: (callback: typeof onEnd) => (onEnd = callback),
   } as unknown as esbuild.PluginBuild);
-  return { onLoad, onEnd };
+  return { onStart, onLoad, onEnd };
 }
 
 const pomFile = async (source: string) => {
@@ -234,4 +242,250 @@ it("watches only the file it compiled when the compile throws before it reads an
   );
 
   expect(await onLoad({ path: file })).toMatchObject({ watchFiles: [file] });
+});
+
+// Compiled modules have no source map; resolution errors must not quote their coordinates.
+it("omits generated positions for an unresolved import after statements and non-ASCII", async () => {
+  const source =
+    'const before = 1;\nconst é = "😀"; import { nope } from "./does-not-exist"; nope();';
+  const file = await realpath(await pomFile(source));
+  const outcomes = buildOutcomes({
+    entry: file,
+    folder: join(file, ".."),
+    outdir: join(file, "..", "out"),
+    log: () => {},
+  });
+  try {
+    await esbuild
+      .build({
+        entryPoints: [file],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          pageObjectModels({
+            compile: () => ({
+              code: '\n\nimport { nope } from "./does-not-exist"; nope();',
+              dependencies: [],
+            }),
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch(() => {});
+    expect(await failedPageObjects(file, buildWith(outcomes.modules))).toEqual({
+      entry: file,
+      error: `${file}: Could not resolve "./does-not-exist"`,
+      watching: true,
+    });
+  } finally {
+    await rm(join(file, ".."), { recursive: true, force: true });
+  }
+});
+
+it("keeps a compiler error's original child file and parameter position", async () => {
+  const file = await pomFile("class Page {}");
+  const text =
+    "/project/Child.ts:8:14: Unsupported Page Object Tool input type for Child.pick(callback): () => void.";
+  const { onLoad } = setUp(
+    pageObjectModels({
+      compile: () => {
+        throw new Error(text);
+      },
+      invalidate: () => {},
+    })
+  );
+  expect(await onLoad({ path: file })).toMatchObject({
+    errors: [{ text, location: null }],
+  });
+});
+
+it("omits generated positions when the working directory is a symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "ayme-pom-link-"));
+  const folder = join(root, "actual");
+  const linked = join(root, ".ayme");
+  await mkdir(folder);
+  await symlink(folder, linked, "dir");
+  await writeFile(join(folder, "Page.ts"), "class Page {}");
+  try {
+    const result = await esbuild
+      .build({
+        absWorkingDir: linked,
+        entryPoints: ["Page.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          pageObjectModels({
+            compile: () => ({
+              code: '\n\nimport "./missing";',
+              dependencies: [],
+            }),
+            invalidate: () => {},
+          }),
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    expect(result.errors).toMatchObject([
+      {
+        text: 'Could not resolve "./missing"',
+        location: { file: "Page.ts", line: 0, column: 0 },
+      },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it.each([
+  ["/project/Child.ts:108:214: unsupported", true],
+  ["C:\\project\\Child.ts:1:2: unsupported", true],
+  [":1:2: no file", false],
+  ["/project/Child.ts::2: no line", false],
+  ["/project/Child.ts:1:: no column", false],
+  ["/project/Child.ts:x:2: nonnumeric line", false],
+  ["/project/Child.ts:1:y: nonnumeric column", false],
+  ["/project/Child.ts:1:2:no separator space", false],
+  ["wrapper\n/project/Child.ts:1:2: nested diagnostic", false],
+])(
+  "keeps a file prefix only for an unlocated compiler error: %s",
+  async (text, located) => {
+    const file = await pomFile("class Page {}");
+    try {
+      const { onLoad } = setUp(
+        pageObjectModels({
+          compile: () => {
+            throw new Error(text);
+          },
+          invalidate: () => {},
+        })
+      );
+      expect(await onLoad({ path: file })).toMatchObject({
+        errors: [{ text, location: located ? null : { file } }],
+      });
+    } finally {
+      await rm(join(file, ".."), { recursive: true, force: true });
+    }
+  }
+);
+
+it("leaves an esbuild error without a location alone", () => {
+  const { onEnd } = setUp(
+    pageObjectModels({ compile: () => null, invalidate: () => {} })
+  );
+  const errors = [
+    { text: "The service was stopped", location: null },
+  ] as esbuild.Message[];
+  onEnd({ errors });
+  expect(errors).toEqual([{ text: "The service was stopped", location: null }]);
+});
+
+it.each(["entry", "helper"])(
+  "keeps the source position of an uncompiled %s error",
+  async (kind) => {
+    const root = await realpath(
+      await mkdtemp(join(tmpdir(), "ayme-pom-source-"))
+    );
+    const broken = 'export const first = 1;\nimport "./missing";';
+    await writeFile(join(root, "Page.ts"), "class Page {}");
+    await writeFile(
+      join(root, "entry.ts"),
+      kind === "entry" ? broken : 'import "./Page"; import "./helper";'
+    );
+    await writeFile(join(root, "helper.ts"), broken);
+    try {
+      const result = await esbuild
+        .build({
+          absWorkingDir: root,
+          entryPoints: ["entry.ts"],
+          bundle: true,
+          write: false,
+          logLevel: "silent",
+          plugins: [
+            pageObjectModels({
+              compile: (file) =>
+                file.endsWith("Page.ts")
+                  ? { code: "console.log('compiled');", dependencies: [] }
+                  : null,
+              invalidate: () => {},
+            }),
+          ],
+        })
+        .catch((error: esbuild.BuildFailure) => error);
+      expect(result.errors).toMatchObject([
+        {
+          text: 'Could not resolve "./missing"',
+          location: {
+            file: `${kind === "entry" ? "entry" : "helper"}.ts`,
+            line: 2,
+            column: 7,
+          },
+        },
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+);
+
+it("invalidates and forgets compiled files on rebuild, retaining the last good build until a fix", async () => {
+  const file = await realpath(await pomFile("// pom\nexport const value = 1;"));
+  const folder = join(file, "..");
+  const log = vi.fn();
+  const invalidate = vi.fn();
+  const outcomes = buildOutcomes({
+    entry: file,
+    folder,
+    outdir: join(folder, "out"),
+    log,
+  });
+  const context = await esbuild.context({
+    absWorkingDir: folder,
+    entryPoints: [file],
+    outdir: join(folder, "out"),
+    bundle: true,
+    write: false,
+    logLevel: "silent",
+    format: "esm",
+    plugins: [
+      pageObjectModels({
+        compile: (_file, source) =>
+          source.startsWith("// pom")
+            ? { code: `\n\n${source}`, dependencies: [] }
+            : null,
+        invalidate,
+      }),
+      outcomes.plugin,
+    ],
+  });
+  try {
+    await context.rebuild();
+    const good = await outcomes.modules();
+    expect([...good.values()].join("\n")).toContain("value = 1");
+    await writeFile(file, '// pom\nimport "./missing";');
+    await expect(context.rebuild()).rejects.toMatchObject({
+      errors: [{ location: { line: 0, column: 0 } }],
+    });
+    expect(await outcomes.modules()).toBe(good);
+    expect(log).toHaveBeenLastCalledWith(
+      expect.stringContaining("The page gets the last good build.")
+    );
+    // This file stops being a POM: the old compiled-file set must not hide its own position.
+    await writeFile(file, 'import "./missing";');
+    await expect(context.rebuild()).rejects.toMatchObject({
+      errors: [{ location: { line: 1, column: 7 } }],
+    });
+    expect(await outcomes.modules()).toBe(good);
+    await writeFile(file, "export const value = 2;");
+    await context.rebuild();
+    expect(
+      [...(await outcomes.modules())].map(([, code]) => code).join("\n")
+    ).toContain("value = 2");
+    expect(await outcomes.modules()).not.toBe(good);
+    expect(invalidate).toHaveBeenCalledTimes(4);
+  } finally {
+    await context.dispose();
+    await rm(folder, { recursive: true, force: true });
+  }
 });

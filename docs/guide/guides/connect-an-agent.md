@@ -97,6 +97,8 @@ Run your dev server and ask the agent to connect to the page, giving it the URL,
 - On `localhost` or `127.0.0.1`, an open tab with no link pairs by itself when exactly one Ayme MCP server is running. It looks when the page loads and again each time the tab gains focus, so a tab opened before the agent started pairs once you switch back to it. With several servers running, it stays unpaired until you paste a link, so it never pairs with the wrong agent.
 - A server already working with a tab ignores other tabs that look for a server; only its connect link moves it. The newest tab wins: opening the link in a second tab moves the agent there, and the first tab is no longer connected.
 
+A duplicated tab keeps presenting the original tab's id, unlike a fresh second tab, and reopening a link with the same address and token does not give it a new id.
+
 ## What the agent sees
 
 Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, the Page Object Tools of every Page Object on the page, the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`, and `goal` when the Goal Loop is configured. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.

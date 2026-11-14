@@ -1557,18 +1557,22 @@ describe("derivePomManifests", () => {
         [
           "indexSignaturePatternPom",
           `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
+          8,
         ],
         [
           "stringPatternPom",
           `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
+          11,
         ],
         [
           "tupleUnionPom",
           `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
+          8,
         ],
         [
           "correlatedTuplePom",
           `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
+          8,
         ],
         [
           "renamedDuplicatePom",
@@ -1582,18 +1586,19 @@ describe("derivePomManifests", () => {
           "sharedPropertyPom",
           "Page Object Action SharedPropertyPom.copy takes two input fields named id: property id of { id }: { id: string }, and property id of { id: other }: { id: string }.",
         ],
-      ])("fails the build for %s", (fixture, message) => {
+      ])("fails the build for %s", (fixture, message, column?: number) => {
+        const file = path.resolve(
+          `src/compiler/fixtures/unsupportedPatterns/${fixture}.ts`
+        );
         let thrown: unknown;
         try {
-          derivePomManifests(
-            path.resolve(
-              `src/compiler/fixtures/unsupportedPatterns/${fixture}.ts`
-            )
-          );
+          derivePomManifests(file);
         } catch (error) {
           thrown = error;
         }
-        expect((thrown as Error | undefined)?.message).toBe(message);
+        expect((thrown as Error | undefined)?.message).toBe(
+          column ? `${file}:6:${column}: ${message}` : message
+        );
       });
 
       it("takes an object pattern's quoted keys with their defaults, and its computed ones from the type", () => {
