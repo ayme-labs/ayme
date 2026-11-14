@@ -652,94 +652,26 @@ async function openPage(
     tell({ kind: "traceStopped", trace: { file, positions } });
   }
 
+  /** One request of a kind. */
+  type Asked<K extends BrowserRequest["kind"]> = Extract<
+    BrowserRequest,
+    { kind: K }
+  >;
+
   async function carryOut(request: BrowserRequest): Promise<void> {
     switch (request.kind) {
       case "reportInteractions":
         return reportInteractions(request.on);
       case "holdInputs":
-        // A document that starts from now on starts so.
-        await context.addInitScript(startGate, {
-          on: request.on,
-          change: ++gateChanges,
-        });
-        // A frame that is gone holds nothing back.
-        await Promise.all(
-          everyFrame().map((frame) =>
-            frame
-              .evaluate(
-                // Stryker disable all
-                (on) => window.__aymeRecorderGate?.set(on),
-                // Stryker restore all
-                request.on
-              )
-              .catch(() => {})
-          )
-        );
-        return tell({ kind: "inputsHeld", on: request.on });
-      case "takeSnapshot": {
-        const open = pages.get(request.page);
-        if (!open) return;
-        const at = now();
-        const tree = await open.ariaSnapshot({ mode: "ai" });
-        // Before the snapshot is told: its input is passed on after that.
-        await mark(open, request.snapshot);
-        return tell({
-          kind: "snapshotTaken",
-          snapshot: {
-            id: request.snapshot,
-            page: request.page,
-            url: open.url(),
-            at,
-            tree,
-          },
-        });
-      }
-      case "passOn": {
-        const input = held.get(request.input);
-        held.delete(request.input);
-        if (!input) return;
-        if (!(await passOn(input.frame, input.input)))
-          return tell({ kind: "inputGone", input: request.input });
-        return tell({ kind: "inputPassedOn", input: request.input, at: now() });
-      }
-      case "letInputsThrough": {
-        const open = pages.get(request.page);
-        if (!open) return;
-        // What the engine knows the page held: up to `upTo`, by document.
-        const known = heldBy.get(request.page) ?? [];
-        const upTo =
-          request.upTo === null
-            ? []
-            : known.slice(
-                0,
-                known.findIndex((input) => input.id === request.upTo) + 1
-              );
-        await Promise.all(
-          open.frames().map((frame) =>
-            frame
-              .evaluate(
-                // Stryker disable all
-                (seq) => window.__aymeRecorderGate?.letThrough(seq),
-                // Stryker restore all
-                Math.max(
-                  0,
-                  ...upTo
-                    .filter((input) => input.frame === frame)
-                    .map((input) => input.seq)
-                )
-              )
-              .catch(() => {})
-          )
-        );
-        return;
-      }
+        return holdInputs(request.on);
+      case "takeSnapshot":
+        return takeSnapshot(request);
+      case "passOn":
+        return passOnHeld(request.input);
+      case "letInputsThrough":
+        return letInputsThrough(request);
       case "startTrace":
-        await context.tracing.start({
-          name: "ayme-recording",
-          snapshots: true,
-          screenshots: true,
-        });
-        return tell({ kind: "traceStarted" });
+        return startTrace();
       case "stopTrace":
         return stopTrace(request.keep);
       // Assert visibility.
@@ -748,25 +680,111 @@ async function openPage(
       // Highlight.
       case "highlight":
         return highlight(request);
-      case "waitForSettled": {
-        const open = pages.get(request.page);
-        // Core owns the quiet window, the deadline and what "settled" is.
-        if (open)
-          await waitForSettled({
-            activity: activityOf(open),
-            clock: {
-              now: () => MonotonicTimeMsSchema.parse(performance.now()),
-            },
-            quietMs: SETTLED_PAGE_QUIET_MS,
-            deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-          });
-        return tell({
-          kind: "pageSettled",
-          page: request.page,
-          input: request.input,
-        });
-      }
+      case "waitForSettled":
+        return settle(request);
     }
+  }
+
+  async function holdInputs(on: boolean) {
+    // A document that starts from now on starts so.
+    await context.addInitScript(startGate, { on, change: ++gateChanges });
+    // A frame that is gone holds nothing back.
+    await Promise.all(
+      everyFrame().map((frame) =>
+        frame
+          .evaluate(
+            // Stryker disable all
+            (on) => window.__aymeRecorderGate?.set(on),
+            // Stryker restore all
+            on
+          )
+          .catch(() => {})
+      )
+    );
+    tell({ kind: "inputsHeld", on });
+  }
+
+  async function takeSnapshot(request: Asked<"takeSnapshot">) {
+    const open = pages.get(request.page);
+    if (!open) return;
+    const at = now();
+    const tree = await open.ariaSnapshot({ mode: "ai" });
+    // Before the snapshot is told: its input is passed on after that.
+    await mark(open, request.snapshot);
+    tell({
+      kind: "snapshotTaken",
+      snapshot: {
+        id: request.snapshot,
+        page: request.page,
+        url: open.url(),
+        at,
+        tree,
+      },
+    });
+  }
+
+  async function passOnHeld(id: string) {
+    const input = held.get(id);
+    held.delete(id);
+    if (!input) return;
+    if (!(await passOn(input.frame, input.input)))
+      return tell({ kind: "inputGone", input: id });
+    tell({ kind: "inputPassedOn", input: id, at: now() });
+  }
+
+  async function letInputsThrough(request: Asked<"letInputsThrough">) {
+    const open = pages.get(request.page);
+    if (!open) return;
+    // What the engine knows the page held: up to `upTo`, by document.
+    const known = heldBy.get(request.page) ?? [];
+    const upTo =
+      request.upTo === null
+        ? []
+        : known.slice(
+            0,
+            known.findIndex((input) => input.id === request.upTo) + 1
+          );
+    await Promise.all(
+      open.frames().map((frame) =>
+        frame
+          .evaluate(
+            // Stryker disable all
+            (seq) => window.__aymeRecorderGate?.letThrough(seq),
+            // Stryker restore all
+            Math.max(
+              0,
+              ...upTo
+                .filter((input) => input.frame === frame)
+                .map((input) => input.seq)
+            )
+          )
+          .catch(() => {})
+      )
+    );
+  }
+
+  async function startTrace() {
+    await context.tracing.start({
+      name: "ayme-recording",
+      snapshots: true,
+      screenshots: true,
+    });
+    tell({ kind: "traceStarted" });
+  }
+
+  async function settle(request: Asked<"waitForSettled">) {
+    const open = pages.get(request.page);
+    // Core owns the quiet window, the deadline and what "settled" is.
+    if (open)
+      await waitForSettled({
+        activity: activityOf(open),
+        clock: {
+          now: () => MonotonicTimeMsSchema.parse(performance.now()),
+        },
+        quietMs: SETTLED_PAGE_QUIET_MS,
+        deadlineMs: SETTLED_PAGE_DEADLINE_MS,
+      });
+    tell({ kind: "pageSettled", page: request.page, input: request.input });
   }
 
   /** Playwright's recorder, once it has been started on the context. */
