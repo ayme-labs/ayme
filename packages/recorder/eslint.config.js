@@ -75,6 +75,24 @@ const otherEffectPackages = {
     "Production code uses only the stable effect package: no @effect/* package and no effect/unstable module.",
 };
 
+// How the playwright slice's infrastructure is measured decides where its
+// code may sit (docs/testing.md#code-a-real-browser-runs): `live/` drives a
+// real browser and `in-page/` runs in the page, while the plain logic beside
+// them stays testable without a browser. So plain logic reaches neither, the
+// layer's front door reaches `live/` to wire the stock adapter, and
+// `in-page/` is reached from `live/` only and imports nothing to run.
+const infrastructure = "src/playwright/infrastructure";
+const noLiveOrInPage = {
+  regex: String.raw`^\./(live|in-page)(/|$)`,
+  message:
+    "Plain logic stays testable without a browser: it may not import infrastructure/live or infrastructure/in-page (docs/testing.md#code-a-real-browser-runs).",
+};
+const noInPage = {
+  regex: String.raw`^\./in-page(/|$)`,
+  message:
+    "infrastructure/in-page is reached from infrastructure/live only (docs/testing.md#code-a-real-browser-runs).",
+};
+
 /** One config per group of files: a later `no-restricted-imports` replaces an
  * earlier one for the same file, so each group states all of its patterns. */
 function restrictedImports(files, patterns, { ignores } = {}) {
@@ -117,6 +135,19 @@ function sliceRestrictions(slice) {
     restrictedImports([`${folder}/${depth}*.ts`], production, {
       ignores: testFiles,
     }),
+    ...(slice === "playwright"
+      ? [
+          restrictedImports(
+            [`${infrastructure}/*.ts`],
+            [...production, noLiveOrInPage],
+            { ignores: [...testFiles, `${infrastructure}/index.ts`] }
+          ),
+          restrictedImports(
+            [`${infrastructure}/index.ts`],
+            [...production, noInPage]
+          ),
+        ]
+      : []),
     ...(slice && !effectFree && slice !== "testing"
       ? [
           restrictedImports(
@@ -127,6 +158,14 @@ function sliceRestrictions(slice) {
         ]
       : []),
     restrictedImports([`${folder}/${depth}*.test.ts`], always),
+    ...(slice === "playwright"
+      ? [
+          restrictedImports(
+            [`${infrastructure}/*.test.ts`],
+            [...always, noLiveOrInPage]
+          ),
+        ]
+      : []),
   ];
 }
 
@@ -165,6 +204,28 @@ export default [
     },
   },
   ...slices.flatMap(sliceRestrictions),
+  {
+    // What runs in the page is sent as text: it can use nothing it imports.
+    // A type is all it may take, and its functions stay trivial: a decision
+    // belongs in a plain rule (pageRules.ts), which Node tests and mutates.
+    files: [`${infrastructure}/in-page/**/*.ts`],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: ".*",
+              allowTypeImports: true,
+              message:
+                "Code in infrastructure/in-page runs in the page and may import types only (docs/testing.md#code-a-real-browser-runs).",
+            },
+          ],
+        },
+      ],
+      complexity: ["error", 4],
+    },
+  },
   // The package's entry and its tests, which use the slices' front doors.
   ...sliceRestrictions(undefined),
 ];

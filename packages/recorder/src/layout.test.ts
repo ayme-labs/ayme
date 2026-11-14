@@ -190,3 +190,91 @@ it(
     ).toEqual([]);
   }
 );
+
+// docs/testing.md#code-a-real-browser-runs: the folder decides how code is
+// measured, so lint keeps each kind of code in its folder.
+it(
+  "lint keeps plain logic away from code that drives a browser or runs in the page",
+  slow,
+  async () => {
+    const plainOnly = [
+      expect.stringContaining("Plain logic stays testable without a browser"),
+    ];
+    for (const path of [
+      "src/playwright/infrastructure/misplaced.ts",
+      "src/playwright/infrastructure/misplaced.test.ts",
+    ]) {
+      expect(
+        await lint(
+          path,
+          'export { stockBrowser } from "./live/stockBrowser";\n'
+        ),
+        path
+      ).toEqual(plainOnly);
+      expect(
+        await lint(path, 'export { setGate } from "./in-page/calls";\n'),
+        path
+      ).toEqual(plainOnly);
+    }
+    // The layer's front door wires the stock adapter, and nothing in the
+    // page.
+    expect(
+      await lint(
+        "src/playwright/infrastructure/index.ts",
+        'export { stockBrowser } from "./live/stockBrowser";\n'
+      )
+    ).toEqual([]);
+    expect(
+      await lint(
+        "src/playwright/infrastructure/index.ts",
+        'export { setGate } from "./in-page/calls";\n'
+      )
+    ).toEqual([
+      expect.stringContaining("reached from infrastructure/live only"),
+    ]);
+    // Outside the slice, the adapter is reached through the front door.
+    expect(
+      await lint(
+        "src/engine/misplaced.ts",
+        'export { stockBrowser } from "../playwright/infrastructure/live/stockBrowser";\n'
+      )
+    ).toContainEqual(expect.stringContaining("front door"));
+    // live/ uses both.
+    expect(
+      await lint(
+        "src/playwright/infrastructure/live/placed.ts",
+        'export { setGate } from "../in-page/calls";\nexport { withRules } from "../pageRules";\n'
+      )
+    ).toEqual([]);
+  }
+);
+
+it(
+  "lint lets code that runs in the page import types only, and keeps it trivial",
+  slow,
+  async () => {
+    const path = "src/playwright/infrastructure/in-page/misplaced.ts";
+    expect(
+      await lint(
+        path,
+        'import { mouseRoute } from "../pageRules";\nexport const route = mouseRoute;\n'
+      )
+    ).toEqual([expect.stringContaining("may import types only")]);
+    expect(
+      await lint(
+        path,
+        'import type { MouseRoute } from "../pageRules";\nexport type Route = MouseRoute;\n'
+      )
+    ).toEqual([]);
+    // A decision of five ways belongs in a plain rule; four still fit.
+    const decide = (ways: number) =>
+      `export function decide(n: number): number {\n${Array.from(
+        { length: ways - 1 },
+        (_, i) => `  if (n === ${i}) return ${i};\n`
+      ).join("")}  return -1;\n}\n`;
+    expect(await lint(path, decide(5))).toEqual([
+      expect.stringContaining("complexity of 5. Maximum allowed is 4"),
+    ]);
+    expect(await lint(path, decide(4))).toEqual([]);
+  }
+);
