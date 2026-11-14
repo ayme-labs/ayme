@@ -542,6 +542,43 @@ describe("a recording's warnings", () => {
     await recorder.done;
   });
 
+  it("tells two warnings apart by their kind and by their message: each of them is told", async () => {
+    const { recorder, browser } = await start();
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    const warnings = [
+      { kind: "playwrightUnverified", message: "Playwright 1.99.0 is new." },
+      { kind: "playwrightUnverified", message: "Playwright 2.0.0 is new." },
+      { kind: "uploadNamesUnknown", message: "Playwright 1.99.0 is new." },
+    ] as const;
+
+    for (const warning of warnings) browser.warn(warning);
+    browser.warn(warnings[1]);
+
+    await expect.poll(() => updates.at(-1)!.state.warnings).toEqual(warnings);
+    recorder.end();
+    await recorder.done;
+  });
+
+  it("tells a subscriber nothing new when a snapshot is kept that adds no entry", async () => {
+    const { recorder, browser, endWithin } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+
+    // The click's "before" is kept, and the click is passed on.
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    // A command is answered after everything that happened before it.
+    await recorder.send({ type: "record" });
+
+    expect(updates).toHaveLength(1);
+    // The click still waits for its Settled Page: the end waits that out on
+    // the recorder's clock.
+    await endWithin(65_000);
+  });
+
   it("warns when typing is recorded with its 'after' only, as its report's picture is not of a snapshot's shape", async () => {
     const { recorder, browser } = await start();
     browser.showPage(idle);

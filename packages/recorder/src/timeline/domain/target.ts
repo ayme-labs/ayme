@@ -24,23 +24,51 @@ function pathTo(
   return undefined;
 }
 
-/**
- * Where a picture of one document can stand in a snapshot: the page itself,
- * then each frame the snapshot lists, in order. A frame's elements are
- * listed under its iframe.
- */
-export function scopesOf(tree: StructuralTree): {
+/** One document of a snapshot: the page (`frame` is null), or a frame,
+ * whose elements the snapshot lists under its iframe. */
+export type Scope = {
   readonly frame: StructuralNode | null;
   readonly roots: StructuralNode[];
-}[] {
+};
+
+/** The step of Playwright's selector that goes into a frame. */
+const ENTERS_FRAME = "internal:control=enter-frame";
+/** The step that starts a selector found in any frame. */
+const ANY_FRAME = "internal:control=any-frame";
+
+/**
+ * The documents of a snapshot an input may have been given to, from what its
+ * report says of where it happened. Playwright's selector names the frames
+ * it enters on its way to the target, so it says how deep in frames the
+ * target is: not at all for the page, which is then the one document; once
+ * for a frame of the page, and so on, which leaves every frame that deep.
+ * From Playwright 1.63 a target two or more frames deep is written with an
+ * "any frame" step first and only as many frame-entering steps as are
+ * needed to find its frame: it is in a frame deeper than those steps, which
+ * leaves every such frame. None for a report with no selector: nothing says
+ * where the input happened.
+ */
+export function scopesFor(
+  tree: StructuralTree,
+  selector: string | null
+): Scope[] {
+  if (selector === null) return [];
+  const steps = selector.split(" >> ");
+  const entered = steps.filter((step) => step === ENTERS_FRAME).length;
+  const anyFrame = steps[0] === ANY_FRAME;
+  if (entered === 0 && !anyFrame)
+    return [{ frame: null, roots: tree.getRootNodes() }];
+  // How many frames are around the iframe of a candidate document.
+  const fits = (around: number) =>
+    anyFrame ? around >= entered : around === entered - 1;
   const frames: StructuralNode[] = [];
   tree.walk((node) => {
-    if (node.role === "iframe") frames.push(node);
+    const around = tree
+      .getAncestorsOf(node.ref)
+      .filter((ancestor) => ancestor.role === "iframe").length;
+    if (node.role === "iframe" && fits(around)) frames.push(node);
   });
-  return [
-    { frame: null, roots: tree.getRootNodes() },
-    ...frames.map((frame) => ({ frame, roots: nodes(frame) })),
-  ];
+  return frames.map((frame) => ({ frame, roots: nodes(frame) }));
 }
 
 /** Whether a picture's top level is that of a scope: the same roles and
@@ -78,19 +106,24 @@ function namedInPicture(
 }
 
 /**
- * The ref, in a snapshot's tree, of the element a report names.
+ * The ref, in a snapshot's tree, of the element a report names; undefined
+ * when it is not known for certain.
  *
  * Playwright's recorder gives each report its own picture of the page, taken
- * at the moment of the Interaction and numbered by itself. For an input the
- * gate held, the snapshot taken just before it shows the same page, so the
- * target is the node at the same place in both: in the page, or in the
- * frame whose top level is the picture's. It is taken only when the two
- * nodes agree on role and name; otherwise the target is unknown.
+ * at the moment of the Interaction and numbered by itself: a picture of the
+ * one document the input was given to. For an input the gate held, the
+ * snapshot taken just before it shows the same page, so the target is the
+ * node at the same place in both, in a document the report's selector allows
+ * and whose top level is the picture's. It is taken only when the two nodes
+ * agree on role and name, and only when one document has it: a ref is
+ * trusted, so the element of another document that looks like the target is
+ * never written in its place.
  */
 export function locateTarget(
   before: StructuralTree,
-  target: InteractionReport["target"]
+  report: InteractionReport
 ): AriaRef | undefined {
+  const { target } = report;
   if (!target) return undefined;
   // A factory of its own: the picture is read only here.
   const picture = StructuralTree.fromAriaSnapshotYaml(
@@ -102,17 +135,18 @@ export function locateTarget(
   // It is a ref of the picture: its node is there, and so is the way to it.
   const path = pathTo(picture.getRootNodes(), ref)!;
   const named = picture.getNode(ref)!;
-  for (const scope of scopesOf(before)) {
-    if (!fitsScope(picture.getRootNodes(), scope.roots)) continue;
+  const found = scopesFor(before, report.selector).flatMap((scope) => {
+    if (!fitsScope(picture.getRootNodes(), scope.roots)) return [];
     let level = scope.roots;
-    let found: StructuralNode | undefined;
+    let at: StructuralNode | undefined;
     for (const index of path) {
-      found = level[index];
-      if (!found) break;
-      level = nodes(found);
+      at = level[index];
+      if (!at) break;
+      level = nodes(at);
     }
-    if (found?.role === named.role && found.name === named.name)
-      return found.ref;
-  }
-  return undefined;
+    return at?.role === named.role && at.name === named.name ? [at.ref] : [];
+  });
+  // Two frames that both have it: which one the input was given to cannot
+  // be told.
+  return found.length === 1 ? found[0] : undefined;
 }

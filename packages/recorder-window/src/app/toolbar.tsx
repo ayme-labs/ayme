@@ -42,12 +42,21 @@ const INPUT_TYPES = [
   "keyup",
 ] as const;
 
-function mount() {
-  if (window !== window.top || document.querySelector(HOST)) return;
-  const call = (window as unknown as Record<string, unknown>)[BINDING] as
-    ((message: ToolbarMessage) => Promise<unknown>) | undefined;
-  if (typeof call !== "function") return;
+/** The page function the engine put beside this script, in a top document
+ * that has no toolbar yet; none in a frame, or where one is shown. */
+function bindingHere() {
+  if (!isTopWithoutToolbar()) return undefined;
+  const call = (window as unknown as Record<string, unknown>)[BINDING];
+  return typeof call === "function"
+    ? (call as (message: ToolbarMessage) => Promise<unknown>)
+    : undefined;
+}
 
+const isTopWithoutToolbar = () =>
+  window === window.top && !document.querySelector(HOST);
+
+/** The host: out of the page's structure and of its layout. */
+function createHost() {
   const host = document.createElement(HOST);
   host.setAttribute("aria-hidden", "true");
   host.style.cssText = [
@@ -60,6 +69,12 @@ function mount() {
   ]
     .map((rule) => `${rule} !important`)
     .join(";");
+  return host;
+}
+
+/** The host's closed root, with the toolbar's stylesheet and the element
+ * React renders into. */
+function shadowRootFor(host: HTMLElement) {
   const root = host.attachShadow({ mode: "closed" });
   (host as unknown as Record<symbol, ShadowRoot>)[Symbol.for(SHADOW_ROOT_KEY)] =
     root;
@@ -71,35 +86,62 @@ function mount() {
   if (matchMedia("(prefers-color-scheme: dark)").matches)
     container.classList.add("dark");
   root.append(container);
+  return { root, container };
+}
 
-  // A person's input on the toolbar goes no further than the window. A
-  // click is then given to the button under it, as the toolbar's own,
-  // untrusted, click: the page's listeners and Playwright's recorder do
-  // not take an untrusted click for a person's.
-  const stop = (event: Event) => {
-    if (!event.isTrusted || !event.composedPath().includes(host)) return;
-    event.stopImmediatePropagation();
-    // The page keeps its focus.
-    if (event.type === "mousedown") event.preventDefault();
-    if (event.type !== "click") return;
-    const { clientX, clientY } = event as MouseEvent;
-    const button = root.elementFromPoint(clientX, clientY)?.closest("button");
+/** The button of the toolbar under a click, if any. */
+const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) =>
+  root.elementFromPoint(clientX, clientY)?.closest("button");
+
+/**
+ * What stops a person's input on the toolbar at the window. A click is then
+ * given to the button under it, as the toolbar's own, untrusted, click: the
+ * page's listeners and Playwright's recorder do not take an untrusted click
+ * for a person's.
+ */
+function stopperFor(host: HTMLElement, root: ShadowRoot) {
+  const press = (event: MouseEvent) => {
+    const button = buttonAt(root, event);
     if (button && !button.disabled) button.click();
   };
-  for (const type of INPUT_TYPES) window.addEventListener(type, stop, true);
+  const afterStopping: Partial<Record<string, (event: Event) => void>> = {
+    // The page keeps its focus.
+    mousedown: (event) => event.preventDefault(),
+    click: (event) => press(event as MouseEvent),
+  };
+  const onToolbar = (event: Event) =>
+    event.isTrusted && event.composedPath().includes(host);
+  return (event: Event) => {
+    if (!onToolbar(event)) return;
+    event.stopImmediatePropagation();
+    afterStopping[event.type]?.(event);
+  };
+}
 
-  // A page that rewrites its document gets the toolbar back.
-  const keep = new MutationObserver(() => {
-    if (!host.isConnected && document.documentElement) {
-      document.documentElement.append(host);
-      keep.observe(document.documentElement, { childList: true });
-    }
-  });
-  keep.observe(document, { childList: true });
-  if (document.documentElement) {
+/** Keeps the host in the document: a page that rewrites its document gets
+ * the toolbar back. */
+function keepInDocument(host: HTMLElement) {
+  const place = () => {
+    if (host.isConnected || !document.documentElement) return;
     document.documentElement.append(host);
     keep.observe(document.documentElement, { childList: true });
-  }
+  };
+  const keep = new MutationObserver(place);
+  keep.observe(document, { childList: true });
+  place();
+  return keep;
+}
+
+function mount() {
+  const call = bindingHere();
+  if (!call) return;
+  const host = createHost();
+  const { root, container } = shadowRootFor(host);
+
+  // A person's input on the toolbar goes no further than the window.
+  const stop = stopperFor(host, root);
+  for (const type of INPUT_TYPES) window.addEventListener(type, stop, true);
+  const keep = keepInDocument(host);
 
   const react = createRoot(container);
   // In place before the page first paints.

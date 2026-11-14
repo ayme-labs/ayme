@@ -17,6 +17,7 @@ import { afterEach, expect, it } from "vitest";
 
 import { RecordedBrowser } from "../../session/application";
 import type { BrowserRequest, BrowserSignal } from "../../session/domain";
+import { Timeline } from "../../timeline/domain";
 import {
   loadProjectPlaywright,
   projectPlaywrightCli,
@@ -1138,4 +1139,110 @@ it("holds as a press exactly the keys Playwright reports as a press: a letter ty
     { key: "Control+a", gate: true, playwright: true },
     { key: "Tab", gate: true, playwright: true },
   ]);
+});
+
+/** A page with a button, a frame with one, and a frame inside it with one. */
+const FRAMES_IN_FRAMES = `
+    <button>Top</button>
+    <iframe id="outer" title="Outer"></iframe>
+    <script>
+      document.getElementById("outer").srcdoc =
+        '<button>Middle</button><iframe id="inner" title="Inner"></iframe>' +
+        '<script>document.getElementById("inner").srcdoc = "<button>Deep</button>";<\\/script>';
+    </script>`;
+
+/** Whether the Playwright under test shortens the way to a frame inside a
+ * frame: from 1.63 it starts the selector with `internal:control=any-frame`
+ * and enters only as many frames as it needs to find the target's frame
+ * uniquely (`buildFullSelectorForFrame`); 1.62 enters each frame. */
+const shortensFramePaths = (() => {
+  const [major = 0, minor = 0] = underTest.version.split(".").map(Number);
+  return major > 1 || minor >= 63;
+})();
+
+// How deep in frames a target is, as the timeline reads it from the
+// selector Playwright reports (`scopesFor` in timeline/domain/target.ts): the
+// steps of the selector, split at " >> ", that enter a frame.
+it(`reports a click with a selector that enters its frame once, a click in the page with none, and a click in a frame inside a frame ${shortensFramePaths ? "by any frame" : "entering each frame"} (Playwright ${underTest.version})`, async () => {
+  const browser = await onStockPlaywright(FRAMES_IN_FRAMES);
+  const outer = browser.page.frameLocator("#outer");
+  const inner = outer.frameLocator("#inner");
+  await inner.getByRole("button", { name: "Deep" }).waitFor();
+  await reporting(browser);
+
+  for (const button of [
+    browser.page.getByRole("button", { name: "Top" }),
+    outer.getByRole("button", { name: "Middle" }),
+    inner.getByRole("button", { name: "Deep" }),
+  ]) {
+    const before = browser.told.length;
+    await browser.click(button);
+    await browser.toldOf(
+      "interactionReported",
+      (signal) => browser.told.indexOf(signal) >= before
+    );
+  }
+
+  const [top, middle, deep] = browser.told.flatMap((signal) =>
+    signal.kind === "interactionReported"
+      ? [signal.report.selector!.split(" >> ")]
+      : []
+  );
+  const enters = (steps: string[]) =>
+    steps.filter((step) => step === "internal:control=enter-frame").length;
+  const anyFrame = (steps: string[]) =>
+    steps.includes("internal:control=any-frame");
+  expect([top, middle, deep].map((steps) => steps!.at(-1))).toEqual([
+    expect.stringContaining("Top"),
+    expect.stringContaining("Middle"),
+    expect.stringContaining("Deep"),
+  ]);
+  expect([enters(top!), anyFrame(top!)]).toEqual([0, false]);
+  expect([enters(middle!), anyFrame(middle!)]).toEqual([1, false]);
+  if (shortensFramePaths) {
+    expect(deep![0]).toBe("internal:control=any-frame");
+    expect(enters(deep!)).toBeLessThan(2);
+  } else expect([enters(deep!), anyFrame(deep!)]).toEqual([2, false]);
+});
+
+it(`gives a click in a frame inside a frame the target ref of its element, through the adapter and the timeline's rule (Playwright ${underTest.version})`, async () => {
+  const browser = await onStockPlaywright(FRAMES_IN_FRAMES);
+  const deep = browser.page
+    .frameLocator("#outer")
+    .frameLocator("#inner")
+    .getByRole("button", { name: "Deep" });
+  await deep.waitFor();
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  const { page } = await browser.toldOf("pageOpened");
+
+  // As the recorder records a held click: its "before", then the click.
+  await browser.click(deep);
+  const { input } = await browser.toldOf("inputHeld");
+  await browser.ask({ kind: "takeSnapshot", snapshot: "before", page });
+  const { snapshot } = await browser.toldOf("snapshotTaken");
+  await browser.ask({ kind: "passOn", input });
+  const { report } = await browser.toldOf("interactionReported");
+
+  const timeline = new Timeline();
+  await timeline.add({
+    kind: "visit",
+    page,
+    url: snapshot.url,
+    cause: "initial",
+  });
+  await timeline.add({ kind: "snapshot", snapshot });
+  await timeline.add({
+    kind: "interaction",
+    interaction: { page, report, before: "before", after: "before", at: 0 },
+  });
+
+  const [entry] = timeline.visits()[0]!.entries;
+  const deepRef = /button "Deep"[^\n]*\[ref=(\w+)\]/.exec(snapshot.tree)?.[1];
+  expect(deepRef).toMatch(/^f\d+e\d+$/);
+  expect(entry).toMatchObject({
+    kind: "interaction",
+    interaction: { type: "click", targetRef: deepRef },
+  });
 });
