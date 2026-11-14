@@ -3767,6 +3767,12 @@ describe("the lifecycle, with more than one page", () => {
     target: null,
     values: { options: ["eggs"] },
   };
+  const typed = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
 
   it.each<{
     name: string;
@@ -3997,6 +4003,142 @@ describe("the lifecycle, with more than one page", () => {
       state: { phase: "recording" },
     },
 
+    // What one page does is not another's.
+    {
+      name: "a click held on one page does not close an Interaction that settles on another",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        heldOn("page_1", "input_1"),
+        takenOf("snapshot_1", "page_1"),
+        passedOn("input_1"),
+        heldOn("page_2", "input_2"),
+      ],
+      todo: [[snap("snapshot_2", "page_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "the wrap-up waits for the last snapshot of every page",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        finish,
+        gateOff,
+        takenOf("snapshot_1", "page_1"),
+      ],
+      todo: [[kept("snapshot_1", "page_1")]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "an input that reached its page is known by itself, whatever is on its way on another page",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        heldOn("page_1", "input_1"),
+        heldOn("page_2", "input_2"),
+        takenOf("snapshot_1", "page_1"),
+        takenOf("snapshot_2", "page_2"),
+        passedOn("input_2"),
+      ],
+      todo: [[waitOn("page_2", "input_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "an input that reached its page shares no snapshot with one that waits on another page",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        heldOn("page_1", "input_1"),
+        heldOn("page_2", "input_2"),
+        heldOn("page_2", "input_3"),
+        takenOf("snapshot_1", "page_1"),
+        passedOn("input_1"),
+      ],
+      todo: [[waitOn("page_1", "input_1")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a report goes to the click of its own page, and gives up on no click of another",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        heldOn("page_1", "input_1"),
+        takenOf("snapshot_1", "page_1"),
+        passedOn("input_1"),
+        settledOn("page_1", "input_1"),
+        takenOf("snapshot_2", "page_1"),
+        heldOn("page_2", "input_2"),
+        takenOf("snapshot_3", "page_2"),
+        passedOn("input_2", 22),
+        settledOn("page_2", "input_2"),
+        takenOf("snapshot_4", "page_2"),
+        { kind: "interactionReported", page: "page_2", report: click },
+        reported,
+      ],
+      todo: [
+        [
+          {
+            kind: "timeline",
+            add: {
+              kind: "interaction",
+              interaction: {
+                page: "page_2",
+                report: click,
+                before: "snapshot_3",
+                after: "snapshot_4",
+                at: 22,
+              },
+            },
+          },
+        ],
+        [interaction("snapshot_1", "snapshot_2")],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Playwright's revision on one page does not revise what was typed on another",
+      happened: [
+        opened,
+        opened2,
+        ...started,
+        { kind: "interactionReported", page: "page_1", report: typed("m") },
+        takenOf("snapshot_1", "page_1"),
+        { kind: "interactionRevised", page: "page_2", report: typed("x") },
+        settledOn("page_1", "reported_1"),
+        takenOf("snapshot_2", "page_1"),
+        finish,
+        gateOff,
+        takenOf("snapshot_3", "page_1"),
+        takenOf("snapshot_4", "page_2"),
+      ],
+      todo: [
+        [
+          kept("snapshot_4", "page_2"),
+          {
+            kind: "timeline",
+            add: {
+              kind: "interaction",
+              interaction: {
+                page: "page_1",
+                report: typed("m"),
+                before: "snapshot_1",
+                after: "snapshot_2",
+                at: 10,
+                beforeFromReport: true,
+              },
+            },
+          },
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+
     // Told when nothing waits for it.
     {
       name: "a save that is told done when none was under way changes nothing",
@@ -4059,5 +4201,263 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
     },
   ])("$name", ({ happened, todo }) => {
     expect(run(happened).todo.slice(-todo.length)).toEqual(todo);
+  });
+});
+
+// The change analysis of the branch: what is told a second time, or when
+// its turn is over, changes nothing.
+describe("the lifecycle, for what is told twice or out of turn", () => {
+  const typed = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
+  const reportedAs = (report: InteractionReport): Happening => ({
+    kind: "interactionReported",
+    page: "page_1",
+    report,
+  });
+  const revised = (report: InteractionReport): Happening => ({
+    kind: "interactionRevised",
+    page: "page_1",
+    report,
+  });
+  const fromReport = (
+    report: InteractionReport,
+    before: string,
+    after: string
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      interaction: {
+        page: "page_1",
+        report,
+        before,
+        after,
+        at: 10,
+        beforeFromReport: true,
+      },
+    },
+  });
+  /** A click that reached its page and waits for its Settled Page. */
+  const clickSettling = [
+    clickHeld("input_1"),
+    taken("snapshot_1"),
+    passedOn("input_1"),
+  ];
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    // Starting.
+    {
+      name: "a trace told started a second time asks for nothing more",
+      happened: [opened, ...started, traceStarted],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Playwright told reporting again while recording asks for nothing more",
+      happened: [opened, ...started, reporting],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Playwright told not reporting while Record waits does not go on to the pages",
+      happened: [opened, record, traceStarted, reportingOff],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "pages that tell they hold nothing back while Record waits do not answer it",
+      happened: [opened, record, traceStarted, reporting, gateOff],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "pages that confirm again once recording answer nothing a second time",
+      happened: [opened, ...started, holding],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+
+    // Wrapping up.
+    {
+      name: "pages that tell they hold inputs back during a wrap-up have confirmed nothing: no last snapshot is taken",
+      happened: [opened, ...started, stop, holding],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Playwright told reporting while it is being switched off has confirmed nothing: the recorder is not paused",
+      happened: [
+        opened,
+        ...started,
+        stop,
+        gateOff,
+        taken("snapshot_1"),
+        reporting,
+      ],
+      todo: [[]],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "when the time limit passes while one snapshot is taken for two clicks, the one that still waits is passed on (rule 1)",
+      happened: [
+        opened,
+        ...started,
+        ...clickSettling,
+        clickHeld("input_2"),
+        stop,
+        { kind: "timeLimitPassed" },
+      ],
+      todo: [
+        [takeSnapshot("snapshot_2")],
+        [...wrapUp, reply("applied")],
+        [passOn("input_2"), stopReporting],
+      ],
+      state: { phase: "paused" },
+    },
+
+    // A held input.
+    {
+      name: "an input told passed on a second time is not waited for twice",
+      happened: [opened, ...started, ...clickSettling, passedOn("input_1")],
+      todo: [[waitForSettled("input_1")], []],
+      state: { phase: "recording" },
+    },
+    {
+      name: "an input the recorder does not know of that is told passed on changes nothing",
+      happened: [opened, ...started, passedOn("input_9")],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a click told gone after it reached its page is recorded all the same",
+      happened: [
+        opened,
+        ...started,
+        ...clickSettling,
+        { kind: "inputGone", input: "input_1" },
+        settled("input_1"),
+        taken("snapshot_2"),
+        reported,
+      ],
+      todo: [[interaction("snapshot_1", "snapshot_2")]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a second report of a click, while the click that has its report still settles, replaces nothing",
+      happened: [
+        opened,
+        ...started,
+        ...clickSettling,
+        reported,
+        reportedAs({ ...click, selector: "internal:role=link" }),
+        settled("input_1"),
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [
+          keep("snapshot_2"),
+          interaction("snapshot_1", "snapshot_2"),
+          letThrough("input_1"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Playwright's revision of a held click's report replaces nothing: only what the gate never holds is revised",
+      happened: [
+        opened,
+        ...started,
+        ...clickSettling,
+        reported,
+        revised({ ...click, selector: "internal:role=link" }),
+        settled("input_1"),
+        taken("snapshot_2"),
+      ],
+      todo: [
+        [
+          keep("snapshot_2"),
+          interaction("snapshot_1", "snapshot_2"),
+          letThrough("input_1"),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+
+    // What Playwright revises.
+    {
+      name: "a revision with nothing reported to revise changes nothing",
+      happened: [opened, ...started, revised(typed("x"))],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a revision of another kind than what was reported last revises nothing",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(typed("m")),
+        revised({ ...typed("x"), type: "select" }),
+        settled("reported_1"),
+        taken("snapshot_3"),
+        finish,
+        gateOff,
+        taken("snapshot_4"),
+      ],
+      todo: [
+        [
+          keep("snapshot_4"),
+          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+    {
+      name: "typing revised while its 'after' is being taken is given time again: its 'after' is the later snapshot",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        reportedAs(typed("m")),
+        settled("reported_1"),
+        revised(typed("milk")),
+        taken("snapshot_3"),
+        settled("reported_1"),
+        taken("snapshot_4"),
+        finish,
+        gateOff,
+        taken("snapshot_5"),
+      ],
+      todo: [
+        [],
+        [keep("snapshot_3"), waitForSettled("reported_1")],
+        [takeSnapshot("snapshot_4")],
+        [keep("snapshot_4")],
+        [...wrapUp, reply("applied")],
+        [takeSnapshot("snapshot_5")],
+        [
+          keep("snapshot_5"),
+          fromReport(typed("milk"), "snapshot_2", "snapshot_4"),
+          stopTrace,
+        ],
+      ],
+      state: { phase: "saving" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
   });
 });
