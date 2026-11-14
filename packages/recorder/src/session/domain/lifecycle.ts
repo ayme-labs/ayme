@@ -562,66 +562,38 @@ function stepOf(state: LifecycleState, happening: Happening): Step {
     case "command":
       return command(state, happening.command);
     case "outsideEnd":
-    case "browserGone":
       return endFromOutside(state);
-    case "pageOpened": {
-      const page: Page = { id: happening.page, url: happening.url };
-      const opened = { ...state, pages: [...state.pages, page] };
-      if (isActive(opened) && page.url !== BLANK)
-        return proceed(opened, [visitOf(page.id, page.url, "openPage")]);
-      return stay(
-        isActive(opened) || opened.phase === "paused"
-          ? { ...opened, pages: [...state.pages, { ...page, since: "opened" }] }
-          : opened
-      );
-    }
-    case "pageNavigated": {
-      const page = state.pages.find((open) => open.id === happening.page);
-      if (!page) return stay(state);
-      const at = { ...page, url: happening.url };
-      const moved = (next: Page) => ({
-        ...state,
-        pages: state.pages.map((open) => (open === page ? next : open)),
-      });
-      if (isActive(state) && at.url !== BLANK)
-        return proceed(
-          {
-            ...state,
-            pages: state.pages.map((open) =>
-              open === page ? visited(at) : open
-            ),
-          },
-          [visitOf(at.id, at.url, causeOf(at))]
-        );
-      return stay(
-        moved(
-          state.phase === "paused" ? { ...at, since: at.since ?? "moved" } : at
-        )
-      );
-    }
-    case "pageClosed": {
-      const without = withoutPage(state, happening.page);
-      if (happening.pagesLeft === 0) return endFromOutside(without);
-      return isActive(without) ? proceed(without, []) : stay(without);
-    }
-    case "brokeDown": {
-      // Whatever it was doing, it ends here, and says why.
-      if (state.phase === "ended") return stay(state);
-      const outcome: RecordingOutcome = {
-        kind: "failed",
-        reason: happening.reason,
-      };
-      return {
-        state: { phase: "ended", pages: state.pages, outcome },
-        todo: [...answerRecord(state), { kind: "end", outcome }],
-      };
-    }
+    case "brokeDown":
+      return brokeDown(state, happening.reason);
     // Warnings: a person is told, whatever the recorder is doing.
-    case "browserWarned":
     case "timelineWarned":
       return { state, todo: [{ kind: "warn", warning: happening.warning }] };
     case "timeLimitPassed":
       return state.phase === "wrappingUp" ? giveUp(state) : stay(state);
+    case "located":
+      return located(state, happening.highlight, happening.target);
+    case "saved":
+      return saved(state, happening.folder);
+    default:
+      return browserTold(state, happening);
+  }
+}
+
+/** What the recorded browser told: of its pages, of what came of a request,
+ * or of an input while a recording is under way. */
+function browserTold(state: LifecycleState, happening: BrowserSignal): Step {
+  switch (happening.kind) {
+    case "browserGone":
+      return endFromOutside(state);
+    case "pageOpened":
+      return pageOpened(state, { id: happening.page, url: happening.url });
+    case "pageNavigated":
+      return pageNavigated(state, happening.page, happening.url);
+    case "pageClosed":
+      return pageClosed(state, happening.page, happening.pagesLeft);
+    // Warnings: a person is told, whatever the recorder is doing.
+    case "browserWarned":
+      return { state, todo: [{ kind: "warn", warning: happening.warning }] };
     case "requestFailed":
       return failed(state, happening.request, happening.reason);
     case "traceStopped":
@@ -630,25 +602,8 @@ function stepOf(state: LifecycleState, happening: Happening): Step {
       return traceGone(state);
     case "picking":
       return pickingChanged(state, happening.on);
-    case "located":
-      return located(state, happening.highlight, happening.target);
     case "highlighted":
-      return answerHighlight(
-        state,
-        happening.highlight,
-        happening.found ? "applied" : "notFound"
-      );
-    case "saved": {
-      if (state.phase !== "saving") return stay(state);
-      const outcome: RecordingOutcome =
-        happening.folder === null
-          ? { kind: "empty" }
-          : { kind: "saved", folder: happening.folder };
-      return {
-        state: { phase: "ended", pages: state.pages, outcome },
-        todo: [{ kind: "end", outcome }],
-      };
-    }
+      return highlighted(state, happening.highlight, happening.found);
     default:
       // A recording whose trace is being thrown away is over: what the pages
       // still tell is not of it.
@@ -656,6 +611,75 @@ function stepOf(state: LifecycleState, happening: Happening): Step {
         ? during(state, happening)
         : aside(state, happening);
   }
+}
+
+/** A page opened. While recording, its Visit starts at once when it is at
+ * an address; otherwise when it is at one while recording. */
+function pageOpened(state: LifecycleState, page: Page): Step {
+  const opened = { ...state, pages: [...state.pages, page] };
+  if (isActive(opened) && page.url !== BLANK)
+    return proceed(opened, [visitOf(page.id, page.url, "openPage")]);
+  return stay(
+    isActive(opened) || opened.phase === "paused"
+      ? { ...opened, pages: [...state.pages, { ...page, since: "opened" }] }
+      : opened
+  );
+}
+
+/** A page's main frame is at another address. */
+function pageNavigated(state: LifecycleState, id: string, url: string): Step {
+  const page = state.pages.find((open) => open.id === id);
+  if (!page) return stay(state);
+  const at = { ...page, url };
+  const moved = (next: Page) => ({
+    ...state,
+    pages: state.pages.map((open) => (open === page ? next : open)),
+  });
+  if (isActive(state) && at.url !== BLANK)
+    return proceed(
+      {
+        ...state,
+        pages: state.pages.map((open) => (open === page ? visited(at) : open)),
+      },
+      [visitOf(at.id, at.url, causeOf(at))]
+    );
+  return stay(
+    moved(state.phase === "paused" ? { ...at, since: at.since ?? "moved" } : at)
+  );
+}
+
+/** A page closed. The last one closing is an end from outside. */
+function pageClosed(
+  state: LifecycleState,
+  id: string,
+  pagesLeft: number
+): Step {
+  const without = withoutPage(state, id);
+  if (pagesLeft === 0) return endFromOutside(without);
+  return isActive(without) ? proceed(without, []) : stay(without);
+}
+
+/** Something the recorder was carrying out broke: whatever it was doing, it
+ * ends here, and says why. */
+function brokeDown(state: LifecycleState, reason: string): Step {
+  if (state.phase === "ended") return stay(state);
+  const outcome: RecordingOutcome = { kind: "failed", reason };
+  return {
+    state: { phase: "ended", pages: state.pages, outcome },
+    todo: [...answerRecord(state), { kind: "end", outcome }],
+  };
+}
+
+/** The package is written, or there was nothing to write: the recorder has
+ * ended. */
+function saved(state: LifecycleState, folder: string | null): Step {
+  if (state.phase !== "saving") return stay(state);
+  const outcome: RecordingOutcome =
+    folder === null ? { kind: "empty" } : { kind: "saved", folder };
+  return {
+    state: { phase: "ended", pages: state.pages, outcome },
+    todo: [{ kind: "end", outcome }],
+  };
 }
 
 /** What the browser tells while no recording is under way. */
@@ -2175,6 +2199,10 @@ function located(
     };
   return { state, todo: [drawHighlight(n, target)] };
 }
+
+/** The browser drew highlight `n`, or found no element for it. */
+const highlighted = (state: LifecycleState, n: number, found: boolean) =>
+  answerHighlight(state, n, found ? "applied" : "notFound");
 
 /** Answers highlight `n`: one that a later one replaced is "ignored". */
 function answerHighlight(
