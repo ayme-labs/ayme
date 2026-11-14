@@ -45,7 +45,7 @@ export const connectTool: ServerToolFactory = ({
             text:
               failed === undefined
                 ? `This server serves Page Objects to pages that load ${initScript}.`
-                : `${pageObjectsNotBuilt(failed)}\nOnce it builds, this server serves Page Objects to pages that load ${initScript}.`,
+                : `${pageObjectsNotBuilt(failed)}${failed.watching ? `\nOnce it builds, this server serves Page Objects to pages that load ${initScript}.` : ""}`,
           },
         ],
       };

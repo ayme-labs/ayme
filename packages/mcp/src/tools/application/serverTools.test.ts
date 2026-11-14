@@ -94,6 +94,9 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
   expect(note).toContain(
     "The server is watching for changes: it rebuilds the entry when a file it read changes."
   );
+  expect(note).toContain(
+    "Once it builds, this server serves Page Objects to pages that load /work/.ayme/init-script.js."
+  );
   expect(note).not.toContain("Fix it");
   expect(note).not.toContain("Make the");
   expect(note).not.toMatch(/^This server serves Page Objects/);
@@ -105,6 +108,19 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
     type: "text",
     text: "This server serves Page Objects to pages that load /work/.ayme/init-script.js.",
   });
+});
+
+it("ayme_connect does not promise a build when the server is not watching", async () => {
+  const { context } = failingBuild();
+  const failed = (await context.failedPageObjects())!;
+  const result = await connectTool({
+    ...context,
+    failedPageObjects: async () => ({ ...failed, watching: false }),
+  }).call({ url: "http://localhost:5173/" });
+
+  expect((result.content[1] as { text: string }).text).toMatch(
+    /The server is not watching for changes: the build could not start, so no file is watched\.$/
+  );
 });
 
 it("ayme_list_tools and ayme_call say the Page Objects did not build while no page is connected, until a build succeeds", async () => {
