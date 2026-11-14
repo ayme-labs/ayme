@@ -1139,3 +1139,64 @@ it("holds as a press exactly the keys Playwright reports as a press: a letter ty
     { key: "Tab", gate: true, playwright: true },
   ]);
 });
+
+/** Whether the Playwright under test shortens the way to a frame inside a
+ * frame: from 1.63 it starts the selector with `internal:control=any-frame`
+ * and enters only as many frames as it needs to find the target's frame
+ * uniquely (`buildFullSelectorForFrame`); 1.62 enters each frame. */
+const shortensFramePaths = (() => {
+  const [major = 0, minor = 0] = underTest.version.split(".").map(Number);
+  return major > 1 || minor >= 63;
+})();
+
+// How deep in frames a target is, as the timeline reads it from the
+// selector Playwright reports (`scopesFor` in timeline/domain/target.ts): the
+// steps of the selector, split at " >> ", that enter a frame.
+it(`reports a click with a selector that enters its frame once, a click in the page with none, and a click in a frame inside a frame ${shortensFramePaths ? "by any frame" : "entering each frame"} (Playwright ${underTest.version})`, async () => {
+  const browser = await onStockPlaywright(`
+    <button>Top</button>
+    <iframe id="outer" title="Outer"></iframe>
+    <script>
+      document.getElementById("outer").srcdoc =
+        '<button>Middle</button><iframe id="inner" title="Inner"></iframe>' +
+        '<script>document.getElementById("inner").srcdoc = "<button>Deep</button>";<\\/script>';
+    </script>`);
+  const outer = browser.page.frameLocator("#outer");
+  const inner = outer.frameLocator("#inner");
+  await inner.getByRole("button", { name: "Deep" }).waitFor();
+  await reporting(browser);
+
+  for (const button of [
+    browser.page.getByRole("button", { name: "Top" }),
+    outer.getByRole("button", { name: "Middle" }),
+    inner.getByRole("button", { name: "Deep" }),
+  ]) {
+    const before = browser.told.length;
+    await browser.click(button);
+    await browser.toldOf(
+      "interactionReported",
+      (signal) => browser.told.indexOf(signal) >= before
+    );
+  }
+
+  const [top, middle, deep] = browser.told.flatMap((signal) =>
+    signal.kind === "interactionReported"
+      ? [signal.report.selector!.split(" >> ")]
+      : []
+  );
+  const enters = (steps: string[]) =>
+    steps.filter((step) => step === "internal:control=enter-frame").length;
+  const anyFrame = (steps: string[]) =>
+    steps.includes("internal:control=any-frame");
+  expect([top, middle, deep].map((steps) => steps!.at(-1))).toEqual([
+    expect.stringContaining("Top"),
+    expect.stringContaining("Middle"),
+    expect.stringContaining("Deep"),
+  ]);
+  expect([enters(top!), anyFrame(top!)]).toEqual([0, false]);
+  expect([enters(middle!), anyFrame(middle!)]).toEqual([1, false]);
+  if (shortensFramePaths) {
+    expect(deep![0]).toBe("internal:control=any-frame");
+    expect(enters(deep!)).toBeLessThan(2);
+  } else expect([enters(deep!), anyFrame(deep!)]).toEqual([2, false]);
+});
