@@ -1,90 +1,121 @@
 import type {
   RecorderCommand,
-  RecorderCommandType,
   RecorderState,
 } from "@ayme-dev/recorder/contract";
 import { Button } from "@ayme-dev/design-system/components/button";
-import { ListX } from "lucide-react";
+import { Eye, ListX } from "lucide-react";
 
-import { statusText } from "../domain/status";
-import { assertVisibilityOf, primaryOf } from "./ControlsView";
+import { controlsOf, type Control, type Controls } from "../domain/controls";
+import { PRIMARY_ICON_CLASSES, PRIMARY_ICONS } from "./primaryIcon";
+
+type OnCommand = (command: RecorderCommand) => void;
+
+/** A toolbar button's name, state and press. Its buttons take no focus:
+ * the page keeps its own. */
+const props = (control: Control, onCommand: OnCommand) => ({
+  "aria-label": control.label,
+  title: control.label,
+  tabIndex: -1,
+  disabled: !control.enabled,
+  onClick: () => onCommand(control.command),
+});
 
 /**
- * The toolbar in a recorded page: the window's controls, small. Which can
- * be pressed comes from the engine (`commands`), as in the window. Its
- * buttons take no focus: the page keeps its own.
+ * The toolbar in a recorded page: the window's controls, small. Which are
+ * shown and which can be pressed now is read from the state, as in the
+ * window.
  */
 export function ToolbarView({
   state,
   onCommand,
 }: {
   state: RecorderState | null;
-  onCommand(command: RecorderCommand): void;
+  onCommand: OnCommand;
 }) {
-  const applies = (type: RecorderCommandType) =>
-    state?.commands.includes(type) ?? false;
-  const primary = state && primaryOf(state);
-  const asserting = assertVisibilityOf(state);
-  const control = (
-    type: "record" | "stop" | "continue" | "clear" | "finish",
-    label: string
-  ) => ({
-    "aria-label": label,
-    title: label,
-    tabIndex: -1,
-    disabled: !applies(type),
-    onClick: () => onCommand({ type }),
-  });
+  const controls = controlsOf(state);
   return (
     <div
       role="toolbar"
       aria-label="Recorder toolbar"
       className="pointer-events-auto flex items-center gap-1 rounded-lg border bg-background/95 p-1 text-foreground shadow-lg backdrop-blur"
     >
-      {primary && (
-        <Button
-          variant="ghost"
-          size="sm"
-          {...control(primary.type, primary.label)}
-        >
-          <primary.Icon
-            className={
-              primary.type === "record"
-                ? "fill-red-500 text-red-500"
-                : "fill-current"
-            }
-          />
-          {primary.label}
-        </Button>
-      )}
+      <PrimaryButton control={controls.primary} onCommand={onCommand} />
       <p
         role="status"
         className="max-w-56 truncate px-2 text-xs text-muted-foreground"
       >
-        {statusText(state)}
+        {controls.status}
       </p>
-      {state && (
-        <>
-          <Button
-            variant={asserting.picking ? "default" : "ghost"}
-            size="icon"
-            aria-label={asserting.label}
-            title={asserting.label}
-            aria-pressed={asserting.picking}
-            tabIndex={-1}
-            disabled={!asserting.command}
-            onClick={() => asserting.command && onCommand(asserting.command)}
-          >
-            <asserting.Icon />
-          </Button>
-          <Button variant="ghost" size="icon" {...control("clear", "Clear")}>
-            <ListX />
-          </Button>
-          <Button size="sm" {...control("finish", "Finish")}>
-            Finish
-          </Button>
-        </>
-      )}
+      <AssertButton control={controls.assert} onCommand={onCommand} />
+      <ClearButton control={controls.clear} onCommand={onCommand} />
+      <FinishButton control={controls.finish} onCommand={onCommand} />
     </div>
+  );
+}
+
+function PrimaryButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["primary"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  const Icon = PRIMARY_ICONS[control.command.type];
+  return (
+    <Button variant="ghost" size="sm" {...props(control, onCommand)}>
+      <Icon className={PRIMARY_ICON_CLASSES[control.command.type]} />
+      {control.label}
+    </Button>
+  );
+}
+
+function AssertButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["assert"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  return (
+    <Button
+      variant={control.pressed ? "default" : "ghost"}
+      size="icon"
+      aria-pressed={control.pressed}
+      {...props(control, onCommand)}
+    >
+      <Eye />
+    </Button>
+  );
+}
+
+function ClearButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["clear"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  return (
+    <Button variant="ghost" size="icon" {...props(control, onCommand)}>
+      <ListX />
+    </Button>
+  );
+}
+
+function FinishButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["finish"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  return (
+    <Button size="sm" {...props(control, onCommand)}>
+      {control.label}
+    </Button>
   );
 }

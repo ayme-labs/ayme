@@ -1,115 +1,126 @@
 import type {
   RecorderCommand,
-  RecorderCommandType,
   RecorderState,
 } from "@ayme-dev/recorder/contract";
 import { Button } from "@ayme-dev/design-system/components/button";
-import { Circle, Eye, ListX, Play, Square } from "lucide-react";
+import { Eye, ListX } from "lucide-react";
 
-import { statusText } from "../domain/status";
+import { controlsOf, type Controls } from "../domain/controls";
+import { PRIMARY_ICON_CLASSES, PRIMARY_ICONS } from "./primaryIcon";
 
-/** The one control that records, stops or continues, by the phase. */
-export function primaryOf(state: RecorderState) {
-  switch (state.phase) {
-    case "notRecording":
-      return { type: "record", label: "Record", Icon: Circle } as const;
-    case "paused":
-      return { type: "continue", label: "Continue", Icon: Play } as const;
-    case "ended":
-      return null;
-    default:
-      return { type: "stop", label: "Stop", Icon: Square } as const;
-  }
-}
+type OnCommand = (command: RecorderCommand) => void;
 
 /**
- * Assert visibility: on while the recorder says Playwright picks, and the
- * command that applies now when pressed, entering or leaving it. Neither
- * applies, and it cannot be pressed, while the recorder does not record.
- */
-export function assertVisibilityOf(state: RecorderState | null) {
-  const picking = state?.phase === "recording" && state.picking === true;
-  const command = state?.commands.includes("leaveAssertVisibility")
-    ? ({ type: "leaveAssertVisibility" } as const)
-    : state?.commands.includes("assertVisibility")
-      ? ({ type: "assertVisibility" } as const)
-      : null;
-  return { picking, command, label: "Assert visibility", Icon: Eye } as const;
-}
-
-/**
- * The window's controls. Which can be pressed now comes from the engine
- * (`commands`): the window repeats none of its rules. While the recorder
- * wraps up, nothing can be pressed.
+ * The window's controls. Which are shown and which can be pressed now is
+ * read from the state (`controlsOf`): the view only lays them out. While the
+ * recorder wraps up, nothing can be pressed.
  */
 export function ControlsView({
   state,
   onCommand,
 }: {
   state: RecorderState | null;
-  onCommand(command: RecorderCommand): void;
+  onCommand: OnCommand;
 }) {
-  const applies = (type: RecorderCommandType) =>
-    state?.commands.includes(type) ?? false;
-  const primary = state && primaryOf(state);
-  const asserting = assertVisibilityOf(state);
+  const controls = controlsOf(state);
   return (
     <header
       role="toolbar"
       aria-label="Recorder controls"
       className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur"
     >
-      {primary && (
-        <Button
-          variant="secondary"
-          disabled={!applies(primary.type)}
-          onClick={() => onCommand({ type: primary.type })}
-        >
-          <primary.Icon
-            className={
-              primary.type === "record"
-                ? "fill-red-500 text-red-500"
-                : "fill-current"
-            }
-          />
-          {primary.label}
-        </Button>
-      )}
+      <PrimaryButton control={controls.primary} onCommand={onCommand} />
       <p
         role="status"
         className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
       >
-        {statusText(state)}
+        {controls.status}
       </p>
-      {state && (
-        <>
-          <Button
-            variant={asserting.picking ? "default" : "outline"}
-            aria-pressed={asserting.picking}
-            disabled={!asserting.command}
-            onClick={() => asserting.command && onCommand(asserting.command)}
-          >
-            <asserting.Icon />
-            {asserting.label}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Clear"
-            title="Clear"
-            disabled={!applies("clear")}
-            onClick={() => onCommand({ type: "clear" })}
-          >
-            <ListX />
-          </Button>
-          <Button
-            disabled={!applies("finish")}
-            onClick={() => onCommand({ type: "finish" })}
-          >
-            Finish
-          </Button>
-        </>
-      )}
+      <AssertButton control={controls.assert} onCommand={onCommand} />
+      <ClearButton control={controls.clear} onCommand={onCommand} />
+      <FinishButton control={controls.finish} onCommand={onCommand} />
     </header>
+  );
+}
+
+function PrimaryButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["primary"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  const Icon = PRIMARY_ICONS[control.command.type];
+  return (
+    <Button
+      variant="secondary"
+      disabled={!control.enabled}
+      onClick={() => onCommand(control.command)}
+    >
+      <Icon className={PRIMARY_ICON_CLASSES[control.command.type]} />
+      {control.label}
+    </Button>
+  );
+}
+
+function AssertButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["assert"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  return (
+    <Button
+      variant={control.pressed ? "default" : "outline"}
+      aria-pressed={control.pressed}
+      disabled={!control.enabled}
+      onClick={() => onCommand(control.command)}
+    >
+      <Eye />
+      {control.label}
+    </Button>
+  );
+}
+
+function ClearButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["clear"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={control.label}
+      title={control.label}
+      disabled={!control.enabled}
+      onClick={() => onCommand(control.command)}
+    >
+      <ListX />
+    </Button>
+  );
+}
+
+function FinishButton({
+  control,
+  onCommand,
+}: {
+  control: Controls["finish"];
+  onCommand: OnCommand;
+}) {
+  if (!control) return null;
+  return (
+    <Button
+      disabled={!control.enabled}
+      onClick={() => onCommand(control.command)}
+    >
+      {control.label}
+    </Button>
   );
 }
