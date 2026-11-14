@@ -1585,11 +1585,11 @@ function startReported(draft: Draft, index: number): boolean {
 /** An input known from its report only starts where an earlier one that is
  * still open ends, when that one has a start itself. */
 function shareWithOpen(draft: Draft, open: Input, input: Input) {
+  // A snapshot of it that is under way is its last: what revised it
+  // meanwhile gets no further wait, and this one starts from that snapshot
+  // when it is in. One that has no start of its own yet is waited for.
+  change(draft, open.id, { revised: false });
   if (open.stage === "settling") askSharedSnapshot(draft, open, input);
-  // The snapshot under way is its last: what revised it meanwhile gets no
-  // further wait. This one starts from that snapshot when it is in.
-  if (open.stage === "takingAfter") change(draft, open.id, { revised: false });
-  // Otherwise it has no start of its own yet: this one waits for that.
 }
 
 /** An input the pages never held: one known from its report, or an
@@ -1950,9 +1950,9 @@ function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
   // What has all it needs is written all the same; what is owed something
   // is in nobody's way any more.
   const draft: Draft = {
-    inputs: state.inputs.filter(
-      (input) => input.stage === "settled" && input.report !== null
-    ),
+    // An input that still waits for its report is in nobody's way any
+    // more; one that is not settled is not written.
+    inputs: state.inputs.filter((input) => input.report !== null),
     snapshotsAsked: state.snapshotsAsked,
     gates: state.gates,
     reportedOnly: state.reportedOnly,
