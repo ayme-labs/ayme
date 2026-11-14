@@ -1,4 +1,11 @@
-import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -297,4 +304,41 @@ it("keeps a compiler error's original child file and parameter position", async 
   expect(await onLoad({ path: file })).toMatchObject({
     errors: [{ text, location: null }],
   });
+});
+
+it("omits generated positions when the working directory is a symlink", async () => {
+  const root = await mkdtemp(join(tmpdir(), "ayme-pom-link-"));
+  const folder = join(root, "actual");
+  const linked = join(root, ".ayme");
+  await mkdir(folder);
+  await symlink(folder, linked, "dir");
+  await writeFile(join(folder, "Page.ts"), "class Page {}");
+  try {
+    const result = await esbuild
+      .build({
+        absWorkingDir: linked,
+        entryPoints: ["Page.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          pageObjectModels({
+            compile: () => ({
+              code: '\n\nimport "./missing";',
+              dependencies: [],
+            }),
+            invalidate: () => {},
+          }),
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    expect(result.errors).toMatchObject([
+      {
+        text: 'Could not resolve "./missing"',
+        location: { file: "Page.ts", line: 0, column: 0 },
+      },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

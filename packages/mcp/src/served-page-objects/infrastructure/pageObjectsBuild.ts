@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -122,7 +123,9 @@ export function pageObjectModels(
             location &&
             compiled.has(
               resolve(
-                build.initialOptions.absWorkingDir ?? process.cwd(),
+                realpathSync(
+                  build.initialOptions.absWorkingDir ?? process.cwd()
+                ),
                 location.file
               )
             )
