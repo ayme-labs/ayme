@@ -655,12 +655,18 @@ importers:
 
   apps/recorder-fixture:
     devDependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../../packages/ayme
       "@ayme-dev/cli":
         specifier: workspace:*
         version: link:../../packages/cli
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       "@ayme-dev/recorder":
         specifier: workspace:*
         version: link:../../packages/recorder
