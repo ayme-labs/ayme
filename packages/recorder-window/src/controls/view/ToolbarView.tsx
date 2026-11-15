@@ -60,7 +60,7 @@ function Busy({ controls }: { controls: Controls }) {
       className={round}
       aria-label={controls.status ?? undefined}
       title={controls.status ?? undefined}
-      tabIndex={-1}
+      // Disabled, it takes no focus from the page.
       disabled
     >
       <LoaderCircle className="animate-spin" />

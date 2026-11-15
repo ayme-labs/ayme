@@ -187,7 +187,6 @@ function ChipView({
   return (
     <span
       data-testid={testId}
-      data-highlights={highlight !== null}
       title={chip.hint}
       onMouseEnter={() => highlight && onCommand(highlight)}
       onMouseLeave={() => leave && onCommand(leave)}
