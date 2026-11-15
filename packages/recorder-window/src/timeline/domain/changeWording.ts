@@ -15,9 +15,10 @@ const STATES = new Set([
   "pressed",
 ]);
 
-/** A value as a person reads it: quoted, or "empty" when there is none. */
+/** A value as a person reads it: quoted, or "empty" when there is none or
+ * it is empty. */
 const quoted = (value: string | undefined) =>
-  value === undefined ? "empty" : `“${value}”`;
+  value === undefined || value === "" ? "empty" : `“${value}”`;
 
 /** "<what> changed from … to …", with the values read by `read`. */
 const fromTo = (

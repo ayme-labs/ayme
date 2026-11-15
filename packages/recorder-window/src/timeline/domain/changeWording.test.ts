@@ -34,6 +34,13 @@ describe("what a change row says happened", () => {
     expect(effectOf(changed({ property: "text", from: "Saved" }))).toBe(
       "text changed from “Saved” to empty"
     );
+    // An empty value reads as none at all.
+    expect(effectOf(changed({ property: "text", from: "", to: "1" }))).toBe(
+      "text changed from empty to “1”"
+    );
+    expect(effectOf(changed({ property: "/url", from: "/cart", to: "" }))).toBe(
+      "url changed from “/cart” to empty"
+    );
   });
 
   it("says how its name or its role changed", () => {
@@ -95,6 +102,10 @@ describe("what a change row says happened", () => {
   it("says something true of a property it has no words for", () => {
     expect(effectOf(changed({ property: "busy", from: "x", to: "y" }))).toBe(
       "busy changed from “x” to “y”"
+    );
+    // Only a slash before a property's name is left out.
+    expect(effectOf(changed({ property: "aria/x", from: "a", to: "b" }))).toBe(
+      "aria/x changed from “a” to “b”"
     );
   });
 
