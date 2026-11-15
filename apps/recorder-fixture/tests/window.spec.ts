@@ -217,6 +217,21 @@ test.describe("the recorder window", () => {
     await expect(window.page).toHaveTitle("Ayme Recorder - http://shop.test/");
   });
 
+  test("shows the design system's icon for the scheme the system is in", async ({
+    recording: { window },
+  }) => {
+    for (const scheme of ["light", "dark"] as const) {
+      const href = await window.page
+        .locator(`link[rel="icon"][media="(prefers-color-scheme: ${scheme})"]`)
+        .getAttribute("href");
+      const served = await window.page.request.get(
+        new URL(href!, window.page.url()).href
+      );
+      expect(served.status()).toBe(200);
+      expect(served.headers()["content-type"]).toBe("image/svg+xml");
+    }
+  });
+
   test("recovers the current recording when it is reloaded, and can still finish it", async ({
     recording: { browser, window, finished },
   }) => {
