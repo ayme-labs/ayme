@@ -3,9 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { toolbarBridge, type WindowServer } from "../server/infrastructure";
+import { toolbarBridge } from "../server/infrastructure";
 import {
-  recorderOptionsOf,
   stockOptionsOf,
   toolbarFor,
   type RecorderOptions,
@@ -120,24 +119,6 @@ describe("what the stock adapter is asked for", () => {
       headless: true,
       debugPort: 9333,
       windowUrl: undefined,
-      toolbar: undefined,
-    });
-  });
-});
-
-describe("what the recorder is started with", () => {
-  it("is the project's folder, the window's server and the toolbar's bridge", () => {
-    const window = { url: "http://127.0.0.1:1/" } as WindowServer;
-    const bridge = toolbarBridge();
-
-    expect(recorderOptionsOf("/p", window, { script: "s", bridge })).toEqual({
-      projectDir: "/p",
-      window,
-      toolbar: bridge,
-    });
-    expect(recorderOptionsOf("/p", undefined, undefined)).toEqual({
-      projectDir: "/p",
-      window: undefined,
       toolbar: undefined,
     });
   });

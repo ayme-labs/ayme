@@ -5,7 +5,6 @@ import {
   serveWindow,
   toolbarBridge,
   type ToolbarBridge,
-  type WindowServer,
 } from "../server/infrastructure";
 import { startRecorderOn, type Recorder } from "./recorder";
 
@@ -80,15 +79,6 @@ export function stockOptionsOf(
   return { projectDir, url, headless, debugPort, windowUrl, toolbar: shown };
 }
 
-/** What the recorder is started with, besides its browser. */
-export function recorderOptionsOf(
-  projectDir: string,
-  window: WindowServer | undefined,
-  toolbar: ToolbarKit | undefined
-): Parameters<typeof startRecorderOn>[1] {
-  return { projectDir, window, toolbar: toolbar?.bridge };
-}
-
 /**
  * Starts a recorder. Only starting can fail: it rejects with a
  * `RecorderStartError` that carries a reason. Everything after is told
@@ -103,6 +93,6 @@ export async function startRecorder(
     : undefined;
   return startRecorderOn(
     stockBrowser(stockOptionsOf(options, window?.url, toolbar)),
-    recorderOptionsOf(options.projectDir, window, toolbar)
+    { projectDir: options.projectDir, window, toolbar: toolbar?.bridge }
   );
 }

@@ -469,3 +469,16 @@ it("switches Playwright's recorder off and on by its mode, and starts it once", 
   recorder.end();
   await expect(recorder.done).resolves.toEqual({ kind: "empty" });
 });
+
+it("hands the recorder the window it serves: its handle says where", async () => {
+  await installPlaywrightWithUnreadablePage(folder);
+  const recorder = await startRecorder({
+    projectDir: folder,
+    browser: { launch: { url: "http://stand-in.test/" } },
+    window: { folder },
+  });
+
+  expect(recorder.windowUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+  recorder.end();
+  await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+});
