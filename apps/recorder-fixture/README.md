@@ -5,8 +5,17 @@ private and never published.
 
 ```
 app/         the fixture pages
+.ayme/       the fixture pages' Page Objects, defined with Ayme
 tests/       the shared fixtures (fixtures.ts) and one spec per concern
 ```
+
+The pages ship no Ayme, so their Page Objects live where Ayme's guide for
+that case puts them, [Page Objects on a page without Ayme](../../docs/guide/guides/page-objects-without-ayme.md):
+one class per page in `.ayme/pom/`, exported from `.ayme/page-objects.ts`.
+`ayme mcp`, started in this folder, serves them to a page that loads the
+`.ayme/init-script.js` it writes. A spec reaches the pages only through
+them: a Page Object supplies the locator and `person` acts on it with real
+input, and what the spec reads of a page, the Page Object reads.
 
 This folder is also the project the recorder runs in: it has Playwright
 installed, and the tests start the built `ayme-recorder` command here as a
