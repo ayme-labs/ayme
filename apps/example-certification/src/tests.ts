@@ -654,7 +654,12 @@ export function agentConnectionTests({
             !enabled(),
             "The app turns the Agent Connection off here."
           );
-          const agent = await startAgent("--port", String(await freePort()));
+          // reload and snapshot are Browser Tools, listed with --browser-tools.
+          const agent = await startAgent(
+            "--port",
+            String(await freePort()),
+            "--browser-tools"
+          );
           try {
             const url = new URL("/", baseURL).href;
             if (alreadyLoaded)
