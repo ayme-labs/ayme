@@ -135,6 +135,63 @@ describe("Page Object Root by option", () => {
     expect(opened).toEqual(["shell", "child"]);
   });
 
+  it("gives each class rooted at one element an id of its own, and takes each only for its own class", async () => {
+    document.body.innerHTML = '<main id="shell"><button>Open</button></main>';
+    const opened: string[] = [];
+    class Child {
+      root = page.locator("#shell");
+      open() {
+        opened.push("child");
+      }
+    }
+    ayme({ root: (self: Child) => self.root })(Child);
+    const childManifest = pageManifest("Child", [locator("root")]);
+    registerCompiledPom(Child, childManifest);
+    class Shell {
+      root = page.locator("#shell");
+      child = new Child();
+      open() {
+        opened.push("shell");
+      }
+    }
+    ayme({ root: (self: Shell) => self.root })(Shell);
+    registerCompiledPom(Shell, {
+      ...pageManifest("Shell", [
+        locator("root"),
+        {
+          memberName: "child",
+          kind: "component",
+          access: "field",
+          componentClassName: "Child",
+          collection: false,
+        },
+      ]),
+      components: [childManifest],
+    });
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+
+    const state = await agent.getPageState();
+    const [, childId, shellId] = state.text.match(
+      /\/id: \["(po\d+)","(po\d+)"\]/
+    )!;
+    expect(state.text).toContain('/pom: ["Child","Shell"]');
+    expect(childId).not.toBe(shellId);
+    await session.tools.run("Shell.open", { id: shellId }, { by: "webmcp" });
+    await session.tools.run("Child.open", { id: childId }, { by: "webmcp" });
+    await expect(
+      session.tools.run("Child.open", { id: shellId }, { by: "webmcp" })
+    ).rejects.toThrow(
+      `Page Object "${shellId}": it is not a Child on the page.`
+    );
+    await expect(
+      session.tools.run("Shell.open", { id: childId }, { by: "webmcp" })
+    ).rejects.toThrow(
+      `Page Object "${childId}": it is not a Shell on the page.`
+    );
+    expect(opened).toEqual(["shell", "child"]);
+  });
+
   it("takes direct arguments and offers no instances for a root-less class", async () => {
     document.body.innerHTML = "<output></output>";
     class Announcer {

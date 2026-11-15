@@ -89,12 +89,16 @@ export class AgentView {
     const { structure } = (await this.run("snapshot", {})) as {
       structure: string;
     };
-    const id = (structure.match(new RegExp(`e\\d+ ${className} (po\\d+)`)) ??
-      structure.match(
-        new RegExp(
-          `/pom: \\[[^\\]]*"${className}"[^\\]]*\\]\\s+- /id: (po\\d+)`
-        )
-      ))?.[1];
+    const id =
+      structure.match(new RegExp(`e\\d+ ${className} (po\\d+)`))?.[1] ??
+      // On a root of several classes, `id` lists the ids in the order `pom`
+      // lists the classes.
+      [...structure.matchAll(/\/pom: (\[[^\]]*\])\s+- \/id: (\[[^\]]*\])/g)]
+        .map(([, classes, ids]) => {
+          const at = (JSON.parse(classes!) as string[]).indexOf(className);
+          return at >= 0 ? (JSON.parse(ids!) as string[])[at] : undefined;
+        })
+        .find((found) => found !== undefined);
     if (!id) throw new Error(`No ${className} in:\n${structure}`);
     return id;
   }

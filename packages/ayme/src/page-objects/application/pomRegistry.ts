@@ -49,7 +49,11 @@ import {
   type PageObjectConstructor,
 } from "./compiledPoms";
 import type { PageDriver } from "./pageDriver";
-import { createPageObjectIds, type PageObjectIds } from "./pageObjectIds";
+import {
+  createPageObjectIds,
+  type PageObjectIds,
+  type PageObjectRoot,
+} from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
 import type { PageObjectTreeNode } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
@@ -131,13 +135,13 @@ export type PomPageStates = {
    */
   providePageObjectProbe(probe: (() => Promise<void>) | undefined): void;
   /**
-   * What the page's state text reads the id of each Page Object Root from,
-   * by Structural Ref, set while the registry observes it; cleared when it
-   * stops.
+   * What the page's state text reads the id of each Page Object from, by
+   * its class and the Structural Ref of its root, set while the registry
+   * observes it; cleared when it stops.
    */
   providePageObjectIds(
     idsOf:
-      | ((rootRefs: readonly string[]) => Promise<(string | undefined)[]>)
+      | ((roots: readonly PageObjectRoot[]) => Promise<(string | undefined)[]>)
       | undefined
   ): void;
 };
@@ -421,14 +425,15 @@ export function createPomRegistry(
   }
 
   /**
-   * Package-internal: the Page Object id of each Page Object Root `rootRefs`
-   * name by Structural Ref, in the order given. A root read for the first
-   * time gets the next id; one whose element is not on the page has none.
+   * Package-internal: the Page Object id of each Page Object `roots` name
+   * by its class and the Structural Ref of its root, in the order given. A
+   * Page Object read for the first time gets the next id; one whose
+   * element is not on the page has none.
    */
   async function pageObjectIdsOf(
-    rootRefs: readonly string[]
+    roots: readonly PageObjectRoot[]
   ): Promise<(PageObjectId | undefined)[]> {
-    return (await pageObjectIds.rootsOf(rootRefs)).map((root) => root?.id);
+    return (await pageObjectIds.rootsOf(roots)).map((root) => root?.id);
   }
 
   /**
@@ -534,14 +539,17 @@ export function createPomRegistry(
         : []
     );
     const observed = rooted.flatMap(({ instances }) =>
-      instances.map(({ ref }) => ref)
+      instances.map(({ className, instance }) => ({
+        className,
+        ref: instance.ref,
+      }))
     );
     const current = await pageObjectIds.rootsOf(observed);
     let next = 0;
     return new Map(
       rooted.map(({ tool, instances }) => [
         tool.name,
-        instances.flatMap((instance) => {
+        instances.flatMap(({ instance }) => {
           const root = current[next++];
           return root ? [{ ...instance, ...root }] : [];
         }),
@@ -632,14 +640,17 @@ function rootedInstancesOf(
   driver: PageDriver,
   instances: readonly PomInstanceObservation[],
   tool: RegisteredPomTool
-): Omit<RootedToolInstance, "id">[] {
+): { className: string; instance: Omit<RootedToolInstance, "id"> }[] {
   return instances.flatMap((instance) => {
     const { root } = instance;
     return instance.present && root?.present && root.ref
       ? [
           {
-            ref: root.ref,
-            ...availabilityNow(driver, instance, tool.methodName),
+            className: instance.className,
+            instance: {
+              ref: root.ref,
+              ...availabilityNow(driver, instance, tool.methodName),
+            },
           },
         ]
       : [];
@@ -710,8 +721,20 @@ function createTool(
           throw new RefResolutionError(
             pageObjectFailure(label, id, "it is not on the page")
           );
-        const previous = await rootedAt(driver, instances, resolved);
-        observed = await rootedAt(driver, instancesOf(tool), resolved);
+        // The id names a Page Object of one class: an instance of another
+        // class rooted at the same element is not it.
+        const ofItsClass = (list: readonly PomInstanceObservation[]) =>
+          list.filter(({ className }) => className === resolved.className);
+        const previous = await rootedAt(
+          driver,
+          ofItsClass(instances),
+          resolved.ref
+        );
+        observed = await rootedAt(
+          driver,
+          ofItsClass(instancesOf(tool)),
+          resolved.ref
+        );
         // That capture may observe a replacement model. Keep the pre-call
         // verdict only for the same live instance.
         if (previous && (!observed || previous.instance === observed.instance))

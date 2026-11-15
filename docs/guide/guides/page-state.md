@@ -6,7 +6,7 @@ What an agent sees of your page: the Structural Page State, the Structural Refs 
 
 Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ProjectRow`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
 
-The state an agent reads also prints each Page Object's id on its root, after the class: `e10 ProjectRow po2`. On a root of several classes it is the `id` property beside `pom`. See [Page Object ids](#page-object-ids).
+The state an agent reads also prints each Page Object's id on its root, after the class: `e10 ProjectRow po2`. A root of several classes is the root of several Page Objects: its `id` property lists their ids in the order `pom` lists the classes. See [Page Object ids](#page-object-ids).
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
@@ -53,7 +53,7 @@ Cannot click "[ref=e36]": the selector matches no element. It writes the Structu
 
 ## Page Object ids
 
-A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The page numbers its Page Objects in the order it first shows them. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
+A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The page numbers its Page Objects in the order it first shows them. Two classes rooted at one element are two Page Objects, each with its own id. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
 
 A Page Object Tool of such a class takes the id as `id`, for a page, a single child and a collection item alike: `ProjectRow.archive({ id: "po2" })`. An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ProjectRow.archive on Page Object "po2": it is not on the page.` So does the id of a Page Object of another class: `it is not a ProjectRow on the page`.
 

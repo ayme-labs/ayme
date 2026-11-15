@@ -1,4 +1,4 @@
-declare const pageObjectIdBrand: unique symbol;
+import { z } from "zod";
 
 /**
  * The id of a Page Object of a rooted class, written `po<n>`: what a caller
@@ -6,20 +6,19 @@ declare const pageObjectIdBrand: unique symbol;
  * not a Structural Ref, which names an element, and neither is assignable
  * to the other.
  */
-export type PageObjectId = string & {
-  readonly [pageObjectIdBrand]: "PageObjectId";
-};
-
-const PAGE_OBJECT_ID = /^po[1-9]\d*$/;
+export const PageObjectIdSchema = z
+  .string()
+  .regex(/^po[1-9]\d*$/)
+  .brand<"PageObjectId">();
+export type PageObjectId = z.infer<typeof PageObjectIdSchema>;
 
 /** `text` as a Page Object id, when it is written as one: `po<n>`. */
 export function parsePageObjectId(text: unknown): PageObjectId | undefined {
-  return typeof text === "string" && PAGE_OBJECT_ID.test(text)
-    ? (text as PageObjectId)
-    : undefined;
+  const parsed = PageObjectIdSchema.safeParse(text);
+  return parsed.success ? parsed.data : undefined;
 }
 
 /** The `n`th Page Object id a page gives out, from 1. */
 export function pageObjectIdOf(n: number): PageObjectId {
-  return `po${n}` as PageObjectId;
+  return PageObjectIdSchema.parse(`po${n}`);
 }

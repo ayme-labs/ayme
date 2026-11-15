@@ -62,9 +62,12 @@ export type ActionPage = {
   begin(): Promise<PageAction>;
 };
 
-/** The id of each Page Object Root `rootRefs` name, in the order given. */
+/**
+ * The id of each Page Object `roots` name by its class and the Structural
+ * Ref of its root, in the order given.
+ */
 export type RootIds = (
-  rootRefs: readonly string[]
+  roots: readonly { className: string; ref: string }[]
 ) => Promise<(string | undefined)[]>;
 
 /** An action begun on the page: the page right before it, and the action. */
@@ -176,21 +179,32 @@ export class PageStateSession {
     return this.pageStateFor(capture, await this.rootIdsOf(capture));
   }
 
-  /** The id of each Page Object Root of `capture` that has one, by ref. */
+  /**
+   * The id of each Page Object rooted in `capture` that has one, by its
+   * root's ref and its class.
+   */
   private async rootIdsOf(capture: PageCapture): Promise<PomRootIds> {
-    // In the order the tree shows them, which is the order a root new to
-    // the page gets its id in.
+    // In the order the tree shows the roots, and a root's classes in the
+    // order its marks print, which is the order a Page Object new to the
+    // page gets its id in.
     const roots = capture.tree
       .getAllRefs()
-      .filter((ref) => capture.pomRootMarks.has(ref));
+      .flatMap((ref) =>
+        [...(capture.pomRootMarks.get(ref) ?? [])]
+          .sort()
+          .map((className) => ({ className, ref }))
+      );
     if (!this.rootIds || roots.length === 0) return new Map();
     const ids = await this.rootIds(roots);
-    return new Map(
-      roots.flatMap((root, index) => {
-        const id = ids[index];
-        return id === undefined ? [] : [[root, id] as const];
-      })
-    );
+    const byRef = new Map<AriaRef, Map<string, string>>();
+    roots.forEach(({ className, ref }, index) => {
+      const id = ids[index];
+      if (id === undefined) return;
+      const classes = byRef.get(ref) ?? new Map<string, string>();
+      classes.set(className, id);
+      byRef.set(ref, classes);
+    });
+    return byRef;
   }
 
   async getPageStateCapture(

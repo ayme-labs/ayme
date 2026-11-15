@@ -57,7 +57,9 @@ export async function readPageObjectTree(
     tree.push(await readNode(read, page, manifest));
   // One read of the ids for every root, in the order the tree shows them.
   const roots = reads.flatMap(({ read }) => read.roots);
-  const given = await ids.rootsOf(roots.map(({ ref }) => ref));
+  const given = await ids.rootsOf(
+    roots.map(({ node, ref }) => ({ className: node.className, ref }))
+  );
   roots.forEach(({ node }, index) => {
     const id = given[index]?.id;
     if (id) node.id = id;

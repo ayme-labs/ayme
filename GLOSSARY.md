@@ -54,7 +54,7 @@ The class name a Structural Page State shows on a node that is the Page Object R
 _Avoid_: label, POM label, Page Object label
 
 **Page Object Id**:
-The name a caller gives a Page Object of a class with a Page Object Root when it calls one of its Page Object Tools, written `po<n>`. The page numbers its Page Objects in the order it first shows them. The id belongs to the element of the Page Object Root: it is kept while that element stays on the page and is never given to another Page Object. It is not a Structural Ref and neither can stand in for the other. A Structural Page State an agent reads shows it on the Page Object Root beside the Page Object Root Mark.
+The name a caller gives a Page Object of a class with a Page Object Root when it calls one of its Page Object Tools, written `po<n>`. The page numbers its Page Objects in the order it first shows them. The id belongs to the Page Object, its class and the element of its Page Object Root: two classes rooted at one element are two Page Objects with two ids. It is kept while that element stays on the page and is never given to another Page Object. It is not a Structural Ref and neither can stand in for the other. A Structural Page State an agent reads shows it on the Page Object Root beside the Page Object Root Mark.
 _Avoid_: Instance Ref, instance id, Page Object ref
 
 **Page Object Tree**:

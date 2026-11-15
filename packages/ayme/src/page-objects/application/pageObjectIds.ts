@@ -1,17 +1,24 @@
 import { pageObjectIdOf, type PageObjectId } from "../domain/pageObjectId";
 import type { PageDriver } from "./pageDriver";
 
+/** A Page Object Root as a read names it: its class, and its element's Structural Ref. */
+export type PageObjectRoot = { className: string; ref: string };
+
 /**
- * Package-internal: the Page Object ids of one page. An id belongs to the
- * element of a Page Object Root: it is given when the root is first read,
- * in the order the roots are read, kept while that element stays on the
- * page, however often captures rename it, and never given to another root.
+ * Package-internal: the Page Object ids of one page. An id belongs to one
+ * Page Object: a class on the element of its root. It is given when that
+ * Page Object is first read, in the order the Page Objects are read, kept
+ * while the element stays on the page, however often captures rename it,
+ * and never given to another Page Object. Two classes rooted at one element
+ * are two Page Objects, each with its own id; two instances of one class
+ * rooted at one element are one.
  */
 export function createPageObjectIds(
   driver: Pick<PageDriver, "elementKeys" | "keyedRefs">
 ) {
-  // Each id given and the key of its root's element.
-  const roots = new Map<PageObjectId, string>();
+  // Each id given: its class and the key of its root's element.
+  const roots = new Map<PageObjectId, { className: string; key: string }>();
+  const keyOf = (className: string, key: string) => `${className}\u0000${key}`;
   let given = 0;
   // One read at a time: two reads that both found a root unread would each
   // give it an id.
@@ -28,7 +35,7 @@ export function createPageObjectIds(
    */
   async function current(): Promise<Map<PageObjectId, string>> {
     const known = [...roots];
-    const now = await driver.keyedRefs(known.map(([, key]) => key));
+    const now = await driver.keyedRefs(known.map(([, { key }]) => key));
     const refs = new Map<PageObjectId, string>();
     known.forEach(([id], index) => {
       const ref = now[index];
@@ -40,38 +47,46 @@ export function createPageObjectIds(
 
   return {
     /**
-     * Each Page Object Root `rootRefs` name by Structural Ref, in the order
-     * given, as its id and the ref its element has now: a root read for the
-     * first time gets the next id, and one whose element is not on the page
-     * is undefined.
+     * Each Page Object `asked` names by its class and the Structural Ref of
+     * its root, in the order given, as its id and the ref its root's
+     * element has now: a Page Object read for the first time gets the next
+     * id, and one whose element is not on the page is undefined.
      */
     rootsOf(
-      rootRefs: readonly string[]
+      asked: readonly PageObjectRoot[]
     ): Promise<({ id: PageObjectId; ref: string } | undefined)[]> {
       return inTurn(async () => {
         await current();
-        const byKey = new Map([...roots].map(([id, key]) => [key, id]));
-        const now = await driver.elementKeys(rootRefs);
-        return now.map((root) => {
+        const byKey = new Map(
+          [...roots].map(([id, root]) => [keyOf(root.className, root.key), id])
+        );
+        const now = await driver.elementKeys(asked.map(({ ref }) => ref));
+        return now.map((root, index) => {
           if (!root) return undefined;
-          let id = byKey.get(root.key);
+          const { className } = asked[index]!;
+          let id = byKey.get(keyOf(className, root.key));
           if (!id) {
             id = pageObjectIdOf(++given);
-            roots.set(id, root.key);
-            byKey.set(root.key, id);
+            roots.set(id, { className, key: root.key });
+            byKey.set(keyOf(className, root.key), id);
           }
           return { id, ref: root.ref };
         });
       });
     },
     /**
-     * The Structural Ref the element of `id`'s root has now; undefined once
-     * it left the page, or for an id never given.
+     * The class of `id`'s Page Object and the Structural Ref its root's
+     * element has now; undefined once it left the page, or for an id never
+     * given.
      */
-    rootOf(id: string): Promise<string | undefined> {
+    rootOf(id: string): Promise<PageObjectRoot | undefined> {
       return inTurn(async () => {
-        if (!roots.has(id as PageObjectId)) return undefined;
-        return (await current()).get(id as PageObjectId);
+        const root = roots.get(id as PageObjectId);
+        if (!root) return undefined;
+        const ref = (await current()).get(id as PageObjectId);
+        return ref === undefined
+          ? undefined
+          : { className: root.className, ref };
       });
     },
   };

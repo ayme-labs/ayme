@@ -84,9 +84,23 @@ async function expectTools(agent: Agent, names: string[]): Promise<void> {
  * How a call names the one Page Object of `className` on the page, as the
  * input of a rooted Page Object Tool: by its Page Object id, which `snapshot`
  * prints on its Page Object Root, after the class name or, on a root of
- * several classes, under `id` beside `pom`. Every call of a rooted tool below
+ * several classes, in `id` in the order `pom` lists the classes. Every call of a rooted tool below
  * names its Page Object through here.
  */
+/**
+ * The id of the `className` on a root of several classes: `id` lists the
+ * ids in the order `pom` lists the classes.
+ */
+function sharedRootId(structure: string, className: string) {
+  for (const [, classes, ids] of structure.matchAll(
+    /\/pom: (\[[^\]]*\])\s+- \/id: (\[[^\]]*\])/g
+  )) {
+    const at = (JSON.parse(classes!) as string[]).indexOf(className);
+    if (at >= 0) return (JSON.parse(ids!) as string[])[at];
+  }
+  return undefined;
+}
+
 async function named(
   agent: Agent,
   className: string
@@ -94,12 +108,9 @@ async function named(
   const snapshot = await agent.call("snapshot");
   expect(snapshot.isError, snapshot.text).toBe(false);
   const { structure } = JSON.parse(snapshot.text) as { structure: string };
-  const id = (new RegExp(`(?:e|s_)\\w+ ${className} (po\\d+)`).exec(
-    structure
-  ) ??
-    new RegExp(
-      `/pom: \\[[^\\]]*"${className}"[^\\]]*\\]\\s+- /id: (po\\d+)`
-    ).exec(structure))?.[1];
+  const id =
+    new RegExp(`(?:e|s_)\\w+ ${className} (po\\d+)`).exec(structure)?.[1] ??
+    sharedRootId(structure, className);
   expect(id, `no ${className} in:\n${structure}`).toBeDefined();
   return { id };
 }

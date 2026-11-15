@@ -978,9 +978,10 @@ describe("Action Availability", () => {
     const outbox = session.pom.register(Outbox);
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
-    // A shared element's node lists its members under a /pom line.
+    // A shared element's node lists its classes under a /pom line and their
+    // ids, in the same order, under an /id line.
     const draft = state.text.match(
-      /\/pom: \["Message","Preview"\]\n\s+- \/id: (po\d+)/
+      /\/pom: \["Message","Preview"\]\n\s+- \/id: \["(po\d+)","po\d+"\]/
     )?.[1];
     if (!draft) throw new Error("Expected an id for the draft.");
 

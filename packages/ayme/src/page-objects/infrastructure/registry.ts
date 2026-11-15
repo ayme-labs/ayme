@@ -59,8 +59,8 @@ export const listRegisteredPomTools: PomRegistry["listRegisteredPomTools"] =
   () => browserRegistry().listRegisteredPomTools();
 export const listRegisteredPoms: PomRegistry["listRegisteredPoms"] = () =>
   browserRegistry().listRegisteredPoms();
-export const pageObjectIdsOf: PomRegistry["pageObjectIdsOf"] = (rootRefs) =>
-  browserRegistry().pageObjectIdsOf(rootRefs);
+export const pageObjectIdsOf: PomRegistry["pageObjectIdsOf"] = (roots) =>
+  browserRegistry().pageObjectIdsOf(roots);
 export const probeRegisteredPomMembers: PomRegistry["probeRegisteredPomMembers"] =
   () => browserRegistry().probeRegisteredPomMembers();
 export const registerPageObject: PomRegistry["registerPageObject"] = (

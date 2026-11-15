@@ -61,7 +61,9 @@ function sessionOn(
   }: {
     loads?: string;
     restart?: (url: string) => InteractionHistory;
-    rootIds?: (refs: readonly string[]) => Promise<(string | undefined)[]>;
+    rootIds?: (
+      roots: readonly { className: string; ref: string }[]
+    ) => Promise<(string | undefined)[]>;
   },
   ...captures: (PageCapture | Error)[]
 ) {
@@ -180,14 +182,22 @@ describe("the page state a reader receives", () => {
     ])
   );
 
-  it("prints each Page Object Root's id beside its class, asking for them in the tree's order", async () => {
+  it("prints each Page Object's id beside its class, asking for them in the tree's order", async () => {
     const asked: string[][] = [];
-    const ids: Record<string, string> = { e1: "po3", e2: "po1", e3: "po2" };
+    const ids: Record<string, string> = {
+      "ListPage e1": "po3",
+      "Panel e1": "po4",
+      "ListItem e2": "po1",
+      "ListItem e3": "po2",
+    };
     const { session } = sessionOn(
       {
-        rootIds: async (refs) => {
-          asked.push([...refs]);
-          return refs.map((root) => ids[root]);
+        rootIds: async (roots) => {
+          const named = roots.map(
+            ({ className, ref }) => `${className} ${ref}`
+          );
+          asked.push(named);
+          return named.map((root) => ids[root]);
         },
       },
       list
@@ -199,13 +209,15 @@ describe("the page state a reader receives", () => {
       [
         "- e1 list:",
         '  - /pom: ["ListPage","Panel"]',
-        "  - /id: po3",
+        '  - /id: ["po3","po4"]',
         "  - e2 ListItem po1: Milk",
         "  - e3 ListItem po2: Eggs",
         "  - e4 listitem: Tea",
       ].join("\n")
     );
-    expect(asked).toEqual([["e1", "e2", "e3"]]);
+    expect(asked).toEqual([
+      ["ListPage e1", "Panel e1", "ListItem e2", "ListItem e3"],
+    ]);
   });
 
   it("prints a root that has no id with its class alone", async () => {

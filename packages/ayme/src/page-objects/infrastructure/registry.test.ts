@@ -118,17 +118,40 @@ function resolvesTo(ref: string, element: Element) {
   nameElement(element, ref);
 }
 
-/** The Page Object id of the root the page names `ref`. */
+/** The Page Object id a rooted tool lists for the root the page names `ref`. */
 async function idOf(
   registry: {
-    pageObjectIdsOf(refs: string[]): Promise<(string | undefined)[]>;
+    listRootedToolInstances(): Promise<
+      Map<string, { ref: string; id: string }[]>
+    >;
   },
   ref: string
 ): Promise<string> {
-  const [id] = await registry.pageObjectIdsOf([ref]);
+  const id = [...(await registry.listRootedToolInstances()).values()]
+    .flat()
+    .find((instance) => instance.ref === ref)?.id;
   if (!id) throw new Error(`No Page Object id for "${ref}".`);
   return id;
 }
+
+/** The id the page gives a `className` rooted where it names `ref`. */
+async function idAt(
+  registry: {
+    pageObjectIdsOf(
+      roots: { className: string; ref: string }[]
+    ): Promise<(string | undefined)[]>;
+  },
+  className: string,
+  ref: string
+): Promise<string> {
+  const [id] = await registry.pageObjectIdsOf([{ className, ref }]);
+  if (!id) throw new Error(`No Page Object id for ${className} "${ref}".`);
+  return id;
+}
+
+/** The roots of `Item`s the page names `refs`. */
+const items = (...refs: string[]) =>
+  refs.map((ref) => ({ className: "Item", ref }));
 
 /** Tells the registry's watch the page changed. */
 const pageChanges = () => latestStandIn()?.trigger();
@@ -1627,7 +1650,7 @@ describe("live Page Object registry", () => {
         archive: addedArchive,
       }) as never
     );
-    const addedId = await idOf(registry, "e2");
+    const addedId = await idAt(registry, "Item", "e2");
 
     await expect(
       tool.execute({ id: addedId, args: {} }, pomRunContext())
@@ -1662,7 +1685,7 @@ describe("live Page Object registry", () => {
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected the Page Object Tool.");
     resolvesTo("e5", rootElement);
-    const id = await idOf(registry, "e5");
+    const id = await idAt(registry, "RootedPage", "e5");
     // A second element now matches the root's locator, after the first.
     matches = 2;
     locatorElements.set(page.root, [
@@ -1815,7 +1838,7 @@ describe("live Page Object registry", () => {
 
     it("runs on the Page Object the id names", async () => {
       const { registry, tool, archives } = await twoItems();
-      expect(await registry.pageObjectIdsOf(["e1", "e2"])).toEqual([
+      expect(await registry.pageObjectIdsOf(items("e1", "e2"))).toEqual([
         "po1",
         "po2",
       ]);
@@ -1879,7 +1902,7 @@ describe("live Page Object registry", () => {
       "refuses the malformed id %j as wrong input",
       async (id) => {
         const { registry, tool, archives } = await twoItems();
-        await registry.pageObjectIdsOf(["e1", "e2"]);
+        await registry.pageObjectIdsOf(items("e1", "e2"));
 
         const call = tool.execute({ id }, pomRunContext());
 
@@ -1893,7 +1916,7 @@ describe("live Page Object registry", () => {
 
     it("refuses an input without an id as wrong input", async () => {
       const { registry, tool, archives } = await twoItems();
-      await registry.pageObjectIdsOf(["e1", "e2"]);
+      await registry.pageObjectIdsOf(items("e1", "e2"));
 
       await expect(
         tool.execute({ args: {} }, pomRunContext())
@@ -1906,7 +1929,7 @@ describe("live Page Object registry", () => {
 
     it("fails with the reason alone once the Page Object is gone", async () => {
       const { registry, tool, archives, remove } = await twoItems();
-      await registry.pageObjectIdsOf(["e1", "e2"]);
+      await registry.pageObjectIdsOf(items("e1", "e2"));
       await remove(0);
       // The element left the page: nothing names it any more.
       latestStandIn()!.keyedRefs = async (keys) =>

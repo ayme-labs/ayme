@@ -49,12 +49,16 @@ function page(...refs: string[]) {
   };
 }
 
-/** The ids of the roots `refs` name, as the store gives them. */
+/** The roots of class `A` that `refs` name. */
+const rootsAt = (...refs: string[]) =>
+  refs.map((ref) => ({ className: "A", ref }));
+
+/** The ids of the `A`s rooted at `refs`, as the store gives them. */
 async function idsOf(
   ids: ReturnType<typeof createPageObjectIds>,
   refs: string[]
 ) {
-  return (await ids.rootsOf(refs)).map((root) => root?.id);
+  return (await ids.rootsOf(rootsAt(...refs))).map((root) => root?.id);
 }
 
 describe("Page Object ids", () => {
@@ -73,8 +77,10 @@ describe("Page Object ids", () => {
 
     rename("s_1", "e7");
 
-    expect(await ids.rootsOf(["e7"])).toEqual([{ id: "po1", ref: "e7" }]);
-    expect(await ids.rootOf("po1")).toBe("e7");
+    expect(await ids.rootsOf(rootsAt("e7"))).toEqual([
+      { id: "po1", ref: "e7" },
+    ]);
+    expect(await ids.rootOf("po1")).toEqual({ className: "A", ref: "e7" });
   });
 
   it("keeps a root's id however often its element is renamed between two reads, though its earlier refs name it no longer", async () => {
@@ -84,8 +90,10 @@ describe("Page Object ids", () => {
 
     for (let at = 2; at <= 20; at += 1) rename(`e${at - 1}`, `e${at}`);
 
-    expect(await ids.rootOf("po1")).toBe("e20");
-    expect(await ids.rootsOf(["e20"])).toEqual([{ id: "po1", ref: "e20" }]);
+    expect(await ids.rootOf("po1")).toEqual({ className: "A", ref: "e20" });
+    expect(await ids.rootsOf(rootsAt("e20"))).toEqual([
+      { id: "po1", ref: "e20" },
+    ]);
   });
 
   it("gives a root that is not on the page no id", async () => {
@@ -100,10 +108,10 @@ describe("Page Object ids", () => {
     const ids = createPageObjectIds(driver);
     await idsOf(ids, ["e1", "e2"]);
 
-    expect(await ids.rootOf("po2")).toBe("e2");
+    expect(await ids.rootOf("po2")).toEqual({ className: "A", ref: "e2" });
     remove("e2");
     expect(await ids.rootOf("po2")).toBeUndefined();
-    expect(await ids.rootOf("po1")).toBe("e1");
+    expect(await ids.rootOf("po1")).toEqual({ className: "A", ref: "e1" });
   });
 
   it("names no root for an id it never gave", async () => {
@@ -126,6 +134,23 @@ describe("Page Object ids", () => {
     add("e1");
     expect(await idsOf(ids, ["e1"])).toEqual(["po4"]);
     expect(await ids.rootOf("po1")).toBeUndefined();
+  });
+
+  it("gives each class rooted at one element an id of its own", async () => {
+    const { driver } = page("e1");
+    const ids = createPageObjectIds(driver);
+
+    const roots = await ids.rootsOf([
+      { className: "A", ref: "e1" },
+      { className: "B", ref: "e1" },
+    ]);
+
+    expect(roots).toEqual([
+      { id: "po1", ref: "e1" },
+      { id: "po2", ref: "e1" },
+    ]);
+    expect(await ids.rootOf("po2")).toEqual({ className: "B", ref: "e1" });
+    expect(await idsOf(ids, ["e1"])).toEqual(["po1"]);
   });
 
   it("gives a root one id when two reads ask for it at once", async () => {

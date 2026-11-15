@@ -22,7 +22,7 @@ import {
   listRegisteredPomTargets,
   getPomDefinitions,
   createPage,
-  pageObjectIdsOf,
+  listRootedToolInstances,
   browserRegistry,
 } from "../page-objects/infrastructure";
 import {
@@ -136,7 +136,11 @@ export async function rootRef(label: string): Promise<string> {
 
 /** A rooted test caller reads its instance's Page Object id without moving its cursor. */
 export async function rootId(label: string): Promise<PageObjectId> {
-  const [id] = await pageObjectIdsOf([await rootRef(label)]);
+  const ref = await rootRef(label);
+  // The id a rooted tool of the instance's class lists for that root.
+  const id = [...(await listRootedToolInstances()).values()]
+    .flat()
+    .find((instance) => instance.ref === ref)?.id;
   if (!id) throw new Error(`No Page Object id for ${label}.`);
   return id;
 }
