@@ -1,7 +1,7 @@
-import { existsSync, fstatSync } from "node:fs";
+import { existsSync, fstatSync, realpathSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -245,6 +245,8 @@ if (${JSON.stringify(failing)}.includes(command)) process.exit(1);
     // The tool keeps what it opened per folder: one for these three runs.
     expect(new Set(all.map(({ cwd }) => cwd)).size).toBe(1);
     expect(all[0]!.cwd).not.toContain(folder.split("/").pop()!);
+    // Inside the system's temporary folder, as the tool sees it.
+    expect(dirname(all[0]!.cwd)).toBe(realpathSync(tmpdir()));
     expect(existsSync(all[0]!.cwd)).toBe(false);
   });
 

@@ -103,9 +103,7 @@ export async function snapshotPositions(
   traceFile: string,
   snapshots: ReadonlySet<string>
 ): Promise<Readonly<Record<string, string>>> {
-  // Stryker disable next-line StringLiteral: equivalent, the prefix only names the folder: mkdtemp makes a new one whatever it is, and nothing reads its name
-  const prefix = "ayme-recorder-trace-";
-  const cwd = await mkdtemp(join(tmpdir(), prefix));
+  const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-trace-"));
   try {
     const opened = await runTraceTool(cli, ["open", traceFile], cwd);
     if (opened.code !== 0) return {};
