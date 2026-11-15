@@ -36,10 +36,10 @@ a Playwright test that replays the flow.
    [Page object design](references/page-object-design.md). Where it conflicts
    with the project's existing POM and test conventions, raise the conflict
    with the user.
-5. **Run** the test until it passes. Fix locators and timing without changing
-   the flow: when passing would take different steps or different checks, for
-   example because the app no longer behaves as recorded, stop and tell the
-   user.
+5. **Run** the test until it passes. Fix locators and timing, but not the
+   flow. When passing would take different steps or different checks, stop
+   and tell the user. That happens, for example, when the app no longer
+   behaves as recorded.
 
 Done when the test passes against the app and replays the flow you agreed.
 A package with no kept entry is done when you have told the user and stopped.
@@ -54,7 +54,7 @@ mode: structural
 createdAt: 2026-…               # when the recording was stored
 url: https://…                  # where the recording started
 tracePath: .ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
-visits:                         # one per page load
+visits:                         # one per page, from a load or a navigation to another path
   - visitId, url, cause
     baselineTree:               # the page as first seen
     timelineEntries:            # in order
@@ -75,14 +75,15 @@ locator for that node.
 A ref names a node within this package. Each visit numbers its nodes anew, and
 a node the app re-renders gets a new ref: the same button can be `e44`, then
 `e137` after a click. Refs link an interaction to its target, and a node to its
-element in the trace; they never go into code. After a full page load a ref
+element in the trace. They never go into code. After a full page load, a ref
 can carry a frame prefix, such as `f1e4`, because Playwright renumbers the
-main frame's refs; copy refs as they are written.
+main frame's refs. Copy refs exactly as they are written.
 
 A `changeTree` holds only the paths down to what changed. `<added>`,
 `<removed>` and `<changed>` mark nodes that appeared, disappeared, or changed
 their own content or state; an unmarked node is only the path to a change
-below it.
+below it. After the user adds a second item to the cart, the cart button
+re-renders with a new name:
 
 ```text
 - [ref=e25]:
@@ -107,12 +108,11 @@ interaction:
 ```
 
 A `kind: change` entry is a change the recorder could not tie to an
-interaction. It is usually the late result of an earlier step, such as data
-that finished loading. It can also come before the interaction that caused
-it, because the recorder can see the page change before it records the click
-behind the change. A change no recorded action explains can also come from a
-hover, or from anything the page does on its own in between, such as an async
-update. Read it together with the steps around it.
+interaction. Read it together with the steps around it. It is usually the
+late result of an earlier step, such as data that finished loading. It can
+also come before the interaction that caused it. A change that no
+recorded action explains can also come from a hover. It can come from
+something the page does on its own in between, too, such as an async update.
 
 ## Discarded entries
 
@@ -169,10 +169,15 @@ candidate, or whose candidate does not meet the strategy.
 ## Write the test
 
 One test replays the flow in recorded order, with no steps the user did not
-take and no branching. Every step goes through a page object action or one of its named locators, and
-every check through a page object locator or method. When an action returns one of
-several page objects, assert the one the recorded flow reached, such as
-`assert(page instanceof ProjectPage)` from `node:assert`, rather than branching on it.
+take and no branching. Every step goes through a page object action or one
+of its named locators. Every check goes through a page object locator or
+method. When an action returns one of several page objects, assert the one
+the recorded flow reached, rather than branching on it. For example,
+`dialog.create()` in
+[Page object design](references/page-object-design.md#return-where-the-user-continues)
+returns a `ProjectPage` or the dialog. After
+`const created = await dialog.create()`, write
+`assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
 
 Turn the timeline into assertions:
 
@@ -186,8 +191,23 @@ Turn the timeline into assertions:
 - An `assert*` interaction, such as `assertVisible`, marks a point where the
   user checked something: from its target and the changes around it, work out
   what they meant to check, and assert that.
-- Each assertion checks one fact. A replaced element is two facts: the old one
-  is gone and the new one is visible.
+- Each assertion checks one fact. An `<added>` node can take the place of a
+  `<removed>` node with the same role. Check in the trace whether they are
+  the same element, as [Use the trace](#use-the-trace) shows. When they are,
+  the element re-rendered, and that is one fact: its new content. For the
+  cart button above, held as `cartLink` by a `Header` component `header`:
+
+  ```ts
+  await expect(header.cartLink).toHaveAccessibleName("Cart, 2 items");
+  ```
+
+  When the trace does not show they are the same, treat them as two
+  elements.
+
+  When a different element takes the old one's place, such as a confirmation
+  that replaces a form, that is two facts: the old one is gone, and the new
+  one is visible.
+
 - Steps that only change their own element, such as filling the fields of one form, need no
   assertions in between; assert after the step that submits it.
 

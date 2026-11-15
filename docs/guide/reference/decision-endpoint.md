@@ -33,7 +33,9 @@ The handler builds the provider request from scratch: a `POST` with your key as 
 | `provider`   | URL                                      | Model               |
 | ------------ | ---------------------------------------- | ------------------- |
 | `typesafe`   | `https://api.typesafe.ai/v1/systemone`   | `jev-1.13.0`        |
-| `openrouter` | `https://openrouter.ai/api/v1/systemone` | `typesafe/jev-1.13` | It forwards none of the incoming request's headers, so the browser's cookies and credentials never reach the provider. |
+| `openrouter` | `https://openrouter.ai/api/v1/systemone` | `typesafe/jev-1.13` |
+
+It forwards none of the incoming request's headers, so the browser's cookies and credentials never reach the provider.
 
 The response keeps the provider's headers, except the connection-level ones (`connection`, `keep-alive`, `transfer-encoding`, `te`, `trailer`, `upgrade`, the proxy headers and those `connection` names), `content-encoding`, `content-length` and `set-cookie`.
 
