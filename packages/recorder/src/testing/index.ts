@@ -30,19 +30,10 @@ import {
 } from "../timeline/domain";
 
 /** Whether the page the scripted browser shows has an element a lookup
- * asks for: a selector always finds one, as the page has no document. */
-function shows(tree: string, find: ElementLookup): boolean {
-  switch (find.by) {
-    case "selector":
-      return true;
-    case "ref":
-      return tree.includes(`[ref=${find.ref}]`);
-    case "role":
-      return tree.includes(`${find.role} "${find.name}"`);
-    case "text":
-      return tree.includes(`: ${find.text}`);
-  }
-}
+ * asks for: by its ref, when the page lists it; a selector, a role and name
+ * or a text always find one, as the page has no document to ask. */
+const shows = (tree: string, find: ElementLookup) =>
+  find.by !== "ref" || tree.includes(`[ref=${find.ref}]`);
 
 /** A report as the test wrote it: the browser hands its refs over here, so
  * they are the report's own from here on. */

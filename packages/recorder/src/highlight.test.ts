@@ -102,6 +102,24 @@ describe("the hover highlight", () => {
     await recorder.done;
   });
 
+  it("answers 'notFound' for a row's element the page no longer shows", async () => {
+    const { recorder, browser } = await oneClickRecorded(
+      `${idle}\n  - status [ref=e3]: Saved`
+    );
+    browser.showPage(idle);
+
+    await expect(
+      recorder.send({
+        type: "highlight",
+        entry: entryId("interaction_1"),
+        row: 0,
+      })
+    ).resolves.toBe("notFound");
+    expect(browser.highlighted).toBeNull();
+    recorder.end();
+    await recorder.done;
+  });
+
   it("clears the highlight when the recorder ends", async () => {
     const { recorder, browser } = await oneClickRecorded();
     await recorder.send({ type: "highlight", entry: entryId("interaction_1") });

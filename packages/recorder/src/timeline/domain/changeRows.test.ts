@@ -246,6 +246,7 @@ describe("the change rows of a Change Tree", () => {
       changeFrom(
         page(
           `- generic [ref=e2]:`,
+          `  - text: Menu`,
           `  - button "Open Menu" [ref=e3]`,
           `- generic [ref=e4]:`,
           `  - heading "Menu" [level=2] [ref=e5]`,

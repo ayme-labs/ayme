@@ -1417,7 +1417,12 @@ describe("the timeline, for the highlight", () => {
   });
 
   it("finds an element the latest snapshot no longer lists by its role and name, or by its text when that is its name", async () => {
-    const offer = `${savedPage}\n  - button "Remove" [ref=e4]`;
+    const offer = [
+      savedPage,
+      `  - button "Remove" [ref=e4]`,
+      `  - list [ref=e5]:`,
+      `    - listitem [ref=e6]: Milk`,
+    ].join("\n");
     const timeline = await timelineOf([
       visit,
       snapshot(snapshotId("snapshot_1"), 10, idle),
@@ -1431,6 +1436,7 @@ describe("the timeline, for the highlight", () => {
     expect(timeline.visits()[0]!.entries[0]!.changes).toEqual([
       expect.objectContaining({ element: 'paragraph "Saved"' }),
       expect.objectContaining({ element: 'button "Remove"' }),
+      expect.objectContaining({ element: "list" }),
     ]);
 
     expect(timeline.liveTarget(interaction1, 0)).toEqual({
@@ -1440,6 +1446,10 @@ describe("the timeline, for the highlight", () => {
     expect(timeline.liveTarget(interaction1, 1)).toEqual({
       page: page1,
       find: { by: "role", role: "button", name: "Remove" },
+    });
+    expect(timeline.liveTarget(interaction1, 2)).toEqual({
+      page: page1,
+      find: { by: "role", role: "list", name: "" },
     });
   });
 
@@ -1501,6 +1511,8 @@ describe("the timeline, for the highlight", () => {
     await timeline.package(header);
 
     expect(timeline.liveTarget(interaction1)).toBeNull();
+    // It changed nothing: it has no row.
+    expect(timeline.liveTarget(interaction1, 0)).toBeNull();
     expect(timeline.liveTarget(entryId("change_1"))).toBeNull();
     expect(timeline.liveTarget(entryId("interaction_9"))).toBeNull();
   });
