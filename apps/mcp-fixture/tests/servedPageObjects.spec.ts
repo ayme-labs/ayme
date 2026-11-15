@@ -262,7 +262,7 @@ for (const [kind, edit, error] of [
         "async readNote()",
         "async readNote(callback: () => void)"
       ),
-    /pom[\\/]PlainPage\.ts:18:18: Unsupported Page Object Tool input type for PlainPage\.readNote\(callback\): \(\) => void\./,
+    /^[ \t]*(?:[A-Za-z]:)?[^:\r\n]*pom[\\/]PlainPage\.ts:18:18: Unsupported Page Object Tool input type for PlainPage\.readNote\(callback\): \(\) => void\./m,
   ],
 ] as const) {
   // Playwright reads a test's fixtures from this pattern.
@@ -279,7 +279,7 @@ for (const [kind, edit, error] of [
     try {
       const failure = await agent.call("ayme_list_tools");
       expect(failure.isError).toBe(true);
-      expect(failure.text).toMatch(error);
+      expect(failure.text.split("The first error: ")[1]).toMatch(error);
       await expect.poll(() => agent.log, REBUILT_WITHIN).toMatch(error);
       if (kind === "unresolved import") {
         expect(failure.text).not.toMatch(/PlainPage\.ts:\d+:\d+:/);

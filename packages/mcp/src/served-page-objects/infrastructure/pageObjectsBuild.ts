@@ -146,7 +146,11 @@ export function pageObjectModels(
             onDependencies: (dependencies) => (read = dependencies),
           });
         } catch (error) {
-          const text = (error as Error).message;
+          const message = (error as Error).message;
+          const header = `Could not transpile Ayme POM ${path}:\n`;
+          const text = message.startsWith(header)
+            ? message.slice(header.length)
+            : message;
           // Thrown, it would point at esbuild's own code, not at the file.
           return {
             errors: [

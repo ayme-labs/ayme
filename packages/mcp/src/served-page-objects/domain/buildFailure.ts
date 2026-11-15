@@ -33,7 +33,8 @@ export function buildFailure({
  * column, if it has them (esbuild counts lines from 1), and its text.
  */
 export function buildErrorLine({ text, location }: BuildError): string {
-  if (location === null) return text;
+  // esbuild may attach the importer's position to an already located compiler error.
+  if (location === null || /^.+:\d+:\d+: /.test(text)) return text;
   if (location.line === 0) return `${location.file}: ${text}`;
   return `${location.file}:${location.line}:${location.column}: ${text}`;
 }

@@ -284,6 +284,68 @@ it("omits generated positions for an unresolved import after statements and non-
   }
 });
 
+it.each(["Page.ts", "Child.ts", "transpile"])(
+  "reports only the original error line for %s through esbuild",
+  async (kind) => {
+    const root = await realpath(
+      await mkdtemp(join(tmpdir(), "ayme-pom-error-"))
+    );
+    const entry = join(root, "entry.ts");
+    const page = join(root, "Page.ts");
+    const file = join(root, kind === "Child.ts" ? "Child.ts" : "Page.ts");
+    const diagnostic =
+      kind === "transpile"
+        ? `${file}:19:34: ')' expected.`
+        : `${file}:8:14: Unsupported Page Object Tool input type for Page.pick(callback): () => void.`;
+    await writeFile(entry, 'import "./Page";');
+    await writeFile(page, "class Page {}");
+    const log = vi.fn();
+    const outcomes = buildOutcomes({
+      entry,
+      folder: root,
+      outdir: join(root, "out"),
+      log,
+    });
+    try {
+      await esbuild
+        .build({
+          absWorkingDir: root,
+          entryPoints: [entry],
+          bundle: true,
+          write: false,
+          logLevel: "silent",
+          plugins: [
+            pageObjectModels({
+              compile: (path) => {
+                if (path !== page) return null;
+                throw new Error(
+                  kind === "transpile"
+                    ? `Could not transpile Ayme POM ${file}:\n${diagnostic}`
+                    : diagnostic
+                );
+              },
+              invalidate: () => {},
+            }),
+            outcomes.plugin,
+          ],
+        })
+        .catch(() => {});
+      expect(
+        await failedPageObjects(entry, buildWith(outcomes.modules))
+      ).toEqual({
+        entry,
+        error: diagnostic,
+        watching: true,
+      });
+      expect(log).toHaveBeenCalledWith(
+        `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  ${diagnostic}`
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+);
+
 it("keeps a compiler error's original child file and parameter position", async () => {
   const file = await pomFile("class Page {}");
   const text =
