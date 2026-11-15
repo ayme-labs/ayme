@@ -32,7 +32,7 @@ export const measuredOtherwise = Object.freeze([
     pattern: "**/infrastructure/live/**",
     mutated: false,
     scored: true,
-    how: "drives a real browser from Node: not mutated; its contract suite on every supported Playwright version is its measure, and that suite's coverage counts in its CRAP score",
+    how: "drives a real browser from Node: not mutated; its compatibility suite on every supported Playwright version is its measure, and that suite's coverage counts in its CRAP score",
   }),
   Object.freeze({
     pattern: "**/infrastructure/in-page/**",
