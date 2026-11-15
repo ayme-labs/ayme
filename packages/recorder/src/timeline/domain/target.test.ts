@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
+import { selectorSteps } from "./target";
 import { Timeline } from "./timeline";
 
 // Which element of a snapshot a report's target is. Playwright's report names
@@ -76,6 +77,21 @@ describe("the target a report names", () => {
         ref: "e21",
       })
     ).toBeNull();
+  });
+
+  it("is found in the page when a quoted name in the selector reads like a step into a frame", async () => {
+    const name = "Before >> internal:control=enter-frame >> After";
+    const page = (button: string) =>
+      lines(`- generic [ref=e1]:`, `  - button "${name}" [ref=${button}]`);
+
+    expect(
+      await targetOf({
+        before: page("e2"),
+        picture: page("e21"),
+        ref: "e21",
+        selector: `internal:role=button[name="${name}"i]`,
+      })
+    ).toBe("e2");
   });
 
   it("is not known when the report names a ref its own picture does not have", async () => {
@@ -342,5 +358,33 @@ describe("the target a report names", () => {
         })
       ).toBeNull();
     });
+  });
+});
+
+describe("the steps of a selector", () => {
+  it("are what Playwright joins with ' >> '", () => {
+    expect(
+      selectorSteps(
+        'iframe >> internal:control=enter-frame >> internal:role=button[name="Pay"i]'
+      )
+    ).toEqual([
+      "iframe",
+      "internal:control=enter-frame",
+      'internal:role=button[name="Pay"i]',
+    ]);
+  });
+
+  it("keep a ' >> ' inside a quoted value, in double or single quotes", () => {
+    expect(selectorSteps('internal:role=button[name="A >> B"i] >> b')).toEqual([
+      'internal:role=button[name="A >> B"i]',
+      "b",
+    ]);
+    expect(selectorSteps("text='A >> B' >> b")).toEqual(["text='A >> B'", "b"]);
+  });
+
+  it("do not end a quoted value at a quote escaped with a backslash", () => {
+    expect(
+      selectorSteps(String.raw`internal:role=button[name="a \" >> b"i] >> c`)
+    ).toEqual([String.raw`internal:role=button[name="a \" >> b"i]`, "c"]);
   });
 });

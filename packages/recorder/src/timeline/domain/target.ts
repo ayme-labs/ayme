@@ -37,6 +37,31 @@ const ENTERS_FRAME = "internal:control=enter-frame";
 const ANY_FRAME = "internal:control=any-frame";
 
 /**
+ * A selector's steps, as Playwright joins them with " >> ". A " >> " inside a
+ * quoted value, such as an element's name, belongs to its step; a quote
+ * escaped with a backslash does not end the value.
+ */
+export function selectorSteps(selector: string): string[] {
+  const steps: string[] = [];
+  let start = 0;
+  let quote: string | null = null;
+  for (let at = 0; at < selector.length; at += 1) {
+    const char = selector[at]!;
+    if (quote !== null) {
+      if (char === "\\") at += 1;
+      else if (char === quote) quote = null;
+    } else if (char === '"' || char === "'") quote = char;
+    else if (selector.startsWith(" >> ", at)) {
+      steps.push(selector.slice(start, at));
+      start = at + 4;
+      at += 3;
+    }
+  }
+  steps.push(selector.slice(start));
+  return steps;
+}
+
+/**
  * The documents of a snapshot an input may have been given to, from what its
  * report says of where it happened. Playwright's selector names the frames
  * it enters on its way to the target, so it says how deep in frames the
@@ -53,7 +78,7 @@ export function scopesFor(
   selector: string | null
 ): Scope[] {
   if (selector === null) return [];
-  const steps = selector.split(" >> ");
+  const steps = selectorSteps(selector);
   const entered = steps.filter((step) => step === ENTERS_FRAME).length;
   const anyFrame = steps[0] === ANY_FRAME;
   if (entered === 0 && !anyFrame)
