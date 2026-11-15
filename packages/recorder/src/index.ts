@@ -1,5 +1,5 @@
 // The engine's front door. Promises, callbacks and plain data only: no Effect
-// type and no Playwright type is reachable from here (src/frontDoor.test.ts).
+// type and no Playwright type is reachable from here (src/publicTypes.test.ts).
 export type {
   CommandResult,
   InteractionDetails,
