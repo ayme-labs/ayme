@@ -81,8 +81,9 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   own page.
 
 - `assert.spec.ts` uses Assert visibility from the toolbar and the window,
-  and hovers entries' targets in the window, in pages a real recorder
-  records: the highlight is read off the recorded page.
+  and hovers entries' targets and the rows of what they changed in the
+  window, in pages a real recorder records: the highlight is read off the
+  recorded page.
 
 - `review.spec.ts` discards and restores entries while paused, through the
   engine's handle on real Chromium, and reads the package from disk.

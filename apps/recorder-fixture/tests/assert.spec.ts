@@ -47,8 +47,8 @@ test.describe("Assert visibility", () => {
     const toolbar = await RecorderToolbar.on(page, selectors);
     const window = new RecorderWindow(windowPage);
     await window.open(recording.windowUrl!);
-    await window.controls.press("Record");
-    await expect(toolbar.status).toHaveText("Recording");
+    await window.controls.recordButton.click();
+    await expect(toolbar.stopButton).toBeEnabled();
     expect(await window.controls.picking()).toBe(false);
 
     await person.click(toolbar.assertVisibility);
@@ -69,8 +69,8 @@ test.describe("Assert visibility", () => {
     const { page, person, recorder } = await startRecording("/cart.html");
     const cart = new CartPage(page);
     const toolbar = await RecorderToolbar.on(page, selectors);
-    await person.click(toolbar.button("Record"));
-    await expect(toolbar.status).toHaveText("Recording");
+    await person.click(toolbar.recordButton);
+    await expect(toolbar.stopButton).toBeEnabled();
     await person.click(cart.addItemButton);
     await expect(cart.itemCount).toHaveText("Items: 1");
     await person.pause();
@@ -82,7 +82,7 @@ test.describe("Assert visibility", () => {
     await expect.poll(() => toolbar.picking()).toBe(false);
     await person.pause();
     await expect(cart.itemCount).toHaveText("Items: 1");
-    await person.click(toolbar.button("Finish"));
+    expect(await recorder.send({ type: "finish" })).toBe("applied");
 
     const outcome = await recorder.done;
     if (outcome.kind !== "saved") throw new Error("Nothing was saved.");
@@ -107,8 +107,8 @@ test.describe("the hover highlight", () => {
     const inputs = new InputsPage(page);
     const window = new RecorderWindow(windowPage);
     await window.open(recording.windowUrl!);
-    await window.controls.press("Record");
-    await expect(window.controls.status).toHaveText("Recording");
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
     const elements = [
       inputs.openTwiceButton,
       inputs.innerButton,
@@ -119,19 +119,56 @@ test.describe("the hover highlight", () => {
       await person.pause();
     }
     // The clicks, without the changes between them.
-    const clicks = window.timeline
-      .visit(0)
-      .entries.filter({ has: windowPage.getByTestId("entry-target") });
+    await expect(window.timeline.visitSections).toHaveCount(1);
+    const [visit] = await window.timeline.visits();
+    const clicks = visit!.entryCards.filter({
+      has: windowPage.getByTestId("entry-target"),
+    });
     await expect(clicks).toHaveCount(3);
-    await window.controls.press("Stop");
-    await expect(window.controls.status).toHaveText("Paused");
+    await window.controls.stopButton.click();
+    await expect(window.controls.continueButton).toBeEnabled();
 
     for (const [index, element] of elements.entries()) {
       const entry = new Entry(clicks.nth(index));
-      await entry.hoverTarget();
+      await entry.target.hover();
       await expect.poll(() => highlightOn(page)).toEqual(await boxOf(element));
-      await entry.leaveTarget();
+      await entry.title.hover();
       await expect.poll(() => highlightOn(page)).toBeNull();
     }
+  });
+
+  test("highlights the element of a row of what changed while it is hovered, and then clears", async ({
+    startRecording,
+    page: windowPage,
+  }) => {
+    const recording = await startRecording("/cart.html", { window: true });
+    const { page, person } = recording;
+    const cart = new CartPage(page);
+    const window = new RecorderWindow(windowPage);
+    await window.open(recording.windowUrl!);
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
+    await expect(window.timeline.visitSections).toHaveCount(1);
+    const [visit] = await window.timeline.visits();
+    await expect(visit!.entryCards).toHaveCount(1);
+    const [click] = await visit!.entries();
+    await expect
+      .poll(() => click!.whatChanged())
+      .toEqual([
+        {
+          element: "paragraph",
+          effect: "text changed from “Items: 0” to “Items: 1”",
+        },
+      ]);
+    const [row] = await click!.changes();
+
+    await row!.element.hover();
+    await expect
+      .poll(() => highlightOn(page))
+      .toEqual(await boxOf(cart.itemCount));
+    await click!.title.hover();
+    await expect.poll(() => highlightOn(page)).toBeNull();
   });
 });

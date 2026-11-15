@@ -25,6 +25,8 @@ import {
 // is given through Vitest's Playwright provider, as trusted input at a
 // point of the page: the toolbar stops only that at the window.
 
+type Locator = RecorderToolbar["root"];
+
 const page = createPage();
 let toolbar: RecorderToolbar;
 const removals: (() => void)[] = [];
@@ -81,10 +83,10 @@ function mount(call: ToolbarCall) {
   return host;
 }
 
-/** A person's click at the middle of a toolbar button, given as trusted
+/** A person's click at the middle of a toolbar control, given as trusted
  * input at that point of the page. */
-async function personClicks(host: HTMLElement, name: string) {
-  const box = (await toolbar.button(name as "Record").boundingBox())!;
+async function personClicks(host: HTMLElement, control: Locator) {
+  const box = (await control.boundingBox())!;
   await userEvent.click(host, {
     position: { x: box.x + box.width / 2, y: box.y + box.height / 2 },
     // The host lets pointer events through to the page: the point is the
@@ -93,20 +95,52 @@ async function personClicks(host: HTMLElement, name: string) {
   });
 }
 
+/** The system's colour scheme, played by the test: it can change while the
+ * toolbar shows. */
+function scheme(dark: boolean) {
+  const listeners = new Set<() => void>();
+  let matches = dark;
+  vi.spyOn(globalThis, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        get matches() {
+          return query === "(prefers-color-scheme: dark)" && matches;
+        },
+        addEventListener: (_: string, listener: () => void) =>
+          listeners.add(listener),
+        removeEventListener: (_: string, listener: () => void) =>
+          listeners.delete(listener),
+      }) as unknown as MediaQueryList
+  );
+  return {
+    set(next: boolean) {
+      matches = next;
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
+/** A control's fill, once it has eased to it. */
+const fill = (control: Locator) =>
+  control.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map(({ finished }) => finished));
+    return getComputedStyle(element).backgroundColor;
+  });
+
 describe("the toolbar", () => {
-  it("shows the recorder's state and the controls that apply, and sends what is pressed", async () => {
+  it("offers Record when not recording, and sends it when pressed", async () => {
     const { call, sent, tell } = scriptedPage();
     mount(call);
 
     tell({ phase: "notRecording", commands: ["record"] });
 
-    await expect.poll(() => toolbar.status.textContent()).toBe("Not recording");
-    expect(await toolbar.offered()).toEqual(["Record"]);
-    await toolbar.button("Record").click();
+    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
+    expect(await toolbar.assertVisibility.isEnabled()).toBe(false);
+    await toolbar.recordButton.click();
     expect(sent).toEqual([{ type: "record" }]);
   });
 
-  it("offers Stop, Clear and Finish while recording, and shows Assert visibility on while Playwright picks", async () => {
+  it("holds only the control that records, stops or continues, and Assert visibility: no Clear, Finish or status", async () => {
     const { call, sent, tell } = scriptedPage();
     mount(call);
 
@@ -117,44 +151,62 @@ describe("the toolbar", () => {
     } as Partial<RecorderState>);
 
     await expect.poll(() => toolbar.picking()).toBe(true);
-    expect(await toolbar.offered()).toEqual(["Stop", "Clear", "Finish"]);
+    expect(await toolbar.offered()).toEqual(["Stop"]);
+    expect(await toolbar.root.locator("button").count()).toBe(2);
+    expect(await toolbar.root.textContent()).toBe("");
     await toolbar.assertVisibility.click();
-    await toolbar.button("Clear").click();
-    await toolbar.button("Finish").click();
-    expect(sent).toEqual([
-      { type: "leaveAssertVisibility" },
-      { type: "clear" },
-      { type: "finish" },
-    ]);
+    await toolbar.stopButton.click();
+    expect(sent).toEqual([{ type: "leaveAssertVisibility" }, { type: "stop" }]);
   });
 
-  it("shows Assert visibility filled as Finish is while Playwright picks, and not while it does not", async () => {
+  it("offers Continue recording while paused", async () => {
+    const { call, sent, tell } = scriptedPage();
+    mount(call);
+
+    tell({ phase: "paused", commands: ["continue", "clear", "finish"] });
+
+    await expect.poll(() => toolbar.offered()).toEqual(["Continue recording"]);
+    await toolbar.continueButton.click();
+    expect(sent).toEqual([{ type: "continue" }]);
+  });
+
+  it("lights Stop while recording, and Assert visibility as Stop while Playwright picks", async () => {
     const { call, tell } = scriptedPage();
     mount(call);
-    const fill = (control: typeof toolbar.root) =>
-      control.evaluate((element) => getComputedStyle(element).backgroundColor);
-    tell({
-      phase: "recording",
-      commands: ["stop", "finish", "assertVisibility"],
-    });
-    await expect.poll(() => toolbar.offered()).toEqual(["Stop", "Finish"]);
-    expect(await fill(toolbar.assertVisibility)).not.toBe(
-      await fill(toolbar.button("Finish"))
-    );
+    tell({ phase: "notRecording", commands: ["record"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
+    const unlit = await fill(toolbar.recordButton);
+
+    tell({ phase: "recording", commands: ["stop", "assertVisibility"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Stop"]);
+    const lit = await fill(toolbar.stopButton);
+    expect(lit).not.toBe(unlit);
+    expect(await fill(toolbar.assertVisibility)).toBe(unlit);
 
     tell({
       phase: "recording",
       picking: true,
-      commands: ["stop", "finish", "leaveAssertVisibility"],
+      commands: ["stop", "leaveAssertVisibility"],
     } as Partial<RecorderState>);
     await expect.poll(() => toolbar.picking()).toBe(true);
-
-    // Its fill eases from one to the other.
-    const finish = await fill(toolbar.button("Finish"));
-    await expect.poll(() => fill(toolbar.assertVisibility)).toBe(finish);
+    expect(await fill(toolbar.assertVisibility)).toBe(lit);
   });
 
-  it("sits at the bottom right of the page, apart from the page's structure, layout and styles", async () => {
+  it("says, in place of its first control, that the recorder wraps up, and offers nothing meanwhile", async () => {
+    const { call, tell } = scriptedPage();
+    mount(call);
+
+    tell({ phase: "wrappingUp", then: "pause" } as Partial<RecorderState>);
+
+    await expect.poll(() => toolbar.busy()).toBe("Wrapping up, then pausing");
+    expect(await toolbar.offered()).toEqual([]);
+    expect(await toolbar.busyIndicator.isEnabled()).toBe(false);
+
+    tell({ phase: "paused", commands: ["continue"] });
+    await expect.poll(() => toolbar.busy()).toBeNull();
+  });
+
+  it("sits at the top centre of the page, apart from the page's structure, layout and styles", async () => {
     const style = document.createElement("style");
     style.textContent = `${TOOLBAR_HOST} { opacity: 0.5 !important; position: static !important; }`;
     document.head.append(style);
@@ -176,43 +228,26 @@ describe("the toolbar", () => {
     ]).toEqual(["fixed", "0px", "0px", "none", "2147483647", "1"]);
     expect(shown.contain).toMatch(/strict|size layout paint style/);
     const box = (await toolbar.root.boundingBox())!;
-    expect(innerWidth - (box.x + box.width)).toBe(12);
-    expect(innerHeight - (box.y + box.height)).toBe(12);
+    expect(box.y).toBe(12);
+    expect(
+      Math.abs(box.x + box.width / 2 - innerWidth / 2)
+    ).toBeLessThanOrEqual(0.5);
   });
 
-  it("shows itself in the dark scheme when the person's system asks for it", async () => {
-    vi.spyOn(globalThis, "matchMedia").mockImplementation(
-      (query) =>
-        ({
-          matches: query === "(prefers-color-scheme: dark)",
-        }) as MediaQueryList
-    );
+  it("follows the system's colour scheme live", async () => {
+    const system = scheme(true);
     const { call, tell } = scriptedPage();
     mount(call);
     tell({ phase: "notRecording", commands: ["record"] });
+    const dark = () =>
+      toolbar.root.evaluate((root) => root.closest(".dark") !== null);
 
     await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
-    expect(
-      await toolbar.root.evaluate((root) => root.closest(".dark") !== null)
-    ).toBe(true);
-  });
-
-  it("shows itself in the light scheme otherwise", async () => {
-    vi.spyOn(globalThis, "matchMedia").mockImplementation(
-      (query) =>
-        ({
-          // It answers any other question yes: only the scheme is asked.
-          matches: query !== "(prefers-color-scheme: dark)",
-        }) as MediaQueryList
-    );
-    const { call, tell } = scriptedPage();
-    mount(call);
-    tell({ phase: "notRecording", commands: ["record"] });
-
-    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
-    expect(
-      await toolbar.root.evaluate((root) => root.closest(".dark") !== null)
-    ).toBe(false);
+    expect(await dark()).toBe(true);
+    system.set(false);
+    await expect.poll(dark).toBe(false);
+    system.set(true);
+    await expect.poll(dark).toBe(true);
   });
 
   it("comes back when the page takes it out of its document", async () => {
@@ -288,11 +323,16 @@ describe("a person's input on the toolbar", () => {
     const host = mount(call);
     tell({ phase: "notRecording", commands: ["record"] });
     await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
-    const box = (await toolbar.status.boundingBox())!;
+    // The gap between its two buttons.
+    const first = (await toolbar.recordButton.boundingBox())!;
+    const second = (await toolbar.assertVisibility.boundingBox())!;
     const errors = pageErrors();
 
     await userEvent.click(host, {
-      position: { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      position: {
+        x: (first.x + first.width + second.x) / 2,
+        y: first.y + first.height / 2,
+      },
       force: true,
     });
 
@@ -329,10 +369,8 @@ describe("a person's input on the toolbar", () => {
   it("presses the button under it, and reaches neither the page nor its focus", async () => {
     const { call, sent, tell } = scriptedPage();
     const host = mount(call);
-    tell({ phase: "recording", commands: ["stop", "clear", "finish"] });
-    await expect
-      .poll(() => toolbar.offered())
-      .toEqual(["Stop", "Clear", "Finish"]);
+    tell({ phase: "recording", commands: ["stop"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Stop"]);
     const field = document.createElement("input");
     document.body.append(field);
     removals.push(() => field.remove());
@@ -340,9 +378,9 @@ describe("a person's input on the toolbar", () => {
     const heard = pageListens();
     const errors = pageErrors();
 
-    await personClicks(host, "Finish");
+    await personClicks(host, toolbar.stopButton);
 
-    expect(sent).toEqual([{ type: "finish" }]);
+    expect(sent).toEqual([{ type: "stop" }]);
     expect(heard).toEqual([]);
     expect(errors).toEqual([]);
     expect(document.activeElement).toBe(field);
@@ -351,11 +389,13 @@ describe("a person's input on the toolbar", () => {
   it("presses nothing that cannot be pressed now", async () => {
     const { call, sent, tell } = scriptedPage();
     const host = mount(call);
-    tell({ phase: "notRecording", commands: ["record"] });
-    await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
+    // Not recording, and Record not offered: nothing applies.
+    tell({ phase: "notRecording", commands: [] });
+    await expect.poll(() => toolbar.recordButton.isEnabled()).toBe(false);
     const heard = pageListens();
 
-    await personClicks(host, "Finish");
+    await personClicks(host, toolbar.recordButton);
+    await personClicks(host, toolbar.assertVisibility);
 
     expect(sent).toEqual([]);
     expect(heard).toEqual([]);
@@ -367,7 +407,7 @@ describe("a person's input on the toolbar", () => {
     const host = mount(call);
     tell({ phase: "notRecording", commands: ["record"] });
     await expect.poll(() => toolbar.offered()).toEqual(["Record"]);
-    const box = (await toolbar.button("Record").boundingBox())!;
+    const box = (await toolbar.recordButton.boundingBox())!;
     return {
       host,
       at: { x: box.x + box.width / 2, y: box.y + box.height / 2 },

@@ -64,14 +64,15 @@ test.describe("recording a running browser", () => {
     const window = new RecorderWindow(windowPage);
     await window.open(windowUrl);
 
-    await window.controls.press("Record");
-    await expect(window.controls.status).toHaveText("Recording");
-    // At once: "Recording" is shown only when a click is certain to be
-    // recorded.
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    // At once: Stop is offered only when a click is certain to be recorded.
     await cart.addItemButton.click();
     await expect(cart.itemCount).toHaveText("Items: 1");
-    await expect(window.timeline.visit(0).entries).toHaveCount(1);
-    await window.controls.press("Finish");
+    await expect(window.timeline.visitSections).toHaveCount(1);
+    const [visit] = await window.timeline.visits();
+    await expect(visit!.entryCards).toHaveCount(1);
+    await window.controls.finishButton.click();
 
     expect(await run.exit).toEqual({ code: 0, signal: null });
     const [, packagePath] = /^Recording package: (.*)$/m.exec(run.stdout())!;

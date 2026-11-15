@@ -1,5 +1,6 @@
 import type {
   CommandResult,
+  EntryId,
   RecordedVisit,
   RecorderCommand,
   RecorderState,
@@ -7,6 +8,7 @@ import type {
 } from "@ayme-dev/recorder/contract";
 import { createPage } from "@ayme-dev/playwright-lite";
 import { afterEach, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import type { RecorderChannel } from "../channel";
 import { RecorderWindow } from "../testing";
@@ -24,6 +26,7 @@ const unmounts: (() => void)[] = [];
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   document.documentElement.classList.remove("dark");
+  localStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -73,9 +76,36 @@ function mount(channel: RecorderChannel) {
   });
 }
 
-const cart: RecordedVisit = {
+/** The system's colour scheme, played by the test: it can change while the
+ * window is open. */
+function scheme(dark: boolean) {
+  const listeners = new Set<() => void>();
+  let matches = dark;
+  vi.spyOn(globalThis, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        get matches() {
+          return query === "(prefers-color-scheme: dark)" && matches;
+        },
+        addEventListener: (_: string, listener: () => void) =>
+          listeners.add(listener),
+        removeEventListener: (_: string, listener: () => void) =>
+          listeners.delete(listener),
+      }) as unknown as MediaQueryList
+  );
+  return {
+    set(next: boolean) {
+      matches = next;
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
+const isDark = () => document.documentElement.classList.contains("dark");
+
+const login: RecordedVisit = {
   visitId: "visit_1",
-  url: "http://shop.test/cart",
+  url: "http://shop.test/",
   cause: "initial",
   entries: [
     {
@@ -84,26 +114,72 @@ const cart: RecordedVisit = {
       timestamp: 10,
       interaction: {
         id: entryId("interaction_1"),
-        type: "click",
-        targetRef: "e2",
-        targetSelector: 'internal:role=button[name="Add item"i]',
+        type: "fill",
+        text: "secret_sauce",
+        targetRef: "e3",
+        targetSelector: '[data-test="password"]',
       },
-      changes: [{ kind: "added", element: 'list "Cart"' }],
+      targetElement: 'textbox "Password"',
+      changes: [
+        {
+          kind: "changed",
+          element: 'textbox "Password"',
+          changed: [{ property: "text", to: "secret_sauce" }],
+        },
+      ],
+    },
+  ],
+};
+const inventory: RecordedVisit = {
+  visitId: "visit_2",
+  url: "http://shop.test/inventory",
+  cause: "navigate",
+  entries: [
+    {
+      kind: "interaction",
+      id: entryId("interaction_2"),
+      timestamp: 20,
+      interaction: {
+        id: entryId("interaction_2"),
+        type: "click",
+        targetRef: "e9",
+        targetSelector: '[data-test="add-to-cart"]',
+      },
+      targetElement: 'button "Add to cart"',
+      changes: [
+        { kind: "added", element: 'button "Remove"' },
+        {
+          kind: "changed",
+          element: 'link "Cart"',
+          changed: [{ property: "active", to: "true" }],
+        },
+      ],
     },
     {
       kind: "change",
       id: entryId("change_1"),
-      timestamp: 20,
+      timestamp: 30,
       changes: [{ kind: "removed", element: 'status "Saved"' }],
+    },
+    {
+      kind: "interaction",
+      id: entryId("interaction_3"),
+      timestamp: 40,
+      interaction: {
+        id: entryId("interaction_3"),
+        type: "assertVisible",
+        targetRef: null,
+        targetSelector: '[data-test="title"]',
+      },
+      changes: null,
     },
   ],
 };
-const checkout: RecordedVisit = {
-  visitId: "visit_2",
-  url: "http://shop.test/checkout",
-  cause: "openPage",
-  entries: [],
-};
+
+/** The window, its Visits read as a person reads them. */
+async function visits() {
+  return recorderWindow.timeline.visits();
+}
 
 it("says it is connecting, offers nothing and shows no Visit until the recorder's state comes", async () => {
   const { channel } = scriptedChannel();
@@ -113,83 +189,119 @@ it("says it is connecting, offers nothing and shows no Visit until the recorder'
     .poll(() => recorderWindow.controls.status.textContent())
     .toBe("Connecting…");
   expect(await recorderWindow.controls.offered()).toEqual([]);
-  expect(await recorderWindow.timeline.empty.isVisible()).toBe(true);
+  expect(await recorderWindow.timeline.empty.textContent()).toBe(
+    "No interactions recorded yet."
+  );
 });
 
-it("offers Record when not recording, and sends it when pressed", async () => {
+it("offers Record when not recording, says nothing more, and sends Record when pressed", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
 
   tell({ phase: "notRecording", commands: ["record"] });
 
   await expect
-    .poll(() => recorderWindow.controls.status.textContent())
-    .toBe("Not recording");
-  expect(await recorderWindow.controls.offered()).toEqual(["Record"]);
-  await recorderWindow.controls.press("Record");
+    .poll(() => recorderWindow.controls.offered())
+    .toEqual(["Record"]);
+  expect(await recorderWindow.controls.status.textContent()).toBe("");
+  await recorderWindow.controls.recordButton.click();
   expect(sent).toEqual([{ type: "record" }]);
 });
 
-it("shows each Visit with its entries, their targets and only the roots of what they changed", async () => {
+it("shows each Visit with its entries: their targets by role and name, and what changed in words", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);
 
-  tell({ phase: "recording", visits: [cart, checkout], commands: ["stop"] });
+  tell({ phase: "recording", visits: [login, inventory], commands: ["stop"] });
 
-  const first = recorderWindow.timeline.visit(0);
-  await expect.poll(() => first.heading.textContent()).toBe("Page 1");
-  expect(await first.start.textContent()).toBe(
-    "Navigated to http://shop.test/cart"
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [first, second] = await visits();
+  expect(await first!.heading.textContent()).toBe("Page 1");
+  expect(await first!.start.textContent()).toBe(
+    "Navigated to http://shop.test/"
   );
-  expect(await first.entry(0).title.textContent()).toBe("Click");
-  expect(await first.entry(0).target.textContent()).toBe('button "Add item"');
-  expect(await first.entry(0).changeRows()).toEqual([
-    { element: 'list "Cart"', effect: "appeared" },
+  const [fill] = await first!.entries();
+  expect(await fill!.title.textContent()).toBe("Fill 'secret_sauce'");
+  expect(await fill!.target.textContent()).toBe("textbox “Password”");
+  // The selector shows on hover.
+  expect(await fill!.target.getAttribute("title")).toBe(
+    '[data-test="password"]'
+  );
+  expect(await fill!.whatChanged()).toEqual([
+    {
+      element: "textbox “Password”",
+      effect: "text changed from empty to “secret_sauce”",
+    },
   ]);
-  expect(await first.entry(1).title.textContent()).toBe(
-    "Change without an Interaction"
-  );
-  expect(await first.entry(1).target.count()).toBe(0);
-  expect(await first.entry(1).changeRows()).toEqual([
-    { element: 'status "Saved"', effect: "was removed" },
+  const [click, change, assertion] = await second!.entries();
+  expect(await click!.whatChanged()).toEqual([
+    { element: "button “Remove”", effect: "appeared" },
+    { element: "link “Cart”", effect: "became active" },
   ]);
-  const second = recorderWindow.timeline.visit(1);
-  expect(await second.heading.textContent()).toBe("Page 2");
-  expect(await second.start.textContent()).toBe(
-    "Opened http://shop.test/checkout"
-  );
+  expect(await change!.title.textContent()).toBe("Element removed");
+  expect(await change!.target.count()).toBe(0);
+  expect(await assertion!.title.textContent()).toBe("Assert");
+  // A target the page's structure does not name shows its selector.
+  expect(await assertion!.target.textContent()).toBe('[data-test="title"]');
+  expect(await assertion!.target.getAttribute("title")).toBeNull();
   expect(await recorderWindow.timeline.empty.count()).toBe(0);
 });
 
-it("asks for a highlight while an entry's target is hovered, and clears it when left", async () => {
+it("joins each icon of a Visit to the next by a line", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+
+  tell({ phase: "recording", visits: [login, inventory], commands: ["stop"] });
+
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  // A line below every icon but the last of its Visit: 1 in the first
+  // Visit (its start, to its one entry) and 3 in the second.
+  expect(await recorderWindow.timeline.lines.count()).toBe(4);
+});
+
+it("highlights the element of a chip of the page now open while it is hovered, and clears it when left", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
   tell({
     phase: "recording",
-    visits: [cart],
+    visits: [login, inventory],
     commands: ["stop", "highlight", "clearHighlight"],
   });
-  const entry = recorderWindow.timeline.visit(0).entry(0);
-  await expect.poll(() => entry.target.count()).toBe(1);
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [click] = await (await visits())[1]!.entries();
+  const [, second] = await click!.changes();
 
-  await entry.hoverTarget();
-  await entry.leaveTarget();
+  await click!.target.hover();
+  await second!.element.hover();
+  await click!.title.hover();
 
   expect(sent).toEqual([
-    { type: "highlight", entry: entryId("interaction_1") },
+    { type: "highlight", entry: entryId("interaction_2") },
+    { type: "clearHighlight" },
+    { type: "highlight", entry: entryId("interaction_2"), row: 1 },
     { type: "clearHighlight" },
   ]);
 });
 
-it("asks for no highlight when it does not apply", async () => {
+it("leaves the chips of an earlier Visit inert, and asks for no highlight when it does not apply", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
-  tell({ phase: "paused", visits: [cart], commands: ["continue"] });
-  const entry = recorderWindow.timeline.visit(0).entry(0);
-  await expect.poll(() => entry.target.count()).toBe(1);
+  tell({
+    phase: "recording",
+    visits: [login, inventory],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [fill] = await (await visits())[0]!.entries();
+  const [row] = await fill!.changes();
 
-  await entry.hoverTarget();
-  await entry.leaveTarget();
+  await fill!.target.hover();
+  await row!.element.hover();
+  await fill!.title.hover();
+  tell({ phase: "paused", visits: [login, inventory], commands: ["continue"] });
+  const [click] = await (await visits())[1]!.entries();
+  await click!.target.hover();
+  await click!.title.hover();
 
   expect(sent).toEqual([]);
 });
@@ -206,12 +318,13 @@ it("offers Stop, Assert visibility, Clear and Finish while recording, and sends 
   await expect
     .poll(() => recorderWindow.controls.offered())
     .toEqual(["Stop", "Clear", "Finish"]);
+  expect(await recorderWindow.controls.status.textContent()).toBe("");
   expect(await recorderWindow.controls.assertVisibility.isEnabled()).toBe(true);
   expect(await recorderWindow.controls.picking()).toBe(false);
-  await recorderWindow.controls.press("Stop");
+  await recorderWindow.controls.stopButton.click();
   await recorderWindow.controls.assertVisibility.click();
-  await recorderWindow.controls.press("Clear");
-  await recorderWindow.controls.press("Finish");
+  await recorderWindow.controls.clearButton.click();
+  await recorderWindow.controls.finishButton.click();
   expect(sent).toEqual([
     { type: "stop" },
     { type: "assertVisibility" },
@@ -220,41 +333,24 @@ it("offers Stop, Assert visibility, Clear and Finish while recording, and sends 
   ]);
 });
 
-/** How a control looks: its fill and its outline. */
-const looks = (control: RecorderWindow["controls"]["assertVisibility"]) =>
-  control.evaluate((element) => {
-    const shown = getComputedStyle(element);
-    return { fill: shown.backgroundColor, outline: shown.borderTopWidth };
+/** A control's fill, once it has eased to it. */
+const fill = (control: RecorderWindow["controls"]["assertVisibility"]) =>
+  control.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map(({ finished }) => finished));
+    return getComputedStyle(element).backgroundColor;
   });
 
-it("shows Assert visibility outlined while off, and filled as Finish is while on", async () => {
-  const { channel, tell } = scriptedChannel();
-  mount(channel);
-  tell({
-    phase: "recording",
-    commands: ["stop", "finish", "assertVisibility"],
-  });
-  await expect.poll(() => recorderWindow.controls.picking()).toBe(false);
-  const finish = await looks(recorderWindow.controls.button("Finish"));
+/** A person's pointer over an entry's title, as trusted input: only that
+ * makes the page's hover styles apply. */
+const personHovers = (entry: EntryId) =>
+  userEvent.hover(document.querySelector(`[data-entry="${entry}"] h3`)!);
 
-  expect(await looks(recorderWindow.controls.assertVisibility)).toMatchObject({
-    outline: "1px",
-  });
-  tell({
-    phase: "recording",
-    picking: true,
-    commands: ["stop", "finish", "leaveAssertVisibility"],
-  } as Partial<RecorderState>);
-  await expect.poll(() => recorderWindow.controls.picking()).toBe(true);
-  // The fill changes over a transition: poll until it has arrived.
-  await expect
-    .poll(() => looks(recorderWindow.controls.assertVisibility))
-    .toEqual(finish);
-});
-
-it("shows Assert visibility on while Playwright picks, and leaves it when pressed", async () => {
+it("shows Assert visibility filled while Playwright picks, and leaves it when pressed", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
+  tell({ phase: "recording", commands: ["stop", "assertVisibility"] });
+  await expect.poll(() => recorderWindow.controls.picking()).toBe(false);
+  const off = await fill(recorderWindow.controls.assertVisibility);
 
   tell({
     phase: "recording",
@@ -263,64 +359,110 @@ it("shows Assert visibility on while Playwright picks, and leaves it when presse
   } as Partial<RecorderState>);
 
   await expect.poll(() => recorderWindow.controls.picking()).toBe(true);
+  await expect
+    .poll(() => fill(recorderWindow.controls.assertVisibility))
+    .not.toBe(off);
   await recorderWindow.controls.assertVisibility.click();
   expect(sent).toEqual([{ type: "leaveAssertVisibility" }]);
 });
 
-it("offers Continue, Discard and Restore while paused, and dims a discarded entry with what it changed hidden", async () => {
+it("offers Continue recording while paused, and a quiet Discard on an entry only while it is hovered or has focus", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
-  const discarded = {
-    ...cart,
+  tell({
+    phase: "paused",
+    visits: [inventory],
+    commands: ["continue", "clear", "finish", "discard", "restore"],
+  });
+  await expect
+    .poll(() => recorderWindow.controls.offered())
+    .toEqual(["Continue recording", "Clear", "Finish"]);
+  const [click, change] = await (await visits())[0]!.entries();
+  const shown = (entry: typeof click) =>
+    entry!.discardButton.evaluate(async (button) => {
+      await Promise.all(button.getAnimations().map(({ finished }) => finished));
+      return getComputedStyle(button).opacity;
+    });
+
+  await expect.poll(() => shown(click)).toBe("0");
+  await personHovers(entryId("interaction_2"));
+  await expect.poll(() => shown(click)).toBe("1");
+  // A keyboard reaches it too: it is in the Tab order, and shows on focus.
+  expect(await change!.discardButton.getAttribute("tabindex")).toBeNull();
+  await change!.discardButton.focus();
+  await expect.poll(() => shown(change)).toBe("1");
+
+  await click!.discardButton.click();
+  await recorderWindow.controls.continueButton.click();
+  expect(sent).toEqual([
+    { type: "discard", entry: entryId("interaction_2") },
+    { type: "continue" },
+  ]);
+});
+
+it("strikes a discarded entry through, hides what it changed, and restores it from its undo icon", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
+  const discarded: RecordedVisit = {
+    ...inventory,
     entries: [
-      { ...cart.entries[0]!, discarded: true as const },
-      cart.entries[1]!,
+      { ...inventory.entries[0]!, discarded: true },
+      ...inventory.entries.slice(1),
     ],
   };
 
   tell({
     phase: "paused",
     visits: [discarded],
-    commands: ["continue", "clear", "finish", "discard", "restore"],
+    commands: ["continue", "discard", "restore"],
   });
 
-  const visit = recorderWindow.timeline.visit(0);
-  await expect.poll(() => visit.entry(0).isDimmed()).toBe(true);
-  expect(await visit.entry(0).discardedMark.isVisible()).toBe(true);
-  expect(await visit.entry(0).changeRows()).toEqual([]);
-  // No empty list of what changed is shown in its place.
-  expect(await visit.entry(0).changes.count()).toBe(0);
-  expect(await visit.entry(1).isDimmed()).toBe(false);
-  expect(await visit.entry(1).discardedMark.count()).toBe(0);
-  expect(await recorderWindow.controls.offered()).toEqual([
-    "Continue",
-    "Clear",
-    "Finish",
-  ]);
-  await visit.entry(0).restore();
-  await visit.entry(1).discard();
-  await recorderWindow.controls.press("Continue");
-  expect(sent).toEqual([
-    { type: "restore", entry: entryId("interaction_1") },
-    { type: "discard", entry: entryId("change_1") },
-    { type: "continue" },
-  ]);
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click, change] = await (await visits())[0]!.entries();
+  await expect.poll(() => click!.looksDiscarded()).toBe(true);
+  expect(await click!.whatChangedList.count()).toBe(0);
+  expect(await click!.discardButton.count()).toBe(0);
+  expect(await change!.looksDiscarded()).toBe(false);
+  expect(await change!.restoreButton.count()).toBe(0);
+  await click!.restoreButton.click();
+  expect(sent).toEqual([{ type: "restore", entry: entryId("interaction_2") }]);
+});
+
+it("offers neither Discard nor Restore while recording", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+
+  tell({ phase: "recording", visits: [inventory], commands: ["stop"] });
+
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+  expect(await click!.discardButton.count()).toBe(0);
+  expect(await click!.restoreButton.count()).toBe(0);
 });
 
 it("keeps showing the newest state when an older one comes late", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);
   tell({ phase: "recording", commands: ["stop"] }, 5);
-  await expect
-    .poll(() => recorderWindow.controls.status.textContent())
-    .toBe("Recording");
+  await expect.poll(() => recorderWindow.controls.offered()).toEqual(["Stop"]);
 
   tell({ phase: "notRecording", commands: ["record"] }, 3);
   // Time for the window to show it, were it to.
   await new Promise((resolve) => setTimeout(resolve, 100));
 
-  expect(await recorderWindow.controls.status.textContent()).toBe("Recording");
   expect(await recorderWindow.controls.offered()).toEqual(["Stop"]);
+});
+
+it("says that it wraps up, and offers nothing meanwhile", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+
+  tell({ phase: "wrappingUp", then: "pause" } as Partial<RecorderState>);
+
+  await expect
+    .poll(() => recorderWindow.controls.status.textContent())
+    .toBe("Wrapping up, then pausing");
+  expect(await recorderWindow.controls.offered()).toEqual([]);
 });
 
 it("says where an ended recorder saved its package, and offers nothing more", async () => {
@@ -351,51 +493,64 @@ it("goes on after a command the recorder could not be asked", async () => {
     .poll(() => recorderWindow.controls.offered())
     .toEqual(["Record"]);
 
-  await recorderWindow.controls.press("Record");
+  await recorderWindow.controls.recordButton.click();
   tell({ phase: "recording", commands: ["stop"] });
 
-  await expect
-    .poll(() => recorderWindow.controls.status.textContent())
-    .toBe("Recording");
+  await expect.poll(() => recorderWindow.controls.offered()).toEqual(["Stop"]);
   expect(sent).toEqual([{ type: "record" }]);
 });
 
-it("shows itself in the dark scheme when the person's system asks for it", async () => {
-  vi.spyOn(globalThis, "matchMedia").mockImplementation(
-    (query) =>
-      ({
-        matches: query === "(prefers-color-scheme: dark)",
-      }) as MediaQueryList
-  );
-  const { channel } = scriptedChannel();
-
+it("follows the system's scheme live, as long as no theme is chosen", async () => {
+  const system = scheme(false);
+  const { channel, tell } = scriptedChannel();
   mount(channel);
+  tell({ phase: "notRecording", commands: ["record"] });
+  await expect.poll(() => recorderWindow.controls.theme()).toBe("System");
+  expect(isDark()).toBe(false);
 
-  expect(document.documentElement.classList.contains("dark")).toBe(true);
+  system.set(true);
+  await expect.poll(isDark).toBe(true);
+  system.set(false);
+  await expect.poll(isDark).toBe(false);
 });
 
-it("shows itself in the light scheme otherwise", async () => {
-  vi.spyOn(globalThis, "matchMedia").mockImplementation(
-    (query) =>
-      ({
-        // It answers any other question yes: only the scheme is asked.
-        matches: query !== "(prefers-color-scheme: dark)",
-      }) as MediaQueryList
-  );
-  const { channel } = scriptedChannel();
-
+it("takes the theme chosen with its switch, and keeps it when it opens again", async () => {
+  const system = scheme(false);
+  const { channel, tell } = scriptedChannel();
   mount(channel);
+  tell({ phase: "notRecording", commands: ["record"] });
 
-  expect(document.documentElement.classList.contains("dark")).toBe(false);
+  await recorderWindow.controls.chooseTheme("Dark");
+  expect(isDark()).toBe(true);
+  system.set(false);
+  expect(isDark()).toBe(true);
+  await recorderWindow.controls.chooseTheme("Light");
+  system.set(true);
+  expect(isDark()).toBe(false);
+
+  for (const unmount of unmounts.splice(0)) unmount();
+  mount(scriptedChannel().channel);
+  await expect.poll(() => recorderWindow.controls.theme()).toBe("Light");
+  expect(isDark()).toBe(false);
 });
 
-it("opens its channel on the server that serves it, at /channel", () => {
-  expect(channelUrl({ host: "127.0.0.1:53124" })).toBe(
-    "ws://127.0.0.1:53124/channel"
-  );
+it("names the page the recording is on now in its title", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "notRecording", commands: ["record"] });
+  await expect.poll(() => document.title).toBe("Ayme Recorder");
+
+  tell({ phase: "recording", visits: [login], commands: ["stop"] });
+  await expect
+    .poll(() => document.title)
+    .toBe("Ayme Recorder - http://shop.test/");
+  tell({ phase: "recording", visits: [login, inventory], commands: ["stop"] });
+  await expect
+    .poll(() => document.title)
+    .toBe("Ayme Recorder - http://shop.test/inventory");
 });
 
-it("leaves nothing of itself in the document once it is taken out", async () => {
+it("leaves nothing of its stylesheet in the document once it is taken out", async () => {
   const before = document.head.innerHTML;
   const root = document.createElement("div");
   document.body.append(root);
@@ -410,5 +565,11 @@ it("leaves nothing of itself in the document once it is taken out", async () => 
   root.remove();
 
   expect(document.head.innerHTML).toBe(before);
-  expect(await recorderWindow.controls.status.count()).toBe(0);
+  expect(await recorderWindow.controls.recordButton.count()).toBe(0);
+});
+
+it("opens its channel on the server that serves it, at /channel", () => {
+  expect(channelUrl({ host: "127.0.0.1:53124" })).toBe(
+    "ws://127.0.0.1:53124/channel"
+  );
 });

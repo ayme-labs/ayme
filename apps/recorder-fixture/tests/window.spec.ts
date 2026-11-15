@@ -5,7 +5,7 @@ import {
   startScriptedRecorder,
   type ScriptedBrowser,
 } from "@ayme-dev/recorder/testing";
-import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
+import { RecorderWindow, type Visit } from "@ayme-dev/recorder-window/testing";
 
 import { expect, test as base } from "./fixtures";
 
@@ -58,10 +58,22 @@ const added = [
   `    - listitem [ref=e5]: Bread`,
 ].join("\n");
 
-/** Presses Record, and waits until the window says the recorder records. */
+/** Presses Record, and waits until the window offers to stop. */
 async function record(window: RecorderWindow) {
-  await window.controls.press("Record");
-  await expect(window.controls.status).toHaveText("Recording");
+  await window.controls.recordButton.click();
+  await expect(window.controls.stopButton).toBeEnabled();
+}
+
+/** The window's first Visit, once it shows one. */
+async function firstVisit(window: RecorderWindow) {
+  await expect(window.timeline.visitSections).not.toHaveCount(0);
+  return (await window.timeline.visits())[0]!;
+}
+
+/** The entries of `visit`, once it shows `count` of them. */
+async function entriesOf(visit: Visit, count: number) {
+  await expect(visit.entryCards).toHaveCount(count);
+  return visit.entries();
 }
 
 /** A person clicks "Add item", and the page shows `after` once it is
@@ -87,27 +99,25 @@ test.describe("the recorder window", () => {
   test("opens idle with no Visit; pressing Record starts a Visit for the current page", async ({
     recording: { window },
   }) => {
-    await expect(window.controls.status).toHaveText("Not recording");
-    await expect(window.timeline.visits).toHaveCount(0);
+    await expect(window.controls.status).toHaveText("");
+    await expect(window.timeline.visitSections).toHaveCount(0);
     await expect(window.timeline.empty).toBeVisible();
     expect(await window.controls.offered()).toEqual(["Record"]);
 
-    await window.controls.press("Record");
+    await window.controls.recordButton.click();
 
-    await expect(window.controls.status).toHaveText("Recording");
-    await expect(window.timeline.visits).toHaveCount(1);
-    await expect(window.timeline.visit(0).heading).toHaveText("Page 1");
-    await expect(window.timeline.visit(0).start).toHaveText(
-      "Navigated to http://shop.test/"
-    );
+    const visit = await firstVisit(window);
+    await expect(visit.heading).toHaveText("Page 1");
+    await expect(visit.start).toHaveText("Navigated to http://shop.test/");
     expect(await window.controls.offered()).toEqual([
       "Stop",
       "Clear",
       "Finish",
     ]);
+    await expect(window.controls.status).toHaveText("");
   });
 
-  test("shows each entry live, with only the roots of what changed", async ({
+  test("shows each entry live, its target by role and name, with only the roots of what changed", async ({
     recording: { browser, window },
   }) => {
     browser.showPage(idle);
@@ -115,13 +125,17 @@ test.describe("the recorder window", () => {
 
     await clickAddItem(browser, added);
 
-    const entry = window.timeline.visit(0).entry(0);
-    await expect(entry.title).toHaveText("Click");
-    await expect(entry.target).toHaveText('button "Add item"');
+    const [entry] = await entriesOf(await firstVisit(window), 1);
+    await expect(entry!.title).toHaveText("Click");
+    await expect(entry!.target).toHaveText("button “Add item”");
+    await expect(entry!.target).toHaveAttribute(
+      "title",
+      'internal:role=button[name="Add item"i]'
+    );
     // The list appeared: its items are inside it, and not rows of their own.
     await expect
-      .poll(() => entry.changeRows())
-      .toEqual([{ element: 'list "Cart"', effect: "appeared" }]);
+      .poll(() => entry!.whatChanged())
+      .toEqual([{ element: "list “Cart”", effect: "appeared" }]);
   });
 
   test("shows a change that belongs to no Interaction with the next Interaction, and the last one at Finish", async ({
@@ -130,30 +144,28 @@ test.describe("the recorder window", () => {
     browser.showPage(idle);
     await record(window);
     await clickAddItem(browser, added);
-    const visit = window.timeline.visit(0);
-    await expect(visit.entries).toHaveCount(1);
+    const visit = await firstVisit(window);
+    await entriesOf(visit, 1);
 
     // The page drops Bread on its own: nothing is shown until something
     // else is recorded.
     browser.showPage(added.replace(`\n    - listitem [ref=e5]: Bread`, ""));
     await clickAddItem(browser, added.replace("Milk", "Milk, 2"), "input_2");
-    await expect(visit.entries).toHaveCount(3);
-    await expect(visit.entry(1).title).toHaveText(
-      "Change without an Interaction"
-    );
-    await expect(visit.entry(1).target).toHaveCount(0);
-    expect(await visit.entry(1).changeRows()).toEqual([
-      { element: 'listitem "Bread"', effect: "was removed" },
+    const [, change, click] = await entriesOf(visit, 3);
+    await expect(change!.title).toHaveText("Element removed");
+    await expect(change!.target).toHaveCount(0);
+    expect(await change!.whatChanged()).toEqual([
+      { element: "listitem", effect: "was removed" },
     ]);
-    await expect(visit.entry(2).title).toHaveText("Click");
+    await expect(click!.title).toHaveText("Click");
 
     // And again after the last Interaction: it shows at Finish.
     browser.showPage(idle);
-    await window.controls.press("Finish");
+    await window.controls.finishButton.click();
     await finished();
-    await expect(visit.entries).toHaveCount(4);
-    expect(await visit.entry(3).changeRows()).toEqual([
-      { element: 'list "Cart"', effect: "was removed" },
+    const [, , , last] = await entriesOf(visit, 4);
+    expect(await last!.whatChanged()).toEqual([
+      { element: "list “Cart”", effect: "was removed" },
     ]);
     await expect(window.controls.status).toHaveText(/^Saved /);
     expect(await window.controls.offered()).toEqual([]);
@@ -167,31 +179,42 @@ test.describe("the recorder window", () => {
     await record(window);
     browser.holdConfirmations();
 
-    await window.controls.press("Stop");
+    await window.controls.stopButton.click();
     await expect(window.controls.status).toHaveText(
       "Wrapping up, then pausing"
     );
     expect(await window.controls.offered()).toEqual([]);
 
     browser.releaseConfirmations();
-    await expect(window.controls.status).toHaveText("Paused");
+    await expect(window.controls.continueButton).toBeEnabled();
+    await expect(window.controls.status).toHaveText("");
     expect(await window.controls.offered()).toEqual([
-      "Continue",
+      "Continue recording",
       "Clear",
       "Finish",
     ]);
 
-    await window.controls.press("Continue");
-    await expect(window.controls.status).toHaveText("Recording");
+    await window.controls.continueButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
     browser.holdConfirmations();
-    await window.controls.press("Clear");
+    await window.controls.clearButton.click();
     await expect(window.controls.status).toHaveText(
       "Wrapping up, then clearing"
     );
     browser.releaseConfirmations();
-    await expect(window.controls.status).toHaveText("Not recording");
-    await expect(window.timeline.visits).toHaveCount(0);
+    await expect(window.controls.recordButton).toBeEnabled();
+    await expect(window.timeline.visitSections).toHaveCount(0);
     expect(await window.controls.offered()).toEqual(["Record"]);
+  });
+
+  test("names the recorded page in its title", async ({
+    recording: { window },
+  }) => {
+    await expect(window.page).toHaveTitle("Ayme Recorder");
+
+    await record(window);
+
+    await expect(window.page).toHaveTitle("Ayme Recorder - http://shop.test/");
   });
 
   test("recovers the current recording when it is reloaded, and can still finish it", async ({
@@ -200,13 +223,14 @@ test.describe("the recorder window", () => {
     browser.showPage(idle);
     await record(window);
     await clickAddItem(browser, added);
-    await expect(window.timeline.visit(0).entries).toHaveCount(1);
+    await entriesOf(await firstVisit(window), 1);
 
     await window.reload();
 
-    await expect(window.controls.status).toHaveText("Recording");
-    await expect(window.timeline.visit(0).entry(0).title).toHaveText("Click");
-    await window.controls.press("Finish");
+    await expect(window.controls.stopButton).toBeEnabled();
+    const [entry] = await entriesOf(await firstVisit(window), 1);
+    await expect(entry!.title).toHaveText("Click");
+    await window.controls.finishButton.click();
     await expect(finished()).resolves.toMatchObject({ kind: "saved" });
     await expect(window.controls.status).toHaveText(/^Saved /);
   });

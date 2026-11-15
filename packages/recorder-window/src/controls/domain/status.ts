@@ -2,19 +2,19 @@ import type { RecorderState } from "@ayme-dev/recorder/contract";
 
 const THEN = { pause: "pausing", clear: "clearing", save: "saving" } as const;
 
-/** What the recorder is doing, in words; "Connecting…" before the window
- * has heard its state. */
-export function statusText(state: RecorderState | null): string {
+/** What the recorder is doing, in words, when the controls do not show it
+ * already: "Connecting…" before the window has heard its state, the wrap-up,
+ * the save and the end. None while it records, is paused or has not started:
+ * the main control says that. */
+export function statusText(state: RecorderState | null): string | null {
   if (!state) return "Connecting…";
   switch (state.phase) {
     case "notRecording":
-      return "Not recording";
     case "recording":
-      return "Recording";
+    case "paused":
+      return null;
     case "wrappingUp":
       return `Wrapping up, then ${THEN[state.then]}`;
-    case "paused":
-      return "Paused";
     case "saving":
       return "Saving the recording";
     case "ended":
