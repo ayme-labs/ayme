@@ -293,9 +293,11 @@ async create() {
   return projectPage;
 }
 
-// ✅ Uses only the dialog's own button, and names where the user continues.
+// ✅ Uses only the dialog's own button, waits for the dialog to close, and
+// names where the user continues.
 async create() {
   await this.createButton.click();
+  await this.root.waitFor({ state: "hidden" });
   return new ProjectPage(this.root.page());
 }
 ```
@@ -378,28 +380,28 @@ await expect(rejected.nameError).toBeVisible();
 ## State facts in descriptions and reasons
 
 When a page object is marked for Ayme, an agent reads its descriptions and,
-for an action that cannot run now, the reason. Each states a fact about the
+for an action that cannot run now, the reason. Each should carry a fact about the
 page object: what the action causes, who may do it, why it cannot run. The
 agent decides its next step itself.
 
+A reason states only what its predicate checked. A hidden Save button alone
+does not say why it is hidden, so the predicate checks the cause, the
+editor's Archived badge, and the reason states it.
+
 ```ts
 // ❌ Each tells the agent what to do.
-const canSave = async (self: ProjectEditor) =>
-  (await self.saveButton.isVisible()) ||
-  "This project is archived. Call restore first, then save.";
-
 @ayme.action({
-  available: canSave,
+  available: async (self: ProjectEditor) =>
+    (await self.archivedBadge.isHidden()) ||
+    "This project is archived. Call restore first, then save.",
   description: "Saves the project. Leave out the fields that stay as they are.",
 })
 
 // ✅ Each states a fact.
-const canSave = async (self: ProjectEditor) =>
-  (await self.saveButton.isVisible()) ||
-  "This project is archived, and an archived project has no Save.";
-
 @ayme.action({
-  available: canSave,
+  available: async (self: ProjectEditor) =>
+    (await self.archivedBadge.isHidden()) ||
+    "This project is archived, and an archived project cannot be saved.",
   description: "Saves the project and keeps the editor open.",
 })
 ```

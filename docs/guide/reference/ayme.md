@@ -233,14 +233,15 @@ It runs once for each present instance. It is skipped for an instance whose root
 Give `remove` on `ProjectRow` from [Page Object root](#page-object-root) a predicate. A row shows its Remove button only to an admin of that project:
 
 ```ts
-const canRemove = async (self: ProjectRow) =>
-  (await self.removeButton.isVisible()) || "Only admins can remove projects";
-
 export class ProjectRow extends AppComponent {
   @ayme.child
   readonly removeButton = this.root.getByRole("button", { name: "Remove" });
 
-  @ayme.action({ available: canRemove })
+  @ayme.action({
+    available: async (self: ProjectRow) =>
+      (await self.removeButton.isVisible()) ||
+      "Only admins can remove projects",
+  })
   async remove() {
     await this.removeButton.click();
     return this;
@@ -248,7 +249,24 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-Declaring the predicate as its own function types `self`. One predicate can be given to several actions.
+An inline predicate names the type of `self`, as `(self: ProjectRow)` does here; without it, `self` is `unknown`. When several actions share one predicate, declare it as its own function and pass it to each:
+
+```ts
+const isEditable = async (self: ProjectEditor) =>
+  (await self.archivedBadge.isHidden()) || "This project is archived";
+
+export class ProjectEditor extends AppComponent {
+  @ayme.action({ available: isEditable })
+  async save() {
+    // …
+  }
+
+  @ayme.action({ available: isEditable })
+  async rename(name: string) {
+    // …
+  }
+}
+```
 
 The user is an admin of Launch plan but not of Q4 survey, so only Launch plan's row has a Remove button:
 

@@ -14,12 +14,20 @@ the command `ayme mcp` from this package, pinned to the version you install:
 npx -y @ayme-dev/mcp@<version> mcp
 ```
 
-It adds your Page Objects to the browser automation your agent already uses.
-Add `--browser-tools` after `mcp` when Ayme is the agent's only browser
-automation: the server then also lists Ayme's own Browser Tools, `snapshot`,
-`goal` and the app's Custom Tools. `--webmcp` makes the page the server serves
-Page Objects to also publish them through WebMCP. `ayme mcp --help` lists the
-options.
+By default, the server adds your Page Objects to the browser automation your
+agent already uses, such as Playwright MCP: it lists their Page Object Tools
+and `page_objects`, and your agent keeps driving the browser with its own
+tools. Two options change that:
+
+- `--browser-tools`: for an agent with no other browser automation. The server
+  also lists Ayme's own Browser Tools, `snapshot`, `goal` and the app's Custom
+  Tools, so the agent can drive the browser with Ayme alone.
+- `--webmcp`: for a page that doesn't ship Ayme and loads the server's
+  `.ayme/init-script.js` instead. That page also publishes the Page Object
+  Tools through WebMCP, for browser automation that calls a page's WebMCP
+  tools.
+
+`ayme mcp --help` lists every option.
 
 Install the package beside `@ayme-dev/ayme`, which declares it as an optional
 peer dependency, and turn the page side on with `agentConnection: true` where

@@ -72,8 +72,5 @@ On a page the POM is present on, check the tools and the page state:
   unavailable tool shows dimmed with its reason.
 - `await ayme.tools.run("page_objects", {})` returns the Page Object tree an
   agent reads, with each Page Object's id.
-- `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
-  State, marked with Page Object class names and ids, that an agent reads from
-  `snapshot` when `ayme mcp` runs with `--browser-tools`.
 
 Confirm that the intended POM, its declared children, and its tools appear.

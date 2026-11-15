@@ -1,21 +1,21 @@
 # Using Ayme with browser automation tools
 
-Ayme adds the Page Object Tools of the screen the browser is on, and
-`page_objects`, to the browser automation you already drive. Keep driving the
-browser with it, and call a Page Object Tool whenever one does the step.
-`page_objects` shows the Page Objects on the page as a tree, with the id
-(`po<n>`) a rooted Page Object Tool takes; [Page tools](page-tools.md) has how
-to read it and a Page Object Tool's answer.
+You keep driving the browser with the automation you already use. Ayme adds two
+things to it for the screen the browser is on: a Page Object Tool for each
+action of the Page Objects there, and `page_objects`, which lists those Page
+Objects as a tree with the id (`po<n>`) each rooted Page Object Tool takes.
+[Page tools](page-tools.md) shows how to read the tree and a Page Object Tool's
+answer.
 
-Each start command below follows `npx -y @ayme-dev/mcp@<version>`, registered
-in your agent as [Browser setup](browser-setup.md) describes. For a page that
-doesn't ship Ayme, it serves the project's Page Objects through the init
-script your browser automation loads, as
-[A page that doesn't ship Ayme](browser-setup.md#a-page-that-doesnt-ship-ayme)
-describes.
+Before you take a full snapshot, check your tool list. When a Page Object Tool
+does the next step, call it instead; take the snapshot only when none does.
 
-In every case, take a full snapshot only when the next step has no Page Object
-Tool.
+Each section below names a start command. It goes after
+`npx -y @ayme-dev/mcp@<version>`, registered in your agent as
+[Browser setup](browser-setup.md) describes. On a page that doesn't ship Ayme,
+the server serves the project's Page Objects through the init script your
+browser automation loads; see
+[A page that doesn't ship Ayme](browser-setup.md#a-page-that-doesnt-ship-ayme).
 
 ## Playwright CLI
 
@@ -70,5 +70,5 @@ Two errors follow a navigation, and both mean the page's tools were replaced:
 - agent-browser answers that the page context changed before the invocation
   completed (through WebMCP).
 
-Read again, as your section says. When the step is still to do, call its Page
-Object Tool again, by the id the fresh `page_objects` shows.
+Read the page again as your tool's section says. If the step is still to do,
+call its Page Object Tool again, with the id the fresh `page_objects` shows.

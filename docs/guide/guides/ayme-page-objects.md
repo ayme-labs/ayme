@@ -130,17 +130,18 @@ An agent names a row by the id on its marked line. It calls `ProjectRow.remove({
 RuntimeStateError: ProjectRow "po2" is unavailable: Only admins can remove projects.
 ```
 
-The reason comes from `available`. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not. The string states why the action cannot run, and nothing about what to do next:
+The reason comes from `available`. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not. The string states why the action cannot run, and nothing about what to do next. It states only what the predicate checked: in this app a row shows Remove only to an admin of its project, so a row without the button is one the user is no admin of:
 
 ```ts
-const canRemove = async (self: ProjectRow) =>
-  (await self.removeButton.isVisible()) || "Only admins can remove projects";
-
 export class ProjectRow extends AppComponent {
   @ayme.child
   readonly removeButton = this.root.getByRole("button", { name: "Remove" });
 
-  @ayme.action({ available: canRemove })
+  @ayme.action({
+    available: async (self: ProjectRow) =>
+      (await self.removeButton.isVisible()) ||
+      "Only admins can remove projects",
+  })
   async remove() {
     await this.removeButton.click();
     return this;
