@@ -85,9 +85,8 @@ function shadowRootFor(host: HTMLElement) {
   sheet.replaceSync(css);
   root.adoptedStyleSheets = [sheet];
   const container = document.createElement("div");
-  container.className = "fixed right-3 bottom-3 font-sans";
-  if (matchMedia("(prefers-color-scheme: dark)").matches)
-    container.classList.add("dark");
+  // At the top centre of the page, as the released toolbar.
+  container.className = "fixed top-3 left-1/2 -translate-x-1/2 font-sans";
   root.append(container);
   return { root, container };
 }

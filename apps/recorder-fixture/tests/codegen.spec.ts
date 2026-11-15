@@ -77,8 +77,8 @@ test.describe("codegen <url>", () => {
       ).toBe(true);
       // It is the recorder's window, live.
       await expect(
-        new RecorderWindow(pageAt(windowUrl!)).controls.status
-      ).toHaveText("Not recording");
+        new RecorderWindow(pageAt(windowUrl!)).controls.recordButton
+      ).toBeEnabled();
 
       run.interrupt();
       expect(await run.exit).toEqual({ code: 0, signal: null });
@@ -119,9 +119,9 @@ test.describe("codegen <url>", () => {
           .find((page) => page.url() === windowUrl);
       await expect.poll(windowAt).toBeDefined();
       const windowPage = windowAt()!;
-      await expect(new RecorderWindow(windowPage).controls.status).toHaveText(
-        "Not recording"
-      );
+      await expect(
+        new RecorderWindow(windowPage).controls.recordButton
+      ).toBeEnabled();
 
       await run.closePage(fixturePages.url());
 

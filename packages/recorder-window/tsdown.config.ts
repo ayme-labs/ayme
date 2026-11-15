@@ -1,7 +1,16 @@
+import { createRequire } from "node:module";
+
 import { defineConfig } from "tsdown";
 
 import { bundledPackages } from "./bundledPackages.config.ts";
 import { toolbarCss, windowCss } from "./windowCss.config.ts";
+
+/** The design system's favicon for a colour scheme: the window's page links
+ * one per scheme. */
+const favicon = (scheme: "light" | "dark") =>
+  createRequire(import.meta.url).resolve(
+    `@ayme-dev/design-system/logo/favicon-${scheme}.svg`
+  );
 
 // Omit build-machine source paths, not copyright or license comments.
 const inputOptions = { experimental: { attachDebugInfo: "none" as const } };
@@ -39,7 +48,11 @@ export default defineConfig([
     // so only those used stay.
     alias: { "lucide-react": "lucide-react/dist/esm/lucide-react.mjs" },
     deps: { alwaysBundle: [/.*/] },
-    copy: [{ from: "src/app/index.html", to: "dist/window" }],
+    copy: [
+      { from: "src/app/index.html", to: "dist/window" },
+      { from: favicon("light"), to: "dist/window" },
+      { from: favicon("dark"), to: "dist/window" },
+    ],
     minify: true,
   },
   {

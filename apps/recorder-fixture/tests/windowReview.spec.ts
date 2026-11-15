@@ -68,6 +68,14 @@ async function clickAddItem(browser: ScriptedBrowser, input: string) {
   });
 }
 
+/** The entries of the window's first Visit, once it shows `count`. */
+async function entriesOf(window: RecorderWindow, count: number) {
+  await expect(window.timeline.visitSections).not.toHaveCount(0);
+  const [visit] = await window.timeline.visits();
+  await expect(visit!.entryCards).toHaveCount(count);
+  return visit!.entries();
+}
+
 /** Two clicks recorded, and the recorder paused. */
 async function pausedWithTwoClicks({
   browser,
@@ -77,13 +85,14 @@ async function pausedWithTwoClicks({
   window: RecorderWindow;
 }) {
   browser.showPage(idle);
-  await window.controls.press("Record");
-  await expect(window.controls.status).toHaveText("Recording");
+  await window.controls.recordButton.click();
+  await expect(window.controls.stopButton).toBeEnabled();
   await clickAddItem(browser, "input_1");
   await clickAddItem(browser, "input_2");
-  await expect(window.timeline.visit(0).entries).toHaveCount(2);
-  await window.controls.press("Stop");
-  await expect(window.controls.status).toHaveText("Paused");
+  await entriesOf(window, 2);
+  await window.controls.stopButton.click();
+  await expect(window.controls.continueButton).toBeEnabled();
+  return entriesOf(window, 2);
 }
 
 test.describe("reviewing the recording in the recorder window", () => {
@@ -91,100 +100,95 @@ test.describe("reviewing the recording in the recorder window", () => {
     recording: { browser, window },
   }) => {
     browser.showPage(idle);
-    await window.controls.press("Record");
-    await expect(window.controls.status).toHaveText("Recording");
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
     await clickAddItem(browser, "input_1");
-    const entry = window.timeline.visit(0).entry(0);
-    await expect(entry.title).toHaveText("Click");
-    await expect(entry.discardButton).toHaveCount(0);
+    const [entry] = await entriesOf(window, 1);
+    await expect(entry!.title).toHaveText("Click");
+    await expect(entry!.discardButton).toHaveCount(0);
 
-    await window.controls.press("Stop");
-    await expect(window.controls.status).toHaveText("Paused");
-    await expect(entry.discardButton).toBeVisible();
-    await expect(entry.restoreButton).toHaveCount(0);
+    await window.controls.stopButton.click();
+    await expect(window.controls.continueButton).toBeEnabled();
+    await expect(entry!.discardButton).toHaveCount(1);
+    await expect(entry!.restoreButton).toHaveCount(0);
+    // It is quiet until the entry is hovered.
+    await expect(entry!.discardButton).toHaveCSS("opacity", "0");
+    await entry!.title.hover();
+    await expect(entry!.discardButton).toHaveCSS("opacity", "1");
 
-    await window.controls.press("Continue");
-    await expect(window.controls.status).toHaveText("Recording");
-    await expect(entry.discardButton).toHaveCount(0);
+    await window.controls.continueButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    await expect(entry!.discardButton).toHaveCount(0);
   });
 
-  test("dims a discarded entry in its place, hides its changes, and offers to put it back", async ({
+  test("strikes a discarded entry through in its place, hides its changes, and offers to put it back", async ({
     recording,
   }) => {
-    const { window } = recording;
-    await pausedWithTwoClicks(recording);
-    const visit = window.timeline.visit(0);
-    const entry = visit.entry(0);
-    await expect(entry.changes).toBeVisible();
-    expect(await entry.isDimmed()).toBe(false);
+    const [entry, other] = await pausedWithTwoClicks(recording);
+    await expect(entry!.whatChangedList).toBeVisible();
+    expect(await entry!.looksDiscarded()).toBe(false);
 
-    await entry.discard();
+    await entry!.discard();
 
-    await expect(visit.entries).toHaveCount(2);
-    await expect(entry.title).toHaveText("Click");
-    await expect(entry.discardedMark).toBeVisible();
-    expect(await entry.isDimmed()).toBe(true);
-    await expect(entry.changes).toHaveCount(0);
-    await expect(entry.discardButton).toHaveCount(0);
-    await expect(entry.restoreButton).toBeVisible();
+    await expect(entry!.title).toHaveText("Click");
+    await expect.poll(() => entry!.looksDiscarded()).toBe(true);
+    await expect(entry!.whatChangedList).toHaveCount(0);
+    await expect(entry!.discardButton).toHaveCount(0);
+    await expect(entry!.restoreButton).toBeVisible();
     // The other entry is untouched.
-    await expect(visit.entry(1).discardedMark).toHaveCount(0);
+    expect(await other!.looksDiscarded()).toBe(false);
 
-    await entry.restore();
+    await entry!.restoreButton.click();
 
-    await expect(entry.discardedMark).toHaveCount(0);
-    expect(await entry.isDimmed()).toBe(false);
-    await expect(entry.restoreButton).toHaveCount(0);
+    await expect(entry!.restoreButton).toHaveCount(0);
+    await expect.poll(() => entry!.looksDiscarded()).toBe(false);
     await expect
-      .poll(() => entry.changeRows())
-      .toEqual([{ element: 'list "Cart"', effect: "appeared" }]);
+      .poll(() => entry!.whatChanged())
+      .toEqual([{ element: "list “Cart”", effect: "appeared" }]);
   });
 
   test("keeps a decision through Continue and a reload of the window, and drops it on Clear", async ({
     recording,
   }) => {
     const { window } = recording;
-    await pausedWithTwoClicks(recording);
-    const visit = window.timeline.visit(0);
-    await visit.entry(1).discard();
-    await expect(visit.entry(1).discardedMark).toBeVisible();
+    const [first, second] = await pausedWithTwoClicks(recording);
+    await second!.discard();
 
     await window.reload();
-    await expect(visit.entry(1).discardedMark).toBeVisible();
-    await expect(visit.entry(0).discardedMark).toHaveCount(0);
+    await expect.poll(() => second!.looksDiscarded()).toBe(true);
+    expect(await first!.looksDiscarded()).toBe(false);
 
-    await window.controls.press("Continue");
-    await expect(window.controls.status).toHaveText("Recording");
-    await expect(visit.entry(1).discardedMark).toBeVisible();
-    await window.controls.press("Stop");
-    await expect(window.controls.status).toHaveText("Paused");
-    await expect(visit.entry(1).discardedMark).toBeVisible();
+    await window.controls.continueButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    expect(await second!.looksDiscarded()).toBe(true);
+    await window.controls.stopButton.click();
+    await expect(window.controls.continueButton).toBeEnabled();
+    expect(await second!.looksDiscarded()).toBe(true);
 
-    await window.controls.press("Clear");
-    await expect(window.controls.status).toHaveText("Not recording");
-    await expect(window.timeline.visits).toHaveCount(0);
-    await window.controls.press("Record");
-    await expect(window.controls.status).toHaveText("Recording");
-    await expect(window.timeline.visit(0).entries).toHaveCount(0);
+    await window.controls.clearButton.click();
+    await expect(window.controls.recordButton).toBeEnabled();
+    await expect(window.timeline.visitSections).toHaveCount(0);
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    await entriesOf(window, 0);
   });
 
   test("saves the decisions when Finish is pressed, and a recording in which everything was discarded still saves", async ({
     recording,
   }) => {
     const { window, finished } = recording;
-    await pausedWithTwoClicks(recording);
-    const visit = window.timeline.visit(0);
-    await visit.entry(0).discard();
-    await visit.entry(1).discard();
+    const [first, second] = await pausedWithTwoClicks(recording);
+    await first!.discard();
+    await second!.discard();
 
-    await window.controls.press("Finish");
+    await window.controls.finishButton.click();
     const outcome = await finished();
 
     expect(outcome.kind).toBe("saved");
     await expect(window.controls.status).toHaveText(/^Saved /);
     // Review is over: the entries stay as they were, and nothing is offered.
-    await expect(visit.entry(0).discardedMark).toBeVisible();
-    await expect(visit.entry(0).restoreButton).toHaveCount(0);
+    expect(await first!.looksDiscarded()).toBe(true);
+    await expect(first!.restoreButton).toHaveCount(0);
     if (outcome.kind !== "saved") return;
     const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
     expect(text.match(/discarded: true/g)).toHaveLength(2);

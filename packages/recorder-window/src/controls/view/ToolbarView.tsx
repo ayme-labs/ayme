@@ -2,17 +2,20 @@ import type {
   RecorderCommand,
   RecorderState,
 } from "@ayme-dev/recorder/contract";
-import { Button } from "@ayme-dev/design-system/components/button";
-import { Eye, ListX } from "lucide-react";
+import { Eye, LoaderCircle } from "lucide-react";
 
 import { controlsOf, type Control, type Controls } from "../domain/controls";
-import { PRIMARY_ICON_CLASSES, PRIMARY_ICONS } from "./primaryIcon";
+import { PRIMARY_ICONS } from "./primaryIcon";
 
 type OnCommand = (command: RecorderCommand) => void;
 
-/** A toolbar button's name, state and press. Its buttons take no focus:
- * the page keeps its own. */
+/** A round control of the pill: lit while what it stands for is on. Its
+ * buttons take no focus: the page keeps its own. */
+const round =
+  "flex size-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50 data-[on=true]:bg-blue-100 data-[on=true]:text-blue-600 dark:data-[on=true]:bg-blue-500/25 dark:data-[on=true]:text-blue-300 [&_svg]:size-3.5";
+
 const props = (control: Control, onCommand: OnCommand) => ({
+  type: "button" as const,
   "aria-label": control.label,
   title: control.label,
   tabIndex: -1,
@@ -21,9 +24,9 @@ const props = (control: Control, onCommand: OnCommand) => ({
 });
 
 /**
- * The toolbar in a recorded page: the window's controls, small. Which are
- * shown and which can be pressed now is read from the state, as in the
- * window.
+ * The toolbar in a recorded page: a small pill with the one control that
+ * records, stops or continues, and Assert visibility. While the recorder
+ * wraps up or saves, the first control says so and can not be pressed.
  */
 export function ToolbarView({
   state,
@@ -37,36 +40,52 @@ export function ToolbarView({
     <div
       role="toolbar"
       aria-label="Recorder toolbar"
-      className="pointer-events-auto flex items-center gap-1 rounded-lg border bg-background/95 p-1 text-foreground shadow-lg backdrop-blur"
+      className="pointer-events-auto flex items-center gap-1 rounded-full border bg-background/95 p-1 shadow-lg backdrop-blur"
     >
-      <PrimaryButton control={controls.primary} onCommand={onCommand} />
-      <p
-        role="status"
-        className="max-w-56 truncate px-2 text-xs text-muted-foreground"
-      >
-        {controls.status}
-      </p>
+      <Busy controls={controls} />
+      <PrimaryButton controls={controls} onCommand={onCommand} />
       <AssertButton control={controls.assert} onCommand={onCommand} />
-      <ClearButton control={controls.clear} onCommand={onCommand} />
-      <FinishButton control={controls.finish} onCommand={onCommand} />
     </div>
   );
 }
 
+/** What the recorder does while it wraps up or saves, in place of the
+ * first control. */
+function Busy({ controls }: { controls: Controls }) {
+  if (!controls.busy) return null;
+  return (
+    <button
+      type="button"
+      data-busy
+      className={round}
+      aria-label={controls.status ?? undefined}
+      title={controls.status ?? undefined}
+      tabIndex={-1}
+      disabled
+    >
+      <LoaderCircle className="animate-spin" />
+    </button>
+  );
+}
+
 function PrimaryButton({
-  control,
+  controls,
   onCommand,
 }: {
-  control: Controls["primary"];
+  controls: Controls;
   onCommand: OnCommand;
 }) {
-  if (!control) return null;
+  const control = controls.primary;
+  if (!control || controls.busy) return null;
   const Icon = PRIMARY_ICONS[control.command.type];
   return (
-    <Button variant="ghost" size="sm" {...props(control, onCommand)}>
-      <Icon className={PRIMARY_ICON_CLASSES[control.command.type]} />
-      {control.label}
-    </Button>
+    <button
+      className={round}
+      data-on={control.command.type === "stop"}
+      {...props(control, onCommand)}
+    >
+      <Icon className="fill-current" />
+    </button>
   );
 }
 
@@ -79,48 +98,13 @@ function AssertButton({
 }) {
   if (!control) return null;
   return (
-    <Button
-      variant={
-        control.pressed
-          ? // Stryker disable next-line StringLiteral: the button's variants fall back to "default" for an empty name
-            "default"
-          : "ghost"
-      }
-      size="icon"
+    <button
+      className={round}
+      data-on={control.pressed}
       aria-pressed={control.pressed}
       {...props(control, onCommand)}
     >
       <Eye />
-    </Button>
-  );
-}
-
-function ClearButton({
-  control,
-  onCommand,
-}: {
-  control: Controls["clear"];
-  onCommand: OnCommand;
-}) {
-  if (!control) return null;
-  return (
-    <Button variant="ghost" size="icon" {...props(control, onCommand)}>
-      <ListX />
-    </Button>
-  );
-}
-
-function FinishButton({
-  control,
-  onCommand,
-}: {
-  control: Controls["finish"];
-  onCommand: OnCommand;
-}) {
-  if (!control) return null;
-  return (
-    <Button size="sm" {...props(control, onCommand)}>
-      {control.label}
-    </Button>
+    </button>
   );
 }

@@ -18,6 +18,7 @@ describe("the controls", () => {
   it("show only the status before the recorder's state is known", () => {
     expect(controlsOf(null)).toEqual({
       status: "Connecting…",
+      busy: false,
       primary: null,
       assert: null,
       clear: null,
@@ -27,7 +28,8 @@ describe("the controls", () => {
 
   it("offer Record when not recording, and nothing else that cannot apply", () => {
     expect(controlsOf(state({ phase: "notRecording" }, ["record"]))).toEqual({
-      status: "Not recording",
+      status: null,
+      busy: false,
       primary: {
         command: { type: "record" },
         label: "Record",
@@ -55,7 +57,8 @@ describe("the controls", () => {
         ])
       )
     ).toEqual({
-      status: "Recording",
+      status: null,
+      busy: false,
       primary: { command: { type: "stop" }, label: "Stop", enabled: true },
       assert: {
         command: { type: "assertVisibility" },
@@ -86,13 +89,13 @@ describe("the controls", () => {
     });
   });
 
-  it("offer Continue when paused", () => {
+  it("offer Continue recording when paused", () => {
     expect(
       controlsOf(state({ phase: "paused" }, ["finish", "continue", "clear"]))
         .primary
     ).toEqual({
       command: { type: "continue" },
-      label: "Continue",
+      label: "Continue recording",
       enabled: true,
     });
   });
@@ -114,5 +117,19 @@ describe("the controls", () => {
       ended.clear?.enabled,
       ended.finish?.enabled,
     ]).toEqual([false, false, false]);
+  });
+
+  it("are busy, and say so, while the recorder wraps up or saves", () => {
+    for (const phase of [
+      { phase: "wrappingUp", then: "pause" },
+      { phase: "saving" },
+    ] as const)
+      expect(controlsOf(state(phase, []))).toMatchObject({
+        busy: true,
+        status: expect.stringMatching(/^(Wrapping up|Saving)/),
+      });
+    expect(controlsOf(state({ phase: "paused" }, ["continue"])).busy).toBe(
+      false
+    );
   });
 });

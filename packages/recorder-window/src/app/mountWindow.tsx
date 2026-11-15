@@ -10,16 +10,14 @@ export const channelUrl = (location: Pick<Location, "host">) =>
   `ws://${location.host}/channel`;
 
 /**
- * Mounts the window into `root` with its stylesheet, in the person's light
- * or dark scheme, showing what `channel` tells. Returns what takes it out
- * again.
+ * Mounts the window into `root` with its stylesheet, showing what `channel`
+ * tells. The window keeps its theme and its title itself. Returns what takes
+ * it out again.
  */
 export function mountWindow(root: HTMLElement, channel: RecorderChannel) {
   const style = document.createElement("style");
   style.textContent = css;
   document.head.append(style);
-  if (matchMedia("(prefers-color-scheme: dark)").matches)
-    document.documentElement.classList.add("dark");
   const react = createRoot(root);
   react.render(<RecorderWindow channel={channel} />);
   return () => {

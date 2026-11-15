@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// The window's build is what the engine serves: index.html and one script.
+// The window's build is what the engine serves: index.html, one script and
+// its favicons.
 // It knows the engine only through the contract, which is types: nothing of
 // the engine, and nothing of Node, may be in it.
 
@@ -24,6 +26,26 @@ it("loads the window's one script from its page", () => {
   );
   // The check reads the build: the window's own words are in it.
   expect(script).toContain("Recorder controls");
+});
+
+it("carries the design system's favicons, one per colour scheme, linked from its page", () => {
+  const page = readFileSync(join(window, "index.html"), "utf8").replace(
+    /\s+/g,
+    " "
+  );
+  const require = createRequire(import.meta.url);
+  for (const scheme of ["light", "dark"]) {
+    const favicon = `favicon-${scheme}.svg`;
+    expect(readFileSync(join(window, favicon), "utf8")).toBe(
+      readFileSync(
+        require.resolve(`@ayme-dev/design-system/logo/${favicon}`),
+        "utf8"
+      )
+    );
+    expect(page).toContain(
+      `<link rel="icon" type="image/svg+xml" href="./${favicon}" media="(prefers-color-scheme: ${scheme})" />`
+    );
+  }
 });
 
 it("leaves nothing to resolve where it is served: no Node built-in, no package", () => {

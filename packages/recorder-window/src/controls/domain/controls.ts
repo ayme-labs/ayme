@@ -17,8 +17,11 @@ export type Control<Type extends RecorderCommandType = RecorderCommandType> = {
 
 /** The controls of the window and of the toolbar, read from the state. */
 export type Controls = {
-  /** What the recorder is doing, in words. */
-  readonly status: string;
+  /** What the recorder is doing, in words, when the controls do not show it
+   * already (`statusText`). */
+  readonly status: string | null;
+  /** The recorder wraps up or saves: nothing can be pressed meanwhile. */
+  readonly busy: boolean;
   /** The one control that records, stops or continues, by the phase; none
    * once the recorder has ended, or before its state is known. */
   readonly primary: Control<"record" | "stop" | "continue"> | null;
@@ -38,6 +41,7 @@ export function controlsOf(state: RecorderState | null): Controls {
   if (!state)
     return {
       status: statusText(null),
+      busy: false,
       primary: null,
       assert: null,
       clear: null,
@@ -56,11 +60,12 @@ export function controlsOf(state: RecorderState | null): Controls {
   const leave = applies("leaveAssertVisibility");
   return {
     status: statusText(state),
+    busy: state.phase === "wrappingUp" || state.phase === "saving",
     primary:
       state.phase === "notRecording"
         ? control("record", "Record")
         : state.phase === "paused"
-          ? control("continue", "Continue")
+          ? control("continue", "Continue recording")
           : state.phase === "ended"
             ? null
             : control("stop", "Stop"),

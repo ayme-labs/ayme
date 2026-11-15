@@ -4,13 +4,25 @@ import { describe, expect, it } from "vitest";
 import { statusText } from "./status";
 
 describe("what the window says the recorder is doing", () => {
+  it.each<[RecorderState["phase"]]>([
+    ["notRecording"],
+    ["recording"],
+    ["paused"],
+  ])("says nothing while %s: the controls show it", (phase) => {
+    expect(
+      statusText({
+        phase,
+        visits: [],
+        commands: [],
+        warnings: [],
+      } as unknown as RecorderState)
+    ).toBeNull();
+  });
+
   it.each<[RecorderState["phase"], Record<string, unknown>, string]>([
-    ["notRecording", {}, "Not recording"],
-    ["recording", {}, "Recording"],
     ["wrappingUp", { then: "pause" }, "Wrapping up, then pausing"],
     ["wrappingUp", { then: "clear" }, "Wrapping up, then clearing"],
     ["wrappingUp", { then: "save" }, "Wrapping up, then saving"],
-    ["paused", {}, "Paused"],
     ["saving", {}, "Saving the recording"],
     ["ended", { outcome: { kind: "empty" } }, "Ended: nothing was recorded"],
   ])("says %s %o as %s", (phase, more, text) => {

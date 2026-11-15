@@ -53,26 +53,27 @@ async function registerToolbarEngine(selectors: Selectors): Promise<string> {
   return name;
 }
 
-const NAMES: readonly CommandName[] = [
-  "Record",
-  "Stop",
-  "Continue",
-  "Clear",
-  "Finish",
-];
+/** The names the toolbar's first control has, by the state. */
+const MAIN: readonly CommandName[] = ["Record", "Stop", "Continue recording"];
 
 /**
- * The toolbar in a recorded page. It hides from the page's structure, so it
- * is reached through a selector engine of its own, never by role. A test
- * presses its buttons as a person does: by their place on the page.
+ * The toolbar in a recorded page: a small pill with the control that
+ * records, stops or continues, and Assert visibility. It hides from the
+ * page's structure, so it is reached through a selector engine of its own,
+ * never by role. A test presses its buttons as a person does: by their
+ * place on the page.
  */
 export class RecorderToolbar {
   /** The toolbar itself. */
   readonly root: Locator;
-  /** What the recorder is doing, in words: "Recording", "Paused" and so on. */
-  readonly status: Locator;
+  readonly recordButton: Locator;
+  readonly stopButton: Locator;
+  readonly continueButton: Locator;
   /** Assert visibility: pressed, it enters picking, or leaves it. */
   readonly assertVisibility: Locator;
+  /** In place of the first control while the recorder wraps up or saves:
+   * it says so, and can not be pressed. */
+  readonly busyIndicator: Locator;
 
   /** The toolbar in `page`, reached through `selectors`: `@playwright/test`'s,
    * of the same Playwright that reached the page. */
@@ -85,10 +86,11 @@ export class RecorderToolbar {
     private readonly engine: string
   ) {
     this.root = this.inside('[role="toolbar"]');
-    this.status = this.inside('[role="status"]');
-    this.assertVisibility = this.inside(
-      'button[aria-label="Assert visibility"]'
-    );
+    this.recordButton = this.button("Record");
+    this.stopButton = this.button("Stop");
+    this.continueButton = this.button("Continue recording");
+    this.assertVisibility = this.button("Assert visibility");
+    this.busyIndicator = this.inside("button[data-busy]");
   }
 
   /** Whether the toolbar shows Assert visibility on. */
@@ -98,23 +100,31 @@ export class RecorderToolbar {
     );
   }
 
-  /** A control, by the name a person reads on it. */
-  button(name: CommandName): Locator {
+  /** What the recorder is busy with, such as "Wrapping up, then pausing";
+   * null while it is not. */
+  async busy(): Promise<string | null> {
+    return (await this.busyIndicator.count()) > 0
+      ? this.busyIndicator.getAttribute("aria-label")
+      : null;
+  }
+
+  /** The first control's name while it can be pressed: Record, Stop or
+   * Continue recording; none while nothing can be. */
+  async offered(): Promise<CommandName[]> {
+    const offered: CommandName[] = [];
+    for (const name of MAIN) {
+      const control = this.button(name);
+      if ((await control.count()) > 0 && (await control.isEnabled()))
+        offered.push(name);
+    }
+    return offered;
+  }
+
+  private button(name: string): Locator {
     return this.inside(`button[aria-label="${name}"]`);
   }
 
   private inside(css: string): Locator {
     return this.page.locator(`${this.engine}=${css}`);
-  }
-
-  /** The controls that can be pressed now, in the order they show. */
-  async offered(): Promise<CommandName[]> {
-    const offered: CommandName[] = [];
-    for (const name of NAMES) {
-      const button = this.button(name);
-      if ((await button.count()) > 0 && (await button.isEnabled()))
-        offered.push(name);
-    }
-    return offered;
   }
 }
