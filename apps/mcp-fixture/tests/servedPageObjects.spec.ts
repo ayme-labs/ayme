@@ -235,6 +235,7 @@ test("a Page Object that fails to compile is reported with its file, and the pag
       );
     // The one error, where it is in the file as written.
     expect(agent.log).toMatch(/pom[\\/]PlainPage\.ts:22:1: '}' expected\.\n/);
+    expect(agent.log).not.toContain("Could not transpile Ayme POM");
     expect(agent.log.match(/PlainPage\.ts:\d+:\d+: /g)).toHaveLength(1);
     await page.reload();
 
