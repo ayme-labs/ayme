@@ -63,7 +63,7 @@ describe("the change rows of a Change Tree", () => {
     expect(rows.map(({ kind, element }) => [kind, element])).toEqual([
       ["changed", 'paragraph "One item"'],
       ["added", 'button "Remove"'],
-      ["changed", 'button "Pay" [active]'],
+      ["changed", 'button "Pay"'],
     ]);
   });
 
@@ -79,7 +79,7 @@ describe("the change rows of a Change Tree", () => {
 
     expect(row).toEqual({
       kind: "changed",
-      element: 'checkbox "Terms" [checked] [disabled] [cursor=pointer]',
+      element: 'checkbox "Terms"',
       changed: [
         { property: "checked", from: "mixed", to: "true" },
         { property: "disabled", to: "true" },
@@ -120,7 +120,7 @@ describe("the change rows of a Change Tree", () => {
       },
       {
         kind: "changed",
-        element: 'heading "Final" [level=2]',
+        element: 'heading "Final"',
         changed: [{ property: "name", from: "Draft", to: "Final" }],
       },
     ]);
@@ -203,45 +203,99 @@ describe("the change rows of a Change Tree", () => {
     ]);
   });
 
-  it("show an element's one text only when the line keeps no element below it", () => {
+  it("name an element by its role and name only: its own text stands for the name of an unnamed element with nothing but text inside it", () => {
     const rows = changeRows(
       changeFrom(
         page(
-          `- listitem [ref=e2]:`,
+          `- paragraph [ref=e2]: "Items: 0"`,
+          `- listitem [ref=e3]:`,
           `  - text: Milk`,
-          `  - button "Remove" [ref=e3]`,
-          `- listitem [ref=e4]:`,
-          `  - text: Tea`,
-          `  - button "Remove" [ref=e5]`
+          `  - button "Remove" [ref=e4]`
         ),
         page(
-          // Its text changed; the button inside it did not.
-          `- listitem [ref=e2]:`,
+          `- paragraph [ref=e2]: "Items: 1"`,
+          // Its text changed; it has an element inside it.
+          `- listitem [ref=e3]:`,
           `  - text: Bread`,
-          `  - button "Remove" [ref=e3]`,
-          // Its text and the button inside it changed.
-          `- listitem [ref=e4]:`,
-          `  - text: Coffee`,
-          `  - button "Remove" [disabled] [ref=e5]`,
-          // It appeared, with the button inside it.
-          `- listitem [ref=e6]:`,
-          `  - text: Eggs`,
-          `  - button "Remove" [ref=e7]`,
+          `  - button "Remove" [ref=e4]`,
+          `- option "Say \\"hi\\"" [selected] [expanded] [ref=e5]`,
+          `- generic [ref=e6]: Total`,
+          `- button "a\\\\b" [ref=e7]`,
           `- paragraph [ref=e8]:`,
           `  - text: Two`,
-          `  - text: lines`
+          `  - text: lines`,
+          // A button the page gives no name, with its text inside.
+          `- button [ref=e9] [cursor=pointer]: All Items`
         )
       )
     );
 
     expect(rows.map((row) => row.element)).toEqual([
-      'listitem "Bread"',
+      'paragraph "Items: 1"',
       "listitem",
-      "listitem",
-      "paragraph",
+      'option "Say \\"hi\\""',
+      '"Total"',
+      'button "a\\\\b"',
+      'paragraph "Two lines"',
+      'button "All Items"',
     ]);
   });
 
+  it("name an element with no role and no name that appeared or was removed by the named elements that went with it, each in a row of its own", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- generic [ref=e2]:`,
+          `  - button "Open Menu" [ref=e3]`,
+          `- generic [ref=e4]:`,
+          `  - heading "Menu" [level=2] [ref=e5]`,
+          `  - generic [ref=e6]:`,
+          `    - link "About" [ref=e7]:`,
+          `      - generic [ref=e8]: About us`
+        ),
+        page()
+      )
+    );
+
+    expect(rows).toEqual([
+      { kind: "removed", element: 'button "Open Menu"' },
+      { kind: "removed", element: 'heading "Menu"' },
+      { kind: "removed", element: 'link "About"' },
+    ]);
+  });
+
+  it("name an element with no role and no name by its nearest named ancestor when nothing named went with it", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- navigation "Main" [ref=e2]:`,
+          `  - generic [ref=e3]:`,
+          `    - generic [ref=e4]`
+        ),
+        page(
+          `- navigation "Main" [ref=e2]:`,
+          `  - generic [ref=e3]:`,
+          `    - generic [ref=e4] [cursor=pointer]`,
+          `    - generic [ref=e5]`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      {
+        kind: "changed",
+        element: 'navigation "Main"',
+        changed: [{ property: "cursor", to: "pointer" }],
+      },
+      { kind: "added", element: 'navigation "Main"' },
+    ]);
+  });
+
+  it("name an element by the word 'element' only when nothing around it has a role or a name", () => {
+    const rows = changeRows(changeFrom(page(), page(`- generic [ref=e2]`)));
+
+    expect(rows).toEqual([{ kind: "added", element: "element" }]);
+  });
   it("name an element with a state that is off as without it", () => {
     const [row] = changeRows(
       changeFrom(
@@ -255,28 +309,5 @@ describe("the change rows of a Change Tree", () => {
       element: 'checkbox "Terms"',
       changed: [{ property: "checked", from: "true" }],
     });
-  });
-
-  it("name an element in the words of the package's trees: its role and name, its states, and its one text quoted", () => {
-    const rows = changeRows(
-      changeFrom(
-        page(`- paragraph [ref=e2]: "Items: 0"`),
-        page(
-          `- paragraph [ref=e2]: "Items: 1"`,
-          `- generic [ref=e3]`,
-          `- option "Say \\"hi\\"" [selected] [expanded] [ref=e4]`,
-          `- generic [ref=e5]: Total`,
-          `- button "a\\\\b" [ref=e6]`
-        )
-      )
-    );
-
-    expect(rows.map((row) => row.element)).toEqual([
-      'paragraph "Items: 1"',
-      "element",
-      'option "Say \\"hi\\"" [expanded] [selected]',
-      '"Total"',
-      'button "a\\\\b"',
-    ]);
   });
 });

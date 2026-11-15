@@ -164,6 +164,7 @@ describe("a recording", () => {
         modifiers: 0,
         clickCount: 1,
       },
+      targetElement: 'button "Save"',
       changes: [{ kind: "added", element: 'status "Saved"' }],
     };
     await expect.poll(() => entriesOf(updates.at(-1)!)).toEqual([interaction]);

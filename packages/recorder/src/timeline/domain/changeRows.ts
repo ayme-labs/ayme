@@ -4,7 +4,14 @@ import type {
 } from "@ayme-dev/core/structural-observation";
 
 import type { ChangeRow, PropertyChange } from "../../contract";
-import { changedItself, leadsToChange } from "./packageText";
+import {
+  namedInside,
+  namedNear,
+  ownName,
+  wordsOf,
+  type NamedElement,
+} from "./elementNames";
+import { changedItself } from "./packageText";
 
 // The rows of a Change Tree, for whoever shows a recorder: plain data that
 // crosses to the window and the toolbar as it is. The package's text is the
@@ -21,14 +28,24 @@ const STATES = [
   "level",
 ] as const;
 
+/** A row of a Change Tree, with the element it names: the one a highlight
+ * of the row looks for on the page. Null when it names none. */
+export type FoundRow = {
+  readonly row: ChangeRow;
+  readonly element: NamedElement | null;
+};
+
 /**
  * The topmost elements a Change Tree marks as added, removed or changed
- * themselves, in the order of the page. A changed element says how each of
- * its own properties stood before and after: the tree keeps how each node
- * stood before.
+ * themselves, in the order of the page, each named by its role and name
+ * (`elementNames.ts`). One with no role and no name that appeared or was
+ * removed is named by the named elements that went with it, a row each;
+ * otherwise, as one that changed, by its nearest named ancestor. A changed
+ * element says how each of its own properties stood before and after: the
+ * tree keeps how each node stood before.
  */
-export function changeRows(change: StructuralTree): ChangeRow[] {
-  const rows: ChangeRow[] = [];
+export function foundRows(change: StructuralTree): FoundRow[] {
+  const rows: FoundRow[] = [];
   const visit = (node: StructuralNode) => {
     if (!changedItself(node)) {
       for (const child of node.children)
@@ -37,21 +54,32 @@ export function changeRows(change: StructuralTree): ChangeRow[] {
     }
     const { kind } = node.status!;
     if (kind === "added" || kind === "removed") {
-      rows.push({ kind, element: elementOf(node) });
+      const inside = ownName(node) ? [] : namedInside(node);
+      const named = inside.length > 0 ? inside : [namedNear(change, node)];
+      for (const element of named)
+        rows.push({ row: { kind, element: wordsOf(element) }, element });
       return;
     }
     // Core records how every node it marks as changed stood before; a tree
     // without that record names no property.
     const before = change.getBeforeNode(node.ref) ?? node;
+    const element = namedNear(change, node);
     rows.push({
-      kind: "changed",
-      element: elementOf(node),
-      changed: changedProperties(before, node),
+      row: {
+        kind: "changed",
+        element: wordsOf(element),
+        changed: changedProperties(before, node),
+      },
+      element,
     });
   };
   for (const root of change.getRootNodes()) visit(root);
   return rows;
 }
+
+/** The rows of a Change Tree, as whoever shows a recorder is told them. */
+export const changeRows = (change: StructuralTree): ChangeRow[] =>
+  foundRows(change).map(({ row }) => row);
 
 /** A value as the package's trees write it; none for one absent or empty. */
 const written = (value: string | number | boolean | undefined) =>
@@ -100,51 +128,3 @@ function changedProperties(
     compare(`/${key}`, before.props[key], after.props[key]);
   return changes;
 }
-
-/**
- * A node in the words of the package's trees, without its ref and its mark:
- * the header of its line, and the one text the line shows after it, quoted.
- */
-function elementOf(node: StructuralNode): string {
-  const words = [
-    ...(node.role === "generic" ? [] : [node.role]),
-    ...(node.name ? [`"${escaped(node.name)}"`] : []),
-    ...statesOf(node),
-    ...(node.cursorPointer ? ["[cursor=pointer]"] : []),
-  ];
-  const text = lineText(node);
-  if (text) words.push(`"${text}"`);
-  return words.length === 0 ? "element" : words.join(" ");
-}
-
-function statesOf({ state }: StructuralNode): string[] {
-  const marks: string[] = [];
-  for (const name of STATES) {
-    const value = state[name];
-    if (value === undefined || value === false) continue;
-    marks.push(value === true ? `[${name}]` : `[${name}=${value}]`);
-  }
-  return marks;
-}
-
-/**
- * The text the node's line in a Change Tree shows after its header: its one
- * text child, when it keeps no element below it. The tree keeps below a
- * changed node only the elements that lead to a change. Quoted text is
- * written as the package's trees quote it.
- */
-function lineText(node: StructuralNode): string {
-  const texts = node.children.filter((child) => typeof child === "string");
-  const below = node.children.some(
-    (child) => typeof child !== "string" && leadsToChange(child)
-  );
-  if (texts.length !== 1 || below) return "";
-  const [text] = texts;
-  return QUOTED.test(text!) ? escaped(text!) : text!;
-}
-
-/** A text the package's trees quote: one they would misread otherwise. */
-const QUOTED = /[:#[\]{},"'&*!?|<>%@`]|^\s|\s$/;
-
-const escaped = (value: string) =>
-  value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');

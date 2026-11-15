@@ -514,6 +514,7 @@ describe("the timeline", () => {
         modifiers: 0,
         clickCount: 1,
       },
+      targetElement: 'button "Save"',
       changes: [
         {
           kind: "changed",
@@ -585,6 +586,7 @@ describe("the timeline", () => {
           ...savedByClick.interaction,
           id: entryId("interaction_2"),
         },
+        targetElement: 'button "Save"',
         // It changed nothing.
         changes: null,
       };

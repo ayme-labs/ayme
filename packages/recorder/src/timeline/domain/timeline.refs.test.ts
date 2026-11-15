@@ -319,7 +319,7 @@ describe("an element the page re-created, when it changes", () => {
       changes: [
         {
           kind: "changed",
-          element: 'button "Saved" [disabled]',
+          element: 'button "Saved"',
           changed: [
             { property: "name", from: "Save", to: "Saved" },
             { property: "disabled", to: "true" },

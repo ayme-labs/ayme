@@ -281,7 +281,7 @@ describe("what changed before an input known from its report", () => {
         id: entryId("interaction_1"),
         interaction: { targetRef: null },
         changes: [
-          { kind: "changed", element: 'textbox "Item" "milk"' },
+          { kind: "changed", element: 'textbox "Item"' },
           { kind: "added", element: 'alert "Welcome back"' },
         ],
       },
@@ -378,5 +378,78 @@ describe("where an entry's target is now, for the highlight", () => {
     });
 
     expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
+  });
+});
+
+describe("an entry's target in words, for whoever shows the entry", () => {
+  it("is the role and name of the element its target ref names, and the package does not have it", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, saved),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+    ]);
+
+    expect(timeline.visits()[0]!.entries[0]).toMatchObject({
+      interaction: { targetRef: "e2" },
+      targetElement: 'button "Save"',
+    });
+    expect(await timeline.package(header)).not.toContain("targetElement");
+  });
+
+  it("is the element Playwright's picture of the page shows, for an input known from its report", async () => {
+    const field = page(`- textbox "Item" [ref=e2]`);
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, field),
+      snapshot(
+        snapshotId("snapshot_2"),
+        20,
+        page(`- textbox "Item" [ref=e2]: m`)
+      ),
+      {
+        kind: "interaction",
+        interaction: {
+          page: pageId("page_1"),
+          report: {
+            type: "fill",
+            selector: "#item",
+            target: {
+              ref: pictureRef("e21"),
+              tree: [
+                `- generic [ref=e20]:`,
+                `  - textbox "Item" [ref=e21]: m`,
+              ].join("\n"),
+            },
+            values: { text: "m" },
+          },
+          before: snapshotId("snapshot_1"),
+          after: snapshotId("snapshot_2"),
+          at: 15,
+          beforeFromReport: true,
+        },
+      },
+    ]);
+
+    expect(timeline.visits()[0]!.entries[0]).toMatchObject({
+      interaction: { targetRef: "e2" },
+      targetElement: 'textbox "Item"',
+    });
+  });
+
+  it("is not there for a target the page's structure does not know", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, saved),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
+    ]);
+
+    const [entry] = timeline.visits()[0]!.entries;
+    expect(entry).toMatchObject({ interaction: { targetRef: null } });
+    expect(entry).not.toHaveProperty("targetElement");
   });
 });

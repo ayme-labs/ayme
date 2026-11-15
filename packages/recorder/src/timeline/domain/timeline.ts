@@ -11,7 +11,8 @@ import {
 } from "@ayme-dev/core/structural-observation";
 
 import type { EntryId, RecordedVisit, RecorderWarning } from "../../contract";
-import { changeRows } from "./changeRows";
+import { foundRows, type FoundRow } from "./changeRows";
+import { namedNear, wordsOf, type NamedElement } from "./elementNames";
 import {
   interactionDetails,
   leadsToChange,
@@ -70,7 +71,7 @@ type Visit = {
   /** The Interactions that have no entry yet. */
   readonly waiting: Waiting[];
   /** The entries produced so far, in order. */
-  readonly entries: KeptEntry[];
+  readonly entries: Entry[];
   /** The place in `snapshots` up to which entries are produced: what
    * changed from this snapshot on is not told yet. */
   through: number;
@@ -86,6 +87,25 @@ type Visit = {
  * itself. */
 const changedSomething = (change: StructuralTree) =>
   change.getRootNodes().some(leadsToChange);
+
+/** An entry as the timeline keeps it, with the element each row of its
+ * changes names: the one a highlight of the row looks for. */
+type Entry = KeptEntry & { readonly rows: readonly (NamedElement | null)[] };
+
+/** A target in its tree, named; null when the tree does not know it. */
+const namedTarget = (tree: StructuralTree, ref: AriaRef | undefined) => {
+  const node = ref && tree.getNode(ref);
+  return node ? namedNear(tree, node) : null;
+};
+
+/** The rows of a Change Tree as an entry tells them, and their elements. */
+const rowsOf = (change: StructuralTree) => {
+  const found: readonly FoundRow[] = foundRows(change);
+  return {
+    changes: found.map(({ row }) => row),
+    rows: found.map(({ element }) => element),
+  };
+};
 
 /** The place of a snapshot among a Visit's; negative when it is not there. */
 const placeIn = (visit: Visit, snapshot: SnapshotId | null) =>
@@ -420,6 +440,7 @@ export class Timeline {
     changedBefore: StructuralTree;
     changedByIt: StructuralTree;
     target: FirstRef | undefined;
+    named: NamedElement | null;
   } | null> {
     const { target, type, selector } = interaction.report;
     if (!target) return null;
@@ -459,6 +480,7 @@ export class Timeline {
       target:
         picture.target &&
         (firstRefs.get(picture.target) ?? firstRef(picture.target)),
+      named: namedTarget(picture.tree, picture.target),
     };
   }
 
@@ -498,13 +520,14 @@ export class Timeline {
   ): Promise<void> {
     const from = visit.snapshots[placeIn(visit, interaction.before)]!;
     const end = placeIn(visit, interaction.after);
-    const { target, change } = await this.effectOf(
+    const { target, named, change } = await this.effectOf(
       visit,
       interaction,
       from,
       visit.snapshots[end]
     );
     const changed = change && changedSomething(change) ? change : null;
+    const told = changed && rowsOf(changed);
     visit.entries.push({
       entry: {
         kind: "interaction",
@@ -515,9 +538,11 @@ export class Timeline {
           interaction.report,
           target ?? null
         ),
-        changes: changed && changeRows(changed),
+        ...(named ? { targetElement: wordsOf(named) } : {}),
+        changes: told && told.changes,
       },
       change: changed,
+      rows: told ? told.rows : [],
     });
     // The entries never go back: an Interaction with no "after" here, or
     // one written late, leaves them where they stand.
@@ -537,11 +562,16 @@ export class Timeline {
     interaction: Waiting,
     from: Kept,
     to: Kept | undefined
-  ): Promise<{ target: FirstRef | undefined; change: StructuralTree | null }> {
+  ): Promise<{
+    target: FirstRef | undefined;
+    named: NamedElement | null;
+    change: StructuralTree | null;
+  }> {
     const located = locateTarget(from.tree, interaction.report);
     const held = {
       // Every ref of a kept snapshot has its first ref.
       target: located && from.firstRefs.get(located),
+      named: namedTarget(from.tree, located),
       change: to ? await this.change(from, to) : null,
     };
     if (!interaction.beforeFromReport || !to) return held;
@@ -555,7 +585,7 @@ export class Timeline {
     }
     if (changedSomething(read.changedBefore))
       this.writeChange(visit, interaction.at, read.changedBefore);
-    return { target: read.target, change: read.changedByIt };
+    return { target: read.target, named: read.named, change: read.changedByIt };
   }
 
   /**
@@ -583,9 +613,11 @@ export class Timeline {
   /** Writes a change of its own: one no Interaction explains. */
   private writeChange(visit: Visit, at: number, change: StructuralTree) {
     const id = `change_${++this.changes}` as EntryId;
+    const { changes, rows } = rowsOf(change);
     visit.entries.push({
-      entry: { kind: "change", id, timestamp: at, changes: changeRows(change) },
+      entry: { kind: "change", id, timestamp: at, changes },
       change,
+      rows,
     });
   }
 
