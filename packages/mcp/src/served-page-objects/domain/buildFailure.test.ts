@@ -4,6 +4,17 @@ import { buildErrorLine, buildFailure } from "./buildFailure";
 
 const entry = "/project/.ayme/page-objects.ts";
 
+it("keeps the error's location when its text only mentions another position", () => {
+  expect(
+    buildErrorLine({
+      text: "Could not load:\n/project/Child.ts:8:14: unsupported type",
+      location: { file: entry, line: 3, column: 26 },
+    })
+  ).toBe(
+    `${entry}:3:26: Could not load:\n/project/Child.ts:8:14: unsupported type`
+  );
+});
+
 it("names each failing file, with its line and column, and what failed there", () => {
   const text = buildFailure({
     entry,
