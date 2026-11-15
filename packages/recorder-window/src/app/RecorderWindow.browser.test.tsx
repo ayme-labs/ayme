@@ -249,7 +249,10 @@ it("shows Assert visibility outlined while off, and filled as Finish is while on
     commands: ["stop", "finish", "leaveAssertVisibility"],
   } as Partial<RecorderState>);
   await expect.poll(() => recorderWindow.controls.picking()).toBe(true);
-  expect(await looks(recorderWindow.controls.assertVisibility)).toEqual(finish);
+  // The fill changes over a transition: poll until it has arrived.
+  await expect
+    .poll(() => looks(recorderWindow.controls.assertVisibility))
+    .toEqual(finish);
 });
 
 it("shows Assert visibility on while Playwright picks, and leaves it when pressed", async () => {
