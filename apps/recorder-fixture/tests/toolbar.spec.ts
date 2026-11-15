@@ -7,6 +7,8 @@ import {
 } from "@ayme-dev/recorder-window/testing";
 import { selectors } from "@playwright/test";
 
+import { CartPage } from "../.ayme/pom/CartPage";
+import { ShopPage } from "../.ayme/pom/ShopPage";
 import { expect, test, toolbarScript, type Recording } from "./fixtures";
 
 // The toolbar in every recorded page. A person presses its buttons and the
@@ -30,6 +32,7 @@ test.describe("the in-page toolbar", () => {
   }) => {
     const recording = await startRecording("/cart.html");
     const { page, person, recorder } = recording;
+    const cart = new CartPage(page);
     const toolbar = await RecorderToolbar.on(page, selectors);
 
     await expect(toolbar.status).toHaveText("Not recording");
@@ -42,8 +45,8 @@ test.describe("the in-page toolbar", () => {
     const structure = await page.ariaSnapshot({ mode: "ai" });
     expect(structure).not.toMatch(/Recording|Record|Finish|toolbar/);
 
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await person.pause();
     await person.click(toolbar.button("Finish"));
 
@@ -80,6 +83,7 @@ test.describe("the in-page toolbar", () => {
   }) => {
     const recording = await startRecording("/cart.html", { window: true });
     const { page, person, recorder } = recording;
+    const cart = new CartPage(page);
     const seen = interactions(recording);
     const toolbar = await RecorderToolbar.on(page, selectors);
     const window = new RecorderWindow(windowPage);
@@ -87,14 +91,14 @@ test.describe("the in-page toolbar", () => {
 
     await window.controls.press("Record");
     await expect(toolbar.status).toHaveText("Recording");
-    await person.click(page.locator("#add"));
+    await person.click(cart.addItemButton);
     await expect.poll(() => seen.count).toBe(1);
 
     await person.click(toolbar.button("Stop"));
     await expect(window.controls.status).toHaveText("Paused");
     await person.click(toolbar.button("Continue"));
     await expect(window.controls.status).toHaveText("Recording");
-    await person.click(page.locator("#add"));
+    await person.click(cart.addItemButton);
     await expect.poll(() => seen.count).toBe(2);
 
     await expect(window.timeline.visits).toHaveCount(1);
@@ -107,11 +111,12 @@ test.describe("the in-page toolbar", () => {
     startRecording,
   }) => {
     const { page, person } = await startRecording("/shop.html");
+    const shop = new ShopPage(page);
     const toolbar = await RecorderToolbar.on(page, selectors);
     await person.click(toolbar.button("Record"));
     await expect(toolbar.status).toHaveText("Recording");
 
-    await person.click(page.locator("#checkout"));
+    await person.click(shop.checkoutLink);
     await page.waitForURL(/checkout\.html$/);
 
     await expect(toolbar.status).toHaveText("Recording");
@@ -126,6 +131,7 @@ test.describe("the in-page toolbar in a running browser", () => {
     startRecording,
   }) => {
     const { page, person, recorder } = await startRecording("/cart.html");
+    const cart = new CartPage(page);
     const toolbar = await RecorderToolbar.on(page, selectors);
     await expect(toolbar.status).toHaveText("Not recording");
     await person.click(toolbar.button("Record"));
@@ -138,8 +144,8 @@ test.describe("the in-page toolbar in a running browser", () => {
     // Nothing puts it back, and the page goes on as before.
     await person.pause();
     await expect(page.locator("ayme-recorder-toolbar")).toHaveCount(0);
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
   });
 });
 
