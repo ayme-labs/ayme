@@ -3708,6 +3708,39 @@ describe("the lifecycle, for a highlight that the recorder leaves behind", () =>
 
 // The change analysis of the branch: rows for more than one page, which no
 // row had, and for what is told when nothing waits for it.
+// Shared by the lifecycle's tests of pages, inputs and their snapshots.
+const takenOf = (id: string, page: string): Happening => ({
+  kind: "snapshotTaken",
+  snapshot: { ...snapshot(id), page },
+});
+const snap = (id: string, page: string): ToDo => ({
+  kind: "browser",
+  ask: { kind: "takeSnapshot", snapshot: id, page },
+});
+const kept = (id: string, page: string): ToDo => ({
+  kind: "timeline",
+  add: { kind: "snapshot", snapshot: { ...snapshot(id), page } },
+});
+const settledOn = (page: string, input: string): Happening => ({
+  kind: "pageSettled",
+  page,
+  input,
+});
+const waitOn = (page: string, input: string): ToDo => ({
+  kind: "browser",
+  ask: { kind: "waitForSettled", page, input },
+});
+const through = (page: string, upTo: string | null): ToDo => ({
+  kind: "browser",
+  ask: { kind: "letInputsThrough", page, upTo },
+});
+const typed = (text: string): InteractionReport => ({
+  type: "fill",
+  selector: "internal:role=textbox",
+  target: null,
+  values: { text },
+});
+
 describe("the lifecycle, with more than one page", () => {
   const url2 = "http://shop.test/help";
   const BLANK = "about:blank";
@@ -3736,43 +3769,12 @@ describe("the lifecycle, with more than one page", () => {
     ...snapshot(id),
     page,
   });
-  const takenOf = (id: string, page: string): Happening => ({
-    kind: "snapshotTaken",
-    snapshot: snapshotOf(id, page),
-  });
-  const snap = (id: string, page: string): ToDo => ({
-    kind: "browser",
-    ask: { kind: "takeSnapshot", snapshot: id, page },
-  });
-  const kept = (id: string, page: string): ToDo => ({
-    kind: "timeline",
-    add: { kind: "snapshot", snapshot: snapshotOf(id, page) },
-  });
-  const settledOn = (page: string, input: string): Happening => ({
-    kind: "pageSettled",
-    page,
-    input,
-  });
-  const waitOn = (page: string, input: string): ToDo => ({
-    kind: "browser",
-    ask: { kind: "waitForSettled", page, input },
-  });
-  const through = (page: string, upTo: string | null): ToDo => ({
-    kind: "browser",
-    ask: { kind: "letInputsThrough", page, upTo },
-  });
   const choice: InteractionReport = {
     type: "select",
     selector: "internal:role=combobox",
     target: null,
     values: { options: ["eggs"] },
   };
-  const typed = (text: string): InteractionReport => ({
-    type: "fill",
-    selector: "internal:role=textbox",
-    target: null,
-    values: { text },
-  });
 
   it.each<{
     name: string;
@@ -4207,12 +4209,6 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
 // The change analysis of the branch: what is told a second time, or when
 // its turn is over, changes nothing.
 describe("the lifecycle, for what is told twice or out of turn", () => {
-  const typed = (text: string): InteractionReport => ({
-    type: "fill",
-    selector: "internal:role=textbox",
-    target: null,
-    values: { text },
-  });
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
     page: "page_1",
@@ -4685,37 +4681,6 @@ describe("the lifecycle, for rules no row reached", () => {
   });
   const clickOn = (page: string, input: string) =>
     held(input, { kind: "click", count: 1 }, page);
-  const takenOf = (id: string, page: string): Happening => ({
-    kind: "snapshotTaken",
-    snapshot: { ...snapshot(id), page },
-  });
-  const snap = (id: string, page: string): ToDo => ({
-    kind: "browser",
-    ask: { kind: "takeSnapshot", snapshot: id, page },
-  });
-  const kept = (id: string, page: string): ToDo => ({
-    kind: "timeline",
-    add: { kind: "snapshot", snapshot: { ...snapshot(id), page } },
-  });
-  const settledOn = (page: string, input: string): Happening => ({
-    kind: "pageSettled",
-    page,
-    input,
-  });
-  const waitOn = (page: string, input: string): ToDo => ({
-    kind: "browser",
-    ask: { kind: "waitForSettled", page, input },
-  });
-  const through = (page: string, upTo: string | null): ToDo => ({
-    kind: "browser",
-    ask: { kind: "letInputsThrough", page, upTo },
-  });
-  const typed = (text: string): InteractionReport => ({
-    type: "fill",
-    selector: "internal:role=textbox",
-    target: null,
-    values: { text },
-  });
   const choice: InteractionReport = {
     type: "select",
     selector: "internal:role=combobox",
@@ -5509,12 +5474,6 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     target: null,
     values: { options: ["eggs"] },
   };
-  const typed = (text: string): InteractionReport => ({
-    type: "fill",
-    selector: "internal:role=textbox",
-    target: null,
-    values: { text },
-  });
   const written = (
     report: InteractionReport,
     before: string,
