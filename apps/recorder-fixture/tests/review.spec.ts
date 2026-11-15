@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { CartPage } from "../.ayme/pom/CartPage";
+import { CheckoutPage } from "../.ayme/pom/CheckoutPage";
+import { ShopPage } from "../.ayme/pom/ShopPage";
 import { expect, test, type Recording } from "./fixtures";
 
 // Ticket #1279: leaving entries out of the recording while paused, and
@@ -30,14 +33,16 @@ test.describe("discarding and restoring entries", () => {
   }) => {
     const recording = await startRecording("/shop.html");
     const { recorder, page, person } = recording;
+    const shop = new ShopPage(page);
+    const checkout = new CheckoutPage(page);
     const seen = watch(recording);
     await recorder.send({ type: "record" });
     // The click that leaves the page, and one on the page it led to.
-    await person.click(page.locator("#checkout"));
+    await person.click(shop.checkoutLink);
     await page.waitForURL(/checkout\.html$/);
     await person.pause();
-    await person.click(page.locator("#pay"));
-    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+    await person.click(checkout.payButton);
+    await expect(checkout.paymentState).toHaveText("Paid");
     await expect
       .poll(() => seen.entries.map((entry) => entry.id))
       .toEqual(["interaction_1", "interaction_2"]);
@@ -103,10 +108,11 @@ test.describe("discarding and restoring entries", () => {
   }) => {
     const recording = await startRecording("/cart.html");
     const { recorder, page, person } = recording;
+    const cart = new CartPage(page);
     const seen = watch(recording);
     await recorder.send({ type: "record" });
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await expect.poll(() => seen.entries).toHaveLength(1);
     await recorder.send({ type: "stop" });
     await expect.poll(() => seen.phase).toBe("paused");
@@ -120,8 +126,8 @@ test.describe("discarding and restoring entries", () => {
 
     // The next recording's first click has the same id, and no decision.
     await recorder.send({ type: "record" });
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 2");
     await expect
       .poll(() => seen.entries)
       .toEqual([{ id: "interaction_1", discarded: false }]);
