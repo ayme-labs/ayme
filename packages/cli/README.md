@@ -87,7 +87,7 @@ The recorder window and the toolbar on the page have the same controls and alway
 - **Record** starts recording. A Visit appears for the page as it is. The status says **Recording** only once the recorder really records: for a moment after you press Record, or Continue, it still shows the state before. Wait for it before your first step; input given before it is not recorded.
 - **Stop** pauses. While paused, your input reaches the page and is not recorded, and neither is what the page changes meanwhile: after Continue, changes are counted from the page as it stood then. The status shows **Paused** once recording has really stopped; a click you make before that is still recorded. Text you were typing appears as a step when **Paused** shows, not when you press Stop: the recorder waits until the text can no longer change.
 - **Continue** resumes in the same recording.
-- **Assert visibility** lets you click an element to record "this must be visible". That click does not reach your app. The button stays on until you click an element or press it again.
+- **Assert visibility** lets you click an element to record "this must be visible". An outline shows the element under the mouse that a click would pick. That click does not reach your app. The button stays on until you click an element or press it again.
 - **Clear** throws away everything recorded so far, so you can start over. Record works again once the old trace is gone.
 - **Finish** saves the recording, including your last step, without pressing Stop first. Pressing it twice saves once.
 
@@ -137,10 +137,12 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
 - **The toolbar is part of the trace.** Its element stays in the trace's page snapshots, empty, and the toolbar can show in the trace's screenshots.
 - **Highlighting an element from the window adds actions to the trace.** The position numbers in the package stay right.
+- **An element can be highlighted only on the page now open, and only when exactly one element there matches.** A change row's element that the page no longer has is looked for by its role and name, outside frames only, so one of several look-alikes is never highlighted.
+- **The outline drawn while Assert visibility is on is part of the trace** while it shows, like the toolbar.
 - **The recorded page's own scripts can reach the toolbar's function** on the page, as any script the page runs can.
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.
 - **The window's change rows say what appeared, was removed or changed, but not the old and the new value.** The package has the full picture.
-- **An Assert visibility step has no ref for its element, only a selector.** Playwright reports the element it picked by a selector alone.
+- **An Assert visibility step has no ref for its element, only a selector,** and the window cannot name its element by role and name. Playwright reports the element it picked by a selector alone.
 - **When the recorder stops waiting, inputs it still held back are sent on together** and can reach the page out of order. This happens only when ending or pausing runs out of time, after about five seconds, with several inputs held.
 - **A click that reached the page but has no "after" when that time runs out is not recorded,** even if Playwright reported it.
 - **Recording is Chromium only.**

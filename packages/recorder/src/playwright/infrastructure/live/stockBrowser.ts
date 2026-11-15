@@ -49,7 +49,6 @@ import {
   watchActivity,
 } from "../in-page/calls";
 import {
-  drawHighlight,
   hidePlaywrightOverlay,
   keepCursorsAsTheyAre,
   type HighlightBox,
@@ -57,7 +56,13 @@ import {
 import { startGate } from "../in-page/gate";
 import { installActivityWatch, type TargetChain } from "../in-page/watches";
 import { letThroughUpTo, type HeldByPage } from "../pageRules";
-import { ancestorRefs, installGate, installTargetWatch } from "./pageFunctions";
+import {
+  ancestorRefs,
+  followPickingIn,
+  highlightIn,
+  installGate,
+  installTargetWatch,
+} from "./pageFunctions";
 import {
   playwrightRecorderOf,
   type PlaywrightAction,
@@ -820,7 +825,7 @@ async function openPage(
     }
     return drawer.then((session) =>
       session.send("Runtime.evaluate", {
-        expression: `(${drawHighlight.toString()})(${JSON.stringify(box)})`,
+        expression: `(${highlightIn.toString()})(${JSON.stringify(box)})`,
       })
     );
   };
@@ -881,11 +886,14 @@ async function openPage(
    * reporting: it picks only from its recording mode, and goes back to it.
    */
   async function pick(on: boolean) {
+    // Each document leaves its inputs to picking, and outlines what it
+    // would pick.
     const gates = (picking: boolean) =>
       Promise.all(
-        everyFrame().map((frame) =>
-          frame.evaluate(pickWithGate, picking).catch(() => {})
-        )
+        everyFrame().flatMap((frame) => [
+          frame.evaluate(pickWithGate, picking).catch(() => {}),
+          frame.evaluate(followPickingIn, picking).catch(() => {}),
+        ])
       );
     if (!on) {
       await inModeOrder(async () => {
@@ -957,6 +965,9 @@ async function openPage(
       ),
       ...frames.map((frame) =>
         frame.evaluate(removeOwnElements, TOOLBAR_REMOVE).catch(() => {})
+      ),
+      ...frames.map((frame) =>
+        frame.evaluate(followPickingIn, false).catch(() => {})
       ),
       ...[...held.values()].map(({ frame, input }) =>
         passOn(frame, input).catch(() => {})

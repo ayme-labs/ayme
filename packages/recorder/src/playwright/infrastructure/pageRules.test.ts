@@ -12,6 +12,7 @@ import {
   leftAlone,
   modifiersOf,
   recordedAsPress,
+  recordersOwn,
   replayed,
   replayedEffect,
   withRules,
@@ -464,5 +465,23 @@ describe("up to which held input a document lets what follows through", () => {
     ).toBe(0);
     expect(letThroughUpTo(known, null, inA)).toBe(0);
     expect(letThroughUpTo(known, "input_9", inA)).toBe(0);
+  });
+});
+
+describe("what the outline while picking leaves out", () => {
+  it("is the recorder's own elements only", () => {
+    expect(
+      [
+        "ayme-recorder-toolbar",
+        "ayme-recorder-highlight",
+        "ayme-recorder-picking",
+        "button",
+        "ayme-card",
+      ].filter(recordersOwn)
+    ).toEqual([
+      "ayme-recorder-toolbar",
+      "ayme-recorder-highlight",
+      "ayme-recorder-picking",
+    ]);
   });
 });

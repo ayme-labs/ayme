@@ -37,13 +37,14 @@ export type HighlightBox = {
 };
 
 /**
- * Draws the recorder's own highlight over a box of the top document, in
- * place of the one drawn before, or takes it away when `box` is null. It is
- * not part of the page: hidden from the page's structure and from every
- * input, and drawn in a closed shadow root.
+ * Draws the recorder's own outline, under the host element `name`, over a
+ * box of its document's viewport, in place of the one drawn there before,
+ * or takes it away when `box` is null. It is not part of the page: hidden
+ * from the page's structure and from every input, and drawn in a closed
+ * shadow root. The highlight and the outline while picking share it, so
+ * they look the same.
  */
-export function drawHighlight(box: HighlightBox | null): void {
-  const name = "ayme-recorder-highlight";
+export function outline(name: string, box: HighlightBox | null): void {
   document.querySelector(name)?.remove();
   if (!box) return;
   const host = document.createElement(name);
@@ -65,4 +66,48 @@ export function drawHighlight(box: HighlightBox | null): void {
   root.innerHTML =
     "<div style='box-sizing: border-box; width: 100%; height: 100%; border: 2px solid #e5484d; border-radius: 3px; background: rgb(229 72 77 / 15%)'></div>";
   document.documentElement.append(host);
+}
+
+type Outline = { readonly outline: typeof outline };
+type Picking = Outline & {
+  readonly recordersOwn: (localName: string) => boolean;
+};
+
+/** Draws the recorder's own highlight over a box of the top document, or
+ * takes it away when `box` is null. */
+export function drawHighlight(box: HighlightBox | null, rules: Outline): void {
+  rules.outline("ayme-recorder-highlight", box);
+}
+
+/**
+ * While Playwright picks the element whose visibility is asserted, outlines
+ * the element under the mouse in this document, the one picking would pick:
+ * the deepest under the mouse, as Playwright takes it, through open shadow
+ * roots, never the recorder's own elements. The picking click, after which
+ * Playwright picks no more, and leaving picking take it away; so does the
+ * mouse leaving the document.
+ */
+export function followPicking(on: boolean, rules: Picking): void {
+  const name = "ayme-recorder-picking";
+  const self = window as unknown as { __aymeRecorderPicking?: () => void };
+  self.__aymeRecorderPicking?.();
+  if (!on) return;
+  const follow = (event: MouseEvent) => {
+    const under = event.composedPath()[0];
+    const shown =
+      under instanceof Element && !rules.recordersOwn(under.localName);
+    rules.outline(name, shown ? under.getBoundingClientRect() : null);
+  };
+  const hide = () => rules.outline(name, null);
+  const stop = () => {
+    window.removeEventListener("mousemove", follow, true);
+    window.removeEventListener("click", stop, true);
+    document.documentElement.removeEventListener("mouseleave", hide);
+    hide();
+    delete self.__aymeRecorderPicking;
+  };
+  window.addEventListener("mousemove", follow, true);
+  window.addEventListener("click", stop, true);
+  document.documentElement.addEventListener("mouseleave", hide);
+  self.__aymeRecorderPicking = stop;
 }

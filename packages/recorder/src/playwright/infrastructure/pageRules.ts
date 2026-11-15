@@ -119,6 +119,13 @@ export function leftAlone(target: ClickTarget): boolean {
   ].includes(target.inputType);
 }
 
+/** Whether an element is one the recorder puts in a page itself, which the
+ * outline while picking leaves out: its toolbar, its highlight and the
+ * outline. */
+export function recordersOwn(localName: string): boolean {
+  return localName.startsWith("ayme-recorder-");
+}
+
 /** Whether the gate holds a click back: the left button's, with a count (a
  * click with none is a key's or a label's), on a target it does not leave
  * alone. */

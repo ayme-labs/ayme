@@ -824,6 +824,64 @@ it("marks the same elements as clickable in a snapshot before, during and after 
   expect(await clickable("after")).toEqual(before);
 });
 
+/** The outline drawn over the element picking would pick, in the page's
+ * coordinates; null when none is. */
+const outlined = (page: Page) =>
+  page.evaluate(() => {
+    const host = document.querySelector("ayme-recorder-picking");
+    if (!host) return null;
+    const { x, y, width, height } = host.getBoundingClientRect();
+    return { x, y, width, height };
+  });
+const boxOf = async (element: Locator) => {
+  const { x, y, width, height } = (await element.boundingBox())!;
+  return {
+    x: expect.closeTo(x, 0),
+    y: expect.closeTo(y, 0),
+    width: expect.closeTo(width, 0),
+    height: expect.closeTo(height, 0),
+  };
+};
+
+it("outlines the element under the mouse while picking, apart from the page's structure and its clickable marks, until the element is picked or picking is left", async () => {
+  const browser = await onStockPlaywright(CLICKABLE);
+  await reporting(browser);
+  const tree = async (snapshot: string) => {
+    await browser.ask({ kind: "takeSnapshot", snapshot, page: "page_1" });
+    const { snapshot: taken } = await browser.toldOf(
+      "snapshotTaken",
+      (told) => told.snapshot.id === snapshot
+    );
+    return taken.tree;
+  };
+  const mouseOver = async (element: Locator) => {
+    const { x, y, width, height } = (await element.boundingBox())!;
+    await browser.page.mouse.move(x + width / 2, y + height / 2);
+  };
+  const before = await tree("before");
+  const first = browser.page.locator("#first");
+  const inCard = browser.page.getByText("Open the card");
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+
+  await mouseOver(first);
+  await expect.poll(() => outlined(browser.page)).toEqual(await boxOf(first));
+  expect(await tree("during")).toBe(before);
+  await mouseOver(inCard);
+  await expect.poll(() => outlined(browser.page)).toEqual(await boxOf(inCard));
+
+  await browser.click(first);
+  await browser.toldOf("picking", ({ on }) => !on);
+  await expect.poll(() => outlined(browser.page)).toBeNull();
+
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+  await mouseOver(first);
+  await expect.poll(() => outlined(browser.page)).not.toBeNull();
+  await browser.ask({ kind: "pick", on: false });
+  await expect.poll(() => outlined(browser.page)).toBeNull();
+});
+
 // The hover highlight (ticket #1278): the recorder's own highlight, drawn
 // on the element a ref of the adapter's own latest snapshot names.
 

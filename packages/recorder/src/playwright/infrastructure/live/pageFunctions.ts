@@ -1,3 +1,9 @@
+import {
+  drawHighlight,
+  followPicking,
+  outline,
+  type HighlightBox,
+} from "../in-page/drawing";
 import { gateIn } from "../in-page/gate";
 import {
   ancestorRefsIn,
@@ -15,6 +21,7 @@ import {
   leftAlone,
   modifiersOf,
   mouseRoute,
+  recordersOwn,
   recordedAsPress,
   replayed,
   replayedEffect,
@@ -57,3 +64,17 @@ export const ancestorRefs: (element: Element) => (string | null)[] = withRules(
   ancestorRefsIn,
   ancestorRules
 );
+
+/** Draws the recorder's highlight in a page: `drawHighlight` with the
+ * outline it shares with picking. */
+export const highlightIn: (box: HighlightBox | null) => void = withRules(
+  drawHighlight,
+  { outline }
+);
+
+/** Outlines the element under the mouse in a document while Playwright
+ * picks, or no longer. */
+export const followPickingIn: (on: boolean) => void = withRules(followPicking, {
+  outline,
+  recordersOwn,
+});
