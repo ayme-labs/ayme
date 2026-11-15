@@ -12,7 +12,7 @@ type OnCommand = (command: RecorderCommand) => void;
 /** A round control of the pill: lit while what it stands for is on. Its
  * buttons take no focus: the page keeps its own. */
 const round =
-  "flex size-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50 data-[on=true]:bg-blue-100 data-[on=true]:text-blue-600 [&_svg]:size-3.5";
+  "flex size-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50 data-[on=true]:bg-blue-100 data-[on=true]:text-blue-600 dark:data-[on=true]:bg-blue-500/25 dark:data-[on=true]:text-blue-300 [&_svg]:size-3.5";
 
 const props = (control: Control, onCommand: OnCommand) => ({
   type: "button" as const,

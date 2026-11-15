@@ -141,13 +141,16 @@ function EntryCard({
       <article
         aria-labelledby={heading}
         data-entry={entry.id}
+        data-kind={entry.kind}
         data-discarded={card.discarded}
         className="group flex flex-col"
       >
         <div className="flex min-h-6 flex-wrap items-center gap-2">
           <h3
             id={heading}
-            className="text-[15px] font-semibold group-data-[discarded=true]:text-muted-foreground group-data-[discarded=true]:line-through"
+            // A change no Interaction made is titled quietly, as the
+            // released window does.
+            className="text-[15px] font-semibold group-data-[discarded=true]:text-muted-foreground group-data-[discarded=true]:line-through group-data-[kind=change]:text-[13px] group-data-[kind=change]:font-normal group-data-[kind=change]:text-muted-foreground"
           >
             {card.title}
           </h3>
