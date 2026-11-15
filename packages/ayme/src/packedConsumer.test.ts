@@ -1670,6 +1670,8 @@ it("the packed CLI carries its engine, its window, its toolbar and its notices, 
     "dist/THIRD_PARTY_NOTICES.txt",
     "dist/cli.mjs",
     "dist/toolbar/toolbar.js",
+    "dist/window/favicon-dark.svg",
+    "dist/window/favicon-light.svg",
     "dist/window/index.html",
     "dist/window/window.js",
     "package.json",
@@ -1830,9 +1832,12 @@ it(
         .toBe(1);
 
       await window.getByRole("button", { name: "Record", exact: true }).click();
+      // Stop is offered once the pages hold inputs back.
       await expect
-        .poll(() => window.getByRole("status").textContent())
-        .toBe("Recording");
+        .poll(() =>
+          window.getByRole("button", { name: "Stop", exact: true }).isEnabled()
+        )
+        .toBe(true);
       await page.getByRole("button", { name: "Add item" }).click();
       await expect
         .poll(() => window.getByRole("main").textContent())
