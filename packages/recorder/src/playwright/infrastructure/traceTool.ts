@@ -3,6 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { SnapshotId, TracePosition } from "../../timeline/domain";
+
 // The stock trace tool, `playwright trace`, run through the project's own
 // Playwright. It is how the engine learns the numbers a reader opens the
 // recording's snapshots by: the tool's own numbering, which no archive
@@ -76,18 +78,19 @@ export const passThroughTraceTool = (
  */
 export function positionsOfSnapshots(
   actions: string,
-  snapshots: ReadonlySet<string>
-): Readonly<Record<string, string>> {
+  snapshots: ReadonlySet<SnapshotId>
+): Readonly<Record<SnapshotId, TracePosition>> {
   // "   4. 0:00.252    Evaluate   3ms": the number, the time, then the
   // action, indented one step further for each group it is inside.
   const row = /^\s*(\d+)\.\s+\S+(\s+)(\S.*?)\s{2,}\S+\s*$/;
   const rows = actions.split("\n").map((line) => row.exec(line));
-  const positions: Record<string, string> = {};
+  const positions: Record<SnapshotId, TracePosition> = {};
   rows.forEach((marker, index) => {
-    const id = marker?.[3];
+    // A marker is named for the snapshot's id, as the adapter named it.
+    const id = marker?.[3] as SnapshotId | undefined;
     const call = rows[index + 1];
     if (id && snapshots.has(id) && call && call[2]!.length > marker![2]!.length)
-      positions[id] = call[1]!;
+      positions[id] = call[1]! as TracePosition;
   });
   return positions;
 }
@@ -101,8 +104,8 @@ export function positionsOfSnapshots(
 export async function snapshotPositions(
   cli: string,
   traceFile: string,
-  snapshots: ReadonlySet<string>
-): Promise<Readonly<Record<string, string>>> {
+  snapshots: ReadonlySet<SnapshotId>
+): Promise<Readonly<Record<SnapshotId, TracePosition>>> {
   const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-trace-"));
   try {
     const opened = await runTraceTool(cli, ["open", traceFile], cwd);

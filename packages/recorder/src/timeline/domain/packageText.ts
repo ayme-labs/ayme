@@ -9,11 +9,13 @@ import {
 import { stringify } from "yaml";
 
 import type {
+  EntryId,
   InteractionDetails,
   RecordedVisit,
   TimelineEntry,
 } from "../../contract";
-import type { InteractionReport } from "./recorded";
+import type { InteractionReport, PageId, TracePosition } from "./recorded";
+import type { FirstRef } from "./refs";
 
 // The text of a Recording Package, in the released format: the layout the
 // `ayme-recorder` skill and the 0.1 recorder's readers know. Trees are core's
@@ -52,11 +54,11 @@ export type PackageVisit = Omit<RecordedVisit, "entries"> & {
  * is text, as the released format keeps it.
  */
 export type TracePoint = {
-  readonly interactionId: string;
-  readonly pageId: string;
-  readonly beforeSnapshotId?: string;
+  readonly interactionId: EntryId;
+  readonly pageId: PageId;
+  readonly beforeSnapshotId?: TracePosition;
   /** Absent when the Interaction left its page. */
-  readonly afterSnapshotId?: string;
+  readonly afterSnapshotId?: TracePosition;
   /** Milliseconds on the recorded browser's monotonic clock. */
   readonly startedAt: number;
   readonly endedAt: number;
@@ -78,9 +80,9 @@ const INTERACTION_VALUES = [
 
 /** An Interaction as the package lists it, in the released order of fields. */
 export function interactionDetails(
-  id: string,
+  id: EntryId,
   report: InteractionReport,
-  targetRef: string | null
+  targetRef: FirstRef | null
 ): InteractionDetails {
   const details: Record<string, unknown> = {
     id,

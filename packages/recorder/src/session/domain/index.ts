@@ -3,7 +3,9 @@ export type {
   BrowserSignal,
   HeldInput,
   HighlightTarget,
+  InputId,
 } from "./lifecycle";
+export type { Written } from "./written";
 export {
   RecorderStartError,
   type RecorderStartReason,

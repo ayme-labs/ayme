@@ -1,15 +1,32 @@
 // What a recording is made of, as the session hands it to the timeline:
 // plain data in the engine's words, with nothing of Playwright in it.
 
-import type { RecordedVisit } from "../../contract";
+import type { PageId } from "@ayme-dev/core/structural-observation";
+
+import type { EntryId, RecordedVisit } from "../../contract";
+import type { PictureRef } from "./refs";
+
+export type { PageId } from "@ayme-dev/core/structural-observation";
+
+/** A snapshot's identity, such as "snapshot_3": the lifecycle makes it when
+ * it asks for the snapshot. */
+export type SnapshotId = string & { readonly __brand: "SnapshotId" };
+
+/**
+ * Where the recording's trace holds a snapshot: the number the stock
+ * `playwright trace` tool takes to open its page, kept as the text it is
+ * printed as. The package's `beforeSnapshotId` and `afterSnapshotId` hold
+ * one, by their released names.
+ */
+export type TracePosition = string & { readonly __brand: "TracePosition" };
 
 /** Why a Visit started. The first Visit of a recording is "initial". */
 export type VisitCause = RecordedVisit["cause"];
 
 /** A page's structure at one moment, as the browser read it. */
 export type PageSnapshot = {
-  readonly id: string;
-  readonly page: string;
+  readonly id: SnapshotId;
+  readonly page: PageId;
   /** The page's address at that moment. */
   readonly url: string;
   /** When it was read, in milliseconds on the browser's monotonic clock. */
@@ -31,9 +48,9 @@ export type InteractionReport = {
    * are the refs the picture gave the target's ancestors, nearest first.
    */
   readonly target: {
-    readonly ref: string | null;
+    readonly ref: PictureRef | null;
     readonly tree: string;
-    readonly ancestors?: readonly string[];
+    readonly ancestors?: readonly PictureRef[];
   } | null;
   /** Everything else Playwright said: the button, the modifiers and so on. */
   readonly values: Readonly<Record<string, unknown>>;
@@ -41,13 +58,13 @@ export type InteractionReport = {
 
 /** One Interaction with the snapshots around it. */
 export type RecordedInteraction = {
-  readonly page: string;
+  readonly page: PageId;
   readonly report: InteractionReport;
   /** The snapshot just before the input reached the page. */
-  readonly before: string;
+  readonly before: SnapshotId;
   /** The snapshot of the Settled Page after it; null when the page was gone
    * before one could be taken. */
-  readonly after: string | null;
+  readonly after: SnapshotId | null;
   /** When the input reached the page, on the browser's monotonic clock. */
   readonly at: number;
   /**
@@ -62,7 +79,7 @@ export type RecordedInteraction = {
 export type TimelineAddition =
   | {
       readonly kind: "visit";
-      readonly page: string;
+      readonly page: PageId;
       readonly url: string;
       readonly cause: VisitCause;
     }
@@ -80,19 +97,15 @@ export type TimelineAddition =
   | { readonly kind: "interaction"; readonly interaction: RecordedInteraction }
   /** The person leaves an entry out of the recording, by its `id`. An entry
    * the timeline does not have is left alone. */
-  | { readonly kind: "discard"; readonly entry: string }
+  | { readonly kind: "discard"; readonly entry: EntryId }
   /** The person puts a discarded entry back. */
-  | { readonly kind: "restore"; readonly entry: string };
+  | { readonly kind: "restore"; readonly entry: EntryId };
 
-/**
- * A recording's trace, as the browser hands it over once it is stopped: the
- * file, and where each of the recording's snapshots is in it. A position is
- * the number the stock `playwright trace` tool takes to open that snapshot's
- * page, and it is kept as the text it is printed as.
- */
+/** A recording's trace, as the browser hands it over once it is stopped:
+ * the file, and where each of the recording's snapshots is in it. */
 export type RecordingTrace = {
   /** An absolute path. The file is the recording's to keep or remove. */
   readonly file: string;
   /** From a snapshot's id to its position in the trace. */
-  readonly positions: Readonly<Record<string, string>>;
+  readonly positions: Readonly<Record<SnapshotId, TracePosition>>;
 };

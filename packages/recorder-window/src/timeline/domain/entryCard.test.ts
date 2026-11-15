@@ -5,16 +5,17 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { entryCardOf } from "./entryCard";
+import { entryId } from "../../test-utils/ids";
 
 // How one entry of a Visit shows in the window: read from the entry and from
 // the commands that apply now.
 
 const click: TimelineEntry = {
   kind: "interaction",
-  id: "interaction_1",
+  id: entryId("interaction_1"),
   timestamp: 10,
   interaction: {
-    id: "interaction_1",
+    id: entryId("interaction_1"),
     type: "click",
     targetRef: "e2",
     targetSelector: 'internal:role=button[name="Add item"i]',
@@ -23,7 +24,7 @@ const click: TimelineEntry = {
 };
 const change: TimelineEntry = {
   kind: "change",
-  id: "change_1",
+  id: entryId("change_1"),
   timestamp: 20,
   changes: [{ kind: "removed", element: 'status "Saved"' }],
 };
@@ -51,7 +52,7 @@ describe("an entry's card", () => {
       discarded: false,
       review: null,
       hover: {
-        enter: { type: "highlight", entry: "interaction_1" },
+        enter: { type: "highlight", entry: entryId("interaction_1") },
         leave: { type: "clearHighlight" },
       },
       changes: [{ element: 'list "Cart"', effect: "appeared" }],
@@ -98,7 +99,7 @@ describe("an entry's card", () => {
     expect(entryCardOf(click, paused)).toMatchObject({
       review: {
         label: "Discard",
-        command: { type: "discard", entry: "interaction_1" },
+        command: { type: "discard", entry: entryId("interaction_1") },
       },
       hover: { enter: null, leave: null },
     });
@@ -109,7 +110,7 @@ describe("an entry's card", () => {
       discarded: true,
       review: {
         label: "Restore",
-        command: { type: "restore", entry: "interaction_1" },
+        command: { type: "restore", entry: entryId("interaction_1") },
       },
       changes: [],
     });

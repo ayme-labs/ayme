@@ -10,7 +10,7 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 
-import type { RecordedVisit, RecorderWarning } from "../../contract";
+import type { EntryId, RecordedVisit, RecorderWarning } from "../../contract";
 import { changeRows } from "./changeRows";
 import {
   interactionDetails,
@@ -22,11 +22,21 @@ import {
   type TracePoint,
 } from "./packageText";
 import type {
+  PageId,
   PageSnapshot,
   RecordedInteraction,
+  SnapshotId,
   TimelineAddition,
+  TracePosition,
   VisitCause,
 } from "./recorded";
+import {
+  firstRef,
+  isFirst,
+  snapshotRef,
+  type FirstRef,
+  type SnapshotRef,
+} from "./refs";
 import { pictureBefore } from "./reportPicture";
 import { locateTarget } from "./target";
 
@@ -39,7 +49,7 @@ type Kept = {
   /** The tree as the browser named it. */
   readonly tree: StructuralTree;
   /** From each ref the browser used here to the first ref its element had. */
-  readonly firstRefs: ReadonlyMap<AriaRef, AriaRef>;
+  readonly firstRefs: ReadonlyMap<SnapshotRef, FirstRef>;
   /** The tree under first refs: what the package shows. */
   readonly stable: StructuralTree;
   /** Recording resumes here after a pause: what changed from the snapshot
@@ -48,12 +58,12 @@ type Kept = {
 };
 
 /** An Interaction that has no entry yet. */
-type Waiting = RecordedInteraction & { readonly id: string };
+type Waiting = RecordedInteraction & { readonly id: EntryId };
 
 type Visit = {
   readonly id: string;
   /** The page it is a Visit of. */
-  readonly page: string;
+  readonly page: PageId;
   readonly url: string;
   readonly cause: VisitCause;
   readonly snapshots: Kept[];
@@ -69,7 +79,7 @@ type Visit = {
    * there is one: the latest snapshot stands in until then. */
   start: number | null;
   /** From every ref the browser used in this Visit to the element's first. */
-  readonly firstRefs: Map<AriaRef, AriaRef>;
+  readonly firstRefs: Map<SnapshotRef, FirstRef>;
 };
 
 /** Whether a Change Tree has a node that was added, removed or changed
@@ -78,7 +88,7 @@ const changedSomething = (change: StructuralTree) =>
   change.getRootNodes().some(leadsToChange);
 
 /** The place of a snapshot among a Visit's; negative when it is not there. */
-const placeIn = (visit: Visit, snapshot: string | null) =>
+const placeIn = (visit: Visit, snapshot: SnapshotId | null) =>
   visit.snapshots.findIndex((kept) => kept.snapshot.id === snapshot);
 
 /**
@@ -119,10 +129,10 @@ export class Timeline {
   private readonly recorded: (Waiting & {
     /** Its "after" when that is a snapshot of the Visit it started in; null
      * when it has none, or left its Visit. */
-    readonly afterInVisit: string | null;
+    readonly afterInVisit: SnapshotId | null;
   })[] = [];
   /** When each snapshot was read. No snapshot was read at no time. */
-  private readonly readAt = new Map<string | null, number>();
+  private readonly readAt = new Map<SnapshotId | null, number>();
   private told: readonly RecordedVisit[] = [];
   private readonly warned: RecorderWarning[] = [];
 
@@ -202,7 +212,7 @@ export class Timeline {
         }
         const recorded = {
           ...interaction,
-          id: `interaction_${++this.interactions}`,
+          id: `interaction_${++this.interactions}` as EntryId,
         };
         visit.waiting.push(recorded);
         this.recorded.push({
@@ -231,7 +241,7 @@ export class Timeline {
 
   /** Leaves an entry out of the recording, or puts it back. One this
    * timeline does not have is left alone. */
-  private decide(id: string, discarded: boolean) {
+  private decide(id: EntryId, discarded: boolean) {
     for (const visit of this.all) {
       const place = visit.entries.findIndex(({ entry }) => entry.id === id);
       if (place < 0) continue;
@@ -254,9 +264,9 @@ export class Timeline {
    * its selector. Null for an entry with no target, one of a Visit its page
    * has left, and an element the latest snapshot no longer has.
    */
-  liveTarget(entry: string): {
-    readonly page: string;
-    readonly ref: string | null;
+  liveTarget(entry: EntryId): {
+    readonly page: PageId;
+    readonly ref: SnapshotRef | null;
     readonly selector: string | null;
   } | null {
     for (const visit of this.all) {
@@ -303,9 +313,9 @@ export class Timeline {
     const firstRefs = await this.session.readIdentityLedger(
       pageId,
       (ledger) => {
-        const now = new Map<AriaRef, AriaRef>();
+        const now = new Map<SnapshotRef, FirstRef>();
         /** The element of this snapshot each first ref names: one only. */
-        const holder = new Map<AriaRef, AriaRef>();
+        const holder = new Map<FirstRef, SnapshotRef>();
         // Oldest first: a ref comes before every ref that later stood for
         // the same element, so the element that first had it claims it
         // first.
@@ -315,7 +325,7 @@ export class Timeline {
           const resolved = ledger.resolve(ref);
           // Stryker disable next-line ConditionalExpression: "false" is equivalent, since a ref that is not resolved has no current ref: what is kept under none is never read, and it holds no first ref against another
           if (resolved.status !== "resolved") continue;
-          const current = resolved.currentRef;
+          const current = snapshotRef(resolved.currentRef);
           // Core once took two refs for one element, as when the page
           // re-created it, and now has both in one snapshot: two elements.
           // The one that claimed the first ref keeps it; the other is left
@@ -324,8 +334,8 @@ export class Timeline {
           holder.set(first, current);
           now.set(current, first);
         }
-        for (const ref of tree.getAllRefs()) {
-          if (!now.has(ref)) now.set(ref, ref);
+        for (const ref of tree.getAllRefs().map(snapshotRef)) {
+          if (!now.has(ref)) now.set(ref, firstRef(ref));
           visit.firstRefs.set(ref, now.get(ref)!);
         }
         return now;
@@ -351,19 +361,21 @@ export class Timeline {
    */
   private underFirstRefs(
     tree: StructuralTree,
-    firstRefs: ReadonlyMap<AriaRef, AriaRef>
+    firstRefs: ReadonlyMap<SnapshotRef, FirstRef>
   ): StructuralTree {
-    const first = (ref: AriaRef) => firstRefs.get(ref) ?? ref;
+    // A ref no earlier snapshot of the Visit had is the element's first.
+    const first = (ref: SnapshotRef) => firstRefs.get(ref) ?? firstRef(ref);
     // The first to claim a ref holds it, unless the element whose own ref it
     // is comes after: that one first had it, and takes it.
-    const holder = new Map<AriaRef, AriaRef>();
-    for (const ref of tree.getAllRefs())
-      if (!holder.has(first(ref)) || first(ref) === ref)
+    const holder = new Map<FirstRef, SnapshotRef>();
+    for (const ref of tree.getAllRefs().map(snapshotRef))
+      if (!holder.has(first(ref)) || isFirst(ref, first(ref)))
         holder.set(first(ref), ref);
     const beforeByRef = new Map<AriaRef, StructuralNode>();
     const rename = (node: StructuralNode): StructuralNode => {
-      const ref =
-        holder.get(first(node.ref)) === node.ref ? first(node.ref) : node.ref;
+      const own = snapshotRef(node.ref);
+      // One that does not hold its first ref keeps its own from here on.
+      const ref = holder.get(first(own)) === own ? first(own) : firstRef(own);
       const before = tree.getBeforeNode(node.ref);
       // Stryker disable next-line ConditionalExpression: equivalent, since core reads a node recorded as null and one not recorded alike
       if (before) beforeByRef.set(ref, before);
@@ -407,7 +419,7 @@ export class Timeline {
   ): Promise<{
     changedBefore: StructuralTree;
     changedByIt: StructuralTree;
-    target: AriaRef | undefined;
+    target: FirstRef | undefined;
   } | null> {
     const { target, type, selector } = interaction.report;
     if (!target) return null;
@@ -445,7 +457,8 @@ export class Timeline {
       changedBefore: this.underFirstRefs(before!, firstRefs),
       changedByIt: this.underFirstRefs(after!, firstRefs),
       target:
-        picture.target && (firstRefs.get(picture.target) ?? picture.target),
+        picture.target &&
+        (firstRefs.get(picture.target) ?? firstRef(picture.target)),
     };
   }
 
@@ -500,7 +513,7 @@ export class Timeline {
         interaction: interactionDetails(
           interaction.id,
           interaction.report,
-          target ? (from.firstRefs.get(target) ?? target) : null
+          target ?? null
         ),
         changes: changed && changeRows(changed),
       },
@@ -524,9 +537,11 @@ export class Timeline {
     interaction: Waiting,
     from: Kept,
     to: Kept | undefined
-  ): Promise<{ target: AriaRef | undefined; change: StructuralTree | null }> {
+  ): Promise<{ target: FirstRef | undefined; change: StructuralTree | null }> {
+    const located = locateTarget(from.tree, interaction.report);
     const held = {
-      target: locateTarget(from.tree, interaction.report),
+      // Every ref of a kept snapshot has its first ref.
+      target: located && from.firstRefs.get(located),
       change: to ? await this.change(from, to) : null,
     };
     if (!interaction.beforeFromReport || !to) return held;
@@ -567,7 +582,7 @@ export class Timeline {
 
   /** Writes a change of its own: one no Interaction explains. */
   private writeChange(visit: Visit, at: number, change: StructuralTree) {
-    const id = `change_${++this.changes}`;
+    const id = `change_${++this.changes}` as EntryId;
     visit.entries.push({
       entry: { kind: "change", id, timestamp: at, changes: changeRows(change) },
       change,
@@ -588,7 +603,7 @@ export class Timeline {
    */
   async package(
     header: PackageHeader,
-    positions: Readonly<Record<string, string>> = {}
+    positions: Readonly<Record<SnapshotId, TracePosition>> = {}
   ): Promise<string | null> {
     if (this.interactions === 0) return null;
     const visits = [];
@@ -612,11 +627,11 @@ export class Timeline {
   /** Where the trace holds each Interaction: the position of its "before"
    * and of its "after", for as many as the trace has. */
   private tracePoints(
-    positions: Readonly<Record<string, string>>
+    positions: Readonly<Record<SnapshotId, TracePosition>>
   ): TracePoint[] {
     if (Object.keys(positions).length === 0) return [];
     // No snapshot has no position, like a snapshot the trace does not hold.
-    const position: ReadonlyMap<string | null, string> = new Map(
+    const position: ReadonlyMap<string | null, TracePosition> = new Map(
       Object.entries(positions)
     );
     return this.recorded.map((interaction) => ({

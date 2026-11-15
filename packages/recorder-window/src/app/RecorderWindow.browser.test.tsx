@@ -11,6 +11,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { RecorderChannel } from "../channel";
 import { RecorderWindow } from "../testing";
 import { channelUrl, mountWindow } from "./mountWindow";
+import { entryId } from "../test-utils/ids";
 
 // Component tests: the recorder window, mounted as its script mounts it,
 // showing what a scripted channel tells, and read and pressed through its
@@ -79,10 +80,10 @@ const cart: RecordedVisit = {
   entries: [
     {
       kind: "interaction",
-      id: "interaction_1",
+      id: entryId("interaction_1"),
       timestamp: 10,
       interaction: {
-        id: "interaction_1",
+        id: entryId("interaction_1"),
         type: "click",
         targetRef: "e2",
         targetSelector: 'internal:role=button[name="Add item"i]',
@@ -91,7 +92,7 @@ const cart: RecordedVisit = {
     },
     {
       kind: "change",
-      id: "change_1",
+      id: entryId("change_1"),
       timestamp: 20,
       changes: [{ kind: "removed", element: 'status "Saved"' }],
     },
@@ -175,7 +176,7 @@ it("asks for a highlight while an entry's target is hovered, and clears it when 
   await entry.leaveTarget();
 
   expect(sent).toEqual([
-    { type: "highlight", entry: "interaction_1" },
+    { type: "highlight", entry: entryId("interaction_1") },
     { type: "clearHighlight" },
   ]);
 });
@@ -297,8 +298,8 @@ it("offers Continue, Discard and Restore while paused, and dims a discarded entr
   await visit.entry(1).discard();
   await recorderWindow.controls.press("Continue");
   expect(sent).toEqual([
-    { type: "restore", entry: "interaction_1" },
-    { type: "discard", entry: "change_1" },
+    { type: "restore", entry: entryId("interaction_1") },
+    { type: "discard", entry: entryId("change_1") },
     { type: "continue" },
   ]);
 });

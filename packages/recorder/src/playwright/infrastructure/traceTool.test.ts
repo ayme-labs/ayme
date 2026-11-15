@@ -11,6 +11,7 @@ import {
   runTraceTool,
   snapshotPositions,
 } from "./traceTool";
+import { snapshotId } from "../../test-utils/ids";
 
 // What the stock `playwright trace actions` prints, as run on Playwright 1.62
 // and 1.64 for a trace of one page with two snapshot markers: the markers
@@ -28,7 +29,7 @@ const actions = [
   `    8. 0:00.261  Evaluate                                                     1ms`,
 ].join("\n");
 
-const ids = new Set(["snapshot_1", "snapshot_2"]);
+const ids = new Set([snapshotId("snapshot_1"), snapshotId("snapshot_2")]);
 
 describe("the positions of a trace's snapshots", () => {
   it("are the numbers of the calls inside the markers, as the stock trace tool lists them", () => {
@@ -58,7 +59,10 @@ describe("the positions of a trace's snapshots", () => {
 
   it("look only for the markers of the snapshots it is given", () => {
     expect(
-      positionsOfSnapshots(actions, new Set(["snapshot_2", "snapshot_9"]))
+      positionsOfSnapshots(
+        actions,
+        new Set([snapshotId("snapshot_2"), snapshotId("snapshot_9")])
+      )
     ).toEqual({ snapshot_2: "7" });
   });
 

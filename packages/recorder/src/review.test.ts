@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate, RecordingOutcome } from "./index";
 import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
+import { entryId, inputId, pageId } from "./test-utils/ids";
 
 // Ticket #1279: leaving an entry out of the recording while paused, and
 // putting it back, on the scripted browser: what the handle answers and
@@ -38,7 +39,7 @@ async function clickOnce(
   after = idle
 ) {
   browser.holdClick();
-  await browser.asks({ kind: "waitForSettled", page: "page_1", input });
+  await browser.asks({ kind: "waitForSettled", page: pageId("page_1"), input });
   browser.showPage(after);
   browser.settle();
   browser.report(click);
@@ -60,8 +61,8 @@ async function pausedWithTwoClicks() {
   const updates: RecorderUpdate[] = [];
   recorder.subscribe((update) => updates.push(update));
   await recorder.send({ type: "record" });
-  await clickOnce(browser, "input_1", saved);
-  await clickOnce(browser, "input_2", saved);
+  await clickOnce(browser, inputId("input_1"), saved);
+  await clickOnce(browser, inputId("input_2"), saved);
   await expect.poll(() => entriesOf(updates.at(-1)!).length).toBe(2);
   await recorder.send({ type: "stop" });
   await expect.poll(() => updates.at(-1)!.state.phase).toBe("paused");
@@ -81,20 +82,20 @@ describe("discard and restore", () => {
     const updates: RecorderUpdate[] = [];
     recorder.subscribe((update) => updates.push(update));
     await expect(
-      recorder.send({ type: "discard", entry: "interaction_1" })
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
     ).resolves.toBe("ignored");
 
     await recorder.send({ type: "record" });
-    await clickOnce(browser, "input_1", saved);
+    await clickOnce(browser, inputId("input_1"), saved);
     await expect.poll(() => entriesOf(updates.at(-1)!).length).toBe(1);
     expect(updates.at(-1)!.state.commands).not.toContain("discard");
     await expect(
-      recorder.send({ type: "discard", entry: "interaction_1" })
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
     ).resolves.toBe("ignored");
     await expect(
-      recorder.send({ type: "restore", entry: "interaction_1" })
+      recorder.send({ type: "restore", entry: entryId("interaction_1") })
     ).resolves.toBe("ignored");
-    expect(shownAs(updates.at(-1)!)).toEqual(["interaction_1"]);
+    expect(shownAs(updates.at(-1)!)).toEqual([entryId("interaction_1")]);
 
     await recorder.send({ type: "stop" });
     await expect.poll(() => updates.at(-1)!.state.phase).toBe("paused");
@@ -108,14 +109,14 @@ describe("discard and restore", () => {
       "clearHighlight",
     ]);
     await expect(
-      recorder.send({ type: "discard", entry: "interaction_1" })
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
     ).resolves.toBe("applied");
     expect(shownAs(updates.at(-1)!)).toEqual(["interaction_1 (discarded)"]);
 
     await expect(
-      recorder.send({ type: "restore", entry: "interaction_1" })
+      recorder.send({ type: "restore", entry: entryId("interaction_1") })
     ).resolves.toBe("applied");
-    expect(shownAs(updates.at(-1)!)).toEqual(["interaction_1"]);
+    expect(shownAs(updates.at(-1)!)).toEqual([entryId("interaction_1")]);
     recorder.end();
     await recorder.done;
   });
@@ -124,12 +125,12 @@ describe("discard and restore", () => {
     const { recorder, latest } = await pausedWithTwoClicks();
     const before = latest();
 
-    await recorder.send({ type: "discard", entry: "interaction_1" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_1") });
 
     expect(latest().revision).toBe(before.revision + 1);
     expect(shownAs(latest())).toEqual([
       "interaction_1 (discarded)",
-      "interaction_2",
+      entryId("interaction_2"),
     ]);
     expect(entriesOf(latest())[0]).toMatchObject({
       changes: entriesOf(before)[0]!.changes,
@@ -140,26 +141,26 @@ describe("discard and restore", () => {
 
   it("survive Continue: a decision made while paused is still there after the recorder goes on, and after it pauses again", async () => {
     const { recorder, browser, latest } = await pausedWithTwoClicks();
-    await recorder.send({ type: "discard", entry: "interaction_2" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_2") });
 
     await recorder.send({ type: "continue" });
     await expect.poll(() => latest().state.phase).toBe("recording");
     expect(shownAs(latest())).toEqual([
-      "interaction_1",
+      entryId("interaction_1"),
       "interaction_2 (discarded)",
     ]);
     // Nothing can be decided while recording.
     await expect(
-      recorder.send({ type: "restore", entry: "interaction_2" })
+      recorder.send({ type: "restore", entry: entryId("interaction_2") })
     ).resolves.toBe("ignored");
 
-    await clickOnce(browser, "input_3", saved);
+    await clickOnce(browser, inputId("input_3"), saved);
     await recorder.send({ type: "stop" });
     await expect.poll(() => latest().state.phase).toBe("paused");
     expect(shownAs(latest())).toEqual([
-      "interaction_1",
+      entryId("interaction_1"),
       "interaction_2 (discarded)",
-      "interaction_3",
+      entryId("interaction_3"),
     ]);
     recorder.end();
     await recorder.done;
@@ -167,26 +168,26 @@ describe("discard and restore", () => {
 
   it("are all dropped by Clear: the next recording starts with none", async () => {
     const { recorder, browser, latest } = await pausedWithTwoClicks();
-    await recorder.send({ type: "discard", entry: "interaction_1" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_1") });
 
     await recorder.send({ type: "clear" });
     await expect.poll(() => latest().state.phase).toBe("notRecording");
     await recorder.send({ type: "record" });
     // The browser goes on counting the clicks it held.
-    await clickOnce(browser, "input_3", saved);
+    await clickOnce(browser, inputId("input_3"), saved);
     await expect.poll(() => entriesOf(latest()).length).toBe(1);
     await recorder.send({ type: "stop" });
     await expect.poll(() => latest().state.phase).toBe("paused");
 
     // The new recording has an `interaction_1` of its own, and it is kept.
-    expect(shownAs(latest())).toEqual(["interaction_1"]);
+    expect(shownAs(latest())).toEqual([entryId("interaction_1")]);
     await recorder.send({ type: "finish" });
     expect(await packageOf(await recorder.done)).not.toContain("discarded");
   });
 
   it("are saved by Finish into the package, which ends review", async () => {
     const { recorder, latest } = await pausedWithTwoClicks();
-    await recorder.send({ type: "discard", entry: "interaction_1" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_1") });
 
     await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
     const outcome = await recorder.done;
@@ -209,15 +210,15 @@ describe("discard and restore", () => {
     expect(text.match(/discarded: true/g)).toHaveLength(1);
     // Review is over: nothing can be decided any more.
     await expect(
-      recorder.send({ type: "restore", entry: "interaction_1" })
+      recorder.send({ type: "restore", entry: entryId("interaction_1") })
     ).resolves.toBe("ignored");
     expect(latest().state.phase).toBe("ended");
   });
 
   it("leave a package when everything was discarded; a recording of nothing still ends 'empty'", async () => {
     const { recorder } = await pausedWithTwoClicks();
-    await recorder.send({ type: "discard", entry: "interaction_1" });
-    await recorder.send({ type: "discard", entry: "interaction_2" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_1") });
+    await recorder.send({ type: "discard", entry: entryId("interaction_2") });
 
     await recorder.send({ type: "finish" });
     const outcome = await recorder.done;
@@ -235,7 +236,7 @@ describe("discard and restore", () => {
 
   it("are saved when the recorder is ended from outside while paused", async () => {
     const { recorder } = await pausedWithTwoClicks();
-    await recorder.send({ type: "discard", entry: "interaction_2" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_2") });
 
     recorder.end();
     const outcome = await recorder.done;

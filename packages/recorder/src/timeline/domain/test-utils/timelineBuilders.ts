@@ -1,5 +1,7 @@
 import type { PageSnapshot, TimelineAddition } from "../recorded";
 import { Timeline, type PackageHeader } from "../timeline";
+import type { SnapshotId } from "../recorded";
+import { pageId } from "../../../test-utils/ids";
 
 // Builders the timeline's tests share: a package header, the first Visit, a
 // snapshot of its page, and a timeline replayed from additions. Test-only:
@@ -16,19 +18,19 @@ export const url = "http://shop.test/";
 /** The recording's first Visit, of page_1 at `url`. */
 export const visit: TimelineAddition = {
   kind: "visit",
-  page: "page_1",
+  page: pageId("page_1"),
   url,
   cause: "initial",
 };
 
 /** A snapshot of page_1, taken at `at`. */
 export const snapshot = (
-  id: string,
+  id: SnapshotId,
   at: number,
   tree: string
 ): { kind: "snapshot"; snapshot: PageSnapshot } => ({
   kind: "snapshot",
-  snapshot: { id, page: "page_1", url, at, tree },
+  snapshot: { id, page: pageId("page_1"), url, at, tree },
 });
 
 /** A timeline that was given these additions, in order. */

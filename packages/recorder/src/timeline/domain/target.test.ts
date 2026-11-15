@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { TimelineAddition } from "./recorded";
 import { selectorSteps } from "./target";
 import { Timeline } from "./timeline";
+import { pictureRef } from "./refs";
+import { pageId, snapshotId } from "../../test-utils/ids";
 
 // Which element of a snapshot a report's target is. Playwright's report names
 // the target in its own picture of the page; the timeline finds the node at
@@ -23,24 +25,26 @@ async function targetOf(input: {
   const additions: TimelineAddition[] = [
     {
       kind: "visit",
-      page: "page_1",
+      page: pageId("page_1"),
       url: "http://shop.test/",
       cause: "initial",
     },
-    ...["snapshot_1", "snapshot_2"].map((id, index): TimelineAddition => ({
-      kind: "snapshot",
-      snapshot: {
-        id,
-        page: "page_1",
-        url: "http://shop.test/",
-        at: 10 * (index + 1),
-        tree: input.before,
-      },
-    })),
+    ...[snapshotId("snapshot_1"), snapshotId("snapshot_2")].map(
+      (id, index): TimelineAddition => ({
+        kind: "snapshot",
+        snapshot: {
+          id,
+          page: pageId("page_1"),
+          url: "http://shop.test/",
+          at: 10 * (index + 1),
+          tree: input.before,
+        },
+      })
+    ),
     {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: pageId("page_1"),
         report: {
           type: "click",
           selector:
@@ -48,14 +52,16 @@ async function targetOf(input: {
               ? "internal:role=button"
               : input.selector,
           target: {
-            ref: input.ref,
+            ref: input.ref === null ? null : pictureRef(input.ref),
             tree: input.picture,
-            ...(input.ancestors ? { ancestors: input.ancestors } : {}),
+            ...(input.ancestors
+              ? { ancestors: input.ancestors.map(pictureRef) }
+              : {}),
           },
           values: {},
         },
-        before: "snapshot_1",
-        after: "snapshot_2",
+        before: snapshotId("snapshot_1"),
+        after: snapshotId("snapshot_2"),
         at: 15,
       },
     },
@@ -115,7 +121,7 @@ describe("the target a report names", () => {
         ),
         // The icon in the button, and a wrapper around it, are not listed.
         ref: null,
-        ancestors: ["e30", "e22", "e21"],
+        ancestors: [pictureRef("e30"), pictureRef("e22"), pictureRef("e21")],
       })
     ).toBe("e3");
   });

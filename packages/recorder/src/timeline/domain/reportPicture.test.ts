@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { TimelineAddition } from "./recorded";
 import { changeTreesOf, header } from "./test-utils/timelineBuilders";
 import { Timeline } from "./timeline";
+import { pictureRef } from "./refs";
+import { pageId, snapshotId } from "../../test-utils/ids";
 
 // How the report's own picture of the page is matched to the snapshots
 // around an input the gate never holds, such as typing. The rules are read
@@ -38,15 +40,15 @@ async function read(input: {
   const additions: TimelineAddition[] = [
     {
       kind: "visit",
-      page: "page_1",
+      page: pageId("page_1"),
       url: "http://shop.test/",
       cause: "initial",
     },
     ...(input.earlier ?? []).map((tree, index): TimelineAddition => ({
       kind: "snapshot",
       snapshot: {
-        id: `earlier_${index + 1}`,
-        page: "page_1",
+        id: snapshotId(`earlier_${index + 1}`),
+        page: pageId("page_1"),
         url: "http://shop.test/",
         at: index + 1,
         tree,
@@ -55,8 +57,8 @@ async function read(input: {
     ...[input.before, input.after].map((tree, index): TimelineAddition => ({
       kind: "snapshot",
       snapshot: {
-        id: `snapshot_${index + 1}`,
-        page: "page_1",
+        id: snapshotId(`snapshot_${index + 1}`),
+        page: pageId("page_1"),
         url: "http://shop.test/",
         at: 10 * (index + 1),
         tree,
@@ -65,15 +67,18 @@ async function read(input: {
     {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: pageId("page_1"),
         report: {
           type: input.type ?? "fill",
           selector: input.selector ?? "internal:role=textbox",
-          target: { ref: input.target, tree: input.picture },
+          target: {
+            ref: input.target === null ? null : pictureRef(input.target),
+            tree: input.picture,
+          },
           values: {},
         },
-        before: "snapshot_1",
-        after: "snapshot_2",
+        before: snapshotId("snapshot_1"),
+        after: snapshotId("snapshot_2"),
         at: 15,
         beforeFromReport: true,
       },

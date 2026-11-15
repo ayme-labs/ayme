@@ -33,9 +33,17 @@ export type RecorderPhase =
    * untouched. What was recorded is kept, and Continue goes on from it. */
   | { readonly phase: "paused" };
 
+/**
+ * An entry's identity, such as "interaction_3" or "change_1": the engine
+ * makes it, a window or the toolbar sends it back in a command, and the
+ * engine checks it there as it arrives.
+ */
+export type EntryId = string & { readonly __brand: "EntryId" };
+
 /** One Interaction as it is recorded, and as the Recording Package lists it. */
 export type InteractionDetails = {
-  readonly id: string;
+  /** Its entry's id. */
+  readonly id: EntryId;
   /** Playwright's name for it: "click", "check" and so on. */
   readonly type: string;
   /** The target's Structural Ref; null when the target is not known in the
@@ -100,7 +108,7 @@ export type TimelineEntry = (
    * window and in the saved package, and the one a decision names. An
    * Interaction's is its own id. Whatever kind of entry is added, it has one.
    */
-  readonly id: string;
+  readonly id: EntryId;
   /** The person left it out of the recording. It stays where it is: what it
    * changed is still here, and the package writes it as a stub. Absent when
    * it is kept. */
@@ -178,9 +186,9 @@ export type RecorderCommand =
   /** While paused: leaves the entry out of the recording. It stays in the
    * timeline, marked, and Finish saves it as a stub. `entry` is the entry's
    * `id`. */
-  | { readonly type: "discard"; readonly entry: string }
+  | { readonly type: "discard"; readonly entry: EntryId }
   /** While paused: puts a discarded entry back. */
-  | { readonly type: "restore"; readonly entry: string }
+  | { readonly type: "restore"; readonly entry: EntryId }
   // Assert visibility.
   /** While recording: the next element the person clicks is recorded as
    * "this must be visible", and the click does not reach the page. It takes
@@ -193,7 +201,7 @@ export type RecorderCommand =
    * target on the page, in place of any other. Answered "notFound" when the
    * element is gone, belongs to an earlier Visit, or cannot be found for
    * certain: nothing is highlighted then. It changes no entry. */
-  | { readonly type: "highlight"; readonly entry: string }
+  | { readonly type: "highlight"; readonly entry: EntryId }
   /** While recording or paused: highlights nothing. */
   | { readonly type: "clearHighlight" };
 

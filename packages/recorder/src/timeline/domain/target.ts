@@ -7,6 +7,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 
 import type { InteractionReport } from "./recorded";
+import { snapshotRef, type SnapshotRef } from "./refs";
 
 const nodes = (node: StructuralNode) =>
   node.children.filter((child) => typeof child !== "string");
@@ -148,7 +149,7 @@ function namedInPicture(
 export function locateTarget(
   before: StructuralTree,
   report: InteractionReport
-): AriaRef | undefined {
+): SnapshotRef | undefined {
   const { target } = report;
   if (!target) return undefined;
   // A factory of its own: the picture is read only here.
@@ -170,7 +171,9 @@ export function locateTarget(
       if (!at) break;
       level = nodes(at);
     }
-    return at?.role === named.role && at.name === named.name ? [at.ref] : [];
+    return at?.role === named.role && at.name === named.name
+      ? [snapshotRef(at.ref)]
+      : [];
   });
   // Two frames that both have it: which one the input was given to cannot
   // be told.

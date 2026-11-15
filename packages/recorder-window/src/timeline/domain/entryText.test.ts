@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { interactionTitle, targetLabel } from "./entryText";
+import { entryId } from "../../test-utils/ids";
 
 const interaction = (details: Record<string, unknown>) => ({
-  id: "interaction_1",
+  id: entryId("interaction_1"),
   type: "click",
   targetRef: "e5",
   ...details,

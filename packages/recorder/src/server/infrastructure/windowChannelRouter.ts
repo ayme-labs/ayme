@@ -3,6 +3,7 @@ import * as z from "zod/mini";
 
 import type {
   CommandResult,
+  EntryId,
   RecorderCommand,
   RecorderCommandType,
   RecorderUpdate,
@@ -29,14 +30,20 @@ const COMMAND_TYPES = [
   // Highlight.
   "clearHighlight",
 ] as const satisfies readonly RecorderCommandType[];
+/** An entry's id, as a window or the toolbar sends back one the engine
+ * told it: it is taken as one here, where it arrives. */
+const EntryIdSchema = z.pipe(
+  z.string(),
+  z.transform((id) => id as EntryId)
+);
 /** A command, as the window and the toolbar send it. One that names an
  * entry is told by its type: the others carry no more. */
 export const CommandSchema = z.union([
   z.object({ type: z.enum(COMMAND_TYPES) }),
-  z.object({ type: z.literal("discard"), entry: z.string() }),
-  z.object({ type: z.literal("restore"), entry: z.string() }),
+  z.object({ type: z.literal("discard"), entry: EntryIdSchema }),
+  z.object({ type: z.literal("restore"), entry: EntryIdSchema }),
   // Highlight.
-  z.object({ type: z.literal("highlight"), entry: z.string() }),
+  z.object({ type: z.literal("highlight"), entry: EntryIdSchema }),
 ]);
 
 /** The windows' subscriptions, which the server waits for when it closes. */

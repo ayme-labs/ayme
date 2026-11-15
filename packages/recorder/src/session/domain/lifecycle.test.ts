@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { RecorderPhase } from "../../contract";
-import type { InteractionReport, PageSnapshot } from "../../timeline/domain";
+import type { EntryId, RecorderPhase } from "../../contract";
+import {
+  pictureRef,
+  type InteractionReport,
+  type PageId,
+  type PageSnapshot,
+  type SnapshotId,
+} from "../../timeline/domain";
 import {
   awaitsAnswer,
   initialState,
@@ -12,14 +18,43 @@ import {
   WRAP_UP_LIMIT_MS,
   type Happening,
   type HeldInput,
+  type InputId,
   type ToDo,
 } from "./lifecycle";
+import {
+  entryId,
+  inputId,
+  pageId,
+  snapshotId,
+  snapshotRefOf,
+} from "../../test-utils/ids";
+
+// The ids these rows name, as the browser and the lifecycle make them.
+const change1 = entryId("change_1");
+const input1 = inputId("input_1");
+const input2 = inputId("input_2");
+const input3 = inputId("input_3");
+const input9 = inputId("input_9");
+const interaction1 = entryId("interaction_1");
+const interaction2 = entryId("interaction_2");
+const page1 = pageId("page_1");
+const page2 = pageId("page_2");
+const page9 = pageId("page_9");
+const reported1 = inputId("reported_1");
+const reported2 = inputId("reported_2");
+const snapshot1 = snapshotId("snapshot_1");
+const snapshot2 = snapshotId("snapshot_2");
+const snapshot3 = snapshotId("snapshot_3");
+const snapshot4 = snapshotId("snapshot_4");
+const snapshot5 = snapshotId("snapshot_5");
+const snapshot6 = snapshotId("snapshot_6");
+const snapshot9 = snapshotId("snapshot_9");
 
 // The lifecycle as a table: things that happened, in order, must give this
 // state and these lists of things to do. No browser, no clock.
 
 const url = "http://shop.test/";
-const opened: Happening = { kind: "pageOpened", page: "page_1", url };
+const opened: Happening = { kind: "pageOpened", page: page1, url };
 const record: Happening = { kind: "command", command: { type: "record" } };
 const finish: Happening = { kind: "command", command: { type: "finish" } };
 const reporting: Happening = { kind: "reportingInteractions", on: true };
@@ -28,30 +63,30 @@ const traceStarted: Happening = { kind: "traceStarted" };
 /** Record, up to the pages holding inputs back. */
 const started = [record, traceStarted, reporting, holding];
 const outsideEnd: Happening = { kind: "outsideEnd" };
-const clickHeld = (input: string): Happening => ({
+const clickHeld = (input: InputId): Happening => ({
   kind: "inputHeld",
   input,
-  page: "page_1",
+  page: page1,
 });
-const snapshot = (id: string): PageSnapshot => ({
+const snapshot = (id: SnapshotId): PageSnapshot => ({
   id,
-  page: "page_1",
+  page: page1,
   url,
   at: 10,
   tree: `- button "Add" [ref=e2]`,
 });
-const taken = (id: string): Happening => ({
+const taken = (id: SnapshotId): Happening => ({
   kind: "snapshotTaken",
   snapshot: snapshot(id),
 });
-const passedOn = (input: string, at = 20): Happening => ({
+const passedOn = (input: InputId, at = 20): Happening => ({
   kind: "inputPassedOn",
   input,
   at,
 });
-const settled = (input: string): Happening => ({
+const settled = (input: InputId): Happening => ({
   kind: "pageSettled",
-  page: "page_1",
+  page: page1,
   input,
 });
 const click: InteractionReport = {
@@ -62,7 +97,7 @@ const click: InteractionReport = {
 };
 const reported: Happening = {
   kind: "interactionReported",
-  page: "page_1",
+  page: page1,
   report: click,
 };
 const gateOff: Happening = { kind: "inputsHeld", on: false };
@@ -73,32 +108,36 @@ const reply = (result: "applied" | "ignored"): ToDo => ({
   kind: "reply",
   result,
 });
-const takeSnapshot = (id: string): ToDo => ({
+const takeSnapshot = (id: SnapshotId): ToDo => ({
   kind: "browser",
-  ask: { kind: "takeSnapshot", snapshot: id, page: "page_1" },
+  ask: { kind: "takeSnapshot", snapshot: id, page: page1 },
 });
-const keep = (id: string): ToDo => ({
+const keep = (id: SnapshotId): ToDo => ({
   kind: "timeline",
   add: { kind: "snapshot", snapshot: snapshot(id) },
 });
-const passOn = (input: string): ToDo => ({
+const passOn = (input: InputId): ToDo => ({
   kind: "browser",
   ask: { kind: "passOn", input },
 });
-const waitForSettled = (input: string): ToDo => ({
+const waitForSettled = (input: InputId): ToDo => ({
   kind: "browser",
-  ask: { kind: "waitForSettled", page: "page_1", input },
+  ask: { kind: "waitForSettled", page: page1, input },
 });
-const interaction = (before: string, after: string | null, at = 20): ToDo => ({
+const interaction = (
+  before: SnapshotId,
+  after: SnapshotId | null,
+  at = 20
+): ToDo => ({
   kind: "timeline",
   add: {
     kind: "interaction",
-    interaction: { page: "page_1", report: click, before, after, at },
+    interaction: { page: page1, report: click, before, after, at },
   },
 });
 const startVisit: ToDo = {
   kind: "timeline",
-  add: { kind: "visit", page: "page_1", url, cause: "initial" },
+  add: { kind: "visit", page: page1, url, cause: "initial" },
 };
 const startTrace: ToDo = { kind: "browser", ask: { kind: "startTrace" } };
 const reportInteractions: ToDo = {
@@ -155,11 +194,11 @@ const stopped = [
   ...started,
   stop,
   gateOff,
-  taken("snapshot_1"),
+  taken(snapshot1),
   reportingOff,
 ];
 // Visits.
-const navigated = (to: string, page = "page_1"): Happening => ({
+const navigated = (to: string, page = page1): Happening => ({
   kind: "pageNavigated",
   page,
   url: to,
@@ -167,24 +206,24 @@ const navigated = (to: string, page = "page_1"): Happening => ({
 const visitAt = (
   at: string,
   cause: "initial" | "navigate" | "openPage",
-  page = "page_1"
+  page = page1
 ): ToDo => ({
   kind: "timeline",
   add: { kind: "visit", page, url: at, cause },
 });
 // Every kind of input.
-const letThrough = (upTo: string | null): ToDo => ({
+const letThrough = (upTo: InputId | null): ToDo => ({
   kind: "browser",
-  ask: { kind: "letInputsThrough", page: "page_1", upTo },
+  ask: { kind: "letInputsThrough", page: page1, upTo },
 });
 
 /** One click from held to settled, with nothing else going on. */
 const oneClick = [
-  clickHeld("input_1"),
-  taken("snapshot_1"),
-  passedOn("input_1"),
-  settled("input_1"),
-  taken("snapshot_2"),
+  clickHeld(input1),
+  taken(snapshot1),
+  passedOn(input1),
+  settled(input1),
+  taken(snapshot2),
 ];
 
 /** Everything the lifecycle asked for along the way, and where it stands. */
@@ -221,7 +260,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "closing the last page is an outside end",
-      happened: [opened, { kind: "pageClosed", page: "page_1", pagesLeft: 0 }],
+      happened: [opened, { kind: "pageClosed", page: page1, pagesLeft: 0 }],
       todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
@@ -229,8 +268,8 @@ describe("the lifecycle", () => {
       name: "closing a page while another is open changes nothing",
       happened: [
         opened,
-        { kind: "pageOpened", page: "page_2", url },
-        { kind: "pageClosed", page: "page_2", pagesLeft: 1 },
+        { kind: "pageOpened", page: page2, url },
+        { kind: "pageClosed", page: page2, pagesLeft: 1 },
       ],
       todo: [[]],
       state: { phase: "notRecording" },
@@ -296,7 +335,11 @@ describe("the lifecycle", () => {
       name: "the Visit Record starts is for the page as it is now, not as it opened",
       happened: [
         opened,
-        { kind: "pageNavigated", page: "page_1", url: "http://shop.test/cart" },
+        {
+          kind: "pageNavigated",
+          page: page1,
+          url: "http://shop.test/cart",
+        },
         record,
       ],
       todo: [
@@ -305,7 +348,7 @@ describe("the lifecycle", () => {
             kind: "timeline",
             add: {
               kind: "visit",
-              page: "page_1",
+              page: page1,
               url: "http://shop.test/cart",
               cause: "initial",
             },
@@ -341,8 +384,8 @@ describe("the lifecycle", () => {
     },
     {
       name: "a click held before every page has confirmed is recorded like any other",
-      happened: [opened, record, traceStarted, reporting, clickHeld("input_1")],
-      todo: [[takeSnapshot("snapshot_1")]],
+      happened: [opened, record, traceStarted, reporting, clickHeld(input1)],
+      todo: [[takeSnapshot(snapshot1)]],
       state: { phase: "notRecording" },
     },
     {
@@ -383,18 +426,18 @@ describe("the lifecycle", () => {
       name: "a held click gets its 'before', is passed on, and gets its 'after' once the page is settled",
       happened: [opened, ...started, ...oneClick],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), passOn("input_1")],
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), letThrough("input_1")],
+        [takeSnapshot(snapshot1)],
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), letThrough(input1)],
       ],
       state: { phase: "recording" },
     },
     {
       name: "the Interaction is written down when Playwright's report arrives after the 'after'",
       happened: [opened, ...started, ...oneClick, reported],
-      todo: [[interaction("snapshot_1", "snapshot_2")]],
+      todo: [[interaction(snapshot1, snapshot2)]],
       state: { phase: "recording" },
     },
     {
@@ -402,20 +445,20 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1", 33),
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1, 33),
         reported,
-        settled("input_1"),
-        taken("snapshot_2"),
+        settled(input1),
+        taken(snapshot2),
       ],
       todo: [
         [],
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
         [
-          keep("snapshot_2"),
-          interaction("snapshot_1", "snapshot_2", 33),
-          letThrough("input_1"),
+          keep(snapshot2),
+          interaction(snapshot1, snapshot2, 33),
+          letThrough(input1),
         ],
       ],
       state: { phase: "recording" },
@@ -434,11 +477,11 @@ describe("the lifecycle", () => {
         ...oneClick,
         {
           kind: "interactionReported",
-          page: "page_1",
+          page: page1,
           report: { ...click, type: "fill" },
         },
       ],
-      todo: [[waitForSettled("reported_1")]],
+      todo: [[waitForSettled(reported1)]],
       state: { phase: "recording" },
     },
     {
@@ -446,18 +489,18 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        clickHeld("input_2"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        taken("snapshot_2"),
+        clickHeld(input1),
+        clickHeld(input2),
+        taken(snapshot1),
+        passedOn(input1),
+        taken(snapshot2),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), passOn("input_2")],
+        [keep(snapshot1), passOn(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), passOn(input2)],
       ],
       state: { phase: "recording" },
     },
@@ -466,19 +509,19 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        clickHeld("input_2"),
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        clickHeld(input2),
         // The wait that was cut short ends later: nothing more is asked.
-        settled("input_1"),
-        taken("snapshot_2"),
+        settled(input1),
+        taken(snapshot2),
       ],
       todo: [
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
         [],
-        [keep("snapshot_2"), passOn("input_2")],
+        [keep(snapshot2), passOn(input2)],
       ],
       state: { phase: "recording" },
     },
@@ -487,19 +530,19 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        clickHeld("input_2"),
-        taken("snapshot_2"),
-        taken("snapshot_3"),
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        clickHeld(input2),
+        taken(snapshot2),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
         [],
-        [keep("snapshot_2"), takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), passOn("input_2")],
+        [keep(snapshot2), takeSnapshot(snapshot3)],
+        [keep(snapshot3), passOn(input2)],
       ],
       state: { phase: "recording" },
     },
@@ -508,26 +551,26 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1", 21),
-        clickHeld("input_2"),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1, 21),
+        clickHeld(input2),
+        taken(snapshot2),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
         reported,
         reported,
       ],
       todo: [
-        [interaction("snapshot_1", "snapshot_2", 21)],
-        [interaction("snapshot_2", "snapshot_3", 22)],
+        [interaction(snapshot1, snapshot2, 21)],
+        [interaction(snapshot2, snapshot3, 22)],
       ],
       state: { phase: "recording" },
     },
     {
       name: "a snapshot nobody waits for is not kept",
-      happened: [opened, ...started, taken("snapshot_9")],
+      happened: [opened, ...started, taken(snapshot9)],
       todo: [[]],
       state: { phase: "recording" },
     },
@@ -535,28 +578,28 @@ describe("the lifecycle", () => {
       name: "a click whose page closes before it is passed on is dropped",
       happened: [
         opened,
-        { kind: "pageOpened", page: "page_2", url },
+        { kind: "pageOpened", page: page2, url },
         ...started,
-        clickHeld("input_1"),
-        { kind: "pageClosed", page: "page_1", pagesLeft: 1 },
-        taken("snapshot_1"),
+        clickHeld(input1),
+        { kind: "pageClosed", page: page1, pagesLeft: 1 },
+        taken(snapshot1),
       ],
-      todo: [[takeSnapshot("snapshot_1")], [], []],
+      todo: [[takeSnapshot(snapshot1)], [], []],
       state: { phase: "recording" },
     },
     {
       name: "a click whose page closes after it was passed on keeps its 'before' only",
       happened: [
         opened,
-        { kind: "pageOpened", page: "page_2", url },
+        { kind: "pageOpened", page: page2, url },
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        { kind: "pageClosed", page: "page_1", pagesLeft: 1 },
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        { kind: "pageClosed", page: page1, pagesLeft: 1 },
         reported,
       ],
-      todo: [[], [interaction("snapshot_1", null)]],
+      todo: [[], [interaction(snapshot1, null)]],
       state: { phase: "recording" },
     },
 
@@ -574,12 +617,12 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         traceStopped,
         saved,
       ],
       todo: [
-        [keep("snapshot_1"), stopTrace],
+        [keep(snapshot1), stopTrace],
         [save],
         [{ kind: "end", outcome: { kind: "saved", folder: "/project/rec_1" } }],
       ],
@@ -590,8 +633,8 @@ describe("the lifecycle", () => {
     },
     {
       name: "the recorder shows that it is saving while the package is written",
-      happened: [opened, ...started, finish, gateOff, taken("snapshot_1")],
-      todo: [[keep("snapshot_1"), stopTrace]],
+      happened: [opened, ...started, finish, gateOff, taken(snapshot1)],
+      todo: [[keep(snapshot1), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -603,12 +646,12 @@ describe("the lifecycle", () => {
         reported,
         finish,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), stopTrace],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -617,26 +660,26 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
         finish,
         gateOff,
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
         reported,
-        taken("snapshot_3"),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [...wrapUp, reply("applied")],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), takeSnapshot("snapshot_3")],
-        [interaction("snapshot_1", "snapshot_2")],
-        [keep("snapshot_3"), stopTrace],
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), takeSnapshot(snapshot3)],
+        [interaction(snapshot1, snapshot2)],
+        [keep(snapshot3), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -646,16 +689,16 @@ describe("the lifecycle", () => {
         opened,
         ...started,
         finish,
-        clickHeld("input_1"),
+        clickHeld(input1),
         gateOff,
-        taken("snapshot_1"),
-        passedOn("input_1"),
+        taken(snapshot1),
+        passedOn(input1),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [waitForSettled("input_1")],
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
       ],
       state: { phase: "wrappingUp" },
     },
@@ -667,13 +710,13 @@ describe("the lifecycle", () => {
         ...oneClick,
         finish,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         reported,
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
-        [interaction("snapshot_1", "snapshot_2"), stopTrace],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
+        [interaction(snapshot1, snapshot2), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -685,10 +728,10 @@ describe("the lifecycle", () => {
         ...oneClick,
         finish,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         { kind: "timeLimitPassed" },
       ],
-      todo: [[keep("snapshot_3")], [stopTrace]],
+      todo: [[keep(snapshot3)], [stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -698,7 +741,7 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         { kind: "timeLimitPassed" },
       ],
       todo: [[]],
@@ -712,14 +755,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "Finish pressed twice saves once: the second is ignored while saving",
-      happened: [
-        opened,
-        ...started,
-        finish,
-        gateOff,
-        taken("snapshot_1"),
-        finish,
-      ],
+      happened: [opened, ...started, finish, gateOff, taken(snapshot1), finish],
       todo: [[reply("ignored")]],
       state: { phase: "saving" },
     },
@@ -730,7 +766,7 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         traceStopped,
         saved,
         finish,
@@ -748,7 +784,7 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         traceStopped,
         { kind: "saved", folder: null },
       ],
@@ -761,7 +797,7 @@ describe("the lifecycle", () => {
     {
       name: "Stop leaves the trace running: only Playwright's recorder is switched off",
       happened: [...stopped],
-      todo: [[keep("snapshot_1"), stopReporting], []],
+      todo: [[keep(snapshot1), stopReporting], []],
       state: { phase: "paused" },
     },
     {
@@ -831,7 +867,7 @@ describe("the lifecycle", () => {
     {
       name: "once the trace is started, the wrap-up that waited takes its last snapshots",
       happened: [opened, record, finish, gateOff, traceStarted],
-      todo: [[takeSnapshot("snapshot_1")]],
+      todo: [[takeSnapshot(snapshot1)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -841,7 +877,7 @@ describe("the lifecycle", () => {
         ...started,
         clear,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reportingOff,
       ],
       todo: [[discardTrace]],
@@ -854,7 +890,7 @@ describe("the lifecycle", () => {
         ...started,
         clear,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reportingOff,
         record,
       ],
@@ -868,7 +904,7 @@ describe("the lifecycle", () => {
         ...started,
         clear,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reportingOff,
         traceDiscarded,
         record,
@@ -883,7 +919,7 @@ describe("the lifecycle", () => {
         ...started,
         clear,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reportingOff,
         failed(discardTrace),
       ],
@@ -909,7 +945,7 @@ describe("the lifecycle", () => {
         ...started,
         clear,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reportingOff,
         { kind: "timeLimitPassed" },
       ],
@@ -923,7 +959,7 @@ describe("the lifecycle", () => {
         ...started,
         clear,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reportingOff,
         outsideEnd,
         traceDiscarded,
@@ -940,7 +976,7 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         { kind: "brokeDown", reason: "ENOSPC: no space left on device" },
       ],
       todo: [
@@ -969,12 +1005,8 @@ describe("the lifecycle", () => {
     // An end from outside while recording.
     {
       name: "an outside end while recording wraps up and saves, as Finish does",
-      happened: [opened, ...started, outsideEnd, gateOff, taken("snapshot_1")],
-      todo: [
-        wrapUp,
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), stopTrace],
-      ],
+      happened: [opened, ...started, outsideEnd, gateOff, taken(snapshot1)],
+      todo: [wrapUp, [takeSnapshot(snapshot1)], [keep(snapshot1), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -990,7 +1022,7 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         outsideEnd,
       ],
       todo: [[]],
@@ -1001,7 +1033,7 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
+        { kind: "pageClosed", page: page1, pagesLeft: 0 },
         gateOff,
       ],
       todo: [wrapUp, [stopTrace]],
@@ -1020,9 +1052,13 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        { kind: "pageOpened", page: "page_2", url: "http://shop.test/help" },
+        {
+          kind: "pageOpened",
+          page: page2,
+          url: "http://shop.test/help",
+        },
       ],
-      todo: [[visitAt("http://shop.test/help", "openPage", "page_2")]],
+      todo: [[visitAt("http://shop.test/help", "openPage", page2)]],
       state: { phase: "recording" },
     },
     {
@@ -1030,14 +1066,14 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        { kind: "pageOpened", page: "page_2", url: "about:blank" },
-        navigated("http://shop.test/help", "page_2"),
-        navigated("http://shop.test/faq", "page_2"),
+        { kind: "pageOpened", page: page2, url: "about:blank" },
+        navigated("http://shop.test/help", page2),
+        navigated("http://shop.test/faq", page2),
       ],
       todo: [
         [],
-        [visitAt("http://shop.test/help", "openPage", "page_2")],
-        [visitAt("http://shop.test/faq", "navigate", "page_2")],
+        [visitAt("http://shop.test/help", "openPage", page2)],
+        [visitAt("http://shop.test/faq", "navigate", page2)],
       ],
       state: { phase: "recording" },
     },
@@ -1052,18 +1088,18 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        clickHeld("input_2"),
-        taken("snapshot_1"),
+        clickHeld(input1),
+        clickHeld(input2),
+        taken(snapshot1),
         navigated("http://shop.test/cart"),
-        { kind: "inputGone", input: "input_1" },
+        { kind: "inputGone", input: input1 },
         // A report of the click is of no held click any more.
         reported,
       ],
       todo: [
-        [keep("snapshot_1"), passOn("input_1")],
+        [keep(snapshot1), passOn(input1)],
         [visitAt("http://shop.test/cart", "navigate")],
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
         [],
       ],
       state: { phase: "recording" },
@@ -1073,14 +1109,14 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
+        clickHeld(input1),
+        taken(snapshot1),
         finish,
         gateOff,
-        { kind: "inputGone", input: "input_1" },
-        taken("snapshot_2"),
+        { kind: "inputGone", input: input1 },
+        taken(snapshot2),
       ],
-      todo: [[takeSnapshot("snapshot_2")], [keep("snapshot_2"), stopTrace]],
+      todo: [[takeSnapshot(snapshot2)], [keep(snapshot2), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1100,15 +1136,15 @@ describe("the lifecycle", () => {
       name: "a page opened while paused starts a Visit of its own at Continue",
       happened: [
         ...stopped,
-        { kind: "pageOpened", page: "page_2", url: "about:blank" },
-        navigated("http://shop.test/help", "page_2"),
+        { kind: "pageOpened", page: page2, url: "about:blank" },
+        navigated("http://shop.test/help", page2),
         resume,
       ],
       todo: [
         [],
         [],
         [
-          visitAt("http://shop.test/help", "openPage", "page_2"),
+          visitAt("http://shop.test/help", "openPage", page2),
           reportInteractions,
           { kind: "deferReply" },
         ],
@@ -1143,13 +1179,13 @@ describe("the lifecycle", () => {
     },
     {
       name: "once nothing is held back and the last snapshot is in, a wrap-up after Stop has Playwright's recorder switched off",
-      happened: [opened, ...started, stop, gateOff, taken("snapshot_1")],
-      todo: [[takeSnapshot("snapshot_1")], [keep("snapshot_1"), stopReporting]],
+      happened: [opened, ...started, stop, gateOff, taken(snapshot1)],
+      todo: [[takeSnapshot(snapshot1)], [keep(snapshot1), stopReporting]],
       state: { phase: "wrappingUp" },
     },
     {
       name: "the recorder is not paused before the pages confirm that they hold nothing back, whatever else is in (rule 3)",
-      happened: [opened, ...started, stop, reportingOff, taken("snapshot_1")],
+      happened: [opened, ...started, stop, reportingOff, taken(snapshot1)],
       todo: [[], []],
       state: { phase: "wrappingUp" },
     },
@@ -1177,25 +1213,25 @@ describe("the lifecycle", () => {
         opened,
         ...started,
         stop,
-        clickHeld("input_1"),
+        clickHeld(input1),
         gateOff,
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
         reported,
-        taken("snapshot_3"),
+        taken(snapshot3),
         reportingOff,
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), takeSnapshot("snapshot_3")],
-        [interaction("snapshot_1", "snapshot_2")],
-        [keep("snapshot_3"), stopReporting],
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), takeSnapshot(snapshot3)],
+        [interaction(snapshot1, snapshot2)],
+        [keep(snapshot3), stopReporting],
         [],
       ],
       state: { phase: "paused" },
@@ -1208,13 +1244,13 @@ describe("the lifecycle", () => {
         ...oneClick,
         stop,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         reported,
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
-        [interaction("snapshot_1", "snapshot_2"), stopReporting],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
+        [interaction(snapshot1, snapshot2), stopReporting],
       ],
       state: { phase: "wrappingUp" },
     },
@@ -1226,10 +1262,10 @@ describe("the lifecycle", () => {
         ...oneClick,
         stop,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         { kind: "timeLimitPassed" },
       ],
-      todo: [[keep("snapshot_3")], [stopReporting]],
+      todo: [[keep(snapshot3)], [stopReporting]],
       state: { phase: "paused" },
     },
     {
@@ -1237,12 +1273,12 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        clickHeld("input_2"),
+        clickHeld(input1),
+        clickHeld(input2),
         stop,
         { kind: "timeLimitPassed" },
       ],
-      todo: [[passOn("input_1"), passOn("input_2"), stopReporting]],
+      todo: [[passOn(input1), passOn(input2), stopReporting]],
       state: { phase: "paused" },
     },
     {
@@ -1250,11 +1286,11 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
         finish,
         { kind: "timeLimitPassed" },
       ],
-      todo: [[passOn("input_1"), stopTrace]],
+      todo: [[passOn(input1), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1264,7 +1300,7 @@ describe("the lifecycle", () => {
         ...started,
         stop,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         { kind: "timeLimitPassed" },
         reportingOff,
       ],
@@ -1281,19 +1317,14 @@ describe("the lifecycle", () => {
     },
     {
       name: "a click a page still held back while paused is passed on at once, and is not recorded (rules 1 and 3)",
-      happened: [
-        ...stopped,
-        clickHeld("input_1"),
-        passedOn("input_1"),
-        reported,
-      ],
-      todo: [[passOn("input_1")], [], []],
+      happened: [...stopped, clickHeld(input1), passedOn(input1), reported],
+      todo: [[passOn(input1)], [], []],
       state: { phase: "paused" },
     },
     {
       name: "a click a page held back before Record is passed on at once (rule 1)",
-      happened: [opened, clickHeld("input_1")],
-      todo: [[passOn("input_1")]],
+      happened: [opened, clickHeld(input1)],
+      todo: [[passOn(input1)]],
       state: { phase: "notRecording" },
     },
     {
@@ -1303,10 +1334,10 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        taken("snapshot_1"),
-        clickHeld("input_1"),
+        taken(snapshot1),
+        clickHeld(input1),
       ],
-      todo: [[passOn("input_1")]],
+      todo: [[passOn(input1)]],
       state: { phase: "saving" },
     },
     {
@@ -1326,13 +1357,13 @@ describe("the lifecycle", () => {
     {
       name: "Continue is answered once the pages hold inputs back again, and the page is read as it stands then",
       happened: [...stopped, resume, reporting, holding],
-      todo: [[holdInputs], [recordApplied, takeSnapshot("snapshot_2")]],
+      todo: [[holdInputs], [recordApplied, takeSnapshot(snapshot2)]],
       state: { phase: "recording" },
     },
     {
       name: "after Continue the snapshots go on counting: the timeline is the same one, and a 'before' comes after every earlier 'after' (rule 12)",
-      happened: [...stopped, resume, reporting, holding, clickHeld("input_1")],
-      todo: [[takeSnapshot("snapshot_3")]],
+      happened: [...stopped, resume, reporting, holding, clickHeld(input1)],
+      todo: [[takeSnapshot(snapshot3)]],
       state: { phase: "recording" },
     },
     {
@@ -1368,14 +1399,14 @@ describe("the lifecycle", () => {
         reported,
         clear,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         reportingOff,
         traceDiscarded,
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), stopReporting],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), stopReporting],
         [discardTrace],
         [{ kind: "clear" }],
       ],
@@ -1389,12 +1420,12 @@ describe("the lifecycle", () => {
         ...oneClick,
         clear,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         reported,
       ],
       todo: [
-        [keep("snapshot_3")],
-        [interaction("snapshot_1", "snapshot_2"), stopReporting],
+        [keep(snapshot3)],
+        [interaction(snapshot1, snapshot2), stopReporting],
       ],
       state: { phase: "wrappingUp" },
     },
@@ -1406,7 +1437,7 @@ describe("the lifecycle", () => {
         ...oneClick,
         clear,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         { kind: "timeLimitPassed" },
         reported,
         traceDiscarded,
@@ -1438,14 +1469,14 @@ describe("the lifecycle", () => {
         clear,
         traceDiscarded,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
       ],
       todo: [
         [startVisit, startTrace, { kind: "deferReply" }],
         [reportInteractions],
         [holdInputs],
         [recordApplied],
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
       ],
       state: { phase: "recording" },
     },
@@ -1471,10 +1502,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "closing the last page while paused saves what was recorded",
-      happened: [
-        ...stopped,
-        { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
-      ],
+      happened: [...stopped, { kind: "pageClosed", page: page1, pagesLeft: 0 }],
       todo: [[stopTrace]],
       state: { phase: "saving" },
     },
@@ -1486,9 +1514,9 @@ describe("the lifecycle", () => {
         stop,
         outsideEnd,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
       ],
-      todo: [[], [takeSnapshot("snapshot_1")], [keep("snapshot_1"), stopTrace]],
+      todo: [[], [takeSnapshot(snapshot1)], [keep(snapshot1), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -1498,7 +1526,7 @@ describe("the lifecycle", () => {
         ...started,
         stop,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         outsideEnd,
         reportingOff,
       ],
@@ -1513,13 +1541,13 @@ describe("the lifecycle", () => {
         clear,
         outsideEnd,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         traceDiscarded,
       ],
       todo: [
         [],
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), discardTrace],
+        [takeSnapshot(snapshot1)],
+        [keep(snapshot1), discardTrace],
         [{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }],
       ],
       state: { phase: "ended", outcome: { kind: "empty" } },
@@ -1607,7 +1635,7 @@ describe("the lifecycle", () => {
     {
       name: "pages that cannot confirm that they hold nothing back count as having confirmed: the wrap-up goes on",
       happened: [opened, ...started, stop, failed(wrapUp[0]!)],
-      todo: [[takeSnapshot("snapshot_1")]],
+      todo: [[takeSnapshot(snapshot1)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -1617,7 +1645,7 @@ describe("the lifecycle", () => {
         ...started,
         stop,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         failed(stopReporting),
         reported,
       ],
@@ -1629,18 +1657,18 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        failed(takeSnapshot("snapshot_1")),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        clickHeld(input1),
+        failed(takeSnapshot(snapshot1)),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
         reported,
       ],
       todo: [
-        [passOn("input_1")],
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), letThrough("input_1")],
+        [passOn(input1)],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), letThrough(input1)],
         [],
       ],
       state: { phase: "recording" },
@@ -1650,18 +1678,18 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        failed(takeSnapshot("snapshot_1")),
-        passedOn("input_1"),
-        clickHeld("input_2"),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        clickHeld(input1),
+        failed(takeSnapshot(snapshot1)),
+        passedOn(input1),
+        clickHeld(input2),
+        taken(snapshot2),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
         reported,
         reported,
       ],
-      todo: [[], [interaction("snapshot_2", "snapshot_3", 22)]],
+      todo: [[], [interaction(snapshot2, snapshot3, 22)]],
       state: { phase: "recording" },
     },
     {
@@ -1669,14 +1697,14 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
         reported,
-        failed(takeSnapshot("snapshot_2")),
+        failed(takeSnapshot(snapshot2)),
       ],
-      todo: [[interaction("snapshot_1", null), letThrough("input_1")]],
+      todo: [[interaction(snapshot1, null), letThrough(input1)]],
       state: { phase: "recording" },
     },
     {
@@ -1686,7 +1714,7 @@ describe("the lifecycle", () => {
         ...started,
         finish,
         gateOff,
-        failed(takeSnapshot("snapshot_1")),
+        failed(takeSnapshot(snapshot1)),
       ],
       todo: [[stopTrace]],
       state: { phase: "saving" },
@@ -1696,13 +1724,13 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        clickHeld("input_2"),
-        taken("snapshot_1"),
-        failed(passOn("input_1")),
+        clickHeld(input1),
+        clickHeld(input2),
+        taken(snapshot1),
+        failed(passOn(input1)),
         reported,
       ],
-      todo: [[takeSnapshot("snapshot_2")], []],
+      todo: [[takeSnapshot(snapshot2)], []],
       state: { phase: "recording" },
     },
     {
@@ -1710,20 +1738,20 @@ describe("the lifecycle", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        failed(waitForSettled("input_1")),
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        failed(waitForSettled(input1)),
       ],
-      todo: [[takeSnapshot("snapshot_2")]],
+      todo: [[takeSnapshot(snapshot2)]],
       state: { phase: "recording" },
     },
     {
       name: "a request that failed when nothing is recorded any more changes nothing",
       happened: [
         ...stopped,
-        failed(takeSnapshot("snapshot_1")),
-        failed(passOn("input_1")),
+        failed(takeSnapshot(snapshot1)),
+        failed(passOn(input1)),
         failed(stopReporting),
         failed(wrapUp[0]!),
       ],
@@ -1746,7 +1774,7 @@ describe("the lifecycle", () => {
       finish,
       gateOff,
       finish,
-      taken("snapshot_1"),
+      taken(snapshot1),
       finish,
       traceStopped,
       saved,
@@ -1882,10 +1910,10 @@ describe("what the lifecycle shows", () => {
 // Every kind of input: clicks of more than one count, key presses, typing,
 // and the inputs Playwright reports that the gate never holds.
 describe("the lifecycle, for every kind of input", () => {
-  const held = (input: string, what: HeldInput): Happening => ({
+  const held = (input: InputId, what: HeldInput): Happening => ({
     kind: "inputHeld",
     input,
-    page: "page_1",
+    page: page1,
     held: what,
   });
   const clickOf = (count: number): InteractionReport => ({
@@ -1912,19 +1940,19 @@ describe("the lifecycle, for every kind of input", () => {
   };
   const revised = (report: InteractionReport): Happening => ({
     kind: "interactionRevised",
-    page: "page_1",
+    page: page1,
     report,
   });
   const fromReport = (
     report: InteractionReport,
-    before: string,
-    after: string
+    before: SnapshotId,
+    after: SnapshotId
   ): ToDo => ({
     kind: "timeline",
     add: {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: page1,
         report,
         before,
         after,
@@ -1935,31 +1963,31 @@ describe("the lifecycle, for every kind of input", () => {
   });
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
-    page: "page_1",
+    page: page1,
     report,
   });
   const written = (
     report: InteractionReport,
-    before: string,
-    after: string | null,
+    before: SnapshotId,
+    after: SnapshotId | null,
     at = 20
   ): ToDo => ({
     kind: "timeline",
     add: {
       kind: "interaction",
-      interaction: { page: "page_1", report, before, after, at },
+      interaction: { page: page1, report, before, after, at },
     },
   });
   /** Two clicks of one double click, from held to settled. */
   const doubleClick = [
-    held("input_1", { kind: "click", count: 1 }),
-    held("input_2", { kind: "click", count: 2 }),
-    taken("snapshot_1"),
-    passedOn("input_1", 21),
-    taken("snapshot_2"),
-    passedOn("input_2", 22),
-    settled("input_2"),
-    taken("snapshot_3"),
+    held(input1, { kind: "click", count: 1 }),
+    held(input2, { kind: "click", count: 2 }),
+    taken(snapshot1),
+    passedOn(input1, 21),
+    taken(snapshot2),
+    passedOn(input2, 22),
+    settled(input2),
+    taken(snapshot3),
   ];
 
   it.each<{
@@ -1972,7 +2000,7 @@ describe("the lifecycle, for every kind of input", () => {
     {
       name: "one report of a double click covers both held clicks: one Interaction from the first's 'before' to the second's 'after'",
       happened: [opened, ...started, ...doubleClick, reportedAs(clickOf(2))],
-      todo: [[written(clickOf(2), "snapshot_1", "snapshot_3", 21)]],
+      todo: [[written(clickOf(2), snapshot1, snapshot3, 21)]],
       state: { phase: "recording" },
     },
     {
@@ -1985,8 +2013,8 @@ describe("the lifecycle, for every kind of input", () => {
         reportedAs(clickOf(2)),
       ],
       todo: [
-        [written(clickOf(1), "snapshot_1", "snapshot_2", 21)],
-        [written(clickOf(2), "snapshot_2", "snapshot_3", 22)],
+        [written(clickOf(1), snapshot1, snapshot2, 21)],
+        [written(clickOf(2), snapshot2, snapshot3, 22)],
       ],
       state: { phase: "recording" },
     },
@@ -1998,12 +2026,12 @@ describe("the lifecycle, for every kind of input", () => {
         ...doubleClick,
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
         reportedAs(clickOf(2)),
       ],
       todo: [
-        [keep("snapshot_4")],
-        [written(clickOf(2), "snapshot_1", "snapshot_3", 21), stopTrace],
+        [keep(snapshot4)],
+        [written(clickOf(2), snapshot1, snapshot3, 21), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -2012,20 +2040,20 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        held("input_1", { kind: "press" }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        held(input1, { kind: "press" }),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
         reportedAs(enter),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), passOn("input_1")],
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), letThrough("input_1")],
-        [written(enter, "snapshot_1", "snapshot_2")],
+        [takeSnapshot(snapshot1)],
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), letThrough(input1)],
+        [written(enter, snapshot1, snapshot2)],
       ],
       state: { phase: "recording" },
     },
@@ -2034,28 +2062,28 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        held("input_2", { kind: "press" }),
-        taken("snapshot_1"),
-        passedOn("input_1", 21),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        clickHeld(input1),
+        held(input2, { kind: "press" }),
+        taken(snapshot1),
+        passedOn(input1, 21),
+        taken(snapshot2),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
         reported,
         reportedAs(enter),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), passOn("input_2")],
-        [waitForSettled("input_2")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), letThrough("input_2")],
-        [interaction("snapshot_1", "snapshot_2", 21)],
-        [written(enter, "snapshot_2", "snapshot_3", 22)],
+        [keep(snapshot1), passOn(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), passOn(input2)],
+        [waitForSettled(input2)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), letThrough(input2)],
+        [interaction(snapshot1, snapshot2, 21)],
+        [written(enter, snapshot2, snapshot3, 22)],
       ],
       state: { phase: "recording" },
     },
@@ -2064,17 +2092,17 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        held("input_2", { kind: "press" }),
-        taken("snapshot_1"),
-        passedOn("input_1", 21),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        clickHeld(input1),
+        held(input2, { kind: "press" }),
+        taken(snapshot1),
+        passedOn(input1, 21),
+        taken(snapshot2),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
         reportedAs(enter),
       ],
-      todo: [[written(enter, "snapshot_2", "snapshot_3", 22)]],
+      todo: [[written(enter, snapshot2, snapshot3, 22)]],
       state: { phase: "recording" },
     },
 
@@ -2084,22 +2112,22 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        held("input_2", { kind: "typing" }),
-        taken("snapshot_1"),
-        passedOn("input_1", 21),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
+        clickHeld(input1),
+        held(input2, { kind: "typing" }),
+        taken(snapshot1),
+        passedOn(input1, 21),
+        taken(snapshot2),
+        passedOn(input2, 22),
         reported,
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), passOn("input_2")],
-        [letThrough("input_2")],
-        [interaction("snapshot_1", "snapshot_2", 21)],
+        [keep(snapshot1), passOn(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), passOn(input2)],
+        [letThrough(input2)],
+        [interaction(snapshot1, snapshot2, 21)],
       ],
       state: { phase: "recording" },
     },
@@ -2108,19 +2136,19 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        held("input_2", { kind: "typing" }),
-        held("input_3", { kind: "typing" }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        taken("snapshot_2"),
-        passedOn("input_2"),
-        passedOn("input_3"),
+        clickHeld(input1),
+        held(input2, { kind: "typing" }),
+        held(input3, { kind: "typing" }),
+        taken(snapshot1),
+        passedOn(input1),
+        taken(snapshot2),
+        passedOn(input2),
+        passedOn(input3),
       ],
       todo: [
-        [keep("snapshot_2"), passOn("input_2")],
-        [passOn("input_3")],
-        [letThrough("input_3")],
+        [keep(snapshot2), passOn(input2)],
+        [passOn(input3)],
+        [letThrough(input3)],
       ],
       state: { phase: "recording" },
     },
@@ -2129,14 +2157,14 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        held("input_1", { kind: "typing" }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
+        held(input1, { kind: "typing" }),
+        taken(snapshot1),
+        passedOn(input1),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), passOn("input_1")],
-        [letThrough("input_1")],
+        [takeSnapshot(snapshot1)],
+        [keep(snapshot1), passOn(input1)],
+        [letThrough(input1)],
       ],
       state: { phase: "recording" },
     },
@@ -2144,11 +2172,11 @@ describe("the lifecycle, for every kind of input", () => {
       name: "a page lets inputs through once a held click has its 'after' and nothing else is held",
       happened: [opened, ...started, ...oneClick],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), passOn("input_1")],
-        [waitForSettled("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), letThrough("input_1")],
+        [takeSnapshot(snapshot1)],
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), letThrough(input1)],
       ],
       state: { phase: "recording" },
     },
@@ -2162,18 +2190,15 @@ describe("the lifecycle, for every kind of input", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
-        clickHeld("input_2"),
+        settled(reported1),
+        taken(snapshot3),
+        clickHeld(input2),
       ],
       todo: [
-        [waitForSettled("reported_1")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
-        [
-          takeSnapshot("snapshot_4"),
-          fromReport(fill("m"), "snapshot_2", "snapshot_3"),
-        ],
+        [waitForSettled(reported1)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
+        [takeSnapshot(snapshot4), fromReport(fill("m"), snapshot2, snapshot3)],
       ],
       state: { phase: "recording" },
     },
@@ -2185,18 +2210,18 @@ describe("the lifecycle, for every kind of input", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_4")],
+        [takeSnapshot(snapshot4)],
         [
-          keep("snapshot_4"),
-          fromReport(fill("m"), "snapshot_2", "snapshot_3"),
+          keep(snapshot4),
+          fromReport(fill("m"), snapshot2, snapshot3),
           stopTrace,
         ],
       ],
@@ -2211,18 +2236,18 @@ describe("the lifecycle, for every kind of input", () => {
         reported,
         reportedAs(fill("m")),
         revised(fill("milk")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_4")],
+        [takeSnapshot(snapshot4)],
         [
-          keep("snapshot_4"),
-          fromReport(fill("milk"), "snapshot_2", "snapshot_3"),
+          keep(snapshot4),
+          fromReport(fill("milk"), snapshot2, snapshot3),
           stopTrace,
         ],
       ],
@@ -2236,24 +2261,24 @@ describe("the lifecycle, for every kind of input", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         revised(fill("milk")),
-        settled("reported_1"),
-        taken("snapshot_4"),
+        settled(reported1),
+        taken(snapshot4),
         finish,
         gateOff,
-        taken("snapshot_5"),
+        taken(snapshot5),
       ],
       todo: [
-        [waitForSettled("reported_1")],
-        [takeSnapshot("snapshot_4")],
-        [keep("snapshot_4")],
+        [waitForSettled(reported1)],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_5")],
+        [takeSnapshot(snapshot5)],
         [
-          keep("snapshot_5"),
-          fromReport(fill("milk"), "snapshot_2", "snapshot_4"),
+          keep(snapshot5),
+          fromReport(fill("milk"), snapshot2, snapshot4),
           stopTrace,
         ],
       ],
@@ -2261,10 +2286,10 @@ describe("the lifecycle, for every kind of input", () => {
     },
     {
       name: "a reported select with no snapshot of its page yet gets one to start from",
-      happened: [opened, ...started, reportedAs(choose), taken("snapshot_1")],
+      happened: [opened, ...started, reportedAs(choose), taken(snapshot1)],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [keep("snapshot_1"), waitForSettled("reported_1"), letThrough(null)],
+        [takeSnapshot(snapshot1)],
+        [keep(snapshot1), waitForSettled(reported1), letThrough(null)],
       ],
       state: { phase: "recording" },
     },
@@ -2276,16 +2301,16 @@ describe("the lifecycle, for every kind of input", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        clickHeld("input_2"),
-        taken("snapshot_3"),
+        clickHeld(input2),
+        taken(snapshot3),
       ],
       todo: [
-        [waitForSettled("reported_1")],
-        [takeSnapshot("snapshot_3")],
+        [waitForSettled(reported1)],
+        [takeSnapshot(snapshot3)],
         [
-          keep("snapshot_3"),
-          passOn("input_2"),
-          fromReport(fill("m"), "snapshot_2", "snapshot_3"),
+          keep(snapshot3),
+          passOn(input2),
+          fromReport(fill("m"), snapshot2, snapshot3),
         ],
       ],
       state: { phase: "recording" },
@@ -2295,32 +2320,32 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        held("input_1", { kind: "typing" }),
-        held("input_2", { kind: "press" }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
+        held(input1, { kind: "typing" }),
+        held(input2, { kind: "press" }),
+        taken(snapshot1),
+        passedOn(input1),
         reportedAs(fill("m")),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        taken(snapshot2),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
         reportedAs(enter),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [takeSnapshot("snapshot_2")],
+        [keep(snapshot1), passOn(input1)],
+        [takeSnapshot(snapshot2)],
         [],
         [
-          keep("snapshot_2"),
-          passOn("input_2"),
-          fromReport(fill("m"), "snapshot_1", "snapshot_2"),
+          keep(snapshot2),
+          passOn(input2),
+          fromReport(fill("m"), snapshot1, snapshot2),
         ],
-        [waitForSettled("input_2")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), letThrough("input_2")],
-        [written(enter, "snapshot_2", "snapshot_3", 22)],
+        [waitForSettled(input2)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), letThrough(input2)],
+        [written(enter, snapshot2, snapshot3, 22)],
       ],
       state: { phase: "recording" },
     },
@@ -2329,35 +2354,27 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        held("input_1", { kind: "press" }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
+        held(input1, { kind: "press" }),
+        taken(snapshot1),
+        passedOn(input1),
         reportedAs(choose),
-        settled("input_1"),
-        taken("snapshot_2"),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(input1),
+        taken(snapshot2),
+        settled(reported1),
+        taken(snapshot3),
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
       ],
       todo: [
         [],
-        [takeSnapshot("snapshot_2")],
-        [
-          keep("snapshot_2"),
-          waitForSettled("reported_1"),
-          letThrough("input_1"),
-        ],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), waitForSettled(reported1), letThrough(input1)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_4")],
-        [
-          keep("snapshot_4"),
-          fromReport(choose, "snapshot_2", "snapshot_3"),
-          stopTrace,
-        ],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4), fromReport(choose, snapshot2, snapshot3), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -2366,17 +2383,17 @@ describe("the lifecycle, for every kind of input", () => {
       happened: [
         opened,
         ...started,
-        held("input_1", { kind: "press", nothingFocused: true }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        held(input1, { kind: "press", nothingFocused: true }),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
         reportedAs({
           ...enter,
-          target: { ref: "e1", tree: "- generic [ref=e1]" },
+          target: { ref: pictureRef("e1"), tree: "- generic [ref=e1]" },
         }),
       ],
-      todo: [[written({ ...enter, target: null }, "snapshot_1", "snapshot_2")]],
+      todo: [[written({ ...enter, target: null }, snapshot1, snapshot2)]],
       state: { phase: "recording" },
     },
   ])("$name", ({ happened, todo, state }) => {
@@ -2393,19 +2410,19 @@ describe("the lifecycle, for every kind of input", () => {
 // knows no entry, so it cannot tell a missing one: the timeline leaves what
 // it does not have alone.
 describe("the lifecycle, for discard and restore", () => {
-  const discard = (entry: string): Happening => ({
+  const discard = (entry: EntryId): Happening => ({
     kind: "command",
     command: { type: "discard", entry },
   });
-  const restore = (entry: string): Happening => ({
+  const restore = (entry: EntryId): Happening => ({
     kind: "command",
     command: { type: "restore", entry },
   });
-  const timelineDiscards = (entry: string): ToDo => ({
+  const timelineDiscards = (entry: EntryId): ToDo => ({
     kind: "timeline",
     add: { kind: "discard", entry },
   });
-  const timelineRestores = (entry: string): ToDo => ({
+  const timelineRestores = (entry: EntryId): ToDo => ({
     kind: "timeline",
     add: { kind: "restore", entry },
   });
@@ -2418,67 +2435,73 @@ describe("the lifecycle, for discard and restore", () => {
   }>([
     {
       name: "Discard while paused is applied, and the timeline is asked to discard the entry (rule 6)",
-      happened: [...stopped, discard("interaction_1")],
-      todo: [timelineDiscards("interaction_1"), reply("applied")],
+      happened: [...stopped, discard(interaction1)],
+      todo: [timelineDiscards(interaction1), reply("applied")],
       state: { phase: "paused" },
     },
     {
       name: "Restore while paused is applied, and the timeline is asked to restore the entry (rule 6)",
-      happened: [...stopped, restore("change_1")],
-      todo: [timelineRestores("change_1"), reply("applied")],
+      happened: [...stopped, restore(change1)],
+      todo: [timelineRestores(change1), reply("applied")],
       state: { phase: "paused" },
     },
     {
       name: "Discard with nothing recorded is ignored: no recording is paused",
-      happened: [opened, discard("interaction_1")],
+      happened: [opened, discard(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "notRecording" },
     },
     {
       name: "Discard while recording is ignored (rule 6)",
-      happened: [opened, ...started, discard("interaction_1")],
+      happened: [opened, ...started, discard(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "recording" },
     },
     {
       name: "Restore while recording is ignored (rule 6)",
-      happened: [opened, ...started, restore("interaction_1")],
+      happened: [opened, ...started, restore(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "recording" },
     },
     {
       name: "Discard while the recorder wraps up for a pause is ignored: it is not paused yet",
-      happened: [opened, ...started, stop, discard("interaction_1")],
+      happened: [opened, ...started, stop, discard(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "wrappingUp" },
     },
     {
       name: "Discard while the package is written is ignored: review ended with Finish",
-      happened: [...stopped, finish, discard("interaction_1")],
+      happened: [...stopped, finish, discard(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "saving" },
     },
     {
       name: "Restore after the end is ignored",
-      happened: [...stopped, finish, traceStopped, saved, restore("a")],
+      happened: [
+        ...stopped,
+        finish,
+        traceStopped,
+        saved,
+        restore(entryId("a")),
+      ],
       todo: [reply("ignored")],
       state: { phase: "ended" },
     },
     {
       name: "Continue after a discard goes on as it does without one: the decision is the timeline's, and nothing is thrown away",
-      happened: [...stopped, discard("interaction_1"), resume],
+      happened: [...stopped, discard(interaction1), resume],
       todo: [reportInteractions, { kind: "deferReply" }],
       state: { phase: "paused" },
     },
     {
       name: "Finish after a discard saves as it does without one: the timeline writes the decisions",
-      happened: [...stopped, discard("interaction_1"), finish],
+      happened: [...stopped, discard(interaction1), finish],
       todo: [reply("applied"), stopTrace],
       state: { phase: "saving" },
     },
     {
       name: "Clear after a discard throws the timeline away, decisions with it (rule 5)",
-      happened: [...stopped, discard("interaction_1"), clear, traceDiscarded],
+      happened: [...stopped, discard(interaction1), clear, traceDiscarded],
       todo: [{ kind: "clear" }],
       state: { phase: "notRecording" },
     },
@@ -2513,7 +2536,7 @@ describe("the lifecycle, for discard and restore", () => {
 describe("the lifecycle, for a page that is blank at Record", () => {
   const blank: Happening = {
     kind: "pageOpened",
-    page: "page_1",
+    page: page1,
     url: "about:blank",
   };
 
@@ -2521,7 +2544,7 @@ describe("the lifecycle, for a page that is blank at Record", () => {
     const { todo, state } = run([
       blank,
       record,
-      { kind: "pageNavigated", page: "page_1", url },
+      { kind: "pageNavigated", page: page1, url },
     ]);
 
     expect(todo.at(-2)).toEqual([startTrace, { kind: "deferReply" }]);
@@ -2537,25 +2560,25 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
   });
   const reportedClick = (count: number): Happening => ({
     kind: "interactionReported",
-    page: "page_1",
+    page: page1,
     report: clickReport(count),
   });
   /** Stop, up to Playwright's recorder being switched off. */
-  const stopping = [opened, ...started, stop, gateOff, taken("snapshot_1")];
+  const stopping = [opened, ...started, stop, gateOff, taken(snapshot1)];
 
   it("records a click the pages no longer held from Playwright's report alone, before the recorder is paused", () => {
     const { todo, state } = run([
       ...stopping,
       reportedClick(1),
-      settled("reported_1"),
-      taken("snapshot_2"),
+      settled(reported1),
+      taken(snapshot2),
       reportingOff,
     ]);
 
     expect(todo.slice(-4)).toEqual([
-      [waitForSettled("reported_1")],
-      [takeSnapshot("snapshot_2")],
-      [keep("snapshot_2")],
+      [waitForSettled(reported1)],
+      [takeSnapshot(snapshot2)],
+      [keep(snapshot2)],
       // Written once Playwright's recorder is off: until then Playwright
       // may still revise what it reported.
       [
@@ -2564,10 +2587,10 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
           add: {
             kind: "interaction",
             interaction: {
-              page: "page_1",
+              page: page1,
               report: clickReport(1),
-              before: "snapshot_1",
-              after: "snapshot_2",
+              before: snapshot1,
+              after: snapshot2,
               at: 10,
               beforeFromReport: true,
             },
@@ -2583,8 +2606,8 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
       ...stopping,
       reportedClick(1),
       reportingOff,
-      settled("reported_1"),
-      taken("snapshot_2"),
+      settled(reported1),
+      taken(snapshot2),
       reportingOff,
     ]);
 
@@ -2640,15 +2663,15 @@ describe("the lifecycle, for Assert visibility", () => {
   };
   const assertionReported: Happening = {
     kind: "interactionReported",
-    page: "page_1",
+    page: page1,
     report: asserted,
   };
-  const assertion = (snapshot: string): ToDo => ({
+  const assertion = (snapshot: SnapshotId): ToDo => ({
     kind: "timeline",
     add: {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: page1,
         report: asserted,
         before: snapshot,
         after: snapshot,
@@ -2721,7 +2744,7 @@ describe("the lifecycle, for Assert visibility", () => {
     },
     {
       name: "Assert visibility while a click is held waits: picking would swallow the click when it is passed on (rule 1)",
-      happened: [...recording, clickHeld("input_1"), assertVisibility],
+      happened: [...recording, clickHeld(input1), assertVisibility],
       todo: [reply("applied")],
       state: { phase: "recording" },
     },
@@ -2729,19 +2752,19 @@ describe("the lifecycle, for Assert visibility", () => {
       name: "Assert visibility that waited takes effect once no input is held",
       happened: [
         ...recording,
-        clickHeld("input_1"),
+        clickHeld(input1),
         assertVisibility,
-        taken("snapshot_1"),
-        passedOn("input_1"),
+        taken(snapshot1),
+        passedOn(input1),
       ],
-      todo: [waitForSettled("input_1"), pick(true)],
+      todo: [waitForSettled(input1), pick(true)],
       state: { phase: "recording" },
     },
     {
       name: "Leave Assert visibility while it waits for a held input cancels it, with nothing to ask of the browser",
       happened: [
         ...recording,
-        clickHeld("input_1"),
+        clickHeld(input1),
         assertVisibility,
         leaveAssertVisibility,
       ],
@@ -2787,13 +2810,13 @@ describe("the lifecycle, for Assert visibility", () => {
     {
       name: "an assertion takes one snapshot of the page as it stands",
       happened: [...pickingOn, assertionReported],
-      todo: [takeSnapshot("snapshot_1")],
+      todo: [takeSnapshot(snapshot1)],
       state: { phase: "recording", picking: true },
     },
     {
       name: "an assertion's snapshot is both its 'before' and its 'after': it never carries changes (rule 7)",
-      happened: [...pickingOn, assertionReported, taken("snapshot_1")],
-      todo: [keep("snapshot_1"), assertion("snapshot_1"), letThrough(null)],
+      happened: [...pickingOn, assertionReported, taken(snapshot1)],
+      todo: [keep(snapshot1), assertion(snapshot1), letThrough(null)],
       state: { phase: "recording", picking: true },
     },
   ])("$name", ({ happened, todo, state }) => {
@@ -2805,22 +2828,22 @@ describe("the lifecycle, for Assert visibility", () => {
   it("closes an Interaction that is still settling with the assertion's snapshot: what changed after it is not the Interaction's (rule 7)", () => {
     const { todo } = run([
       ...recording,
-      clickHeld("input_1"),
-      taken("snapshot_1"),
-      passedOn("input_1"),
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
       reported,
       assertVisibility,
       picking(true),
       assertionReported,
-      taken("snapshot_2"),
+      taken(snapshot2),
     ]);
 
-    expect(todo.at(-2)).toEqual([takeSnapshot("snapshot_2")]);
+    expect(todo.at(-2)).toEqual([takeSnapshot(snapshot2)]);
     expect(todo.at(-1)).toEqual([
-      keep("snapshot_2"),
-      interaction("snapshot_1", "snapshot_2"),
-      assertion("snapshot_2"),
-      letThrough("input_1"),
+      keep(snapshot2),
+      interaction(snapshot1, snapshot2),
+      assertion(snapshot2),
+      letThrough(input1),
     ]);
   });
 
@@ -2835,7 +2858,7 @@ describe("the lifecycle, for Assert visibility", () => {
     expect(after(pickingOn)).toContain("leaveAssertVisibility");
     expect(after(pickingOn)).not.toContain("assertVisibility");
     expect(
-      after([...recording, clickHeld("input_1"), assertVisibility])
+      after([...recording, clickHeld(input1), assertVisibility])
     ).toContain("leaveAssertVisibility");
     expect(after(stopped)).not.toContain("assertVisibility");
     expect(after([opened])).not.toContain("assertVisibility");
@@ -2845,7 +2868,7 @@ describe("the lifecycle, for Assert visibility", () => {
 // Ticket #1278: hovering an entry's target in the window highlights its
 // element on the page. Highlighting is a command, never an entry.
 describe("the lifecycle, for the highlight", () => {
-  const highlight = (entry: string): Happening => ({
+  const highlight = (entry: EntryId): Happening => ({
     kind: "command",
     command: { type: "highlight", entry },
   });
@@ -2853,7 +2876,7 @@ describe("the lifecycle, for the highlight", () => {
     kind: "command",
     command: { type: "clearHighlight" },
   };
-  const target = { page: "page_1", ref: "e2", selector: null };
+  const target = { page: page1, ref: snapshotRefOf("e2"), selector: null };
   const located = (n: number, found = true): Happening => ({
     kind: "located",
     highlight: n,
@@ -2864,7 +2887,7 @@ describe("the lifecycle, for the highlight", () => {
     highlight: n,
     found,
   });
-  const locate = (entry: string, n: number): ToDo => ({
+  const locate = (entry: EntryId, n: number): ToDo => ({
     kind: "locate",
     entry,
     highlight: n,
@@ -2890,24 +2913,24 @@ describe("the lifecycle, for the highlight", () => {
   }>([
     {
       name: "a highlight while recording keeps its answer and has the timeline find the entry's element",
-      happened: [...recording, highlight("interaction_1")],
-      todo: [keepReply(1), locate("interaction_1", 1)],
+      happened: [...recording, highlight(interaction1)],
+      todo: [keepReply(1), locate(interaction1, 1)],
     },
     {
       name: "a highlight while paused does the same: reviewing is when it is used most",
-      happened: [...stopped, highlight("interaction_1")],
-      todo: [keepReply(1), locate("interaction_1", 1)],
+      happened: [...stopped, highlight(interaction1)],
+      todo: [keepReply(1), locate(interaction1, 1)],
     },
     {
       name: "an element the timeline finds is drawn by the browser",
-      happened: [...recording, highlight("interaction_1"), located(1)],
+      happened: [...recording, highlight(interaction1), located(1)],
       todo: [draw(1)],
     },
     {
       name: "the browser drawing it answers 'applied'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         highlighted(1),
       ],
@@ -2917,7 +2940,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "an element the browser cannot find for certain is answered 'notFound'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         highlighted(1, false),
       ],
@@ -2925,15 +2948,15 @@ describe("the lifecycle, for the highlight", () => {
     },
     {
       name: "an element the timeline cannot find, gone or of an earlier Visit, is answered 'notFound', and what was drawn is cleared",
-      happened: [...recording, highlight("interaction_1"), located(1, false)],
+      happened: [...recording, highlight(interaction1), located(1, false)],
       todo: [replyKept(1, "notFound"), draw(1, null)],
     },
     {
       name: "a highlight that a later one replaced is answered 'ignored'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
-        highlight("interaction_2"),
+        highlight(interaction1),
+        highlight(interaction2),
         located(1),
       ],
       todo: [replyKept(1, "ignored")],
@@ -2942,16 +2965,16 @@ describe("the lifecycle, for the highlight", () => {
       name: "the browser's answer to a highlight that a later one replaced is 'ignored'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
-        highlight("interaction_2"),
+        highlight(interaction2),
         highlighted(1),
       ],
       todo: [replyKept(1, "ignored")],
     },
     {
       name: "Clear highlight has the browser draw nothing, and replaces a highlight on its way",
-      happened: [...recording, highlight("interaction_1"), clearHighlight],
+      happened: [...recording, highlight(interaction1), clearHighlight],
       todo: [draw(2, null), reply("applied")],
     },
     // Every order of a highlight, Clear highlight, and the element being
@@ -2961,7 +2984,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "Clear highlight before the timeline found the element: the element found then is not drawn, and the highlight is answered 'ignored'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         clearHighlight,
         located(1),
       ],
@@ -2971,7 +2994,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "Clear highlight before the timeline found no element: nothing more is cleared, and the highlight is answered 'ignored'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         clearHighlight,
         located(1, false),
       ],
@@ -2981,7 +3004,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "Clear highlight while the browser still looks the element up: the clear is asked after the drawing, and the browser draws only the latest",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         clearHighlight,
       ],
@@ -2991,7 +3014,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "the browser's answer to a highlight that Clear highlight replaced while it looked the element up is 'ignored'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         clearHighlight,
         highlighted(1),
@@ -3002,7 +3025,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "Clear highlight after the browser drew it clears it",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         highlighted(1),
         clearHighlight,
@@ -3013,39 +3036,39 @@ describe("the lifecycle, for the highlight", () => {
       name: "a highlight after Clear highlight is drawn as any other",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         clearHighlight,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(3),
       ],
       todo: [draw(3)],
     },
     {
       name: "a highlight while not recording is ignored: there is no entry",
-      happened: [opened, highlight("interaction_1")],
+      happened: [opened, highlight(interaction1)],
       todo: [reply("ignored")],
     },
     {
       name: "a highlight while the recorder wraps up is ignored",
-      happened: [...recording, stop, highlight("interaction_1")],
+      happened: [...recording, stop, highlight(interaction1)],
       todo: [reply("ignored")],
     },
     {
       name: "a highlight that is still drawn is cleared when the recording stops",
-      happened: [...recording, highlight("interaction_1"), stop],
+      happened: [...recording, highlight(interaction1), stop],
       todo: [...wrapUp, reply("applied"), draw(2, null)],
     },
     {
       name: "a highlight is cleared when a paused recording is saved",
-      happened: [...stopped, highlight("interaction_1"), finish],
+      happened: [...stopped, highlight(interaction1), finish],
       todo: [reply("applied"), stopTrace, draw(2, null)],
     },
     {
       name: "the browser's answer is given whatever the recorder does meanwhile",
       happened: [
         ...stopped,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         finish,
         highlighted(1),
@@ -3056,7 +3079,7 @@ describe("the lifecycle, for the highlight", () => {
       name: "a highlight the browser could not carry out is answered 'notFound'",
       happened: [
         ...recording,
-        highlight("interaction_1"),
+        highlight(interaction1),
         located(1),
         {
           kind: "requestFailed",
@@ -3133,7 +3156,7 @@ describe("the lifecycle, for the highlight", () => {
 describe("the lifecycle, for what the review against the spec found", () => {
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
-    page: "page_1",
+    page: page1,
     report,
   });
   const choose = (option: string): InteractionReport => ({
@@ -3144,14 +3167,14 @@ describe("the lifecycle, for what the review against the spec found", () => {
   });
   const fromReport = (
     report: InteractionReport,
-    before: string,
-    after: string
+    before: SnapshotId,
+    after: SnapshotId
   ): ToDo => ({
     kind: "timeline",
     add: {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: page1,
         report,
         before,
         after,
@@ -3168,11 +3191,11 @@ describe("the lifecycle, for what the review against the spec found", () => {
   });
   const revised = (report: InteractionReport): Happening => ({
     kind: "interactionRevised",
-    page: "page_1",
+    page: page1,
     report,
   });
   /** A page's first snapshot since a pause, kept as such. */
-  const resumesAt = (id: string): ToDo => ({
+  const resumesAt = (id: SnapshotId): ToDo => ({
     kind: "timeline",
     add: { kind: "snapshot", snapshot: snapshot(id), resumes: true },
   });
@@ -3199,31 +3222,31 @@ describe("the lifecycle, for what the review against the spec found", () => {
         reported,
         reportedAs(choose("milk")),
         reportedAs(choose("eggs")),
-        taken("snapshot_3"),
+        taken(snapshot3),
         // The wait that was cut short ends later: nothing more is asked.
-        settled("reported_1"),
-        settled("reported_2"),
-        taken("snapshot_4"),
+        settled(reported1),
+        settled(reported2),
+        taken(snapshot4),
         finish,
         gateOff,
-        taken("snapshot_5"),
+        taken(snapshot5),
       ],
       todo: [
-        [waitForSettled("reported_1")],
-        [takeSnapshot("snapshot_3")],
+        [waitForSettled(reported1)],
+        [takeSnapshot(snapshot3)],
         [
-          keep("snapshot_3"),
-          waitForSettled("reported_2"),
-          fromReport(choose("milk"), "snapshot_2", "snapshot_3"),
+          keep(snapshot3),
+          waitForSettled(reported2),
+          fromReport(choose("milk"), snapshot2, snapshot3),
         ],
         [],
-        [takeSnapshot("snapshot_4")],
-        [keep("snapshot_4")],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_5")],
+        [takeSnapshot(snapshot5)],
         [
-          keep("snapshot_5"),
-          fromReport(choose("eggs"), "snapshot_3", "snapshot_4"),
+          keep(snapshot5),
+          fromReport(choose("eggs"), snapshot3, snapshot4),
           stopTrace,
         ],
       ],
@@ -3237,23 +3260,23 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...oneClick,
         reported,
         reportedAs(choose("milk")),
-        settled("reported_1"),
+        settled(reported1),
         {
           kind: "interactionRevised",
-          page: "page_1",
+          page: page1,
           report: choose("bread"),
         },
         reportedAs(choose("eggs")),
-        taken("snapshot_3"),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
+        [takeSnapshot(snapshot3)],
         [],
         [],
         [
-          keep("snapshot_3"),
-          waitForSettled("reported_2"),
-          fromReport(choose("bread"), "snapshot_2", "snapshot_3"),
+          keep(snapshot3),
+          waitForSettled(reported2),
+          fromReport(choose("bread"), snapshot2, snapshot3),
         ],
       ],
       state: { phase: "recording" },
@@ -3267,40 +3290,40 @@ describe("the lifecycle, for what the review against the spec found", () => {
         reported,
         reportedAs(visible),
         reportedAs(choose("eggs")),
-        taken("snapshot_3"),
-        settled("reported_2"),
-        taken("snapshot_4"),
+        taken(snapshot3),
+        settled(reported2),
+        taken(snapshot4),
         finish,
         gateOff,
-        taken("snapshot_5"),
+        taken(snapshot5),
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
+        [takeSnapshot(snapshot3)],
         [],
         [
-          keep("snapshot_3"),
-          waitForSettled("reported_2"),
+          keep(snapshot3),
+          waitForSettled(reported2),
           {
             kind: "timeline",
             add: {
               kind: "interaction",
               interaction: {
-                page: "page_1",
+                page: page1,
                 report: visible,
-                before: "snapshot_3",
-                after: "snapshot_3",
+                before: snapshot3,
+                after: snapshot3,
                 at: 10,
               },
             },
           },
         ],
-        [takeSnapshot("snapshot_4")],
-        [keep("snapshot_4")],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_5")],
+        [takeSnapshot(snapshot5)],
         [
-          keep("snapshot_5"),
-          fromReport(choose("eggs"), "snapshot_3", "snapshot_4"),
+          keep(snapshot5),
+          fromReport(choose("eggs"), snapshot3, snapshot4),
           stopTrace,
         ],
       ],
@@ -3316,24 +3339,24 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         stop,
         revised(fill("milk")),
         gateOff,
-        settled("reported_1"),
-        taken("snapshot_4"),
-        taken("snapshot_5"),
+        settled(reported1),
+        taken(snapshot4),
+        taken(snapshot5),
         reportingOff,
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [waitForSettled("reported_1")],
+        [waitForSettled(reported1)],
         [],
-        [takeSnapshot("snapshot_4")],
-        [keep("snapshot_4"), takeSnapshot("snapshot_5")],
-        [keep("snapshot_5"), stopReporting],
-        [fromReport(fill("milk"), "snapshot_2", "snapshot_4")],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4), takeSnapshot(snapshot5)],
+        [keep(snapshot5), stopReporting],
+        [fromReport(fill("milk"), snapshot2, snapshot4)],
       ],
       state: { phase: "paused" },
     },
@@ -3345,24 +3368,24 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         stop,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
         revised(fill("milk")),
         reportingOff,
-        settled("reported_1"),
-        taken("snapshot_5"),
+        settled(reported1),
+        taken(snapshot5),
         reportingOff,
       ],
       todo: [
-        [keep("snapshot_4"), stopReporting],
-        [waitForSettled("reported_1")],
+        [keep(snapshot4), stopReporting],
+        [waitForSettled(reported1)],
         [],
-        [takeSnapshot("snapshot_5")],
-        [keep("snapshot_5"), stopReporting],
-        [fromReport(fill("milk"), "snapshot_2", "snapshot_5")],
+        [takeSnapshot(snapshot5)],
+        [keep(snapshot5), stopReporting],
+        [fromReport(fill("milk"), snapshot2, snapshot5)],
       ],
       state: { phase: "paused" },
     },
@@ -3374,24 +3397,24 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         finish,
         revised(fill("milk")),
         gateOff,
-        settled("reported_1"),
-        taken("snapshot_4"),
-        taken("snapshot_5"),
+        settled(reported1),
+        taken(snapshot4),
+        taken(snapshot5),
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [waitForSettled("reported_1")],
+        [waitForSettled(reported1)],
         [],
-        [takeSnapshot("snapshot_4")],
-        [keep("snapshot_4"), takeSnapshot("snapshot_5")],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4), takeSnapshot(snapshot5)],
         [
-          keep("snapshot_5"),
-          fromReport(fill("milk"), "snapshot_2", "snapshot_4"),
+          keep(snapshot5),
+          fromReport(fill("milk"), snapshot2, snapshot4),
           stopTrace,
         ],
       ],
@@ -3405,14 +3428,14 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         stop,
         { kind: "timeLimitPassed" },
       ],
       todo: [
         [...wrapUp, reply("applied")],
-        [fromReport(fill("m"), "snapshot_2", "snapshot_3"), stopReporting],
+        [fromReport(fill("m"), snapshot2, snapshot3), stopReporting],
       ],
       state: { phase: "paused" },
     },
@@ -3421,11 +3444,11 @@ describe("the lifecycle, for what the review against the spec found", () => {
     // changed while paused is left out.
     {
       name: "Continue has each page read once the pages hold inputs back: where recording resumes is the new point to compare from (rule 13)",
-      happened: [...stopped, resume, reporting, holding, taken("snapshot_2")],
+      happened: [...stopped, resume, reporting, holding, taken(snapshot2)],
       todo: [
         [holdInputs],
-        [recordApplied, takeSnapshot("snapshot_2")],
-        [resumesAt("snapshot_2"), letThrough(null)],
+        [recordApplied, takeSnapshot(snapshot2)],
+        [resumesAt(snapshot2), letThrough(null)],
       ],
       state: { phase: "recording" },
     },
@@ -3436,14 +3459,14 @@ describe("the lifecycle, for what the review against the spec found", () => {
         resume,
         reporting,
         holding,
-        clickHeld("input_1"),
-        taken("snapshot_3"),
-        taken("snapshot_2"),
+        clickHeld(input1),
+        taken(snapshot3),
+        taken(snapshot2),
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
-        [resumesAt("snapshot_3"), passOn("input_1")],
-        [keep("snapshot_2")],
+        [takeSnapshot(snapshot3)],
+        [resumesAt(snapshot3), passOn(input1)],
+        [keep(snapshot2)],
       ],
       state: { phase: "recording" },
     },
@@ -3456,13 +3479,13 @@ describe("the lifecycle, for what the review against the spec found", () => {
         holding,
         stop,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
         reportingOff,
-        taken("snapshot_2"),
+        taken(snapshot2),
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
-        [resumesAt("snapshot_3"), stopReporting],
+        [takeSnapshot(snapshot3)],
+        [resumesAt(snapshot3), stopReporting],
         [],
         [],
       ],
@@ -3478,30 +3501,30 @@ describe("the lifecycle, for what the review against the spec found", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
         {
           kind: "inputHeld",
-          input: "input_2",
-          page: "page_1",
+          input: input2,
+          page: page1,
           held: { kind: "typing" },
         },
         stop,
         gateOff,
-        clickHeld("input_3"),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        taken("snapshot_2"),
-        passedOn("input_2"),
-        taken("snapshot_3"),
+        clickHeld(input3),
+        taken(snapshot1),
+        passedOn(input1),
+        taken(snapshot2),
+        passedOn(input2),
+        taken(snapshot3),
       ],
       todo: [
         [],
         [],
-        [keep("snapshot_1"), passOn("input_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), passOn("input_2")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), passOn("input_3")],
+        [keep(snapshot1), passOn(input1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), passOn(input2)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), passOn(input3)],
       ],
       state: { phase: "wrappingUp" },
     },
@@ -3517,12 +3540,7 @@ describe("the lifecycle, for what the review against the spec found", () => {
         gateOff,
         reportedAs({ ...fill("x"), type: "openPage" }),
       ],
-      todo: [
-        [],
-        [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_1")],
-        [],
-      ],
+      todo: [[], [...wrapUp, reply("applied")], [takeSnapshot(snapshot1)], []],
       state: { phase: "wrappingUp" },
     },
     {
@@ -3532,23 +3550,23 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...started,
         ...oneClick,
         reportedAs(visible),
-        taken("snapshot_3"),
+        taken(snapshot3),
         reported,
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
         [
-          interaction("snapshot_1", "snapshot_2"),
+          interaction(snapshot1, snapshot2),
           {
             kind: "timeline",
             add: {
               kind: "interaction",
               interaction: {
-                page: "page_1",
+                page: page1,
                 report: visible,
-                before: "snapshot_3",
-                after: "snapshot_3",
+                before: snapshot3,
+                after: snapshot3,
                 at: 10,
               },
             },
@@ -3565,15 +3583,12 @@ describe("the lifecycle, for what the review against the spec found", () => {
         ...oneClick,
         reported,
         reportedAs(fill("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
-        { kind: "pageClosed", page: "page_1", pagesLeft: 0 },
+        settled(reported1),
+        taken(snapshot3),
+        { kind: "pageClosed", page: page1, pagesLeft: 0 },
         gateOff,
       ],
-      todo: [
-        wrapUp,
-        [fromReport(fill("m"), "snapshot_2", "snapshot_3"), stopTrace],
-      ],
+      todo: [wrapUp, [fromReport(fill("m"), snapshot2, snapshot3), stopTrace]],
       state: { phase: "saving" },
     },
   ])("$name", ({ happened, todo, state }) => {
@@ -3672,7 +3687,7 @@ describe("the lifecycle, for the time an answer is given", () => {
 describe("the lifecycle, for a highlight that the recorder leaves behind", () => {
   const highlight: Happening = {
     kind: "command",
-    command: { type: "highlight", entry: "interaction_1" },
+    command: { type: "highlight", entry: interaction1 },
   };
 
   it("clears no highlight when the recorder ends at once: its browser is let go", () => {
@@ -3701,7 +3716,7 @@ describe("the lifecycle, for a highlight that the recorder leaves behind", () =>
     // this one.
     expect(todo.at(-1)).toEqual([
       { kind: "keepReply", key: "highlight_3" },
-      { kind: "locate", entry: "interaction_1", highlight: 3 },
+      { kind: "locate", entry: interaction1, highlight: 3 },
     ]);
   });
 });
@@ -3709,28 +3724,28 @@ describe("the lifecycle, for a highlight that the recorder leaves behind", () =>
 // The change analysis of the branch: rows for more than one page, which no
 // row had, and for what is told when nothing waits for it.
 // Shared by the lifecycle's tests of pages, inputs and their snapshots.
-const takenOf = (id: string, page: string): Happening => ({
+const takenOf = (id: SnapshotId, page: PageId): Happening => ({
   kind: "snapshotTaken",
   snapshot: { ...snapshot(id), page },
 });
-const snap = (id: string, page: string): ToDo => ({
+const snap = (id: SnapshotId, page: PageId): ToDo => ({
   kind: "browser",
   ask: { kind: "takeSnapshot", snapshot: id, page },
 });
-const kept = (id: string, page: string): ToDo => ({
+const kept = (id: SnapshotId, page: PageId): ToDo => ({
   kind: "timeline",
   add: { kind: "snapshot", snapshot: { ...snapshot(id), page } },
 });
-const settledOn = (page: string, input: string): Happening => ({
+const settledOn = (page: PageId, input: InputId): Happening => ({
   kind: "pageSettled",
   page,
   input,
 });
-const waitOn = (page: string, input: string): ToDo => ({
+const waitOn = (page: PageId, input: InputId): ToDo => ({
   kind: "browser",
   ask: { kind: "waitForSettled", page, input },
 });
-const through = (page: string, upTo: string | null): ToDo => ({
+const through = (page: PageId, upTo: InputId | null): ToDo => ({
   kind: "browser",
   ask: { kind: "letInputsThrough", page, upTo },
 });
@@ -3744,20 +3759,24 @@ const typed = (text: string): InteractionReport => ({
 describe("the lifecycle, with more than one page", () => {
   const url2 = "http://shop.test/help";
   const BLANK = "about:blank";
-  const opened2: Happening = { kind: "pageOpened", page: "page_2", url: url2 };
-  const blank = (page: string): Happening => ({
+  const opened2: Happening = {
+    kind: "pageOpened",
+    page: page2,
+    url: url2,
+  };
+  const blank = (page: PageId): Happening => ({
     kind: "pageOpened",
     page,
     url: BLANK,
   });
   const closed2: Happening = {
     kind: "pageClosed",
-    page: "page_2",
+    page: page2,
     pagesLeft: 1,
   };
   const heldOn = (
-    page: string,
-    input: string,
+    page: PageId,
+    input: InputId,
     held?: HeldInput
   ): Happening => ({
     kind: "inputHeld",
@@ -3765,7 +3784,7 @@ describe("the lifecycle, with more than one page", () => {
     page,
     ...(held ? { held } : {}),
   });
-  const snapshotOf = (id: string, page: string): PageSnapshot => ({
+  const snapshotOf = (id: SnapshotId, page: PageId): PageSnapshot => ({
     ...snapshot(id),
     page,
   });
@@ -3789,7 +3808,7 @@ describe("the lifecycle, with more than one page", () => {
       todo: [
         [
           visitAt(url, "initial"),
-          visitAt(url2, "openPage", "page_2"),
+          visitAt(url2, "openPage", page2),
           startTrace,
           { kind: "deferReply" },
         ],
@@ -3798,13 +3817,9 @@ describe("the lifecycle, with more than one page", () => {
     },
     {
       name: "a page that is blank at Record beside one at an address is not the first: its Visit is 'openPage' when it goes somewhere",
-      happened: [blank("page_1"), opened2, ...started, navigated(url)],
+      happened: [blank(page1), opened2, ...started, navigated(url)],
       todo: [
-        [
-          visitAt(url2, "initial", "page_2"),
-          startTrace,
-          { kind: "deferReply" },
-        ],
+        [visitAt(url2, "initial", page2), startTrace, { kind: "deferReply" }],
         [reportInteractions],
         [holdInputs],
         [recordApplied],
@@ -3815,24 +3830,24 @@ describe("the lifecycle, with more than one page", () => {
     {
       name: "of two pages that are blank at Record, the first one's Visit is 'initial' whenever it comes, and the other's 'openPage'",
       happened: [
-        blank("page_1"),
-        blank("page_2"),
+        blank(page1),
+        blank(page2),
         ...started,
-        navigated(url2, "page_2"),
+        navigated(url2, page2),
         navigated(url),
       ],
-      todo: [[visitAt(url2, "openPage", "page_2")], [visitAt(url, "initial")]],
+      todo: [[visitAt(url2, "openPage", page2)], [visitAt(url, "initial")]],
       state: { phase: "recording" },
     },
     {
       name: "Continue starts no Visit for a page that opened while paused and is still blank",
-      happened: [...stopped, blank("page_2"), resume],
+      happened: [...stopped, blank(page2), resume],
       todo: [[reportInteractions, { kind: "deferReply" }]],
       state: { phase: "paused" },
     },
     {
       name: "a page the recorder does not know of that goes somewhere while recording starts no Visit",
-      happened: [opened, ...started, navigated(url2, "page_9")],
+      happened: [opened, ...started, navigated(url2, page9)],
       todo: [[]],
       state: { phase: "recording" },
     },
@@ -3852,7 +3867,7 @@ describe("the lifecycle, with more than one page", () => {
         finish,
         gateOff,
       ],
-      todo: [[snap("snapshot_1", "page_1"), snap("snapshot_2", "page_2")]],
+      todo: [[snap(snapshot1, page1), snap(snapshot2, page2)]],
       state: { phase: "wrappingUp" },
     },
 
@@ -3863,21 +3878,21 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        heldOn("page_1", "input_1"),
+        heldOn(page1, input1),
         closed2,
-        takenOf("snapshot_1", "page_1"),
+        takenOf(snapshot1, page1),
       ],
       todo: [
-        [snap("snapshot_1", "page_1")],
+        [snap(snapshot1, page1)],
         [],
-        [kept("snapshot_1", "page_1"), passOn("input_1")],
+        [kept(snapshot1, page1), passOn(input1)],
       ],
       state: { phase: "recording" },
     },
     {
       name: "a page that closed is not read at the end: the wrap-up reads the pages that are left",
       happened: [opened, opened2, ...started, closed2, finish, gateOff],
-      todo: [[snap("snapshot_1", "page_1")]],
+      todo: [[snap(snapshot1, page1)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -3889,12 +3904,12 @@ describe("the lifecycle, with more than one page", () => {
         finish,
         gateOff,
         closed2,
-        takenOf("snapshot_1", "page_1"),
+        takenOf(snapshot1, page1),
       ],
       todo: [
-        [snap("snapshot_1", "page_1"), snap("snapshot_2", "page_2")],
+        [snap(snapshot1, page1), snap(snapshot2, page2)],
         [],
-        [kept("snapshot_1", "page_1"), stopTrace],
+        [kept(snapshot1, page1), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -3906,22 +3921,18 @@ describe("the lifecycle, with more than one page", () => {
         ...started,
         stop,
         gateOff,
-        takenOf("snapshot_1", "page_1"),
-        takenOf("snapshot_2", "page_2"),
+        takenOf(snapshot1, page1),
+        takenOf(snapshot2, page2),
         reportingOff,
         resume,
         reporting,
         holding,
         closed2,
-        takenOf("snapshot_4", "page_2"),
-        takenOf("snapshot_3", "page_1"),
+        takenOf(snapshot4, page2),
+        takenOf(snapshot3, page1),
       ],
       todo: [
-        [
-          recordApplied,
-          snap("snapshot_3", "page_1"),
-          snap("snapshot_4", "page_2"),
-        ],
+        [recordApplied, snap(snapshot3, page1), snap(snapshot4, page2)],
         [],
         [],
         [
@@ -3929,11 +3940,11 @@ describe("the lifecycle, with more than one page", () => {
             kind: "timeline",
             add: {
               kind: "snapshot",
-              snapshot: snapshotOf("snapshot_3", "page_1"),
+              snapshot: snapshotOf(snapshot3, page1),
               resumes: true,
             },
           },
-          through("page_1", null),
+          through(page1, null),
         ],
       ],
       state: { phase: "recording" },
@@ -3946,19 +3957,19 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         ...started,
         opened2,
-        heldOn("page_2", "input_1"),
-        takenOf("snapshot_1", "page_2"),
-        passedOn("input_1"),
-        settledOn("page_2", "input_1"),
-        takenOf("snapshot_2", "page_2"),
+        heldOn(page2, input1),
+        takenOf(snapshot1, page2),
+        passedOn(input1),
+        settledOn(page2, input1),
+        takenOf(snapshot2, page2),
       ],
       todo: [
-        [visitAt(url2, "openPage", "page_2")],
-        [snap("snapshot_1", "page_2")],
-        [kept("snapshot_1", "page_2"), passOn("input_1")],
-        [waitOn("page_2", "input_1")],
-        [snap("snapshot_2", "page_2")],
-        [kept("snapshot_2", "page_2"), through("page_2", "input_1")],
+        [visitAt(url2, "openPage", page2)],
+        [snap(snapshot1, page2)],
+        [kept(snapshot1, page2), passOn(input1)],
+        [waitOn(page2, input1)],
+        [snap(snapshot2, page2)],
+        [kept(snapshot2, page2), through(page2, input1)],
       ],
       state: { phase: "recording" },
     },
@@ -3968,12 +3979,12 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         ...started,
         opened2,
-        { kind: "interactionReported", page: "page_2", report: choice },
-        takenOf("snapshot_1", "page_2"),
+        { kind: "interactionReported", page: page2, report: choice },
+        takenOf(snapshot1, page2),
       ],
       todo: [
-        [snap("snapshot_1", "page_2")],
-        [kept("snapshot_1", "page_2"), waitOn("page_2", "reported_1")],
+        [snap(snapshot1, page2)],
+        [kept(snapshot1, page2), waitOn(page2, reported1)],
       ],
       state: { phase: "recording" },
     },
@@ -3983,13 +3994,13 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        heldOn("page_2", "input_1"),
-        takenOf("snapshot_1", "page_2"),
-        passedOn("input_1"),
-        settledOn("page_2", "input_1"),
-        takenOf("snapshot_2", "page_2"),
+        heldOn(page2, input1),
+        takenOf(snapshot1, page2),
+        passedOn(input1),
+        settledOn(page2, input1),
+        takenOf(snapshot2, page2),
       ],
-      todo: [[kept("snapshot_2", "page_2"), through("page_2", "input_1")]],
+      todo: [[kept(snapshot2, page2), through(page2, input1)]],
       state: { phase: "recording" },
     },
     {
@@ -3999,9 +4010,9 @@ describe("the lifecycle, with more than one page", () => {
         opened2,
         ...started,
         ...oneClick,
-        heldOn("page_2", "input_2", { kind: "typing" }),
+        heldOn(page2, input2, { kind: "typing" }),
       ],
-      todo: [[snap("snapshot_3", "page_2")]],
+      todo: [[snap(snapshot3, page2)]],
       state: { phase: "recording" },
     },
 
@@ -4012,12 +4023,12 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        heldOn("page_1", "input_1"),
-        takenOf("snapshot_1", "page_1"),
-        passedOn("input_1"),
-        heldOn("page_2", "input_2"),
+        heldOn(page1, input1),
+        takenOf(snapshot1, page1),
+        passedOn(input1),
+        heldOn(page2, input2),
       ],
-      todo: [[snap("snapshot_2", "page_2")]],
+      todo: [[snap(snapshot2, page2)]],
       state: { phase: "recording" },
     },
     {
@@ -4028,9 +4039,9 @@ describe("the lifecycle, with more than one page", () => {
         ...started,
         finish,
         gateOff,
-        takenOf("snapshot_1", "page_1"),
+        takenOf(snapshot1, page1),
       ],
-      todo: [[kept("snapshot_1", "page_1")]],
+      todo: [[kept(snapshot1, page1)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -4039,13 +4050,13 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        heldOn("page_1", "input_1"),
-        heldOn("page_2", "input_2"),
-        takenOf("snapshot_1", "page_1"),
-        takenOf("snapshot_2", "page_2"),
-        passedOn("input_2"),
+        heldOn(page1, input1),
+        heldOn(page2, input2),
+        takenOf(snapshot1, page1),
+        takenOf(snapshot2, page2),
+        passedOn(input2),
       ],
-      todo: [[waitOn("page_2", "input_2")]],
+      todo: [[waitOn(page2, input2)]],
       state: { phase: "recording" },
     },
     {
@@ -4054,13 +4065,13 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        heldOn("page_1", "input_1"),
-        heldOn("page_2", "input_2"),
-        heldOn("page_2", "input_3"),
-        takenOf("snapshot_1", "page_1"),
-        passedOn("input_1"),
+        heldOn(page1, input1),
+        heldOn(page2, input2),
+        heldOn(page2, input3),
+        takenOf(snapshot1, page1),
+        passedOn(input1),
       ],
-      todo: [[waitOn("page_1", "input_1")]],
+      todo: [[waitOn(page1, input1)]],
       state: { phase: "recording" },
     },
     {
@@ -4069,17 +4080,17 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        heldOn("page_1", "input_1"),
-        takenOf("snapshot_1", "page_1"),
-        passedOn("input_1"),
-        settledOn("page_1", "input_1"),
-        takenOf("snapshot_2", "page_1"),
-        heldOn("page_2", "input_2"),
-        takenOf("snapshot_3", "page_2"),
-        passedOn("input_2", 22),
-        settledOn("page_2", "input_2"),
-        takenOf("snapshot_4", "page_2"),
-        { kind: "interactionReported", page: "page_2", report: click },
+        heldOn(page1, input1),
+        takenOf(snapshot1, page1),
+        passedOn(input1),
+        settledOn(page1, input1),
+        takenOf(snapshot2, page1),
+        heldOn(page2, input2),
+        takenOf(snapshot3, page2),
+        passedOn(input2, 22),
+        settledOn(page2, input2),
+        takenOf(snapshot4, page2),
+        { kind: "interactionReported", page: page2, report: click },
         reported,
       ],
       todo: [
@@ -4089,16 +4100,16 @@ describe("the lifecycle, with more than one page", () => {
             add: {
               kind: "interaction",
               interaction: {
-                page: "page_2",
+                page: page2,
                 report: click,
-                before: "snapshot_3",
-                after: "snapshot_4",
+                before: snapshot3,
+                after: snapshot4,
                 at: 22,
               },
             },
           },
         ],
-        [interaction("snapshot_1", "snapshot_2")],
+        [interaction(snapshot1, snapshot2)],
       ],
       state: { phase: "recording" },
     },
@@ -4108,28 +4119,36 @@ describe("the lifecycle, with more than one page", () => {
         opened,
         opened2,
         ...started,
-        { kind: "interactionReported", page: "page_1", report: typed("m") },
-        takenOf("snapshot_1", "page_1"),
-        { kind: "interactionRevised", page: "page_2", report: typed("x") },
-        settledOn("page_1", "reported_1"),
-        takenOf("snapshot_2", "page_1"),
+        {
+          kind: "interactionReported",
+          page: page1,
+          report: typed("m"),
+        },
+        takenOf(snapshot1, page1),
+        {
+          kind: "interactionRevised",
+          page: page2,
+          report: typed("x"),
+        },
+        settledOn(page1, reported1),
+        takenOf(snapshot2, page1),
         finish,
         gateOff,
-        takenOf("snapshot_3", "page_1"),
-        takenOf("snapshot_4", "page_2"),
+        takenOf(snapshot3, page1),
+        takenOf(snapshot4, page2),
       ],
       todo: [
         [
-          kept("snapshot_4", "page_2"),
+          kept(snapshot4, page2),
           {
             kind: "timeline",
             add: {
               kind: "interaction",
               interaction: {
-                page: "page_1",
+                page: page1,
                 report: typed("m"),
-                before: "snapshot_1",
-                after: "snapshot_2",
+                before: snapshot1,
+                after: snapshot2,
                 at: 10,
                 beforeFromReport: true,
               },
@@ -4150,7 +4169,7 @@ describe("the lifecycle, with more than one page", () => {
     },
     {
       name: "a click a page held back once the recorder has ended is asked of nobody: its browser is let go",
-      happened: [outsideEnd, clickHeld("input_1")],
+      happened: [outsideEnd, clickHeld(input1)],
       todo: [[]],
       state: { phase: "ended" },
     },
@@ -4211,24 +4230,24 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
 describe("the lifecycle, for what is told twice or out of turn", () => {
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
-    page: "page_1",
+    page: page1,
     report,
   });
   const revised = (report: InteractionReport): Happening => ({
     kind: "interactionRevised",
-    page: "page_1",
+    page: page1,
     report,
   });
   const fromReport = (
     report: InteractionReport,
-    before: string,
-    after: string
+    before: SnapshotId,
+    after: SnapshotId
   ): ToDo => ({
     kind: "timeline",
     add: {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: page1,
         report,
         before,
         after,
@@ -4238,11 +4257,7 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
     },
   });
   /** A click that reached its page and waits for its Settled Page. */
-  const clickSettling = [
-    clickHeld("input_1"),
-    taken("snapshot_1"),
-    passedOn("input_1"),
-  ];
+  const clickSettling = [clickHeld(input1), taken(snapshot1), passedOn(input1)];
 
   it.each<{
     name: string;
@@ -4296,7 +4311,7 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         ...started,
         stop,
         gateOff,
-        taken("snapshot_1"),
+        taken(snapshot1),
         reporting,
       ],
       todo: [[]],
@@ -4308,14 +4323,14 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         opened,
         ...started,
         ...clickSettling,
-        clickHeld("input_2"),
+        clickHeld(input2),
         stop,
         { kind: "timeLimitPassed" },
       ],
       todo: [
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
         [...wrapUp, reply("applied")],
-        [passOn("input_2"), stopReporting],
+        [passOn(input2), stopReporting],
       ],
       state: { phase: "paused" },
     },
@@ -4323,13 +4338,13 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
     // A held input.
     {
       name: "an input told passed on a second time is not waited for twice",
-      happened: [opened, ...started, ...clickSettling, passedOn("input_1")],
-      todo: [[waitForSettled("input_1")], []],
+      happened: [opened, ...started, ...clickSettling, passedOn(input1)],
+      todo: [[waitForSettled(input1)], []],
       state: { phase: "recording" },
     },
     {
       name: "an input the recorder does not know of that is told passed on changes nothing",
-      happened: [opened, ...started, passedOn("input_9")],
+      happened: [opened, ...started, passedOn(input9)],
       todo: [[]],
       state: { phase: "recording" },
     },
@@ -4339,12 +4354,12 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         opened,
         ...started,
         ...clickSettling,
-        { kind: "inputGone", input: "input_1" },
-        settled("input_1"),
-        taken("snapshot_2"),
+        { kind: "inputGone", input: input1 },
+        settled(input1),
+        taken(snapshot2),
         reported,
       ],
-      todo: [[interaction("snapshot_1", "snapshot_2")]],
+      todo: [[interaction(snapshot1, snapshot2)]],
       state: { phase: "recording" },
     },
     {
@@ -4355,14 +4370,14 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         ...clickSettling,
         reported,
         reportedAs({ ...click, selector: "internal:role=link" }),
-        settled("input_1"),
-        taken("snapshot_2"),
+        settled(input1),
+        taken(snapshot2),
       ],
       todo: [
         [
-          keep("snapshot_2"),
-          interaction("snapshot_1", "snapshot_2"),
-          letThrough("input_1"),
+          keep(snapshot2),
+          interaction(snapshot1, snapshot2),
+          letThrough(input1),
         ],
       ],
       state: { phase: "recording" },
@@ -4375,14 +4390,14 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         ...clickSettling,
         reported,
         revised({ ...click, selector: "internal:role=link" }),
-        settled("input_1"),
-        taken("snapshot_2"),
+        settled(input1),
+        taken(snapshot2),
       ],
       todo: [
         [
-          keep("snapshot_2"),
-          interaction("snapshot_1", "snapshot_2"),
-          letThrough("input_1"),
+          keep(snapshot2),
+          interaction(snapshot1, snapshot2),
+          letThrough(input1),
         ],
       ],
       state: { phase: "recording" },
@@ -4396,21 +4411,21 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         ...started,
         {
           kind: "inputHeld",
-          input: "input_1",
-          page: "page_1",
+          input: input1,
+          page: page1,
           held: { kind: "typing" },
         },
         reportedAs({ ...typed("x"), type: "select" }),
-        taken("snapshot_2"),
-        taken("snapshot_1"),
-        settled("reported_1"),
+        taken(snapshot2),
+        taken(snapshot1),
+        settled(reported1),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), waitForSettled("reported_1")],
-        [keep("snapshot_1"), passOn("input_1")],
-        [takeSnapshot("snapshot_3")],
+        [takeSnapshot(snapshot1)],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), waitForSettled(reported1)],
+        [keep(snapshot1), passOn(input1)],
+        [takeSnapshot(snapshot3)],
       ],
       state: { phase: "recording" },
     },
@@ -4421,17 +4436,17 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         ...started,
         ...oneClick,
         reported,
-        clickHeld("input_2"),
+        clickHeld(input2),
         reportedAs(typed("m")),
-        taken("snapshot_3"),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
+        [takeSnapshot(snapshot3)],
         [],
         [
-          keep("snapshot_3"),
-          passOn("input_2"),
-          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+          keep(snapshot3),
+          passOn(input2),
+          fromReport(typed("m"), snapshot2, snapshot3),
         ],
       ],
       state: { phase: "recording" },
@@ -4453,16 +4468,16 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         reported,
         reportedAs(typed("m")),
         revised({ ...typed("x"), type: "select" }),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        settled(reported1),
+        taken(snapshot3),
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
       ],
       todo: [
         [
-          keep("snapshot_4"),
-          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+          keep(snapshot4),
+          fromReport(typed("m"), snapshot2, snapshot3),
           stopTrace,
         ],
       ],
@@ -4476,25 +4491,25 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
         ...oneClick,
         reported,
         reportedAs(typed("m")),
-        settled("reported_1"),
+        settled(reported1),
         revised(typed("milk")),
-        taken("snapshot_3"),
-        settled("reported_1"),
-        taken("snapshot_4"),
+        taken(snapshot3),
+        settled(reported1),
+        taken(snapshot4),
         finish,
         gateOff,
-        taken("snapshot_5"),
+        taken(snapshot5),
       ],
       todo: [
         [],
-        [keep("snapshot_3"), waitForSettled("reported_1")],
-        [takeSnapshot("snapshot_4")],
-        [keep("snapshot_4")],
+        [keep(snapshot3), waitForSettled(reported1)],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_5")],
+        [takeSnapshot(snapshot5)],
         [
-          keep("snapshot_5"),
-          fromReport(typed("milk"), "snapshot_2", "snapshot_4"),
+          keep(snapshot5),
+          fromReport(typed("milk"), snapshot2, snapshot4),
           stopTrace,
         ],
       ],
@@ -4510,17 +4525,17 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
 // The change analysis of the branch: which held clicks one report covers.
 describe("the lifecycle, for the clicks one report covers", () => {
   const url2 = "http://shop.test/help";
-  const held = (input: string, count: number, page = "page_1"): Happening => ({
+  const held = (input: InputId, count: number, page = page1): Happening => ({
     kind: "inputHeld",
     input,
     page,
     held: { kind: "click", count },
   });
-  const takenOf = (id: string, page = "page_1"): Happening => ({
+  const takenOf = (id: SnapshotId, page = page1): Happening => ({
     kind: "snapshotTaken",
     snapshot: { ...snapshot(id), page },
   });
-  const settledOn = (input: string, page = "page_1"): Happening => ({
+  const settledOn = (input: InputId, page = page1): Happening => ({
     kind: "pageSettled",
     page,
     input,
@@ -4529,20 +4544,17 @@ describe("the lifecycle, for the clicks one report covers", () => {
     ...click,
     values: { button: "left", clickCount: count },
   });
-  const reportedOn = (
-    report: InteractionReport,
-    page = "page_1"
-  ): Happening => ({
+  const reportedOn = (report: InteractionReport, page = page1): Happening => ({
     kind: "interactionReported",
     page,
     report,
   });
   const written = (
     report: InteractionReport,
-    before: string,
-    after: string,
+    before: SnapshotId,
+    after: SnapshotId,
     at: number,
-    page = "page_1"
+    page = page1
   ): ToDo => ({
     kind: "timeline",
     add: {
@@ -4553,24 +4565,24 @@ describe("the lifecycle, for the clicks one report covers", () => {
   /** Three clicks held one behind the other, the last one settled: each
    * one's "after" is the next one's "before". */
   const three = (counts: readonly [number, number, number]) => [
-    held("input_1", counts[0]),
-    held("input_2", counts[1]),
-    held("input_3", counts[2]),
-    takenOf("snapshot_1"),
-    passedOn("input_1", 21),
-    takenOf("snapshot_2"),
-    passedOn("input_2", 22),
-    takenOf("snapshot_3"),
-    passedOn("input_3", 23),
-    settledOn("input_3"),
-    takenOf("snapshot_4"),
+    held(input1, counts[0]),
+    held(input2, counts[1]),
+    held(input3, counts[2]),
+    takenOf(snapshot1),
+    passedOn(input1, 21),
+    takenOf(snapshot2),
+    passedOn(input2, 22),
+    takenOf(snapshot3),
+    passedOn(input3, 23),
+    settledOn(input3),
+    takenOf(snapshot4),
   ];
 
   it.each<{ name: string; happened: Happening[]; todo: ToDo[] }>([
     {
       name: "a report without a count covers its own click only",
       happened: [opened, ...started, ...three([1, 2, 3]), reportedOn(click)],
-      todo: [written(click, "snapshot_1", "snapshot_2", 21)],
+      todo: [written(click, snapshot1, snapshot2, 21)],
     },
     {
       name: "a report of count two covers no click that starts a count of its own",
@@ -4580,7 +4592,7 @@ describe("the lifecycle, for the clicks one report covers", () => {
         ...three([1, 1, 2]),
         reportedOn(clickOf(2)),
       ],
-      todo: [written(clickOf(2), "snapshot_1", "snapshot_2", 21)],
+      todo: [written(clickOf(2), snapshot1, snapshot2, 21)],
     },
     {
       name: "a report of count two covers the second click and not a third: it ends where the second does",
@@ -4590,7 +4602,7 @@ describe("the lifecycle, for the clicks one report covers", () => {
         ...three([1, 2, 3]),
         reportedOn(clickOf(2)),
       ],
-      todo: [written(clickOf(2), "snapshot_1", "snapshot_3", 21)],
+      todo: [written(clickOf(2), snapshot1, snapshot3, 21)],
     },
     {
       name: "three clicks reported one by one are each written: a report gives up on no click behind its own",
@@ -4602,7 +4614,7 @@ describe("the lifecycle, for the clicks one report covers", () => {
         reportedOn(clickOf(1)),
         reportedOn(clickOf(1)),
       ],
-      todo: [written(clickOf(1), "snapshot_3", "snapshot_4", 23)],
+      todo: [written(clickOf(1), snapshot3, snapshot4, 23)],
     },
     {
       name: "a report of count three covers all three clicks",
@@ -4612,47 +4624,47 @@ describe("the lifecycle, for the clicks one report covers", () => {
         ...three([1, 2, 3]),
         reportedOn(clickOf(3)),
       ],
-      todo: [written(clickOf(3), "snapshot_1", "snapshot_4", 21)],
+      todo: [written(clickOf(3), snapshot1, snapshot4, 21)],
     },
     {
       name: "a report covers the clicks of its own page, whatever was held on another page between them",
       happened: [
         opened,
-        { kind: "pageOpened", page: "page_2", url: url2 },
+        { kind: "pageOpened", page: page2, url: url2 },
         ...started,
-        held("input_1", 1),
-        held("input_2", 1, "page_2"),
-        held("input_3", 2),
-        takenOf("snapshot_1"),
-        takenOf("snapshot_2", "page_2"),
-        passedOn("input_1", 21),
-        takenOf("snapshot_3"),
-        passedOn("input_3", 23),
-        settledOn("input_3"),
-        takenOf("snapshot_4"),
+        held(input1, 1),
+        held(input2, 1, page2),
+        held(input3, 2),
+        takenOf(snapshot1),
+        takenOf(snapshot2, page2),
+        passedOn(input1, 21),
+        takenOf(snapshot3),
+        passedOn(input3, 23),
+        settledOn(input3),
+        takenOf(snapshot4),
         reportedOn(clickOf(2)),
       ],
-      todo: [written(clickOf(2), "snapshot_1", "snapshot_4", 21)],
+      todo: [written(clickOf(2), snapshot1, snapshot4, 21)],
     },
     {
       name: "a report covers the clicks behind its own, also when a click of another page was held before them",
       happened: [
         opened,
-        { kind: "pageOpened", page: "page_2", url: url2 },
+        { kind: "pageOpened", page: page2, url: url2 },
         ...started,
-        held("input_1", 1, "page_2"),
-        held("input_2", 1),
-        held("input_3", 2),
-        takenOf("snapshot_1", "page_2"),
-        takenOf("snapshot_2"),
-        passedOn("input_2", 22),
-        takenOf("snapshot_3"),
-        passedOn("input_3", 23),
-        settledOn("input_3"),
-        takenOf("snapshot_4"),
+        held(input1, 1, page2),
+        held(input2, 1),
+        held(input3, 2),
+        takenOf(snapshot1, page2),
+        takenOf(snapshot2),
+        passedOn(input2, 22),
+        takenOf(snapshot3),
+        passedOn(input3, 23),
+        settledOn(input3),
+        takenOf(snapshot4),
         reportedOn(clickOf(2)),
       ],
-      todo: [written(clickOf(2), "snapshot_2", "snapshot_4", 22)],
+      todo: [written(clickOf(2), snapshot2, snapshot4, 22)],
     },
   ])("$name", ({ happened, todo }) => {
     expect(run(happened).todo.at(-1)).toEqual(todo);
@@ -4663,23 +4675,23 @@ describe("the lifecycle, for the clicks one report covers", () => {
 // that no row reached, each named by what it keeps.
 describe("the lifecycle, for rules no row reached", () => {
   const url2 = "http://shop.test/help";
-  const opened2: Happening = { kind: "pageOpened", page: "page_2", url: url2 };
+  const opened2: Happening = {
+    kind: "pageOpened",
+    page: page2,
+    url: url2,
+  };
   const closed2: Happening = {
     kind: "pageClosed",
-    page: "page_2",
+    page: page2,
     pagesLeft: 1,
   };
-  const held = (
-    input: string,
-    what: HeldInput,
-    page = "page_1"
-  ): Happening => ({
+  const held = (input: InputId, what: HeldInput, page = page1): Happening => ({
     kind: "inputHeld",
     input,
     page,
     held: what,
   });
-  const clickOn = (page: string, input: string) =>
+  const clickOn = (page: PageId, input: InputId) =>
     held(input, { kind: "click", count: 1 }, page);
   const choice: InteractionReport = {
     type: "select",
@@ -4697,26 +4709,23 @@ describe("the lifecycle, for rules no row reached", () => {
     ...click,
     values: { button: "left", clickCount: count },
   });
-  const reportedOn = (
-    report: InteractionReport,
-    page = "page_1"
-  ): Happening => ({
+  const reportedOn = (report: InteractionReport, page = page1): Happening => ({
     kind: "interactionReported",
     page,
     report,
   });
   const written = (
     report: InteractionReport,
-    before: string,
-    after: string | null,
+    before: SnapshotId,
+    after: SnapshotId | null,
     at = 20,
-    more: { page?: string; beforeFromReport?: true } = {}
+    more: { page?: PageId; beforeFromReport?: true } = {}
   ): ToDo => ({
     kind: "timeline",
     add: {
       kind: "interaction",
       interaction: {
-        page: more.page ?? "page_1",
+        page: more.page ?? page1,
         report,
         before,
         after,
@@ -4727,8 +4736,8 @@ describe("the lifecycle, for rules no row reached", () => {
   });
   const fromReport = (
     report: InteractionReport,
-    before: string,
-    after: string
+    before: SnapshotId,
+    after: SnapshotId
   ) => written(report, before, after, 10, { beforeFromReport: true });
   const assert: Happening = {
     kind: "command",
@@ -4741,20 +4750,16 @@ describe("the lifecycle, for rules no row reached", () => {
   });
   const timeLimit: Happening = { kind: "timeLimitPassed" };
   /** A click that reached its page and waits for its Settled Page. */
-  const clickSettling = [
-    clickHeld("input_1"),
-    taken("snapshot_1"),
-    passedOn("input_1"),
-  ];
+  const clickSettling = [clickHeld(input1), taken(snapshot1), passedOn(input1)];
   /** The first click of a double click reported with its count while the
    * second is on its way. */
   const doubleReportedEarly = [
-    held("input_1", { kind: "click", count: 1 }),
-    held("input_2", { kind: "click", count: 2 }),
-    taken("snapshot_1"),
-    passedOn("input_1", 21),
+    held(input1, { kind: "click", count: 1 }),
+    held(input2, { kind: "click", count: 2 }),
+    taken(snapshot1),
+    passedOn(input1, 21),
     reportedOn(clickOf(2)),
-    taken("snapshot_2"),
+    taken(snapshot2),
   ];
 
   it.each<{
@@ -4767,7 +4772,7 @@ describe("the lifecycle, for rules no row reached", () => {
     {
       name: "a page that opened while recording is read at the end like the others",
       happened: [opened, ...started, opened2, finish, gateOff],
-      todo: [[snap("snapshot_1", "page_1"), snap("snapshot_2", "page_2")]],
+      todo: [[snap(snapshot1, page1), snap(snapshot2, page2)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -4776,13 +4781,13 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        clickOn("page_2", "input_1"),
+        clickOn(page2, input1),
         closed2,
         finish,
         gateOff,
-        takenOf("snapshot_2", "page_1"),
+        takenOf(snapshot2, page1),
       ],
-      todo: [[kept("snapshot_2", "page_1"), stopTrace]],
+      todo: [[kept(snapshot2, page1), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -4793,7 +4798,7 @@ describe("the lifecycle, for rules no row reached", () => {
     },
     {
       name: "a snapshot nobody asked for is not kept while a wrap-up waits for its last snapshots",
-      happened: [opened, ...started, finish, gateOff, taken("snapshot_9")],
+      happened: [opened, ...started, finish, gateOff, taken(snapshot9)],
       todo: [[]],
       state: { phase: "wrappingUp" },
     },
@@ -4805,11 +4810,11 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         stop,
         gateOff,
-        takenOf("snapshot_1", "page_1"),
-        takenOf("snapshot_2", "page_2"),
-        reportedOn(click, "page_2"),
+        takenOf(snapshot1, page1),
+        takenOf(snapshot2, page2),
+        reportedOn(click, page2),
       ],
-      todo: [[waitOn("page_2", "reported_1")]],
+      todo: [[waitOn(page2, reported1)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -4819,8 +4824,8 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         stop,
         gateOff,
-        taken("snapshot_1"),
-        reportedOn(click, "page_9"),
+        taken(snapshot1),
+        reportedOn(click, page9),
       ],
       todo: [[]],
       state: { phase: "wrappingUp" },
@@ -4836,7 +4841,7 @@ describe("the lifecycle, for rules no row reached", () => {
     {
       name: "a wrap-up that waits for its trace to start goes on without it when the trace cannot be started",
       happened: [opened, record, finish, gateOff, failed(startTrace)],
-      todo: [[], [takeSnapshot("snapshot_1")]],
+      todo: [[], [takeSnapshot(snapshot1)]],
       state: { phase: "wrappingUp" },
     },
 
@@ -4846,14 +4851,14 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
         reported,
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
       ],
-      todo: [[keep("snapshot_2"), letThrough("input_1")]],
+      todo: [[keep(snapshot2), letThrough(input1)]],
       state: { phase: "recording" },
     },
     {
@@ -4861,26 +4866,22 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        clickHeld("input_2"),
+        clickHeld(input1),
+        taken(snapshot1),
+        clickHeld(input2),
         reported,
         reported,
-        passedOn("input_1"),
-        taken("snapshot_2"),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        passedOn(input1),
+        taken(snapshot2),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
       ],
       todo: [
-        [
-          keep("snapshot_2"),
-          passOn("input_2"),
-          interaction("snapshot_1", "snapshot_2"),
-        ],
-        [waitForSettled("input_2")],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), letThrough("input_2")],
+        [keep(snapshot2), passOn(input2), interaction(snapshot1, snapshot2)],
+        [waitForSettled(input2)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), letThrough(input2)],
       ],
       state: { phase: "recording" },
     },
@@ -4889,15 +4890,15 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        held("input_1", { kind: "press" }),
-        taken("snapshot_1"),
-        passedOn("input_1"),
-        settled("input_1"),
-        taken("snapshot_2"),
+        held(input1, { kind: "press" }),
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+        taken(snapshot2),
         reportedOn({
           type: "press",
           selector: "internal:role=textbox",
-          target: { ref: "e1", tree: "- textbox [ref=e1]" },
+          target: { ref: pictureRef("e1"), tree: "- textbox [ref=e1]" },
           values: { key: "Enter" },
         }),
       ],
@@ -4907,11 +4908,11 @@ describe("the lifecycle, for rules no row reached", () => {
             {
               type: "press",
               selector: "internal:role=textbox",
-              target: { ref: "e1", tree: "- textbox [ref=e1]" },
+              target: { ref: pictureRef("e1"), tree: "- textbox [ref=e1]" },
               values: { key: "Enter" },
             },
-            "snapshot_1",
-            "snapshot_2"
+            snapshot1,
+            snapshot2
           ),
         ],
       ],
@@ -4925,12 +4926,12 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        clickOn("page_1", "input_1"),
-        takenOf("snapshot_1", "page_1"),
-        passedOn("input_1"),
-        reportedOn(choice, "page_2"),
+        clickOn(page1, input1),
+        takenOf(snapshot1, page1),
+        passedOn(input1),
+        reportedOn(choice, page2),
       ],
-      todo: [[snap("snapshot_2", "page_2")]],
+      todo: [[snap(snapshot2, page2)]],
       state: { phase: "recording" },
     },
     {
@@ -4939,16 +4940,16 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        reportedOn(typed("m"), "page_1"),
-        takenOf("snapshot_1", "page_1"),
-        clickOn("page_2", "input_1"),
-        takenOf("snapshot_2", "page_2"),
-        settledOn("page_1", "reported_1"),
+        reportedOn(typed("m"), page1),
+        takenOf(snapshot1, page1),
+        clickOn(page2, input1),
+        takenOf(snapshot2, page2),
+        settledOn(page1, reported1),
       ],
       todo: [
-        [snap("snapshot_2", "page_2")],
-        [kept("snapshot_2", "page_2"), passOn("input_1")],
-        [snap("snapshot_3", "page_1")],
+        [snap(snapshot2, page2)],
+        [kept(snapshot2, page2), passOn(input1)],
+        [snap(snapshot3, page1)],
       ],
       state: { phase: "recording" },
     },
@@ -4958,13 +4959,13 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        reportedOn(typed("m"), "page_1"),
-        takenOf("snapshot_1", "page_1"),
-        settledOn("page_1", "reported_1"),
-        takenOf("snapshot_2", "page_1"),
-        clickOn("page_2", "input_1"),
+        reportedOn(typed("m"), page1),
+        takenOf(snapshot1, page1),
+        settledOn(page1, reported1),
+        takenOf(snapshot2, page1),
+        clickOn(page2, input1),
       ],
-      todo: [[snap("snapshot_3", "page_2")]],
+      todo: [[snap(snapshot3, page2)]],
       state: { phase: "recording" },
     },
     {
@@ -4975,11 +4976,11 @@ describe("the lifecycle, for rules no row reached", () => {
         ...oneClick,
         reported,
         reportedOn(typed("m")),
-        settled("reported_1"),
-        taken("snapshot_3"),
-        held("input_2", { kind: "typing" }),
+        settled(reported1),
+        taken(snapshot3),
+        held(input2, { kind: "typing" }),
       ],
-      todo: [[passOn("input_2")]],
+      todo: [[passOn(input2)]],
       state: { phase: "recording" },
     },
     {
@@ -4989,13 +4990,13 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         ...oneClick,
         reported,
-        held("input_2", { kind: "typing" }),
-        passedOn("input_2"),
+        held(input2, { kind: "typing" }),
+        passedOn(input2),
         finish,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
       ],
-      todo: [[keep("snapshot_3"), stopTrace]],
+      todo: [[keep(snapshot3), stopTrace]],
       state: { phase: "saving" },
     },
 
@@ -5005,16 +5006,16 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         ...started,
         ...clickSettling,
-        clickHeld("input_2"),
+        clickHeld(input2),
         reportedOn(choice),
-        taken("snapshot_2"),
+        taken(snapshot2),
       ],
       todo: [
         [],
         [
-          keep("snapshot_2"),
-          passOn("input_2"),
-          fromReport(choice, "snapshot_2", "snapshot_2"),
+          keep(snapshot2),
+          passOn(input2),
+          fromReport(choice, snapshot2, snapshot2),
         ],
       ],
       state: { phase: "recording" },
@@ -5026,15 +5027,15 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         ...doubleReportedEarly,
         reportedOn(choice),
-        passedOn("input_2", 22),
-        taken("snapshot_3"),
+        passedOn(input2, 22),
+        taken(snapshot3),
       ],
       todo: [
         [
-          keep("snapshot_3"),
-          waitForSettled("reported_1"),
-          written(clickOf(2), "snapshot_1", "snapshot_3", 21),
-          letThrough("input_2"),
+          keep(snapshot3),
+          waitForSettled(reported1),
+          written(clickOf(2), snapshot1, snapshot3, 21),
+          letThrough(input2),
         ],
       ],
       state: { phase: "recording" },
@@ -5045,20 +5046,16 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        clickHeld("input_2"),
+        clickHeld(input1),
+        taken(snapshot1),
+        clickHeld(input2),
         reportedOn(choice),
-        passedOn("input_1"),
-        taken("snapshot_2"),
+        passedOn(input1),
+        taken(snapshot2),
       ],
       todo: [
-        [takeSnapshot("snapshot_2")],
-        [
-          keep("snapshot_2"),
-          waitForSettled("reported_1"),
-          takeSnapshot("snapshot_3"),
-        ],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), waitForSettled(reported1), takeSnapshot(snapshot3)],
       ],
       state: { phase: "recording" },
     },
@@ -5071,27 +5068,23 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
-        taken("snapshot_1"),
-        clickHeld("input_2"),
+        clickHeld(input1),
+        taken(snapshot1),
+        clickHeld(input2),
         reportedOn(choice),
         reportedOn(typed("m")),
-        passedOn("input_1"),
-        taken("snapshot_2"),
-        taken("snapshot_3"),
+        passedOn(input1),
+        taken(snapshot2),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), waitForSettled(reported1), takeSnapshot(snapshot3)],
         [
-          keep("snapshot_2"),
-          waitForSettled("reported_1"),
-          takeSnapshot("snapshot_3"),
-        ],
-        [
-          keep("snapshot_3"),
-          passOn("input_2"),
-          fromReport(choice, "snapshot_2", "snapshot_3"),
-          fromReport(typed("m"), "snapshot_3", "snapshot_3"),
+          keep(snapshot3),
+          passOn(input2),
+          fromReport(choice, snapshot2, snapshot3),
+          fromReport(typed("m"), snapshot3, snapshot3),
         ],
       ],
       state: { phase: "recording" },
@@ -5103,35 +5096,35 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         reportedOn(choice),
         reportedOn(typed("m")),
-        taken("snapshot_1"),
-        taken("snapshot_2"),
-        settled("reported_2"),
-        taken("snapshot_3"),
+        taken(snapshot1),
+        taken(snapshot2),
+        settled(reported2),
+        taken(snapshot3),
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [],
         [
-          keep("snapshot_1"),
-          waitForSettled("reported_1"),
-          takeSnapshot("snapshot_2"),
+          keep(snapshot1),
+          waitForSettled(reported1),
+          takeSnapshot(snapshot2),
           letThrough(null),
         ],
         [
-          keep("snapshot_2"),
-          waitForSettled("reported_2"),
-          fromReport(choice, "snapshot_1", "snapshot_2"),
+          keep(snapshot2),
+          waitForSettled(reported2),
+          fromReport(choice, snapshot1, snapshot2),
         ],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_4")],
+        [takeSnapshot(snapshot4)],
         [
-          keep("snapshot_4"),
-          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+          keep(snapshot4),
+          fromReport(typed("m"), snapshot2, snapshot3),
           stopTrace,
         ],
       ],
@@ -5145,17 +5138,17 @@ describe("the lifecycle, for rules no row reached", () => {
         ...oneClick,
         reported,
         reportedOn(typed("m")),
-        clickHeld("input_2"),
-        settled("reported_1"),
-        taken("snapshot_3"),
+        clickHeld(input2),
+        settled(reported1),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
+        [takeSnapshot(snapshot3)],
         [],
         [
-          keep("snapshot_3"),
-          passOn("input_2"),
-          fromReport(typed("m"), "snapshot_2", "snapshot_3"),
+          keep(snapshot3),
+          passOn(input2),
+          fromReport(typed("m"), snapshot2, snapshot3),
         ],
       ],
       state: { phase: "recording" },
@@ -5166,14 +5159,14 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        clickOn("page_1", "input_1"),
-        clickOn("page_2", "input_2"),
-        takenOf("snapshot_2", "page_2"),
-        passedOn("input_2"),
-        settledOn("page_2", "input_2"),
-        takenOf("snapshot_3", "page_2"),
-        reportedOn(choice, "page_2"),
-        reportedOn(click, "page_2"),
+        clickOn(page1, input1),
+        clickOn(page2, input2),
+        takenOf(snapshot2, page2),
+        passedOn(input2),
+        settledOn(page2, input2),
+        takenOf(snapshot3, page2),
+        reportedOn(choice, page2),
+        reportedOn(click, page2),
       ],
       todo: [[]],
       state: { phase: "recording" },
@@ -5185,15 +5178,15 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         ...doubleReportedEarly,
         reportedOn(clickOf(1)),
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
       ],
       todo: [
         [
-          keep("snapshot_3"),
-          written(clickOf(2), "snapshot_1", "snapshot_3", 21),
-          letThrough("input_2"),
+          keep(snapshot3),
+          written(clickOf(2), snapshot1, snapshot3, 21),
+          letThrough(input2),
         ],
       ],
       state: { phase: "recording" },
@@ -5212,14 +5205,14 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        clickOn("page_1", "input_1"),
-        clickOn("page_2", "input_2"),
-        takenOf("snapshot_2", "page_2"),
-        passedOn("input_2"),
-        settledOn("page_2", "input_2"),
-        takenOf("snapshot_3", "page_2"),
+        clickOn(page1, input1),
+        clickOn(page2, input2),
+        takenOf(snapshot2, page2),
+        passedOn(input2),
+        settledOn(page2, input2),
+        takenOf(snapshot3, page2),
       ],
-      todo: [[kept("snapshot_3", "page_2"), through("page_2", "input_2")]],
+      todo: [[kept(snapshot3, page2), through(page2, input2)]],
       state: { phase: "recording" },
     },
 
@@ -5230,18 +5223,18 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         ...started,
         ...doubleReportedEarly,
-        passedOn("input_2", 22),
-        settled("input_2"),
-        taken("snapshot_3"),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot3),
       ],
       todo: [
-        [keep("snapshot_2"), passOn("input_2")],
-        [waitForSettled("input_2")],
-        [takeSnapshot("snapshot_3")],
+        [keep(snapshot2), passOn(input2)],
+        [waitForSettled(input2)],
+        [takeSnapshot(snapshot3)],
         [
-          keep("snapshot_3"),
-          written(clickOf(2), "snapshot_1", "snapshot_3", 21),
-          letThrough("input_2"),
+          keep(snapshot3),
+          written(clickOf(2), snapshot1, snapshot3, 21),
+          letThrough(input2),
         ],
       ],
       state: { phase: "recording" },
@@ -5251,9 +5244,7 @@ describe("the lifecycle, for rules no row reached", () => {
     {
       name: "when the time limit passes, a double click whose second click never settled is written with what its first click changed",
       happened: [opened, ...started, ...doubleReportedEarly, stop, timeLimit],
-      todo: [
-        [written(clickOf(2), "snapshot_1", "snapshot_2", 21), stopReporting],
-      ],
+      todo: [[written(clickOf(2), snapshot1, snapshot2, 21), stopReporting]],
       state: { phase: "paused" },
     },
     {
@@ -5263,11 +5254,11 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         ...oneClick,
         reportedOn(visible),
-        taken("snapshot_3"),
+        taken(snapshot3),
         stop,
         timeLimit,
       ],
-      todo: [[written(visible, "snapshot_3", "snapshot_3", 10), stopReporting]],
+      todo: [[written(visible, snapshot3, snapshot3, 10), stopReporting]],
       state: { phase: "paused" },
     },
 
@@ -5296,15 +5287,15 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        clickOn("page_1", "input_1"),
-        clickOn("page_2", "input_2"),
-        takenOf("snapshot_1", "page_1"),
-        takenOf("snapshot_2", "page_2"),
-        failed(passOn("input_1")),
-        passedOn("input_2"),
+        clickOn(page1, input1),
+        clickOn(page2, input2),
+        takenOf(snapshot1, page1),
+        takenOf(snapshot2, page2),
+        failed(passOn(input1)),
+        passedOn(input2),
       ],
       // Its page has nothing under way any more, and is let through.
-      todo: [[through("page_1", "input_1")], [waitOn("page_2", "input_2")]],
+      todo: [[through(page1, input1)], [waitOn(page2, input2)]],
       state: { phase: "recording" },
     },
     {
@@ -5313,12 +5304,12 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         ...started,
         ...clickSettling,
-        failed(passOn("input_1")),
-        settled("input_1"),
-        taken("snapshot_2"),
+        failed(passOn(input1)),
+        settled(input1),
+        taken(snapshot2),
         reported,
       ],
-      todo: [[interaction("snapshot_1", "snapshot_2")]],
+      todo: [[interaction(snapshot1, snapshot2)]],
       state: { phase: "recording" },
     },
     {
@@ -5327,11 +5318,11 @@ describe("the lifecycle, for rules no row reached", () => {
         opened,
         opened2,
         ...started,
-        clickOn("page_1", "input_1"),
-        clickOn("page_2", "input_2"),
-        failed(snap("snapshot_1", "page_1")),
+        clickOn(page1, input1),
+        clickOn(page2, input2),
+        failed(snap(snapshot1, page1)),
       ],
-      todo: [[passOn("input_1")]],
+      todo: [[passOn(input1)]],
       state: { phase: "recording" },
     },
     {
@@ -5339,11 +5330,11 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
         finish,
-        failed(takeSnapshot("snapshot_1")),
+        failed(takeSnapshot(snapshot1)),
       ],
-      todo: [[passOn("input_1")]],
+      todo: [[passOn(input1)]],
       state: { phase: "wrappingUp" },
     },
     {
@@ -5354,7 +5345,7 @@ describe("the lifecycle, for rules no row reached", () => {
         ...started,
         finish,
         gateOff,
-        failed(snap("snapshot_1", "page_1")),
+        failed(snap(snapshot1, page1)),
       ],
       todo: [[]],
       state: { phase: "wrappingUp" },
@@ -5363,23 +5354,13 @@ describe("the lifecycle, for rules no row reached", () => {
     // Assert visibility.
     {
       name: "Assert visibility waits while a key press is held back",
-      happened: [
-        opened,
-        ...started,
-        held("input_1", { kind: "press" }),
-        assert,
-      ],
+      happened: [opened, ...started, held(input1, { kind: "press" }), assert],
       todo: [[reply("applied")]],
       state: { phase: "recording" },
     },
     {
       name: "Assert visibility waits while a typed key is held back",
-      happened: [
-        opened,
-        ...started,
-        held("input_1", { kind: "typing" }),
-        assert,
-      ],
+      happened: [opened, ...started, held(input1, { kind: "typing" }), assert],
       todo: [[reply("applied")]],
       state: { phase: "recording" },
     },
@@ -5394,14 +5375,14 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        clickHeld("input_1"),
+        clickHeld(input1),
         assert,
-        taken("snapshot_1"),
-        passedOn("input_1"),
+        taken(snapshot1),
+        passedOn(input1),
         stop,
       ],
       todo: [
-        [waitForSettled("input_1"), pick(true)],
+        [waitForSettled(input1), pick(true)],
         [pick(false), ...wrapUp, reply("applied")],
       ],
       state: { phase: "wrappingUp" },
@@ -5438,7 +5419,10 @@ describe("the lifecycle, for rules no row reached", () => {
       happened: [
         opened,
         ...started,
-        { kind: "command", command: { type: "highlight", entry: "one" } },
+        {
+          kind: "command",
+          command: { type: "highlight", entry: entryId("one") },
+        },
         { kind: "brokeDown", reason: "It broke." },
         { kind: "located", highlight: 1, target: null },
       ],
@@ -5459,7 +5443,7 @@ describe("the lifecycle, for rules no row reached", () => {
 describe("the lifecycle, for a snapshot that cannot be taken for an input no page held", () => {
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
-    page: "page_1",
+    page: page1,
     report,
   });
   const visible: InteractionReport = {
@@ -5476,8 +5460,8 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
   };
   const written = (
     report: InteractionReport,
-    before: string,
-    after: string | null,
+    before: SnapshotId,
+    after: SnapshotId | null,
     at: number,
     beforeFromReport = false
   ): ToDo => ({
@@ -5485,7 +5469,7 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     add: {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: page1,
         report,
         before,
         after,
@@ -5510,7 +5494,11 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
   /** The first snapshot of a second page. */
   const snapshotOf2: ToDo = {
     kind: "browser",
-    ask: { kind: "takeSnapshot", snapshot: "snapshot_1", page: "page_2" },
+    ask: {
+      kind: "takeSnapshot",
+      snapshot: snapshot1,
+      page: page2,
+    },
   };
 
   it.each<{
@@ -5528,31 +5516,31 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         ...oneClick,
         reported,
         reportedAs(visible),
-        failed(takeSnapshot("snapshot_3")),
-        clickHeld("input_2"),
-        clickHeld("input_3"),
-        taken("snapshot_4"),
-        passedOn("input_2", 22),
-        taken("snapshot_5"),
-        passedOn("input_3", 23),
-        settled("input_3"),
-        taken("snapshot_6"),
+        failed(takeSnapshot(snapshot3)),
+        clickHeld(input2),
+        clickHeld(input3),
+        taken(snapshot4),
+        passedOn(input2, 22),
+        taken(snapshot5),
+        passedOn(input3, 23),
+        settled(input3),
+        taken(snapshot6),
         reported,
         reported,
       ],
       todo: [
-        [takeSnapshot("snapshot_3")],
-        [written(visible, "snapshot_2", "snapshot_2", 10)],
-        [takeSnapshot("snapshot_4")],
+        [takeSnapshot(snapshot3)],
+        [written(visible, snapshot2, snapshot2, 10)],
+        [takeSnapshot(snapshot4)],
         [],
-        [keep("snapshot_4"), passOn("input_2")],
-        [takeSnapshot("snapshot_5")],
-        [keep("snapshot_5"), passOn("input_3")],
-        [waitForSettled("input_3")],
-        [takeSnapshot("snapshot_6")],
-        [keep("snapshot_6"), letThrough("input_3")],
-        [interaction("snapshot_4", "snapshot_5", 22)],
-        [interaction("snapshot_5", "snapshot_6", 23)],
+        [keep(snapshot4), passOn(input2)],
+        [takeSnapshot(snapshot5)],
+        [keep(snapshot5), passOn(input3)],
+        [waitForSettled(input3)],
+        [takeSnapshot(snapshot6)],
+        [keep(snapshot6), letThrough(input3)],
+        [interaction(snapshot4, snapshot5, 22)],
+        [interaction(snapshot5, snapshot6, 23)],
       ],
       state: { phase: "recording" },
     },
@@ -5562,19 +5550,19 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         opened,
         ...started,
         reportedAs(visible),
-        failed(takeSnapshot("snapshot_1")),
-        clickHeld("input_1"),
-        taken("snapshot_2"),
+        failed(takeSnapshot(snapshot1)),
+        clickHeld(input1),
+        taken(snapshot2),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
+        [takeSnapshot(snapshot1)],
         [
           notRecorded(
             `An assertion of internal:role=heading[name="Cart"i] is not recorded: its page could not be read.`
           ),
         ],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), passOn("input_1")],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), passOn(input1)],
       ],
       state: { phase: "recording" },
     },
@@ -5586,32 +5574,32 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         opened,
         ...started,
         reportedAs(choice),
-        failed(takeSnapshot("snapshot_1")),
+        failed(takeSnapshot(snapshot1)),
         reportedAs(typed("m")),
-        taken("snapshot_2"),
-        settled("reported_2"),
-        taken("snapshot_3"),
+        taken(snapshot2),
+        settled(reported2),
+        taken(snapshot3),
         finish,
         gateOff,
-        taken("snapshot_4"),
+        taken(snapshot4),
       ],
       todo: [
-        [takeSnapshot("snapshot_1")],
-        [waitForSettled("reported_1"), afterOnly],
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot1)],
+        [waitForSettled(reported1), afterOnly],
+        [takeSnapshot(snapshot2)],
         [
-          keep("snapshot_2"),
-          waitForSettled("reported_2"),
-          written(choice, "snapshot_2", "snapshot_2", 10),
+          keep(snapshot2),
+          waitForSettled(reported2),
+          written(choice, snapshot2, snapshot2, 10),
           letThrough(null),
         ],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3")],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_4")],
+        [takeSnapshot(snapshot4)],
         [
-          keep("snapshot_4"),
-          written(typed("m"), "snapshot_2", "snapshot_3", 10, true),
+          keep(snapshot4),
+          written(typed("m"), snapshot2, snapshot3, 10, true),
           stopTrace,
         ],
       ],
@@ -5623,24 +5611,20 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         opened,
         ...started,
         reportedAs(choice),
-        failed(takeSnapshot("snapshot_1")),
-        settled("reported_1"),
-        taken("snapshot_2"),
+        failed(takeSnapshot(snapshot1)),
+        settled(reported1),
+        taken(snapshot2),
         finish,
         gateOff,
-        taken("snapshot_3"),
+        taken(snapshot3),
       ],
       todo: [
-        [waitForSettled("reported_1"), afterOnly],
-        [takeSnapshot("snapshot_2")],
-        [keep("snapshot_2"), letThrough(null)],
+        [waitForSettled(reported1), afterOnly],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), letThrough(null)],
         [...wrapUp, reply("applied")],
-        [takeSnapshot("snapshot_3")],
-        [
-          keep("snapshot_3"),
-          written(choice, "snapshot_2", "snapshot_2", 10),
-          stopTrace,
-        ],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), written(choice, snapshot2, snapshot2, 10), stopTrace],
       ],
       state: { phase: "saving" },
     },
@@ -5650,19 +5634,19 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         opened,
         ...started,
         reportedAs(choice),
-        failed(takeSnapshot("snapshot_1")),
-        settled("reported_1"),
-        failed(takeSnapshot("snapshot_2")),
+        failed(takeSnapshot(snapshot1)),
+        settled(reported1),
+        failed(takeSnapshot(snapshot2)),
         reportedAs(typed("m")),
       ],
       todo: [
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
         [
           notRecorded(
             "Typing, a choice or an upload is not recorded: its page could not be read."
           ),
         ],
-        [takeSnapshot("snapshot_3")],
+        [takeSnapshot(snapshot3)],
       ],
       state: { phase: "recording" },
     },
@@ -5675,15 +5659,12 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         reported,
         reportedAs(choice),
         reportedAs(typed("m")),
-        failed(takeSnapshot("snapshot_3")),
+        failed(takeSnapshot(snapshot3)),
       ],
       todo: [
-        [waitForSettled("reported_1")],
-        [takeSnapshot("snapshot_3")],
-        [
-          waitForSettled("reported_2"),
-          written(choice, "snapshot_2", null, 10, true),
-        ],
+        [waitForSettled(reported1)],
+        [takeSnapshot(snapshot3)],
+        [waitForSettled(reported2), written(choice, snapshot2, null, 10, true)],
       ],
       state: { phase: "recording" },
     },
@@ -5694,23 +5675,23 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
         opened,
         ...started,
         reportedAs(choice),
-        failed(takeSnapshot("snapshot_1")),
+        failed(takeSnapshot(snapshot1)),
         reportedAs(typed("m")),
-        failed(takeSnapshot("snapshot_2")),
-        settled("reported_2"),
-        taken("snapshot_3"),
+        failed(takeSnapshot(snapshot2)),
+        settled(reported2),
+        taken(snapshot3),
       ],
       todo: [
-        [takeSnapshot("snapshot_2")],
+        [takeSnapshot(snapshot2)],
         [
           notRecorded(
             "Typing, a choice or an upload is not recorded: its page could not be read."
           ),
-          waitForSettled("reported_2"),
+          waitForSettled(reported2),
           afterOnly,
         ],
-        [takeSnapshot("snapshot_3")],
-        [keep("snapshot_3"), letThrough(null)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), letThrough(null)],
       ],
       state: { phase: "recording" },
     },
@@ -5719,8 +5700,12 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
       happened: [
         opened,
         ...started,
-        { kind: "pageOpened", page: "page_2", url: "http://shop.test/help" },
-        { kind: "interactionReported", page: "page_2", report: choice },
+        {
+          kind: "pageOpened",
+          page: page2,
+          url: "http://shop.test/help",
+        },
+        { kind: "interactionReported", page: page2, report: choice },
         failed(snapshotOf2),
       ],
       todo: [
@@ -5730,8 +5715,8 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
             kind: "browser",
             ask: {
               kind: "waitForSettled",
-              page: "page_2",
-              input: "reported_1",
+              page: page2,
+              input: reported1,
             },
           },
           afterOnly,

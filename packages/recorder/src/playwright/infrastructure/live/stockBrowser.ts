@@ -23,8 +23,14 @@ import {
   RecorderStartError,
   type BrowserRequest,
   type BrowserSignal,
+  type InputId,
 } from "../../../session/domain";
-import type { InteractionReport } from "../../../timeline/domain";
+import {
+  pictureRef,
+  type InteractionReport,
+  type PageId,
+  type SnapshotId,
+} from "../../../timeline/domain";
 import {
   askRecorderState,
   closeGate,
@@ -316,19 +322,22 @@ async function openPage(
   const startRecording = playwrightRecorderOf(context);
   if (!startRecording) throw new NoPlaywrightRecorder();
 
-  const pages = new Map<string, Page>();
-  const idOf = new Map<Page, string>();
+  const pages = new Map<PageId, Page>();
+  const idOf = new Map<Page, PageId>();
   /** The inputs the pages hold back, until they are passed on. */
-  const held = new Map<string, { frame: Frame; input: HeldByPage }>();
+  const held = new Map<InputId, { frame: Frame; input: HeldByPage }>();
   /** Every input a page held, in order: which document held it, and its
    * number there. */
-  const heldBy = new Map<string, { id: string; frame: Frame; seq: number }[]>();
+  const heldBy = new Map<
+    PageId,
+    { id: InputId; frame: Frame; seq: number }[]
+  >();
   let inputs = 0;
   /** How often the gate was switched. */
   let gateChanges = 0;
 
   const track = (page: Page) => {
-    const id = `page_${idOf.size + 1}`;
+    const id = `page_${idOf.size + 1}` as PageId;
     pages.set(id, page);
     idOf.set(page, id);
     tell({ kind: "pageOpened", page: id, url: page.url() });
@@ -351,7 +360,7 @@ async function openPage(
     ({ page, frame }, input: HeldByPage) => {
       const pageId = idOf.get(page);
       if (!pageId) return;
-      const id = `input_${++inputs}`;
+      const id = `input_${++inputs}` as InputId;
       held.set(id, { frame, input });
       heldBy.set(pageId, [
         ...(heldBy.get(pageId) ?? []),
@@ -397,9 +406,9 @@ async function openPage(
       target: {
         ref: null,
         tree: action.ariaSnapshot,
-        ancestors: (seen?.chain.slice(1) ?? []).filter(
-          (ref): ref is string => ref !== null
-        ),
+        ancestors: (seen?.chain.slice(1) ?? [])
+          .filter((ref): ref is string => ref !== null)
+          .map(pictureRef),
       },
     };
   };
@@ -431,7 +440,9 @@ async function openPage(
       ...report,
       target: {
         ...target,
-        ancestors: refs.filter((ref): ref is string => ref !== null),
+        ancestors: refs
+          .filter((ref): ref is string => ref !== null)
+          .map(pictureRef),
       },
     };
   };
@@ -575,7 +586,7 @@ async function openPage(
   /** The snapshots a mark was made for. A trace that is thrown away leaves
    * its ids here: the next one looks for them in its own list of actions,
    * where only the marks it made are. */
-  const marked = new Set<string>();
+  const marked = new Set<SnapshotId>();
 
   /**
    * Leaves a mark in the trace for a snapshot just read: a group named for
@@ -584,7 +595,7 @@ async function openPage(
    * A mark that cannot be made leaves the snapshot without a place in the
    * trace, and is no reason to lose the snapshot.
    */
-  async function mark(page: Page, snapshot: string) {
+  async function mark(page: Page, snapshot: SnapshotId) {
     marked.add(snapshot);
     const made = markers.then(async () => {
       await context.tracing.group(snapshot);
@@ -687,7 +698,7 @@ async function openPage(
     });
   }
 
-  async function passOnHeld(id: string) {
+  async function passOnHeld(id: InputId) {
     const input = held.get(id);
     held.delete(id);
     if (!input) return;
@@ -1031,7 +1042,8 @@ function reportOf(action: PlaywrightAction): InteractionReport {
   return {
     type: name,
     selector: selector ?? null,
-    target: ref && ariaSnapshot ? { ref, tree: ariaSnapshot } : null,
+    target:
+      ref && ariaSnapshot ? { ref: pictureRef(ref), tree: ariaSnapshot } : null,
     values,
   };
 }

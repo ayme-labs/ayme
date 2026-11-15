@@ -18,8 +18,20 @@ import type {
   BrowserSignal,
   HeldInput,
   HighlightTarget,
+  InputId,
+  Written,
 } from "../session/domain";
-import type { InteractionReport } from "../timeline/domain";
+import {
+  type InteractionReport,
+  type PageId,
+  type SnapshotId,
+  type TracePosition,
+} from "../timeline/domain";
+
+/** A report as the test wrote it: the browser hands its refs over here, so
+ * they are the report's own from here on. */
+const reportAsWritten = (report: Written<InteractionReport>) =>
+  report as InteractionReport;
 
 // The `./testing` entry (ADR-0026): a recorder on a scripted browser, where a
 // test plays the browser by hand, with a clock the test moves.
@@ -49,7 +61,7 @@ export interface ScriptedBrowser {
    * is at position 10 times N in each of them. */
   readonly traces: readonly string[];
   /** Resolves once the engine has asked exactly this. */
-  asks(request: BrowserRequest): Promise<void>;
+  asks(request: Written<BrowserRequest>): Promise<void>;
   /** What the page looks like from now on, in the notation of Playwright's
    * AI-mode snapshot. */
   showPage(tree: string): void;
@@ -59,7 +71,7 @@ export interface ScriptedBrowser {
   /** The page is a Settled Page: ends the wait the engine asked for last. */
   settle(): void;
   /** Playwright reports an Interaction. */
-  report(report: InteractionReport): void;
+  report(report: Written<InteractionReport>): void;
   /** From now on a snapshot the engine asks for is not answered... */
   holdSnapshots(): void;
   /** ...until now. */
@@ -88,7 +100,7 @@ export interface ScriptedBrowser {
   // Assert visibility.
   /** The person picks an element while Playwright is in its picking mode:
    * Playwright reports the assertion, then leaves picking by itself. */
-  pick(report: InteractionReport): void;
+  pick(report: Written<InteractionReport>): void;
   // Highlight.
   /** The element the recorder's highlight is drawn on now; null when none
    * is. It is drawn on an element whose ref the page shows now, or that has
@@ -134,7 +146,7 @@ export async function startScriptedRecorder(
    */
   endWithin: (ms: number) => Promise<RecordingOutcome>;
 }> {
-  const page = "page_1";
+  const page = "page_1" as PageId;
   let url = options.url ?? "http://scripted.test/";
   let signals: Queue.Queue<BrowserSignal> | undefined;
   let clock: TestClock.TestClock | undefined;
@@ -151,7 +163,7 @@ export async function startScriptedRecorder(
   const asked: BrowserRequest[] = [];
   const traces: string[] = [];
   /** The snapshots taken, which a stopped trace has positions for. */
-  const taken: string[] = [];
+  const taken: SnapshotId[] = [];
   // Visits: the document each held input was held in.
   let documents = 0;
   const heldIn = new Map<string, number>();
@@ -214,9 +226,11 @@ export async function startScriptedRecorder(
         if (!request.keep)
           return answerTrace(() => tell({ kind: "traceDiscarded" }));
         const file = join(tmpdir(), `ayme-scripted-trace-${randomUUID()}.zip`);
-        const positions = Object.fromEntries(
-          taken.map((id) => [id, String(Number(id.split("_")[1]) * 10)])
-        );
+        const positions: Record<SnapshotId, TracePosition> = {};
+        for (const id of taken)
+          positions[id] = String(
+            Number(id.split("_")[1]) * 10
+          ) as TracePosition;
         void writeFile(file, SCRIPTED_TRACE).then(() => {
           traces.push(file);
           answerTrace(() =>
@@ -338,7 +352,7 @@ export async function startScriptedRecorder(
         tree = next;
       },
       holdClick: () => {
-        const input = `input_${++inputs}`;
+        const input = `input_${++inputs}` as InputId;
         heldIn.set(input, documents);
         tell({ kind: "inputHeld", input, page });
       },
@@ -348,7 +362,12 @@ export async function startScriptedRecorder(
         settling = undefined;
         tell({ kind: "pageSettled", page: settled, input });
       },
-      report: (report) => tell({ kind: "interactionReported", page, report }),
+      report: (report) =>
+        tell({
+          kind: "interactionReported",
+          page,
+          report: reportAsWritten(report),
+        }),
       holdSnapshots: () => {
         snapshotsHeld = [];
       },
@@ -382,7 +401,7 @@ export async function startScriptedRecorder(
       passedOn,
       // Every kind of input.
       holdInput: (held) => {
-        const input = `input_${++inputs}`;
+        const input = `input_${++inputs}` as InputId;
         heldIn.set(input, documents);
         tell({ kind: "inputHeld", input, page, held });
       },
@@ -390,7 +409,11 @@ export async function startScriptedRecorder(
       warn: (warning) => tell({ kind: "browserWarned", warning }),
       // Assert visibility.
       pick: (report) => {
-        tell({ kind: "interactionReported", page, report });
+        tell({
+          kind: "interactionReported",
+          page,
+          report: reportAsWritten(report),
+        });
         picking = false;
         tell({ kind: "picking", on: false });
       },

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
 import { startScriptedRecorder } from "./testing";
+import { entryId, inputId, pageId } from "./test-utils/ids";
 
 // Ticket #1278: the hover highlight through the handle, on the scripted
 // browser: what the handle answers, and what it asks the browser to draw.
@@ -25,8 +26,8 @@ async function oneClickRecorded() {
   browser.holdClick();
   await browser.asks({
     kind: "waitForSettled",
-    page: "page_1",
-    input: "input_1",
+    page: pageId("page_1"),
+    input: inputId("input_1"),
   });
   browser.settle();
   browser.report(click);
@@ -42,10 +43,10 @@ describe("the hover highlight", () => {
     const before = latest().state.visits;
 
     await expect(
-      recorder.send({ type: "highlight", entry: "interaction_1" })
+      recorder.send({ type: "highlight", entry: entryId("interaction_1") })
     ).resolves.toBe("applied");
     expect(browser.highlighted).toEqual({
-      page: "page_1",
+      page: pageId("page_1"),
       ref: "e2",
       selector: 'internal:role=button[name="Save"i]',
     });
@@ -61,10 +62,10 @@ describe("the hover highlight", () => {
 
   it("answers 'notFound' and highlights nothing for an element the page no longer has", async () => {
     const { recorder, browser } = await oneClickRecorded();
-    await recorder.send({ type: "highlight", entry: "interaction_1" });
+    await recorder.send({ type: "highlight", entry: entryId("interaction_1") });
 
     await expect(
-      recorder.send({ type: "highlight", entry: "change_9" })
+      recorder.send({ type: "highlight", entry: entryId("change_9") })
     ).resolves.toBe("notFound");
 
     expect(browser.highlighted).toBeNull();
@@ -74,7 +75,7 @@ describe("the hover highlight", () => {
 
   it("clears the highlight when the recorder ends", async () => {
     const { recorder, browser } = await oneClickRecorded();
-    await recorder.send({ type: "highlight", entry: "interaction_1" });
+    await recorder.send({ type: "highlight", entry: entryId("interaction_1") });
 
     await recorder.send({ type: "finish" });
     await recorder.done;

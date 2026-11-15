@@ -10,6 +10,9 @@ import {
   visit,
 } from "./test-utils/timelineBuilders";
 import type { PackageHeader } from "./timeline";
+import type { SnapshotId } from "./recorded";
+import { pictureRef } from "./refs";
+import { entryId, pageId, snapshotId } from "../../test-utils/ids";
 
 // One ref names one element in a tree, always. An element the page
 // re-creates keeps its first ref; that rule yields in one case only: when
@@ -19,18 +22,18 @@ import type { PackageHeader } from "./timeline";
 /** A click on the element the report names `ref` in a picture that is the
  * page as `tree` has it. */
 const click = (
-  before: string,
-  after: string,
+  before: SnapshotId,
+  after: SnapshotId,
   ref: string,
   tree: string
 ): TimelineAddition => ({
   kind: "interaction",
   interaction: {
-    page: "page_1",
+    page: pageId("page_1"),
     report: {
       type: "click",
       selector: 'internal:role=button[name="Save"i]',
-      target: { ref, tree },
+      target: { ref: pictureRef(ref), tree },
       values: {},
     },
     before,
@@ -112,13 +115,13 @@ describe("an element the page re-created, and the original back beside it", () =
   );
   const flow = [
     visit,
-    snapshot("snapshot_1", 10, original),
-    snapshot("snapshot_2", 20, recreated),
-    click("snapshot_1", "snapshot_2", "e2", original),
-    snapshot("snapshot_3", 30, both),
-    snapshot("snapshot_4", 40, bothDone),
+    snapshot(snapshotId("snapshot_1"), 10, original),
+    snapshot(snapshotId("snapshot_2"), 20, recreated),
+    click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), "e2", original),
+    snapshot(snapshotId("snapshot_3"), 30, both),
+    snapshot(snapshotId("snapshot_4"), 40, bothDone),
     // A click on the new button.
-    click("snapshot_3", "snapshot_4", "e8", both),
+    click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), "e8", both),
   ];
 
   it("are two elements under two refs: the one that first had the ref keeps it, the other has its own", async () => {
@@ -163,14 +166,18 @@ describe("an element the page re-created, and the original back beside it", () =
   it("are each found on the page by its own ref, for the highlight", async () => {
     const timeline = await timelineOf(flow);
 
-    expect(timeline.liveTarget("interaction_1")).toMatchObject({ ref: "e2" });
-    expect(timeline.liveTarget("interaction_2")).toMatchObject({ ref: "e8" });
+    expect(timeline.liveTarget(entryId("interaction_1"))).toMatchObject({
+      ref: "e2",
+    });
+    expect(timeline.liveTarget(entryId("interaction_2"))).toMatchObject({
+      ref: "e8",
+    });
   });
 
   it("keep their own refs once they have them: the new one is not under the first ref again when the original goes", async () => {
     const timeline = await timelineOf([
       ...flow,
-      snapshot("snapshot_5", 50, page(`- button "Save" [ref=e8]`)),
+      snapshot(snapshotId("snapshot_5"), 50, page(`- button "Save" [ref=e8]`)),
     ]);
 
     const text = (await timeline.package(header))!;
@@ -192,13 +199,18 @@ describe("an element the page re-created, and the original back beside it", () =
   it("are not under one ref in a Change Tree that reaches from before the two stood side by side to after one is gone", async () => {
     const timeline = await timelineOf([
       visit,
-      snapshot("snapshot_1", 10, original),
-      snapshot("snapshot_2", 20, recreated),
-      click("snapshot_1", "snapshot_2", "e2", original),
-      snapshot("snapshot_3", 30, both),
-      snapshot("snapshot_4", 40, original),
+      snapshot(snapshotId("snapshot_1"), 10, original),
+      snapshot(snapshotId("snapshot_2"), 20, recreated),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), "e2", original),
+      snapshot(snapshotId("snapshot_3"), 30, both),
+      snapshot(snapshotId("snapshot_4"), 40, original),
       // From the new button alone to the first one alone.
-      click("snapshot_2", "snapshot_4", "e8", recreated),
+      click(
+        snapshotId("snapshot_2"),
+        snapshotId("snapshot_4"),
+        "e8",
+        recreated
+      ),
     ]);
 
     const text = (await timeline.package(header))!;
@@ -223,24 +235,36 @@ describe("an element the page re-created, and the original back beside it", () =
     const note = `- paragraph [ref=e9]: Autosave is on`;
     const timeline = await timelineOf([
       visit,
-      snapshot("snapshot_1", 10, page(`- button "Save" [ref=e2]`, note)),
-      snapshot("snapshot_2", 20, page(`- button "Save" [ref=e8]`, note)),
+      snapshot(
+        snapshotId("snapshot_1"),
+        10,
+        page(`- button "Save" [ref=e2]`, note)
+      ),
+      snapshot(
+        snapshotId("snapshot_2"),
+        20,
+        page(`- button "Save" [ref=e8]`, note)
+      ),
       click(
-        "snapshot_1",
-        "snapshot_2",
+        snapshotId("snapshot_1"),
+        snapshotId("snapshot_2"),
         "e2",
         page(`- button "Save" [ref=e2]`, note)
       ),
       snapshot(
-        "snapshot_3",
+        snapshotId("snapshot_3"),
         30,
         page(`- button "Save" [ref=e8]`, note, `- button "Save" [ref=e2]`)
       ),
       // The new button, at the top, is gone; the first one is at the end.
-      snapshot("snapshot_4", 40, page(note, `- button "Save" [ref=e2]`)),
+      snapshot(
+        snapshotId("snapshot_4"),
+        40,
+        page(note, `- button "Save" [ref=e2]`)
+      ),
       click(
-        "snapshot_2",
-        "snapshot_4",
+        snapshotId("snapshot_2"),
+        snapshotId("snapshot_4"),
         "e8",
         page(`- button "Save" [ref=e8]`, note)
       ),
@@ -272,17 +296,26 @@ describe("an element the page re-created, when it changes", () => {
     const recreated = page(`- button "Save" [ref=e8]`);
     const timeline = await timelineOf([
       visit,
-      snapshot("snapshot_1", 10, original),
-      snapshot("snapshot_2", 20, recreated),
-      click("snapshot_1", "snapshot_2", "e2", original),
-      snapshot("snapshot_3", 30, recreated),
-      snapshot("snapshot_4", 40, page(`- button "Saved" [disabled] [ref=e8]`)),
-      click("snapshot_3", "snapshot_4", "e8", recreated),
+      snapshot(snapshotId("snapshot_1"), 10, original),
+      snapshot(snapshotId("snapshot_2"), 20, recreated),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), "e2", original),
+      snapshot(snapshotId("snapshot_3"), 30, recreated),
+      snapshot(
+        snapshotId("snapshot_4"),
+        40,
+        page(`- button "Saved" [disabled] [ref=e8]`)
+      ),
+      click(
+        snapshotId("snapshot_3"),
+        snapshotId("snapshot_4"),
+        "e8",
+        recreated
+      ),
     ]);
 
     const [, second] = timeline.visits()[0]!.entries;
     expect(second).toMatchObject({
-      id: "interaction_2",
+      id: entryId("interaction_2"),
       changes: [
         {
           kind: "changed",
