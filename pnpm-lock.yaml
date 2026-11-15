@@ -1292,6 +1292,9 @@ importers:
 
   packages/recorder-window:
     devDependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../ayme
       "@ayme-dev/design-system":
         specifier: workspace:*
         version: link:../design-system

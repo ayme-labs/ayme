@@ -24,7 +24,14 @@ export default defineConfig([
     entry: { testing: "src/testing/index.ts" },
     format: ["esm"],
     // Playwright is the test's own: the page objects only name its types.
-    deps: { neverBundle: [/^@playwright\//, /^playwright(-core)?(\/|$)/] },
+    // Ayme, whose decorators they carry, is the test's own too.
+    deps: {
+      neverBundle: [
+        /^@playwright\//,
+        /^playwright(-core)?(\/|$)/,
+        /^@ayme-dev\/ayme(\/|$)/,
+      ],
+    },
   },
   {
     // The recorder window: index.html and one script, which the engine

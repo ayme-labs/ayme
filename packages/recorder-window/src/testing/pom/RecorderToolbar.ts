@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page, Selectors } from "@playwright/test";
 
 import type { CommandName } from "./Controls";
@@ -63,16 +64,23 @@ const MAIN: readonly CommandName[] = ["Record", "Stop", "Continue recording"];
  * never by role. A test presses its buttons as a person does: by their
  * place on the page.
  */
+@ayme
 export class RecorderToolbar {
   /** The toolbar itself. */
+  @ayme.child
   readonly root: Locator;
+  @ayme.child
   readonly recordButton: Locator;
+  @ayme.child
   readonly stopButton: Locator;
+  @ayme.child
   readonly continueButton: Locator;
   /** Assert visibility: pressed, it enters picking, or leaves it. */
+  @ayme.child
   readonly assertVisibility: Locator;
   /** In place of the first control while the recorder wraps up or saves:
    * it says so, and can not be pressed. */
+  @ayme.child
   readonly busyIndicator: Locator;
 
   /** The toolbar in `page`, reached through `selectors`: `@playwright/test`'s,
@@ -81,7 +89,9 @@ export class RecorderToolbar {
     return new RecorderToolbar(page, await registerToolbarEngine(selectors));
   }
 
-  private constructor(
+  /** Builds it on a selector engine `on` has registered: use `on`. Public
+   * only because Ayme's class decorator takes a class it can construct. */
+  constructor(
     readonly page: Page,
     private readonly engine: string
   ) {

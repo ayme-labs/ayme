@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { RecorderPart } from "./parts";
@@ -11,21 +12,39 @@ export type ThemeChoice = "System" | "Light" | "Dark";
 
 /** The window's controls, in the bar above the recording. */
 export class Controls extends RecorderPart {
-  readonly recordButton = this.button("Record");
-  readonly stopButton = this.button("Stop");
-  readonly continueButton = this.button("Continue recording");
+  @ayme.child
+  readonly recordButton: Locator;
+  @ayme.child
+  readonly stopButton: Locator;
+  @ayme.child
+  readonly continueButton: Locator;
   /** Assert visibility: pressed, it enters picking, or leaves it. */
-  readonly assertVisibility = this.button("Assert visibility");
-  readonly clearButton = this.button("Clear");
-  readonly finishButton = this.button("Finish");
+  @ayme.child
+  readonly assertVisibility: Locator;
+  @ayme.child
+  readonly clearButton: Locator;
+  @ayme.child
+  readonly finishButton: Locator;
   /** The System / Light / Dark switch: each press moves to the next. */
-  readonly themeSwitch = this.root.getByRole("button", { name: /^Theme: / });
+  @ayme.child
+  readonly themeSwitch: Locator;
   /** What the recorder does, when the controls do not show it already:
    * connecting, wrapping up, saving, the end. Empty otherwise. */
-  readonly status = this.root.getByRole("status");
+  @ayme.child
+  readonly status: Locator;
 
-  private button(name: string): Locator {
-    return this.root.getByRole("button", { name, exact: true });
+  constructor(root: Locator) {
+    super(root);
+    const button = (name: string) =>
+      root.getByRole("button", { name, exact: true });
+    this.recordButton = button("Record");
+    this.stopButton = button("Stop");
+    this.continueButton = button("Continue recording");
+    this.assertVisibility = button("Assert visibility");
+    this.clearButton = button("Clear");
+    this.finishButton = button("Finish");
+    this.themeSwitch = root.getByRole("button", { name: /^Theme: / });
+    this.status = root.getByRole("status");
   }
 
   /** The controls that can be pressed now, in the order the window shows
@@ -59,6 +78,9 @@ export class Controls extends RecorderPart {
   }
 
   /** Presses the theme switch until it is on `choice`. */
+  @ayme.action({
+    description: "Sets the window's theme: System, Light or Dark.",
+  })
   async chooseTheme(choice: ThemeChoice): Promise<this> {
     for (let presses = 0; presses < 3; presses += 1) {
       if ((await this.theme()) === choice) return this;

@@ -25,6 +25,7 @@
     "test:mutation": "stryker run"
   },
   "devDependencies": {
+    "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/design-system": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb",
