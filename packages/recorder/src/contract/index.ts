@@ -92,6 +92,11 @@ export type TimelineEntry = (
       /** Milliseconds on the recorded browser's monotonic clock. */
       readonly timestamp: number;
       readonly interaction: InteractionDetails;
+      /** The target in the words of the page's structure, its role and its
+       * name, such as `textbox "Username"`, for whoever shows the entry: the
+       * Recording Package does not have it. Absent when the target is not
+       * known in the page's structure. */
+      readonly targetElement?: string;
       /** What it changed; null when it changed nothing, or when the page was
        * gone before that could be seen. */
       readonly changes: readonly ChangeRow[] | null;
@@ -197,11 +202,16 @@ export type RecorderCommand =
   /** While Assert visibility is on, or waits to be: turns it off. */
   | { readonly type: "leaveAssertVisibility" }
   // Highlight.
-  /** While recording or paused: highlights the element of the entry's
-   * target on the page, in place of any other. Answered "notFound" when the
+  /** While recording or paused: highlights an element of the entry on the
+   * page, in place of any other: its target, or with `row` the element of
+   * that row of its `changes`, counted from 0. Answered "notFound" when the
    * element is gone, belongs to an earlier Visit, or cannot be found for
    * certain: nothing is highlighted then. It changes no entry. */
-  | { readonly type: "highlight"; readonly entry: EntryId }
+  | {
+      readonly type: "highlight";
+      readonly entry: EntryId;
+      readonly row?: number;
+    }
   /** While recording or paused: highlights nothing. */
   | { readonly type: "clearHighlight" };
 
