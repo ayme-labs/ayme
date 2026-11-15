@@ -1,38 +1,89 @@
 import { describe, expect, it } from "vitest";
+import {
+  StructuralTree,
+  SyntheticAriaRefFactory,
+  type AriaRef,
+} from "@ayme-dev/core/structural-observation";
+import { treeRead } from "../../test-utils/pageObjectTree.testSupport";
+import { elementText } from "./elementText";
 import { pageObjectIdOf } from "./pageObjectId";
 import {
   elementLines,
   MAX_CHILD_LINES,
   renderPageObjectTree,
   renderPageObjectTreeChanges,
-  type PageObjectTreeNode,
 } from "./pageObjectTreeText";
 
-const editor = (
-  name: string,
-  cards: PageObjectTreeNode[]
-): PageObjectTreeNode => ({
-  className: "SurveyEditorPage",
-  children: [
-    {
-      kind: "elements",
-      name: "surveyName",
-      lines: [`textbox "Survey name": ${name}`],
-    },
-    { kind: "objects", name: "questions", objects: cards },
-  ],
-});
+/**
+ * A survey editor named `name` with a question card for each of
+ * `questions`, by its id's number and its text: each element is named by a
+ * ref of its own, the same in every read.
+ */
+const editor = (name: string, questions: [number, string][]) =>
+  treeRead(
+    [
+      `- textbox "Survey name" [ref=e1]: ${name}`,
+      ...questions.map(
+        ([n, text]) => `- textbox "Question" [ref=e${10 + n}]: ${text}`
+      ),
+    ].join("\n"),
+    (elements) => [
+      {
+        className: "SurveyEditorPage",
+        children: [
+          elements("surveyName", "e1"),
+          {
+            kind: "objects",
+            name: "questions",
+            objects: questions.map(([n]) => ({
+              className: "QuestionCard",
+              id: pageObjectIdOf(n),
+              children: [elements("headline", `e${10 + n}`)],
+            })),
+          },
+        ],
+      },
+    ]
+  );
 
-const card = (n: number, text: string): PageObjectTreeNode => ({
-  className: "QuestionCard",
-  id: pageObjectIdOf(n),
-  children: [
-    {
-      kind: "elements",
-      name: "headline",
-      lines: [`textbox "Question": ${text}`],
-    },
-  ],
+/** A Page Object `Card` whose child `name` is the element `line` writes, as `e1`. */
+const cardWith = (name: string, line: string) =>
+  treeRead(
+    `- ${line.replace(/^(\S+(?: "[^"]*")?(?: \[[^\]]*\])*)/, "$1 [ref=e1]")}`,
+    (elements) => [{ className: "Card", children: [elements(name, "e1")] }]
+  );
+
+describe("elementText", () => {
+  const tree = (yaml: string) =>
+    StructuralTree.fromAriaSnapshotYaml(yaml, new SyntheticAriaRefFactory());
+
+  it("is the element's subtree in the page state's notation, without refs", () => {
+    expect(
+      elementText(
+        tree(
+          '- list "Options" [ref=e1]:\n  - listitem [ref=e2]: A\n  - link "Docs" [ref=e3]:\n    - /url: /docs'
+        ),
+        "e1" as AriaRef
+      )
+    ).toBe(
+      '- list "Options":\n  - listitem: A\n  - link "Docs":\n    - /url: /docs'
+    );
+  });
+
+  it("shows an unnamed generic's content in its place, as Playwright's aria snapshot does", () => {
+    expect(
+      elementText(
+        tree(
+          '- generic [ref=e1]:\n  - generic [ref=e2]: Milk\n  - button "Remove" [ref=e3]'
+        ),
+        "e1" as AriaRef
+      )
+    ).toBe('- text: Milk\n- button "Remove"');
+  });
+
+  it("is empty for an element the capture does not hold", () => {
+    expect(elementText(tree("- button [ref=e1]"), "e9" as AriaRef)).toBe("");
+  });
 });
 
 describe("elementLines", () => {
@@ -74,10 +125,17 @@ describe("elementLines", () => {
 
 describe("renderPageObjectTree", () => {
   it("nests Page Objects, shows each id beside its class, and an empty collection as []", () => {
+    const onboarding = editor("Onboarding", [
+      [1, "Why"],
+      [2, "How"],
+    ]);
     expect(
       renderPageObjectTree([
-        editor("Onboarding", [card(1, "Why?"), card(2, "How?")]),
-        editor("Churn", []),
+        ...onboarding.objects,
+        {
+          className: "SurveyEditorPage",
+          children: [{ kind: "objects", name: "questions", objects: [] }],
+        },
       ])
     ).toBe(
       [
@@ -85,19 +143,19 @@ describe("renderPageObjectTree", () => {
         '  surveyName: textbox "Survey name": Onboarding',
         "  questions:",
         "    - QuestionCard po1",
-        '        headline: textbox "Question": Why?',
+        '        headline: textbox "Question": Why',
         "    - QuestionCard po2",
-        '        headline: textbox "Question": How?',
+        '        headline: textbox "Question": How',
         "SurveyEditorPage",
-        '  surveyName: textbox "Survey name": Churn',
         "  questions: []",
       ].join("\n")
     );
   });
 
   it("shows a single child Page Object after its name, with its own children below", () => {
-    expect(
-      renderPageObjectTree([
+    const { objects } = treeRead(
+      '- dialog [ref=e1]:\n  - paragraph [ref=e2]: Archive "Milk"?',
+      (elements) => [
         {
           className: "ListPage",
           children: [
@@ -107,26 +165,31 @@ describe("renderPageObjectTree", () => {
               object: {
                 className: "ArchiveDialog",
                 id: pageObjectIdOf(3),
-                children: [
-                  {
-                    kind: "elements",
-                    name: "message",
-                    lines: ["", '- paragraph: Archive "Milk"?'],
-                  },
-                ],
+                children: [elements("message", ["e2"])],
               },
             },
           ],
         },
-      ])
-    ).toBe(
+      ]
+    );
+    expect(renderPageObjectTree(objects)).toBe(
       [
         "ListPage",
         "  archiveDialog: ArchiveDialog po3",
         "    message:",
-        '      - paragraph: Archive "Milk"?',
+        '      - paragraph: "Archive \\"Milk\\"?"',
       ].join("\n")
     );
+  });
+
+  it("leaves out a single element child that is not on the page, and shows an empty collection as []", () => {
+    const { objects } = treeRead('- button "Add" [ref=e1]', (elements) => [
+      {
+        className: "ListPage",
+        children: [elements("error", "e9"), elements("rows", [])],
+      },
+    ]);
+    expect(renderPageObjectTree(objects)).toBe("ListPage\n  rows: []");
   });
 
   it("says when no Page Object is on the page", () => {
@@ -136,13 +199,13 @@ describe("renderPageObjectTree", () => {
 
 describe("renderPageObjectTreeChanges", () => {
   it("is absent when nothing changed", () => {
-    const tree = [editor("Draft", [card(1, "Why?")])];
-    expect(renderPageObjectTreeChanges(tree, tree)).toBeUndefined();
+    const read = editor("Draft", [[1, "Why"]]);
+    expect(renderPageObjectTreeChanges(read, read)).toBeUndefined();
   });
 
   it("shows a changed value as old → new, keeping the role and name once", () => {
     expect(
-      renderPageObjectTreeChanges([editor("Draft", [])], [editor("Final", [])])
+      renderPageObjectTreeChanges(editor("Draft", []), editor("Final", []))
     ).toBe(
       [
         "SurveyEditorPage",
@@ -152,49 +215,130 @@ describe("renderPageObjectTreeChanges", () => {
   });
 
   it('shows a changed state as the whole line old → new, and an empty value as ""', () => {
-    const required = (line: string): PageObjectTreeNode => ({
-      className: "Card",
-      children: [{ kind: "elements", name: "required", lines: [line] }],
-    });
     expect(
       renderPageObjectTreeChanges(
-        [required('switch "Required"')],
-        [required('switch "Required" [checked]')]
+        cardWith("required", 'switch "Required"'),
+        cardWith("required", 'switch "Required" [checked]')
       )
     ).toBe('Card\n  required: switch "Required" → switch "Required" [checked]');
     expect(
       renderPageObjectTreeChanges(
-        [required('textbox "Name"')],
-        [required('textbox "Name": Ada')]
+        cardWith("name", 'textbox "Name"'),
+        cardWith("name", 'textbox "Name": Ada')
       )
-    ).toBe('Card\n  required: textbox "Name": "" → Ada');
+    ).toBe('Card\n  name: textbox "Name": "" → Ada');
   });
 
-  it("shows a multi-line child's changed lines only", () => {
-    const options = (lines: string[]): PageObjectTreeNode => ({
-      className: "Card",
-      children: [{ kind: "elements", name: "options", lines }],
-    });
+  it("shows an unnamed generic's changed text as its text", () => {
+    const count = (n: number) =>
+      treeRead(`- generic [ref=e1]: ${n}`, (elements) => [
+        { className: "Counter", children: [elements("count", "e1")] },
+      ]);
+    expect(renderPageObjectTreeChanges(count(3), count(4))).toBe(
+      "Counter\n  count: text: 3 → 4"
+    );
+  });
+
+  it("compares the text of an element no capture holds a node of, such as a span of text", () => {
+    const named = (text: string) =>
+      treeRead("- listitem [ref=e1]", () => [
+        {
+          className: "Item",
+          children: [
+            {
+              kind: "elements",
+              name: "name",
+              collection: false,
+              elements: [
+                { ref: "s_4", text: `- text: ${text}`, captured: false },
+              ],
+            },
+          ],
+        },
+      ]);
+    expect(
+      renderPageObjectTreeChanges(named("Milk"), named("Milk"))
+    ).toBeUndefined();
+    expect(renderPageObjectTreeChanges(named("Milk"), named("Oat milk"))).toBe(
+      "Item\n  name: text: Milk → Oat milk"
+    );
+  });
+
+  /** A Card whose `options` list holds `items`, each by its ref and text. */
+  const options = (items: [string, string][]) =>
+    treeRead(
+      [
+        '- list "Options" [ref=e1]:',
+        ...items.map(([ref, text]) => `  - listitem [ref=${ref}]: ${text}`),
+      ].join("\n"),
+      (elements) => [
+        { className: "Card", children: [elements("options", "e1")] },
+      ]
+    );
+
+  it("shows only what changed inside an element, each item by its own identity", () => {
     expect(
       renderPageObjectTreeChanges(
-        [options(["list:", "- listitem: A", "- listitem: B", "- listitem: C"])],
-        [
-          options([
-            "list:",
-            "- listitem: A",
-            "- listitem: B2",
-            "- listitem: D",
-            "- listitem: E",
-          ]),
-        ]
+        options([
+          ["e2", "A"],
+          ["e3", "B"],
+          ["e4", "C"],
+        ]),
+        options([
+          ["e2", "A"],
+          ["e3", "B2"],
+          ["e5", "D"],
+        ])
       )
     ).toBe(
       [
         "Card",
         "  options:",
-        "    - listitem: B → - listitem: B2",
-        "    - listitem: C → - listitem: D",
-        "    + - listitem: E",
+        "    - listitem: B → B2",
+        "    + - listitem: D",
+        "    - listitem: C (removed)",
+      ].join("\n")
+    );
+  });
+
+  it("reads an item that took another's old text as changed, not as moved", () => {
+    expect(
+      renderPageObjectTreeChanges(
+        options([
+          ["e2", "A"],
+          ["e3", "B"],
+        ]),
+        options([
+          ["e2", "B"],
+          ["e3", "C"],
+        ])
+      )
+    ).toBe(
+      [
+        "Card",
+        "  options:",
+        "    - listitem: A → B",
+        "    - listitem: B → C",
+      ].join("\n")
+    );
+  });
+
+  it("marks an element that left a collection child (removed), and one that joined it in full after +", () => {
+    const rows = (refs: string[]) =>
+      treeRead(
+        '- row "a" [ref=e1]\n- row "b" [ref=e2]\n- row "c" [ref=e3]',
+        (elements) => [
+          { className: "Table", children: [elements("selected", refs)] },
+        ]
+      );
+    expect(
+      renderPageObjectTreeChanges(rows(["e1", "e2"]), rows(["e2", "e3"]))
+    ).toBe(
+      [
+        "Table",
+        "  selected:",
+        '    - row "a" (removed)',
+        '    + - row "c"',
       ].join("\n")
     );
   });
@@ -202,8 +346,14 @@ describe("renderPageObjectTreeChanges", () => {
   it("marks a Page Object that went away by its id, and shows one that appeared in full, with its children and id", () => {
     expect(
       renderPageObjectTreeChanges(
-        [editor("Draft", [card(1, "Why?"), card(2, "Age?")])],
-        [editor("Draft", [card(2, "Age?"), card(3, "Else?")])]
+        editor("Draft", [
+          [1, "Why"],
+          [2, "Age"],
+        ]),
+        editor("Draft", [
+          [2, "Age"],
+          [3, "Else"],
+        ])
       )
     ).toBe(
       [
@@ -211,40 +361,44 @@ describe("renderPageObjectTreeChanges", () => {
         "  questions:",
         "    - QuestionCard po1 (removed)",
         "    + QuestionCard po3",
-        '        headline: textbox "Question": Else?',
+        '        headline: textbox "Question": Else',
       ].join("\n")
     );
   });
 
   it("keeps the first child of a Page Object without an id that went away", () => {
-    const item = (text: string): PageObjectTreeNode => ({
-      className: "Row",
-      children: [{ kind: "elements", name: "name", lines: [`cell: ${text}`] }],
-    });
-    const list = (rows: PageObjectTreeNode[]): PageObjectTreeNode => ({
-      className: "ListPage",
-      children: [{ kind: "objects", name: "rows", objects: rows }],
-    });
-    expect(
-      renderPageObjectTreeChanges(
-        [list([item("a"), item("b")])],
-        [list([item("a")])]
-      )
-    ).toBe("ListPage\n  rows:\n    - Row (removed), was: name: cell: b");
+    const list = (texts: string[]) =>
+      treeRead(
+        texts.map((text, at) => `- cell [ref=e${at + 1}]: ${text}`).join("\n"),
+        (elements) => [
+          {
+            className: "ListPage",
+            children: [
+              {
+                kind: "objects",
+                name: "rows",
+                objects: texts.map((_, at) => ({
+                  className: "Row",
+                  children: [elements("name", `e${at + 1}`)],
+                })),
+              },
+            ],
+          },
+        ]
+      );
+    expect(renderPageObjectTreeChanges(list(["a", "b"]), list(["a"]))).toBe(
+      "ListPage\n  rows:\n    - Row (removed), was: name: cell: b"
+    );
   });
 
   it("shows a page's top Page Object that was replaced as removed, then added in full", () => {
-    const summary: PageObjectTreeNode = {
-      className: "SurveySummaryPage",
-      children: [
-        {
-          kind: "elements",
-          name: "title",
-          lines: ['heading "Draft" [level=1]'],
-        },
-      ],
-    };
-    expect(renderPageObjectTreeChanges([editor("Draft", [])], [summary])).toBe(
+    const summary = treeRead(
+      '- heading "Draft" [level=1] [ref=e5]',
+      (elements) => [
+        { className: "SurveySummaryPage", children: [elements("title", "e5")] },
+      ]
+    );
+    expect(renderPageObjectTreeChanges(editor("Draft", []), summary)).toBe(
       [
         "- SurveyEditorPage (removed)",
         "+ SurveySummaryPage",
@@ -254,34 +408,29 @@ describe("renderPageObjectTreeChanges", () => {
   });
 
   it("marks a child that appeared with + and one that went away with (removed)", () => {
-    const page = (
-      children: PageObjectTreeNode["children"]
-    ): PageObjectTreeNode => ({ className: "Page", children });
-    expect(
-      renderPageObjectTreeChanges(
-        [
-          page([
-            { kind: "elements", name: "error", lines: ['alert: "Required"'] },
-          ]),
-        ],
-        [
-          page([
-            {
-              kind: "object",
-              name: "dialog",
-              object: {
-                className: "Dialog",
-                id: pageObjectIdOf(4),
-                children: [],
-              },
+    const before = treeRead("- alert [ref=e1]: Required", (elements) => [
+      { className: "Page", children: [elements("error", "e1")] },
+    ]);
+    const after = treeRead("- dialog [ref=e2]", () => [
+      {
+        className: "Page",
+        children: [
+          {
+            kind: "object",
+            name: "dialog",
+            object: {
+              className: "Dialog",
+              id: pageObjectIdOf(4),
+              children: [],
             },
-          ]),
-        ]
-      )
-    ).toBe(
+          },
+        ],
+      },
+    ]);
+    expect(renderPageObjectTreeChanges(before, after)).toBe(
       [
         "Page",
-        '  error: alert: "Required" (removed)',
+        "  error: alert: Required (removed)",
         "  + dialog: Dialog po4",
       ].join("\n")
     );
@@ -289,8 +438,11 @@ describe("renderPageObjectTreeChanges", () => {
 
   it("names no tool and carries no schema or Structural Ref", () => {
     const text = renderPageObjectTreeChanges(
-      [editor("Draft", [card(1, "Why?")])],
-      [editor("Draft", [card(1, "Why?"), card(2, "Age?")])]
+      editor("Draft", [[1, "Why"]]),
+      editor("Draft", [
+        [1, "Why not"],
+        [2, "Age"],
+      ])
     )!;
     expect(text).not.toMatch(/QuestionCard\.|"type"|inputSchema|\be\d+\b/);
   });

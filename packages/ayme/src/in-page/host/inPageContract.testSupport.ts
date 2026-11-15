@@ -1730,9 +1730,16 @@ export function inPageContract(lane: InPageLane) {
       dispose();
     });
 
-    /** The ids of the Page Objects the registry reads on the page now. */
+    /**
+     * The ids of the Page Objects the registry reads on the page now, over a
+     * capture that holds no element: only the ids are read.
+     */
     const idsOn = async (registry: ReturnType<typeof createPomRegistry>) =>
-      (await registry.readPageObjectTree()).map(({ id }) => id);
+      (
+        await registry.readPageObjectTree(async () => ({
+          tree: { hasNode: () => false, getNode: () => null } as never,
+        }))
+      ).objects.map(({ id }) => id);
 
     it("keeps a root's id however often its name changes between two reads", async () => {
       const page = await lane.newPage();

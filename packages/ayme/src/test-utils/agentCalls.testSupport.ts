@@ -79,7 +79,15 @@ export function runContext(
     ...(routerNavigate() ? { routerNavigate: routerNavigate() } : {}),
     pomDefinitions: getPomDefinitions,
     pageObjectTree: async () =>
-      renderPageObjectTree(await browserRegistry().readPageObjectTree()),
+      renderPageObjectTree(
+        (
+          await browserRegistry().readPageObjectTree(() =>
+            (
+              pageStateSession ?? getPageStateSession(globalThis.document)
+            ).look()
+          )
+        ).objects
+      ),
     get pageStateSession() {
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },

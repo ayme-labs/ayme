@@ -12,6 +12,7 @@ import {
   assertAvailable,
   unavailableError,
   type ActionResult,
+  type PageStateCapture,
   type ToolAvailability,
 } from "../../page-state/domain";
 import { assertLocatorReachable } from "../../page-state/infrastructure";
@@ -55,7 +56,7 @@ import {
   type PageObjectRoot,
 } from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
-import type { PageObjectTreeNode } from "../domain/pageObjectTreeText";
+import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
 
@@ -439,11 +440,19 @@ export function createPomRegistry(
   /**
    * Package-internal: the Page Object Tree of the page now, after a probe
    * run that began after this call: each present Page Object, nested as
-   * the models nest, with the Page Object id of each one with a root.
+   * the models nest, with the Page Object id of each one with a root, and
+   * its element children read from the capture `capture` takes after it.
    */
-  async function readPageObjectTree(): Promise<PageObjectTreeNode[]> {
+  async function readPageObjectTree(
+    capture: () => Promise<PageStateCapture>
+  ): Promise<PageObjectTreeRead> {
     await probeRegisteredPomMembers();
-    return readTree(driver, [...registeredPoms], pageObjectIds);
+    return readTree(
+      driver,
+      [...registeredPoms],
+      pageObjectIds,
+      await capture()
+    );
   }
 
   /**

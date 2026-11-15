@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { PageObjectId, PageObjectTreeNode } from "../page-objects/domain";
+import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
+import { treeRead } from "../test-utils/pageObjectTree.testSupport";
 import type { ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
@@ -24,33 +25,38 @@ const TOOLS = [
   tool("ListPage.add", "pageObject"),
 ];
 
-const list = (...names: string[]): PageObjectTreeNode => ({
-  className: "ListPage",
-  children: [
-    {
-      kind: "objects",
-      name: "items",
-      objects: names.map((name, index) => ({
-        className: "Item",
-        id: `po${index + 1}` as PageObjectId,
+/** A ListPage of items named `names`, each item's name an element of its own. */
+const list = (...names: string[]): PageObjectTreeRead =>
+  treeRead(
+    names.map((name, at) => `- generic [ref=e${at + 1}]: ${name}`).join("\n"),
+    (elements) => [
+      {
+        className: "ListPage",
         children: [
-          { kind: "elements", name: "name", lines: [`text: ${name}`] },
+          {
+            kind: "objects",
+            name: "items",
+            objects: names.map((_, at) => ({
+              className: "Item",
+              id: `po${at + 1}` as PageObjectId,
+              children: [elements("name", `e${at + 1}`)],
+            })),
+          },
         ],
-      })),
-    },
-  ],
-});
+      },
+    ]
+  );
 
 /**
  * A session whose page shows `trees` one after the other, a read at a
  * time, at `urls` one after the other, and whose runs answer `answer`.
  */
 function session({
-  trees = [[list("Milk")]],
+  trees = [list("Milk")],
   urls = ["http://app/list"],
   answer,
 }: {
-  trees?: PageObjectTreeNode[][];
+  trees?: PageObjectTreeRead[];
   urls?: string[];
   answer: () => Promise<unknown>;
 }) {
@@ -87,14 +93,10 @@ function countingPage() {
     last = ran.catch(() => {});
     return ran;
   };
-  const tree = (): PageObjectTreeNode[] => [
-    {
-      className: "ListPage",
-      children: [
-        { kind: "elements", name: "count", lines: [`text: ${count}`] },
-      ],
-    },
-  ];
+  const tree = () =>
+    treeRead(`- generic [ref=e1]: ${count}`, (elements) => [
+      { className: "ListPage", children: [elements("count", "e1")] },
+    ]);
   const add = async () => {
     await new Promise((resolve) => setTimeout(resolve, 5));
     count += 1;
@@ -182,7 +184,7 @@ describe("a Page Object Tool's answer to an agent", () => {
 
   it("carries the change in the Page Object Tree, a Page Object that appeared in full with its children and id", async () => {
     const { stub } = session({
-      trees: [[list("Milk")], [list("Milk", "Eggs")]],
+      trees: [list("Milk"), list("Milk", "Eggs")],
       answer: async () => FULL_RECORD,
     });
 

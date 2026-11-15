@@ -23,7 +23,11 @@ export {
   renderPageObjectTree,
   renderPageObjectTreeChanges,
 } from "./pageObjectTreeText";
-export type { PageObjectTreeNode } from "./pageObjectTreeText";
+export { elementText } from "./elementText";
+export type {
+  PageObjectTreeNode,
+  PageObjectTreeRead,
+} from "./pageObjectTreeText";
 export { rootTargetPath } from "./pomTree";
 export type { RegisteredPomTarget } from "./pomTree";
 export { rootlessClassRefusals } from "./pomClasses";

@@ -253,6 +253,68 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     }
   });
 
+  it("shows only what an action changed inside an element child, by each node's identity", async () => {
+    document.body.innerHTML =
+      '<ul aria-label="Notes"><li>a</li><li>b</li><li>c</li></ul>';
+    const page = createPage();
+    class NotesPage {
+      notes = page.getByRole("list", { name: "Notes" });
+      async edit() {
+        const [, second, third] = document.querySelectorAll("li");
+        second!.textContent = "b2";
+        third!.remove();
+        document
+          .querySelector("ul")!
+          .insertAdjacentHTML("beforeend", "<li>d</li>");
+      }
+    }
+    registerCompiledPom(NotesPage, {
+      className: "NotesPage",
+      tools: [action("NotesPage.edit")],
+      members: [
+        {
+          memberName: "notes",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+      ],
+      components: [],
+    });
+    const ayme = createAyme({
+      pageFactory: () => page,
+      webMCP: { enabled: true },
+      pageObjects: [NotesPage],
+    });
+    stop = ayme.start();
+    await vi.waitFor(() => expect(handed.webMcp).toBeDefined());
+    await vi.waitFor(() =>
+      expect(ayme.tools.list().map(({ name }) => name)).toContain(
+        "NotesPage.edit"
+      )
+    );
+
+    expect(await handed.webMcp!.run("page_objects", {})).toBe(
+      [
+        "NotesPage",
+        '  notes: list "Notes":',
+        "    - listitem: a",
+        "    - listitem: b",
+        "    - listitem: c",
+      ].join("\n")
+    );
+    expect(await handed.webMcp!.run("NotesPage.edit", {})).toEqual({
+      settled: true,
+      changes: [
+        "NotesPage",
+        "  notes:",
+        "    - listitem: b → b2",
+        "    + - listitem: d",
+        "    - listitem: c (removed)",
+      ].join("\n"),
+    });
+  });
+
   it("leaves ayme.tools.run's full record as it is", async () => {
     const { ayme } = await shoppingList("Milk");
 

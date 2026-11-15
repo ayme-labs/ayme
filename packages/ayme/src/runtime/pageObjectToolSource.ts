@@ -5,7 +5,7 @@
 // record, which application code, the Inspector and the Goal Loop read.
 import {
   renderPageObjectTreeChanges,
-  type PageObjectTreeNode,
+  type PageObjectTreeRead,
 } from "../page-objects/domain";
 import type { ActionFailure, ActionResult } from "../page-state/domain";
 import { pageObjectsTool } from "../tools/application";
@@ -28,8 +28,8 @@ export type PageObjectToolSession = {
 export type PageObjectToolTurn = {
   /** Runs the tool `name` inside this turn, as a top-level Run that does not queue. */
   run(name: string, input: unknown): Promise<unknown>;
-  /** The Page Object Tree now. */
-  readPageObjectTree(): Promise<readonly PageObjectTreeNode[]>;
+  /** The Page Object Tree now, and the capture of the page it was read from. */
+  readPageObjectTree(): Promise<PageObjectTreeRead>;
   /** The page's URL now. */
   url(): string;
 };
@@ -108,7 +108,7 @@ function withoutChangeRecord(error: unknown): unknown {
 async function answerOf(
   session: PageObjectToolTurn,
   { settled, result, loading }: ActionResult,
-  before: readonly PageObjectTreeNode[] | undefined,
+  before: PageObjectTreeRead | undefined,
   url: string
 ): Promise<PageObjectToolAnswer> {
   const answer: PageObjectToolAnswer = {

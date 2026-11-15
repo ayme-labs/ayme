@@ -614,6 +614,14 @@ export function createAymeOn(
    * their calls made by `by`: the one source WebMCP publication and the
    * Ayme MCP server share.
    */
+  /**
+   * The Page Object Tree now, its element children read from one capture
+   * of the page that records nothing and moves no cursor.
+   */
+  const readPageObjectTreeNow = () =>
+    target
+      .registry()
+      .readPageObjectTree(() => target.pageState().session.look());
   const pageObjectToolsFor = (by: Caller) =>
     pageObjectToolSource({
       list: () => ayme.tools.list(),
@@ -624,7 +632,7 @@ export function createAymeOn(
           turn({
             run: (name, input) =>
               recordTopLevelRun(name, input, by, probeAfterAction),
-            readPageObjectTree: () => target.registry().readPageObjectTree(),
+            readPageObjectTree: readPageObjectTreeNow,
             url: () => target.rawPage().url(),
           })
         ),
@@ -864,7 +872,7 @@ export function createAymeOn(
         pomDefinitions: (...names) =>
           getPomDefinitionsOf(target.registry(), ...names),
         pageObjectTree: async () =>
-          renderPageObjectTree(await target.registry().readPageObjectTree()),
+          renderPageObjectTree((await readPageObjectTreeNow()).objects),
         pageStateSession: target.pageState().session,
         reach,
       });
