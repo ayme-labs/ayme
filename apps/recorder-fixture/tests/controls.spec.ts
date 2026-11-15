@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { CartPage } from "../.ayme/pom/CartPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** The recorder's phase and Visits, as a subscriber is told them. */
@@ -22,18 +23,19 @@ test.describe("the recorder's controls", () => {
   }) => {
     const recording = await startRecording("/cart.html");
     const { recorder, page, person } = recording;
+    const cart = new CartPage(page);
     const seen = watch(recording);
     expect(await recorder.send({ type: "record" })).toBe("applied");
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await expect.poll(() => seen.interactions).toBe(1);
 
     expect(await recorder.send({ type: "stop" })).toBe("applied");
     await expect.poll(() => seen.phase).toBe("paused");
     // Nothing of this click is recorded, however long a report of it is
     // given to arrive.
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 2");
     await person.pause();
     expect(seen.interactions).toBe(1);
 
@@ -41,8 +43,8 @@ test.describe("the recorder's controls", () => {
     // reports again.
     expect(await recorder.send({ type: "continue" })).toBe("applied");
     expect(seen.phase).toBe("recording");
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 3")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 3");
     await expect.poll(() => seen.interactions).toBe(2);
 
     expect(await recorder.send({ type: "finish" })).toBe("applied");
@@ -64,20 +66,21 @@ test.describe("the recorder's controls", () => {
   }) => {
     const recording = await startRecording("/cart.html");
     const { recorder, page, person, projectDir } = recording;
+    const cart = new CartPage(page);
     const seen = watch(recording);
     await recorder.send({ type: "record" });
-    await person.click(page.locator("#add"));
+    await person.click(cart.addItemButton);
     await expect.poll(() => seen.interactions).toBe(1);
 
     expect(await recorder.send({ type: "clear" })).toBe("applied");
     await expect.poll(() => seen.phase).toBe("notRecording");
     expect(seen).toEqual({ phase: "notRecording", interactions: 0, visits: 0 });
     // Not recording: the page gets its input untouched.
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 2");
 
     expect(await recorder.send({ type: "record" })).toBe("applied");
-    await person.click(page.locator("#redraw"));
+    await person.click(cart.redrawButton);
     await expect.poll(() => seen.interactions).toBe(1);
     await recorder.send({ type: "finish" });
     const outcome = await recorder.done;
@@ -99,11 +102,12 @@ test.describe("the recorder's controls", () => {
   }) => {
     const recording = await startRecording("/cart.html");
     const { recorder, page, person, projectDir } = recording;
+    const cart = new CartPage(page);
     // A waiter from before anything was recorded.
     const early = recorder.done;
     await recorder.send({ type: "record" });
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await person.pause();
 
     expect(await recorder.send({ type: "finish" })).toBe("applied");
