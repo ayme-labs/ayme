@@ -2373,7 +2373,7 @@ function highlight(
       {
         kind: "locate",
         entry: asked.entry,
-        ...(asked.row === undefined ? {} : { row: asked.row }),
+        row: asked.row,
         highlight: n,
       },
     ],
