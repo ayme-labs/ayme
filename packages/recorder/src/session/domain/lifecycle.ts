@@ -1,5 +1,6 @@
 import type {
   CommandResult,
+  EntryId,
   RecorderCommand,
   RecorderCommandType,
   RecorderPhase,
@@ -8,11 +9,18 @@ import type {
 } from "../../contract";
 import type {
   InteractionReport,
+  PageId,
   PageSnapshot,
   RecordingTrace,
+  SnapshotId,
+  SnapshotRef,
   TimelineAddition,
   VisitCause,
 } from "../../timeline/domain";
+
+/** An input a page held back, or one Playwright reported: the browser names
+ * it, such as "input_3", when it tells of it. */
+export type InputId = string & { readonly __brand: "InputId" };
 
 // The lifecycle of one recorder, as one pure function: the current state and
 // one thing that happened in, the new state and a list of things to do out.
@@ -24,16 +32,16 @@ import type {
  * in the order it happened.
  */
 export type BrowserSignal =
-  | { readonly kind: "pageOpened"; readonly page: string; readonly url: string }
+  | { readonly kind: "pageOpened"; readonly page: PageId; readonly url: string }
   /** The page's main frame is at another address. */
   | {
       readonly kind: "pageNavigated";
-      readonly page: string;
+      readonly page: PageId;
       readonly url: string;
     }
   | {
       readonly kind: "pageClosed";
-      readonly page: string;
+      readonly page: PageId;
       readonly pagesLeft: number;
     }
   | { readonly kind: "browserGone" }
@@ -44,8 +52,8 @@ export type BrowserSignal =
   /** A page held an input back: it has not reached the page yet. */
   | {
       readonly kind: "inputHeld";
-      readonly input: string;
-      readonly page: string;
+      readonly input: InputId;
+      readonly page: PageId;
       /** What was held; a click of count one when it is not said. */
       readonly held?: HeldInput;
     }
@@ -53,27 +61,27 @@ export type BrowserSignal =
   /** A held input has reached its page. `at` is on the clock of snapshots. */
   | {
       readonly kind: "inputPassedOn";
-      readonly input: string;
+      readonly input: InputId;
       readonly at: number;
     }
   /** The wait asked for after `input` is over: the page is a Settled Page, or
    * the wait's deadline passed. */
   | {
       readonly kind: "pageSettled";
-      readonly page: string;
-      readonly input: string;
+      readonly page: PageId;
+      readonly input: InputId;
     }
   /** Playwright reported an Interaction, some time after the input. */
   | {
       readonly kind: "interactionReported";
-      readonly page: string;
+      readonly page: PageId;
       readonly report: InteractionReport;
     }
   /** Playwright revised the Interaction it reported last on the page, as it
    * does with each key typed into the same field. */
   | {
       readonly kind: "interactionRevised";
-      readonly page: string;
+      readonly page: PageId;
       readonly report: InteractionReport;
     }
   /** A request broke while the browser carried it out, or the time it was
@@ -89,7 +97,7 @@ export type BrowserSignal =
   // Visits.
   /** A held input can no longer reach its page: the document it was held
    * in is gone. Told instead of "inputPassedOn". */
-  | { readonly kind: "inputGone"; readonly input: string }
+  | { readonly kind: "inputGone"; readonly input: InputId }
   // Warnings.
   /** Something a person should know about how the recording is made. */
   | { readonly kind: "browserWarned"; readonly warning: RecorderWarning }
@@ -115,8 +123,8 @@ export type BrowserSignal =
  * ref its latest snapshot gave it, or, for a target with no ref, by its
  * selector. */
 export type HighlightTarget = {
-  readonly page: string;
-  readonly ref: string | null;
+  readonly page: PageId;
+  readonly ref: SnapshotRef | null;
   readonly selector: string | null;
 };
 
@@ -149,16 +157,16 @@ export type BrowserRequest =
   /** Answered by "snapshotTaken" with a snapshot of this id. */
   | {
       readonly kind: "takeSnapshot";
-      readonly snapshot: string;
-      readonly page: string;
+      readonly snapshot: SnapshotId;
+      readonly page: PageId;
     }
   /** Let a held input reach its page. Answered by "inputPassedOn". */
-  | { readonly kind: "passOn"; readonly input: string }
+  | { readonly kind: "passOn"; readonly input: InputId }
   /** Wait until the page is a Settled Page. Answered by "pageSettled". */
   | {
       readonly kind: "waitForSettled";
-      readonly page: string;
-      readonly input: string;
+      readonly page: PageId;
+      readonly input: InputId;
     }
   /**
    * A page that held an input holds everything after it, typing included,
@@ -169,8 +177,8 @@ export type BrowserRequest =
    */
   | {
       readonly kind: "letInputsThrough";
-      readonly page: string;
-      readonly upTo: string | null;
+      readonly page: PageId;
+      readonly upTo: InputId | null;
     }
   /** Start the recording's one trace. Answered by "traceStarted". */
   | { readonly kind: "startTrace" }
@@ -261,7 +269,7 @@ export type ToDo =
    * lifecycle "located". */
   | {
       readonly kind: "locate";
-      readonly entry: string;
+      readonly entry: EntryId;
       readonly highlight: number;
     }
   /** Keep the answer to the command this step handled under `key`, beside
@@ -319,7 +327,7 @@ function heldKindOf(report: InteractionReport): HeldInput["kind"] | null {
 }
 
 type Page = {
-  readonly id: string;
+  readonly id: PageId;
   readonly url: string;
   /** What became of it while it had no Visit at its address: it opened,
    * blank while recording or while paused, or it went elsewhere while
@@ -331,8 +339,8 @@ type Page = {
 
 /** One input the gate held back, until it is written down or dropped. */
 type Input = {
-  readonly id: string;
-  readonly page: string;
+  readonly id: InputId;
+  readonly page: PageId;
   /** What the page held back, or "reported" for an input the gate never
    * holds, known from Playwright's report only. */
   readonly held:
@@ -345,7 +353,7 @@ type Input = {
   readonly revised: boolean;
   /** The input whose report covers this one too, as the first click of a
    * double click covers the second. */
-  readonly joins: string | null;
+  readonly joins: InputId | null;
   /** Its report is not coming: a later input of its page was reported
    * first, and Playwright reports in order. It is left out. */
   readonly unreported: boolean;
@@ -363,9 +371,9 @@ type Input = {
     | "settling"
     | "takingAfter"
     | "settled";
-  readonly asked: string | null;
-  readonly before: string | null;
-  readonly after: string | null;
+  readonly asked: SnapshotId | null;
+  readonly before: SnapshotId | null;
+  readonly after: SnapshotId | null;
   readonly passedOnAt: number | null;
   readonly report: InteractionReport | null;
   /** An input known from its report whose page could not be read when it
@@ -387,19 +395,19 @@ type Flow = {
 };
 
 type PageGate = {
-  readonly page: string;
+  readonly page: PageId;
   /** The page holds what follows, typing included, until it is let through. */
   readonly holding: boolean;
   /** The last input the page held. */
-  readonly upTo: string | null;
+  readonly upTo: InputId | null;
   /** The latest snapshot of the page. */
-  readonly latest: { readonly id: string; readonly at: number } | null;
+  readonly latest: { readonly id: SnapshotId; readonly at: number } | null;
   /** The page's next snapshot is its first since a pause: it is where
    * recording resumes, the new point to compare from. */
   readonly resumes?: boolean;
   /** The snapshot asked for at Continue to be that one, while it is under
    * way. */
-  readonly resuming?: string | null;
+  readonly resuming?: SnapshotId | null;
 };
 
 export type LifecycleState = {
@@ -425,7 +433,7 @@ export type LifecycleState = {
       /** Every page confirmed that it holds no input back any more. */
       readonly gateOff: boolean;
       /** The last snapshots still under way; null until they are asked for. */
-      readonly finals: readonly { page: string; snapshot: string }[] | null;
+      readonly finals: readonly { page: PageId; snapshot: SnapshotId }[] | null;
       /** What the wrap-up leads to. */
       readonly then: AfterWrapUp;
       /** All that was under way is done, and Playwright's recorder is asked
@@ -634,7 +642,7 @@ function pageOpened(state: LifecycleState, page: Page): Step {
 }
 
 /** A page's main frame is at another address. */
-function pageNavigated(state: LifecycleState, id: string, url: string): Step {
+function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   const page = state.pages.find((open) => open.id === id);
   if (!page) return stay(state);
   const at = { ...page, url };
@@ -660,7 +668,7 @@ function pageNavigated(state: LifecycleState, id: string, url: string): Step {
 /** A page closed. The last one closing is an end from outside. */
 function pageClosed(
   state: LifecycleState,
-  id: string,
+  id: PageId,
   pagesLeft: number
 ): Step {
   const without = withoutPage(state, id);
@@ -1051,7 +1059,7 @@ const BLANK = "about:blank";
  * starts a new Visit is core's rule, which the timeline follows: a change of
  * only the part after `?` or `#` stays in the Visit.
  */
-const visitOf = (page: string, url: string, cause: VisitCause): ToDo => ({
+const visitOf = (page: PageId, url: string, cause: VisitCause): ToDo => ({
   kind: "timeline",
   add: { kind: "visit", page, url, cause },
 });
@@ -1104,7 +1112,7 @@ function continueVisits(pages: readonly Page[]) {
 
 /** The state without a page that closed. An input held for it that has not
  * reached it is dropped; one that has keeps its "before" only. */
-function withoutPage(state: LifecycleState, page: string): LifecycleState {
+function withoutPage(state: LifecycleState, page: PageId): LifecycleState {
   const pages = state.pages.filter((open) => open.id !== page);
   if (!isActive(state)) return { ...state, pages };
   const inputs = state.inputs.flatMap((input): Input[] => {
@@ -1122,8 +1130,8 @@ function withoutPage(state: LifecycleState, page: string): LifecycleState {
 
 /** An input as it becomes known: nothing of it is under way yet. */
 const newInput = (
-  id: string,
-  page: string,
+  id: InputId,
+  page: PageId,
   held: Input["held"],
   report: InteractionReport | null = null
 ): Input => ({
@@ -1151,7 +1159,7 @@ type Draft = {
   readonly todo: ToDo[];
 };
 
-function changeGate(draft: Draft, page: string, patch: Partial<PageGate>) {
+function changeGate(draft: Draft, page: PageId, patch: Partial<PageGate>) {
   const known = draft.gates.some((gate) => gate.page === page);
   draft.gates = known
     ? draft.gates.map((gate) =>
@@ -1163,18 +1171,18 @@ function changeGate(draft: Draft, page: string, patch: Partial<PageGate>) {
       ];
 }
 
-const gateOf = (draft: Draft, page: string) =>
+const gateOf = (draft: Draft, page: PageId) =>
   draft.gates.find((gate) => gate.page === page);
 
-function change(draft: Draft, id: string, patch: Partial<Input>) {
+function change(draft: Draft, id: InputId, patch: Partial<Input>) {
   draft.inputs = draft.inputs.map((input) =>
     input.id === id ? { ...input, ...patch } : input
   );
 }
 
 /** Asks for a snapshot of a page and says which one it will be. */
-function askSnapshot(draft: Draft, page: string): string {
-  const snapshot = `snapshot_${++draft.snapshotsAsked}`;
+function askSnapshot(draft: Draft, page: PageId): SnapshotId {
+  const snapshot = `snapshot_${++draft.snapshotsAsked}` as SnapshotId;
   draft.todo.push({
     kind: "browser",
     ask: { kind: "takeSnapshot", snapshot, page },
@@ -1192,7 +1200,7 @@ function askSharedSnapshot(draft: Draft, earlier: Input, later: Input) {
 
 /** The held input of a page that is under way: the oldest without its
  * "after". An input known from its report only goes its own way. */
-const underWay = (draft: Draft, page: string) =>
+const underWay = (draft: Draft, page: PageId) =>
   draft.inputs.find(
     (input) =>
       input.page === page &&
@@ -1303,8 +1311,8 @@ function inputsHeld(state: Active, draft: Draft, on: boolean): Active {
 /** A page held an input back. */
 function inputHeld(
   draft: Draft,
-  page: string,
-  input: string,
+  page: PageId,
+  input: InputId,
   what: HeldInput | undefined
 ) {
   const earlier = underWay(draft, page);
@@ -1404,11 +1412,11 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
 
 /** For an input whose page could not be read when it was reported: the
  * snapshot it ends at is where it starts too. */
-const startAt = (input: Input, snapshot: string, at: number | null) =>
+const startAt = (input: Input, snapshot: SnapshotId, at: number | null) =>
   input.unread && !input.before ? { before: snapshot, passedOnAt: at } : {};
 
 /** A held input has reached its page. */
-function inputPassedOn(draft: Draft, id: string, at: number) {
+function inputPassedOn(draft: Draft, id: InputId, at: number) {
   const input = draft.inputs.find(
     (held) => held.id === id && held.stage === "passingOn"
   );
@@ -1436,7 +1444,7 @@ function inputPassedOn(draft: Draft, id: string, at: number) {
 }
 
 /** The wait asked for after an input is over. */
-function pageSettled(draft: Draft, id: string) {
+function pageSettled(draft: Draft, id: InputId) {
   const input = draft.inputs.find(
     (held) => held.id === id && held.stage === "settling"
   );
@@ -1451,7 +1459,7 @@ function pageSettled(draft: Draft, id: string) {
 /** Playwright revised the Interaction it reported last on the page. */
 function interactionRevised(
   draft: Draft,
-  page: string,
+  page: PageId,
   report: InteractionReport
 ) {
   const open = draft.inputs.findLast(
@@ -1474,7 +1482,7 @@ function interactionRevised(
 function interactionReported(
   state: Active,
   draft: Draft,
-  page: string,
+  page: PageId,
   report: InteractionReport
 ) {
   if (report.type === ASSERTED) return asserted(draft, page, report);
@@ -1487,7 +1495,7 @@ function interactionReported(
 function reportOfHeld(
   state: Active,
   draft: Draft,
-  page: string,
+  page: PageId,
   reported: InteractionReport,
   kind: HeldInput["kind"]
 ) {
@@ -1537,7 +1545,7 @@ function reportOfHeld(
  * input of its page starts; with none, once the page is settled and no
  * held input of the page is under way.
  */
-function carryOnReported(draft: Draft, id: string) {
+function carryOnReported(draft: Draft, id: InputId) {
   const index = draft.inputs.findIndex((input) => input.id === id);
   const input = draft.inputs[index]!;
   if (input.held.kind !== "reported") return;
@@ -1633,7 +1641,7 @@ function endReported(draft: Draft, index: number) {
  * it. */
 function knownFromReport(
   draft: Draft,
-  page: string,
+  page: PageId,
   report: InteractionReport
 ) {
   let place = draft.inputs.findIndex(
@@ -1650,7 +1658,7 @@ function knownFromReport(
     ...draft.inputs.slice(0, place),
     // Its start is found as it carries on.
     newInput(
-      `reported_${++draft.reportedOnly}`,
+      `reported_${++draft.reportedOnly}` as InputId,
       page,
       { kind: "reported" },
       report
@@ -1661,7 +1669,7 @@ function knownFromReport(
 
 /** Playwright reports in order: the inputs of a page held before the
  * `index`th that have no report yet will get none. */
-function giveUpEarlier(draft: Draft, page: string, index: number) {
+function giveUpEarlier(draft: Draft, page: PageId, index: number) {
   for (const earlier of draft.inputs.slice(0, index))
     // A click another one's report covers has none either: it goes with
     // the click that covers it, whatever is said of it here.
@@ -2318,10 +2326,10 @@ function pickingChanged(state: LifecycleState, on: boolean, tell = true): Step {
  * settling gets the same snapshot as its "after", so that what changed
  * after the assertion is never the Interaction's.
  */
-function asserted(draft: Draft, page: string, report: InteractionReport) {
+function asserted(draft: Draft, page: PageId, report: InteractionReport) {
   const earlier = underWay(draft, page);
   const assertion = newInput(
-    `reported_${++draft.reportedOnly}`,
+    `reported_${++draft.reportedOnly}` as InputId,
     page,
     { kind: "asserted" },
     report

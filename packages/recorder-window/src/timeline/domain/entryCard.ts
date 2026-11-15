@@ -1,10 +1,10 @@
 import type {
+  ChangeRow,
   RecorderCommand,
   RecorderCommandType,
   TimelineEntry,
 } from "@ayme-dev/recorder/contract";
 
-import { changeRoots, type ChangeRoot } from "./changeRoots";
 import { interactionTitle, targetLabel } from "./entryText";
 
 /** The kinds of entry the window has an icon for. */
@@ -42,7 +42,7 @@ const ICONS: Partial<Record<string, EntryIcon>> = {
   assertVisible: "assertVisible",
 };
 
-const EFFECTS: Record<ChangeRoot["kind"], string> = {
+const EFFECTS: Record<ChangeRow["kind"], string> = {
   added: "appeared",
   removed: "was removed",
   changed: "changed",
@@ -77,10 +77,10 @@ export function entryCardOf(
       leave: applies("clearHighlight") ? { type: "clearHighlight" } : null,
     },
     changes:
-      entry.changeTree && !discarded
-        ? changeRoots(entry.changeTree).map((root) => ({
-            element: root.element,
-            effect: EFFECTS[root.kind],
+      entry.changes && !discarded
+        ? entry.changes.map((row) => ({
+            element: row.element,
+            effect: EFFECTS[row.kind],
           }))
         : [],
   };

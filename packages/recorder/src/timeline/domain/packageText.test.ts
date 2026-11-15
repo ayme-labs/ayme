@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
 import { Timeline, type PackageHeader } from "./timeline";
+import { entryId, pageId, snapshotId } from "../../test-utils/ids";
 
 // How a recording is written: the released layout of the Recording Package,
 // where the fixture of three clicks does not reach.
@@ -23,12 +24,12 @@ async function clicked(input: {
 }) {
   const timeline = new Timeline();
   const additions: TimelineAddition[] = [
-    { kind: "visit", page: "page_1", url, cause: "initial" },
+    { kind: "visit", page: pageId("page_1"), url, cause: "initial" },
     ...[input.before, input.after].map((tree, index): TimelineAddition => ({
       kind: "snapshot",
       snapshot: {
-        id: `snapshot_${index + 1}`,
-        page: "page_1",
+        id: snapshotId(`snapshot_${index + 1}`),
+        page: pageId("page_1"),
         url,
         at: 10 * (index + 1),
         tree,
@@ -37,15 +38,15 @@ async function clicked(input: {
     {
       kind: "interaction",
       interaction: {
-        page: "page_1",
+        page: pageId("page_1"),
         report: {
           type: "click",
           selector: input.selector ?? null,
           target: null,
           values: input.values ?? {},
         },
-        before: "snapshot_1",
-        after: "snapshot_2",
+        before: snapshotId("snapshot_1"),
+        after: snapshotId("snapshot_2"),
         at: 15,
       },
     },
@@ -71,7 +72,7 @@ describe("the Recording Package's text", () => {
     const [entry] = timeline.visits()[0]!.entries;
     if (entry?.kind !== "interaction") throw new Error("No Interaction.");
     expect(Object.entries(entry.interaction)).toEqual([
-      ["id", "interaction_1"],
+      ["id", entryId("interaction_1")],
       ["type", "click"],
       ["targetRef", null],
       ["targetSelector", "internal:role=button"],

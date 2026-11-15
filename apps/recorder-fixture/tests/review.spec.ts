@@ -1,10 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { EntryId } from "@ayme-dev/recorder/contract";
 
 import { CartPage } from "../.ayme/pom/CartPage";
 import { CheckoutPage } from "../.ayme/pom/CheckoutPage";
 import { ShopPage } from "../.ayme/pom/ShopPage";
 import { expect, test, type Recording } from "./fixtures";
+
+/** An entry's id, as a test writes it by hand. */
+const entryId = (id: string) => id as EntryId;
 
 // Ticket #1279: leaving entries out of the recording while paused, and
 // putting them back, on real Chromium and the stock Playwright: the package
@@ -48,7 +52,7 @@ test.describe("discarding and restoring entries", () => {
       .toEqual(["interaction_1", "interaction_2"]);
     // Nothing is decided while recording.
     expect(
-      await recorder.send({ type: "discard", entry: "interaction_1" })
+      await recorder.send({ type: "discard", entry: entryId("interaction_1") })
     ).toBe("ignored");
 
     await recorder.send({ type: "stop" });
@@ -63,13 +67,13 @@ test.describe("discarding and restoring entries", () => {
       "clearHighlight",
     ]);
     expect(
-      await recorder.send({ type: "discard", entry: "interaction_1" })
+      await recorder.send({ type: "discard", entry: entryId("interaction_1") })
     ).toBe("applied");
     expect(
-      await recorder.send({ type: "discard", entry: "interaction_2" })
+      await recorder.send({ type: "discard", entry: entryId("interaction_2") })
     ).toBe("applied");
     expect(
-      await recorder.send({ type: "restore", entry: "interaction_2" })
+      await recorder.send({ type: "restore", entry: entryId("interaction_2") })
     ).toBe("applied");
     expect(seen.entries).toEqual([
       { id: "interaction_1", discarded: true },
@@ -117,7 +121,7 @@ test.describe("discarding and restoring entries", () => {
     await recorder.send({ type: "stop" });
     await expect.poll(() => seen.phase).toBe("paused");
     expect(
-      await recorder.send({ type: "discard", entry: "interaction_1" })
+      await recorder.send({ type: "discard", entry: entryId("interaction_1") })
     ).toBe("applied");
 
     expect(await recorder.send({ type: "clear" })).toBe("applied");
@@ -133,7 +137,7 @@ test.describe("discarding and restoring entries", () => {
       .toEqual([{ id: "interaction_1", discarded: false }]);
     await recorder.send({ type: "stop" });
     await expect.poll(() => seen.phase).toBe("paused");
-    await recorder.send({ type: "discard", entry: "interaction_1" });
+    await recorder.send({ type: "discard", entry: entryId("interaction_1") });
 
     expect(await recorder.send({ type: "finish" })).toBe("applied");
     const outcome = await recorder.done;

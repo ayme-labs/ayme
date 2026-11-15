@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 
 import type { PageSnapshot, TimelineAddition } from "./recorded";
 import { Timeline, type PackageHeader } from "./timeline";
+import type { EntryId } from "../../contract";
+import type { SnapshotId } from "./recorded";
+import { pictureRef, type PictureRef } from "./refs";
+import {
+  entryId,
+  pageId,
+  snapshotId,
+  tracePositions,
+} from "../../test-utils/ids";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -15,26 +24,26 @@ const header: PackageHeader = {
 const url = "http://shop.test/";
 const visit: TimelineAddition = {
   kind: "visit",
-  page: "page_1",
+  page: pageId("page_1"),
   url,
   cause: "initial",
 };
 const snapshot = (
-  id: string,
+  id: SnapshotId,
   at: number,
   tree: string
 ): { kind: "snapshot"; snapshot: PageSnapshot } => ({
   kind: "snapshot",
-  snapshot: { id, page: "page_1", url, at, tree },
+  snapshot: { id, page: pageId("page_1"), url, at, tree },
 });
 const click = (
-  before: string,
-  after: string | null,
-  target: { ref: string; tree: string } | null
+  before: SnapshotId,
+  after: SnapshotId | null,
+  target: { ref: PictureRef; tree: string } | null
 ): TimelineAddition => ({
   kind: "interaction",
   interaction: {
-    page: "page_1",
+    page: pageId("page_1"),
     report: {
       type: "click",
       selector: 'internal:role=button[name="Save"i]',
@@ -53,7 +62,7 @@ async function packageOf(
 ) {
   const timeline = new Timeline();
   for (const addition of additions) await timeline.add(addition);
-  return timeline.package(header, positions);
+  return timeline.package(header, tracePositions(positions));
 }
 
 // What the page looks like, as Playwright's AI-mode snapshot writes it.
@@ -87,9 +96,12 @@ describe("the timeline", () => {
       const text = await packageOf(
         [
           visit,
-          snapshot("snapshot_1", 10, idle),
-          snapshot("snapshot_2", 20, savedPage),
-          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+          snapshot(snapshotId("snapshot_1"), 10, idle),
+          snapshot(snapshotId("snapshot_2"), 20, savedPage),
+          click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+            ref: pictureRef("e2"),
+            tree: idle,
+          }),
         ],
         { snapshot_1: "11", snapshot_2: "17" }
       );
@@ -112,8 +124,11 @@ describe("the timeline", () => {
       const text = await packageOf(
         [
           visit,
-          snapshot("snapshot_1", 10, idle),
-          click("snapshot_1", null, { ref: "e2", tree: idle }),
+          snapshot(snapshotId("snapshot_1"), 10, idle),
+          click(snapshotId("snapshot_1"), null, {
+            ref: pictureRef("e2"),
+            tree: idle,
+          }),
         ],
         { snapshot_1: "11" }
       );
@@ -135,15 +150,18 @@ describe("the timeline", () => {
       const text = await packageOf(
         [
           visit,
-          snapshot("snapshot_1", 10, idle),
+          snapshot(snapshotId("snapshot_1"), 10, idle),
           {
             kind: "visit",
-            page: "page_1",
+            page: pageId("page_1"),
             url: `${url}cart`,
             cause: "navigate",
           },
-          snapshot("snapshot_2", 20, savedPage),
-          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+          snapshot(snapshotId("snapshot_2"), 20, savedPage),
+          click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+            ref: pictureRef("e2"),
+            tree: idle,
+          }),
         ],
         { snapshot_1: "11", snapshot_2: "17" }
       );
@@ -165,10 +183,16 @@ describe("the timeline", () => {
       const text = await packageOf(
         [
           visit,
-          snapshot("snapshot_1", 10, idle),
-          snapshot("snapshot_2", 20, savedPage),
-          click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-          click("snapshot_2", null, { ref: "e2", tree: savedPage }),
+          snapshot(snapshotId("snapshot_1"), 10, idle),
+          snapshot(snapshotId("snapshot_2"), 20, savedPage),
+          click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+            ref: pictureRef("e2"),
+            tree: idle,
+          }),
+          click(snapshotId("snapshot_2"), null, {
+            ref: pictureRef("e2"),
+            tree: savedPage,
+          }),
         ],
         { snapshot_1: "11", snapshot_2: "17" }
       );
@@ -187,8 +211,8 @@ describe("the timeline", () => {
     expect(
       await packageOf([
         visit,
-        snapshot("snapshot_1", 10, idle),
-        snapshot("snapshot_2", 20, savedPage),
+        snapshot(snapshotId("snapshot_1"), 10, idle),
+        snapshot(snapshotId("snapshot_2"), 20, savedPage),
       ])
     ).toBeNull();
   });
@@ -196,19 +220,24 @@ describe("the timeline", () => {
   it("writes a Visit without Interactions, beside one that has one, with its first snapshot and no entries", async () => {
     const text = await packageOf([
       visit,
-      { kind: "visit", page: "page_2", url: `${url}help`, cause: "openPage" },
-      snapshot("snapshot_1", 10, idle),
+      {
+        kind: "visit",
+        page: pageId("page_2"),
+        url: `${url}help`,
+        cause: "openPage",
+      },
+      snapshot(snapshotId("snapshot_1"), 10, idle),
       {
         kind: "snapshot",
         snapshot: {
-          id: "snapshot_2",
-          page: "page_2",
+          id: snapshotId("snapshot_2"),
+          page: pageId("page_2"),
           url: `${url}help`,
           at: 11,
           tree: idle,
         },
       },
-      click("snapshot_1", null, null),
+      click(snapshotId("snapshot_1"), null, null),
     ]);
 
     expect(text).toContain(
@@ -230,9 +259,12 @@ describe("the timeline", () => {
   it("gives an Interaction its target ref, its selector, what Playwright said of it, and a Change Tree of what it changed", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
     ]);
 
     expect(text).toContain(
@@ -267,9 +299,12 @@ describe("the timeline", () => {
 
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", { ref: "e7", tree: reportsPicture }),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e7"),
+        tree: reportsPicture,
+      }),
     ]);
 
     expect(text).toContain(`          targetRef: e2\n`);
@@ -284,9 +319,12 @@ describe("the timeline", () => {
 
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: otherPage }),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: otherPage,
+      }),
     ]);
 
     expect(text).toContain(
@@ -302,9 +340,9 @@ describe("the timeline", () => {
   it("writes a null target ref when the report names no target", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", null),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
     ]);
 
     expect(text).toContain(
@@ -327,11 +365,17 @@ describe("the timeline", () => {
 
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, recreated),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-      snapshot("snapshot_3", 30, savedTwice),
-      click("snapshot_2", "snapshot_3", { ref: "e8", tree: recreated }),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, recreated),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+      snapshot(snapshotId("snapshot_3"), 30, savedTwice),
+      click(snapshotId("snapshot_2"), snapshotId("snapshot_3"), {
+        ref: pictureRef("e8"),
+        tree: recreated,
+      }),
     ]);
 
     expect(text).not.toContain("e8");
@@ -362,12 +406,18 @@ describe("the timeline", () => {
 
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-      snapshot("snapshot_3", 30, banner),
-      snapshot("snapshot_4", 40, bannerAndCount),
-      click("snapshot_3", "snapshot_4", { ref: "e2", tree: banner }),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+      snapshot(snapshotId("snapshot_3"), 30, banner),
+      snapshot(snapshotId("snapshot_4"), 40, bannerAndCount),
+      click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
+        ref: pictureRef("e2"),
+        tree: banner,
+      }),
     ]);
 
     expect(text).toContain(
@@ -396,10 +446,13 @@ describe("the timeline", () => {
   it("writes what changed after the last Interaction as a change", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, idle),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-      snapshot("snapshot_3", 30, savedPage),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, idle),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+      snapshot(snapshotId("snapshot_3"), 30, savedPage),
     ]);
 
     expect(text).toContain(
@@ -418,10 +471,10 @@ describe("the timeline", () => {
   it("writes no change where nothing changed", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, idle),
-      snapshot("snapshot_3", 30, idle),
-      click("snapshot_2", "snapshot_3", null),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, idle),
+      snapshot(snapshotId("snapshot_3"), 30, idle),
+      click(snapshotId("snapshot_2"), snapshotId("snapshot_3"), null),
     ]);
 
     expect(text).toContain("kind: interaction");
@@ -432,8 +485,11 @@ describe("the timeline", () => {
   it("gives an Interaction whose page was gone before its 'after' no Change Tree", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      click("snapshot_1", null, { ref: "e2", tree: idle }),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      click(snapshotId("snapshot_1"), null, {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
     ]);
 
     expect(text).toContain(
@@ -447,10 +503,10 @@ describe("the timeline", () => {
     ];
     const savedByClick = {
       kind: "interaction",
-      id: "interaction_1",
+      id: entryId("interaction_1"),
       timestamp: 15,
       interaction: {
-        id: "interaction_1",
+        id: entryId("interaction_1"),
         type: "click",
         targetRef: "e2",
         targetSelector: 'internal:role=button[name="Save"i]',
@@ -458,10 +514,13 @@ describe("the timeline", () => {
         modifiers: 0,
         clickCount: 1,
       },
-      changeTree: [
-        `- [ref=e1]:`,
-        `  - <changed> [ref=e3] paragraph: Saved`,
-      ].join("\n"),
+      changes: [
+        {
+          kind: "changed",
+          element: 'paragraph "Saved"',
+          changed: [{ property: "text", from: "Not saved", to: "Saved" }],
+        },
+      ],
     };
 
     it("has no Visit before one starts, and a Visit without entries once it has", async () => {
@@ -476,12 +535,15 @@ describe("the timeline", () => {
     it("has an Interaction's entry once the Interaction is added, not when its snapshots are", async () => {
       const timeline = new Timeline();
       await timeline.add(visit);
-      await timeline.add(snapshot("snapshot_1", 10, idle));
-      await timeline.add(snapshot("snapshot_2", 20, savedPage));
+      await timeline.add(snapshot(snapshotId("snapshot_1"), 10, idle));
+      await timeline.add(snapshot(snapshotId("snapshot_2"), 20, savedPage));
       expect(timeline.visits()).toEqual(visitWith([]));
 
       await timeline.add(
-        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle })
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        })
       );
 
       expect(timeline.visits()).toEqual(visitWith([savedByClick]));
@@ -491,40 +553,46 @@ describe("the timeline", () => {
       const banner = `${savedPage}\n  - alert [ref=e4]: Offer ends soon`;
       const timeline = new Timeline();
       await timeline.add(visit);
-      await timeline.add(snapshot("snapshot_1", 10, idle));
-      await timeline.add(snapshot("snapshot_2", 20, savedPage));
+      await timeline.add(snapshot(snapshotId("snapshot_1"), 10, idle));
+      await timeline.add(snapshot(snapshotId("snapshot_2"), 20, savedPage));
       await timeline.add(
-        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle })
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        })
       );
-      await timeline.add(snapshot("snapshot_3", 30, banner));
-      await timeline.add(snapshot("snapshot_4", 40, banner));
+      await timeline.add(snapshot(snapshotId("snapshot_3"), 30, banner));
+      await timeline.add(snapshot(snapshotId("snapshot_4"), 40, banner));
       expect(timeline.visits()).toEqual(visitWith([savedByClick]));
 
       await timeline.add(
-        click("snapshot_3", "snapshot_4", { ref: "e2", tree: banner })
+        click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
+          ref: pictureRef("e2"),
+          tree: banner,
+        })
       );
       const offer = {
         kind: "change",
-        id: "change_1",
+        id: entryId("change_1"),
         timestamp: 30,
-        changeTree: [
-          `- [ref=e1]:`,
-          `  - <added> [ref=e4] alert: Offer ends soon`,
-        ].join("\n"),
+        changes: [{ kind: "added", element: 'alert "Offer ends soon"' }],
       };
       const secondClick = {
         kind: "interaction",
-        id: "interaction_2",
+        id: entryId("interaction_2"),
         timestamp: 15,
-        interaction: { ...savedByClick.interaction, id: "interaction_2" },
+        interaction: {
+          ...savedByClick.interaction,
+          id: entryId("interaction_2"),
+        },
         // It changed nothing.
-        changeTree: null,
+        changes: null,
       };
       expect(timeline.visits()).toEqual(
         visitWith([savedByClick, offer, secondClick])
       );
 
-      await timeline.add(snapshot("snapshot_5", 50, idle));
+      await timeline.add(snapshot(snapshotId("snapshot_5"), 50, idle));
       expect(timeline.visits()).toEqual(
         visitWith([savedByClick, offer, secondClick])
       );
@@ -541,21 +609,23 @@ describe("the timeline", () => {
       const timeline = new Timeline();
       await timeline.add(visit);
       const before = timeline.visits();
-      await timeline.add(snapshot("snapshot_1", 10, idle));
+      await timeline.add(snapshot(snapshotId("snapshot_1"), 10, idle));
 
       expect(timeline.visits()).toBe(before);
     });
   });
 
   it("leaves out a snapshot of a page that has no Visit", async () => {
-    expect(await packageOf([snapshot("snapshot_1", 10, idle)])).toBeNull();
+    expect(
+      await packageOf([snapshot(snapshotId("snapshot_1"), 10, idle)])
+    ).toBeNull();
   });
 
   describe("Visits", () => {
     const cartUrl = "http://shop.test/cart";
     const toCart: TimelineAddition = {
       kind: "visit",
-      page: "page_1",
+      page: pageId("page_1"),
       url: cartUrl,
       cause: "navigate",
     };
@@ -569,10 +639,13 @@ describe("the timeline", () => {
     it("writes an Interaction that leaves the page in its own Visit, with no Change Tree; the next Visit starts from the page it led to", async () => {
       const text = await packageOf([
         visit,
-        snapshot("snapshot_1", 10, idle),
+        snapshot(snapshotId("snapshot_1"), 10, idle),
         toCart,
-        snapshot("snapshot_2", 20, cart),
-        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+        snapshot(snapshotId("snapshot_2"), 20, cart),
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        }),
       ]);
 
       expect(text).toContain(
@@ -626,18 +699,24 @@ describe("the timeline", () => {
     ].join("\n");
     const leaving = [
       visit,
-      snapshot("snapshot_1", 10, idle),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
       toCart,
-      snapshot("snapshot_2", 20, cart),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+      snapshot(snapshotId("snapshot_2"), 20, cart),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
     ];
 
     it("starts a Visit from the page as it stood just before its first Interaction: what it rendered before that is no change", async () => {
       const text = await packageOf([
         ...leaving,
-        snapshot("snapshot_3", 30, cartWithOffer),
-        snapshot("snapshot_4", 40, paid),
-        click("snapshot_3", "snapshot_4", { ref: "f1e3", tree: cart }),
+        snapshot(snapshotId("snapshot_3"), 30, cartWithOffer),
+        snapshot(snapshotId("snapshot_4"), 40, paid),
+        click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
+          ref: pictureRef("f1e3"),
+          tree: cart,
+        }),
       ]);
 
       expect(text).toContain(
@@ -649,7 +728,7 @@ describe("the timeline", () => {
     it("starts a Visit without Interactions from the page as it stood at the end", async () => {
       const text = await packageOf([
         ...leaving,
-        snapshot("snapshot_3", 30, cartWithOffer),
+        snapshot(snapshotId("snapshot_3"), 30, cartWithOffer),
       ]);
 
       expect(text).toContain(
@@ -662,10 +741,13 @@ describe("the timeline", () => {
     it("stays in the Visit when only the part of the address after '?' or '#' changes, as core decides", async () => {
       const text = await packageOf([
         visit,
-        snapshot("snapshot_1", 10, idle),
+        snapshot(snapshotId("snapshot_1"), 10, idle),
         { ...toCart, url: "http://shop.test/?tab=saved#top" },
-        snapshot("snapshot_2", 20, savedPage),
-        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+        snapshot(snapshotId("snapshot_2"), 20, savedPage),
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        }),
       ]);
 
       expect(text).not.toContain("visit_2");
@@ -704,15 +786,15 @@ describe("the timeline, for an input known from its report", () => {
   const typing = (picture: string): TimelineAddition => ({
     kind: "interaction",
     interaction: {
-      page: "page_1",
+      page: pageId("page_1"),
       report: {
         type: "fill",
         selector: 'internal:role=textbox[name="Item"i]',
-        target: { ref: "e4", tree: picture },
+        target: { ref: pictureRef("e4"), tree: picture },
         values: { text: "milk" },
       },
-      before: "snapshot_1",
-      after: "snapshot_2",
+      before: snapshotId("snapshot_1"),
+      after: snapshotId("snapshot_2"),
       at: 10,
       beforeFromReport: true,
     },
@@ -722,8 +804,8 @@ describe("the timeline, for an input known from its report", () => {
     const timeline = new Timeline();
     for (const addition of [
       visit,
-      snapshot("snapshot_1", 10, draftEmpty),
-      snapshot("snapshot_2", 20, draftSaved),
+      snapshot(snapshotId("snapshot_1"), 10, draftEmpty),
+      snapshot(snapshotId("snapshot_2"), 20, draftSaved),
       typing(atTheMoment),
     ])
       await timeline.add(addition);
@@ -760,8 +842,8 @@ describe("the timeline, for an input known from its report", () => {
     const timeline = new Timeline();
     for (const addition of [
       visit,
-      snapshot("snapshot_1", 10, draftEmpty),
-      snapshot("snapshot_2", 20, draftSaved),
+      snapshot(snapshotId("snapshot_1"), 10, draftEmpty),
+      snapshot(snapshotId("snapshot_2"), 20, draftSaved),
       typing(otherShape),
     ])
       await timeline.add(addition);
@@ -805,20 +887,28 @@ describe("the timeline, for a target the snapshot does not list", () => {
     // does not list it, nor its parent, but its grandparent.
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, page),
-      snapshot("snapshot_2", 20, page),
+      snapshot(snapshotId("snapshot_1"), 10, page),
+      snapshot(snapshotId("snapshot_2"), 20, page),
       {
         kind: "interaction",
         interaction: {
-          page: "page_1",
+          page: pageId("page_1"),
           report: {
             type: "click",
             selector: "#star",
-            target: { ref: null, ancestors: ["e99", "e6", "e5"], tree: listed },
+            target: {
+              ref: null,
+              ancestors: [
+                pictureRef("e99"),
+                pictureRef("e6"),
+                pictureRef("e5"),
+              ],
+              tree: listed,
+            },
             values: { clickCount: 1 },
           },
-          before: "snapshot_1",
-          after: "snapshot_2",
+          before: snapshotId("snapshot_1"),
+          after: snapshotId("snapshot_2"),
           at: 15,
         },
       },
@@ -837,20 +927,20 @@ describe("the timeline, for a target the snapshot does not list", () => {
   it("writes a null target ref for a key pressed with nothing focused, and keeps its selector", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, page),
-      snapshot("snapshot_2", 20, page),
+      snapshot(snapshotId("snapshot_1"), 10, page),
+      snapshot(snapshotId("snapshot_2"), 20, page),
       {
         kind: "interaction",
         interaction: {
-          page: "page_1",
+          page: pageId("page_1"),
           report: {
             type: "press",
             selector: "body",
             target: { ref: null, ancestors: [], tree: listed },
             values: { key: "Escape", modifiers: 0 },
           },
-          before: "snapshot_1",
-          after: "snapshot_2",
+          before: snapshotId("snapshot_1"),
+          after: snapshotId("snapshot_2"),
           at: 15,
         },
       },
@@ -896,15 +986,15 @@ describe("the timeline, for an input inside a frame", () => {
   ): TimelineAddition => ({
     kind: "interaction",
     interaction: {
-      page: "page_1",
+      page: pageId("page_1"),
       report: {
         type,
         selector: `iframe >> internal:control=enter-frame >> ${type}`,
-        target: { ref, tree },
+        target: { ref: pictureRef(ref), tree },
         values: {},
       },
-      before: "snapshot_1",
-      after: "snapshot_2",
+      before: snapshotId("snapshot_1"),
+      after: snapshotId("snapshot_2"),
       at: 10,
       ...(beforeFromReport ? { beforeFromReport } : {}),
     },
@@ -913,8 +1003,8 @@ describe("the timeline, for an input inside a frame", () => {
   it("finds a click's target among the frame's elements", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, withFrame("", "Empty")),
-      snapshot("snapshot_2", 20, withFrame("", "One item")),
+      snapshot(snapshotId("snapshot_1"), 10, withFrame("", "Empty")),
+      snapshot(snapshotId("snapshot_2"), 20, withFrame("", "One item")),
       inFrame("click", "e9", frameAlone("")),
     ]);
 
@@ -925,8 +1015,12 @@ describe("the timeline, for an input inside a frame", () => {
     const timeline = new Timeline();
     for (const addition of [
       visit,
-      snapshot("snapshot_1", 10, withFrame("", "Empty")),
-      snapshot("snapshot_2", 20, withFrame(": milk", "Draft saved")),
+      snapshot(snapshotId("snapshot_1"), 10, withFrame("", "Empty")),
+      snapshot(
+        snapshotId("snapshot_2"),
+        20,
+        withFrame(": milk", "Draft saved")
+      ),
       inFrame("fill", "e8", frameAlone(": m"), true),
     ])
       await timeline.add(addition);
@@ -957,23 +1051,29 @@ describe("the timeline, for discard and restore", () => {
    * changed nothing: `interaction_1`, `change_1`, `interaction_2`. */
   const flow: TimelineAddition[] = [
     visit,
-    snapshot("snapshot_1", 10, idle),
-    snapshot("snapshot_2", 20, savedPage),
-    click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-    snapshot("snapshot_3", 30, banner),
-    snapshot("snapshot_4", 40, banner),
-    click("snapshot_3", "snapshot_4", { ref: "e2", tree: banner }),
+    snapshot(snapshotId("snapshot_1"), 10, idle),
+    snapshot(snapshotId("snapshot_2"), 20, savedPage),
+    click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+      ref: pictureRef("e2"),
+      tree: idle,
+    }),
+    snapshot(snapshotId("snapshot_3"), 30, banner),
+    snapshot(snapshotId("snapshot_4"), 40, banner),
+    click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
+      ref: pictureRef("e2"),
+      tree: banner,
+    }),
   ];
   const timelineOf = async (additions: readonly TimelineAddition[]) => {
     const timeline = new Timeline();
     for (const addition of additions) await timeline.add(addition);
     return timeline;
   };
-  const discard = (entry: string): TimelineAddition => ({
+  const discard = (entry: EntryId): TimelineAddition => ({
     kind: "discard",
     entry,
   });
-  const restore = (entry: string): TimelineAddition => ({
+  const restore = (entry: EntryId): TimelineAddition => ({
     kind: "restore",
     entry,
   });
@@ -984,9 +1084,9 @@ describe("the timeline, for discard and restore", () => {
     expect(
       timeline.visits()[0]!.entries.map((entry) => [entry.kind, entry.id])
     ).toEqual([
-      ["interaction", "interaction_1"],
-      ["change", "change_1"],
-      ["interaction", "interaction_2"],
+      ["interaction", entryId("interaction_1")],
+      ["change", entryId("change_1")],
+      ["interaction", entryId("interaction_2")],
     ]);
   });
 
@@ -994,16 +1094,21 @@ describe("the timeline, for discard and restore", () => {
     const timeline = await timelineOf(flow);
     const before = timeline.visits();
 
-    await timeline.add(discard("interaction_1"));
+    await timeline.add(discard(entryId("interaction_1")));
     const [first, change, second] = timeline.visits()[0]!.entries;
-    expect(first).toMatchObject({ id: "interaction_1", discarded: true });
+    expect(first).toMatchObject({
+      id: entryId("interaction_1"),
+      discarded: true,
+    });
     // What it changed is still there: the window hides it, and a restore
     // brings it back as it was.
-    expect(first).toHaveProperty("changeTree");
+    expect(first).toHaveProperty("changes", [
+      expect.objectContaining({ kind: "changed" }),
+    ]);
     expect(change).not.toHaveProperty("discarded");
     expect(second).not.toHaveProperty("discarded");
 
-    await timeline.add(restore("interaction_1"));
+    await timeline.add(restore(entryId("interaction_1")));
     expect(timeline.visits()).toEqual(before);
     expect(timeline.visits()[0]!.entries[0]).not.toHaveProperty("discarded");
   });
@@ -1011,12 +1116,12 @@ describe("the timeline, for discard and restore", () => {
   it("discards a change of its own as well as an Interaction", async () => {
     const timeline = await timelineOf(flow);
 
-    await timeline.add(discard("change_1"));
+    await timeline.add(discard(entryId("change_1")));
 
     expect(timeline.visits()[0]!.entries.map((entry) => entry.id)).toEqual([
-      "interaction_1",
-      "change_1",
-      "interaction_2",
+      entryId("interaction_1"),
+      entryId("change_1"),
+      entryId("interaction_2"),
     ]);
     expect(timeline.visits()[0]!.entries[1]).toMatchObject({
       kind: "change",
@@ -1028,19 +1133,22 @@ describe("the timeline, for discard and restore", () => {
     const timeline = await timelineOf(flow);
     const before = timeline.visits();
 
-    await timeline.add(discard("interaction_9"));
-    await timeline.add(restore("interaction_1"));
+    await timeline.add(discard(entryId("interaction_9")));
+    await timeline.add(restore(entryId("interaction_1")));
 
     expect(timeline.visits()).toBe(before);
   });
 
   it("writes a discarded entry as the released recorder does, a stub; the trace still has the Interaction's action", async () => {
     const timeline = await timelineOf(flow);
-    await timeline.add(discard("interaction_1"));
-    await timeline.add(discard("change_1"));
+    await timeline.add(discard(entryId("interaction_1")));
+    await timeline.add(discard(entryId("change_1")));
 
     expect(
-      await timeline.package(header, { snapshot_1: "11", snapshot_3: "31" })
+      await timeline.package(
+        header,
+        tracePositions({ snapshot_1: "11", snapshot_3: "31" })
+      )
     ).toContain(
       [
         `    timelineEntries:`,
@@ -1074,15 +1182,19 @@ describe("the timeline, for discard and restore", () => {
   it("writes an entry that was discarded and restored as if it never was", async () => {
     const kept = await (await timelineOf(flow)).package(header);
     const timeline = await timelineOf(flow);
-    await timeline.add(discard("interaction_1"));
-    await timeline.add(restore("interaction_1"));
+    await timeline.add(discard(entryId("interaction_1")));
+    await timeline.add(restore(entryId("interaction_1")));
 
     expect(await timeline.package(header)).toBe(kept);
   });
 
   it("still has a package when every entry was discarded, unlike a recording of nothing", async () => {
     const timeline = await timelineOf(flow);
-    for (const entry of ["interaction_1", "change_1", "interaction_2"])
+    for (const entry of [
+      entryId("interaction_1"),
+      entryId("change_1"),
+      entryId("interaction_2"),
+    ])
       await timeline.add(discard(entry));
 
     const text = await timeline.package(header);
@@ -1093,7 +1205,7 @@ describe("the timeline, for discard and restore", () => {
     // Nothing was recorded here: that is empty, as before.
     expect(
       await (
-        await timelineOf([visit, snapshot("snapshot_1", 10, idle)])
+        await timelineOf([visit, snapshot(snapshotId("snapshot_1"), 10, idle)])
       ).package(header)
     ).toBeNull();
   });
@@ -1107,22 +1219,28 @@ describe("the timeline, for discard and restore", () => {
     const paid = cart.replace(`"Pay"`, `"Paid" [disabled]`);
     const timeline = await timelineOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
       {
         kind: "visit",
-        page: "page_1",
+        page: pageId("page_1"),
         url: "http://shop.test/cart",
         cause: "navigate",
       },
-      snapshot("snapshot_2", 20, cart),
-      click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-      snapshot("snapshot_3", 30, cart),
-      snapshot("snapshot_4", 40, paid),
-      click("snapshot_3", "snapshot_4", { ref: "f1e3", tree: cart }),
+      snapshot(snapshotId("snapshot_2"), 20, cart),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+      snapshot(snapshotId("snapshot_3"), 30, cart),
+      snapshot(snapshotId("snapshot_4"), 40, paid),
+      click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
+        ref: pictureRef("f1e3"),
+        tree: cart,
+      }),
     ]);
     const visitsBefore = timeline.visits().map((one) => one.visitId);
 
-    await timeline.add(discard("interaction_1"));
+    await timeline.add(discard(entryId("interaction_1")));
 
     expect(timeline.visits().map((one) => one.visitId)).toEqual(visitsBefore);
     expect(await timeline.package(header)).toContain(
@@ -1149,18 +1267,18 @@ describe("the timeline, for discard and restore", () => {
 // Ticket #1278: an assertion is an entry like an Interaction, with one
 // snapshot that is its "before" and its "after".
 describe("the timeline, for an assertion", () => {
-  const assertion = (snapshotId: string, at: number): TimelineAddition => ({
+  const assertion = (snapshot: SnapshotId, at: number): TimelineAddition => ({
     kind: "interaction",
     interaction: {
-      page: "page_1",
+      page: pageId("page_1"),
       report: {
         type: "assertVisible",
         selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
         target: null,
         values: {},
       },
-      before: snapshotId,
-      after: snapshotId,
+      before: snapshot,
+      after: snapshot,
       at,
     },
   });
@@ -1169,11 +1287,14 @@ describe("the timeline, for an assertion", () => {
     const text = await packageOf(
       [
         visit,
-        snapshot("snapshot_1", 10, idle),
-        snapshot("snapshot_2", 20, idle),
-        click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
-        snapshot("snapshot_3", 30, savedPage),
-        assertion("snapshot_3", 30),
+        snapshot(snapshotId("snapshot_1"), 10, idle),
+        snapshot(snapshotId("snapshot_2"), 20, idle),
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        }),
+        snapshot(snapshotId("snapshot_3"), 30, savedPage),
+        assertion(snapshotId("snapshot_3"), 30),
       ],
       { snapshot_1: "11", snapshot_2: "17", snapshot_3: "23" }
     );
@@ -1211,9 +1332,9 @@ describe("the timeline, for an assertion", () => {
   it("starts a Visit whose first entry is an assertion with the page as it stood at the assertion", async () => {
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      assertion("snapshot_2", 20),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      assertion(snapshotId("snapshot_2"), 20),
     ]);
 
     expect(text).toContain(
@@ -1248,16 +1369,19 @@ describe("the timeline, for the highlight", () => {
   }
   const clicked = [
     visit,
-    snapshot("snapshot_1", 10, idle),
-    snapshot("snapshot_2", 20, savedPage),
-    click("snapshot_1", "snapshot_2", { ref: "e2", tree: idle }),
+    snapshot(snapshotId("snapshot_1"), 10, idle),
+    snapshot(snapshotId("snapshot_2"), 20, savedPage),
+    click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+      ref: pictureRef("e2"),
+      tree: idle,
+    }),
   ];
 
   it("finds an Interaction's target by the ref the page's latest snapshot gives it", async () => {
     const timeline = await timelineOf(clicked);
 
-    expect(timeline.liveTarget("interaction_1")).toEqual({
-      page: "page_1",
+    expect(timeline.liveTarget(entryId("interaction_1"))).toEqual({
+      page: pageId("page_1"),
       ref: "e2",
       selector: 'internal:role=button[name="Save"i]',
     });
@@ -1266,19 +1390,21 @@ describe("the timeline, for the highlight", () => {
   it("finds an element the page re-created by its ref now, not the first one the package keeps", async () => {
     const timeline = await timelineOf([
       ...clicked,
-      snapshot("snapshot_3", 30, recreated),
+      snapshot(snapshotId("snapshot_3"), 30, recreated),
     ]);
 
-    expect(timeline.liveTarget("interaction_1")).toMatchObject({ ref: "e8" });
+    expect(timeline.liveTarget(entryId("interaction_1"))).toMatchObject({
+      ref: "e8",
+    });
   });
 
   it("finds nothing for an element the latest snapshot no longer has", async () => {
     const timeline = await timelineOf([
       ...clicked,
-      snapshot("snapshot_3", 30, without),
+      snapshot(snapshotId("snapshot_3"), 30, without),
     ]);
 
-    expect(timeline.liveTarget("interaction_1")).toBeNull();
+    expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
   });
 
   it("finds nothing for an entry of an earlier Visit of its page", async () => {
@@ -1286,32 +1412,32 @@ describe("the timeline, for the highlight", () => {
       ...clicked,
       {
         kind: "visit",
-        page: "page_1",
+        page: pageId("page_1"),
         url: "http://shop.test/cart",
         cause: "navigate",
       },
-      snapshot("snapshot_3", 30, idle),
+      snapshot(snapshotId("snapshot_3"), 30, idle),
     ]);
 
-    expect(timeline.liveTarget("interaction_1")).toBeNull();
+    expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
   });
 
   it("finds a target with no ref by its selector, and nothing for an entry with neither, or none at all", async () => {
     const timeline = await timelineOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, idle),
-      click("snapshot_1", "snapshot_2", null),
-      snapshot("snapshot_3", 30, savedPage),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, idle),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
+      snapshot(snapshotId("snapshot_3"), 30, savedPage),
     ]);
 
-    expect(timeline.liveTarget("interaction_1")).toEqual({
-      page: "page_1",
+    expect(timeline.liveTarget(entryId("interaction_1"))).toEqual({
+      page: pageId("page_1"),
       ref: null,
       selector: 'internal:role=button[name="Save"i]',
     });
-    expect(timeline.liveTarget("change_1")).toBeNull();
-    expect(timeline.liveTarget("interaction_9")).toBeNull();
+    expect(timeline.liveTarget(entryId("change_1"))).toBeNull();
+    expect(timeline.liveTarget(entryId("interaction_9"))).toBeNull();
   });
 });
 
@@ -1328,44 +1454,46 @@ describe("the timeline, for what the review against the spec found", () => {
     const timeline = new Timeline();
     for (const addition of [
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", null),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
       // The last snapshot before the pause, and the first after it: the
       // page got a status while paused.
-      snapshot("snapshot_3", 30, savedPage),
+      snapshot(snapshotId("snapshot_3"), 30, savedPage),
       {
-        ...snapshot("snapshot_4", 40, withStatus("Saved", "Paused work")),
+        ...snapshot(
+          snapshotId("snapshot_4"),
+          40,
+          withStatus("Saved", "Paused work")
+        ),
         resumes: true,
       },
       // What it changed by itself after Continue is the recording's.
-      snapshot("snapshot_5", 50, withStatus("Saved again", "Paused work")),
-      snapshot("snapshot_6", 60, withStatus("Not saved", "Paused work")),
-      click("snapshot_5", "snapshot_6", null),
+      snapshot(
+        snapshotId("snapshot_5"),
+        50,
+        withStatus("Saved again", "Paused work")
+      ),
+      snapshot(
+        snapshotId("snapshot_6"),
+        60,
+        withStatus("Not saved", "Paused work")
+      ),
+      click(snapshotId("snapshot_5"), snapshotId("snapshot_6"), null),
     ] satisfies TimelineAddition[])
       await timeline.add(addition);
 
     expect(
       timeline
         .visits()[0]!
-        .entries.map((entry) => [entry.kind, entry.changeTree])
+        .entries.map((entry) => [
+          entry.kind,
+          entry.changes?.map((row) => `${row.kind} ${row.element}`),
+        ])
     ).toEqual([
-      [
-        "interaction",
-        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Saved`].join("\n"),
-      ],
-      [
-        "change",
-        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Saved again`].join(
-          "\n"
-        ),
-      ],
-      [
-        "interaction",
-        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Not saved`].join(
-          "\n"
-        ),
-      ],
+      ["interaction", ['changed paragraph "Saved"']],
+      ["change", ['changed paragraph "Saved again"']],
+      ["interaction", ['changed paragraph "Not saved"']],
     ]);
     expect(await timeline.package(header)).not.toContain("Paused work");
   });
@@ -1380,12 +1508,12 @@ describe("the timeline, for what the review against the spec found", () => {
 
     const text = await packageOf([
       visit,
-      snapshot("snapshot_1", 10, idle),
-      snapshot("snapshot_2", 20, savedPage),
-      click("snapshot_1", "snapshot_2", null),
-      snapshot("snapshot_3", 30, done),
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
+      snapshot(snapshotId("snapshot_3"), 30, done),
       // It shares its "before" with the Interaction ahead of it.
-      click("snapshot_1", "snapshot_3", null),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_3"), null),
     ]);
 
     expect(text!.match(/kind: interaction/g)).toHaveLength(2);

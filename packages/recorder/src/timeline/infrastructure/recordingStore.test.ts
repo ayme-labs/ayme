@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { Timeline } from "../domain/timeline";
 import { findTrace, saveRecording } from "./recordingStore";
+import { pageId, snapshotId } from "../../test-utils/ids";
 
 // The store of Recording Packages, on a real folder: what a save leaves
 // there when it cannot be completed, and what is found of a recording's
@@ -39,22 +40,28 @@ async function recorded() {
   const tree = `- button "Save" [ref=e1]`;
   await timeline.add({
     kind: "visit",
-    page: "page_1",
+    page: pageId("page_1"),
     url: "http://shop.test/",
     cause: "initial",
   });
-  for (const id of ["snapshot_1", "snapshot_2"])
+  for (const id of [snapshotId("snapshot_1"), snapshotId("snapshot_2")])
     await timeline.add({
       kind: "snapshot",
-      snapshot: { id, page: "page_1", url: "http://shop.test/", at: 10, tree },
+      snapshot: {
+        id,
+        page: pageId("page_1"),
+        url: "http://shop.test/",
+        at: 10,
+        tree,
+      },
     });
   await timeline.add({
     kind: "interaction",
     interaction: {
-      page: "page_1",
+      page: pageId("page_1"),
       report: { type: "click", selector: null, target: null, values: {} },
-      before: "snapshot_1",
-      after: "snapshot_2",
+      before: snapshotId("snapshot_1"),
+      after: snapshotId("snapshot_2"),
       at: 15,
     },
   });

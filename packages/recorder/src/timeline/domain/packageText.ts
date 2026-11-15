@@ -9,11 +9,13 @@ import {
 import { stringify } from "yaml";
 
 import type {
+  EntryId,
   InteractionDetails,
   RecordedVisit,
   TimelineEntry,
 } from "../../contract";
-import type { InteractionReport } from "./recorded";
+import type { InteractionReport, PageId, TracePosition } from "./recorded";
+import type { FirstRef } from "./refs";
 
 // The text of a Recording Package, in the released format: the layout the
 // `ayme-recorder` skill and the 0.1 recorder's readers know. Trees are core's
@@ -28,8 +30,23 @@ export type PackageHeader = {
   readonly tracePath: string | null;
 };
 
-/** A Visit as the package shows it: with its starting picture. */
-export type PackageVisit = RecordedVisit & { readonly baselineTree: string };
+/**
+ * An entry as the timeline keeps it until the recording is saved: the entry
+ * as subscribers are told it, and what it changed as core's Change Tree,
+ * which keeps how each node stood before. The tree is null when the entry
+ * changed nothing, or its page was gone before that could be seen.
+ */
+export type KeptEntry = {
+  readonly entry: TimelineEntry;
+  readonly change: StructuralTree | null;
+};
+
+/** A Visit as the package shows it: with its starting picture, and its
+ * entries with their Change Trees. */
+export type PackageVisit = Omit<RecordedVisit, "entries"> & {
+  readonly baselineTree: string;
+  readonly entries: readonly KeptEntry[];
+};
 
 /**
  * Where the trace holds one Interaction: the numbers the stock trace tool
@@ -37,11 +54,11 @@ export type PackageVisit = RecordedVisit & { readonly baselineTree: string };
  * is text, as the released format keeps it.
  */
 export type TracePoint = {
-  readonly interactionId: string;
-  readonly pageId: string;
-  readonly beforeSnapshotId?: string;
+  readonly interactionId: EntryId;
+  readonly pageId: PageId;
+  readonly beforeSnapshotId?: TracePosition;
   /** Absent when the Interaction left its page. */
-  readonly afterSnapshotId?: string;
+  readonly afterSnapshotId?: TracePosition;
   /** Milliseconds on the recorded browser's monotonic clock. */
   readonly startedAt: number;
   readonly endedAt: number;
@@ -63,9 +80,9 @@ const INTERACTION_VALUES = [
 
 /** An Interaction as the package lists it, in the released order of fields. */
 export function interactionDetails(
-  id: string,
+  id: EntryId,
   report: InteractionReport,
-  targetRef: string | null
+  targetRef: FirstRef | null
 ): InteractionDetails {
   const details: Record<string, unknown> = {
     id,
@@ -100,7 +117,7 @@ const tree = (key: string, text: string) =>
 
 /** Whether a node of a Change Tree was added, removed or changed itself,
  * and does not only lead to a change below it. */
-const changedItself = (node: StructuralNode) => {
+export const changedItself = (node: StructuralNode) => {
   // Only a node that was updated says whether it changed itself.
   const { kind, selfChanged } = {
     kind: undefined,
@@ -110,6 +127,12 @@ const changedItself = (node: StructuralNode) => {
   return kind === "added" || kind === "removed" || selfChanged;
 };
 const isNode = (child: StructuralNode | string) => typeof child !== "string";
+
+/** Whether a node of a Change Tree changed itself, or has a node below it
+ * that did. */
+export const leadsToChange = (node: StructuralNode): boolean =>
+  changedItself(node) ||
+  node.children.some((child) => isNode(child) && leadsToChange(child));
 
 /** The package's trees list no property of a node, such as a link's URL. */
 // Stryker disable next-line ArrayDeclaration: equivalent, since a made-up name of a property selects none either
@@ -129,9 +152,6 @@ export function wholeTreeText(structuralTree: StructuralTree): string {
 /** A Change Tree's text: only the ways down to the nodes that were added,
  * removed or changed themselves. Empty when there is none. */
 export function changeText(change: StructuralTree): string {
-  const leadsToChange = (node: StructuralNode): boolean =>
-    changedItself(node) ||
-    node.children.some((child) => isNode(child) && leadsToChange(child));
   const forest = new StructuralNodeForest<StructuralNode>({
     roots: change.getRootNodes(),
     // A node that only leads to a change keeps no text of its own.
@@ -145,8 +165,8 @@ export function changeText(change: StructuralTree): string {
   );
 }
 
-const entryLines = (entry: TimelineEntry) =>
-  entry.discarded ? stubLines(entry) : keptLines(entry);
+const entryLines = ({ entry, change }: KeptEntry) =>
+  entry.discarded ? stubLines(entry) : keptLines(entry, change);
 
 /** What the released recorder keeps of an entry the person left out: where
  * it was, and for an Interaction its id and type. No target, no value, no
@@ -166,13 +186,13 @@ const stubLines = (entry: TimelineEntry) =>
       : { kind: entry.kind, timestamp: entry.timestamp, discarded: true }
   );
 
-const keptLines = (entry: TimelineEntry) => {
+const keptLines = (entry: TimelineEntry, change: StructuralTree | null) => {
   // A change of its own has no Interaction, and a field with no value is
   // left out.
   const { kind, timestamp, interaction } = { interaction: undefined, ...entry };
   return [
     ...fields({ kind, timestamp, interaction }),
-    ...(entry.changeTree === null ? [] : tree("changeTree", entry.changeTree)),
+    ...(change === null ? [] : tree("changeTree", changeText(change))),
   ];
 };
 

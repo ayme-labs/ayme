@@ -33,9 +33,17 @@ export type RecorderPhase =
    * untouched. What was recorded is kept, and Continue goes on from it. */
   | { readonly phase: "paused" };
 
+/**
+ * An entry's identity, such as "interaction_3" or "change_1": the engine
+ * makes it, a window or the toolbar sends it back in a command, and the
+ * engine checks it there as it arrives.
+ */
+export type EntryId = string & { readonly __brand: "EntryId" };
+
 /** One Interaction as it is recorded, and as the Recording Package lists it. */
 export type InteractionDetails = {
-  readonly id: string;
+  /** Its entry's id. */
+  readonly id: EntryId;
   /** Playwright's name for it: "click", "check" and so on. */
   readonly type: string;
   /** The target's Structural Ref; null when the target is not known in the
@@ -46,8 +54,38 @@ export type InteractionDetails = {
   readonly [value: string]: unknown;
 };
 
-/** One entry of a Visit's timeline. A Change Tree is text, in the compact
- * notation of the Recording Package. */
+/**
+ * One element of what an entry changed: a topmost element of its Change
+ * Tree, as whoever shows a recorder lists it. What changed inside an element
+ * that appeared, was removed or changed is not listed again.
+ */
+export type ChangeRow = {
+  readonly kind: "added" | "removed" | "changed";
+  /** The element in the words of the package's trees: its role, its name
+   * and its states, and its one text quoted, such as `button "Pay"
+   * [disabled]`; "element" for one that has none of these. */
+  readonly element: string;
+  /** For a changed element: each of its own properties that changed, in a
+   * fixed order. Empty when what changed is none of these. */
+  readonly changed?: readonly PropertyChange[];
+};
+
+/**
+ * One property of an element that changed: its role, its name, its own text
+ * (its text pieces, apart from the elements inside it, joined by a space), a
+ * state (`checked`, `disabled`, `expanded`, `active`, `selected`,
+ * `pressed`, `level`), `cursor`, or one of its properties under its name with
+ * a slash, such as `/url`. A value is written as the package's trees write
+ * it, such as "true", "mixed" or "2"; one that was absent or empty is left
+ * out.
+ */
+export type PropertyChange = {
+  readonly property: string;
+  readonly from?: string;
+  readonly to?: string;
+};
+
+/** One entry of a Visit's timeline. */
 export type TimelineEntry = (
   | {
       readonly kind: "interaction";
@@ -56,13 +94,13 @@ export type TimelineEntry = (
       readonly interaction: InteractionDetails;
       /** What it changed; null when it changed nothing, or when the page was
        * gone before that could be seen. */
-      readonly changeTree: string | null;
+      readonly changes: readonly ChangeRow[] | null;
     }
   /** What changed on the page with no Interaction to explain it. */
   | {
       readonly kind: "change";
       readonly timestamp: number;
-      readonly changeTree: string;
+      readonly changes: readonly ChangeRow[];
     }
 ) & {
   /**
@@ -70,7 +108,7 @@ export type TimelineEntry = (
    * window and in the saved package, and the one a decision names. An
    * Interaction's is its own id. Whatever kind of entry is added, it has one.
    */
-  readonly id: string;
+  readonly id: EntryId;
   /** The person left it out of the recording. It stays where it is: what it
    * changed is still here, and the package writes it as a stub. Absent when
    * it is kept. */
@@ -148,9 +186,9 @@ export type RecorderCommand =
   /** While paused: leaves the entry out of the recording. It stays in the
    * timeline, marked, and Finish saves it as a stub. `entry` is the entry's
    * `id`. */
-  | { readonly type: "discard"; readonly entry: string }
+  | { readonly type: "discard"; readonly entry: EntryId }
   /** While paused: puts a discarded entry back. */
-  | { readonly type: "restore"; readonly entry: string }
+  | { readonly type: "restore"; readonly entry: EntryId }
   // Assert visibility.
   /** While recording: the next element the person clicks is recorded as
    * "this must be visible", and the click does not reach the page. It takes
@@ -163,7 +201,7 @@ export type RecorderCommand =
    * target on the page, in place of any other. Answered "notFound" when the
    * element is gone, belongs to an earlier Visit, or cannot be found for
    * certain: nothing is highlighted then. It changes no entry. */
-  | { readonly type: "highlight"; readonly entry: string }
+  | { readonly type: "highlight"; readonly entry: EntryId }
   /** While recording or paused: highlights nothing. */
   | { readonly type: "clearHighlight" };
 

@@ -5,6 +5,12 @@ import {
   type StructuralNode,
 } from "@ayme-dev/core/structural-observation";
 
+import {
+  pictureRef,
+  snapshotRef,
+  type PictureRef,
+  type SnapshotRef,
+} from "./refs";
 import { scopesFor } from "./target";
 
 // An input the gate never holds, as typing, has no snapshot of its own just
@@ -20,7 +26,7 @@ const nodes = (node: StructuralNode) =>
 export type PictureBefore = {
   readonly tree: StructuralTree;
   /** The target's ref in `tree`, if the picture names one that matched. */
-  readonly target: AriaRef | undefined;
+  readonly target: SnapshotRef | undefined;
 };
 
 /**
@@ -43,7 +49,7 @@ export function pictureBefore(options: {
   /** Playwright's selector for the target: it says which document the input
    * was given to, and so which document the picture is of. */
   readonly selector: string | null;
-  readonly target: string | null;
+  readonly target: PictureRef | null;
   readonly targetAsBefore: boolean;
   readonly refs: SyntheticAriaRefFactory;
 }): PictureBefore | null {
@@ -82,7 +88,7 @@ export function pictureBefore(options: {
   // What one reading of the picture has matched so far, by the ref each
   // element has in `between`.
   let matched = new Set<AriaRef>();
-  let target: AriaRef | undefined;
+  let target: SnapshotRef | undefined;
 
   function pair(seen: readonly StructuralNode[], known: StructuralNode[]) {
     const pairs = new Map<StructuralNode, StructuralNode>();
@@ -109,9 +115,10 @@ export function pictureBefore(options: {
     seen: StructuralNode,
     known: StructuralNode | undefined
   ): StructuralNode {
-    const isTarget = seen.ref === options.target;
+    // The picture's refs are the report's own.
+    const isTarget = pictureRef(seen.ref) === options.target;
     const ref = known?.ref ?? refs.create();
-    if (isTarget) target = ref;
+    if (isTarget) target = snapshotRef(ref);
     // The picture never holds what is inside a frame; the target has
     // changed already: both stand as the earlier snapshot has them.
     if (

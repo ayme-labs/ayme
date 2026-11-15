@@ -16,13 +16,18 @@ import {
 import { afterEach, expect, it } from "vitest";
 
 import { RecordedBrowser } from "../../../session/application";
-import type { BrowserRequest, BrowserSignal } from "../../../session/domain";
+import type {
+  BrowserRequest,
+  BrowserSignal,
+  Written,
+} from "../../../session/domain";
 import { Timeline } from "../../../timeline/domain";
 import {
   loadProjectPlaywright,
   projectPlaywrightCli,
 } from "../projectPlaywright";
 import { stockBrowser } from "./stockBrowser";
+import { snapshotId } from "../../../test-utils/ids";
 
 // The compatibility suite: the stock adapter on each supported Playwright.
 // Each private detail of Playwright the adapter uses has its test here
@@ -54,7 +59,9 @@ const { chromium: projectChromium } = underTest.playwright;
 
 /** A recorded browser on stock Playwright, as the engine sees it. */
 type Harness = {
-  ask(request: BrowserRequest): Promise<void>;
+  /** Takes the ids a test writes by hand, as the browser's requests carry
+   * them. */
+  ask(request: Written<BrowserRequest>): Promise<void>;
   /** Everything told so far, in order. */
   readonly told: readonly BrowserSignal[];
   /** Resolves with the first signal told that matches. */
@@ -157,7 +164,8 @@ async function onStockPlaywright(html: string): Promise<Harness> {
     });
 
   return {
-    ask: (request) => runtime.runPromise(browser.ask(request)),
+    ask: (request) =>
+      runtime.runPromise(browser.ask(request as BrowserRequest)),
     told,
     toldOf: async (kind, matches = () => true) => {
       const found = () =>
@@ -397,10 +405,18 @@ it("traces the recording, marks each snapshot, and numbers each mark as the stoc
   ]);
   const title = "document.querySelector('h1').textContent";
   expect(
-    await stockToolEvaluates(trace.file, trace.positions.snapshot_1!, title)
+    await stockToolEvaluates(
+      trace.file,
+      trace.positions[snapshotId("snapshot_1")]!,
+      title
+    )
   ).toBe("One");
   expect(
-    await stockToolEvaluates(trace.file, trace.positions.snapshot_2!, title)
+    await stockToolEvaluates(
+      trace.file,
+      trace.positions[snapshotId("snapshot_2")]!,
+      title
+    )
   ).toBe("Two");
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
@@ -950,10 +966,18 @@ it("keeps the highlight out of the page's structure and out of the trace's numbe
   expect(highlightedTree).toBe(tree);
   const title = "document.querySelector('h1').textContent";
   expect(
-    await stockToolEvaluates(trace.file, trace.positions.snapshot_1!, title)
+    await stockToolEvaluates(
+      trace.file,
+      trace.positions[snapshotId("snapshot_1")]!,
+      title
+    )
   ).toBe("One");
   expect(
-    await stockToolEvaluates(trace.file, trace.positions.snapshot_3!, title)
+    await stockToolEvaluates(
+      trace.file,
+      trace.positions[snapshotId("snapshot_3")]!,
+      title
+    )
   ).toBe("Two");
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
@@ -1235,7 +1259,13 @@ it(`gives a click in a frame inside a frame the target ref of its element, throu
   await timeline.add({ kind: "snapshot", snapshot });
   await timeline.add({
     kind: "interaction",
-    interaction: { page, report, before: "before", after: "before", at: 0 },
+    interaction: {
+      page,
+      report,
+      before: snapshot.id,
+      after: snapshot.id,
+      at: 0,
+    },
   });
 
   const [entry] = timeline.visits()[0]!.entries;

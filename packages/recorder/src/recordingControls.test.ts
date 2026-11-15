@@ -333,13 +333,10 @@ describe("Continue", () => {
       .toEqual(["interaction_1", "interaction_2"]);
 
     expect(
-      entriesOf(updates.at(-1)!).map((entry) => [entry.kind, entry.changeTree])
+      entriesOf(updates.at(-1)!).map((entry) => [entry.kind, entry.changes])
     ).toEqual([
       ["interaction", null],
-      [
-        "change",
-        [`- [ref=e1]:`, `  - <added> [ref=e4] status: Later`].join("\n"),
-      ],
+      ["change", [{ kind: "added", element: 'status "Later"' }]],
       ["interaction", null],
     ]);
     await recorder.send({ type: "finish" });
