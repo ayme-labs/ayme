@@ -43,13 +43,13 @@ Code serialized into the page, such as a `locator.evaluate` callback, reads as u
 
 ### Code a real browser runs
 
-Code that only a real browser can exercise is measured by the folder it sits in, under a layer's `infrastructure/`, as `measuredOtherwise` in [`packages/test-config/analysis.js`](../packages/test-config/analysis.js) says. A new file takes its folder's treatment.
+Some code can only be exercised by a real browser: Node's coverage never sees code that runs in the page, and a mutant of code that drives a browser takes a browser to kill. So a folder under a layer's `infrastructure/` decides how its code is measured, and a new file takes its folder's treatment:
 
-- `infrastructure/live/` drives a real browser from Node, as the recorder's stock adapter does. It is not mutated. Its measure is its contract suite on every supported Playwright version, and that suite's coverage counts in its CRAP score: the package's `test:crap` runs the suite beside the unit tests (the recorder's [`vitest.crap.config.ts`](../packages/recorder/vitest.crap.config.ts)), while a mutation run runs the unit tests only.
-- `infrastructure/in-page/` is sent into the page as text. It is neither mutated nor scored, since Node's coverage cannot see it run. Lint lets it import types only and caps each of its functions at a complexity of 4: a decision it needs is a plain rule outside the folder, unit-tested and mutated, and sent into the page with it.
-- Plain logic beside them imports neither folder, so it stays testable without a browser. The package's lint config enforces where each may be imported from.
+- `live/` drives a real browser from Node, as the recorder's stock adapter does. Its contract suite on every supported Playwright version is its measure.
+- `in-page/` is sent into the page as text. It stays trivial: the decisions it needs are plain rules outside the folder, which Node tests and mutates, sent into the page with it.
+- The plain logic beside them stays testable without a browser.
 
-The change-analysis report lists the changed files these folders hold under a heading of their own, with how each is measured instead.
+Which folder is mutated and which is scored is `measuredOtherwise` in [`packages/test-config/analysis.js`](../packages/test-config/analysis.js). The coverage that scores `live/` comes from the package's `test:crap` config, such as the recorder's [`vitest.crap.config.ts`](../packages/recorder/vitest.crap.config.ts). Where each kind of code may be imported from, and the complexity cap of `in-page/`, are in the package's lint config, such as the recorder's [`eslint.config.js`](../packages/recorder/eslint.config.js). The change-analysis report lists the changed files these folders hold under a heading of their own.
 
 Act on the report like this:
 
@@ -73,7 +73,7 @@ Fakes, test doubles and page objects for tests ship from the package's `testing`
 | `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                                                                     |
 | `@ayme-dev/mcp/testing`                         | A coding agent for e2e tests: `startAgent` runs `ayme mcp` over stdio, `connectPage` pairs a Playwright page by link, and `ignoreAutoPairScan` keeps a context's pages from auto-pairing |
 | `@ayme-dev/recorder/testing`                    | `startScriptedRecorder`: a real recorder on a scripted browser that a test plays by hand, for the engine's tests and the recorder window's e2e tests                                     |
-| `@ayme-dev/recorder-window/testing`             | The recorder window's and the in-page toolbar's page objects, for the recorder fixture's e2e tests                                                                                       |
+| `@ayme-dev/recorder-window/testing`             | The recorder window's and the in-page toolbar's page objects, for the window package's own browser tests and the recorder fixture's e2e tests                                            |
 
 Consumers may use these entries to test their own integration.
 

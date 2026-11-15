@@ -14,8 +14,8 @@ const projects = {
   attach: { AYME_RECORDER_BROWSER: "attach" },
 };
 
-/** The suite's two projects, whole, so that the fast lane can run them too
- * (vitest.fast.config.ts). */
+/** The suite's two projects, whole, so that the coverage behind the CRAP
+ * score can run them too (vitest.crap.config.ts). */
 export const contractProjects: TestProjectInlineConfiguration[] =
   Object.entries(projects).map(([name, env]) => ({
     test: {
