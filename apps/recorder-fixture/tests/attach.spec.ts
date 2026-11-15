@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 
+import { CartPage } from "../.ayme/pom/CartPage";
 import { expect, test } from "./fixtures";
 
 test.describe("recording a running browser", () => {
@@ -14,7 +15,8 @@ test.describe("recording a running browser", () => {
     const { cdpEndpoint, page } = await runningBrowser(
       fixturePages.url("/cart.html")
     );
-    await page.locator("#add").click();
+    const cart = new CartPage(page);
+    await cart.addItemButton.click();
     const requests = fixturePages.requests.length;
 
     const run = await runRecorder(["codegen", "--cdp-endpoint", cdpEndpoint]);
@@ -35,9 +37,9 @@ test.describe("recording a running browser", () => {
     expect(run.stderr()).toBe("");
     // Not loaded again: what was done on the page before is still there.
     expect(fixturePages.requests).toHaveLength(requests);
-    await expect(page.getByText("Items: 1")).toBeVisible();
-    await page.locator("#add").click();
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await expect(cart.itemCount).toHaveText("Items: 1");
+    await cart.addItemButton.click();
+    await expect(cart.itemCount).toHaveText("Items: 2");
   });
 
   test("codegen --cdp-endpoint records the running browser's page and saves the package, and the browser goes on", async ({
@@ -49,6 +51,7 @@ test.describe("recording a running browser", () => {
     const { cdpEndpoint, page } = await runningBrowser(
       fixturePages.url("/cart.html")
     );
+    const cart = new CartPage(page);
     // A project of the test's own, inside this app, so the recorder finds
     // its Playwright and saves there.
     const project = testInfo.outputPath("project");
@@ -65,8 +68,8 @@ test.describe("recording a running browser", () => {
     await expect(window.controls.status).toHaveText("Recording");
     // At once: "Recording" is shown only when a click is certain to be
     // recorded.
-    await page.locator("#add").click();
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await cart.addItemButton.click();
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await expect(window.timeline.visit(0).entries).toHaveCount(1);
     await window.controls.press("Finish");
 
@@ -82,8 +85,8 @@ test.describe("recording a running browser", () => {
       `targetSelector: internal:role=button[name="Add item"i]`
     );
     // The browser is someone else's: it stays open, and the page goes on.
-    await page.locator("#add").click();
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await cart.addItemButton.click();
+    await expect(cart.itemCount).toHaveText("Items: 2");
   });
 
   test.describe(() => {
@@ -93,14 +96,15 @@ test.describe("recording a running browser", () => {
       startRecording,
     }) => {
       const { recorder, page } = await startRecording("/cart.html");
+      const cart = new CartPage(page);
       expect(await recorder.send({ type: "record" })).toBe("applied");
 
       // The browser's own client, through its Playwright API.
-      await page.locator("#add").click();
-      await expect(page.getByText("Items: 1")).toBeVisible();
+      await cart.addItemButton.click();
+      await expect(cart.itemCount).toHaveText("Items: 1");
       await page.waitForTimeout(1_000);
-      await page.locator("#add").click();
-      await expect(page.getByText("Items: 2")).toBeVisible();
+      await cart.addItemButton.click();
+      await expect(cart.itemCount).toHaveText("Items: 2");
 
       expect(await recorder.send({ type: "finish" })).toBe("applied");
       const outcome = await recorder.done;
@@ -110,8 +114,8 @@ test.describe("recording a running browser", () => {
       expect(text.match(/button "Add item"/g)?.length).toBeGreaterThan(0);
 
       // Each click reached the page once, and the page goes on as before.
-      await page.locator("#add").click();
-      await expect(page.getByText("Items: 3")).toBeVisible();
+      await cart.addItemButton.click();
+      await expect(cart.itemCount).toHaveText("Items: 3");
     });
   });
 });
