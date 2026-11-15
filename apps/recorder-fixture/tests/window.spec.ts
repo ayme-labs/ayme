@@ -155,7 +155,7 @@ test.describe("the recorder window", () => {
     await expect(change!.title).toHaveText("Element removed");
     await expect(change!.target).toHaveCount(0);
     expect(await change!.whatChanged()).toEqual([
-      { element: "listitem", effect: "was removed" },
+      { element: "listitem “Bread”", effect: "was removed" },
     ]);
     await expect(click!.title).toHaveText("Click");
 

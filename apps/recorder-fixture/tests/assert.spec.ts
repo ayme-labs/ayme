@@ -158,7 +158,7 @@ test.describe("the hover highlight", () => {
       .poll(() => click!.whatChanged())
       .toEqual([
         {
-          element: "paragraph",
+          element: "paragraph “Items: 1”",
           effect: "text changed from “Items: 0” to “Items: 1”",
         },
       ]);

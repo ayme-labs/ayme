@@ -61,9 +61,10 @@ export type InteractionDetails = {
  */
 export type ChangeRow = {
   readonly kind: "added" | "removed" | "changed";
-  /** The element in the words of the package's trees: its role, its name
-   * and its states, and its one text quoted, such as `button "Pay"
-   * [disabled]`; "element" for one that has none of these. */
+  /** The element by its role and its name, such as `button "Pay"`. One with
+   * no name is named by its text or by a named element near it; "element"
+   * for one that nothing names. Its states are not in it: for a changed
+   * element they are in `changed`. */
   readonly element: string;
   /** For a changed element: each of its own properties that changed, in a
    * fixed order. Empty when what changed is none of these. */
