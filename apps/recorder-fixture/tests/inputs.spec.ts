@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { InputsPage } from "../.ayme/pom/InputsPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** Presses Finish and reads the package the recorder says it saved. */
@@ -41,22 +42,19 @@ test.describe("every kind of input", () => {
   }) => {
     const recording = await startRecording("/inputs.html");
     const { recorder, page, person } = recording;
+    const inputs = new InputsPage(page);
     expect(await recorder.send({ type: "record" })).toBe("applied");
 
     // Quickly, on a page that takes a while to read: each key comes while
     // an earlier input is still held.
-    await person.click(page.locator("#item"));
+    await person.click(inputs.itemInput);
     await person.type("milk");
     await person.press("Enter");
     await person.type("eggs");
 
-    await expect(page.locator("#list li")).toHaveText(["milk"]);
-    await expect(page.locator("#item")).toHaveValue("eggs");
-    expect(await page.evaluate("window.keys")).toEqual([
-      ..."milk",
-      "Enter",
-      ..."eggs",
-    ]);
+    await expect(inputs.listItems).toHaveText(["milk"]);
+    await expect(inputs.itemInput).toHaveValue("eggs");
+    expect(await inputs.keys()).toEqual([..."milk", "Enter", ..."eggs"]);
     await person.pause();
 
     const interactions = interactionsOf(await finish(recording));
@@ -80,35 +78,34 @@ test.describe("every kind of input", () => {
   }) => {
     const recording = await startRecording("/inputs.html");
     const { recorder, page, person } = recording;
+    const inputs = new InputsPage(page);
     expect(await recorder.send({ type: "record" })).toBe("applied");
 
     // A choice made by typing on the closed list: "L" picks "Large".
-    await page.locator("#size").focus();
+    await inputs.sizeSelect.focus();
     await person.type("l");
-    await expect(page.locator("#size")).toHaveValue("Large");
+    await expect(inputs.sizeSelect).toHaveValue("Large");
     await person.pause();
     // A file chosen by another client of the browser, as a person's would be.
-    await page.locator("#photo").setInputFiles({
+    await inputs.photoInput.setInputFiles({
       name: "photo.png",
       mimeType: "image/png",
       buffer: Buffer.from("not really a picture"),
     });
     await person.pause();
-    await person.click(page.locator("#star"));
-    await expect(page.locator("#starred")).toHaveText("Starred");
+    await person.click(inputs.star);
+    await expect(inputs.starred).toHaveText("Starred");
     await person.pause();
-    await person.doubleClick(page.locator("#twice"));
-    await expect(page.locator("#opened")).toHaveText("Opened 1 times");
+    await person.doubleClick(inputs.openTwiceButton);
+    await expect(inputs.opened).toHaveText("Opened 1 times");
     await person.pause();
-    await person.click(page.frameLocator("#frame").locator("#inner"));
-    await expect(page.frameLocator("#frame").locator("#innerSaid")).toHaveText(
-      "Inner pressed"
-    );
+    await person.click(inputs.innerButton);
+    await expect(inputs.innerState).toHaveText("Inner pressed");
     await person.pause();
-    await person.click(page.locator("#shadowed"));
-    await expect(page.locator("#shadowSaid")).toHaveText("Shadow pressed");
+    await person.click(inputs.shadowButton);
+    await expect(inputs.shadowState).toHaveText("Shadow pressed");
     await person.pause();
-    await page.evaluate("document.activeElement.blur()");
+    await inputs.blur();
     await person.press("Escape");
     await person.pause();
 

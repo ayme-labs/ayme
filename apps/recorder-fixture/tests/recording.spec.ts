@@ -1,6 +1,13 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { CartPage } from "../.ayme/pom/CartPage";
+import { CheckoutPage } from "../.ayme/pom/CheckoutPage";
+import { GesturesPage } from "../.ayme/pom/GesturesPage";
+import { HelpPage } from "../.ayme/pom/HelpPage";
+import { LatePage } from "../.ayme/pom/LatePage";
+import { LeavingPage } from "../.ayme/pom/LeavingPage";
+import { ShopPage } from "../.ayme/pom/ShopPage";
 import { expect, test, type Recording } from "./fixtures";
 
 const expected = (name: string) =>
@@ -35,17 +42,18 @@ test.describe("recording", () => {
   }) => {
     const recording = await startRecording("/cart.html");
     const { recorder, page, person } = recording;
+    const cart = new CartPage(page);
     expect(await recorder.send({ type: "record" })).toBe("applied");
 
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await person.pause();
     // The page re-creates the "Add item" button.
-    await person.click(page.locator("#redraw"));
-    await expect.poll(() => page.evaluate("window.redraws")).toBe(1);
+    await person.click(cart.redrawButton);
+    await expect.poll(() => cart.redraws()).toBe(1);
     await person.pause();
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 2");
 
     const { recordings, folder, text } = await finish(recording);
 
@@ -71,13 +79,14 @@ test.describe("recording", () => {
   }) => {
     const recording = await startRecording("/late.html");
     const { recorder, page, person } = recording;
+    const orders = new LatePage(page);
     await recorder.send({ type: "record" });
     // The page goes on rendering after Record, before anything is done on it.
-    await page.evaluate("window.showOffer()");
-    await expect(page.getByText("Free delivery today")).toBeVisible();
+    await orders.showOffer();
+    await expect(orders.offer).toBeVisible();
 
-    await person.click(page.locator("#refresh"));
-    await expect(page.getByText("Refreshed")).toBeVisible();
+    await person.click(orders.refreshButton);
+    await expect(orders.refreshState).toHaveText("Refreshed");
 
     const { text } = await finish(recording);
     expect(text).toContain(
@@ -116,23 +125,22 @@ test.describe("recording", () => {
   }) => {
     const recording = await startRecording("/gestures.html");
     const { recorder, page, person } = recording;
+    const gesturesPage = new GesturesPage(page);
     // A person goes on when the page has got the click that ends a gesture.
     const clicked = (id: string) =>
-      expect
-        .poll(() => page.evaluate("window.events.at(-1)"))
-        .toBe(`click ${id}`);
+      expect.poll(() => gesturesPage.lastEvent()).toBe(`click ${id}`);
     const gestures = async () => {
       // A press the page reacts to before any click.
-      await person.click(page.locator("#hold"));
-      await expect(page.locator("#held")).toHaveText(/^Released/);
+      await person.click(gesturesPage.holdButton);
+      await expect(gesturesPage.held).toHaveText(/^Released/);
       await clicked("hold");
       // A drag of the slider's handle.
-      const handle = await person.middleOf(page.locator("#handle"));
+      const handle = await person.middleOf(gesturesPage.handle);
       await person.drag(handle, { x: handle.x + 120, y: handle.y });
-      await expect(page.locator("#position")).toHaveText("Handle at 120");
+      await expect(gesturesPage.position).toHaveText("Handle at 120");
       await clicked("handle");
       // A selection made by dragging across the text.
-      const text = (await page.locator("#text").boundingBox())!;
+      const text = (await gesturesPage.text.boundingBox())!;
       const line = text.y + text.height / 2;
       await person.drag(
         { x: text.x + 2, y: line },
@@ -140,13 +148,7 @@ test.describe("recording", () => {
       );
       await clicked("text");
     };
-    const pageNow = () =>
-      page.evaluate(`({
-        events: window.events,
-        held: document.getElementById("held").textContent,
-        position: document.getElementById("position").textContent,
-        selection: String(getSelection()),
-      })`) as Promise<{ events: string[]; selection: string }>;
+    const pageNow = () => gesturesPage.state();
 
     // Without recording: the page as a person finds it.
     await gestures();
@@ -177,17 +179,19 @@ test.describe("Visits", () => {
   }) => {
     const recording = await startRecording("/shop.html");
     const { recorder, page, person } = recording;
+    const shop = new ShopPage(page);
+    const checkout = new CheckoutPage(page);
     await recorder.send({ type: "record" });
 
-    await person.click(page.locator("#checkout"));
+    await person.click(shop.checkoutLink);
     await page.waitForURL(/checkout\.html$/);
     await person.pause();
     // The new page goes on rendering before anything is done on it.
-    await page.evaluate("window.showOffer()");
-    await expect(page.getByText("Free delivery today")).toBeVisible();
+    await checkout.showOffer();
+    await expect(checkout.offer).toBeVisible();
     // Its first click is held like any other.
-    await person.click(page.locator("#pay"));
-    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+    await person.click(checkout.payButton);
+    await expect(checkout.paymentState).toHaveText("Paid");
 
     const { text } = await finish(recording);
     // The click that left carries no Change Tree: the next Visit shows
@@ -221,13 +225,14 @@ test.describe("Visits", () => {
     await recorder.send({ type: "record" });
 
     const opening = page.context().waitForEvent("page");
-    await person.click(page.locator("#help"));
+    await person.click(new ShopPage(page).helpLink);
     const help = await opening;
     await help.waitForURL(/help\.html$/);
-    await help.locator("#thanks").waitFor();
+    const helpPage = new HelpPage(help);
+    await helpPage.thanksButton.waitFor();
     await person.pause();
-    await (await personOn(help)).click(help.locator("#thanks"));
-    await expect(help.getByText("Thanked 1")).toBeVisible();
+    await (await personOn(help)).click(helpPage.thanksButton);
+    await expect(helpPage.thanked).toHaveText("Thanked 1");
 
     const { text } = await finish(recording);
     const opened = text.slice(text.indexOf(`    url: ${help.url()}`));
@@ -241,13 +246,14 @@ test.describe("Visits", () => {
     startRecording,
   }) => {
     const { page, person } = await startRecording("/shop.html");
+    const checkout = new CheckoutPage(page);
 
-    await person.click(page.locator("#checkout"));
+    await person.click(new ShopPage(page).checkoutLink);
     await page.waitForURL(/checkout\.html$/);
-    await page.locator("#pay").waitFor();
-    await person.click(page.locator("#pay"));
+    await checkout.payButton.waitFor();
+    await person.click(checkout.payButton);
 
-    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+    await expect(checkout.paymentState).toHaveText("Paid");
   });
 
   test("a click held when its page goes away is never passed on to the page after it, and the recording still saves", async ({
@@ -255,20 +261,22 @@ test.describe("Visits", () => {
   }) => {
     const recording = await startRecording("/leaving.html");
     const { recorder, page, person } = recording;
+    const leaving = new LeavingPage(page);
+    const checkout = new CheckoutPage(page);
     await recorder.send({ type: "record" });
     // A recording with no Interaction saves nothing: one comes first.
-    await person.click(page.locator("#stay"));
-    await expect(page.getByText("Stayed")).toBeVisible();
+    await person.click(leaving.stayButton);
+    await expect(leaving.stayed).toHaveText("Stayed");
     await person.pause();
 
     // The page goes elsewhere as the mouse is released, and the click is
     // held in the page it leaves.
-    await person.click(page.locator("#leave"));
+    await person.click(leaving.leaveButton);
     await page.waitForURL(/checkout\.html$/);
-    await page.locator("#pay").waitFor();
+    await checkout.payButton.waitFor();
     await person.pause();
 
-    expect(await page.evaluate("window.clicks")).toBe(0);
+    expect(await checkout.clicks()).toBe(0);
     const { text } = await finish(recording);
     expect(text).toContain("  - visitId: visit_2");
   });

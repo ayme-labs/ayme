@@ -7,6 +7,8 @@ import {
 } from "@ayme-dev/recorder-window/testing";
 import { selectors, type Locator, type Page } from "@playwright/test";
 
+import { CartPage } from "../.ayme/pom/CartPage";
+import { InputsPage } from "../.ayme/pom/InputsPage";
 import { expect, test } from "./fixtures";
 
 // Ticket #1278: Assert visibility and the hover highlight, in pages a real
@@ -65,20 +67,21 @@ test.describe("Assert visibility", () => {
     startRecording,
   }) => {
     const { page, person, recorder } = await startRecording("/cart.html");
+    const cart = new CartPage(page);
     const toolbar = await RecorderToolbar.on(page, selectors);
     await person.click(toolbar.button("Record"));
     await expect(toolbar.status).toHaveText("Recording");
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await person.pause();
 
     await person.click(toolbar.assertVisibility);
     await expect.poll(() => toolbar.picking()).toBe(true);
     // A click on "Add item" would add an item: picking it adds none.
-    await person.click(page.locator("#add"));
+    await person.click(cart.addItemButton);
     await expect.poll(() => toolbar.picking()).toBe(false);
     await person.pause();
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await person.click(toolbar.button("Finish"));
 
     const outcome = await recorder.done;
@@ -101,14 +104,15 @@ test.describe("the hover highlight", () => {
   }) => {
     const recording = await startRecording("/inputs.html", { window: true });
     const { page, person } = recording;
+    const inputs = new InputsPage(page);
     const window = new RecorderWindow(windowPage);
     await window.open(recording.windowUrl!);
     await window.controls.press("Record");
     await expect(window.controls.status).toHaveText("Recording");
     const elements = [
-      page.locator("#twice"),
-      page.frameLocator("#frame").locator("#inner"),
-      page.locator("#shadowed"),
+      inputs.openTwiceButton,
+      inputs.innerButton,
+      inputs.shadowButton,
     ];
     for (const element of elements) {
       await person.click(element);
