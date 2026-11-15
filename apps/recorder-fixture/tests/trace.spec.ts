@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { CartPage } from "../.ayme/pom/CartPage";
 import { expect, test, type Recording } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 
@@ -38,12 +39,13 @@ test.describe("the trace of a recording", () => {
     test.setTimeout(90_000);
     const recording = await startRecording("/cart.html");
     const { recorder, page, person } = recording;
+    const cart = new CartPage(page);
     await recorder.send({ type: "record" });
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 1")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 1");
     await person.pause();
-    await person.click(page.locator("#add"));
-    await expect(page.getByText("Items: 2")).toBeVisible();
+    await person.click(cart.addItemButton);
+    await expect(cart.itemCount).toHaveText("Items: 2");
 
     const { folder, text } = await finish(recording);
 
@@ -83,10 +85,11 @@ test.describe("the trace of a recording", () => {
     const clicks = async (count: number) => {
       const recording = await startRecording("/cart.html");
       const { recorder, page, person } = recording;
+      const cart = new CartPage(page);
       await recorder.send({ type: "record" });
       for (let item = 1; item <= count; item += 1) {
-        await person.click(page.locator("#add"));
-        await expect(page.getByText(`Items: ${item}`)).toBeVisible();
+        await person.click(cart.addItemButton);
+        await expect(cart.itemCount).toHaveText(`Items: ${item}`);
         await person.pause();
       }
       const { folder } = await finish(recording);
