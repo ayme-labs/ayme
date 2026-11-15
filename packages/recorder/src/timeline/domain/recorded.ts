@@ -4,7 +4,7 @@
 import type { PageId } from "@ayme-dev/core/structural-observation";
 
 import type { EntryId, RecordedVisit } from "../../contract";
-import type { PictureRef } from "./refs";
+import type { PictureRef, SnapshotRef } from "./refs";
 
 export type { PageId } from "@ayme-dev/core/structural-observation";
 
@@ -55,6 +55,17 @@ export type InteractionReport = {
   /** Everything else Playwright said: the button, the modifiers and so on. */
   readonly values: Readonly<Record<string, unknown>>;
 };
+
+/**
+ * How the page as it is now is asked for an element: by a selector of
+ * Playwright's, by the ref the page's latest snapshot gives it, by its role
+ * and its name (any name when it is empty), or by its text.
+ */
+export type ElementLookup =
+  | { readonly by: "selector"; readonly selector: string }
+  | { readonly by: "ref"; readonly ref: SnapshotRef }
+  | { readonly by: "role"; readonly role: string; readonly name: string }
+  | { readonly by: "text"; readonly text: string };
 
 /** One Interaction with the snapshots around it. */
 export type RecordedInteraction = {

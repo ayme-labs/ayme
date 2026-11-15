@@ -1,4 +1,5 @@
 export type {
+  ElementLookup,
   InteractionReport,
   PageId,
   PageSnapshot,

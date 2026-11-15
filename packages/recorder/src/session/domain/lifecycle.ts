@@ -8,12 +8,12 @@ import type {
   RecordingOutcome,
 } from "../../contract";
 import type {
+  ElementLookup,
   InteractionReport,
   PageId,
   PageSnapshot,
   RecordingTrace,
   SnapshotId,
-  SnapshotRef,
   TimelineAddition,
   VisitCause,
 } from "../../timeline/domain";
@@ -119,13 +119,11 @@ export type BrowserSignal =
   /** The trace is thrown away, as "stopTrace" without `keep` asked. */
   | { readonly kind: "traceDiscarded" };
 
-/** The element a highlight is drawn on, as the page now names it: by the
- * ref its latest snapshot gave it, or, for a target with no ref, by its
- * selector. */
+/** The element a highlight is drawn on: the page it is on, and how the
+ * page as it is now is asked for it. */
 export type HighlightTarget = {
   readonly page: PageId;
-  readonly ref: SnapshotRef | null;
-  readonly selector: string | null;
+  readonly find: ElementLookup;
 };
 
 /** What a page held back. */
@@ -265,11 +263,13 @@ export type ToDo =
   /** Tell every subscriber of a warning, once. */
   | { readonly kind: "warn"; readonly warning: RecorderWarning }
   // Highlight.
-  /** Ask the timeline where the element of an entry is now, then tell the
+  /** Ask the timeline where an element of an entry is now, its target or
+   * with `row` the element of that row of its changes, then tell the
    * lifecycle "located". */
   | {
       readonly kind: "locate";
       readonly entry: EntryId;
+      readonly row?: number;
       readonly highlight: number;
     }
   /** Keep the answer to the command this step handled under `key`, beside
@@ -2370,7 +2370,12 @@ function highlight(
     state: next,
     todo: [
       { kind: "keepReply", key: keyOf(n) },
-      { kind: "locate", entry: asked.entry, highlight: n },
+      {
+        kind: "locate",
+        entry: asked.entry,
+        ...(asked.row === undefined ? {} : { row: asked.row }),
+        highlight: n,
+      },
     ],
   };
 }

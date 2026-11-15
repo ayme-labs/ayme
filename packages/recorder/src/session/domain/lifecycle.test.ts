@@ -18,6 +18,7 @@ import {
   WRAP_UP_LIMIT_MS,
   type Happening,
   type HeldInput,
+  type HighlightTarget,
   type InputId,
   type ToDo,
 } from "./lifecycle";
@@ -2876,7 +2877,10 @@ describe("the lifecycle, for the highlight", () => {
     kind: "command",
     command: { type: "clearHighlight" },
   };
-  const target = { page: page1, ref: snapshotRefOf("e2"), selector: null };
+  const target: HighlightTarget = {
+    page: page1,
+    find: { by: "ref", ref: snapshotRefOf("e2") },
+  };
   const located = (n: number, found = true): Happening => ({
     kind: "located",
     highlight: n,
@@ -2915,6 +2919,20 @@ describe("the lifecycle, for the highlight", () => {
       name: "a highlight while recording keeps its answer and has the timeline find the entry's element",
       happened: [...recording, highlight(interaction1)],
       todo: [keepReply(1), locate(interaction1, 1)],
+    },
+    {
+      name: "a highlight of a row of the entry's changes has the timeline find that row's element",
+      happened: [
+        ...recording,
+        {
+          kind: "command",
+          command: { type: "highlight", entry: interaction1, row: 2 },
+        },
+      ],
+      todo: [
+        keepReply(1),
+        { kind: "locate", entry: interaction1, row: 2, highlight: 1 },
+      ],
     },
     {
       name: "a highlight while paused does the same: reviewing is when it is used most",

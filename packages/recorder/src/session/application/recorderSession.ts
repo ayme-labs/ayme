@@ -257,7 +257,7 @@ export class RecorderSession extends Context.Service<
               return yield* tell({
                 kind: "located",
                 highlight: item.highlight,
-                target: timeline.liveTarget(item.entry),
+                target: timeline.liveTarget(item.entry, item.row),
               });
             case "warn":
               return warn(item.warning);

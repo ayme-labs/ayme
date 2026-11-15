@@ -39,14 +39,15 @@ const snapshot = (
 const click = (
   before: SnapshotId,
   after: SnapshotId | null,
-  target: { ref: PictureRef; tree: string } | null
+  target: { ref: PictureRef; tree: string } | null,
+  selector: string | null = 'internal:role=button[name="Save"i]'
 ): TimelineAddition => ({
   kind: "interaction",
   interaction: {
     page: pageId("page_1"),
     report: {
       type: "click",
-      selector: 'internal:role=button[name="Save"i]',
+      selector,
       target,
       values: { clickCount: 1, modifiers: 0, button: "left" },
     },
@@ -1354,14 +1355,16 @@ describe("the timeline, for an assertion", () => {
   });
 });
 
-// Ticket #1278: where an entry's element is now, for the hover highlight.
+// Where an entry's element is now, for the hover highlight: its target by
+// its recorded selector, the element of a row of its changes by its ref while
+// the page's latest snapshot lists it, and by its role and name after.
 describe("the timeline, for the highlight", () => {
   const recreated = [
     `- generic [ref=e1]:`,
     `  - button "Save" [ref=e8]`,
-    `  - paragraph [ref=e3]: Saved`,
+    `  - paragraph [ref=e9]: Saved`,
   ].join("\n");
-  const without = [`- generic [ref=e1]:`, `  - paragraph [ref=e3]: Saved`].join(
+  const without = [`- generic [ref=e1]:`, `  - button "Save" [ref=e2]`].join(
     "\n"
   );
   async function timelineOf(additions: readonly TimelineAddition[]) {
@@ -1378,14 +1381,27 @@ describe("the timeline, for the highlight", () => {
       tree: idle,
     }),
   ];
+  const page1 = pageId("page_1");
+  const interaction1 = entryId("interaction_1");
 
-  it("finds an Interaction's target by the ref the page's latest snapshot gives it", async () => {
+  it("finds an Interaction's target by its recorded selector, whatever the latest snapshot lists", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      snapshot(snapshotId("snapshot_3"), 30, recreated),
+    ]);
+
+    expect(timeline.liveTarget(interaction1)).toEqual({
+      page: page1,
+      find: { by: "selector", selector: 'internal:role=button[name="Save"i]' },
+    });
+  });
+
+  it("finds the element of a row of an entry's changes by the ref the page's latest snapshot gives it", async () => {
     const timeline = await timelineOf(clicked);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toEqual({
-      page: pageId("page_1"),
-      ref: "e2",
-      selector: 'internal:role=button[name="Save"i]',
+    expect(timeline.liveTarget(interaction1, 0)).toEqual({
+      page: page1,
+      find: { by: "ref", ref: "e3" },
     });
   });
 
@@ -1395,18 +1411,67 @@ describe("the timeline, for the highlight", () => {
       snapshot(snapshotId("snapshot_3"), 30, recreated),
     ]);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toMatchObject({
-      ref: "e8",
+    expect(timeline.liveTarget(interaction1, 0)).toMatchObject({
+      find: { by: "ref", ref: "e9" },
     });
   });
 
-  it("finds nothing for an element the latest snapshot no longer has", async () => {
+  it("finds an element the latest snapshot no longer lists by its role and name, or by its text when that is its name", async () => {
+    const offer = `${savedPage}\n  - button "Remove" [ref=e4]`;
     const timeline = await timelineOf([
-      ...clicked,
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, offer),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
       snapshot(snapshotId("snapshot_3"), 30, without),
     ]);
+    expect(timeline.visits()[0]!.entries[0]!.changes).toEqual([
+      expect.objectContaining({ element: 'paragraph "Saved"' }),
+      expect.objectContaining({ element: 'button "Remove"' }),
+    ]);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
+    expect(timeline.liveTarget(interaction1, 0)).toEqual({
+      page: page1,
+      find: { by: "text", text: "Saved" },
+    });
+    expect(timeline.liveTarget(interaction1, 1)).toEqual({
+      page: page1,
+      find: { by: "role", role: "button", name: "Remove" },
+    });
+  });
+
+  it("finds the element of a row of a change of its own", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      snapshot(snapshotId("snapshot_3"), 30, idle),
+    ]);
+    await timeline.package(header);
+
+    expect(timeline.liveTarget(entryId("change_1"), 0)).toEqual({
+      page: page1,
+      find: { by: "ref", ref: "e3" },
+    });
+  });
+
+  it("finds nothing for a row an entry does not have, nor for an element named by nothing", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      snapshot(
+        snapshotId("snapshot_3"),
+        30,
+        `${savedPage}\n  - generic [ref=e5]`
+      ),
+    ]);
+    await timeline.package(header);
+    expect(timeline.visits()[0]!.entries[1]!.changes).toEqual([
+      { kind: "added", element: "element" },
+    ]);
+
+    expect(timeline.liveTarget(interaction1, 1)).toBeNull();
+    expect(timeline.liveTarget(entryId("change_1"), 0)).toBeNull();
   });
 
   it("finds nothing for an entry of an earlier Visit of its page", async () => {
@@ -1414,30 +1479,28 @@ describe("the timeline, for the highlight", () => {
       ...clicked,
       {
         kind: "visit",
-        page: pageId("page_1"),
+        page: page1,
         url: "http://shop.test/cart",
         cause: "navigate",
       },
       snapshot(snapshotId("snapshot_3"), 30, idle),
     ]);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
+    expect(timeline.liveTarget(interaction1)).toBeNull();
+    expect(timeline.liveTarget(interaction1, 0)).toBeNull();
   });
 
-  it("finds a target with no ref by its selector, and nothing for an entry with neither, or none at all", async () => {
+  it("finds nothing for the target of a change of its own, of an entry it does not have, or of one with no selector", async () => {
     const timeline = await timelineOf([
       visit,
       snapshot(snapshotId("snapshot_1"), 10, idle),
       snapshot(snapshotId("snapshot_2"), 20, idle),
-      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null, null),
       snapshot(snapshotId("snapshot_3"), 30, savedPage),
     ]);
+    await timeline.package(header);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toEqual({
-      page: pageId("page_1"),
-      ref: null,
-      selector: 'internal:role=button[name="Save"i]',
-    });
+    expect(timeline.liveTarget(interaction1)).toBeNull();
     expect(timeline.liveTarget(entryId("change_1"))).toBeNull();
     expect(timeline.liveTarget(entryId("interaction_9"))).toBeNull();
   });

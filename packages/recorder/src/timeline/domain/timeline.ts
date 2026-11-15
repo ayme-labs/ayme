@@ -10,7 +10,12 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 
-import type { EntryId, RecordedVisit, RecorderWarning } from "../../contract";
+import type {
+  EntryId,
+  RecordedVisit,
+  RecorderWarning,
+  TimelineEntry,
+} from "../../contract";
 import { foundRows, type FoundRow } from "./changeRows";
 import { namedNear, wordsOf, type NamedElement } from "./elementNames";
 import {
@@ -23,6 +28,7 @@ import {
   type TracePoint,
 } from "./packageText";
 import type {
+  ElementLookup,
   PageId,
   PageSnapshot,
   RecordedInteraction,
@@ -106,6 +112,28 @@ const rowsOf = (change: StructuralTree) => {
     rows: found.map(({ element }) => element),
   };
 };
+
+/** How the page is asked for an entry's target: by its recorded selector. */
+const selectorOf = (entry: TimelineEntry): ElementLookup | null => {
+  const selector =
+    entry.kind === "interaction" ? entry.interaction.targetSelector : undefined;
+  return selector ? { by: "selector", selector } : null;
+};
+
+/** How the page is asked for the element a row names: by the ref the
+ * Visit's latest snapshot gives it, or else by its role and name. */
+function lookupOf(
+  visit: Visit,
+  element: NamedElement | null | undefined
+): ElementLookup | null {
+  if (!element) return null;
+  const now = [...visit.snapshots.at(-1)!.firstRefs].find(
+    ([, first]) => first === element.ref
+  )?.[0];
+  if (now && !isSyntheticRef(now)) return { by: "ref", ref: now };
+  if (element.byText) return { by: "text", text: element.name };
+  return { by: "role", role: element.role, name: element.name };
+}
 
 /** The place of a snapshot among a Visit's; negative when it is not there. */
 const placeIn = (visit: Visit, snapshot: SnapshotId | null) =>
@@ -278,36 +306,28 @@ export class Timeline {
   }
 
   /**
-   * Where the target of an entry is now, for the highlight: on its page,
-   * by the ref the page's latest snapshot gives it, which may not be the
-   * first ref the package keeps for it; or, for a target with no ref, by
-   * its selector. Null for an entry with no target, one of a Visit its page
-   * has left, and an element the latest snapshot no longer has.
+   * Where an element of an entry is now, for the highlight: with no `row`,
+   * its target, by the selector Playwright recorded; with `row`, the element
+   * that row of its changes names, by the ref the page's latest snapshot
+   * gives it, or, when that snapshot no longer lists it, by its role and
+   * name. Only a ref the browser gave can name an element of the page: core
+   * makes up refs for the nodes the browser gave none. Null for an entry of
+   * a Visit its page has left, a target with no selector, and a row the
+   * entry does not have or whose element is named by nothing.
    */
-  liveTarget(entry: EntryId): {
-    readonly page: PageId;
-    readonly ref: SnapshotRef | null;
-    readonly selector: string | null;
-  } | null {
+  liveTarget(
+    entry: EntryId,
+    row?: number
+  ): { readonly page: PageId; readonly find: ElementLookup } | null {
     for (const visit of this.all) {
-      const found = visit.entries.find((one) => one.entry.id === entry)?.entry;
+      const found = visit.entries.find((one) => one.entry.id === entry);
       if (!found) continue;
-      if (found.kind !== "interaction") return null;
       if (this.current.get(visit.page) !== visit) return null;
-      const { targetRef, targetSelector } = found.interaction;
-      const selector = targetSelector ?? null;
-      if (targetRef === null)
-        return selector === null
-          ? null
-          : { page: visit.page, ref: null, selector };
-      const latest = visit.snapshots.at(-1);
-      const now = latest
-        ? [...latest.firstRefs].find(([, first]) => first === targetRef)?.[0]
-        : undefined;
-      // Only a ref the browser gave can name an element of the page: core
-      // makes up refs for the nodes the browser gave none.
-      if (!now || isSyntheticRef(now)) return null;
-      return { page: visit.page, ref: now, selector };
+      const find =
+        row === undefined
+          ? selectorOf(found.entry)
+          : lookupOf(visit, found.rows[row]);
+      return find && { page: visit.page, find };
     }
     return null;
   }

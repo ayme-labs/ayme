@@ -14,6 +14,7 @@ import type {
   BrowserContext,
   CDPSession,
   Frame,
+  Locator,
   Page,
 } from "playwright-core";
 
@@ -27,6 +28,7 @@ import {
 } from "../../../session/domain";
 import {
   pictureRef,
+  type ElementLookup,
   type InteractionReport,
   type PageId,
   type SnapshotId,
@@ -824,10 +826,11 @@ async function openPage(
   };
 
   /**
-   * Draws the highlight on the element a ref of the adapter's own latest
-   * snapshot names, or a selector, in place of the one drawn before, and
-   * tells whether it found it: exactly one element, with a box. Finding it
-   * is Playwright's public locator, which the trace records; drawing is not.
+   * Draws the highlight on the element the page as it is now gives for a
+   * lookup, in place of the one drawn before, and tells whether it found it:
+   * exactly one element, with a box, never a guess among several. Finding
+   * it is Playwright's public locator, which the trace records; drawing is
+   * not.
    */
   async function highlight(
     request: Extract<BrowserRequest, { kind: "highlight" }>
@@ -848,10 +851,8 @@ async function openPage(
         found: box !== null,
       });
     const open = pages.get(target.page);
-    const selector =
-      target.ref !== null ? `aria-ref=${target.ref}` : target.selector;
-    if (!open || selector === null || !latest()) return found(null);
-    const element = open.locator(selector);
+    if (!open || !latest()) return found(null);
+    const element = locatorOf(open, target.find);
     const box =
       (await element.count().catch(() => 0)) === 1
         ? await element
@@ -1056,6 +1057,24 @@ const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
 /** Playwright's recorder's mode in which it picks the element whose
  * visibility is asserted. */
 const PICKING_MODE = "assertingVisibility";
+
+/** The page's locator for an element a lookup asks for: a ref by the
+ * adapter's own latest snapshot, a role and name by their exact words. */
+function locatorOf(page: Page, find: ElementLookup): Locator {
+  switch (find.by) {
+    case "selector":
+      return page.locator(find.selector);
+    case "ref":
+      return page.locator(`aria-ref=${find.ref}`);
+    case "role":
+      return page.getByRole(
+        find.role as Parameters<Page["getByRole"]>[0],
+        find.name ? { name: find.name, exact: true } : {}
+      );
+    case "text":
+      return page.getByText(find.text, { exact: true });
+  }
+}
 
 /** How long finding the element of a highlight may take. */
 const HIGHLIGHT_LOOKUP_MS = 500;

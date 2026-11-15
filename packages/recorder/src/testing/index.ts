@@ -22,11 +22,27 @@ import type {
   Written,
 } from "../session/domain";
 import {
+  type ElementLookup,
   type InteractionReport,
   type PageId,
   type SnapshotId,
   type TracePosition,
 } from "../timeline/domain";
+
+/** Whether the page the scripted browser shows has an element a lookup
+ * asks for: a selector always finds one, as the page has no document. */
+function shows(tree: string, find: ElementLookup): boolean {
+  switch (find.by) {
+    case "selector":
+      return true;
+    case "ref":
+      return tree.includes(`[ref=${find.ref}]`);
+    case "role":
+      return tree.includes(`${find.role} "${find.name}"`);
+    case "text":
+      return tree.includes(`: ${find.text}`);
+  }
+}
 
 /** A report as the test wrote it: the browser hands its refs over here, so
  * they are the report's own from here on. */
@@ -252,9 +268,7 @@ export async function startScriptedRecorder(
       // Highlight.
       case "highlight": {
         const { target } = request;
-        const found =
-          target !== null &&
-          (target.ref === null || tree.includes(`[ref=${target.ref}]`));
+        const found = target !== null && shows(tree, target.find);
         highlighted = found ? target : null;
         if (target)
           tell({ kind: "highlighted", highlight: request.highlight, found });

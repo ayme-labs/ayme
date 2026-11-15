@@ -355,29 +355,29 @@ describe("where an entry's target is now, for the highlight", () => {
     expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
   });
 
-  it("finds nothing by a ref the browser did not give: only the browser's refs name an element of the page", async () => {
-    // The snapshot lists the option without a ref; Playwright's own picture
-    // of the page gives it one.
+  it("finds the element of a row by its role and name when the page gave it no ref: only the browser's refs name an element of the page", async () => {
+    // The snapshots list the option without a ref.
     const choice = page(`- combobox "Size" [ref=e2]:`, `  - option "Large"`);
+    const chosen = page(
+      `- combobox "Size" [ref=e2]:`,
+      `  - option "Large" [selected]`
+    );
     const timeline = await timelineOf([
       visit,
       snapshot(snapshotId("snapshot_1"), 10, choice),
-      snapshot(snapshotId("snapshot_2"), 20, choice),
+      snapshot(snapshotId("snapshot_2"), 20, chosen),
       click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
-        ref: pictureRef("e22"),
-        tree: [
-          `- generic [ref=e20]:`,
-          `  - combobox "Size" [ref=e21]:`,
-          `    - option "Large" [ref=e22]`,
-        ].join("\n"),
+        ref: pictureRef("e2"),
+        tree: choice,
       }),
     ]);
-    const [entry] = timeline.visits()[0]!.entries;
-    expect(entry).toMatchObject({
-      interaction: { targetRef: expect.stringMatching(/^s_\d+$/) },
-    });
+    expect(timeline.visits()[0]!.entries[0]!.changes).toEqual([
+      expect.objectContaining({ element: 'option "Large"' }),
+    ]);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
+    expect(timeline.liveTarget(entryId("interaction_1"), 0)).toMatchObject({
+      find: { by: "role", role: "option", name: "Large" },
+    });
   });
 });
 

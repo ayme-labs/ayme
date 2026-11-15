@@ -43,7 +43,12 @@ export const CommandSchema = z.union([
   z.object({ type: z.literal("discard"), entry: EntryIdSchema }),
   z.object({ type: z.literal("restore"), entry: EntryIdSchema }),
   // Highlight.
-  z.object({ type: z.literal("highlight"), entry: EntryIdSchema }),
+  z.object({
+    type: z.literal("highlight"),
+    entry: EntryIdSchema,
+    // The row of the entry's changes whose element it is, counted from 0.
+    row: z.optional(z.number()),
+  }),
 ]);
 
 /** The windows' subscriptions, which the server waits for when it closes. */

@@ -15,7 +15,7 @@ const click = {
   values: { button: "left" },
 };
 
-async function oneClickRecorded() {
+async function oneClickRecorded(after = idle) {
   const { recorder, browser } = await startScriptedRecorder({
     url: "http://shop.test/",
   });
@@ -29,6 +29,7 @@ async function oneClickRecorded() {
     page: pageId("page_1"),
     input: inputId("input_1"),
   });
+  browser.showPage(after);
   browser.settle();
   browser.report(click);
   await expect
@@ -47,8 +48,7 @@ describe("the hover highlight", () => {
     ).resolves.toBe("applied");
     expect(browser.highlighted).toEqual({
       page: pageId("page_1"),
-      ref: "e2",
-      selector: 'internal:role=button[name="Save"i]',
+      find: { by: "selector", selector: 'internal:role=button[name="Save"i]' },
     });
 
     await expect(recorder.send({ type: "clearHighlight" })).resolves.toBe(
@@ -68,6 +68,35 @@ describe("the hover highlight", () => {
       recorder.send({ type: "highlight", entry: entryId("change_9") })
     ).resolves.toBe("notFound");
 
+    expect(browser.highlighted).toBeNull();
+    recorder.end();
+    await recorder.done;
+  });
+
+  it("highlights the element of a row of an entry's changes by its ref, and answers 'notFound' for a row the entry does not have", async () => {
+    const { recorder, browser } = await oneClickRecorded(
+      `${idle}\n  - status [ref=e3]: Saved`
+    );
+
+    await expect(
+      recorder.send({
+        type: "highlight",
+        entry: entryId("interaction_1"),
+        row: 0,
+      })
+    ).resolves.toBe("applied");
+    expect(browser.highlighted).toEqual({
+      page: pageId("page_1"),
+      find: { by: "ref", ref: "e3" },
+    });
+
+    await expect(
+      recorder.send({
+        type: "highlight",
+        entry: entryId("interaction_1"),
+        row: 1,
+      })
+    ).resolves.toBe("notFound");
     expect(browser.highlighted).toBeNull();
     recorder.end();
     await recorder.done;

@@ -881,7 +881,7 @@ it("draws the highlight on the element a ref names, in the page, in a same-origi
     await browser.ask({
       kind: "highlight",
       highlight: index + 1,
-      target: { page: "page_1", ref, selector: null },
+      target: { page: "page_1", find: { by: "ref", ref } },
     });
 
     const { found } = await browser.toldOf(
@@ -904,6 +904,35 @@ it("draws the highlight on the element a ref names, in the page, in a same-origi
   await expect.poll(() => drawn(browser.page)).toBeNull();
 });
 
+it("draws the highlight on the one element a selector, a role and name or a text names on the page as it is now, and nothing when more than one does", async () => {
+  const browser = await onStockPlaywright(
+    `<h1>Orders</h1><button id="main">Main</button><p>Saved</p><button>Twin</button><button>Twin</button>`
+  );
+  const lookups = [
+    [{ by: "selector", selector: "#main" }, true],
+    [{ by: "role", role: "button", name: "Main" }, true],
+    [{ by: "role", role: "heading", name: "" }, true],
+    [{ by: "text", text: "Saved" }, true],
+    [{ by: "role", role: "button", name: "Twin" }, false],
+    [{ by: "role", role: "button", name: "" }, false],
+  ] as const;
+
+  for (const [index, [find, one]] of lookups.entries()) {
+    await browser.ask({
+      kind: "highlight",
+      highlight: index + 1,
+      target: { page: "page_1", find },
+    });
+    const { found } = await browser.toldOf(
+      "highlighted",
+      (told) => told.highlight === index + 1
+    );
+    expect([find, found]).toEqual([find, one]);
+    if (one) await expect.poll(() => drawn(browser.page)).not.toBeNull();
+    else expect(await drawn(browser.page)).toBeNull();
+  }
+});
+
 it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
   const browser = await onStockPlaywright(PLACES);
   const { ref } = await refOf(browser, "snapshot_1", "Main");
@@ -913,7 +942,7 @@ it("draws nothing for a highlight that a clear replaced while the element was st
     browser.ask({
       kind: "highlight",
       highlight: 1,
-      target: { page: "page_1", ref, selector: null },
+      target: { page: "page_1", find: { by: "ref", ref } },
     }),
     browser.ask({ kind: "highlight", highlight: 2, target: null }),
   ]);
@@ -931,7 +960,7 @@ it("draws nothing, and says so, for an element the page no longer has", async ()
   await browser.ask({
     kind: "highlight",
     highlight: 1,
-    target: { page: "page_1", ref, selector: null },
+    target: { page: "page_1", find: { by: "ref", ref } },
   });
 
   const { found } = await browser.toldOf("highlighted");
@@ -950,7 +979,7 @@ it("keeps the highlight out of the page's structure and out of the trace's numbe
   await browser.ask({
     kind: "highlight",
     highlight: 1,
-    target: { page: "page_1", ref, selector: null },
+    target: { page: "page_1", find: { by: "ref", ref } },
   });
   await browser.toldOf("highlighted");
   await expect.poll(() => drawn(browser.page)).not.toBeNull();
@@ -990,7 +1019,7 @@ it.runIf(attaching)(
     await browser.ask({
       kind: "highlight",
       highlight: 1,
-      target: { page: "page_1", ref, selector: null },
+      target: { page: "page_1", find: { by: "ref", ref } },
     });
     await browser.toldOf("highlighted");
     await expect.poll(() => drawn(browser.page)).not.toBeNull();

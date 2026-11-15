@@ -166,11 +166,11 @@ describe("an element the page re-created, and the original back beside it", () =
   it("are each found on the page by its own ref, for the highlight", async () => {
     const timeline = await timelineOf(flow);
 
-    expect(timeline.liveTarget(entryId("interaction_1"))).toMatchObject({
-      ref: "e2",
+    expect(timeline.liveTarget(entryId("interaction_2"), 0)).toMatchObject({
+      find: { by: "ref", ref: "e2" },
     });
-    expect(timeline.liveTarget(entryId("interaction_2"))).toMatchObject({
-      ref: "e8",
+    expect(timeline.liveTarget(entryId("interaction_2"), 1)).toMatchObject({
+      find: { by: "ref", ref: "e8" },
     });
   });
 
