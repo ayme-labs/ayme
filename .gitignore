@@ -16,7 +16,7 @@ reports/
 /.stryker-tmp-*/
 stryker.log
 test-results/
-.vitest-attachments/
+.vitest/
 apps/example-vue/goal-runs/
 apps/example-vue/dist-without-ayme/
 

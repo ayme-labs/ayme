@@ -4,7 +4,7 @@
 
 Use a Page Object Tool whenever one does the step, reading its schema: one
 call can do what several clicks and keystrokes would. Each is named after its
-class and action, such as `ListItem.archive`, across all instances of the
+class and action, such as `ProjectRow.remove`, across all instances of the
 class. Drive the rest of the page with your browser automation; when that is
 Playwright CLI, Playwright MCP or agent-browser, read
 [Browser automation tools](browser-automation-tools.md).
@@ -27,20 +27,39 @@ itself, `ayme_list_tools` lists the current tools and `ayme_call` runs them.
 
 ## Name a Page Object by its id
 
-`page_objects` shows the Page Objects on the page now as a tree: each one's
-class, its declared children with their values, and the id of each Page
-Object that has a root, such as `ListItem po3`. A rooted Page Object Tool
-takes that id, for a page, a single child and a collection item alike, with
-its action arguments under `args`:
-`ListItem.archive({ id: "po3", args: { … } })`. A root-less Page Object Tool
-takes its arguments directly.
+`page_objects` shows the Page Objects on the page now as a tree. Example:
+`ProjectsPage` holds a collection `projects()` of `ProjectRow`. `ProjectRow`
+declares its name and its Remove button, and has the actions `remove()` and
+`rename(name)`. `page_objects` shows:
 
-An id stays with its Page Object while the root's element is on the page, and
-is never given to another. When a call answers that the Page Object is not on
-the page, read `page_objects` for the ids there are now. An id is not a ref:
-pass it only to a Page Object Tool.
-[Page Object Children](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-page-objects.md#aymechild)
-has the example.
+```
+ProjectsPage
+  projects:
+    - ProjectRow po1
+        name: text: Launch plan
+        removeButton: button "Remove"
+    - ProjectRow po2
+        name: text: Q4 survey
+        removeButton: button "Remove"
+```
+
+One tool serves every `ProjectRow`. Name the row by the id after its class.
+To remove Q4 survey, pass `po2`. To rename Launch plan, pass `po1`:
+
+```
+ProjectRow.remove({ id: "po2" })
+ProjectRow.rename({ id: "po1", args: { name: "Launch plan v2" } })
+```
+
+The action's own arguments go under `args`. Leave `args` out when the action
+takes none. Any class with an id is called this way, a page or single child
+included. `ProjectsPage` has no id, because it has no root, so its tools take
+the action's arguments directly, such as
+`ProjectsPage.openNewProjectDialog({})`.
+
+An id stays with its Page Object while the Page Object is on the page, and is
+never given to another. When a call answers that the Page Object is not on
+the page, read `page_objects` for the ids there are now.
 
 ## Read each answer
 

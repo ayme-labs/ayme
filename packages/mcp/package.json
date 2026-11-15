@@ -89,11 +89,11 @@
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vite": "~8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }

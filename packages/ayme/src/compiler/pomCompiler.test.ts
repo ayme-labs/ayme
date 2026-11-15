@@ -78,6 +78,19 @@ describe("createPomCompiler", () => {
     expect(compiled?.code).not.toContain("registerCompiledPom");
   });
 
+  it("names an unsupported parameter where it is declared in the source", () => {
+    const fileName = fixture("unsupportedShapes/callablePom");
+    expect(() =>
+      createPomCompiler({ include: true, tsconfigPath }).compile(
+        fileName,
+        source(fileName),
+        { emit: "js" }
+      )
+    ).toThrow(
+      `${fileName}:6:7: Unsupported Page Object Tool input type for CallablePom.run(callback): () => void.`
+    );
+  });
+
   it("names a syntax error where it is in the source, not in the compiled module", () => {
     const fileName = fixture("twoPagesPom");
     const broken = source(fileName).replace(

@@ -65,19 +65,48 @@ export class ComboboxOptions extends AppComponent {
 }
 ```
 
+The flow's page objects, which the sections below add actions to:
+
+```ts
+export class ProjectsPage extends AppPage {
+  readonly newProjectButton = this.page.getByRole("button", {
+    name: "New project",
+  });
+  // Rendered at the end of the document, so located from the page.
+  readonly newProjectDialog = new NewProjectDialog(
+    this.page.getByRole("dialog")
+  );
+}
+
+export class NewProjectDialog extends AppComponent {
+  readonly nameInput = this.root.getByLabel("Name");
+  readonly nameError = this.root.getByTestId("name-error");
+  // The owner picker, the Combobox from above.
+  readonly owner = new Combobox(this.root.getByTestId("owner"));
+  readonly createButton = this.root.getByRole("button", { name: "Create" });
+}
+
+// The page a created project opens on.
+export class ProjectPage extends AppPage {
+  // Not getByRole("heading", { level: 1 }): the Projects page's heading
+  // matches that too, and it stays on the page behind the dialog.
+  readonly heading = this.page.getByTestId("project-heading");
+}
+```
+
 ## Return repeated components from a method
 
 A repeated item becomes a component when it has actions or parts to read, as
-any boundary does; a list of plain items stays one locator matching all of
-them. Return repeated components one per element from a method without
-parameters, so a caller gets the items the page shows when it asks:
+any other boundary does. A list of plain items stays one locator that matches
+all of them. Return the components from a method without parameters, one per
+element. Each call then returns the items the page shows at that moment:
 
 ```ts
 // On ProjectsPage:
+readonly rows = this.page.getByRole("listitem");
+
 async projects(): Promise<ProjectRow[]> {
-  return (await this.page.getByRole("row").all()).map(
-    (row) => new ProjectRow(row)
-  );
+  return (await this.rows.all()).map((row) => new ProjectRow(row));
 }
 
 // ✅ A component: each row has parts to read and an action of its own.
@@ -160,6 +189,18 @@ is likely to break or match the wrong element:
 - A position, `nth()` or `first()`, among generic elements.
 - A locator that matches an ancestor of the element rather than the element.
 
+```ts
+// On ProjectRow, locating the project's name:
+// ❌ The row's whole text, run together across its cells.
+this.root.page().getByText("Website redesign Abel Archive");
+// ❌ A position among generic elements.
+this.root.locator("div").nth(2);
+// ❌ The row around the name, not the name.
+this.root.page().locator("tr", { hasText: "Website redesign" });
+// ✅
+this.root.getByTestId("project-name");
+```
+
 ## Compute derived state in a query method
 
 Tests check state through the locators directly, with Playwright's web-first
@@ -224,15 +265,13 @@ export class Modal extends AppComponent {
   }
 }
 
-// The dialog is a Modal with app meaning: it knows the projects page is
-// behind it.
-export class NewProjectDialog extends AppComponent {
-  readonly modal = new Modal(this.root);
+// On NewProjectDialog: it holds a generic Modal and adds the app's meaning.
+// It knows the projects page is behind it.
+readonly modal = new Modal(this.root);
 
-  async cancel() {
-    await this.modal.close();
-    return new ProjectsPage(this.root.page());
-  }
+async cancel() {
+  await this.modal.close();
+  return new ProjectsPage(this.root.page());
 }
 ```
 
@@ -367,15 +406,15 @@ const canSave = async (self: ProjectEditor) =>
 
 ## Compose actions
 
-An action can call the actions of its children. A call that moves the user
-out of the action's boundary comes last, and the action returns what that call
-returns:
+An action can use its children, through their actions and their locators. A
+call that moves the user out of the action's boundary comes last, and the
+action returns what that call returns:
 
 ```ts
 // On ProjectsPage:
-async createProject(name: string, owner: string) {
+async createProject(name: string) {
   const dialog = await this.openNewProjectDialog();
-  await dialog.fillProjectForm(name, owner);
+  await dialog.nameInput.fill(name);
   return dialog.create();
 }
 ```

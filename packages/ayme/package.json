@@ -118,13 +118,13 @@
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser-playwright": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "playwright": "^1.64.0",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "typescript-floor": "npm:typescript@5.4.5",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }

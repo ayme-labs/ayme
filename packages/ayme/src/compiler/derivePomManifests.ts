@@ -1155,6 +1155,7 @@ function toolParameter(
     className,
     methodName,
     parameter: parameter.name.getText(),
+    declaration: parameter,
     enclosing: new Set(),
   };
   const rest =
@@ -1360,6 +1361,7 @@ type SchemaContext = {
   methodName: string;
   /** The parameter being described, as its declaration names it. */
   parameter: string;
+  declaration: ts.ParameterDeclaration;
   /** The object types being described, outermost first. */
   enclosing: Set<ts.Type>;
 };
@@ -1574,8 +1576,12 @@ function unsupportedInputType(
   parameterName: string
 ) {
   const typeText = context.checker.typeToString(type);
+  const source = context.declaration.getSourceFile();
+  const { line, character } = source.getLineAndCharacterOfPosition(
+    context.declaration.name.getStart(source)
+  );
   return new UnsupportedInputTypeError(
-    `Unsupported Page Object Tool input type for ${context.className}.${context.methodName}(${parameterName}): ${typeText}.`,
+    `${source.fileName}:${line + 1}:${character + 1}: Unsupported Page Object Tool input type for ${context.className}.${context.methodName}(${parameterName}): ${typeText}.`,
     `parameter ${context.parameter} has the unsupported type ${typeText}`
   );
 }

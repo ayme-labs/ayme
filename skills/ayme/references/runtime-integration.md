@@ -25,11 +25,15 @@ lifetime and no URL states it, such as a sidebar mounted on several routes, or
 when the POM belongs in a route's chunk. Say which in a one-line comment at the
 call.
 
-Child POMs the registered POM declares with `@ayme.child` or
-`@ayme.collection` are discovered recursively and need no separate
-registration. A POM held only by an undeclared member, an unrelated marked
-class, or a POM only returned from an action is not registered, so its tools
-are never live.
+A registered POM brings every POM it declares with `@ayme.child` or
+`@ayme.collection`, at any depth. They need no registration of their own.
+Example: registering `ProjectsPage` also brings each `ProjectRow` of its
+`projects()` collection.
+
+A POM's tools appear only when it is registered itself, or a registered POM
+declares it, at any depth. Otherwise its tools never appear. That covers a
+POM held in a member without a decorator, a POM that an action only returns,
+and a marked class that no registered POM reaches.
 
 ## Keep one runtime owner at the root
 
@@ -52,10 +56,10 @@ responsibilities. Whether a tool is listed or available does not depend on
 publication; [`ayme.tools`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools)
 gives the rules. An
 [in-app assistant](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/in-app-assistant.md)
-runs available tools through `ayme.tools`; it gets thrown errors, whereas a published
-call resolves a failure as a result with `isError: true`, as
+runs available tools through `ayme.tools.run`. A failed call throws there. A
+published call that fails resolves as a result with `isError: true` instead.
 [Errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md#how-an-agent-sees-a-failure)
-describes.
+has both forms.
 
 ## Optional quick verification
 
