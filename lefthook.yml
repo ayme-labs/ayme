@@ -1,32 +1,15 @@
 pre-commit:
+  # Stop at the first failing job.
+  piped: true
   jobs:
     - name: lint-staged
-      run: pnpm exec lint-staged
-    # Like CI, check only the packages a change reaches: the ones it touches
-    # and those depending on them. Against HEAD, that is the commit being
-    # made, so a docs-only commit checks no package.
+      run: pnpm exec lint-staged --concurrent false
+    # Check only the workspaces the staged change reaches, within the cap in
+    # scripts/pre-commit-checks.mjs. Why: docs/testing.md#local-runs-and-ci.
     - name: typecheck
-      run: pnpm exec turbo run typecheck --affected
-      env: &affected
-        TURBO_SCM_BASE: HEAD
-        # Git reports a renamed file only at its new path, so a file moved
-        # out of a package would leave that package unchecked.
-        GIT_CONFIG_COUNT: "1"
-        GIT_CONFIG_KEY_0: diff.renames
-        GIT_CONFIG_VALUE_0: "false"
-    # The packed-consumer test type-checks the quickstarts' Page Object
-    # Models, which --affected misses since they live outside the package.
-    # Half the cores: running every package at once starves the timed
-    # tests (the Angular ng-add schematic, the packed-consumer cleanup) on
-    # a small machine, and was slower overall than half on four cores.
+      run: node scripts/pre-commit-checks.mjs typecheck
     - name: test
-      run: |
-        if git diff --cached --quiet -- 'docs/guide/start/quickstart-*.md'; then
-          pnpm exec turbo run test --affected --concurrency=50%
-        else
-          pnpm exec turbo run test --concurrency=50%
-        fi
-      env: *affected
+      run: node scripts/pre-commit-checks.mjs test
 
 commit-msg:
   jobs:
