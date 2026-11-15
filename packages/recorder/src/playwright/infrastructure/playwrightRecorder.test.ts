@@ -8,7 +8,7 @@ import {
 
 // How each supported version starts Playwright's own recorder and hands over
 // its reports, on stand-ins for a context: the per-version CI job runs the
-// contract suite on the real ones, while this package's own Playwright is
+// compatibility suite on the real ones, while this package's own Playwright is
 // one version only. The calls are those Playwright's private API takes: the
 // prototype of pull request #1268 started the recorder so on 1.62 to 1.65.
 

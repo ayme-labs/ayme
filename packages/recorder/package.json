@@ -27,7 +27,7 @@
     "build": "tsdown",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
-    "test:contract": "vitest run --config vitest.contract.config.ts",
+    "test:compat": "vitest run --config vitest.compat.config.ts",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.crap.config.ts --coverage",
     "test:mutation": "stryker run"

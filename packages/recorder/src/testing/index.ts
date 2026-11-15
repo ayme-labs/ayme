@@ -30,8 +30,8 @@ export const SCRIPTED_TRACE = "a scripted trace";
 /**
  * The remote control of a scripted browser with one page, "page_1".
  *
- * It keeps the seam's contract as the stock adapter does: a request is taken
- * and returns at once, and its answer is told as a signal. It answers by
+ * It keeps to the recorded browser's seam as the stock adapter does: a
+ * request is taken and returns at once, and its answer is told as a signal. It answers by
  * itself what a browser answers soon: Interactions being reported, a
  * snapshot, an input passed on, inputs held back or not. A test plays what
  * takes the page's or Playwright's time: a click, the page being settled, a

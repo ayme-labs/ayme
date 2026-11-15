@@ -21,7 +21,7 @@ class FastestFirst extends BaseSequencer {
 }
 
 // The unit tests: what a mutation run runs. The coverage behind the CRAP
-// score also counts the contract suite (vitest.crap.config.ts).
+// score also counts the compatibility suite (vitest.crap.config.ts).
 export default defineFastLaneConfig(
   mergeConfig(
     baseConfig,

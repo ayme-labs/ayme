@@ -19,7 +19,7 @@ import {
 } from "./pageRules";
 
 // The rules the gate decides by, in Node. The page runs the same functions:
-// `withRules` sends them with the gate. The contract suite checks, per
+// `withRules` sends them with the gate. The compatibility suite checks, per
 // Playwright version, that the key rule is Playwright's.
 
 const key = (facts: Partial<KeyFacts>): KeyFacts => ({

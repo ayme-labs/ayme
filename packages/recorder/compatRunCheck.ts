@@ -1,6 +1,6 @@
 import type { Reporter, TestModule } from "vitest/node";
 
-// The contract suite runs in several projects, and a test may belong to only
+// The compatibility suite runs in several projects, and a test may belong to only
 // some of them: it is skipped in the others, as `it.runIf(attaching)` does.
 // Vitest's own summary cannot tell such a declared skip from an accidental
 // one, nor say that a whole project did not run. This reporter checks that
@@ -15,9 +15,9 @@ import type { Reporter, TestModule } from "vitest/node";
 // prints VERDICT only when both hold, and CI requires that line besides a
 // passing run. A run where the check did not run at all prints none.
 
-const VERDICT = "Contract run: every test ran and passed where it belongs";
+const VERDICT = "Compatibility run: every test ran and passed where it belongs";
 
-export class ContractRunCheck implements Reporter {
+export class CompatRunCheck implements Reporter {
   constructor(private readonly projects: readonly string[]) {}
 
   onTestRunEnd(testModules: ReadonlyArray<TestModule>): void {
@@ -50,6 +50,8 @@ export class ContractRunCheck implements Reporter {
       console.log(`\n${VERDICT}\n`);
       return;
     }
-    console.error(`\nContract run incomplete:\n- ${problems.join("\n- ")}\n`);
+    console.error(
+      `\nCompatibility run incomplete:\n- ${problems.join("\n- ")}\n`
+    );
   }
 }

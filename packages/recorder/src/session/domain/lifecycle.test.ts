@@ -3470,7 +3470,7 @@ describe("the lifecycle, for what the review against the spec found", () => {
     },
 
     // Input reaches the page in the order the person gave it (rule 11).
-    // The page's part is in the recorded browser's contract suite: it goes
+    // The page's part is in the compatibility suite: it goes
     // on holding a click while an input it held still waits. This is the
     // lifecycle's part.
     {

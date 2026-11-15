@@ -24,17 +24,17 @@ import {
 } from "../projectPlaywright";
 import { stockBrowser } from "./stockBrowser";
 
-// The recorded browser's contract, on stock Playwright. Each private detail
-// of Playwright the adapter uses has its test here (ADR-0052), and every
-// test speaks only the seam's words: requests asked, signals told. CI runs
-// this file once per supported Playwright version, and the weekly canary
-// against the newest one.
+// The compatibility suite: the stock adapter on each supported Playwright.
+// Each private detail of Playwright the adapter uses has its test here
+// (ADR-0052), and every test speaks only the recorded browser's seam:
+// requests asked, signals told. CI runs this file once per supported
+// Playwright version, and the weekly canary against the newest one.
 //
 // The Playwright under test is the one installed in the project folder that
 // AYME_RECORDER_PLAYWRIGHT_PROJECT names, or else this package's own. To add
 // a private detail, add one test that uses `onStockPlaywright`.
 //
-// The suite runs twice (vitest.contract.config.ts): on a browser the adapter
+// The suite runs twice (vitest.compat.config.ts): on a browser the adapter
 // launches, and, with AYME_RECORDER_BROWSER=attach, on a browser that is
 // already running, with its page open, when the adapter attaches to it. That
 // browser is the test's own: it launched it, and its connection is another
@@ -335,7 +335,7 @@ async function stockToolEvaluates(
   const [major, minor] = version.split(".").map(Number);
   const phase = major === 1 && minor! <= 62 ? "--name" : "--phase";
   // The tool keeps what it has opened in the folder it runs in.
-  const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-contract-"));
+  const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-compat-"));
   const tool = (...args: string[]) =>
     promisify(execFile)(process.execPath, [cli, "trace", ...args], {
       cwd,

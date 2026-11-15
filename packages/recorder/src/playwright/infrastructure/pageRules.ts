@@ -60,7 +60,7 @@ export type KeyFacts = {
 /**
  * Whether Playwright's recorder records a key as a press; otherwise it is
  * typing. A copy of `JsonRecordActionTool._shouldGenerateKeyPressFor`, a
- * private part of Playwright: the contract suite checks it per version.
+ * private part of Playwright: the compatibility suite checks it per version.
  */
 export function recordedAsPress(key: KeyFacts): boolean {
   if (key.key === "Enter")
