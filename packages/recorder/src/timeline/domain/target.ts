@@ -45,6 +45,7 @@ export function selectorSteps(selector: string): string[] {
   const steps: string[] = [];
   let start = 0;
   let quote: string | null = null;
+  // Stryker disable next-line EqualityOperator: equivalent, since past the selector's end there is no character to end a value or start a step
   for (let at = 0; at < selector.length; at += 1) {
     const char = selector[at]!;
     if (quote !== null) {
