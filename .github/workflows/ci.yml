@@ -317,8 +317,8 @@ jobs:
           path: ${{ matrix.dir }}/test-results
           if-no-files-found: ignore
 
-  # The recorder runs on the project's own Playwright, so its contract with
-  # stock Playwright and its main end-to-end test run once per supported
+  # The recorder runs on the project's own Playwright, so its compatibility
+  # suite and its main end-to-end test run once per supported
   # version, as packages/recorder/playwright-range.json states the range. One
   # job installs each version in turn into a project folder of its own,
   # rather than one runner per version repeating the setup.
@@ -338,7 +338,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm exec turbo run build --filter=@ayme-dev/recorder-fixture^...
-      - name: Run the contract suite and the main end-to-end test per version
+      - name: Run the compatibility suite and the main end-to-end test per version
         shell: bash
         run: |
           set -o pipefail
@@ -378,9 +378,9 @@ jobs:
             export AYME_RECORDER_PLAYWRIGHT_PROJECT="$project"
             # Passing is not enough: the suite's own check must also say that
             # every project ran and that each skip is one it declares.
-            part "contract suite" bash -o pipefail -c '
-              pnpm --filter @ayme-dev/recorder test:contract 2>&1 | tee "$RUNNER_TEMP/contract.log" &&
-              grep -Fxq "Contract run: every test ran and passed where it belongs" "$RUNNER_TEMP/contract.log"'
+            part "compatibility suite" bash -o pipefail -c '
+              pnpm --filter @ayme-dev/recorder test:compat 2>&1 | tee "$RUNNER_TEMP/compat.log" &&
+              grep -Fxq "Compatibility run: every test ran and passed where it belongs" "$RUNNER_TEMP/compat.log"'
             part "end-to-end test" pnpm --filter @ayme-dev/recorder-fixture \
               exec playwright test -g "Finish writes the released Recording Package"
             # The next run clears test-results: keep this version's.
