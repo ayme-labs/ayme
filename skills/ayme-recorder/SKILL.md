@@ -40,10 +40,10 @@ a Playwright test that replays the flow.
    [Page object design](references/page-object-design.md). Where it conflicts
    with the project's existing POM and test conventions, raise the conflict
    with the user.
-5. **Run** the test until it passes. Fix locators and timing without changing
-   the flow: when passing would take different steps or different checks, for
-   example because the app no longer behaves as recorded, stop and tell the
-   user.
+5. **Run** the test until it passes. Fix locators and timing, but not the
+   flow. When passing would take different steps or different checks, stop
+   and tell the user. That happens, for example, when the app no longer
+   behaves as recorded.
 
 Done when the test passes against the app and replays the flow you agreed.
 A package with no kept entry is done when you have told the user and stopped.
@@ -58,7 +58,7 @@ mode: structural
 createdAt: 2026-…               # when the recording was stored
 url: https://…                  # where the recording started
 tracePath: .ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
-visits:                         # one per page load
+visits:                         # one per page, from a load or a navigation to another path
   - visitId, url, cause
     baselineTree:               # the page just before the first interaction
     timelineEntries:            # in order
@@ -88,24 +88,36 @@ target; read any other locator from the trace, as
 [Use the trace](#use-the-trace) describes.
 
 A ref, such as `e5`, names a node within this package. Refs link an
-interaction to its target and a change to the node it changed; they never go
-into code, and the trace does not carry them. An element keeps its ref for
-the whole visit, also when the app re-creates it: a button the page re-renders
-after a click is still `e5`. Refs are per visit: the same ref in another visit
-is another element. A ref can carry a frame prefix, such as `f1e4`; copy refs
-as they are written.
+interaction to its target and a change to the node it changed. They never go
+into code, and the trace does not carry them. Refs are per visit: the same ref
+in another visit is another element. A ref can carry a frame prefix, such as
+`f1e4`. Copy refs exactly as they are written.
+
+An element keeps its ref for the whole visit while the page keeps it, also
+when its name, text or state changes. When the page re-creates an element in
+the same place with the same role and name, the recorder takes it for the
+same element and it keeps its ref too: a button the page re-renders after a
+click is still `e5`. An element the page re-creates with another name is a
+new element to the recorder: it gets a new ref, and the old one is
+`<removed>`.
 
 A `changeTree` holds only the paths down to what changed. `<added>`,
 `<removed>` and `<changed>` mark nodes that appeared, disappeared, or changed
 their own content or state; an unmarked node is only the path to a change
-below it.
+below it. After the user adds a second item to the cart, the cart button
+re-renders with a new name, the count changes and a button appears:
 
 ```text
 - [ref=e1]:
+  - <added> [ref=e9] button "Cart, 2 items"
+  - <removed> [ref=e4] button "Cart, 1 items"
   - <changed> [ref=e3] paragraph: "Items: 2"
-  - <added> [ref=e9] button "Remove item"
-  - <removed> [ref=e7] paragraph: "Your cart is empty"
+  - <added> [ref=e10] button "Remove item"
 ```
+
+Here the page re-created the cart button, so it shows as a new button and a
+removed one. Had the page kept the button and changed only its text, the tree
+would show `<changed> [ref=e4] button "Cart, 2 items"` instead.
 
 An interaction names its target by `targetRef`, a node in the visit's baseline
 tree or one `<added>` earlier in the same visit, or a node a discarded change
@@ -131,12 +143,12 @@ page had focus, as the key then goes to the page's body, which the tree does
 not list.
 
 A `kind: change` entry is a change the recorder could not tie to an
-interaction. It is usually the late result of an earlier step, such as data
-that finished loading. Just before a click it is often the focus moving to the
-clicked element, as the mouse button goes down before the click. A change no
-recorded action explains can also come from a hover, or from anything the page
-does on its own in between, such as an async update. Read it together with the
-steps around it.
+interaction. Read it together with the steps around it. It is usually the
+late result of an earlier step, such as data that finished loading. Just
+before a click it is often the focus moving to the clicked element, as the
+mouse button goes down before the click. A change that no recorded action
+explains can also come from a hover. It can come from something the page does
+on its own in between, too, such as an async update.
 
 A recording can have pauses: the user pressed Stop, did something, and pressed
 Continue. What the page changed during a pause is not in the package at all,
@@ -203,10 +215,15 @@ whose candidate does not meet the strategy.
 ## Write the test
 
 One test replays the flow in recorded order, with no steps the user did not
-take and no branching. Every step goes through a page object action or one of its named locators, and
-every check through a page object locator or method. When an action returns one of
-several page objects, assert the one the recorded flow reached, such as
-`assert(page instanceof ProjectPage)` from `node:assert`, rather than branching on it.
+take and no branching. Every step goes through a page object action or one
+of its named locators. Every check goes through a page object locator or
+method. When an action returns one of several page objects, assert the one
+the recorded flow reached, rather than branching on it. For example,
+`dialog.create()` in
+[Page object design](references/page-object-design.md#return-where-the-user-continues)
+returns a `ProjectPage` or the dialog. After
+`const created = await dialog.create()`, write
+`assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
 
 Turn the timeline into assertions:
 
@@ -220,8 +237,24 @@ Turn the timeline into assertions:
 - An `assert*` interaction, such as `assertVisible`, marks a point where the
   user checked something: from its `targetSelector` and the changes around
   it, work out what they meant to check, and assert that.
-- Each assertion checks one fact. A replaced element is two facts: the old one
-  is gone and the new one is visible.
+- Each assertion checks one fact. An `<added>` node can take the place of a
+  `<removed>` node with the same role, as the cart button above does. Check in
+  the trace whether the new element is the old control drawn again, as
+  [Use the trace](#use-the-trace) shows. When it is, the element re-rendered,
+  and that is one fact: its new content. For the cart button above, held as
+  `cartLink` by a `Header` component `header`:
+
+  ```ts
+  await expect(header.cartLink).toHaveAccessibleName("Cart, 2 items");
+  ```
+
+  When the trace does not show it is the same control, treat them as two
+  elements.
+
+  When a different element takes the old one's place, such as a confirmation
+  that replaces a form, that is two facts: the old one is gone, and the new
+  one is visible.
+
 - Steps that only change their own element, such as filling the fields of one form, need no
   assertions in between; assert after the step that submits it.
 
@@ -306,6 +339,15 @@ package says of it:
   acted on: read both, the element by `targetSelector` and the ancestor by its
   role and name, in the same call.
 
+When an `<added>` node takes the place of a `<removed>` node with the same
+role, the trace tells whether the page drew the same control again or put a
+different element there. Read the removed node in the step's
+`beforeSnapshotId` and the added node in its `afterSnapshotId`, each by its
+role and name, with `cloneNode(false)` as above. The same tag and the same
+stable attributes, such as an `id`, a test id or an `href`, at the same place
+in the page, mean the same control drawn again. Anything else is a different
+element.
+
 `trace snapshot <number> --phase after snapshot` prints the page structure of
 a snapshot with refs of its own; they are not the package's refs.
 
@@ -330,7 +372,11 @@ a number. Read it with these differences:
 - In its trace each element carries its package ref as the attribute
   `__playwright_aria_ref__`, so `[__playwright_aria_ref__="e44"]` finds the
   node `e44` of that interaction's visit.
-- An element the app re-created got a new ref: the same button can be `e44`,
-  then `e137` after a click.
+- An element the app re-created got a new ref, even when nothing about it
+  changed: the same button can be `e44`, then `e137` after a click, as an
+  `<added>` and a `<removed>` node. To tell whether they are the same control,
+  read the removed ref in the snapshot of the interaction before and the
+  added ref in this one's, and compare them as
+  [Use the trace](#use-the-trace) describes.
 - Some nodes have a `/locator:` line with a Playwright locator for that node:
   a candidate, like a target selector.
