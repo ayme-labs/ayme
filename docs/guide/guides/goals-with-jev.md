@@ -120,7 +120,7 @@ The history shows the value a step used as `label: value`, such as `fill(textbox
 
 ## What leaves the page
 
-Each step sends the page state, the goal, the Goal Values, the run's history and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
+Each step sends the page state, the Page Object Model definitions, the goal, the Goal Values, the run's history and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
 
 ## The Handover
 
@@ -161,7 +161,7 @@ Each step sends the page state, the goal, the Goal Values, the run's history and
 
 A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
 
-`history` has one entry per operation the loop ran, with the fields typed above. A step that hands over before acting records nothing. `chosen` holds, for each parameter the model was asked about, the key and description of the option it picked. That includes a choice to leave the parameter unset. Where `changes` or `returned` was cut, it ends in `… (cut)`. `returned` is the only trace of an effect the page does not show. `did` is a one-line label for a human, such as `click(button "Add item")`.
+`history` has one entry per operation the loop ran, with the fields typed above. A step that hands over before acting records nothing. `chosen` holds, for each parameter the model was asked about, the key and description of the option it picked. That includes a choice to leave the parameter unset. Where `changes` or `returned` was cut, it ends in `… (cut)`. A cut `returned` is a string: the start of the value's JSON. `returned` is the only trace of an effect the page does not show. `did` is a one-line label for a human, such as `click(button "Add item")`.
 
 `changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record.
 
