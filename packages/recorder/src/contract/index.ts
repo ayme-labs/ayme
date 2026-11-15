@@ -46,6 +46,37 @@ export type InteractionDetails = {
   readonly [value: string]: unknown;
 };
 
+/**
+ * One element of what an entry changed: a topmost element of its Change
+ * Tree, as whoever shows a recorder lists it. What changed inside an element
+ * that appeared, was removed or changed is not listed again.
+ */
+export type ChangeRow = {
+  readonly kind: "added" | "removed" | "changed";
+  /** The element in the words of the package's trees: its role, its name
+   * and its states, and its one text quoted, such as `button "Pay"
+   * [disabled]`; "element" for one that has none of these. */
+  readonly element: string;
+  /** For a changed element: each of its own properties that changed, in a
+   * fixed order. Empty when what changed is none of these. */
+  readonly changed?: readonly PropertyChange[];
+};
+
+/**
+ * One property of an element that changed: its role, its name, its own text
+ * (its text pieces, apart from the elements inside it, joined by a space), a
+ * state (`checked`, `disabled`, `expanded`, `active`, `selected`,
+ * `pressed`, `level`), `cursor`, or one of its properties under its name with
+ * a slash, such as `/url`. A value is written as the package's trees write
+ * it, such as "true", "mixed" or "2"; one that was absent or empty is left
+ * out.
+ */
+export type PropertyChange = {
+  readonly property: string;
+  readonly from?: string;
+  readonly to?: string;
+};
+
 /** One entry of a Visit's timeline. A Change Tree is text, in the compact
  * notation of the Recording Package. */
 export type TimelineEntry = (

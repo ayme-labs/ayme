@@ -100,7 +100,7 @@ const tree = (key: string, text: string) =>
 
 /** Whether a node of a Change Tree was added, removed or changed itself,
  * and does not only lead to a change below it. */
-const changedItself = (node: StructuralNode) => {
+export const changedItself = (node: StructuralNode) => {
   // Only a node that was updated says whether it changed itself.
   const { kind, selfChanged } = {
     kind: undefined,
@@ -110,6 +110,12 @@ const changedItself = (node: StructuralNode) => {
   return kind === "added" || kind === "removed" || selfChanged;
 };
 const isNode = (child: StructuralNode | string) => typeof child !== "string";
+
+/** Whether a node of a Change Tree changed itself, or has a node below it
+ * that did. */
+export const leadsToChange = (node: StructuralNode): boolean =>
+  changedItself(node) ||
+  node.children.some((child) => isNode(child) && leadsToChange(child));
 
 /** The package's trees list no property of a node, such as a link's URL. */
 // Stryker disable next-line ArrayDeclaration: equivalent, since a made-up name of a property selects none either
@@ -129,9 +135,6 @@ export function wholeTreeText(structuralTree: StructuralTree): string {
 /** A Change Tree's text: only the ways down to the nodes that were added,
  * removed or changed themselves. Empty when there is none. */
 export function changeText(change: StructuralTree): string {
-  const leadsToChange = (node: StructuralNode): boolean =>
-    changedItself(node) ||
-    node.children.some((child) => isNode(child) && leadsToChange(child));
   const forest = new StructuralNodeForest<StructuralNode>({
     roots: change.getRootNodes(),
     // A node that only leads to a change keeps no text of its own.
