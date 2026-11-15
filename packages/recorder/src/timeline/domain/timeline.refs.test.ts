@@ -2,29 +2,20 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
-import { Timeline, type PackageHeader } from "./timeline";
+import {
+  header,
+  page,
+  snapshot,
+  timelineOf,
+  visit,
+} from "./test-utils/timelineBuilders";
+import type { PackageHeader } from "./timeline";
 
 // One ref names one element in a tree, always. An element the page
 // re-creates keeps its first ref; that rule yields in one case only: when
 // the element that first had the ref is in the tree too, it keeps the ref
 // and the other has a ref of its own.
 
-const header: PackageHeader = {
-  recordingId: "rec_20261112T145047604Z",
-  createdAt: "2026-11-12T14:50:47.604Z",
-  tracePath: null,
-};
-const url = "http://shop.test/";
-const visit: TimelineAddition = {
-  kind: "visit",
-  page: "page_1",
-  url,
-  cause: "initial",
-};
-const snapshot = (id: string, at: number, tree: string): TimelineAddition => ({
-  kind: "snapshot",
-  snapshot: { id, page: "page_1", url, at, tree },
-});
 /** A click on the element the report names `ref` in a picture that is the
  * page as `tree` has it. */
 const click = (
@@ -47,13 +38,6 @@ const click = (
     at: 15,
   },
 });
-async function timelineOf(additions: readonly TimelineAddition[]) {
-  const timeline = new Timeline();
-  for (const addition of additions) await timeline.add(addition);
-  return timeline;
-}
-const page = (...elements: string[]) =>
-  [`- generic [ref=e1]:`, ...elements.map((line) => `  ${line}`)].join("\n");
 
 /**
  * The refs that appear more than once in one tree of a package: in a

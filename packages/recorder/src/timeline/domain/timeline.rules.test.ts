@@ -1,31 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import type { PageSnapshot, TimelineAddition } from "./recorded";
-import { Timeline, type PackageHeader } from "./timeline";
+import type { TimelineAddition } from "./recorded";
+import {
+  header,
+  page,
+  snapshot,
+  timelineOf,
+  visit,
+} from "./test-utils/timelineBuilders";
+import type { Timeline } from "./timeline";
 
 // Rules of the timeline that the change analysis found unpinned: what it
 // leaves out, when it tells an entry, and what it knows of a target.
 
-const header: PackageHeader = {
-  recordingId: "rec_20261112T145047604Z",
-  createdAt: "2026-11-12T14:50:47.604Z",
-  tracePath: null,
-};
-const url = "http://shop.test/";
-const visit: TimelineAddition = {
-  kind: "visit",
-  page: "page_1",
-  url,
-  cause: "initial",
-};
-const snapshot = (
-  id: string,
-  at: number,
-  tree: string
-): { kind: "snapshot"; snapshot: PageSnapshot } => ({
-  kind: "snapshot",
-  snapshot: { id, page: "page_1", url, at, tree },
-});
 const click = (
   before: string,
   after: string | null,
@@ -41,16 +28,9 @@ const click = (
     at: 15,
   },
 });
-async function timelineOf(additions: readonly TimelineAddition[]) {
-  const timeline = new Timeline();
-  for (const addition of additions) await timeline.add(addition);
-  return timeline;
-}
 const kinds = (timeline: Timeline) =>
   timeline.visits().map((one) => one.entries.map((entry) => entry.id));
 
-const page = (...elements: string[]) =>
-  [`- generic [ref=e1]:`, ...elements.map((line) => `  ${line}`)].join("\n");
 const idle = page(
   `- button "Save" [ref=e2]`,
   `- paragraph [ref=e3]: Not saved`
