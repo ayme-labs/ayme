@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
+import { changeTreesOf, header } from "./test-utils/timelineBuilders";
 import { Timeline } from "./timeline";
 
 // How the report's own picture of the page is matched to the snapshots
@@ -79,13 +80,14 @@ async function read(input: {
     },
   ];
   for (const addition of additions) await timeline.add(addition);
-  const entries = timeline.visits()[0]!.entries;
-  const interaction = entries.at(-1)!;
+  const interaction = timeline.visits()[0]!.entries.at(-1)!;
   if (interaction.kind !== "interaction") throw new Error("No Interaction.");
+  // The Change Trees as the package writes them, which shows their refs.
+  const entries = changeTreesOf((await timeline.package(header))!);
   return {
     /** The change written ahead of the input; null when there is none. */
     changedBefore: entries.length === 1 ? null : entries[0]!.changeTree,
-    changedByIt: interaction.changeTree,
+    changedByIt: entries.at(-1)!.changeTree,
     targetRef: interaction.interaction.targetRef,
     warnings: timeline.warnings().map((warning) => warning.kind),
   };

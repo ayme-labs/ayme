@@ -264,3 +264,42 @@ describe("an element the page re-created, and the original back beside it", () =
     );
   });
 });
+
+describe("an element the page re-created, when it changes", () => {
+  it("is told with how it stood before, under the first ref the package keeps for it", async () => {
+    const original = page(`- button "Save" [ref=e2]`);
+    // The page put a new button in its place: Playwright names it e8.
+    const recreated = page(`- button "Save" [ref=e8]`);
+    const timeline = await timelineOf([
+      visit,
+      snapshot("snapshot_1", 10, original),
+      snapshot("snapshot_2", 20, recreated),
+      click("snapshot_1", "snapshot_2", "e2", original),
+      snapshot("snapshot_3", 30, recreated),
+      snapshot("snapshot_4", 40, page(`- button "Saved" [disabled] [ref=e8]`)),
+      click("snapshot_3", "snapshot_4", "e8", recreated),
+    ]);
+
+    const [, second] = timeline.visits()[0]!.entries;
+    expect(second).toMatchObject({
+      id: "interaction_2",
+      changes: [
+        {
+          kind: "changed",
+          element: 'button "Saved" [disabled]',
+          changed: [
+            { property: "name", from: "Save", to: "Saved" },
+            { property: "disabled", to: "true" },
+          ],
+        },
+      ],
+    });
+    expect(await timeline.package(header)).toContain(
+      [
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <changed> [ref=e2] button "Saved" [disabled]`,
+      ].join("\n")
+    );
+  });
+});

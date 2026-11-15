@@ -458,10 +458,13 @@ describe("the timeline", () => {
         modifiers: 0,
         clickCount: 1,
       },
-      changeTree: [
-        `- [ref=e1]:`,
-        `  - <changed> [ref=e3] paragraph: Saved`,
-      ].join("\n"),
+      changes: [
+        {
+          kind: "changed",
+          element: 'paragraph "Saved"',
+          changed: [{ property: "text", from: "Not saved", to: "Saved" }],
+        },
+      ],
     };
 
     it("has no Visit before one starts, and a Visit without entries once it has", async () => {
@@ -507,10 +510,7 @@ describe("the timeline", () => {
         kind: "change",
         id: "change_1",
         timestamp: 30,
-        changeTree: [
-          `- [ref=e1]:`,
-          `  - <added> [ref=e4] alert: Offer ends soon`,
-        ].join("\n"),
+        changes: [{ kind: "added", element: 'alert "Offer ends soon"' }],
       };
       const secondClick = {
         kind: "interaction",
@@ -518,7 +518,7 @@ describe("the timeline", () => {
         timestamp: 15,
         interaction: { ...savedByClick.interaction, id: "interaction_2" },
         // It changed nothing.
-        changeTree: null,
+        changes: null,
       };
       expect(timeline.visits()).toEqual(
         visitWith([savedByClick, offer, secondClick])
@@ -999,7 +999,9 @@ describe("the timeline, for discard and restore", () => {
     expect(first).toMatchObject({ id: "interaction_1", discarded: true });
     // What it changed is still there: the window hides it, and a restore
     // brings it back as it was.
-    expect(first).toHaveProperty("changeTree");
+    expect(first).toHaveProperty("changes", [
+      expect.objectContaining({ kind: "changed" }),
+    ]);
     expect(change).not.toHaveProperty("discarded");
     expect(second).not.toHaveProperty("discarded");
 
@@ -1348,24 +1350,14 @@ describe("the timeline, for what the review against the spec found", () => {
     expect(
       timeline
         .visits()[0]!
-        .entries.map((entry) => [entry.kind, entry.changeTree])
+        .entries.map((entry) => [
+          entry.kind,
+          entry.changes?.map((row) => `${row.kind} ${row.element}`),
+        ])
     ).toEqual([
-      [
-        "interaction",
-        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Saved`].join("\n"),
-      ],
-      [
-        "change",
-        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Saved again`].join(
-          "\n"
-        ),
-      ],
-      [
-        "interaction",
-        [`- [ref=e1]:`, `  - <changed> [ref=e3] paragraph: Not saved`].join(
-          "\n"
-        ),
-      ],
+      ["interaction", ['changed paragraph "Saved"']],
+      ["change", ['changed paragraph "Saved again"']],
+      ["interaction", ['changed paragraph "Not saved"']],
     ]);
     expect(await timeline.package(header)).not.toContain("Paused work");
   });

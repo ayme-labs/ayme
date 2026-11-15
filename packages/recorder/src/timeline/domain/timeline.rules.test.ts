@@ -107,17 +107,11 @@ describe("when the timeline tells an entry", () => {
         id: "change_1",
         kind: "change",
         timestamp: 30,
-        changeTree: [
-          `- [ref=e1]:`,
-          `  - <added> [ref=e4] alert: Offer ends soon`,
-        ].join("\n"),
+        changes: [{ kind: "added", element: 'alert "Offer ends soon"' }],
       },
       {
         id: "interaction_2",
-        changeTree: [
-          `- [ref=e1]:`,
-          `  - <changed> [ref=e3] paragraph: Saved twice`,
-        ].join("\n"),
+        changes: [{ kind: "changed", element: 'paragraph "Saved twice"' }],
       },
     ]);
   });
@@ -150,6 +144,21 @@ describe("when the timeline tells an entry", () => {
     await timeline.package(header);
 
     expect(timeline.visits()).toBe(told);
+  });
+
+  it("tells a change on a page with more than one top-level element when only one of them changed", async () => {
+    const before = [`- button "Save" [ref=e2]`, `- status [ref=e3]: Idle`];
+    const after = [`- button "Save" [ref=e2]`, `- status [ref=e3]: Busy`];
+    const timeline = await timelineOf([
+      visit,
+      snapshot("snapshot_1", 10, before.join("\n")),
+      snapshot("snapshot_2", 20, after.join("\n")),
+      click("snapshot_1", "snapshot_2", { ref: "e2", tree: before.join("\n") }),
+    ]);
+
+    expect(timeline.visits()[0]!.entries).toMatchObject([
+      { changes: [{ kind: "changed", element: 'status "Busy"' }] },
+    ]);
   });
 });
 
@@ -231,11 +240,10 @@ describe("what changed before an input known from its report", () => {
       {
         id: "interaction_1",
         interaction: { targetRef: null },
-        changeTree: [
-          `- [ref=e1]:`,
-          `  - <changed> [ref=e2] textbox "Item": milk`,
-          `  - <added> [ref=e3] alert: Welcome back`,
-        ].join("\n"),
+        changes: [
+          { kind: "changed", element: 'textbox "Item" "milk"' },
+          { kind: "added", element: 'alert "Welcome back"' },
+        ],
       },
     ]);
     expect(timeline.warnings().map((warning) => warning.kind)).toEqual([

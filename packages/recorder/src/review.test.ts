@@ -132,7 +132,7 @@ describe("discard and restore", () => {
       "interaction_2",
     ]);
     expect(entriesOf(latest())[0]).toMatchObject({
-      changeTree: entriesOf(before)[0]!.changeTree,
+      changes: entriesOf(before)[0]!.changes,
     });
     recorder.end();
     await recorder.done;

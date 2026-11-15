@@ -19,17 +19,13 @@ const click: TimelineEntry = {
     targetRef: "e2",
     targetSelector: 'internal:role=button[name="Add item"i]',
   },
-  changeTree: [
-    "- [ref=e1]:",
-    '  - <added> [ref=e3] list "Cart":',
-    "    - <added> [ref=e4] listitem: Milk",
-  ].join("\n"),
+  changes: [{ kind: "added", element: 'list "Cart"' }],
 };
 const change: TimelineEntry = {
   kind: "change",
   id: "change_1",
   timestamp: 20,
-  changeTree: '- [ref=e1]:\n  - <removed> [ref=e5] status: "Saved"',
+  changes: [{ kind: "removed", element: 'status "Saved"' }],
 };
 const recording: RecorderCommandType[] = [
   "finish",
@@ -83,7 +79,16 @@ describe("an entry's card", () => {
   it("says that a change changed what it changed", () => {
     expect(
       entryCardOf(
-        { ...change, changeTree: '- <changed> [ref=e5] status: "Saving"' },
+        {
+          ...change,
+          changes: [
+            {
+              kind: "changed",
+              element: 'status "Saving"',
+              changed: [{ property: "text", from: "Saved", to: "Saving" }],
+            },
+          ],
+        },
         recording
       ).changes
     ).toEqual([{ element: 'status "Saving"', effect: "changed" }]);
@@ -117,8 +122,8 @@ describe("an entry's card", () => {
   });
 
   it("lists no changes for an Interaction that changed nothing", () => {
-    expect(
-      entryCardOf({ ...click, changeTree: null }, recording).changes
-    ).toEqual([]);
+    expect(entryCardOf({ ...click, changes: null }, recording).changes).toEqual(
+      []
+    );
   });
 });

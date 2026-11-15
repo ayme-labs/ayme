@@ -10,16 +10,14 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 
-import type {
-  RecordedVisit,
-  RecorderWarning,
-  TimelineEntry,
-} from "../../contract";
+import type { RecordedVisit, RecorderWarning } from "../../contract";
+import { changeRows } from "./changeRows";
 import {
-  changeText,
   interactionDetails,
+  leadsToChange,
   renderPackage,
   wholeTreeText,
+  type KeptEntry,
   type PackageHeader,
   type TracePoint,
 } from "./packageText";
@@ -62,7 +60,7 @@ type Visit = {
   /** The Interactions that have no entry yet. */
   readonly waiting: Waiting[];
   /** The entries produced so far, in order. */
-  readonly entries: TimelineEntry[];
+  readonly entries: KeptEntry[];
   /** The place in `snapshots` up to which entries are produced: what
    * changed from this snapshot on is not told yet. */
   through: number;
@@ -73,6 +71,11 @@ type Visit = {
   /** From every ref the browser used in this Visit to the element's first. */
   readonly firstRefs: Map<AriaRef, AriaRef>;
 };
+
+/** Whether a Change Tree has a node that was added, removed or changed
+ * itself. */
+const changedSomething = (change: StructuralTree) =>
+  change.getRootNodes().some(leadsToChange);
 
 /** The place of a snapshot among a Visit's; negative when it is not there. */
 const placeIn = (visit: Visit, snapshot: string | null) =>
@@ -141,7 +144,7 @@ export class Timeline {
       visitId: visit.id,
       url: visit.url,
       cause: visit.cause,
-      entries: [...visit.entries],
+      entries: visit.entries.map(({ entry }) => entry),
     }));
   }
 
@@ -230,11 +233,15 @@ export class Timeline {
    * timeline does not have is left alone. */
   private decide(id: string, discarded: boolean) {
     for (const visit of this.all) {
-      const place = visit.entries.findIndex((entry) => entry.id === id);
+      const place = visit.entries.findIndex(({ entry }) => entry.id === id);
       if (place < 0) continue;
-      const { discarded: was, ...entry } = visit.entries[place]!;
+      const kept = visit.entries[place]!;
+      const { discarded: was, ...entry } = kept.entry;
       if ((was === true) === discarded) return;
-      visit.entries[place] = discarded ? { ...entry, discarded: true } : entry;
+      visit.entries[place] = {
+        ...kept,
+        entry: discarded ? { ...entry, discarded: true } : entry,
+      };
       this.tell();
       return;
     }
@@ -253,7 +260,7 @@ export class Timeline {
     readonly selector: string | null;
   } | null {
     for (const visit of this.all) {
-      const found = visit.entries.find((one) => one.id === entry);
+      const found = visit.entries.find((one) => one.entry.id === entry)?.entry;
       if (!found) continue;
       if (found.kind !== "interaction") return null;
       if (this.current.get(visit.page) !== visit) return null;
@@ -339,7 +346,8 @@ export class Timeline {
    * snapshots can hold an element that stood under another's first ref in
    * the earlier one beside that other, as when the page re-created an
    * element and the original is back. The element that first had the ref
-   * keeps it there, and the other is written under its own.
+   * keeps it there, and the other is written under its own. How each node
+   * of a Change Tree stood before goes with it, under its new ref.
    */
   private underFirstRefs(
     tree: StructuralTree,
@@ -352,15 +360,26 @@ export class Timeline {
     for (const ref of tree.getAllRefs())
       if (!holder.has(first(ref)) || first(ref) === ref)
         holder.set(first(ref), ref);
-    const rename = (node: StructuralNode): StructuralNode =>
-      node.copy({
-        ref:
-          holder.get(first(node.ref)) === node.ref ? first(node.ref) : node.ref,
+    const beforeByRef = new Map<AriaRef, StructuralNode>();
+    const rename = (node: StructuralNode): StructuralNode => {
+      const ref =
+        holder.get(first(node.ref)) === node.ref ? first(node.ref) : node.ref;
+      const before = tree.getBeforeNode(node.ref);
+      // Stryker disable next-line ConditionalExpression: equivalent, since core reads a node recorded as null and one not recorded alike
+      if (before) beforeByRef.set(ref, before);
+      return node.copy({
+        ref,
         children: node.children.map((child) =>
           typeof child === "string" ? child : rename(child)
         ),
       });
-    return new StructuralTree(rename(tree.root), this.refs);
+    };
+    const root = rename(tree.root);
+    return new StructuralTree(root, this.refs, {
+      beforeByRef,
+      beforeByAfterRef: new Map(),
+      ambiguousBeforeRefs: new Set(),
+    });
   }
 
   /** What changed on the page from one kept snapshot to a later one. */
@@ -386,8 +405,8 @@ export class Timeline {
     to: Kept,
     interaction: RecordedInteraction
   ): Promise<{
-    changedBefore: string;
-    changedByIt: string;
+    changedBefore: StructuralTree;
+    changedByIt: StructuralTree;
     target: AriaRef | undefined;
   } | null> {
     const { target, type, selector } = interaction.report;
@@ -423,8 +442,8 @@ export class Timeline {
     );
     const firstRefs = new Map([...from.firstRefs, ...to.firstRefs]);
     return {
-      changedBefore: changeText(this.underFirstRefs(before!, firstRefs)),
-      changedByIt: changeText(this.underFirstRefs(after!, firstRefs)),
+      changedBefore: this.underFirstRefs(before!, firstRefs),
+      changedByIt: this.underFirstRefs(after!, firstRefs),
       target:
         picture.target && (firstRefs.get(picture.target) ?? picture.target),
     };
@@ -472,16 +491,20 @@ export class Timeline {
       from,
       visit.snapshots[end]
     );
+    const changed = change && changedSomething(change) ? change : null;
     visit.entries.push({
-      kind: "interaction",
-      id: interaction.id,
-      timestamp: interaction.at,
-      interaction: interactionDetails(
-        interaction.id,
-        interaction.report,
-        target ? (from.firstRefs.get(target) ?? target) : null
-      ),
-      changeTree: change === "" ? null : change,
+      entry: {
+        kind: "interaction",
+        id: interaction.id,
+        timestamp: interaction.at,
+        interaction: interactionDetails(
+          interaction.id,
+          interaction.report,
+          target ? (from.firstRefs.get(target) ?? target) : null
+        ),
+        changes: changed && changeRows(changed),
+      },
+      change: changed,
     });
     // The entries never go back: an Interaction with no "after" here, or
     // one written late, leaves them where they stand.
@@ -501,10 +524,10 @@ export class Timeline {
     interaction: Waiting,
     from: Kept,
     to: Kept | undefined
-  ): Promise<{ target: AriaRef | undefined; change: string }> {
+  ): Promise<{ target: AriaRef | undefined; change: StructuralTree | null }> {
     const held = {
       target: locateTarget(from.tree, interaction.report),
-      change: to ? changeText(await this.change(from, to)) : "",
+      change: to ? await this.change(from, to) : null,
     };
     if (!interaction.beforeFromReport || !to) return held;
     const read = await this.fromPicture(from, to, interaction);
@@ -515,13 +538,8 @@ export class Timeline {
       });
       return held;
     }
-    if (read.changedBefore !== "")
-      visit.entries.push({
-        kind: "change",
-        id: `change_${++this.changes}`,
-        timestamp: interaction.at,
-        changeTree: read.changedBefore,
-      });
+    if (changedSomething(read.changedBefore))
+      this.writeChange(visit, interaction.at, read.changedBefore);
     return { target: read.target, change: read.changedByIt };
   }
 
@@ -539,19 +557,21 @@ export class Timeline {
     if (reached || !next) return false;
     // What changed while the recorder was paused is left out: the
     // snapshot where recording resumes is compared with nothing before it.
-    const change = next.resumes
-      ? ""
-      : changeText(await this.change(through, next));
+    const change = next.resumes ? null : await this.change(through, next);
     // Nothing changed: there is nothing to tell.
-    if (change !== "")
-      visit.entries.push({
-        kind: "change",
-        id: `change_${++this.changes}`,
-        timestamp: next.snapshot.at,
-        changeTree: change,
-      });
+    if (change && changedSomething(change))
+      this.writeChange(visit, next.snapshot.at, change);
     visit.through += 1;
     return true;
+  }
+
+  /** Writes a change of its own: one no Interaction explains. */
+  private writeChange(visit: Visit, at: number, change: StructuralTree) {
+    const id = `change_${++this.changes}`;
+    visit.entries.push({
+      entry: { kind: "change", id, timestamp: at, changes: changeRows(change) },
+      change,
+    });
   }
 
   /**

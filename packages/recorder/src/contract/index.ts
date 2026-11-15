@@ -77,8 +77,7 @@ export type PropertyChange = {
   readonly to?: string;
 };
 
-/** One entry of a Visit's timeline. A Change Tree is text, in the compact
- * notation of the Recording Package. */
+/** One entry of a Visit's timeline. */
 export type TimelineEntry = (
   | {
       readonly kind: "interaction";
@@ -87,13 +86,13 @@ export type TimelineEntry = (
       readonly interaction: InteractionDetails;
       /** What it changed; null when it changed nothing, or when the page was
        * gone before that could be seen. */
-      readonly changeTree: string | null;
+      readonly changes: readonly ChangeRow[] | null;
     }
   /** What changed on the page with no Interaction to explain it. */
   | {
       readonly kind: "change";
       readonly timestamp: number;
-      readonly changeTree: string;
+      readonly changes: readonly ChangeRow[];
     }
 ) & {
   /**

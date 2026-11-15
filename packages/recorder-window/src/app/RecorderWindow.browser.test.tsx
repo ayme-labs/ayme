@@ -87,17 +87,13 @@ const cart: RecordedVisit = {
         targetRef: "e2",
         targetSelector: 'internal:role=button[name="Add item"i]',
       },
-      changeTree: [
-        "- [ref=e1]:",
-        '  - <added> [ref=e3] list "Cart":',
-        "    - <added> [ref=e4] listitem: Milk",
-      ].join("\n"),
+      changes: [{ kind: "added", element: 'list "Cart"' }],
     },
     {
       kind: "change",
       id: "change_1",
       timestamp: 20,
-      changeTree: '- [ref=e1]:\n  - <removed> [ref=e5] status: "Saved"',
+      changes: [{ kind: "removed", element: 'status "Saved"' }],
     },
   ],
 };

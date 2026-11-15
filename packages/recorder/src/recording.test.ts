@@ -164,9 +164,7 @@ describe("a recording", () => {
         modifiers: 0,
         clickCount: 1,
       },
-      changeTree: [`- [ref=e1]:`, `  - <added> [ref=e3] status: Saved`].join(
-        "\n"
-      ),
+      changes: [{ kind: "added", element: 'status "Saved"' }],
     };
     await expect.poll(() => entriesOf(updates.at(-1)!)).toEqual([interaction]);
     expect(updates.at(-1)!.state.phase).toBe("recording");
@@ -182,10 +180,7 @@ describe("a recording", () => {
         kind: "change",
         id: "change_1",
         timestamp: 4,
-        changeTree: [
-          `- [ref=e1]:`,
-          `  - <removed> [ref=e3] status: Saved`,
-        ].join("\n"),
+        changes: [{ kind: "removed", element: 'status "Saved"' }],
       },
     ]);
     const revisions = updates.map((update) => update.revision);
