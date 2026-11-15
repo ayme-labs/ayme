@@ -96,6 +96,12 @@ describe("an entry's card", () => {
     });
   });
 
+  it("asks to highlight the target by its entry alone, naming no row", () => {
+    expect(entryCardOf(click, recording, open).target?.highlight).toStrictEqual(
+      { type: "highlight", entry: entryId("interaction_1") }
+    );
+  });
+
   it("shows the selector of a target the page's structure does not name", () => {
     const unnamed = { ...click } as Extract<
       TimelineEntry,

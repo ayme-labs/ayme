@@ -65,6 +65,33 @@ function targetOf(
   return targetRef ? { text: `[ref=${targetRef}]`, highlight } : null;
 }
 
+/** The entry's icon and title: an Interaction's kind, or a change's. */
+function headingOf(entry: TimelineEntry): Pick<EntryCard, "icon" | "title"> {
+  if (entry.kind !== "interaction")
+    return { icon: "change", title: changeTitle(entry.changes) };
+  const { interaction } = entry;
+  return {
+    icon: ICONS[interaction.type] ?? "interaction",
+    title: interactionTitle(interaction),
+  };
+}
+
+/** What reviewing the entry offers now: Discard while it is kept, Restore
+ * while it is discarded, each when it applies. */
+function reviewOf(
+  entry: TimelineEntry,
+  applies: (type: RecorderCommandType) => boolean
+): Pick<EntryCard, "discarded" | "discard" | "restore"> {
+  const discarded = entry.discarded === true;
+  const offer = (type: "discard" | "restore", when: boolean) =>
+    when && applies(type) ? { type, entry: entry.id } : null;
+  return {
+    discarded,
+    discard: offer("discard", !discarded),
+    restore: offer("restore", discarded),
+  };
+}
+
 /**
  * Reads how an entry shows from the entry, the commands that apply, and
  * whether its Visit is the page now open: only the chips of that page can
@@ -85,31 +112,16 @@ export function entryCardOf(
           ...(row === undefined ? {} : { row }),
         }
       : null;
-  const discarded = entry.discarded === true;
-  const rows = entry.changes ?? [];
-  const interaction = entry.kind === "interaction" ? entry : null;
+  const review = reviewOf(entry, applies);
   return {
-    icon: interaction
-      ? (ICONS[interaction.interaction.type] ?? "interaction")
-      : "change",
-    title: interaction
-      ? interactionTitle(interaction.interaction)
-      : changeTitle(rows),
-    target: interaction && targetOf(interaction, highlight()),
+    ...headingOf(entry),
+    target: entry.kind === "interaction" ? targetOf(entry, highlight()) : null,
     leave:
       current && applies("clearHighlight") ? { type: "clearHighlight" } : null,
-    discarded,
-    discard:
-      !discarded && applies("discard")
-        ? { type: "discard", entry: entry.id }
-        : null,
-    restore:
-      discarded && applies("restore")
-        ? { type: "restore", entry: entry.id }
-        : null,
-    changes: discarded
+    ...review,
+    changes: review.discarded
       ? []
-      : rows.map((row, index) => ({
+      : (entry.changes ?? []).map((row, index) => ({
           chip: { text: chipText(row.element), highlight: highlight(index) },
           effect: effectOf(row),
         })),
