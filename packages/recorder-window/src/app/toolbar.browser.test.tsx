@@ -201,6 +201,10 @@ describe("the toolbar", () => {
     await expect.poll(() => toolbar.busy()).toBe("Wrapping up, then pausing");
     expect(await toolbar.offered()).toEqual([]);
     expect(await toolbar.busyIndicator.isEnabled()).toBe(false);
+    // Hovered, it says so too.
+    expect(await toolbar.busyIndicator.getAttribute("title")).toBe(
+      "Wrapping up, then pausing"
+    );
 
     tell({ phase: "paused", commands: ["continue"] });
     await expect.poll(() => toolbar.busy()).toBeNull();

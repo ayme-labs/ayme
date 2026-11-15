@@ -87,10 +87,11 @@ function scheme(dark: boolean) {
         get matches() {
           return query === "(prefers-color-scheme: dark)" && matches;
         },
-        addEventListener: (_: string, listener: () => void) =>
-          listeners.add(listener),
-        removeEventListener: (_: string, listener: () => void) =>
-          listeners.delete(listener),
+        // Only a change of the scheme is told, as a browser tells it.
+        addEventListener: (type: string, listener: () => void) =>
+          type === "change" && listeners.add(listener),
+        removeEventListener: (type: string, listener: () => void) =>
+          type === "change" && listeners.delete(listener),
       }) as unknown as MediaQueryList
   );
   return {
@@ -98,6 +99,8 @@ function scheme(dark: boolean) {
       matches = next;
       for (const listener of listeners) listener();
     },
+    /** Whether anything still follows the scheme. */
+    followed: () => listeners.size > 0,
   };
 }
 
@@ -245,6 +248,25 @@ it("shows each Visit with its entries: their targets by role and name, and what 
   expect(await assertion!.target.textContent()).toBe('[data-test="title"]');
   expect(await assertion!.target.getAttribute("title")).toBeNull();
   expect(await recorderWindow.timeline.empty.count()).toBe(0);
+});
+
+it("says a Visit that a new page started was opened", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  const opened: RecordedVisit = {
+    visitId: "visit_3",
+    url: "http://shop.test/help",
+    cause: "openPage",
+    entries: [],
+  };
+
+  tell({ phase: "recording", visits: [login, opened], commands: ["stop"] });
+
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [, second] = await visits();
+  expect(await second!.start.textContent()).toBe(
+    "Opened http://shop.test/help"
+  );
 });
 
 it("joins each icon of a Visit to the next by a line", async () => {
@@ -510,6 +532,34 @@ it("follows the system's scheme live, as long as no theme is chosen", async () =
 
   system.set(true);
   await expect.poll(isDark).toBe(true);
+  system.set(false);
+  await expect.poll(isDark).toBe(false);
+});
+
+it("stops following the system's scheme once it is taken out", async () => {
+  const system = scheme(false);
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "notRecording", commands: ["record"] });
+  await expect.poll(() => recorderWindow.controls.theme()).toBe("System");
+  expect(system.followed()).toBe(true);
+
+  for (const unmount of unmounts.splice(0)) unmount();
+
+  expect(system.followed()).toBe(false);
+});
+
+it("follows the system's scheme when the browser lets it read no stored theme", async () => {
+  const system = scheme(true);
+  vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    throw new Error("Storage is blocked.");
+  });
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "notRecording", commands: ["record"] });
+
+  await expect.poll(() => recorderWindow.controls.theme()).toBe("System");
+  expect(isDark()).toBe(true);
   system.set(false);
   await expect.poll(isDark).toBe(false);
 });
