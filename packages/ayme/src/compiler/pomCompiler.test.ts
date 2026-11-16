@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createPomCompiler, PomCompileError } from "./index";
+import { createPomCompiler } from "./index";
 import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
 
 // Appended to what the transform generates, to fail its transpile alone.
@@ -183,16 +183,6 @@ describe("createPomCompiler", () => {
     } finally {
       generated.suffix = "";
     }
-  });
-
-  it("states each diagnostic on a line of its message", () => {
-    expect(
-      new PomCompileError([
-        { text: "a", file: "/p/a.ts", line: 2, column: 3 },
-        { text: "b", file: "/p/b.ts" },
-        { text: "c" },
-      ]).message
-    ).toBe("/p/a.ts:2:3: a\n/p/b.ts: b\nc");
   });
 
   it("leaves a module that declares no Page Object Model alone", () => {

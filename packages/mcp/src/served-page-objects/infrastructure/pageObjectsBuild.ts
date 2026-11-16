@@ -35,12 +35,10 @@ type PomCompilerEntry = {
  * One reason a module did not compile, as the compiler states it: the file at
  * fault and the 1-based line and column in it as written, where it knows them.
  */
-type PomDiagnostic = {
-  text: string;
-  file?: string;
-  line?: number;
-  column?: number;
-};
+type PomDiagnostic =
+  | { text: string; file?: undefined }
+  | { text: string; file: string; line?: undefined }
+  | { text: string; file: string; line: number; column: number };
 
 const COMPILER = "@ayme-dev/ayme/compiler";
 const RUNTIME = "@ayme-dev/ayme";
@@ -201,12 +199,15 @@ export function pageObjectModels(
  * at the import of that module.
  */
 function buildError(
-  { text, file, line, column }: PomDiagnostic,
+  diagnostic: PomDiagnostic,
   compiled: string
 ): esbuild.PartialMessage {
-  if (file === undefined) return { text, location: { file: compiled } };
-  if (line === undefined || column === undefined)
-    return { text, location: { file } };
+  const { text } = diagnostic;
+  if (diagnostic.file === undefined)
+    return { text, location: { file: compiled } };
+  if (diagnostic.line === undefined)
+    return { text, location: { file: diagnostic.file } };
+  const { file, line, column } = diagnostic;
   return {
     text,
     location: { file, line, column: esbuildColumn(file, line, column) },
@@ -215,21 +216,24 @@ function buildError(
 
 /**
  * `column` of `line` in `file`, counted from 1 in UTF-16 code units as
- * TypeScript counts it, as esbuild counts it: from 0, in UTF-8 bytes. When the
- * file cannot be read, the count of code units stands in.
+ * TypeScript counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without
+ * that line, the count of code units stands in.
  */
 function esbuildColumn(file: string, line: number, column: number) {
-  let lineText: string | undefined;
-  try {
-    lineText = readFileSync(file, "utf8").split(/\r\n?|[\n\u2028\u2029]/)[
-      line - 1
-    ];
-  } catch {
-    lineText = undefined;
-  }
+  const lineText = sourceLine(file, line);
   return lineText === undefined
     ? column - 1
     : Buffer.byteLength(lineText.slice(0, column - 1));
+}
+
+/** Line `line` of `file`, counted from 1, if the file can be read and has it. */
+function sourceLine(file: string, line: number): string | undefined {
+  try {
+    return readFileSync(file, "utf8").split("\n")[line - 1];
+  } catch {
+    // An unreadable file has no line to measure.
+  }
+  return undefined;
 }
 
 /**

@@ -142,11 +142,11 @@ function transpileCompiled(compiled: string, source: string, fileName: string) {
   try {
     return transpilePomModule(compiled, fileName);
   } catch (error) {
-    if (!(error instanceof PomCompileError)) throw error;
     transpilePomModule(source, fileName);
+    // `transpilePomModule` throws nothing else.
+    const { diagnostics } = error as PomCompileError;
     throw new PomCompileError(
-      error.diagnostics.map(({ text }) => ({ text, file: fileName })),
-      { cause: error }
+      diagnostics.map(({ text }) => ({ text, file: fileName }))
     );
   }
 }

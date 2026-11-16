@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,8 +15,10 @@ import { expect, it, vi } from "vitest";
 
 // What the adapter asks of its compiler, in order: a compile keeps the
 // Programs, an invalidate drops them (ADR-0036).
-const { compilerCalls } = vi.hoisted(() => ({
+const { compilerCalls, compileFailure } = vi.hoisted(() => ({
   compilerCalls: [] as ("compile" | "invalidate")[],
+  // What `compile` throws instead of compiling, when set.
+  compileFailure: { error: undefined as Error | undefined },
 }));
 
 vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
@@ -25,6 +34,7 @@ vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
         ...compiler,
         compile(...compileArgs: Parameters<typeof compiler.compile>) {
           compilerCalls.push("compile");
+          if (compileFailure.error) throw compileFailure.error;
           return compiler.compile(...compileArgs);
         },
         invalidate() {
@@ -35,6 +45,8 @@ vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
     },
   };
 });
+
+import { PomCompileError } from "@ayme-dev/ayme/compiler";
 
 import aymeAngularPlugin, { type AymeAngularOptions } from "./angular";
 
@@ -399,6 +411,65 @@ ${declaration}
       },
     ]);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("reports a diagnostic without a position at its file, one without a file at the module it compiled, and one in a file it cannot read at its column", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts": 'import { Page } from "./Page";\nconsole.log(Page);\n',
+    "Page.ts": pomSource("Page"),
+  });
+  // esbuild names a file by its path from the real working directory.
+  const real = await realpath(root);
+  compileFailure.error = new PomCompileError([
+    { text: "no position", file: path.join(real, "tsconfig.json") },
+    { text: "no file" },
+    {
+      text: "unreadable",
+      file: path.join(real, "Gone.ts"),
+      line: 2,
+      column: 5,
+    },
+  ]);
+  try {
+    const failure = await bundle("browser", root).catch(
+      (error: unknown) => error
+    );
+    const byText = ({ text }: { text: string }) => text;
+    expect(
+      (failure as BuildFailure).errors.sort((a, b) =>
+        byText(a).localeCompare(byText(b))
+      )
+    ).toMatchObject([
+      // The entry is the first module compiled, so the first to fail.
+      { text: "no file", location: { file: "main.ts" } },
+      { text: "no position", location: { file: "tsconfig.json", line: 0 } },
+      {
+        text: "unreadable",
+        location: { file: "Gone.ts", line: 2, column: 4 },
+      },
+    ]);
+  } finally {
+    compileFailure.error = undefined;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("lets an error of the compiler's own through as it is", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts": 'import { Page } from "./Page";\nconsole.log(Page);\n',
+    "Page.ts": pomSource("Page"),
+  });
+  compileFailure.error = new Error("The compiler broke.");
+  try {
+    await expect(bundle("browser", root)).rejects.toThrow(
+      "The compiler broke."
+    );
+  } finally {
+    compileFailure.error = undefined;
     await rm(root, { recursive: true, force: true });
   }
 });

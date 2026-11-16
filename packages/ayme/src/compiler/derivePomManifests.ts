@@ -95,10 +95,9 @@ export function derivePomManifestsFromProgram(
     const [refused] = refusals;
     if (refused) {
       const [className, refusal] = refused;
-      throw new PomCompileError(
-        [diagnosticAt(declarations.get(className)!, refusal.message)],
-        { cause: refusal }
-      );
+      throw new PomCompileError([
+        diagnosticAt(declarations.get(className)!, refusal.message),
+      ]);
     }
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
@@ -1596,8 +1595,7 @@ function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
       error.diagnostics.map((diagnostic) => ({
         ...diagnostic,
         text: diagnostic.text + compiledWith,
-      })),
-      { cause: error }
+      }))
     );
   }
 }

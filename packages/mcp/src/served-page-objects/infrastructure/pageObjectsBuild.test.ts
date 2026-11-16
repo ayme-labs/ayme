@@ -25,12 +25,11 @@ const entry = "/project/.ayme/page-objects.ts";
 /** The compiler entry's error class, as `ayme mcp` reads it. */
 class PomCompileError extends Error {
   constructor(
-    readonly diagnostics: readonly {
-      text: string;
-      file?: string;
-      line?: number;
-      column?: number;
-    }[]
+    readonly diagnostics: readonly (
+      | { text: string; file?: undefined }
+      | { text: string; file: string; line?: undefined }
+      | { text: string; file: string; line: number; column: number }
+    )[]
   ) {
     super(diagnostics.map(({ text }) => text).join("\n"));
   }

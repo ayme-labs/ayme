@@ -853,6 +853,26 @@ describe("derivePomManifests", () => {
     ]);
   });
 
+  it("fails the build for an anonymous Page Object Model, at its declaration", () => {
+    const file = path.resolve("src/compiler/fixtures/anonymousPom.ts");
+    expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+      {
+        text: "A Page Object Model needs a class name.",
+        file,
+        ...positionOf(file, "@ayme // A Page Object Model"),
+      },
+    ]);
+  });
+
+  it("names the file of a module its Program does not hold", () => {
+    const held = path.resolve("src/compiler/fixtures/twoPagesPom.ts");
+    const file = path.resolve("src/compiler/fixtures/missingPom.ts");
+    const program = createPomProgram(held);
+    expect(
+      diagnosticsOf(() => derivePomManifestsFromProgram(file, program))
+    ).toEqual([{ text: "Could not read this module.", file }]);
+  });
+
   describe("two different classes with one name", () => {
     const fixture = (name: string) =>
       path.resolve(`src/compiler/fixtures/sameNamedChildren/${name}.ts`);
