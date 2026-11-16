@@ -143,6 +143,10 @@ export type RecorderState = RecorderPhase & {
   /** What a person should know about how this recording is made, oldest
    * first. Each is told once. */
   readonly warnings: readonly RecorderWarning[];
+  /** The address of the page that is open: the one that opened last of
+   * those still open, as it is now, whether recording or not. Null while
+   * no page is open. */
+  readonly url: string | null;
 };
 
 /** Something a person should know about how a recording is made. */

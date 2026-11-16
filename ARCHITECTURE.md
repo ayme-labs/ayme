@@ -227,7 +227,8 @@ in-browser agents and the app's own code call on the running page.
     - ← the window's address, where the Recording Package was saved, that nothing was
       recorded, or the reason the recorder could not start or failed
     - ← in the recorder window and the toolbar, the recorder's state as it changes: its
-      phase, the commands that apply now, and the Visits with their entries
+      phase, the commands that apply now, the address of the page that is open, and the
+      Visits with their entries
   - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/server/infrastructure/windowChannelRouter.ts](packages/recorder/src/server/infrastructure/windowChannelRouter.ts),
     [packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts](packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts)
 - **Playground visitors → Playground**

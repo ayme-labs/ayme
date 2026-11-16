@@ -58,7 +58,13 @@ function scriptedChannel(
     tell(state: Partial<RecorderState>, at = ++revision) {
       const update = {
         revision: at,
-        state: { visits: [], commands: [], warnings: [], ...state },
+        state: {
+          visits: [],
+          commands: [],
+          warnings: [],
+          url: null,
+          ...state,
+        },
       } as unknown as RecorderUpdate;
       latest = update;
       for (const listener of listeners) listener(update);
@@ -584,17 +590,28 @@ it("takes the theme chosen with its switch, and keeps it when it opens again", a
   expect(isDark()).toBe(false);
 });
 
-it("names the page the recording is on now in its title", async () => {
+it("names the page that is open in its title, recording or not", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);
-  tell({ phase: "notRecording", commands: ["record"] });
+  tell({ phase: "notRecording", commands: [] });
   await expect.poll(() => document.title).toBe("Ayme Recorder");
 
-  tell({ phase: "recording", visits: [login], commands: ["stop"] });
+  // Before Record: no Visit yet, and the page is named all the same.
+  tell({
+    phase: "notRecording",
+    commands: ["record"],
+    url: "http://shop.test/login",
+  });
   await expect
     .poll(() => document.title)
-    .toBe("Ayme Recorder - http://shop.test/");
-  tell({ phase: "recording", visits: [login, inventory], commands: ["stop"] });
+    .toBe("Ayme Recorder - http://shop.test/login");
+  // While paused, the page goes on to another that no Visit records.
+  tell({
+    phase: "paused",
+    visits: [login],
+    commands: ["continue"],
+    url: "http://shop.test/inventory",
+  });
   await expect
     .poll(() => document.title)
     .toBe("Ayme Recorder - http://shop.test/inventory");

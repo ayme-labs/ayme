@@ -15,6 +15,7 @@ describe("what the window says the recorder is doing", () => {
         visits: [],
         commands: [],
         warnings: [],
+        url: null,
       } as unknown as RecorderState)
     ).toBeNull();
   });
@@ -33,6 +34,7 @@ describe("what the window says the recorder is doing", () => {
         visits: [],
         commands: [],
         warnings: [],
+        url: null,
       } as unknown as RecorderState)
     ).toBe(text);
   });
@@ -49,6 +51,7 @@ describe("what the window says the recorder is doing", () => {
         visits: [],
         commands: [],
         warnings: [],
+        url: null,
       })
     ).toBe("Saved /project/.ayme/recordings/rec_1/package.yaml");
     expect(
@@ -58,6 +61,7 @@ describe("what the window says the recorder is doing", () => {
         visits: [],
         commands: [],
         warnings: [],
+        url: null,
       })
     ).toBe("Failed: ENOSPC");
   });

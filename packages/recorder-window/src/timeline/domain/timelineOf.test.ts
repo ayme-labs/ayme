@@ -23,6 +23,7 @@ describe("what the timeline shows of the state", () => {
         visits,
         commands: ["stop"],
         warnings: [],
+        url: null,
       } as unknown as RecorderState)
     ).toEqual({ visits, commands: ["stop"] });
   });

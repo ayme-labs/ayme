@@ -13,6 +13,7 @@ const update = (revision: number): RecorderUpdate => ({
     visits: [],
     commands: ["stop"],
     warnings: [],
+    url: null,
   },
 });
 

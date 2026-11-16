@@ -67,7 +67,13 @@ function scriptedPage() {
     tell(state: Partial<RecorderState>) {
       latest = {
         revision: ++revision,
-        state: { visits: [], commands: [], warnings: [], ...state },
+        state: {
+          visits: [],
+          commands: [],
+          warnings: [],
+          url: null,
+          ...state,
+        },
       } as unknown as RecorderUpdate;
       for (const wake of [...waiting]) {
         waiting.delete(wake);

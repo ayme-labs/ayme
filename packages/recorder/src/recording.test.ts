@@ -106,6 +106,7 @@ describe("a recording", () => {
           "clearHighlight",
         ],
         warnings: [],
+        url: "http://shop.test/",
       },
     });
     expect(browser.asked).toEqual([

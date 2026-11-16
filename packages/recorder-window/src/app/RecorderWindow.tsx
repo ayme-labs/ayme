@@ -6,8 +6,7 @@ import { TimelineView, timelineOf, windowTitle } from "../timeline";
 
 /** The recorder window: the controls above, the recording below, both the
  * newest state the channel has told. It is dark as the person chose or as
- * the system is, followed live, and its title names the page the recording
- * is on now. */
+ * the system is, followed live, and its title names the page that is open. */
 export function RecorderWindow({ channel }: { channel: RecorderChannel }) {
   const { state, send } = useRecorder(channel);
   const { visits, commands } = timelineOf(state);
@@ -15,7 +14,7 @@ export function RecorderWindow({ channel }: { channel: RecorderChannel }) {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
-  const title = windowTitle(visits);
+  const title = windowTitle(state?.url ?? null);
   useEffect(() => {
     const before = document.title;
     document.title = title;

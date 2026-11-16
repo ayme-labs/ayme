@@ -479,6 +479,12 @@ export const initialState: LifecycleState = {
 };
 
 /** The phase a state shows outside the engine. */
+/** The address of the page that is open: the one that opened last of
+ * those still open; null while none is. */
+export function openAddress(state: LifecycleState): string | null {
+  return state.pages.at(-1)?.url ?? null;
+}
+
 export function shown(state: LifecycleState): RecorderPhase {
   switch (state.phase) {
     case "ended":

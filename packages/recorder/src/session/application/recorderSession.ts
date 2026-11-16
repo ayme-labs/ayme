@@ -21,6 +21,7 @@ import {
   awaitsAnswer,
   initialState,
   offered,
+  openAddress,
   shown,
   step,
   type BrowserRequest,
@@ -83,9 +84,13 @@ export class RecorderSession extends Context.Service<
         let timeline = new Timeline();
         let state = initialState;
         let visits = timeline.visits();
-        /** What shows of the lifecycle from outside: the phase, and the
-         * commands that apply. */
-        const told = () => ({ ...shown(state), commands: offered(state) });
+        /** What shows of the lifecycle from outside: the phase, the
+         * commands that apply, and the address of the page that is open. */
+        const told = () => ({
+          ...shown(state),
+          commands: offered(state),
+          url: openAddress(state),
+        });
         /** The warnings told so far, and how many of the timeline's. */
         let warnings: readonly RecorderWarning[] = [];
         let fromTimeline = 0;

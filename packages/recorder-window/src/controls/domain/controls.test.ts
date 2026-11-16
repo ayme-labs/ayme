@@ -12,7 +12,14 @@ import { controlsOf } from "./controls";
 const state = (
   phase: Partial<RecorderState> & Pick<RecorderState, "phase">,
   commands: RecorderCommandType[]
-) => ({ visits: [], warnings: [], ...phase, commands }) as RecorderState;
+) =>
+  ({
+    visits: [],
+    warnings: [],
+    url: null,
+    ...phase,
+    commands,
+  }) as RecorderState;
 
 describe("the controls", () => {
   it("show only the status before the recorder's state is known", () => {

@@ -381,6 +381,7 @@ describe("Clear", () => {
       visits: [],
       commands: ["record"],
       warnings: [],
+      url: "http://shop.test/",
     });
     // "Not recording" was never shown with the old entries still in it.
     expect(
@@ -435,6 +436,7 @@ describe("Clear", () => {
         visits: [],
         commands: ["record"],
         warnings: [],
+        url: "http://shop.test/",
       });
     recorder.end();
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
@@ -462,6 +464,7 @@ describe("Clear", () => {
       visits: [],
       commands: [],
       warnings: [],
+      url: "http://shop.test/",
     });
     await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
   });

@@ -12,6 +12,7 @@ import {
   awaitsAnswer,
   initialState,
   offered,
+  openAddress,
   shown,
   step,
   TRACE_STOP_LIMIT_MS,
@@ -5760,5 +5761,46 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
+  });
+});
+
+// The address of the page that is open, which the window's title names.
+describe("the lifecycle, for the address of the page that is open", () => {
+  const after = (happened: readonly Happening[]) =>
+    openAddress(
+      happened.reduce(
+        (state, happening) => step(state, happening).state,
+        initialState
+      )
+    );
+
+  it("is none before a page opens, and the page's from when it opens, before anything is recorded", () => {
+    expect(after([])).toBeNull();
+    expect(after([opened])).toBe(url);
+  });
+
+  it("follows the page wherever it goes, a new hash too, recording or not", () => {
+    expect(after([opened, navigated(`${url}#more`)])).toBe(`${url}#more`);
+    expect(
+      after([opened, ...started, navigated("http://shop.test/cart")])
+    ).toBe("http://shop.test/cart");
+    expect(
+      after([opened, ...started, stop, gateOff, navigated(`${url}#paused`)])
+    ).toBe(`${url}#paused`);
+  });
+
+  it("is the page that opened last of those still open", () => {
+    const second: Happening = {
+      kind: "pageOpened",
+      page: page2,
+      url: "http://shop.test/help",
+    };
+    expect(after([opened, second])).toBe("http://shop.test/help");
+    expect(
+      after([opened, second, { kind: "pageClosed", page: page2, pagesLeft: 1 }])
+    ).toBe(url);
+    expect(
+      after([opened, { kind: "pageClosed", page: page1, pagesLeft: 0 }])
+    ).toBeNull();
   });
 });

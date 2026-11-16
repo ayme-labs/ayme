@@ -50,6 +50,7 @@ describe("a recorder", () => {
           visits: [],
           commands: [],
           warnings: [],
+          url: null,
         },
       });
     expect(updates).toHaveLength(2);
@@ -115,6 +116,7 @@ describe("a recorder", () => {
           visits: [],
           commands: ["record"],
           warnings: [],
+          url: "http://scripted.test/",
         },
       },
     ]);
@@ -129,6 +131,7 @@ describe("a recorder", () => {
           visits: [],
           commands: ["record"],
           warnings: [],
+          url: "http://scripted.test/",
         },
       },
       {
@@ -139,9 +142,23 @@ describe("a recorder", () => {
           visits: [],
           commands: [],
           warnings: [],
+          url: "http://scripted.test/",
         },
       },
     ]);
+  });
+
+  it("tells a subscriber the address of the page that is open each time the page goes to another, before Record too", async () => {
+    const { recorder, browser } = await startScriptedRecorder();
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+
+    browser.goTo("http://scripted.test/login");
+
+    await expect
+      .poll(() => updates.at(-1)!.state.url)
+      .toBe("http://scripted.test/login");
+    expect(updates.at(-1)!.state.phase).toBe("notRecording");
   });
 
   it("tells a late subscriber the state as it is now", async () => {
@@ -161,6 +178,7 @@ describe("a recorder", () => {
           visits: [],
           commands: [],
           warnings: [],
+          url: "http://scripted.test/",
         },
       },
     ]);

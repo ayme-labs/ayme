@@ -35,6 +35,7 @@ describe("the toolbar's way to the recorder", () => {
       visits: [],
       commands: ["record"],
       warnings: [],
+      url: "http://scripted.test/",
     });
   });
 

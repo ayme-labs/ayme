@@ -243,6 +243,7 @@ describe("the window's server", () => {
       visits: [],
       commands: ["record"],
       warnings: [],
+      url: "http://scripted.test/",
     });
 
     await expect(send("record")).resolves.toBe("applied");
