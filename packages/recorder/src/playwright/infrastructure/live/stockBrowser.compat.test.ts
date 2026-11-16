@@ -927,6 +927,57 @@ it("outlines the element under the mouse while picking, apart from the page's st
   await expect.poll(() => outlined(browser.page)).toBeNull();
 });
 
+it("outlines the element under the mouse in a frame that loads a new document while picking, until an element is picked anywhere, and in none that loads one after", async () => {
+  const browser = await onStockPlaywright(
+    `<button id="first">First</button><iframe style="height: 80px" srcdoc="<p>Old</p>"></iframe>`
+  );
+  await reporting(browser);
+  const frame = browser.page.frames()[1]!;
+  /** Has the frame load a new document with one button in it. */
+  const load = async (name: string) => {
+    await browser.page.evaluate((button) => {
+      document.querySelector("iframe")!.srcdoc = button;
+    }, `<button>${name}</button>`);
+    await browser.page
+      .frameLocator("iframe")
+      .getByRole("button", { name })
+      .waitFor();
+  };
+  const outlinedInFrame = () =>
+    frame.evaluate(() => {
+      const host = document.querySelector("ayme-recorder-picking");
+      if (!host) return null;
+      const { width, height } = host.getBoundingClientRect();
+      return { width, height };
+    });
+  const mouseOver = async (name: string) => {
+    const button = browser.page
+      .frameLocator("iframe")
+      .getByRole("button", { name });
+    const { x, y, width, height } = (await button.boundingBox())!;
+    await browser.page.mouse.move(x + width / 2, y + height / 2);
+    return {
+      width: expect.closeTo(width, 0),
+      height: expect.closeTo(height, 0),
+    };
+  };
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+
+  await load("New");
+  const box = await mouseOver("New");
+  await expect.poll(outlinedInFrame).toEqual(box);
+
+  // The element is picked in the page: the frame's outline goes too.
+  await browser.click(browser.page.locator("#first"));
+  await browser.toldOf("picking", ({ on }) => !on);
+  expect(await outlinedInFrame()).toBeNull();
+  await load("After");
+  await mouseOver("After");
+  await browser.page.waitForTimeout(300);
+  expect(await outlinedInFrame()).toBeNull();
+});
+
 // The hover highlight (ticket #1278): the recorder's own highlight, drawn
 // on the element a ref of the adapter's own latest snapshot names.
 

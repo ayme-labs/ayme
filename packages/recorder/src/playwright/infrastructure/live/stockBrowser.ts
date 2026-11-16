@@ -64,6 +64,7 @@ import {
   highlightIn,
   installGate,
   installTargetWatch,
+  startPickingIn,
 } from "./pageFunctions";
 import {
   playwrightRecorderOf,
@@ -344,6 +345,8 @@ async function openPage(
   let inputs = 0;
   /** How often the gate was switched. */
   let gateChanges = 0;
+  /** How often Playwright's recorder started or stopped picking. */
+  let pickingChanges = 0;
 
   const track = (page: Page) => {
     const id = `page_${idOf.size + 1}` as PageId;
@@ -806,7 +809,22 @@ async function openPage(
       recorderMode.on?.("modeChanged", (mode) => {
         if ((mode === PICKING_MODE) === picking) return;
         picking = mode === PICKING_MODE;
-        tell({ kind: "picking", on: picking });
+        // A document that loads from now on outlines what it would pick
+        // while picking, and nothing after: told once that holds.
+        // A document open now stops outlining when picking ends, whoever
+        // ended it.
+        const on = picking;
+        const open = on
+          ? []
+          : everyFrame().map((frame) =>
+              frame.evaluate(followPickingIn, false).catch(() => {})
+            );
+        void Promise.all([
+          ...open,
+          context
+            .addInitScript(startPickingIn, { on, change: ++pickingChanges })
+            .catch(() => {}),
+        ]).then(() => tell({ kind: "picking", on }));
       });
     }
     tell({ kind: "reportingInteractions", on });

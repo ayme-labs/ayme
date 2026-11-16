@@ -69,7 +69,7 @@ export function outline(name: string, box: HighlightBox | null): void {
 }
 
 type Outline = { readonly outline: typeof outline };
-type Picking = Outline & {
+export type Picking = Outline & {
   readonly recordersOwn: (localName: string) => boolean;
 };
 
@@ -98,16 +98,39 @@ export function followPicking(on: boolean, rules: Picking): void {
       under instanceof Element && !rules.recordersOwn(under.localName);
     rules.outline(name, shown ? under.getBoundingClientRect() : null);
   };
-  const hide = () => rules.outline(name, null);
+  // The mouse left the document: it goes nowhere in it.
+  const left = (event: MouseEvent) => {
+    if (!event.relatedTarget) rules.outline(name, null);
+  };
   const stop = () => {
     window.removeEventListener("mousemove", follow, true);
+    window.removeEventListener("mouseout", left, true);
     window.removeEventListener("click", stop, true);
-    document.documentElement.removeEventListener("mouseleave", hide);
-    hide();
+    rules.outline(name, null);
     delete self.__aymeRecorderPicking;
   };
-  window.addEventListener("mousemove", follow, true);
-  window.addEventListener("click", stop, true);
-  document.documentElement.addEventListener("mouseleave", hide);
+  // Only the window: a document that is just starting has no element yet.
   self.__aymeRecorderPicking = stop;
+  window.addEventListener("mousemove", follow, true);
+  window.addEventListener("mouseout", left, true);
+  window.addEventListener("click", stop, true);
+}
+
+/** Whether the outline while picking starts in a document, and the change
+ * of mode that said so. */
+export type PickingStart = { readonly on: boolean; readonly change: number };
+
+/**
+ * Starts a document that loads while Playwright picks with the outline
+ * following the mouse, or without it. Every start the adapter added runs in
+ * each new document, in the order they were added: only the latest counts.
+ */
+export function startPicking(
+  start: PickingStart,
+  rules: Picking & { readonly followPicking: typeof followPicking }
+): void {
+  const self = window as unknown as { __aymeRecorderPickingStart?: number };
+  if ((self.__aymeRecorderPickingStart ?? 0) > start.change) return;
+  self.__aymeRecorderPickingStart = start.change;
+  rules.followPicking(start.on, rules);
 }
