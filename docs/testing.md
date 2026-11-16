@@ -24,7 +24,18 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 - `packages/angular`'s `ng add` tests run Angular's `SchematicTestRunner` on the built `schematics/collection.json`, so the package's `test` task depends on its own `build`.
 - **Live goals** run real goals through `goal` against the model. It needs `AYME_TYPESAFE_API_KEY` or `AYME_OPENROUTER_API_KEY` and skips itself without one. It is a separate CI job, and `pnpm check` does not run it. See the [example-vue README](../apps/example-vue/README.md#live-goal-lane), which also covers the hand-run goal harness.
 
-Each package keeps its own Vitest config; the change-analysis lane below builds its configs from shared helpers in `@ayme-dev/test-config`. Run `pnpm check` from the root for everything CI's Check job runs. On a pull request, CI runs the affected packages' `build lint typecheck test test:e2e`, plus commit lint, `turbo boundaries`, the runtime import cycle check ([`scripts/check-cycles.mjs`](../scripts/check-cycles.mjs)), the docs check ([`scripts/check-docs.mjs`](../scripts/check-docs.mjs)), the tests of `scripts/` (`pnpm test:scripts`) and the format check ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
+Each package keeps its own Vitest config; the change-analysis lane below builds its configs from shared helpers in `@ayme-dev/test-config`. `pnpm check` is everything CI's Check job runs; it belongs to CI, not to a shared machine ([Local runs and CI](#local-runs-and-ci)). CI runs on pull requests that are not drafts. On such a pull request, CI runs the affected packages' `build lint typecheck test test:e2e`, plus commit lint, `turbo boundaries`, the runtime import cycle check ([`scripts/check-cycles.mjs`](../scripts/check-cycles.mjs)), the docs check ([`scripts/check-docs.mjs`](../scripts/check-docs.mjs)), the tests of `scripts/` (`pnpm test:scripts`) and the format check ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
+
+## Local runs and CI
+
+Several agents share one machine, so local runs stay small and heavy runs belong to CI.
+
+- **Locally**, the commit hook ([`lefthook.yml`](../lefthook.yml)) lints and formats the staged files, then typechecks and tests the workspaces the staged change reaches. [`scripts/pre-commit-checks.mjs`](../scripts/pre-commit-checks.mjs) picks them, and holds the cap above which the hook leaves them to CI and what it always leaves out. By hand, run only the test file or package you changed and its typecheck. Give anything that runs several packages half the cores, for example `--concurrency=50%`.
+- **Allowed local exceptions**, already scoped to the change: `pnpm analyze:changed` and the scoped Stryker survivor check, both described under [Change analysis](#change-analysis).
+- **CI only**: `pnpm check`, the E2E lane, the compatibility lanes, the packed-consumer test, builds of every app, full mutation and analysis runs, live goals, and anything over the hook's cap.
+- **CI skips draft pull requests**: mark the pull request ready to run it. To run CI on a draft by hand, use `gh workflow run ci.yml --ref <branch>`; that run checks every package, not only the affected ones, and skips commit lint.
+
+The hook's cap is the same everywhere, cloud containers included. A heavy run in a cloud container is fine only when it was asked for.
 
 ## Change analysis
 
