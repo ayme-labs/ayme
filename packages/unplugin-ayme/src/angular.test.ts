@@ -366,6 +366,43 @@ export class SavePage {
   }
 });
 
+it("gives esbuild a diagnostic's column in UTF-8 bytes, after non-ASCII text on its line", async () => {
+  const declaration = "  async save(/* café */ at: Date) {";
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts":
+      'import { SavePage } from "./SavePage";\nconsole.log(SavePage);\n',
+    "SavePage.ts": `import { ayme } from "@ayme-dev/ayme";
+
+@ayme
+export class SavePage {
+  @ayme.action
+${declaration}
+    void at;
+  }
+}
+`,
+  });
+  try {
+    const failure = await bundle("browser", root).catch(
+      (error: unknown) => error
+    );
+    expect((failure as BuildFailure).errors).toMatchObject([
+      {
+        location: {
+          file: "SavePage.ts",
+          line: 6,
+          column: Buffer.byteLength(
+            declaration.slice(0, declaration.indexOf("at:"))
+          ),
+        },
+      },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it.each([
   [{ tsconfig: "tsconfig.json" }, "has no option(s): tsconfig."],
   // custom-esbuild's string form passes the builder's options.

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -175,9 +176,30 @@ function buildError(
     return { text, location: { file: compiled } };
   if (diagnostic.line === undefined)
     return { text, location: { file: diagnostic.file } };
-  // esbuild counts columns from 0.
   const { file, line, column } = diagnostic;
-  return { text, location: { file, line, column: column - 1 } };
+  return {
+    text,
+    location: { file, line, column: esbuildColumn(file, line, column) },
+  };
+}
+
+/**
+ * `column` of `line` in `file`, counted from 1 in UTF-16 code units as
+ * TypeScript counts it, as esbuild counts it: from 0, in UTF-8 bytes. When the
+ * file cannot be read, the count of code units stands in.
+ */
+function esbuildColumn(file: string, line: number, column: number) {
+  let lineText: string | undefined;
+  try {
+    lineText = readFileSync(file, "utf8").split(/\r\n?|[\n\u2028\u2029]/)[
+      line - 1
+    ];
+  } catch {
+    lineText = undefined;
+  }
+  return lineText === undefined
+    ? column - 1
+    : Buffer.byteLength(lineText.slice(0, column - 1));
 }
 
 /**

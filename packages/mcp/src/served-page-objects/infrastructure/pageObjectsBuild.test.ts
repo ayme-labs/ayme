@@ -200,6 +200,31 @@ it("reports each diagnostic of a compile error where the compiler locates it", a
   });
 });
 
+it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", async () => {
+  const file = await pomFile("const café = ;\n");
+  const { onLoad } = setUp(
+    models({
+      compile: () => {
+        // TypeScript counts the column in UTF-16 code units, from 1.
+        throw new PomCompileError([
+          { text: "Expression expected.", file, line: 1, column: 14 },
+        ]);
+      },
+      invalidate: () => {},
+    })
+  );
+
+  expect(await onLoad({ path: file })).toMatchObject({
+    errors: [
+      {
+        text: "Expression expected.",
+        // "const café = " is 13 code units and 14 bytes.
+        location: { file, line: 1, column: 14 },
+      },
+    ],
+  });
+});
+
 it("leaves to esbuild a module the compiler does not compile, and one in node_modules", async () => {
   const compile = vi.fn(() => null);
   const { onLoad } = setUp(models({ compile, invalidate: () => {} }));
