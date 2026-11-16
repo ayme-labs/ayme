@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { build, context, type Plugin } from "esbuild";
+import { build, context, type BuildFailure, type Plugin } from "esbuild";
 import { expect, it, vi } from "vitest";
 
 // What the adapter asks of its compiler, in order: a compile keeps the
@@ -334,7 +334,7 @@ it("never claims a Page Object Model under node_modules", async () => {
   }
 });
 
-it("surfaces compiler diagnostics, like the error for an unsupported parameter type", async () => {
+it("reports a compiler diagnostic, like the error for an unsupported parameter type, where the compiler locates it", async () => {
   const root = await workspace({
     "tsconfig.json": tsconfig,
     "main.ts":
@@ -351,9 +351,16 @@ export class SavePage {
 `,
   });
   try {
-    await expect(bundle("browser", root)).rejects.toThrow(
-      "Unsupported Page Object Tool input type for SavePage.save(at): Date."
+    const failure = await bundle("browser", root).catch(
+      (error: unknown) => error
     );
+    expect((failure as BuildFailure).errors).toMatchObject([
+      {
+        text: `Unsupported Page Object Tool input type for SavePage.save(at): Date. Compiled with ${path.join(root, "tsconfig.json")}.`,
+        // esbuild counts columns from 0: this is the parameter's name.
+        location: { file: "SavePage.ts", line: 6, column: 13 },
+      },
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

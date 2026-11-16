@@ -25,6 +25,21 @@ type PomCompilerEntry = {
     ): { code: string; dependencies: readonly string[] } | null;
     invalidate(): void;
   };
+  /** What `compile` throws when the module's source, an import or its tsconfig is at fault. */
+  PomCompileError: new (...args: never[]) => Error & {
+    readonly diagnostics: readonly PomDiagnostic[];
+  };
+};
+
+/**
+ * One reason a module did not compile, as the compiler states it: the file at
+ * fault and the 1-based line and column in it as written, where it knows them.
+ */
+type PomDiagnostic = {
+  text: string;
+  file?: string;
+  line?: number;
+  column?: number;
 };
 
 const COMPILER = "@ayme-dev/ayme/compiler";
@@ -65,9 +80,8 @@ export async function watchPageObjects(
   log: (message: string) => void
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
-  const { createPomCompiler } = await importFile<PomCompilerEntry>(
-    resolveFrom(folder, COMPILER, entry)
-  );
+  const { createPomCompiler, PomCompileError } =
+    await importFile<PomCompilerEntry>(resolveFrom(folder, COMPILER, entry));
   // Nothing is written there: the outputs stay in memory.
   const outdir = join(folder, "ayme-served");
   const outcomes = buildOutcomes({ entry, folder, outdir, log });
@@ -87,7 +101,7 @@ export async function watchPageObjects(
     logLevel: "silent",
     plugins: [
       runtimeEntry(folder),
-      pageObjectModels(createPomCompiler({ include: true })),
+      pageObjectModels(createPomCompiler({ include: true }), PomCompileError),
       outcomes.plugin,
     ],
   });
@@ -102,14 +116,17 @@ export async function watchPageObjects(
 /**
  * Compiles each Page Object Model the build reaches, outside
  * `node_modules`, with the project's own compiler; every other module
- * builds as esbuild builds it.
+ * builds as esbuild builds it. A compile error is reported at each place
+ * the compiler names, or at the module it compiled when it names none.
  */
 export function pageObjectModels(
-  compiler: ReturnType<PomCompilerEntry["createPomCompiler"]>
+  compiler: ReturnType<PomCompilerEntry["createPomCompiler"]>,
+  PomCompileError: PomCompilerEntry["PomCompileError"]
 ): esbuild.Plugin {
   const compiled = new Set<string>();
+  const name = "ayme-served-page-object-models";
   return {
-    name: "ayme-served-page-object-models",
+    name,
     setup(build) {
       // A rebuild compiles afresh, so an edited dependency reaches the manifest.
       build.onStart(() => {
@@ -120,6 +137,8 @@ export function pageObjectModels(
         for (const error of errors) {
           const location = error.location;
           if (
+            // The compiler's own errors are at positions in the source.
+            error.pluginName !== name &&
             location &&
             compiled.has(
               resolve(
@@ -146,19 +165,19 @@ export function pageObjectModels(
             onDependencies: (dependencies) => (read = dependencies),
           });
         } catch (error) {
-          const message = (error as Error).message;
-          const header = `Could not transpile Ayme POM ${path}:\n`;
-          const text = message.startsWith(header)
-            ? message.slice(header.length)
-            : message;
           // Thrown, it would point at esbuild's own code, not at the file.
           return {
-            errors: [
-              {
-                text,
-                location: /^.+:\d+:\d+: /.test(text) ? null : { file: path },
-              },
-            ],
+            errors:
+              error instanceof PomCompileError
+                ? error.diagnostics.map((diagnostic) =>
+                    buildError(diagnostic, path)
+                  )
+                : [
+                    {
+                      text: (error as Error).message,
+                      location: { file: path },
+                    },
+                  ],
             watchFiles: [path, ...read],
           };
         }
@@ -174,6 +193,22 @@ export function pageObjectModels(
       });
     },
   };
+}
+
+/**
+ * `diagnostic` as an esbuild error. Without a file it is at `compiled`, the
+ * module whose compile failed: esbuild would put an error without a location
+ * at the import of that module.
+ */
+function buildError(
+  { text, file, line, column }: PomDiagnostic,
+  compiled: string
+): esbuild.PartialMessage {
+  if (file === undefined) return { text, location: { file: compiled } };
+  if (line === undefined || column === undefined)
+    return { text, location: { file } };
+  // esbuild counts columns from 0.
+  return { text, location: { file, line, column: column - 1 } };
 }
 
 /**

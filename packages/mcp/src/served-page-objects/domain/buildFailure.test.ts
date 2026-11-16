@@ -4,15 +4,13 @@ import { buildErrorLine, buildFailure } from "./buildFailure";
 
 const entry = "/project/.ayme/page-objects.ts";
 
-it("keeps the error's location when its text only mentions another position", () => {
+it("names the error's line and column counted from 1, as editors do", () => {
   expect(
     buildErrorLine({
-      text: "Could not load:\n/project/Child.ts:8:14: unsupported type",
-      location: { file: entry, line: 3, column: 26 },
+      text: "')' expected.",
+      location: { file: entry, line: 3, column: 0 },
     })
-  ).toBe(
-    `${entry}:3:26: Could not load:\n/project/Child.ts:8:14: unsupported type`
-  );
+  ).toBe(`${entry}:3:1: ')' expected.`);
 });
 
 it("names each failing file, with its line and column, and what failed there", () => {
@@ -42,8 +40,8 @@ it("names each failing file, with its line and column, and what failed there", (
   expect(text).toBe(
     [
       "The Page Objects entry /project/.ayme/page-objects.ts did not build. The page gets the last good build.",
-      "  /project/.ayme/pom/PlainPage.ts:22:0: Unexpected end of file",
-      '  /project/.ayme/page-objects.ts:3:26: Could not resolve "./pom/Missing"',
+      "  /project/.ayme/pom/PlainPage.ts:22:1: Unexpected end of file",
+      '  /project/.ayme/page-objects.ts:3:27: Could not resolve "./pom/Missing"',
     ].join("\n")
   );
 });

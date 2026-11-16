@@ -1,0 +1,30 @@
+import fs from "node:fs";
+
+import { expect } from "vitest";
+
+import { PomCompileError, type PomDiagnostic } from "./pomCompileError";
+
+/** The diagnostics of the `PomCompileError` that `compile` throws. */
+export function diagnosticsOf(
+  compile: () => unknown
+): readonly PomDiagnostic[] {
+  try {
+    compile();
+  } catch (error) {
+    expect(error).toBeInstanceOf(PomCompileError);
+    return (error as PomCompileError).diagnostics;
+  }
+  throw new Error("The compile did not fail.");
+}
+
+/**
+ * Where `text` first starts in `fileName`, as the file stands, with the line
+ * and the column counted from 1: a header a tool adds to the file, such as
+ * Stryker's `// @ts-nocheck`, moves it too.
+ */
+export function positionOf(fileName: string, text: string) {
+  const lines = fs.readFileSync(fileName, "utf8").split("\n");
+  const line = lines.findIndex((candidate) => candidate.includes(text));
+  if (line === -1) throw new Error(`${fileName} does not hold ${text}.`);
+  return { line: line + 1, column: lines[line]!.indexOf(text) + 1 };
+}

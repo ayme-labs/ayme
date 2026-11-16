@@ -14,6 +14,7 @@ import {
   injectedImport,
   type PomPrograms,
 } from "./transformPomModule";
+import { PomCompileError } from "./pomCompileError";
 import { transpilePomModule } from "./transpilePomModule";
 import { assertSupportedTypeScript } from "./typescriptPeer";
 
@@ -134,13 +135,18 @@ export function createPomCompiler(
 /**
  * `compiled`, the compiler's output for `source`, transpiled to JavaScript.
  * When it does not transpile, the error is the one `source` gives, if it
- * gives one: its lines and columns are those of the file as written.
+ * gives one: its lines and columns are those of the file as written. Else
+ * the error names the file alone, since its positions are in `compiled`.
  */
 function transpileCompiled(compiled: string, source: string, fileName: string) {
   try {
     return transpilePomModule(compiled, fileName);
   } catch (error) {
+    if (!(error instanceof PomCompileError)) throw error;
     transpilePomModule(source, fileName);
-    throw error;
+    throw new PomCompileError(
+      error.diagnostics.map(({ text }) => ({ text, file: fileName })),
+      { cause: error }
+    );
   }
 }

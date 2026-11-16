@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -8,21 +7,13 @@ import {
   derivePomManifestsFromProgram,
   type SkippedPomMethod,
 } from "./derivePomManifests";
+import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../../package.json";
 
 // Each test builds TypeScript Programs, which run several times slower on CI
 // while the browser suites and the packed-consumer test run beside them.
 vi.setConfig({ testTimeout: 15_000 });
-
-/**
- * The line of a fixture that holds `text`, as the file stands: a header a
- * tool adds to it, such as Stryker's `// @ts-nocheck`, moves it too.
- */
-function lineOf(fileName: string, text: string) {
-  const lines = fs.readFileSync(fileName, "utf8").split("\n");
-  return lines.findIndex((line) => line.includes(text)) + 1;
-}
 
 function manifestFor(fixture: string) {
   return derivePomManifests(
@@ -111,7 +102,7 @@ describe("derivePomManifests", () => {
       [
         "variableClassPom",
         "Page Object VariableClassPom",
-        "@ayme({ description",
+        "description: DESCRIPTION",
       ],
       [
         "quotedKeyPom",
@@ -119,14 +110,18 @@ describe("derivePomManifests", () => {
         '"description": DESCRIPTION',
       ],
     ])(
-      "fails the build for the description of %s, which is not a constant string",
+      "fails the build for the description of %s, which is not a constant string, at its key",
       (fixture, owner, description) => {
-        const fileName = path.resolve(
+        const file = path.resolve(
           `src/compiler/fixtures/computedDescriptions/${fixture}.ts`
         );
-        expect(() => derivePomManifests(fileName)).toThrow(
-          `The description of ${owner} is not a constant string (${fileName}:${lineOf(fileName, description)}).`
-        );
+        expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+          {
+            text: `The description of ${owner} is not a constant string.`,
+            file,
+            ...positionOf(file, description),
+          },
+        ]);
       }
     );
   });
@@ -136,14 +131,18 @@ describe("derivePomManifests", () => {
     ["spreadOnlyActionPom", "SpreadOnlyActionPom.remove", "...options })"],
     ["computedKeyActionPom", "ComputedKeyActionPom.read", "[key]:"],
   ])(
-    "fails the build for %s, whose description may come from a spread or a computed key",
+    "fails the build for %s, whose description may come from a spread or a computed key, at that element",
     (fixture, action, description) => {
-      const fileName = path.resolve(
+      const file = path.resolve(
         `src/compiler/fixtures/computedDescriptions/${fixture}.ts`
       );
-      expect(() => derivePomManifests(fileName)).toThrow(
-        `The description of Page Object Action ${action} may come from a spread or a computed key (${fileName}:${lineOf(fileName, description)}).`
-      );
+      expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+        {
+          text: `The description of Page Object Action ${action} may come from a spread or a computed key.`,
+          file,
+          ...positionOf(file, description),
+        },
+      ]);
     }
   );
 
@@ -585,129 +584,157 @@ describe("derivePomManifests", () => {
     it.each([
       [
         "neitherPom",
+        "title!",
         "Page Object Child NeitherPom.title holds neither a Locator nor a Page Object (string).",
       ],
       [
         "anyPom",
+        "part!",
         "Page Object Child AnyPom.part has a type the build cannot resolve (any).",
       ],
       [
         "anyCollectionPom",
+        "parts()",
         "Page Object Child AnyCollectionPom.parts has a type the build cannot resolve (Promise<any[]>).",
       ],
       [
         "anyPromiseCollectionPom",
+        "parts()",
         "Page Object Child AnyPromiseCollectionPom.parts has a type the build cannot resolve (Promise<any>).",
       ],
       [
         "tupleChildPom",
+        "pair!",
         "Page Object Child TupleChildPom.pair holds neither a Locator nor a Page Object ([Row, Row]).",
       ],
       [
         "arrayFieldPom",
+        "rows!",
         "Page Object Child ArrayFieldPom.rows holds an array of Page Objects (Row[]); declare a method without parameters that returns them.",
       ],
       [
         "childArrayFieldPom",
+        "rows!",
         "Page Object Child ChildArrayFieldPom.rows is declared @ayme.child but holds many Page Objects (readonly Row[]).",
       ],
       [
         "childOnMethodPom",
+        "toolbar()",
         "Page Object Child ChildOnMethodPom.toolbar is a method; @ayme.child declares a field or getter.",
       ],
       [
         "childMethodPom",
+        "rows()",
         "Page Object Child ChildMethodPom.rows is declared @ayme.child but returns many Page Objects; declare it @ayme.collection.",
       ],
       [
         "collectionFieldPom",
+        "toolbar!",
         "Page Object Child CollectionFieldPom.toolbar is declared @ayme.collection but holds one Page Object (Toolbar); declare it @ayme.child.",
       ],
       [
         "parameterizedCollectionPom",
+        "rows(filter",
         "Page Object Child ParameterizedCollectionPom.rows takes parameters; @ayme.collection declares a method without parameters.",
       ],
       [
         "locatorMethodPom",
+        "cells()",
         "Page Object Child LocatorMethodPom.cells is a method returning a Locator; declare a Locator collection as a field or getter.",
       ],
       [
         "noPomCollectionPom",
+        "labels()",
         "Page Object Child NoPomCollectionPom.labels returns no Page Objects (Promise<string[]>).",
       ],
       [
         "singleMethodPom",
+        "toolbar()",
         "Page Object Child SingleMethodPom.toolbar returns one Page Object (Promise<Toolbar>); a Child Collection method returns an array of Page Objects.",
       ],
       [
         "bothMarkersPom",
+        "heading!",
         "Page Object Child BothMarkersPom.heading is declared more than once; mark it either @ayme.child or @ayme.collection.",
       ],
       [
         "actionChildPom",
+        "rows()",
         "Page Object Child ActionChildPom.rows is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.",
       ],
       [
         "mutableArrayMethodPom",
+        "visibleRows()",
         "Page Object Child MutableArrayMethodPom.visibleRows returns a mutable array (Row[]); a Child Collection method returns Promise<Row[]> or readonly Row[].",
       ],
       [
         "privateChildPom",
+        "heading!",
         "Page Object Child PrivateChildPom.heading is private; only a public instance member can be a Page Object Child.",
       ],
       [
         "protectedChildPom",
+        "rows!",
         "Page Object Child ProtectedChildPom.rows is protected; only a public instance member can be a Page Object Child.",
       ],
       [
         "hashPrivateChildPom",
+        "#heading!",
         "Page Object Child HashPrivateChildPom.#heading is private; only a public instance member can be a Page Object Child.",
       ],
       [
         "staticChildPom",
+        "heading:",
         "Page Object Child StaticChildPom.heading is static; only a public instance member can be a Page Object Child.",
       ],
       [
         "inheritedPrivateChildPom",
+        "rows!",
         "Page Object Child ListBase.rows is private; only a public instance member can be a Page Object Child.",
       ],
       [
         "stringNamedChildPom",
+        '"row"!',
         'Page Object Child StringNamedChildPom."row" is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
       ],
       [
         "computedNamedChildPom",
+        '["row"]!',
         'Page Object Child ComputedNamedChildPom.["row"] is not named by an identifier; only a member with an identifier name can be a Page Object Child.',
       ],
       [
         "setterChildPom",
+        "part(",
         "Page Object Child SetterChildPom.part is a setter; only a field, getter or method can be a Page Object Child.",
       ],
       [
         "setterCollectionPom",
+        "parts(value",
         "Page Object Child SetterCollectionPom.parts is a setter; only a field, getter or method can be a Page Object Child.",
       ],
-    ])("fails the build for %s", (fixture, message) => {
-      // An Error with this message: `toThrow(message)` also passes when
-      // `undefined` is thrown.
-      expect(() =>
-        derivePomManifests(
-          path.resolve(
-            `src/compiler/fixtures/declaredChildErrors/${fixture}.ts`
-          )
-        )
-      ).toThrow(new Error(message));
-    });
+    ])(
+      "fails the build for %s, at the member's name",
+      (fixture, name, text) => {
+        const file = path.resolve(
+          `src/compiler/fixtures/declaredChildErrors/${fixture}.ts`
+        );
+        expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+          { text, file, ...positionOf(file, name) },
+        ]);
+      }
+    );
 
-    it("fails the build for a child description that is not a constant string", () => {
-      const fileName = path.resolve(
+    it("fails the build for a child description that is not a constant string, at its key", () => {
+      const file = path.resolve(
         "src/compiler/fixtures/declaredChildErrors/descriptionPom.ts"
       );
-      expect(() => derivePomManifests(fileName)).toThrow(
-        new Error(
-          `The description of Page Object Child DescriptionPom.heading is not a constant string (${fileName}:9).`
-        )
-      );
+      expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+        {
+          text: "The description of Page Object Child DescriptionPom.heading is not a constant string.",
+          file,
+          ...positionOf(file, "description: `"),
+        },
+      ]);
     });
 
     it("reads a Child Collection declared on an overloaded method's implementation", () => {
@@ -813,42 +840,52 @@ describe("derivePomManifests", () => {
     });
   });
 
-  it("rejects intersections containing multiple annotated components", () => {
-    expect(() => manifestFor("ambiguousAnnotatedChildrenPom")).toThrow(
-      'Page Object Child "ambiguousChild" is ambiguous: FirstComponent, SecondComponent.'
+  it("rejects intersections containing multiple annotated components, at the member's name", () => {
+    const file = path.resolve(
+      "src/compiler/fixtures/ambiguousAnnotatedChildrenPom.ts"
     );
+    expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+      {
+        text: 'Page Object Child "ambiguousChild" is ambiguous: FirstComponent, SecondComponent.',
+        file,
+        ...positionOf(file, "ambiguousChild!"),
+      },
+    ]);
   });
 
   describe("two different classes with one name", () => {
     const fixture = (name: string) =>
       path.resolve(`src/compiler/fixtures/sameNamedChildren/${name}.ts`);
+    /** One diagnostic at each class's name, the one reached first first. */
     const clash = (page: string, first: string, second: string) =>
-      `Page Object "${page}" reaches two different classes named "Row", declared in ${fixture(
-        first
-      )} and ${fixture(second)}. Ayme tells the classes of a Page Object apart by name.`;
+      [first, second].map((name) => ({
+        text: `Page Object "${page}" reaches two different classes named "Row". Ayme tells the classes of a Page Object apart by name.`,
+        file: fixture(name),
+        ...positionOf(fixture(name), "Row {"),
+      }));
 
     it("rejects them as Children of one Page Object", () => {
-      expect(() => derivePomManifests(fixture("page"))).toThrow(
+      expect(diagnosticsOf(() => derivePomManifests(fixture("page")))).toEqual(
         clash("ListsPage", "listA", "listB")
       );
     });
 
     it("rejects them as Children of Children", () => {
-      expect(() => derivePomManifests(fixture("nestedPage"))).toThrow(
-        clash("NestedListsPage", "listA", "listB")
-      );
+      expect(
+        diagnosticsOf(() => derivePomManifests(fixture("nestedPage")))
+      ).toEqual(clash("NestedListsPage", "listA", "listB"));
     });
 
     it("rejects them as a Child and an action's return POM", () => {
-      expect(() => derivePomManifests(fixture("returnPage"))).toThrow(
-        clash("ReturningListsPage", "listA", "listB")
-      );
+      expect(
+        diagnosticsOf(() => derivePomManifests(fixture("returnPage")))
+      ).toEqual(clash("ReturningListsPage", "listA", "listB"));
     });
 
     it("rejects a Child named like its Page Object", () => {
-      expect(() => derivePomManifests(fixture("rowPage"))).toThrow(
-        clash("Row", "rowPage", "listA")
-      );
+      expect(
+        diagnosticsOf(() => derivePomManifests(fixture("rowPage")))
+      ).toEqual(clash("Row", "rowPage", "listA"));
     });
 
     it("derives one component for one class behind several members", () => {
@@ -1121,10 +1158,15 @@ describe("derivePomManifests", () => {
     ).toEqual(["Toolbar", "Row"]);
   });
 
-  it("refuses a root-less class reached by two members of one Page Object", () => {
-    expect(() => manifestFor("sharedRootlessPom")).toThrow(
-      'The Page Object class "Toolbar" declares no root and is reached from more than one place: SharedRootlessPom.first, SharedRootlessPom.second.'
-    );
+  it("refuses a root-less class reached by two members of one Page Object, at the class's name", () => {
+    const file = path.resolve("src/compiler/fixtures/sharedRootlessPom.ts");
+    expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+      {
+        text: 'The Page Object class "Toolbar" declares no root and is reached from more than one place: SharedRootlessPom.first, SharedRootlessPom.second.',
+        file,
+        ...positionOf(file, "Toolbar {"),
+      },
+    ]);
   });
 
   it("counts paths through a shared rooted class separately", () => {
@@ -1532,74 +1574,80 @@ describe("derivePomManifests", () => {
       it.each([
         [
           "holePom",
+          "[, y]",
           "Page Object Action HolePom.move needs a name for every element of [, y]: [number, number]: element 0 is a hole.",
         ],
         [
           "nestedElementPom",
+          "[{ a }, b]",
           "Page Object Action NestedElementPom.pick needs a name for every element of [{ a }, b]: [{ a: string }, number]: element 0 is a nested pattern.",
         ],
         [
           "unboundElementPom",
+          "[x]",
           "Page Object Action UnboundElementPom.move needs a name for every element of [x]: [number, number]: element 1 is not bound.",
         ],
         [
           "untypedBindingPom",
+          "{ email",
           "Page Object Action UntypedBindingPom.login: email, password and remember in { email, password, remember } have no type. Annotate the parameter.",
         ],
         [
           "misspelledBindingPom",
+          "{ emial",
           "Page Object Action MisspelledBindingPom.signIn: emial in { emial, password: secret }: Credentials has no type.",
         ],
         [
           "arrayDuplicatePom",
+          "[x]: [number])",
           "Page Object Action ArrayDuplicatePom.move takes two input fields named x: property x of { y }: { x: number; y: number }, and binding x of [x]: [number].",
         ],
         [
           "indexSignaturePatternPom",
+          "{ a }",
           `Unsupported Page Object Tool input type for IndexSignaturePatternPom.pick({ a }): Record<string, string>. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
-          8,
         ],
         [
           "stringPatternPom",
+          "[first]",
           `Unsupported Page Object Tool input type for StringPatternPom.initial([first]): string. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
-          11,
         ],
         [
           "tupleUnionPom",
+          "[x]",
           `Unsupported Page Object Tool input type for TupleUnionPom.move([x]): [number, number] | [number, number, number]. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
-          8,
         ],
         [
           "correlatedTuplePom",
+          "[x, y]",
           `Unsupported Page Object Tool input type for CorrelatedTuplePom.pair([x, y]): [string, number] | [number, string]. Compiled with ${path.resolve("src/compiler/fixtures/tsconfig.json")}.`,
-          8,
         ],
         [
           "renamedDuplicatePom",
+          "{ query: q }",
           "Page Object Action RenamedDuplicatePom.search takes two input fields named query: parameter query, and property query of { query: q }: { query: string }.",
         ],
         [
           "typeDuplicatePom",
+          "{ order }",
           "Page Object Action TypeDuplicatePom.search takes two input fields named limit: parameter limit, and property limit of { order }: Options.",
         ],
         [
           "sharedPropertyPom",
+          "{ id: other }",
           "Page Object Action SharedPropertyPom.copy takes two input fields named id: property id of { id }: { id: string }, and property id of { id: other }: { id: string }.",
         ],
-      ])("fails the build for %s", (fixture, message, column?: number) => {
-        const file = path.resolve(
-          `src/compiler/fixtures/unsupportedPatterns/${fixture}.ts`
-        );
-        let thrown: unknown;
-        try {
-          derivePomManifests(file);
-        } catch (error) {
-          thrown = error;
+      ])(
+        "fails the build for %s, at the parameter",
+        (fixture, parameter, text) => {
+          const file = path.resolve(
+            `src/compiler/fixtures/unsupportedPatterns/${fixture}.ts`
+          );
+          expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+            { text, file, ...positionOf(file, parameter) },
+          ]);
         }
-        expect((thrown as Error | undefined)?.message).toBe(
-          column ? `${file}:6:${column}: ${message}` : message
-        );
-      });
+      );
 
       it("takes an object pattern's quoted keys with their defaults, and its computed ones from the type", () => {
         expect(destructuredParametersOf("name")).toStrictEqual([
