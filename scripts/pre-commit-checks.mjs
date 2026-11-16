@@ -8,7 +8,6 @@
  *   node scripts/pre-commit-checks.mjs --dry    print the commands only
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -102,16 +101,31 @@ function turbo(...args) {
   return run(TURBO, args);
 }
 
-/** Workspace directories of staged paths that exist now. */
-function currentWorkspaces(staged) {
-  const dirs = new Set(
-    staged.map((file) => WORKSPACE_DIR.exec(file)?.[0]).filter(Boolean)
+/**
+ * Workspace directories of staged paths. pnpm-workspace.yaml makes every
+ * packages/* and apps/* with a package.json a workspace; the index, not the
+ * working tree, says which ones the commit has.
+ */
+export function indexedWorkspaces(staged, cwd = ROOT) {
+  const dirs = [
+    ...new Set(
+      staged.map((file) => WORKSPACE_DIR.exec(file)?.[0]).filter(Boolean)
+    ),
+  ];
+  if (dirs.length === 0) return [];
+  const manifests = execFileSync(
+    "git",
+    [
+      "ls-files",
+      "--cached",
+      "-z",
+      "--",
+      ...dirs.map((dir) => `${dir}/package.json`),
+    ],
+    { cwd, encoding: "utf8" }
   );
-  // pnpm-workspace.yaml makes every packages/* and apps/* with a
-  // package.json a workspace.
-  return [...dirs].filter((dir) =>
-    existsSync(path.join(ROOT, dir, "package.json"))
-  );
+  const indexed = new Set(manifests.split("\0").filter(Boolean));
+  return dirs.filter((dir) => indexed.has(`${dir}/package.json`));
 }
 
 function packageNames(lsJson) {
@@ -149,7 +163,7 @@ function main() {
   ])
     .split("\0")
     .filter(Boolean);
-  const plan = planSelection(staged, currentWorkspaces(staged));
+  const plan = planSelection(staged, indexedWorkspaces(staged));
 
   for (const dir of plan.removed.filter(wasWorkspace)) {
     console.log(`${dir} is deleted; CI checks it.`);

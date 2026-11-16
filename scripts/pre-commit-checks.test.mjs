@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 
 import {
   TEST_TASK_CAP,
   countTestTasks,
   filtersFor,
+  indexedWorkspaces,
   planSelection,
   skipMessage,
 } from "./pre-commit-checks.mjs";
@@ -124,4 +129,36 @@ test("skipMessage names the count and asks for a ready pull request", () => {
     skipMessage(TEST_TASK_CAP + 1),
     /^5 test tasks: leaving them to CI\. CI skips draft pull requests, so mark the PR ready\./
   );
+});
+
+test("indexedWorkspaces reads workspaces from the index, not the working tree", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pre-commit-checks-"));
+  const env = {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  const git = (...args) => execFileSync("git", args, { cwd: dir, env });
+  const write = (file, text) => {
+    fs.mkdirSync(path.join(dir, path.dirname(file)), { recursive: true });
+    fs.writeFileSync(path.join(dir, file), text);
+  };
+  try {
+    git("init", "-q");
+    write("packages/vue/package.json", "{}");
+    git("add", ".");
+    // An untracked manifest does not make a workspace.
+    write("packages/notes/package.json", "{}");
+    // An unstaged deletion does not remove one.
+    fs.rmSync(path.join(dir, "packages/vue/package.json"));
+    assert.deepEqual(
+      indexedWorkspaces(
+        ["packages/notes/README.md", "packages/vue/src/a.ts", "docs/a.md"],
+        dir
+      ),
+      ["packages/vue"]
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
