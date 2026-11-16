@@ -136,11 +136,10 @@ interaction:
 `targetRef` and `targetSelector` can name different elements. When the
 element the user acted on is not in the tree, such as an icon inside a
 button, `targetRef` is its nearest ancestor the tree lists, while
-`targetSelector` still names the element itself. `targetRef` is `null` with
-the selector present in two cases: an `assert*` interaction, whose target the
-recorder knows only by its selector, and a key pressed while nothing on the
-page had focus, as the key then goes to the page's body, which the tree does
-not list.
+`targetSelector` still names the element itself. An `assert*` interaction
+names the element the user picked in the same way. `targetRef` is `null` with
+the selector present when a key was pressed while nothing on the page had
+focus, as the key then goes to the page's body, which the tree does not list.
 
 A `kind: change` entry is a change the recorder could not tie to an
 interaction. Read it together with the steps around it. It is usually the
