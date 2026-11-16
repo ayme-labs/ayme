@@ -1,11 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import type { PageSnapshot, TimelineAddition } from "./recorded";
+import type { TimelineAddition } from "./recorded";
 import { Timeline, type PackageHeader } from "./timeline";
 import type { EntryId } from "../../contract";
 import type { SnapshotId } from "./recorded";
 import { pictureRef, type PictureRef } from "./refs";
+import {
+  header,
+  snapshot,
+  timelineOf,
+  url,
+  visit,
+} from "./test-utils/timelineBuilders";
 import {
   entryId,
   pageId,
@@ -17,26 +24,6 @@ import {
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
-const header: PackageHeader = {
-  recordingId: "rec_20261112T145047604Z",
-  createdAt: "2026-11-12T14:50:47.604Z",
-  tracePath: null,
-};
-const url = "http://shop.test/";
-const visit: TimelineAddition = {
-  kind: "visit",
-  page: pageId("page_1"),
-  url,
-  cause: "initial",
-};
-const snapshot = (
-  id: SnapshotId,
-  at: number,
-  tree: string
-): { kind: "snapshot"; snapshot: PageSnapshot } => ({
-  kind: "snapshot",
-  snapshot: { id, page: pageId("page_1"), url, at, tree },
-});
 const click = (
   before: SnapshotId,
   after: SnapshotId | null,
@@ -62,8 +49,7 @@ async function packageOf(
   additions: readonly TimelineAddition[],
   positions: Readonly<Record<string, string>> = {}
 ) {
-  const timeline = new Timeline();
-  for (const addition of additions) await timeline.add(addition);
+  const timeline = await timelineOf(additions);
   return timeline.package(header, tracePositions(positions));
 }
 

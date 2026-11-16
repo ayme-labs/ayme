@@ -4,7 +4,12 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { describe, expect, it } from "vitest";
 
-import { changeRows } from "./changeRows";
+import type { ChangeRow } from "../../contract";
+import { foundRows } from "./changeRows";
+
+/** The rows of a Change Tree, as whoever shows a recorder is told them. */
+const changeRows = (change: StructuralTree): ChangeRow[] =>
+  foundRows(change).map(({ row }) => row);
 
 /** Core's Change Tree from one page to another, as Playwright's AI-mode
  * snapshot writes each. */

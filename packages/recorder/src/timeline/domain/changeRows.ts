@@ -77,10 +77,6 @@ export function foundRows(change: StructuralTree): FoundRow[] {
   return rows;
 }
 
-/** The rows of a Change Tree, as whoever shows a recorder is told them. */
-export const changeRows = (change: StructuralTree): ChangeRow[] =>
-  foundRows(change).map(({ row }) => row);
-
 /** A value as the package's trees write it; none for one absent or empty. */
 const written = (value: string | number | boolean | undefined) =>
   value === undefined || value === "" || value === false
