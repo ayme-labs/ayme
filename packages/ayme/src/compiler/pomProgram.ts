@@ -2,6 +2,8 @@ import path from "node:path";
 
 import ts from "typescript";
 
+import { PomCompileError, typeScriptDiagnostic } from "./pomCompileError";
+
 export type PomProjectOptions = {
   tsconfigPath?: string;
 };
@@ -124,9 +126,12 @@ function projectConfigFor(
 ): ts.ParsedCommandLine {
   const configPath = projectConfigPath(fileName, options);
   if (!configPath)
-    throw new Error(
-      `Could not find a tsconfig.json for POM source ${fileName}.`
-    );
+    throw new PomCompileError([
+      {
+        text: "Could not find a tsconfig.json for this module.",
+        file: fileName,
+      },
+    ]);
 
   let config = parseConfig(configPath, onConfigFile);
   if (config.fileNames.length === 0) {
@@ -180,7 +185,11 @@ function parseConfig(
 }
 
 function configError(configPath: string, diagnostic: ts.Diagnostic) {
-  return new Error(
-    `Could not read TypeScript project configuration ${configPath}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`
-  );
+  const located = typeScriptDiagnostic(diagnostic);
+  return new PomCompileError([
+    {
+      ...(located.file === undefined ? { file: configPath } : located),
+      text: `Could not read TypeScript project configuration: ${located.text}`,
+    },
+  ]);
 }

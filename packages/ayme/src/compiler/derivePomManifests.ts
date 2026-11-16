@@ -15,6 +15,11 @@ import type {
   ToolManifest,
   ToolParameter,
 } from "../shared";
+import {
+  diagnosticAt,
+  PomCompileError,
+  pomCompileErrorAt,
+} from "./pomCompileError";
 import { createPomProgram, type PomProjectOptions } from "./pomProgram";
 
 /** A public method of a Page Object Model that is not a Page Object Action. */
@@ -52,7 +57,9 @@ export function derivePomManifestsFromProgram(
   const absoluteFileName = path.resolve(fileName);
   const sourceFile = program.getSourceFile(absoluteFileName);
   if (!sourceFile)
-    throw new Error(`Could not read POM source ${absoluteFileName}.`);
+    throw new PomCompileError([
+      { text: "Could not read this module.", file: absoluteFileName },
+    ]);
 
   const checker = program.getTypeChecker();
   const manifests: PomManifest[] = [];
@@ -66,7 +73,10 @@ export function derivePomManifestsFromProgram(
     )
       continue;
     if (!declaration.name)
-      throw new Error("A Page Object Model needs a class name.");
+      throw pomCompileErrorAt(
+        declaration,
+        "A Page Object Model needs a class name."
+      );
 
     const { manifest, components } = toolsCompiledWith(program, () => {
       const { manifest, references } = classManifest(checker, declaration);
@@ -82,8 +92,13 @@ export function derivePomManifestsFromProgram(
       (className) =>
         rootState(checker, declarations.get(className)!) !== "undeclared"
     );
-    const refusal = refusals.values().next().value;
-    if (refusal) throw refusal;
+    const [refused] = refusals;
+    if (refused) {
+      const [className, refusal] = refused;
+      throw new PomCompileError([
+        diagnosticAt(declarations.get(className)!, refusal.message),
+      ]);
+    }
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
     manifests.push({ ...rest, components: [...components.values()], tools });
@@ -176,11 +191,13 @@ function childDeclaration(
     : undefined;
   const owner = `Page Object Child ${className}.${memberName}`;
   if (marks.length > 1)
-    throw new Error(
+    throw pomCompileErrorAt(
+      member,
       `${owner} is declared more than once; mark it either @ayme.child or @ayme.collection.`
     );
   if (decorators.some((d) => isMemberMarker(d, "ayme", "action")))
-    throw new Error(
+    throw pomCompileErrorAt(
+      member,
       `${owner} is also marked @ayme.action; a member is either a Page Object Action or a Page Object Child.`
     );
   return { ...mark, memberName, owner };
@@ -222,7 +239,8 @@ function declaredChild(
   member: ts.ClassElement,
   { marker, decorator, memberName, owner }: ChildDeclaration
 ): PomChild {
-  const fail = (problem: string) => new Error(`${owner} ${problem}.`);
+  const fail = (problem: string) =>
+    pomCompileErrorAt(member, `${owner} ${problem}.`);
   const { access, type, takesParameters } = memberValueInfo(checker, member)!;
   const typeText = checker.typeToString(type);
   const unresolved = () =>
@@ -234,6 +252,7 @@ function declaredChild(
   if (items && isUnresolvedType(items)) throw unresolved();
   const child: DeclaredChild = {
     checker,
+    member,
     memberName,
     type,
     typeText,
@@ -242,7 +261,7 @@ function declaredChild(
     unresolved,
     described: description === undefined ? {} : { description },
     collection: marker === "collection",
-    itemsDeclaration: items && componentDeclaration(checker, items, memberName),
+    itemsDeclaration: items && componentDeclaration(checker, items, member),
   };
   return access === "method"
     ? declaredChildMethod(child)
@@ -252,13 +271,14 @@ function declaredChild(
 /** What `declaredChild` checks a member's type against. */
 type DeclaredChild = {
   checker: ts.TypeChecker;
+  member: ts.ClassElement;
   memberName: string;
   type: ts.Type;
   typeText: string;
   /** Whether a method's signature without arguments, if any, takes them. */
   takesParameters?: boolean;
-  fail: (problem: string) => Error;
-  unresolved: () => Error;
+  fail: (problem: string) => PomCompileError;
+  unresolved: () => PomCompileError;
   described: { description?: string };
   collection: boolean;
   /** The Page Object the member's array or promised array holds. */
@@ -268,6 +288,7 @@ type DeclaredChild = {
 /** A Child Collection method: `@ayme.collection` returning Page Objects. */
 function declaredChildMethod({
   checker,
+  member,
   memberName,
   type,
   typeText,
@@ -295,7 +316,7 @@ function declaredChildMethod({
   if (!itemsDeclaration?.name) {
     const value = awaitedType(checker, type);
     if (isUnresolvedType(value)) throw unresolved();
-    throw componentDeclaration(checker, value, memberName)
+    throw componentDeclaration(checker, value, member)
       ? fail(
           `returns one Page Object (${typeText}); a Child Collection method returns an array of Page Objects`
         )
@@ -328,6 +349,7 @@ function declaredChildMethod({
 function declaredChildValue(
   {
     checker,
+    member,
     memberName,
     type,
     typeText,
@@ -350,7 +372,7 @@ function declaredChildValue(
       : fail(
           `is declared @ayme.child but holds many Page Objects (${typeText})`
         );
-  const declaration = componentDeclaration(checker, type, memberName);
+  const declaration = componentDeclaration(checker, type, member);
   if (!declaration?.name)
     throw fail(`holds neither a Locator nor a Page Object (${typeText})`);
   if (collection)
@@ -386,15 +408,18 @@ function rejectUnsupportedChildDeclarations(
     const visibility = nonPublicVisibility(member);
     const owner = `Page Object Child ${declaration.name?.text}.${childMemberName(member)}`;
     if (visibility)
-      throw new Error(
+      throw pomCompileErrorAt(
+        member,
         `${owner} is ${visibility}; only a public instance member can be a Page Object Child.`
       );
     if (!member.name || !ts.isIdentifier(member.name))
-      throw new Error(
+      throw pomCompileErrorAt(
+        member,
         `${owner} is not named by an identifier; only a member with an identifier name can be a Page Object Child.`
       );
     if (ts.isSetAccessorDeclaration(member))
-      throw new Error(
+      throw pomCompileErrorAt(
+        member,
         `${owner} is a setter; only a field, getter or method can be a Page Object Child.`
       );
   }
@@ -692,12 +717,13 @@ function rejectSameNamedClasses(
     const other = byName.get(name);
     if (!other) byName.set(name, declaration);
     else if (other !== declaration)
-      throw new Error(
-        `Page Object "${pageName}" reaches two different classes named "${name}", declared in ${
-          other.getSourceFile().fileName
-        } and ${
-          declaration.getSourceFile().fileName
-        }. Ayme tells the classes of a Page Object apart by name.`
+      throw new PomCompileError(
+        [other, declaration].map((sameNamed) =>
+          diagnosticAt(
+            sameNamed,
+            `Page Object "${pageName}" reaches two different classes named "${name}". Ayme tells the classes of a Page Object apart by name.`
+          )
+        )
       );
   }
 }
@@ -791,7 +817,7 @@ function returnPomDeclarations(
 function componentDeclaration(
   checker: ts.TypeChecker,
   type: ts.Type,
-  memberName: string
+  member: ts.ClassElement
 ): ts.ClassDeclaration | undefined {
   const candidates = pomDeclarations(checker, type);
   // A subclass and its ancestor do not compete: `Sub & Base` is a `Sub`.
@@ -800,8 +826,9 @@ function componentDeclaration(
       !candidates.some((other) => isAncestorClass(checker, candidate, other))
   );
   if (declarations.length > 1) {
-    throw new Error(
-      `Page Object Child "${memberName}" is ambiguous: ${declarations
+    throw pomCompileErrorAt(
+      member,
+      `Page Object Child "${childMemberName(member)}" is ambiguous: ${declarations
         .map((declaration) => declaration.name?.text ?? "<anonymous>")
         .join(", ")}.`
     );
@@ -971,17 +998,17 @@ function decoratorDescription(
   }
   if (!last) return undefined;
   if (!readable)
-    throw new Error(
-      `The description of ${owner} may come from a spread or a computed key (${location(
-        last
-      )}).`
+    throw pomCompileErrorAt(
+      last,
+      `The description of ${owner} may come from a spread or a computed key.`
     );
   const description = ts.isPropertyAssignment(last)
     ? constantString(last.initializer)
     : undefined;
   if (description !== undefined) return description;
-  throw new Error(
-    `The description of ${owner} is not a constant string (${location(last)}).`
+  throw pomCompileErrorAt(
+    last,
+    `The description of ${owner} is not a constant string.`
   );
 }
 
@@ -1011,12 +1038,6 @@ function setsDescription(
   return key.isNumberLiteral() || key.flags & ts.TypeFlags.ESSymbolLike
     ? "no"
     : "maybe";
-}
-
-function location(node: ts.Node) {
-  const source = node.getSourceFile();
-  const { line } = source.getLineAndCharacterOfPosition(node.getStart());
-  return `${source.fileName}:${line + 1}`;
 }
 
 /**
@@ -1134,6 +1155,7 @@ function toolParameters(
       const first = sources.get(name);
       if (first !== undefined)
         throw new UnsupportedParameterError(
+          declaration,
           `Page Object Action ${className}.${methodName} takes two input fields named ${name}: ${first}, and ${source}.`,
           `two input fields are named ${name}`
         );
@@ -1211,6 +1233,7 @@ function untypedBindings(
   const names = untyped.join(", ").replace(/, ([^,]*)$/, " and $1");
   const verb = untyped.length === 1 ? "has" : "have";
   return new UnsupportedParameterError(
+    parameter,
     `Page Object Action ${context.className}.${context.methodName}: ${names} in ${patternLabel(parameter)} ${verb} no type.${parameter.type ? "" : " Annotate the parameter."}`,
     `${names} in parameter ${patternLabel(parameter)} ${verb} no type`
   );
@@ -1294,6 +1317,7 @@ function arrayPatternFields(
     : undefined;
   const unnamed = (index: number, why: string) =>
     new UnsupportedParameterError(
+      parameter,
       `Page Object Action ${context.className}.${context.methodName} needs a name for every element of ${patternLabel(parameter)}: element ${index} ${why}.`,
       `element ${index} of parameter ${patternLabel(parameter)} has no name`
     );
@@ -1536,15 +1560,16 @@ function tupleSchema(
 }
 
 /**
- * Thrown for a parameter no tool input can take. The build reports `reason`
- * for an unmarked method.
+ * Thrown for a parameter no tool input can take, at `parameter`. The build
+ * reports `reason` for an unmarked method.
  */
-class UnsupportedParameterError extends Error {
+class UnsupportedParameterError extends PomCompileError {
   constructor(
-    message: string,
+    parameter: ts.ParameterDeclaration,
+    text: string,
     readonly reason: string
   ) {
-    super(message);
+    super([diagnosticAt(parameter, text)]);
   }
 }
 
@@ -1561,12 +1586,17 @@ function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
   } catch (error) {
     if (!(error instanceof UnsupportedInputTypeError)) throw error;
     const { configFilePath } = program.getCompilerOptions();
-    error.message += ` Compiled with ${
+    const compiledWith = ` Compiled with ${
       typeof configFilePath === "string"
         ? path.resolve(configFilePath)
         : "TypeScript's default options"
     }.`;
-    throw error;
+    throw new PomCompileError(
+      error.diagnostics.map((diagnostic) => ({
+        ...diagnostic,
+        text: diagnostic.text + compiledWith,
+      }))
+    );
   }
 }
 
@@ -1576,12 +1606,9 @@ function unsupportedInputType(
   parameterName: string
 ) {
   const typeText = context.checker.typeToString(type);
-  const source = context.declaration.getSourceFile();
-  const { line, character } = source.getLineAndCharacterOfPosition(
-    context.declaration.name.getStart(source)
-  );
   return new UnsupportedInputTypeError(
-    `${source.fileName}:${line + 1}:${character + 1}: Unsupported Page Object Tool input type for ${context.className}.${context.methodName}(${parameterName}): ${typeText}.`,
+    context.declaration,
+    `Unsupported Page Object Tool input type for ${context.className}.${context.methodName}(${parameterName}): ${typeText}.`,
     `parameter ${context.parameter} has the unsupported type ${typeText}`
   );
 }

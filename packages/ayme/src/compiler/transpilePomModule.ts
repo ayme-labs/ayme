@@ -1,5 +1,7 @@
 import ts from "typescript";
 
+import { PomCompileError, typeScriptDiagnostic } from "./pomCompileError";
+
 /**
  * Transpiles a module to JavaScript with fixed settings, for callers that
  * must return JavaScript: the Turbopack loader, the esbuild adapter and
@@ -21,24 +23,7 @@ export function transpilePomModule(code: string, fileName: string) {
     (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error
   );
   if (errors?.length)
-    throw new Error(
-      `Could not transpile Ayme POM ${fileName}:\n${errors
-        .map(diagnosticLine)
-        .join("\n")}`
-    );
+    throw new PomCompileError(errors.map(typeScriptDiagnostic));
 
   return result.outputText;
-}
-
-/**
- * One diagnostic on its own line: its file, 1-based line and column, and
- * its text. A diagnostic without a file or a start keeps its text alone.
- */
-function diagnosticLine(diagnostic: ts.Diagnostic): string {
-  const text = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-  const { file, start } = diagnostic;
-  if (file === undefined || start === undefined) return text;
-  // TypeScript counts the line and the column from 0.
-  const { line, character } = ts.getLineAndCharacterOfPosition(file, start);
-  return `${file.fileName}:${line + 1}:${character + 1}: ${text}`;
 }

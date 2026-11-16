@@ -1,15 +1,24 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { build, context, type Plugin } from "esbuild";
+import { build, context, type BuildFailure, type Plugin } from "esbuild";
 import { expect, it, vi } from "vitest";
 
 // What the adapter asks of its compiler, in order: a compile keeps the
 // Programs, an invalidate drops them (ADR-0036).
-const { compilerCalls } = vi.hoisted(() => ({
+const { compilerCalls, compileFailure } = vi.hoisted(() => ({
   compilerCalls: [] as ("compile" | "invalidate")[],
+  // What `compile` throws instead of compiling, when set.
+  compileFailure: { error: undefined as Error | undefined },
 }));
 
 vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
@@ -25,6 +34,7 @@ vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
         ...compiler,
         compile(...compileArgs: Parameters<typeof compiler.compile>) {
           compilerCalls.push("compile");
+          if (compileFailure.error) throw compileFailure.error;
           return compiler.compile(...compileArgs);
         },
         invalidate() {
@@ -35,6 +45,8 @@ vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
     },
   };
 });
+
+import { PomCompileError } from "@ayme-dev/ayme/compiler";
 
 import aymeAngularPlugin, { type AymeAngularOptions } from "./angular";
 
@@ -334,7 +346,7 @@ it("never claims a Page Object Model under node_modules", async () => {
   }
 });
 
-it("surfaces compiler diagnostics, like the error for an unsupported parameter type", async () => {
+it("reports a compiler diagnostic, like the error for an unsupported parameter type, where the compiler locates it", async () => {
   const root = await workspace({
     "tsconfig.json": tsconfig,
     "main.ts":
@@ -351,10 +363,126 @@ export class SavePage {
 `,
   });
   try {
+    const failure = await bundle("browser", root).catch(
+      (error: unknown) => error
+    );
+    expect((failure as BuildFailure).errors).toMatchObject([
+      {
+        text: `Unsupported Page Object Tool input type for SavePage.save(at): Date. Compiled with ${path.join(root, "tsconfig.json")}.`,
+        // esbuild counts columns from 0: this is the parameter's name.
+        location: { file: "SavePage.ts", line: 6, column: 13 },
+      },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("gives esbuild a diagnostic's column in UTF-8 bytes, after non-ASCII text on its line", async () => {
+  const declaration = "  async save(/* café */ at: Date) {";
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts":
+      'import { SavePage } from "./SavePage";\nconsole.log(SavePage);\n',
+    "SavePage.ts": `import { ayme } from "@ayme-dev/ayme";
+
+@ayme
+export class SavePage {
+  @ayme.action
+${declaration}
+    void at;
+  }
+}
+`,
+  });
+  try {
+    const failure = await bundle("browser", root).catch(
+      (error: unknown) => error
+    );
+    expect((failure as BuildFailure).errors).toMatchObject([
+      {
+        location: {
+          file: "SavePage.ts",
+          line: 6,
+          column: Buffer.byteLength(
+            declaration.slice(0, declaration.indexOf("at:"))
+          ),
+        },
+      },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("reports a diagnostic without a position at its file, one without a file at the module it compiled, one in a file it cannot read at its column, and counts lines as TypeScript does", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts": 'import { Page } from "./Page";\nconsole.log(Page);\n',
+    "Page.ts": pomSource("Page"),
+    // Lines: "// a", "b", "c", "d", then "const café = ;".
+    "Lines.ts": "// a\r\nb\rc\u2028d\u2029const café = ;\n",
+  });
+  // esbuild names a file by its path from the real working directory.
+  const real = await realpath(root);
+  compileFailure.error = new PomCompileError([
+    { text: "no position", file: path.join(real, "tsconfig.json") },
+    { text: "no file" },
+    {
+      text: "unreadable",
+      file: path.join(real, "Gone.ts"),
+      line: 2,
+      column: 5,
+    },
+    {
+      text: "after line breaks",
+      file: path.join(real, "Lines.ts"),
+      line: 5,
+      column: 14,
+    },
+  ]);
+  try {
+    const failure = await bundle("browser", root).catch(
+      (error: unknown) => error
+    );
+    const byText = ({ text }: { text: string }) => text;
+    expect(
+      (failure as BuildFailure).errors.sort((a, b) =>
+        byText(a).localeCompare(byText(b))
+      )
+    ).toMatchObject([
+      {
+        text: "after line breaks",
+        // "const café = " is 13 code units and 14 bytes.
+        location: { file: "Lines.ts", line: 5, column: 14 },
+      },
+      // The entry is the first module compiled, so the first to fail.
+      { text: "no file", location: { file: "main.ts" } },
+      { text: "no position", location: { file: "tsconfig.json", line: 0 } },
+      {
+        text: "unreadable",
+        location: { file: "Gone.ts", line: 2, column: 4 },
+      },
+    ]);
+  } finally {
+    compileFailure.error = undefined;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("lets an error of the compiler's own through as it is", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts": 'import { Page } from "./Page";\nconsole.log(Page);\n',
+    "Page.ts": pomSource("Page"),
+  });
+  compileFailure.error = new Error("The compiler broke.");
+  try {
     await expect(bundle("browser", root)).rejects.toThrow(
-      "Unsupported Page Object Tool input type for SavePage.save(at): Date."
+      "The compiler broke."
     );
   } finally {
+    compileFailure.error = undefined;
     await rm(root, { recursive: true, force: true });
   }
 });

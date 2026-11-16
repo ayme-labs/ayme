@@ -30,14 +30,13 @@ export function buildFailure({
 
 /**
  * A build error on one line: its file, if it has one, with the line and
- * column, if it has them (esbuild counts lines from 1), and its text.
- * Text that already starts with its own position is returned as is, since
- * esbuild may attach the importer's position to a located compiler error.
+ * column, if it has them, and its text. esbuild counts lines from 1 and
+ * columns from 0; the line counts both from 1, as editors and TypeScript do.
  */
 export function buildErrorLine({ text, location }: BuildError): string {
-  if (location === null || /^.+:\d+:\d+: /.test(text)) return text;
+  if (location === null) return text;
   if (location.line === 0) return `${location.file}: ${text}`;
-  return `${location.file}:${location.line}:${location.column}: ${text}`;
+  return `${location.file}:${location.line}:${location.column + 1}: ${text}`;
 }
 
 /**
