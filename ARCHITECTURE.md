@@ -160,9 +160,11 @@ in-browser agents and the app's own code call on the running page.
   serves the recorder window at a local address it prints, which shows the recording live
   and holds Record, Stop, Continue, Assert visibility, Clear and Finish, discard and
   restore of an entry while paused, and a highlight on the page of an entry's element
-  while its target is hovered; when it launched the browser, it opens the window there as
-  a second window, apart from what it records. Every recorded page also gets an in-page
-  toolbar with the same controls, kept out of the page's structure. It ends when Finish is
+  while its target is hovered, or of a change row's element while the row's element is
+  hovered; when it launched the browser, it opens the window there as a second window,
+  apart from what it records. Every recorded page also gets an in-page toolbar with
+  Record, Stop and Continue in one control, and Assert visibility, kept out of the page's
+  structure. It ends when Finish is
   pressed, the last page is closed or it is stopped from the terminal. A recording that
   was started ends by writing a Recording Package, with its trace beside it, into the
   project's `.ayme/recordings`; without one it ends with "empty". `ayme-recorder trace`
@@ -221,9 +223,10 @@ in-browser agents and the app's own code call on the running page.
     - → `ayme-recorder codegen <url>` or `codegen --cdp-endpoint <address>`, started in
       their project's folder, and the terminal's stop; `ayme-recorder trace <target>`
     - → in the recorder window, Record, Stop, Continue, Assert visibility, Clear, Finish,
-      discard and restore of an entry, and the highlight of a hovered entry's element,
-      sent over tRPC on a WebSocket at `/channel`; the same controls in the in-page
-      toolbar, sent through the page function the engine exposes there
+      discard and restore of an entry, and the highlight of a hovered entry's or change
+      row's element, sent over tRPC on a WebSocket at `/channel`; Record, Stop, Continue
+      and Assert visibility in the in-page toolbar, sent through the page function the
+      engine exposes there
     - ← the window's address, where the Recording Package was saved, that nothing was
       recorded, or the reason the recorder could not start or failed
     - ← in the recorder window and the toolbar, the recorder's state as it changes: its
