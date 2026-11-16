@@ -18,7 +18,7 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@playwright/test": "^1.64.0",
     "@types/node": "^24.0.0",
     "eslint": "^10.9.1",

@@ -6,12 +6,8 @@
  *
  *   node src/stubMcpServer.ts '<the tools as JSON>'
  */
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { Server } from "@modelcontextprotocol/server";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 
 import type { StubTool } from "./scenarios.ts";
 
@@ -21,13 +17,13 @@ const server = new Server(
   { name: "ayme", version: "0.0.0" },
   { capabilities: { tools: {} } }
 );
-server.setRequestHandler(ListToolsRequestSchema, () => ({
+server.setRequestHandler("tools/list", () => ({
   tools: tools.map((tool) => ({
     ...tool,
     inputSchema: { type: "object", properties: {} },
   })),
 }));
-server.setRequestHandler(CallToolRequestSchema, ({ params }) => ({
+server.setRequestHandler("tools/call", ({ params }) => ({
   content: [{ type: "text", text: `${params.name} is a stub.` }],
 }));
 await server.connect(new StdioServerTransport());

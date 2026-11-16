@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 
 import { version } from "../../package.json";
 import { AgentConnection, createPageChannelServer } from "../connection";
@@ -139,7 +139,12 @@ export async function startMcpServer({
   };
   mcp.onclose = stop;
   process.stdin.once("end", () => void mcp.close());
-  await mcp.connect(new StdioServerTransport());
+  await mcp.connect(
+    // No cap on a message's size, as before the transport had one.
+    new StdioServerTransport(process.stdin, process.stdout, {
+      maxBufferSize: Number.POSITIVE_INFINITY,
+    })
+  );
   log(`Listening for pages on ${pairing.address}.`);
 }
 export { readCommand } from "./readCommand";
