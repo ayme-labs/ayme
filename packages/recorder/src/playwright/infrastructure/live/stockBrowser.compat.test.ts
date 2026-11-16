@@ -1036,6 +1036,49 @@ it("draws the highlight on the one element a selector, a role and name or a text
   }
 });
 
+it("finds a change row's element by its role and name or its text in a same-origin frame too, adding up every frame's matches", async () => {
+  // A change row's element the page's latest snapshot no longer lists is
+  // looked up by its role and name, or its text: here, inside a frame.
+  const browser = await onStockPlaywright(
+    `<button>Twin</button><iframe srcdoc="<button>In frame</button><p>Frame text</p><button>Twin</button>"></iframe>`
+  );
+  await browser.page.frameLocator("iframe").getByText("Frame text").waitFor();
+  const inFrame = browser.page.frameLocator("iframe");
+  const lookups = [
+    [
+      { by: "role", role: "button", name: "In frame" },
+      inFrame.getByRole("button", { name: "In frame" }),
+    ],
+    [{ by: "text", text: "Frame text" }, inFrame.getByText("Frame text")],
+    // One in the page and one in the frame: two, so none.
+    [{ by: "role", role: "button", name: "Twin" }, null],
+  ] as const;
+
+  for (const [index, [find, element]] of lookups.entries()) {
+    await browser.ask({
+      kind: "highlight",
+      highlight: index + 1,
+      target: { page: "page_1", find },
+    });
+    const { found } = await browser.toldOf(
+      "highlighted",
+      (told) => told.highlight === index + 1
+    );
+    expect([find, found]).toEqual([find, element !== null]);
+    if (element) {
+      const box = (await element.boundingBox())!;
+      await expect
+        .poll(() => drawn(browser.page))
+        .toEqual({
+          x: expect.closeTo(box.x, 0),
+          y: expect.closeTo(box.y, 0),
+          width: expect.closeTo(box.width, 0),
+          height: expect.closeTo(box.height, 0),
+        });
+    } else expect(await drawn(browser.page)).toBeNull();
+  }
+});
+
 it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
   const browser = await onStockPlaywright(PLACES);
   const { ref } = await refOf(browser, "snapshot_1", "Main");

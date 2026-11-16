@@ -137,7 +137,7 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
 - **The toolbar is part of the trace.** Its element stays in the trace's page snapshots, empty, and the toolbar can show in the trace's screenshots.
 - **Highlighting an element from the window, and picking one for Assert visibility, add actions to the trace.** The position numbers in the package stay right.
-- **An element can be highlighted only on the page now open, and only when exactly one element there matches.** A change row's element that the page no longer has is looked for by its role and name, outside frames only, so one of several look-alikes is never highlighted.
+- **An element can be highlighted only on the page now open, and only when exactly one element there matches.** A change row's element that the page no longer has is looked for by its role and name in the page and every same-origin frame, so one of several look-alikes is never highlighted.
 - **The outline drawn while Assert visibility is on is part of the trace** while it shows, like the toolbar.
 - **The recorded page's own scripts can reach the toolbar's function** on the page, as any script the page runs can.
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.

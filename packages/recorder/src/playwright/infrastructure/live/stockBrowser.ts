@@ -879,13 +879,12 @@ async function openPage(
       });
     const open = pages.get(target.page);
     if (!open || !latest()) return found(null);
-    const element = locatorOf(open, target.find);
-    const box =
-      (await element.count().catch(() => 0)) === 1
-        ? await element
-            .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
-            .catch(() => null)
-        : null;
+    const element = await theOne(open, target.find);
+    const box = element
+      ? await element
+          .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
+          .catch(() => null)
+      : null;
     // A later highlight replaced it meanwhile: it is not drawn.
     if (!box || !latest()) return found(null);
     await draw(open, box);
@@ -1094,21 +1093,43 @@ const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
  * visibility is asserted. */
 const PICKING_MODE = "assertingVisibility";
 
-/** The page's locator for an element a lookup asks for: a ref by the
+/**
+ * The one element of the page a lookup names, or null when none or several
+ * do. A selector and a ref reach into frames by themselves; a role and name
+ * and a text are looked for in every frame's document, and the matches of
+ * all are added up.
+ */
+async function theOne(
+  page: Page,
+  find: ElementLookup
+): Promise<Locator | null> {
+  const frames =
+    find.by === "selector" || find.by === "ref"
+      ? [page.mainFrame()]
+      : page.frames();
+  const candidates = frames.map((frame) => locatorOf(frame, find));
+  const counts = await Promise.all(
+    candidates.map((candidate) => candidate.count().catch(() => 0))
+  );
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  return total === 1 ? candidates[counts.indexOf(1)]! : null;
+}
+
+/** A frame's locator for an element a lookup asks for: a ref by the
  * adapter's own latest snapshot, a role and name by their exact words. */
-function locatorOf(page: Page, find: ElementLookup): Locator {
+function locatorOf(frame: Frame, find: ElementLookup): Locator {
   switch (find.by) {
     case "selector":
-      return page.locator(find.selector);
+      return frame.locator(find.selector);
     case "ref":
-      return page.locator(`aria-ref=${find.ref}`);
+      return frame.locator(`aria-ref=${find.ref}`);
     case "role":
-      return page.getByRole(
-        find.role as Parameters<Page["getByRole"]>[0],
+      return frame.getByRole(
+        find.role as Parameters<Frame["getByRole"]>[0],
         find.name ? { name: find.name, exact: true } : {}
       );
     case "text":
-      return page.getByText(find.text, { exact: true });
+      return frame.getByText(find.text, { exact: true });
   }
 }
 
