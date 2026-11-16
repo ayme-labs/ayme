@@ -139,12 +139,7 @@ export async function startMcpServer({
   };
   mcp.onclose = stop;
   process.stdin.once("end", () => void mcp.close());
-  await mcp.connect(
-    // No cap on a message's size, as before the transport had one.
-    new StdioServerTransport(process.stdin, process.stdout, {
-      maxBufferSize: Number.POSITIVE_INFINITY,
-    })
-  );
+  await mcp.connect(new StdioServerTransport());
   log(`Listening for pages on ${pairing.address}.`);
 }
 export { readCommand } from "./readCommand";
