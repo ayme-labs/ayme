@@ -1,3 +1,4 @@
+import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { ayme as model } from "../../page-objects/domain";
@@ -8,9 +9,16 @@ import {
 } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import { ayme } from "../../test-utils/agentCalls.testSupport";
+import { agentTools } from "../../test-utils/publication.testSupport";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import { createAyme } from "../../runtime";
-import type { PomManifest, ToolManifest } from "../../shared";
+import { browserInPage } from "./browserInPage";
+import {
+  ToolInputError,
+  type ElementFilter,
+  type PomManifest,
+  type ToolManifest,
+} from "../../shared";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName: methodName.split(".").at(-1)!,
@@ -31,7 +39,7 @@ const manifest = (
   components: [],
 });
 
-describe("ignore predicate in page state capture", () => {
+describe("the ignore filter in page state capture", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
 
@@ -46,7 +54,7 @@ describe("ignore predicate in page state capture", () => {
     document.body.innerHTML = "";
   });
 
-  function startRuntime(ignore?: (element: Element) => boolean) {
+  function startRuntime(ignore?: ElementFilter) {
     const runtime = createAyme({ pageFactory: () => page, ignore });
     stop = runtime.start();
     return runtime;
@@ -59,7 +67,7 @@ describe("ignore predicate in page state capture", () => {
         <aside id="assistant"><button id="help">Get help</button></aside>
       </main>
     `;
-    startRuntime((element) => element.id === "assistant");
+    startRuntime((session) => session.locator("#assistant"));
 
     const context = await ayme.getPageContext();
     expect(context.structure).toContain("Save changes");
@@ -72,9 +80,10 @@ describe("ignore predicate in page state capture", () => {
       {
         status: "resolved",
         requestedRef: saveRef,
-        node: { ref: saveRef, element: document.querySelector("#save") },
+        node: { ref: saveRef },
       },
     ]);
+    expect(await elementOfRef(saveRef)).toBe(document.querySelector("#save"));
   });
 
   it("drops a nested present Page Object Root inside an ignored element", async () => {
@@ -93,7 +102,9 @@ describe("ignore predicate in page state capture", () => {
       Panel,
       manifest("Panel", [root()], [action("act", "Panel.act")])
     );
-    startRuntime((element) => element.id === "assistant").pom.register(Panel);
+    startRuntime((session) => session.locator("#assistant")).pom.register(
+      Panel
+    );
 
     await probeRegisteredPomMembers();
     const state = await ayme.getPageState();
@@ -117,7 +128,9 @@ describe("ignore predicate in page state capture", () => {
       Panel,
       manifest("Panel", [root()], [action("act", "Panel.act")])
     );
-    startRuntime((element) => element.id === "assistant").pom.register(Panel);
+    startRuntime((session) => session.locator("#assistant")).pom.register(
+      Panel
+    );
 
     await probeRegisteredPomMembers();
     expect(listAvailablePomTools().map((tool) => tool.name)).toEqual([
@@ -128,14 +141,131 @@ describe("ignore predicate in page state capture", () => {
     expect(pageStateText).not.toContain("Panel action");
   });
 
-  it("excludes the inspector host without mutating capture styles", async () => {
+  it("leaves out what a Locator matches by role and a name it reads from the code around it", async () => {
+    document.body.innerHTML = `
+      <main><button>Save changes</button></main>
+      <aside aria-label="Assistant"><button>Get help</button></aside>
+      <aside aria-label="Notes"><button>Read notes</button></aside>
+    `;
+    const assistant = "Assistant";
+    startRuntime((session) =>
+      session.getByRole("complementary", { name: assistant })
+    );
+
+    const { structure } = await ayme.getPageContext();
+    expect(structure).toContain("Save changes");
+    expect(structure).toContain("Read notes");
+    expect(structure).not.toContain("Get help");
+  });
+
+  it("leaves out an element added after the session started, once the Locator matches it at the next capture", async () => {
+    document.body.innerHTML = "<main><button>Save changes</button></main>";
+    startRuntime((session) =>
+      session.getByRole("complementary", { name: "Assistant" })
+    );
+    expect((await ayme.getPageContext()).structure).toContain("Save changes");
+
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<aside aria-label="Assistant"><button>Get help</button></aside>'
+    );
+
+    const { structure } = await ayme.getPageContext();
+    expect(structure).toContain("Save changes");
+    expect(structure).not.toContain("Get help");
+  });
+
+  it("leaves out of an action's own changes what the action adds and the Locator matches, so nothing shows as removed after", async () => {
+    document.body.innerHTML = "<button>Notify</button><button>Other</button>";
+    document.querySelector("button")!.addEventListener("click", () => {
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        '<div role="status">Saved</div>'
+      );
+    });
+    startRuntime((session) => session.getByRole("status"));
+    const call = (name: string, input: unknown) =>
+      agentTools().call(name, input);
+    const { structure } = (await call("snapshot", {})) as {
+      structure: string;
+    };
+    const refOf = (name: string) =>
+      new RegExp(`- (e\\d+) button "${name}"`).exec(structure)![1]!;
+
+    const clicked = (await call("click", { target: refOf("Notify") })) as {
+      changes?: string;
+    };
+    const next = (await call("click", { target: refOf("Other") })) as {
+      changes_before?: string;
+    };
+
+    expect(document.querySelector('[role="status"]')?.textContent).toBe(
+      "Saved"
+    );
+    expect(clicked.changes ?? "").not.toContain("Saved");
+    expect(next.changes_before).toBeUndefined();
+    expect((await ayme.getPageContext()).structure).not.toContain("Saved");
+  });
+
+  it("leaves none of its Locator's matches in the document's module once the session stops", async () => {
+    document.body.innerHTML = `
+      <main><button>Save changes</button></main>
+      <aside id="assistant"><button>Get help</button></aside>
+    `;
+    startRuntime((session) => session.locator("#assistant"));
+    expect((await ayme.getPageContext()).structure).not.toContain("Get help");
+
+    stop?.();
+    stop = undefined;
+
+    // The key the session handed the module the Locator's matches under.
+    const capture = () =>
+      browserInPage().capture({
+        elements: { ignores: [{ matches: "ignore" }] },
+      });
+    await expect.poll(async () => (await capture()).excludedRefs).toEqual([]);
+  });
+
+  it("calls the function once, on start, with the session's Page", () => {
+    const pages: unknown[] = [];
+    const runtime = createAyme({
+      pageFactory: () => page,
+      ignore: (session) => {
+        pages.push(session);
+        return session.locator("#assistant");
+      },
+    });
+
+    stop = runtime.start();
+
+    expect(pages).toHaveLength(1);
+    expect((pages[0] as typeof page).url()).toBe(page.url());
+  });
+
+  it("refuses to start when the function throws or returns no Locator, naming `ignore`", () => {
+    const starting = (ignore: ElementFilter) => () =>
+      createAyme({ pageFactory: () => page, ignore }).start();
+    const threw = starting(() => {
+      throw new Error("the panel is not mounted");
+    });
+    const gaveNone = starting((() => "#assistant") as never);
+
+    expect(threw).toThrow(ToolInputError);
+    expect(threw).toThrow(
+      "The `ignore` function threw when the session started: the panel is not mounted"
+    );
+    expect(gaveNone).toThrow(ToolInputError);
+    expect(gaveNone).toThrow("The `ignore` function did not return a Locator.");
+    // Neither left an owner behind: a session that registers starts.
+    expect(() => startRuntime("#assistant")).not.toThrow();
+  });
+
+  it("excludes a marked subtree without mutating capture styles", async () => {
     document.body.innerHTML = `
       <main><h1>Consumer application</h1></main>
-      <div data-ayme-inspector-host><span>POM inspector controls</span></div>
+      <div data-ayme-exclude><span>POM inspector controls</span></div>
     `;
-    const host = document.querySelector(
-      "[data-ayme-inspector-host]"
-    ) as HTMLElement;
+    const host = document.querySelector("[data-ayme-exclude]") as HTMLElement;
     host.style.display = "block";
 
     startRuntime();

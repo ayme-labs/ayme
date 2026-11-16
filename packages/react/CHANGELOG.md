@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/ayme-labs/ayme/compare/react-v0.1.1...react-v0.2.0) (2026-11-04)
+
+
+### Miscellaneous Chores
+
+* **react:** Synchronize ayme versions
+
 ## [0.1.1](https://github.com/ayme-labs/ayme/compare/react-v0.1.0...react-v0.1.1) (2026-10-30)
 
 

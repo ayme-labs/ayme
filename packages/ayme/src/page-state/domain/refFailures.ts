@@ -19,7 +19,6 @@ export const UNRESOLVED: Record<
   "unknown-ref": "no snapshot of the current document issued it",
   removed: "it is no longer on the page",
   ambiguous: "it cannot be matched unambiguously to the current page",
-  "no-element": "it has no element on the page now",
 };
 
 /** The one format every target failure shares; a reason that ends a sentence keeps its mark. */

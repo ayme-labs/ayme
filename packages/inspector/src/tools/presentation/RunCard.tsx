@@ -1,4 +1,4 @@
-import type { SchemaViolation } from "@ayme-dev/ayme/internal";
+import type { SchemaViolation } from "@ayme-dev/ayme/inspector";
 
 import type { OnHover } from "../../navigation";
 import {

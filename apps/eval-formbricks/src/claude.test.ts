@@ -11,6 +11,7 @@ import {
   claudeEnvironment,
   runClaude,
   userMessageLine,
+  type ClaudeInvocation,
   type ClaudeRun,
 } from "./claude.ts";
 import { summarizeTranscript } from "./transcript.ts";
@@ -176,6 +177,7 @@ describe("runClaude", () => {
     timeoutMs?: number;
     setupTimeoutMs?: number;
     resultDelayMs?: number;
+    withoutTask?: boolean;
   }): Promise<ClaudeRun & { stderr: string }> {
     const workDir = await mkdtemp(path.join(os.tmpdir(), "eval-claude-"));
     workDirs.push(workDir);
@@ -194,12 +196,16 @@ describe("runClaude", () => {
       arm: arms["playwright-mcp"],
       mcpConfigPath: path.join(workDir, "mcp.json"),
       setupPrompt: "Get ready and reply ready.",
-      prompt: "Rename the survey.",
-      timeoutMs: options.timeoutMs ?? 10_000,
+      ...(options.withoutTask === true
+        ? {}
+        : {
+            prompt: "Rename the survey.",
+            timeoutMs: options.timeoutMs ?? 10_000,
+          }),
       setupTimeoutMs: options.setupTimeoutMs ?? 10_000,
       transcriptPath: path.join(workDir, "transcript.jsonl"),
       stderrPath,
-    });
+    } as ClaudeInvocation);
     return { ...run, stderr: await readFile(stderrPath, "utf8") };
   }
 
@@ -221,6 +227,16 @@ describe("runClaude", () => {
     // The whole transcript, both turns, is kept.
     expect(summarizeTranscript(run.lines).turns).toHaveLength(2);
     expect(run.lines).toHaveLength(16);
+  });
+
+  it("ends after the setup turn when there is no task to send", async () => {
+    const run = await drive({ fixture: "complete.jsonl", withoutTask: true });
+    expect(run.stderr).toContain("user message 1:");
+    expect(run.stderr).not.toContain("user message 2:");
+    expect(run.setupFailure).toBeNull();
+    expect(run.setup.wallTimeMs).not.toBeNull();
+    expect(run.task).toBeNull();
+    expect(run.exitCode).toBe(0);
   });
 
   it("never sends the task after a setup turn that ends with an error", async () => {

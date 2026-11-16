@@ -590,6 +590,47 @@ export function agentConnectionTests({
       }
     );
 
+    for (const alreadyLoaded of [false, true]) {
+      exampleTest(
+        `keeps the tab id across reload after pairing ${alreadyLoaded ? "an already loaded tab" : "as the tab loads"}`,
+        async ({ page, baseURL }) => {
+          exampleTest.skip(
+            !enabled(),
+            "The app turns the Agent Connection off here."
+          );
+          const agent = await startAgent("--port", String(await freePort()));
+          try {
+            const url = new URL("/", baseURL).href;
+            if (alreadyLoaded)
+              await page.goto(url, { waitUntil: "networkidle" });
+            await connectPage(agent, page, url, { timeout: 45_000 });
+            const storedTab = () =>
+              page.evaluate((key) => {
+                return (
+                  JSON.parse(sessionStorage.getItem(key) ?? "") as {
+                    tab: string;
+                  }
+                ).tab;
+              }, agentConnectionMarker);
+            const tab = await storedTab();
+
+            const navigated = page.waitForEvent("load");
+            await agent.call("reload");
+            await navigated;
+            // Wait for the new document to reconnect before reading its storage.
+            const { text, isError } = await agent.call("snapshot");
+            expect(isError, text).toBe(false);
+            expect(
+              (JSON.parse(text) as { structure: string }).structure
+            ).toContain(snapshotText);
+            expect(await storedTab()).toBe(tab);
+          } finally {
+            await agent.close();
+          }
+        }
+      );
+    }
+
     exampleTest(
       "lets a coding agent read the counter's Peek while it is mounted",
       async ({ page, baseURL }) => {

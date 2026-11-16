@@ -1,12 +1,23 @@
+import { readRef } from "../../test-utils/elementRefs.testSupport";
+import type { Locator } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import { createPage } from "../../page-objects/infrastructure";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { createAyme } from "../../runtime";
+import {
+  browserInPage,
+  getPageStateSession,
+} from "../../page-state/infrastructure";
 import type { CustomTool } from "./elementTools";
 import { listCustomTools } from "../infrastructure/customToolStore";
-import { errorText } from "../../shared";
+import {
+  errorText,
+  toolFilterKey,
+  ToolInputError,
+  type ElementFilter,
+} from "../../shared";
 
 type ActionResultShape = {
   result?: unknown;
@@ -49,7 +60,7 @@ describe("Custom Tools in Chromium", () => {
 
   /** A Custom Tool that records the targets it received. */
   function recordingCustomTool(overrides: Partial<CustomTool> = {}) {
-    const targets: { ref: string; element: Element }[] = [];
+    const targets: { ref: string; locator: Locator }[] = [];
     const customTool: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
@@ -98,7 +109,7 @@ describe("Custom Tools in Chromium", () => {
 
   // --- Execution ---
 
-  it("passes the current Structural Ref and its element to execute", async () => {
+  it("passes the current Structural Ref and a Locator of its element to execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool();
     start([customTool]);
@@ -106,9 +117,10 @@ describe("Custom Tools in Chromium", () => {
 
     await call("highlight_element", { ref: saveRef });
 
-    expect(targets).toEqual([
-      { ref: saveRef, element: document.querySelector("#save") },
-    ]);
+    expect(targets.map((target) => target.ref)).toEqual([saveRef]);
+    expect(await targets[0]!.locator.evaluate((element) => element.id)).toBe(
+      "save"
+    );
   });
 
   it("retargets a historical ref to the element that replaced it", async () => {
@@ -120,12 +132,17 @@ describe("Custom Tools in Chromium", () => {
     const replacement = document.createElement("button");
     replacement.id = "save";
     replacement.textContent = "Save changes";
+    replacement.dataset.replacement = "yes";
     document.querySelector("#save")!.replaceWith(replacement);
 
     await call("highlight_element", { ref: saveRef });
 
     expect(targets).toHaveLength(1);
-    expect(targets[0]!.element).toBe(replacement);
+    expect(
+      await targets[0]!.locator.evaluate(
+        (element) => (element as HTMLElement).dataset.replacement
+      )
+    ).toBe("yes");
   });
 
   it("returns the action result shape with a JSON value under result", async () => {
@@ -150,8 +167,10 @@ describe("Custom Tools in Chromium", () => {
   it("reports what the Custom Tool changed on the page", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool({
-      execute: async ({ element }) => {
-        element.insertAdjacentHTML("afterend", "<p>Highlighted</p>");
+      execute: async ({ locator }) => {
+        await locator.evaluate((element) =>
+          element.insertAdjacentHTML("afterend", "<p>Highlighted</p>")
+        );
         return null;
       },
     });
@@ -169,7 +188,7 @@ describe("Custom Tools in Chromium", () => {
   it("does not enforce the filter when the calling agent calls the tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool({
-      filter: () => false,
+      filter: (session) => session.locator("#nothing"),
     });
     start([customTool]);
     const saveRef = refFor(await structure(), "Save changes");
@@ -177,6 +196,87 @@ describe("Custom Tools in Chromium", () => {
     await call("highlight_element", { ref: saveRef });
 
     expect(targets).toHaveLength(1);
+  });
+
+  it("captures the refs a selector filter keeps, under the tool's name", async () => {
+    document.body.innerHTML =
+      '<button id="save" data-x>Save changes</button><button>Cancel</button>';
+    const { customTool } = recordingCustomTool({ filter: "[data-x]" });
+    start([customTool]);
+
+    expect(listCustomTools()[0]?.takes).toEqual({
+      filter: "highlight_element",
+    });
+    const look = await getPageStateSession(document).look({ accepts: [] });
+    const kept = [...(look.accepted?.["tool:highlight_element"] ?? [])];
+    expect(kept).toHaveLength(1);
+    expect(await readRef(kept[0] as string, (element) => element.id)).toBe(
+      "save"
+    );
+  });
+
+  it("keeps a Custom Tool named like a predicate apart from the predicate's refs", async () => {
+    document.body.innerHTML =
+      '<select id="picker"><option>A</option></select><button id="marked" data-x>Marked</button>';
+    const { customTool } = recordingCustomTool({
+      name: "select",
+      filter: "[data-x]",
+    });
+    start([customTool]);
+
+    const look = await getPageStateSession(document).look({
+      accepts: ["select"],
+    });
+    const toolKept = [...(look.accepted?.["tool:select"] ?? [])];
+    expect(toolKept).toHaveLength(1);
+    expect(await readRef(toolKept[0] as string, (element) => element.id)).toBe(
+      "marked"
+    );
+    const predicateKept = [...(look.accepted?.select ?? [])];
+    expect(
+      await Promise.all(
+        predicateKept.map((ref) =>
+          readRef(ref as string, (element) => element.tagName)
+        )
+      )
+    ).toEqual(["SELECT"]);
+  });
+
+  it("captures the refs a Locator filter keeps, under the tool's name, with a name it reads from the code around it", async () => {
+    document.body.innerHTML =
+      '<button id="save">Save changes</button><button>Cancel</button>';
+    const name = "Save changes";
+    const { customTool } = recordingCustomTool({
+      filter: (session) => session.getByRole("button", { name }),
+    });
+    start([customTool]);
+
+    const look = await getPageStateSession(document).look({ accepts: [] });
+    const kept = [...(look.accepted?.["tool:highlight_element"] ?? [])];
+    expect(kept).toHaveLength(1);
+    expect(await readRef(kept[0] as string, (element) => element.id)).toBe(
+      "save"
+    );
+  });
+
+  it("refuses to start when a filter function throws or returns no Locator, naming the Custom Tool's filter, and registers no tool", () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const starting = (filter: ElementFilter) => () =>
+      start([recordingCustomTool({ filter }).customTool]);
+    const threw = starting(() => {
+      throw new Error("no panel yet");
+    });
+    const gaveNone = starting((() => ({ selector: "#save" })) as never);
+
+    expect(threw).toThrow(ToolInputError);
+    expect(threw).toThrow(
+      "The `filter` of the Custom Tool `highlight_element` function threw when the session started: no panel yet"
+    );
+    expect(gaveNone).toThrow(ToolInputError);
+    expect(gaveNone).toThrow(
+      "The `filter` of the Custom Tool `highlight_element` function did not return a Locator."
+    );
+    expect(listCustomTools()).toEqual([]);
   });
 
   // --- Ref resolution failures ---
@@ -236,6 +336,33 @@ describe("Custom Tools in Chromium", () => {
     stop?.();
     stop = undefined;
     expect(listCustomTools()).toEqual([]);
+  });
+
+  it("leaves none of a Locator filter's matches in the document's module once the session ends", async () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const { customTool } = recordingCustomTool({
+      filter: (session) => session.locator("#save"),
+    });
+    start([customTool]);
+    // A capture that reads the matches the session handed under the tool's key.
+    const kept = async () =>
+      (
+        await browserInPage().capture({
+          filters: [
+            {
+              name: "kept",
+              filter: { matches: toolFilterKey("highlight_element") },
+            },
+          ],
+        })
+      ).accepted?.[toolFilterKey("kept")];
+    await getPageStateSession(document).look({ accepts: [] });
+    expect(await kept()).toHaveLength(1);
+
+    stop?.();
+    stop = undefined;
+
+    await expect.poll(kept).toEqual([]);
   });
 });
 

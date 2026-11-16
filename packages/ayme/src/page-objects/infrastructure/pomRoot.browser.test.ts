@@ -15,7 +15,6 @@ import {
   registerCompiledPom,
 } from "./registry";
 import { createAyme, type Ayme } from "../../runtime";
-import { geometryReach } from "../../page-state/infrastructure";
 
 // Observation and publication seam (ADR-0042): a Page Object Model that
 // names its root on the decorator, observed on a real page, and what the
@@ -112,8 +111,9 @@ describe("Page Object Root by option", () => {
     const state = await agent.getPageState();
     const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
     const childRef = state.text.match(/(\w+) Child\b/)![1]!;
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const options = buildToolOptions({ page, reach: geometryReach });
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const options = await toolOptionsOf(page);
     for (const name of ["Shell.open", "Child.open"])
       expect(
         options.find(({ key }) => key === name)?.tool.args[0]?.closedSet
@@ -163,8 +163,9 @@ describe("Page Object Root by option", () => {
     expect(
       listed("Announcer.announce")?.inputSchema.properties
     ).not.toHaveProperty("ref");
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const offered = buildToolOptions({ page, reach: geometryReach }).find(
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "Announcer.announce"
     )!;
     expect(offered.tool.args).toMatchObject([
@@ -245,12 +246,12 @@ describe("Page Object Root by option", () => {
     });
     session.pom.register(RowsPage);
     await probeRegisteredPomMembers();
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const offered = () =>
-      buildToolOptions({ page, reach: geometryReach }).find(
-        ({ key }) => key === "Row.open"
-      )!.tool.args[0]!.closedSet;
-    expect(offered()).toMatchObject({
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const offered = async () =>
+      (await toolOptionsOf(page)).find(({ key }) => key === "Row.open")!.tool
+        .args[0]!.closedSet;
+    expect(await offered()).toMatchObject({
       kind: "instance",
       roots: [{}, {}],
     });
@@ -260,7 +261,7 @@ describe("Page Object Root by option", () => {
     expect(opened).toEqual(["second"]);
     document.getElementById("first")!.remove();
     // No probe follows the removal: the Goal Loop must leave out a stale root.
-    expect(offered()).toMatchObject({
+    expect(await offered()).toMatchObject({
       kind: "instance",
       roots: [{}],
     });
@@ -288,7 +289,9 @@ describe("Page Object Root by option", () => {
     document.getElementById("other")!.id = "panel";
     await expect(
       session.tools.run("MovingPanel.open", { ref }, { by: "webmcp" })
-    ).rejects.toThrow(`MovingPanel on ref "${ref}" is unavailable`);
+    ).rejects.toThrow(
+      `Cannot call MovingPanel.open on ref "${ref}": it is not a root of MovingPanel`
+    );
     expect(open).not.toHaveBeenCalled();
   });
 
@@ -961,6 +964,107 @@ describe("Page Object Root by option", () => {
 
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledOnce();
+  });
+
+  it("logs that a Locator declared as one matches several elements once, again when the count changes or comes back, and keeps the tools published", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<nav id="drawer"><button>Close</button><button>Close</button></nav>';
+    class Drawer {
+      close = page.getByRole("button", { name: "Close" });
+      open() {}
+    }
+    registerCompiledPom(
+      Drawer,
+      pageManifest("Drawer", [{ ...locator("close"), collection: false }])
+    );
+    session.pom.register(Drawer);
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Drawer.open"]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Drawer: its close matches 2 elements."
+    );
+    // The Inspector keeps showing the count, not a failed probe.
+    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
+      {
+        memberName: "close",
+        kind: "locator",
+        access: "field",
+        count: 2,
+        diagnostic: true,
+        warning: "Drawer: its close matches 2 elements.",
+      },
+    ]);
+
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledOnce();
+
+    const drawer = document.getElementById("drawer")!;
+    drawer.insertAdjacentHTML("beforeend", "<button>Close</button>");
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(2);
+    expect(logged).toHaveBeenLastCalledWith(
+      "Drawer: its close matches 3 elements."
+    );
+
+    drawer.replaceChildren();
+    await probeRegisteredPomMembers();
+    drawer.innerHTML = "<button>Close</button>";
+    await probeRegisteredPomMembers();
+    expect(logged).toHaveBeenCalledTimes(2);
+
+    drawer.insertAdjacentHTML("beforeend", "<button>Close</button>");
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Drawer.open"]);
+    expect(logged).toHaveBeenCalledTimes(3);
+    expect(logged).toHaveBeenLastCalledWith(
+      "Drawer: its close matches 2 elements."
+    );
+  });
+
+  it.each([
+    ["a Locator collection matching several", true, 2],
+    ["a Locator whose manifest leaves its cardinality out", undefined, 2],
+    ["a Locator declared as one matching one", false, 1],
+  ] as const)("logs nothing for %s", async (_, collection, buttons) => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML = "<button>Close</button>".repeat(buttons);
+    class Drawer {
+      close = page.getByRole("button", { name: "Close" });
+      open() {}
+    }
+    registerCompiledPom(
+      Drawer,
+      pageManifest("Drawer", [
+        collection === undefined
+          ? locator("close")
+          : { ...locator("close"), collection },
+      ])
+    );
+    session.pom.register(Drawer);
+    await probeRegisteredPomMembers();
+    expect(logged).not.toHaveBeenCalled();
+    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
+      { memberName: "close", kind: "locator", access: "field", count: buttons },
+    ]);
+  });
+
+  it("names a child's class and path when its Locator declared as one matches several elements", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    document.body.innerHTML =
+      '<section id="shell"><a href="#">Help</a><a href="#">Help</a></section>';
+    class Panel {
+      link = page.getByRole("link", { name: "Help" });
+      close() {}
+    }
+    session.pom.register(
+      shellWithPanel(Panel, [{ ...locator("link"), collection: false }])
+    );
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["Panel.close"]);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Panel at Shell.panel: its link matches 2 elements."
+    );
   });
 
   it("refuses a root-less child of a collection item while keeping its rooted parent's tools", async () => {

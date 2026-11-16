@@ -9,15 +9,19 @@ import { PanelPart } from "./PanelPart";
  * collapsed.
  */
 export class WhatTheModelSees extends PanelPart {
+  @ayme.child
   readonly toggle: Locator;
   /** The Page Object definitions, as snapshot renders them. */
+  @ayme.child
   readonly definitions: Locator;
   /**
    * A structure node's own lines of the page state, e.g.
    * `- e3 checkbox "Done" [checked]`, without its children.
    */
+  @ayme.child
   readonly pageState: Locator;
   /** How many children the node has, e.g. "3 children". */
+  @ayme.child
   readonly childCount: Locator;
 
   constructor(scope: Locator) {

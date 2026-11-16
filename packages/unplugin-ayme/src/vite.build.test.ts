@@ -6,14 +6,34 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "vite";
 import { expect, it, vi } from "vitest";
 
-const { createPomProgram } = vi.hoisted(() => ({
-  createPomProgram: vi.fn(),
+// What the adapter asks of its compiler, in order: a compile keeps the
+// Programs, an invalidate drops them (ADR-0036).
+const { compilerCalls } = vi.hoisted(() => ({
+  compilerCalls: [] as ("compile" | "invalidate")[],
 }));
 
-vi.mock("./pomProgram", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./pomProgram")>();
-  createPomProgram.mockImplementation(actual.createPomProgram);
-  return { ...actual, createPomProgram };
+vi.mock("@ayme-dev/ayme/compiler", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@ayme-dev/ayme/compiler")>();
+  return {
+    ...actual,
+    createPomCompiler: (
+      ...args: Parameters<typeof actual.createPomCompiler>
+    ) => {
+      const compiler = actual.createPomCompiler(...args);
+      return {
+        ...compiler,
+        compile(...compileArgs: Parameters<typeof compiler.compile>) {
+          compilerCalls.push("compile");
+          return compiler.compile(...compileArgs);
+        },
+        invalidate() {
+          compilerCalls.push("invalidate");
+          compiler.invalidate();
+        },
+      };
+    },
+  };
 });
 
 import { ayme } from "./vite";
@@ -24,7 +44,7 @@ import { ayme } from "./vite";
 const fixture = (name: string) =>
   fileURLToPath(new URL(`./fixtures/${name}.ts`, import.meta.url));
 
-it("builds one Program per tsconfig project and build", async () => {
+it("keeps the compiler's Programs for the length of a build", async () => {
   const plugin = ayme({ include: true, report: "none" });
   const buildBoth = () =>
     build({
@@ -39,14 +59,21 @@ it("builds one Program per tsconfig project and build", async () => {
         },
       },
     });
-  createPomProgram.mockClear();
+  compilerCalls.splice(0);
+
+  // Both modules compile with the Programs kept, and the build's end drops
+  // them.
+  const oneBuild = () => {
+    const calls = compilerCalls.splice(0);
+    expect(calls.at(-1)).toBe("invalidate");
+    expect(calls.slice(0, -1).length).toBeGreaterThanOrEqual(2);
+    expect(calls.slice(0, -1)).not.toContain("invalidate");
+  };
+  await buildBoth();
+  oneBuild();
 
   await buildBoth();
-  expect(createPomProgram).toHaveBeenCalledTimes(1);
-
-  // The cache ends with the build.
-  await buildBoth();
-  expect(createPomProgram).toHaveBeenCalledTimes(2);
+  oneBuild();
 }, 30_000);
 
 // Integration on the built packages: a build without Ayme, which every build

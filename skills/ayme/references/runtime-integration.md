@@ -1,11 +1,12 @@
 # Runtime integration
 
-[Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md)
+[Page Object Models](ayme-page-objects.md)
 covers marking, tool names, and Page Object Children; the page for the project's
 framework, linked from the
 [documentation index](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md),
 covers starting Ayme and registering Page Objects. Follow
-[Page object design](page-object-design.md) for members, roots, and action
+[Page object design](page-object-design.md) and
+[Page Object Models](ayme-page-objects.md) for members, roots, and action
 returns.
 
 ## Register top-level POMs at setup
@@ -14,7 +15,7 @@ Register every page POM once, at app setup: list it in the `pageObjects`
 option where Ayme starts (`createAyme`, `AymeProvider`, `useAyme` or
 `provideAyme`). A page is
 present by its URL through the page base class of
-[Page object design](page-object-design.md#write-base-classes-for-pages-and-components),
+[Page Object Models](ayme-page-objects.md#ayme),
 so its tools come and go with the browser's location.
 [Register Page Objects](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md#register-page-objects)
 is the rule; the framework page shows the call in its idiom.
@@ -24,9 +25,15 @@ lifetime and no URL states it, such as a sidebar mounted on several routes, or
 when the POM belongs in a route's chunk. Say which in a one-line comment at the
 call.
 
-Child POMs exposed through the registered POM's compiled members are discovered
-recursively and need no separate registration. An unrelated marked class or a
-POM only returned from an action is not registered, so its tools are never live.
+A registered POM brings every POM it declares with `@ayme.child` or
+`@ayme.collection`, at any depth. They need no registration of their own.
+Example: registering `ProjectsPage` also brings each `ProjectRow` of its
+`projects()` collection.
+
+A POM's tools appear only when it is registered itself, or a registered POM
+declares it, at any depth. Otherwise its tools never appear. That covers a
+POM held in a member without a decorator, a POM that an action only returns,
+and a marked class that no registered POM reaches.
 
 ## Keep one runtime owner at the root
 
@@ -49,10 +56,10 @@ responsibilities. Whether a tool is listed or available does not depend on
 publication; [`ayme.tools`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools)
 gives the rules. An
 [in-app assistant](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/in-app-assistant.md)
-runs available tools through `ayme.tools`; it gets thrown errors, whereas a published
-call resolves a failure as a result with `isError: true`, as
+runs available tools through `ayme.tools.run`. A failed call throws there. A
+published call that fails resolves as a result with `isError: true` instead.
 [Errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md#how-an-agent-sees-a-failure)
-describes.
+has both forms.
 
 ## Optional quick verification
 
@@ -66,4 +73,4 @@ On a page the POM is present on, check the tools and the page state:
 - `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
   State an agent receives, marked with Page Object class names.
 
-Confirm that the intended POM, its visible members, and its tools appear.
+Confirm that the intended POM, its declared children, and its tools appear.

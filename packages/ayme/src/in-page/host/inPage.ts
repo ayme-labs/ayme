@@ -1,0 +1,966 @@
+import type {
+  Disposable,
+  JSHandle,
+  Locator,
+  Page,
+  Selectors,
+} from "@playwright/test";
+import {
+  aymeRefEngine,
+  callInPage,
+  callOnInPage,
+  installInPage,
+} from "virtual:ayme-in-page";
+
+import { version as packageVersion } from "../../../package.json";
+import {
+  AymeError,
+  RefResolutionError,
+  RuntimeStateError,
+  type ActionOutcome,
+  type Capture,
+  type ControlState,
+  type DocumentToken,
+  type FilterCheck,
+  type NamedFilter,
+  type Predicate,
+} from "../../shared";
+import type { CallName, CallResult } from "../page/call";
+import type { CallOnName, CallOnResult } from "../page/callOn";
+import type {
+  ActionInputs,
+  Begun,
+  Bound,
+  ChangeState,
+  ElementInputs,
+  HostKey,
+  HostMessage,
+  PickNotice,
+  ReachAnswer,
+  ReachMeasurement,
+  ReachRequest,
+  RecommendationAnswer,
+  RecommendRequest,
+  RootState,
+  Settled,
+} from "../page/install";
+import { highlightStyles, type HighlightStyle } from "./highlightStyles";
+
+export type {
+  ActionInputs,
+  Bound,
+  Capture,
+  DocumentToken,
+  ElementInputs,
+  HostKey,
+  ReachMeasurement,
+  RootState,
+} from "../page/install";
+
+const gone: ReachMeasurement = { present: false, available: false };
+const reached: ReachMeasurement = { present: true, available: true };
+
+/** The document runs another version's in-page module, so this host cannot use it. */
+export class InPageVersionError extends AymeError {
+  override readonly name = "InPageVersionError";
+  readonly kind = "runtime";
+}
+
+/** The in-page module of the document a Page shows, as one host sees it. */
+export type InPage = {
+  /** Installs the module, or binds to the one there, and says what is there. */
+  bound(): Promise<Bound>;
+  /**
+   * A capture of the document the Page shows now, binding to its module
+   * first when needed. Records nothing.
+   */
+  capture(options?: CaptureOptions): Promise<Capture>;
+  /** Checks a selector filter as a registration does: whether it parses in the page. */
+  checkFilter(filter: { selector: string }): Promise<FilterCheck>;
+  /**
+   * Hands the module the elements `target` matches now, as this host's
+   * matches of `key`: the filter data `{ matches: key }` reads them in its
+   * captures from now on, until it hands that key's matches again. One call
+   * into the page. The elements of a Locator into a frame count as none: a
+   * capture reads the Page's own document alone.
+   */
+  match(target: Locator, key: string): Promise<void>;
+  /**
+   * Drops the matches this host handed under `keys` in the document it last
+   * bound, whose captures read them. Never installs the module: a document
+   * without one holds none.
+   */
+  forget(keys: readonly string[]): Promise<void>;
+  /**
+   * Reach (ADR-0041) of the element `ref` names, measured in the page: what
+   * a click would reach, and what blocks or takes it, named by Structural
+   * Ref. An element that is gone is absent. With `atCall`, the element is
+   * scrolled into view first, as the call that clicks it scrolls, and the
+   * hit test is where the click lands.
+   */
+  measureReach(
+    ref: string,
+    options?: { atCall?: boolean }
+  ): Promise<ReachMeasurement>;
+  /**
+   * The ref of what blocks every click on the element `ref` names and its
+   * focus: the last opened native modal it is not in, else its inert ancestor.
+   */
+  blockingAncestor(ref: string): Promise<string | undefined>;
+  /**
+   * Page Object Root `root`: how many elements its Locator matches, and
+   * whether it is on the page (Page Object Presence) and a click would reach
+   * it (Page Object Availability), measured with the Locator resolved in one
+   * task in the page, never scrolling or sending input (ADR-0019). Called
+   * inside a probe run of `watch`, it also labels this host's roots with
+   * `label` in its later captures.
+   */
+  probe(root: Locator, label: string): Promise<RootState>;
+  /**
+   * Runs `probe` now and after every change of the page, one run at a time;
+   * changes during a run coalesce into one follow-up. The run follows the
+   * page across full loads. Its `signal` aborts when the returned function,
+   * which stops watching, is called. One watch per InPage: a second throws.
+   */
+  watch(probe: (signal: AbortSignal) => Promise<void>): () => void;
+  /**
+   * Makes a probe run due for a change the page did not make, such as a
+   * Page Object registered. Without a watch it does nothing.
+   */
+  refresh(): void;
+  /**
+   * Resolves once no probe run is due: the running one and at most one
+   * follow-up, so a page that never rests can still be read. Rejects with
+   * what a run it awaited failed with. Without a watch it resolves at once.
+   */
+  probed(): Promise<void>;
+  /**
+   * The Structural Ref of each element `target` matches, one the module has
+   * not named yet named now (unlike `elements.refs`, which names nothing).
+   */
+  mint(target: Locator): Promise<string[]>;
+  /**
+   * The ref each of `refs` names its element by now, in the order given: one
+   * a probe or a reach gave before a capture marked the element gives way to
+   * the capture's. Undefined for a ref whose element left the document.
+   */
+  currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /** The URL the document resolves relative URLs against: its `baseURI`. */
+  baseURI(): Promise<string>;
+  /** The key of the document's current history entry, or none without the Navigation API. */
+  historyEntry(): Promise<string | undefined>;
+  /** The state of each native form control `refs` name (input, textarea, select), by ref. */
+  controls(refs: readonly string[]): Promise<Record<string, ControlState>>;
+  /**
+   * Whether `ref`, now or before, names the one element `target` matches:
+   * what tells that a root found earlier is still the root, although a
+   * capture since has marked it, or its name has changed.
+   */
+  names(target: Locator, ref: string): Promise<boolean>;
+  /**
+   * Of `refs`, those whose element `input` would reach now, measured in one
+   * batch in the page: a click reaches an element (ADR-0035) when nothing
+   * covers or blocks it; focus needs only that nothing blocks it. In the
+   * order given.
+   */
+  reachable(
+    refs: readonly string[],
+    input: "click" | "focus"
+  ): Promise<string[]>;
+  /**
+   * Whether `predicate` keeps the one element `target` matches. Throws a
+   * `RefResolutionError` unless it matches exactly one.
+   */
+  is(target: Locator, predicate: Predicate): Promise<boolean>;
+  /**
+   * The Locator Recommendation for the one element `target` matches,
+   * relative to the one element `within` matches when given: Playwright's
+   * own generator, run in the page against both, which checks the locator
+   * addresses exactly the element, or the interactive ancestor it picked for
+   * it. A container the page replaced before the page task read it is
+   * resolved again, so the generator never sees a detached one. Throws a
+   * `RefResolutionError` unless each matches exactly one, and an `Error` when
+   * no locator addresses the element.
+   */
+  recommend(target: Locator, within?: Locator): Promise<string>;
+  /**
+   * Picks a Structural Ref by pointing at the document. The element under
+   * the pointer that has a ref is boxed with the hover highlight, or the
+   * unusable one when its ref is not in `accept`; a click picks an accepted
+   * one, Esc cancels, and the page itself handles none of these presses.
+   * Answers the ref picked, or nothing when Esc, `options.signal` or a later
+   * pick in the document, by any host, ends it.
+   */
+  pick(
+    accept: readonly string[],
+    options?: PickOptions
+  ): Promise<string | undefined>;
+  /**
+   * Shows Demo Mode's click cue where `target` is, if it matches one element
+   * now, and answers when the cue has gone. Reads the element's geometry in
+   * the page and waits for nothing.
+   */
+  cue(target: Locator): Promise<void>;
+  /** Whether the document holds a subtree that carries the excluded-subtree mark. */
+  hasExcludedSubtree(): Promise<boolean>;
+  /**
+   * Whether an excluded subtree is what a pointer action on an element
+   * `target` matches would meet: the first of them that one covers makes it
+   * so.
+   */
+  coveredByExcluded(target: Locator): Promise<boolean>;
+  /**
+   * Sets or clears the hit-test mark on the roots of the excluded subtrees,
+   * with which their client lets pointer events through while an action
+   * reaches the elements under them.
+   */
+  passThroughExcluded(on: boolean): Promise<void>;
+  /**
+   * An action's before capture, which also arms the watch for a full load
+   * the action starts: one call into the page.
+   */
+  begin(options?: ActionOptions): Promise<InPageAction>;
+  /**
+   * Calls `listener` when this host binds a document new to it, and after
+   * each same-document navigation in the document it is bound to, until the
+   * returned function is called. A host that outlives a full load binds the
+   * next document as soon as it has loaded while anyone listens.
+   */
+  onVisit(listener: (visit: VisitSignal) => void): () => void;
+  /** Reads of the elements a Locator matches, in the page. */
+  readonly elements: ElementReads;
+};
+
+/** An action begun on a document: the page before it, and the action itself. */
+export type InPageAction = {
+  readonly before: Capture;
+  /**
+   * Calls `perform` once, then waits in the page for a Settled Page and
+   * captures it: one call into the page, held while the page goes quiet.
+   * Answers at once when a full load starts. Never throws what `perform`
+   * throws: that comes back as `threw`, once the page settled.
+   */
+  perform<T>(perform: () => T | Promise<T>): Promise<ActionOutcome<T>>;
+};
+
+export type ElementReads = {
+  /**
+   * The Structural Ref each element `target` matches has in its document,
+   * undefined for one never captured. Never installs the module: a document
+   * without one has no refs.
+   */
+  refs(target: Locator): Promise<(string | undefined)[]>;
+};
+
+/** A document this host bound, or a same-document navigation in it: for Visits. */
+export type VisitSignal = {
+  document: DocumentToken;
+  url: string;
+  cause: "initial" | "navigate";
+};
+
+export type PickOptions = {
+  /** Ends picking, as Esc does, when it aborts. */
+  signal?: AbortSignal;
+  /** The highlight styles of an element that can be picked and of one that cannot. */
+  styles?: { usable?: HighlightStyle; unusable?: HighlightStyle };
+};
+
+export type CaptureOptions = {
+  /** The predicates whose accepted refs the capture carries (`Capture.accepted`). */
+  accepts?: readonly Predicate[];
+  /** The Custom Tools' filters whose accepted refs the capture carries, under each name. */
+  filters?: readonly NamedFilter[];
+  /**
+   * The host's inputs, plain data (`ElementInputs`). Transitional: the
+   * browser runtime gives a handle to them, for Playwright Lite's page
+   * function (#1177).
+   */
+  elements?: JSHandle<ElementInputs> | ElementInputs;
+};
+
+export type ActionOptions = {
+  /**
+   * As `CaptureOptions.elements`; a handle may hold a function, which the
+   * module reads again before each of the action's captures.
+   */
+  elements?: JSHandle<ActionInputs> | ElementInputs;
+};
+
+/** A host: one side that drives pages through Playwright's Page. */
+export type InPageHost = {
+  /** The in-page module as this host sees it on `page`: one per Page. */
+  inPage(page: Page): InPage;
+};
+
+/** A full load an action started: where to, and the old document's last capture. */
+type LoadStarted = { url: string; after?: Capture };
+
+/**
+ * A host of `version`, this package's unless given. A host has one binding
+ * in each Page, through which the module calls it.
+ */
+export function createInPageHost(version = packageVersion): InPageHost {
+  const host = hostKey();
+  const binding = `__ayme_${host}`;
+  const pages = new WeakMap<Page, InPage>();
+  // The pickings that are on, to hear what the module tells through the binding.
+  const listeners = new Map<string, (notice: PickNotice) => void>();
+
+  const versionError = (found: string) =>
+    new InPageVersionError(
+      `This document runs Ayme's in-page module ${found}; this host is ${version}.`
+    );
+
+  function forPage(page: Page): InPage {
+    let exposed: Promise<unknown> | undefined;
+    // The document this host last bound in the Page.
+    let current: DocumentToken | undefined;
+    const watcher = createWatcher();
+    const visitListeners = new Set<(visit: VisitSignal) => void>();
+    let followsLoads = false;
+    // Loads the module told of, by document and action, until the action's
+    // perform takes them, or this host leaves the document.
+    const loads = new Map<string, LoadStarted>();
+    const loadListeners = new Map<string, (load: LoadStarted) => void>();
+
+    const visit = (signal: VisitSignal) => {
+      for (const listener of [...visitListeners]) listener(signal);
+    };
+    const entered = (document: DocumentToken, url: string) => {
+      if (document === current) return;
+      current = document;
+      for (const key of loads.keys())
+        if (!key.startsWith(`${document} `)) loads.delete(key);
+      visit({ document, url, cause: "initial" });
+    };
+
+    /** What the module tells this host about a document; another document's news is dropped. */
+    function hear(document: DocumentToken, message: HostMessage) {
+      if (message.kind === "pick") {
+        listeners.get(message.id)?.(message.notice);
+        return;
+      }
+      if (message.kind === "change") {
+        if (document === current) watcher.heard(document, message);
+        return;
+      }
+      if (message.kind === "visit") {
+        if (document === current)
+          visit({ document, url: message.url, cause: "navigate" });
+        return;
+      }
+      const key = `${document} ${message.action}`;
+      const load = {
+        url: message.url,
+        ...(message.after && { after: message.after }),
+      };
+      const listener = loadListeners.get(key);
+      if (listener) listener(load);
+      else loads.set(key, load);
+    }
+
+    // Once per Page. A Playwright Lite window has one binding per name, so a
+    // second Page of this host in it shares the first one's: the one failure
+    // to expose it that the host passes over.
+    const expose = () =>
+      (exposed ??= page
+        .exposeFunction(binding, hear)
+        .catch((error: unknown) => {
+          if (!alreadyRegistered(error, binding)) throw error;
+        }));
+
+    async function bound(): Promise<Bound> {
+      await expose();
+      const result = await page.evaluate(installInPage, {
+        version,
+        host,
+        binding,
+      });
+      if (result.kind === "version") throw versionError(result.found);
+      entered(result.bound.document, result.url);
+      return result.bound;
+    }
+
+    /** The module's `name` in the document the Page shows, installed there first when it is missing. */
+    const call = <T>(name: CallName, args: unknown[]) =>
+      throughModule<T>(() =>
+        page.evaluate(callInPage, {
+          version,
+          host,
+          binding,
+          token: current,
+          name,
+          args,
+        })
+      );
+
+    /**
+     * Sends a call of the module, binding to the document's first when it has
+     * none. A call on a Locator's elements that still finds no module once it
+     * is installed ran in a frame, whose document the Page's module never
+     * reads: it answers `inFrame()` when given.
+     */
+    async function throughModule<T>(
+      send: () => Promise<CallResult<unknown> | CallOnResult<unknown>>,
+      inFrame?: () => T
+    ): Promise<T> {
+      await expose();
+      for (let installed = false; ; installed = true) {
+        const result = await send();
+        if (result.kind === "ok") {
+          if ("entered" in result && result.entered)
+            entered(result.entered.document, result.entered.url);
+          return result.value as T;
+        }
+        if (result.kind === "version") throw versionError(result.found);
+        if (installed) {
+          if (inFrame && "framed" in result && result.framed) return inFrame();
+          throw new RuntimeStateError(
+            "The document lost Ayme's in-page module right after it was installed."
+          );
+        }
+        await bound();
+      }
+    }
+
+    /**
+     * The Settled Page after `action` in `document`, or the load that ended
+     * it. Only a document that went away is a load: the context the call ran
+     * in was destroyed, or the Page shows a document other than the action's,
+     * one the old document never saw start, such as one the host started
+     * itself. Anything else rejects.
+     */
+    async function settle(
+      document: DocumentToken,
+      action: number,
+      elements: ActionOptions["elements"]
+    ): Promise<Settled> {
+      let result;
+      try {
+        result = await page.evaluate(callInPage, {
+          version,
+          host,
+          binding,
+          token: document,
+          strict: true,
+          name: "settle" as const,
+          args: [action, elements],
+        });
+      } catch (error) {
+        // Real Playwright reports a load as the context it destroyed.
+        if (page.isClosed() || !contextDestroyed(error)) throw error;
+        return { loading: page.url() };
+      }
+      // Any answer but the module's is another document's: its token, no
+      // module yet, or another version's.
+      return result.kind === "ok"
+        ? (result.value as Settled)
+        : { loading: page.url() };
+    }
+
+    function action(
+      { action, before }: Begun,
+      elements: ActionOptions["elements"]
+    ): InPageAction {
+      let performed = false;
+      const document = before.document;
+      const key = `${document} ${action}`;
+      const loading = ({ url, after }: LoadStarted) =>
+        ({ kind: "loading", url, ...(after && { after }) }) as const;
+      return {
+        before,
+        async perform<T>(perform: () => T | Promise<T>) {
+          if (performed)
+            throw new RuntimeStateError("An action performs only once.");
+          performed = true;
+          const loadStarted = new Promise<LoadStarted>((resolve) => {
+            const told = loads.get(key);
+            if (told) resolve(told);
+            else loadListeners.set(key, resolve);
+          });
+          const settling = (async (): Promise<ActionOutcome<T>> => {
+            let done:
+              | { kind: "settled"; result: T }
+              | { kind: "threw"; error: unknown };
+            try {
+              done = { kind: "settled", result: await perform() };
+            } catch (error) {
+              done = { kind: "threw", error };
+            }
+            const settled = await settle(document, action, elements);
+            if ("loading" in settled)
+              return loading({ url: settled.loading, after: settled.after });
+            if ("failed" in settled)
+              return {
+                kind: "threw",
+                error:
+                  done.kind === "threw"
+                    ? done.error
+                    : new RuntimeStateError(settled.failed),
+                stable: settled.stable,
+              };
+            return { ...done, stable: settled.stable, after: settled.after };
+          })();
+          try {
+            return await Promise.race([settling, loadStarted.then(loading)]);
+          } finally {
+            loadListeners.delete(key);
+            loads.delete(key);
+            // A load answered first: the rest finishes on its own.
+            settling.catch(() => {});
+          }
+        },
+      };
+    }
+
+    /** The module's `name` on the elements `target` matches, installed first when it is missing. */
+    const callOn = <T>(
+      target: Locator,
+      name: CallOnName,
+      inputs?: unknown,
+      inFrame?: () => T
+    ) =>
+      throughModule<T>(
+        () => target.evaluateAll(callOnInPage, { version, host, name, inputs }),
+        inFrame
+      );
+
+    /** The one element answer of `locator`, which must match exactly one element. */
+    async function onTheOne<T>(
+      locator: Locator,
+      name: CallOnName,
+      inputs?: unknown
+    ): Promise<T> {
+      const answers = await callOn<T[]>(locator, name, inputs);
+      if (answers.length !== 1)
+        throw new RefResolutionError(
+          answers.length === 0
+            ? "the locator matches no element"
+            : `the locator matches ${answers.length} elements; it must match exactly one`
+        );
+      return answers[0]!;
+    }
+
+    const inPage: InPage = {
+      bound,
+      capture: ({ elements, accepts, filters } = {}) => {
+        const ask =
+          accepts || filters
+            ? { ...(accepts && { accepts }), ...(filters && { filters }) }
+            : undefined;
+        return call<Capture>("capture", [elements, ask]);
+      },
+      checkFilter: (filter) => call<FilterCheck>("check", [filter]),
+      async match(target, key) {
+        // A Locator into a frame matches in the frame's document, which no
+        // capture reads: its matches count as none.
+        await callOn<void>(target, "match", key, () => undefined);
+      },
+      async forget(keys) {
+        await page.evaluate(callInPage, {
+          version,
+          host,
+          binding,
+          token: current,
+          strict: true,
+          name: "forget" as const,
+          args: [keys],
+        });
+      },
+      async begin({ elements } = {}) {
+        return action(await call<Begun>("begin", [elements]), elements);
+      },
+      async measureReach(ref, { atCall = false } = {}) {
+        const measure = (stage: ReachRequest["stage"]) =>
+          call<ReachAnswer>("measure", [{ ref, stage }]);
+        const answered = (answer: ReachAnswer): ReachMeasurement =>
+          answer.kind === "measured" && answer.measurement !== "scroll"
+            ? answer.measurement
+            : gone;
+        if (!atCall) return answered(await measure("current"));
+        const before = await measure("before-scroll");
+        if (before.kind !== "measured" || before.measurement !== "scroll")
+          return answered(before);
+        // A scroll that fails leaves the measurement to the action, whose
+        // own error says why.
+        try {
+          await page.locator(`ayme-ref=${ref}`).scrollIntoViewIfNeeded();
+        } catch {
+          return reached;
+        }
+        return answered(await measure("after-scroll"));
+      },
+      async blockingAncestor(ref) {
+        const answer = await call<ReachAnswer>("measure", [
+          { ref, stage: "blocking" },
+        ]);
+        return answer.kind === "blocking" ? answer.blocker : undefined;
+      },
+      async probe(root, label) {
+        const round = watcher.round;
+        const request = { label, ...(round !== undefined && { round }) };
+        return callOn<RootState>(root, "probe", request);
+      },
+      mint: (target) => callOn<string[]>(target, "mint"),
+      async controls(refs) {
+        if (refs.length === 0) return {};
+        return call<Record<string, ControlState>>("controls", [refs]);
+      },
+      baseURI: () => call<string>("baseURI", []),
+      historyEntry: () => call<string | undefined>("historyEntry", []),
+      async currentRefs(refs) {
+        if (refs.length === 0) return [];
+        return call<(string | undefined)[]>("currentRefs", [refs]);
+      },
+      names: (target, ref) => callOn<boolean>(target, "names", ref),
+      watch(probe) {
+        return watcher.start({
+          probe,
+          watching: (on) => call<ChangeState>("watch", [{ binding, on }]),
+          changes: () => call<ChangeState>("changes", []),
+          endRound: async (round) => {
+            await call("endRound", [round]);
+          },
+          loads: (listener) => {
+            page.on("domcontentloaded", listener);
+            return () => page.off("domcontentloaded", listener);
+          },
+        });
+      },
+      refresh: () => watcher.refresh(),
+      probed: () => watcher.probed(),
+      async reachable(refs, input) {
+        if (refs.length === 0) return [];
+        return call<string[]>("reachable", [{ refs, input }]);
+      },
+      is: (target, predicate) => onTheOne<boolean>(target, "is", predicate),
+      async recommend(target, within) {
+        // Playwright Lite's Page knows its test ID attribute; Playwright's
+        // has no public reading of it, so its default stands there.
+        const { testIdAttribute } = page as { testIdAttribute?: string };
+        // The container is a handle, which can go stale between its
+        // resolution and the page task that reads the target: the page says
+        // so, and the container is resolved again.
+        for (let attempt = 1; ; attempt += 1) {
+          // A handle for this one call, disposed before it returns.
+          const container = within && (await within.elementHandle());
+          try {
+            const request: RecommendRequest = {
+              ...(testIdAttribute ? { testIdAttribute } : {}),
+              // The page receives the element the handle stands for.
+              ...(container ? { within: container as unknown as Element } : {}),
+            };
+            const answer = await onTheOne<RecommendationAnswer>(
+              target,
+              "recommend",
+              request
+            );
+            if ("error" in answer) throw new Error(answer.error);
+            if ("locator" in answer) return answer.locator;
+            if (attempt === RECOMMEND_ATTEMPTS)
+              throw new Error(
+                "the container was replaced as often as it was resolved"
+              );
+          } finally {
+            await container?.dispose();
+          }
+        }
+      },
+      async pick(accept, { signal, styles } = {}) {
+        const id = hostKey();
+        const paint = highlighting(page, {
+          usable: styles?.usable ?? highlightStyles.hover,
+          unusable: styles?.unusable ?? highlightStyles.unusable,
+        });
+        listeners.set(id, paint.show);
+        const cancel = () => void call("cancelPick", [id]).catch(() => {});
+        signal?.addEventListener("abort", cancel, { once: true });
+        try {
+          if (signal?.aborted) return undefined;
+          return await call<string | undefined>("pick", [{ id, accept }]);
+        } finally {
+          signal?.removeEventListener("abort", cancel);
+          listeners.delete(id);
+          await paint.clear();
+        }
+      },
+      async cue(target) {
+        await throughModule<void>(() =>
+          target.evaluateAll(callOnInPage, {
+            version,
+            host,
+            name: "cue" as const,
+          })
+        );
+      },
+      hasExcludedSubtree: () => call<boolean>("excluded", []),
+      async coveredByExcluded(target) {
+        const answer = await target.evaluateAll(callOnInPage, {
+          version,
+          host,
+          name: "covered" as const,
+        });
+        return answer.kind === "ok" && answer.value === true;
+      },
+      async passThroughExcluded(on) {
+        await call<void>("passThrough", [on]);
+      },
+      onVisit(listener) {
+        const subscribed = (signal: VisitSignal) => listener(signal);
+        visitListeners.add(subscribed);
+        if (!followsLoads) {
+          followsLoads = true;
+          // Playwright Lite never fires it for a new document: its host
+          // goes with the old one.
+          page.on("domcontentloaded", () => {
+            if (visitListeners.size) bound().catch(() => {});
+          });
+        }
+        return () => {
+          visitListeners.delete(subscribed);
+        };
+      },
+      elements: {
+        async refs(target) {
+          const result = await target.evaluateAll(callOnInPage, {
+            version,
+            host,
+            name: "refs" as const,
+          });
+          if (result.kind === "version") throw versionError(result.found);
+          return result.kind === "ok"
+            ? (result.value as (string | undefined)[])
+            : Array.from({ length: result.matched }, () => undefined);
+        },
+      },
+    };
+    return inPage;
+  }
+
+  return {
+    inPage(page) {
+      let found = pages.get(page);
+      if (!found) pages.set(page, (found = forPage(page)));
+      return found;
+    },
+  };
+}
+
+/** How often Locator Recommendation resolves a container the page keeps replacing. */
+const RECOMMEND_ATTEMPTS = 3;
+
+/** What a watcher needs of its Page. */
+type WatcherPage = {
+  probe(signal: AbortSignal): Promise<void>;
+  /** Whether the document tells this host of changes, and where they stand. */
+  watching(on: boolean): Promise<ChangeState>;
+  /** Where the document's changes stand. */
+  changes(): Promise<ChangeState>;
+  endRound(round: number): Promise<void>;
+  /** Calls `listener` when a document has loaded, until the returned function is called. */
+  loads(listener: () => void): () => void;
+};
+
+/**
+ * One InPage's watch: probe runs one at a time, a follow-up when the page
+ * changed during one, over every document the Page shows.
+ */
+function createWatcher() {
+  type Run = {
+    page: WatcherPage;
+    signal: AbortSignal;
+    /** What the watch heard of changes, and where the latest run began. */
+    known?: ChangeState;
+    began?: ChangeState;
+    /** Whether a change the page did not make is waiting for a run. */
+    refreshed?: boolean;
+    running?: Promise<void>;
+    timer?: ReturnType<typeof setTimeout>;
+  };
+  let watch: (Run & { controller: AbortController }) | undefined;
+  let round: number | undefined;
+  let rounds = 0;
+
+  const moved = (from: ChangeState | undefined, to: ChangeState | undefined) =>
+    to !== undefined &&
+    (from === undefined || from.document !== to.document || to.seq > from.seq);
+  const isDue = (run: Run) =>
+    run.refreshed === true || moved(run.began, run.known);
+
+  function note(run: Run, state: ChangeState): void {
+    if (!run.known || moved(run.known, state)) run.known = state;
+  }
+
+  function schedule(run: Run): void {
+    if (run.running || run.timer !== undefined || run.signal.aborted) return;
+    // Changes that come together are one run.
+    run.timer = setTimeout(() => {
+      run.timer = undefined;
+      void start(run).catch(() => {});
+    }, 0);
+  }
+
+  function start(run: Run): Promise<void> {
+    if (run.running) return run.running;
+    if (run.timer !== undefined) clearTimeout(run.timer);
+    run.timer = undefined;
+    run.refreshed = false;
+    const mine = (round = ++rounds);
+    run.running = (async () => {
+      try {
+        run.began = await run.page.watching(true);
+        note(run, run.began);
+        await run.page.probe(run.signal);
+        if (!run.signal.aborted) await run.page.endRound(mine);
+      } finally {
+        run.running = undefined;
+        if (round === mine) round = undefined;
+        if (!run.signal.aborted && isDue(run)) schedule(run);
+      }
+    })();
+    return run.running;
+  }
+
+  return {
+    /** The probe run in progress: what a `probe` belongs to. */
+    get round() {
+      return round;
+    },
+    /** What the module tells this host about a document. */
+    heard(document: DocumentToken, message: HostMessage): void {
+      if (!watch || message.kind !== "change") return;
+      note(watch, { document, seq: message.seq });
+      if (isDue(watch)) schedule(watch);
+    },
+    refresh(): void {
+      if (!watch) return;
+      watch.refreshed = true;
+      schedule(watch);
+    },
+    start(page: WatcherPage): () => void {
+      if (watch) throw new RuntimeStateError("This Page is watched already.");
+      const controller = new AbortController();
+      const run: Run & { controller: AbortController } = {
+        page,
+        signal: controller.signal,
+        controller,
+      };
+      watch = run;
+      // A full load ends the document the module was watching in.
+      // A load during a run leaves the new document unwatched until another
+      // run, so it makes one due.
+      const stopListening = page.loads(() => {
+        run.refreshed = true;
+        schedule(run);
+      });
+      schedule(run);
+      return () => {
+        if (watch !== run) return;
+        watch = undefined;
+        controller.abort();
+        stopListening();
+        if (run.timer !== undefined) clearTimeout(run.timer);
+        run.timer = undefined;
+        // Best effort: the document may be gone.
+        void page.watching(false).catch(() => {});
+      };
+    },
+    async probed(): Promise<void> {
+      const run = watch;
+      if (!run) return;
+      // Changes made in this very task have not been told yet.
+      note(run, await run.page.changes());
+      await run.running;
+      if (!run.began || isDue(run)) await start(run);
+      // At most one follow-up.
+      if (watch === run && isDue(run)) await start(run);
+    },
+  };
+}
+
+/**
+ * Boxes the element a picking points at through Playwright's highlight, one
+ * at a time, in order: `show` for each notice, `clear` when picking ends.
+ */
+function highlighting(
+  page: Page,
+  styles: { usable: HighlightStyle; unusable: HighlightStyle }
+) {
+  let current: Disposable | undefined;
+  let queue: Promise<unknown> = Promise.resolve();
+  const then = (step: () => Promise<void>) =>
+    (queue = queue.then(step, step).catch(() => {}));
+  const dispose = async () => {
+    await current?.dispose();
+    current = undefined;
+  };
+  return {
+    show: (notice: PickNotice) =>
+      void then(async () => {
+        await dispose();
+        if (notice.ref === undefined) return;
+        current = await page.locator(`ayme-ref=${notice.ref}`).highlight({
+          style: notice.usable ? styles.usable : styles.unusable,
+        });
+      }),
+    clear: () => then(dispose),
+  };
+}
+
+/** Whether `error` is Playwright's for a binding named `binding` that the Page already has. */
+function alreadyRegistered(error: unknown, binding: string): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes(`Function "${binding}" has been already registered`)
+  );
+}
+
+/** Whether `error` is Playwright's for a call whose context a navigation destroyed. */
+function contextDestroyed(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("Execution context was destroyed")
+  );
+}
+
+function hostKey(): HostKey {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  );
+}
+
+const thisHost = createInPageHost();
+
+/** The in-page module of the document `page` shows, as this host sees it. */
+export function inPage(page: Page): InPage {
+  return thisHost.inPage(page);
+}
+
+// Each runtime's selectors registry the engine is registered on.
+const registered = new WeakSet<Selectors>();
+
+/**
+ * Registers the `ayme-ref` selector engine (ADR-0038) on a runtime's
+ * `selectors`, Playwright Lite's or Playwright's, in the page's main world:
+ * `ayme-ref=e5` then resolves through the document's in-page module, whichever
+ * host captured it. Once per registry, before the pages that use it.
+ */
+export async function registerAymeRef(selectors: Selectors): Promise<void> {
+  if (registered.has(selectors)) return;
+  registered.add(selectors);
+  try {
+    await selectors.register("ayme-ref", aymeRefEngine);
+  } catch (error) {
+    // Another copy of this module, such as a test's reloaded one, registered
+    // it on the same registry, which keeps one engine under a name.
+    if (
+      !(error instanceof Error) ||
+      !error.message.includes("selector engine has been already registered")
+    ) {
+      registered.delete(selectors);
+      throw error;
+    }
+  }
+}

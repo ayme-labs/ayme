@@ -46,7 +46,7 @@ With Vite, a development build you serve without a dev server, such as static fi
 
 ## Register the server in your agent
 
-Register the server pinned to the version of `@ayme-dev/mcp` your app installed, the same version as your other Ayme packages: replace `<version>` below with the installed version, which `npm ls @ayme-dev/mcp` prints, so the server matches the page client in your app.
+Pin the server to the version of `@ayme-dev/mcp` your app installed, so it matches the page client in your app. `npm ls @ayme-dev/mcp` prints that version. Use it in place of `<version>` below.
 
 Claude Code:
 
@@ -86,7 +86,7 @@ Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every 
 
 Any other MCP client takes the same command, `npx`, with the arguments `-y @ayme-dev/mcp@<version> mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
 
-Your app already installs `@ayme-dev/mcp`, so a client that starts its servers in the app's folder can run that copy instead, which always matches the page client: the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` keeps `npx` from downloading anything, so started from any other folder the server fails to start rather than running another version.
+If your client starts its servers in the app's folder, it can run the copy of `@ayme-dev/mcp` your app installed. That copy always matches the page client. Use the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` stops `npx` from downloading anything. So, started from any other folder, the server fails to start instead of running another version.
 
 ## Connect a tab
 
@@ -97,15 +97,19 @@ Run your dev server and ask the agent to connect to the page, giving it the URL,
 - On `localhost` or `127.0.0.1`, an open tab with no link pairs by itself when exactly one Ayme MCP server is running. It looks when the page loads and again each time the tab gains focus, so a tab opened before the agent started pairs once you switch back to it. With several servers running, it stays unpaired until you paste a link, so it never pairs with the wrong agent.
 - A server already working with a tab ignores other tabs that look for a server; only its connect link moves it. The newest tab wins: opening the link in a second tab moves the agent there, and the first tab is no longer connected.
 
+A duplicated tab keeps presenting the original tab's id, unlike a fresh second tab, and reopening a link with the same address and token does not give it a new id.
+
 ## What the agent sees
 
 Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, the Page Object Tools of every Page Object on the page, the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`, and `goal` when the Goal Loop is configured. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now, because a click would not reach its Page Object Root or its [availability predicate](page-object-models.md#action-availability) says so, stays listed, and calling it is refused with its reason before anything runs. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters or description, and which became available or unavailable, with the reason.
 
-Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools` or `ayme_call` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected.
+`ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
+
+Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools`, `ayme_call` or `ayme_inspect` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected.
 
 ## Reloads, navigation and closed tabs
 
@@ -119,6 +123,7 @@ The server listens on the loopback interface only, on the first free port from 9
 
 ## Limits
 
+- A page whose app doesn't ship Ayme never pairs. With Playwright MCP or Playwright CLI, `ayme mcp` can serve your Page Objects to it; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).
 - The agent and the browser must run on the same machine. Remote agents, such as an agent on another machine driving a browser on your computer, are not supported.
 - From an origin other than `localhost` or `127.0.0.1`, such as a deployed preview, a tab pairs only through a link, and Chrome may ask you to allow local network access before the page can reach the server. Allow it and reload.
 

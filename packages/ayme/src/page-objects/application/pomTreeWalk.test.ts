@@ -9,9 +9,15 @@ import { ayme } from "../domain/decorators";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
 import { rootTargetPath } from "../domain/pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
-import { litePageDriver } from "../infrastructure/litePageDriver";
+import { inPage } from "../../in-page";
+import { inPageDriver } from "../infrastructure/inPageDriver";
 
 const page = createPage();
+// The in-page module over Playwright Lite, in jsdom, which lays nothing out.
+const litePageDriver = inPageDriver(
+  () => inPage(page),
+  () => undefined
+);
 
 const locator = (memberName: string) =>
   ({ memberName, kind: "locator", access: "field" }) as const;
@@ -197,14 +203,18 @@ describe("one observation of a Page Object", () => {
       fileTree
     );
 
-    expect(
-      resolveTargets(litePageDriver, targetSources).map(({ path, element }) => [
-        path,
-        element.id,
-      ])
-    ).toEqual([
-      [rootTargetPath("FileTree.items[0]"), "src"],
-      [rootTargetPath("FileTree.items[0].children[0]"), "lib"],
+    const targets = await resolveTargets(litePageDriver, targetSources);
+    expect(targets.map(({ path }) => path)).toEqual([
+      rootTargetPath("FileTree.items[0]"),
+      rootTargetPath("FileTree.items[0].children[0]"),
     ]);
+    // Each target's ref names the element the member holds.
+    expect(
+      await Promise.all(
+        targets.map(({ ref }, index) =>
+          litePageDriver.names(page.locator(index === 0 ? "#src" : "#lib"), ref)
+        )
+      )
+    ).toEqual([true, true]);
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/webmcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Publishing Ayme's tools through WebMCP, for agents that run in the browser.",
   "keywords": [
     "ai-agent",
@@ -50,7 +50,7 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
-    "@mcp-b/webmcp-types": "^5.0.1"
+    "webmcp-types": "^0.1.10"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.29 <1.65"
@@ -68,12 +68,12 @@
     "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser-playwright": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "playwright": "^1.64.0",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }

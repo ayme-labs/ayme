@@ -14,7 +14,12 @@ import type { BrowserContext, Page } from "@playwright/test";
  * The server's own tools; every other MCP tool is a tool of the page or of
  * an App Process.
  */
-export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
+export const SERVER_TOOLS = [
+  "ayme_connect",
+  "ayme_list_tools",
+  "ayme_call",
+  "ayme_inspect",
+];
 
 /**
  * The file of the built `ayme` command beside this entry, as a consumer gets
@@ -106,19 +111,28 @@ export class Agent {
 
 /**
  * Starts the `ayme mcp` command, with `options` such as `--port`, as a child
- * process and connects to it.
+ * process and connects to it. A leading `{ cwd }` starts it in that folder
+ * instead of this process's own.
  */
-export async function startAgent(...options: string[]): Promise<
+export async function startAgent(
+  ...args: [{ cwd: string }, ...string[]] | string[]
+): Promise<
   Agent & {
     close(): Promise<void>;
     /** How many `notifications/tools/list_changed` the server has sent. */
     toolListChanges(): number;
   }
 > {
+  const [first, ...rest] = args;
+  const { cwd, options } =
+    typeof first === "object"
+      ? { cwd: first.cwd, options: rest as string[] }
+      : { cwd: undefined, options: args as string[] };
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [aymeCommand, "mcp", ...options],
     stderr: "pipe",
+    cwd,
   });
   let stderr = "";
   transport.stderr?.on("data", (chunk: Buffer) => (stderr += String(chunk)));

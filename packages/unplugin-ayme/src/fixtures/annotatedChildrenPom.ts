@@ -4,7 +4,9 @@ import { ayme } from "@ayme-dev/ayme";
 
 @ayme({ root: (self: AnnotatedComponent) => self.root })
 class AnnotatedComponent {
+  @ayme.child
   readonly root!: Locator;
+  @ayme.child
   readonly child!: Locator;
 }
 
@@ -22,20 +24,37 @@ declare const createFynkComponent: <T, Selector extends string>(
 
 @ayme
 export class AnnotatedChildrenPom {
+  @ayme.child
   readonly directField!: AnnotatedComponent;
 
+  @ayme.child
   get directGetter(): AnnotatedComponent {
     return undefined as unknown as AnnotatedComponent;
   }
 
+  @ayme.child
   readonly directIntersection!: AnnotatedComponent & {
     readonly selector: "#direct";
   };
 
+  @ayme.child
   readonly fynkChild = createFynkComponent(
     undefined as unknown as AnnotatedComponent,
     "#fynk"
   );
+
+  // Undeclared look-alikes of each child shape: none is a Page Object Child.
+  readonly undeclaredLocator!: Locator;
+  get undeclaredLocatorGetter(): Locator {
+    return undefined as unknown as Locator;
+  }
+  readonly undeclaredComponent!: AnnotatedComponent;
+  async undeclaredCollection(): Promise<AnnotatedComponent[]> {
+    return [];
+  }
+  undeclaredReadonlyCollection(): readonly AnnotatedComponent[] {
+    return [];
+  }
 
   readonly asyncField!: Promise<AnnotatedComponent>;
   readonly synchronousChildren!: AnnotatedComponent[];
@@ -43,8 +62,10 @@ export class AnnotatedChildrenPom {
   readonly setChildren!: Set<AnnotatedComponent>;
   readonly iterableChildren!: Iterable<AnnotatedComponent>;
 
+  @ayme.child
   readonly browserLocator!: Locator;
 
+  @ayme.child
   get locatorGetter(): Locator {
     return undefined as unknown as Locator;
   }
@@ -65,24 +86,29 @@ export class AnnotatedChildrenPom {
     return undefined as unknown as Locator;
   }
 
+  @ayme.collection
   async componentCollection(): Promise<AnnotatedComponent[]> {
     return [];
   }
 
+  @ayme.collection
   async readonlyComponentCollection(): Promise<readonly AnnotatedComponent[]> {
     return [];
   }
 
+  @ayme.collection
   async readonlyArrayComponentCollection(): Promise<
     ReadonlyArray<AnnotatedComponent>
   > {
     return [];
   }
 
+  @ayme.collection
   async directAliasCollection(): DirectPromiseCollection {
     return [];
   }
 
+  @ayme.collection
   async genericAliasCollection(): GenericPromiseCollection<AnnotatedComponent> {
     return [];
   }

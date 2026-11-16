@@ -45,3 +45,40 @@ it("the built ./absent entry carries no browser runtime", () => {
   expect(code).toContain("absentPageObject");
   expect(runtimeMarkersIn(code)).toEqual([]);
 });
+
+it("the built ./playwright entry carries no browser runtime", () => {
+  const code = codeOf("playwright.mjs");
+  expect(code).toContain("createInPageHost");
+  expect(runtimeMarkersIn(code)).toEqual([]);
+});
+
+it("the built ./inspector entry carries no browser runtime", () => {
+  const code = codeOf("inspector.mjs");
+  expect(code).toContain("mergeInspectorState");
+  expect(runtimeMarkersIn(code)).toEqual([]);
+});
+
+const TYPESCRIPT_IMPORT =
+  /from\s*["']typescript["']|import\(\s*["']typescript["']\s*\)/;
+
+it("the built ./compiler entry carries no browser runtime", () => {
+  const code = codeOf("compiler.mjs");
+  expect(code).toContain("createPomCompiler");
+  expect(code).toMatch(TYPESCRIPT_IMPORT);
+  expect(runtimeMarkersIn(code)).toEqual([]);
+});
+
+it("only the built ./compiler entry imports TypeScript", () => {
+  const entries = [
+    "index.mjs",
+    "internal.mjs",
+    "inspector.mjs",
+    "absent.mjs",
+    "server.mjs",
+    "testing.mjs",
+    "playwright.mjs",
+  ];
+  expect(
+    entries.filter((entry) => TYPESCRIPT_IMPORT.test(codeOf(entry)))
+  ).toEqual([]);
+});

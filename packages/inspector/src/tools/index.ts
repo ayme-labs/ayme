@@ -2,7 +2,6 @@ export { findRefNode } from "./domain/refTree";
 export { listRunnableTools } from "./domain/runnableTools";
 export { argumentViolationsOf } from "./infrastructure/argumentViolations";
 export { useLiveTools } from "./infrastructure/liveTools";
-export { pomDefinitionText } from "./infrastructure/pomDefinitionText";
 export { schemaText } from "./infrastructure/schemaText";
 export {
   pickPromptOf,

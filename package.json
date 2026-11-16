@@ -15,6 +15,7 @@
     "hooks:install": "lefthook install",
     "commitlint": "commitlint --verbose",
     "docs:check": "node --test scripts/check-docs.test.mjs && node scripts/check-docs.mjs",
+    "skills:sync": "node scripts/sync-skill-references.mjs",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
     "test": "turbo run test",

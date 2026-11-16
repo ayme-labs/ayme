@@ -94,22 +94,6 @@ The `goal` tool is published only when `goalLoop` is set. `goalLoop` accepts any
 
 Your own code runs the same loop with `ayme.tools.run("goal", { goal, maxSteps, values })`, whether or not tools are published and whether or not a WebMCP driver is present. It throws when the session is not started or has no `goalLoop`.
 
-## What one step asks
-
-The model decides each step on the current Structural Page State as JSON, one object per node, pruned of what it cannot target: a `generic` node with no name, props, state or pointer cursor is replaced by its children, so wrapper chains vanish and the text of their leaves is kept. The pruning affects only what the model reads; the options it is offered and the Change Record come from the full capture.
-
-A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
-
-The first request also asks which [Goal Value](#goal-values) the next operation would enter, before the operation is known: one question per required text or number parameter, shared by the single-element tools whose parameter has the same name and kind, at most eight. Only the answers that cover the chosen operation are read; one that names a Goal Value fills its parameter, and the second request then picks the element that should receive that value. Past eight, or when the answer names no Goal Value, the parameter is asked in the second request as below.
-
-- The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
-- A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
-- A required choice of a rooted Page Object instance ends with "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A Browser Tool ref within the cap has no such option.
-- One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
-- Every rooted Page Object instance, including a single child or page, is offered while its action is available on it and the page state gives it a ref. Items are labelled by class and ref. A root-less Page Object Tool offers no items. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
-- An optional closed-set parameter gets an extra choice that leaves it unset.
-- The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
-
 ## Goal Values
 
 Text the page does not hold, such as the name to type into `fill`, the URL for `navigate` or the options for `select_option`, comes from the calling agent. It passes it with the goal as `values`: strings or numbers, each labelled in its own words.
@@ -136,7 +120,7 @@ The history shows the value a step used as `label: value`, such as `fill(textbox
 
 ## What leaves the page
 
-Each step sends the pruned page state, the goal and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
+Each step sends the page state, the goal, the Goal Values, the run's history and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
 
 ## The Handover
 
@@ -177,34 +161,55 @@ Each step sends the pruned page state, the goal and the step's question from the
 
 A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
 
-`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; in `changes`, what the step changed, its Change Record cut to 400 characters with `… (cut)` on a line of its own where it was cut, absent when the step changed nothing; in `returned`, what the tool returned, the only trace of an effect the page does not show, its JSON cut to 200 characters with `… (cut)` where it was cut, absent when the tool returned nothing; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
+`history` has one entry per operation the loop ran, with the fields typed above. A step that hands over before acting records nothing. `chosen` holds, for each parameter the model was asked about, the key and description of the option it picked. That includes a choice to leave the parameter unset. Where `changes` or `returned` was cut, it ends in `… (cut)`. `returned` is the only trace of an effect the page does not show. `did` is a one-line label for a human, such as `click(button "Add item")`.
 
-`changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record. A run that opened a dialog, closed it and archived an item hands over only the net result:
+`changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record.
+
+Take `ProjectsPage` and `ProjectRow` from [Page Object Models](ayme-page-objects.md#aymeaction). Say the goal is "archive the Q4 survey project". The run opens the New project dialog by mistake. It closes the dialog with its Cancel button. Then it archives Q4 survey. The Handover's `changes` carries only the net result: Q4 survey removed. The dialog that came and went shows only in `history`.
 
 ```ts
 {
   reason: "done",
   next: "The goal has been achieved. Continue with your next task.",
   history: [
-    { operation: "InboxPage.openDialog", chosen: {}, result: "ok",
-      page_changed: true, changes: '- e12 <added> dialog "Archive invoice"',
-      did: "InboxPage.openDialog()" },
-    { operation: "InboxPage.closeDialog", chosen: {}, result: "ok",
-      page_changed: true, changes: '- e12 <removed> dialog "Archive invoice"',
-      did: "InboxPage.closeDialog()" },
-    { operation: "Invoice.archive",
-      chosen: { ref: { key: "e5",
-        description: 'Invoice on ref "e5" (listitem "Invoice 7")' } },
+    { operation: "ProjectsPage.openNewProjectDialog", chosen: {}, result: "ok",
+      page_changed: true,
+      changes: `- e2 main:
+  - e4 <changed> button "New project" [active]
+  - e14 <added> dialog "New project":
+    - e15 <added> textbox "Project name"
+    - e16 <added> button "Create"
+    - e17 <added> button "Cancel"`,
+      did: "ProjectsPage.openNewProjectDialog()" },
+    { operation: "click",
+      chosen: { target: { key: "e17", description: 'button "Cancel"' } },
       result: "ok", page_changed: true,
       changes: `- e2 main:
-  - e4 list:
-    - e5 <removed> listitem: Invoice 7
-  - e9 <added> paragraph: Archived Invoice 7`,
-      did: 'Invoice.archive(Invoice on ref "e5" (listitem "Invoice 7"))' },
+  - e4 <changed> button "New project"
+  - e14 <removed> dialog "New project":
+    - e15 <removed> textbox "Project name"
+    - e16 <removed> button "Create"
+    - e17 <removed> button "Cancel"`,
+      did: 'click(button "Cancel")' },
+    { operation: "ProjectRow.archive",
+      chosen: { ref: { key: "e10",
+        description: 'ProjectRow on ref "e10" (listitem): Q4 survey · Archive · Rename · Remove' } },
+      result: "ok", page_changed: true,
+      changes: `- e2 main:
+  - e5 list:
+    - e10 ProjectRow <removed>:
+      - text: Q4 survey
+      - e11 <removed> button "Archive"
+      - e12 <removed> button "Rename"
+      - e13 <removed> button "Remove"`,
+      did: 'ProjectRow.archive(ProjectRow on ref "e10" (listitem): Q4 survey · Archive · Rename · Remove)' },
   ],
   changes: `- e2 main:
-  - e4 list:
-    - e5 <removed> listitem: Invoice 7
-  - e9 <added> paragraph: Archived Invoice 7`,
+  - e5 list:
+    - e10 ProjectRow <removed>:
+      - text: Q4 survey
+      - e11 <removed> button "Archive"
+      - e12 <removed> button "Rename"
+      - e13 <removed> button "Remove"`,
 }
 ```

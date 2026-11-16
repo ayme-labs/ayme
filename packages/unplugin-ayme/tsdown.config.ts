@@ -7,6 +7,7 @@ export default defineConfig({
     neverBundle: ["@playwright/test"],
   },
   entry: [
+    // Types only: the plugin options.
     "src/index.ts",
     "src/vite.ts",
     "src/turbopack-loader.ts",

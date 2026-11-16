@@ -23,7 +23,7 @@ export type Interaction = Readonly<{
   operation: string;
   /** The locator it acted on; absent for the keyboard and the mouse. */
   locator?: string;
-  /** The Structural Ref the locator names, when a Browser Tool acted by ref. */
+  /** The element's Structural Ref before the input, when the page state knows it. */
   ref?: AriaRef;
   /** The value it was given, e.g. a fill's text or a pressed key. */
   value?: string;
@@ -43,6 +43,7 @@ export function interactionOf(
   if (!isInteraction(kindOf(subject, method))) return undefined;
   const [locator] = elementsOf(subject, target, method as string, args);
   const value = valueOf(subject, method as string, args);
+  // A ref the locator names itself; the instrumentation reads any other.
   const ref = locator && refFromSelector(locator.toString());
   return {
     operation:

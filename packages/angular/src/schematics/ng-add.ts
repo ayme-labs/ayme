@@ -101,6 +101,9 @@ export function ngAdd(options: NgAddOptions): Rule {
     const main = build?.options?.["browser"] ?? build?.options?.["main"];
     const manual: string[] = [];
     const rules: Rule[] = [
+      // The Angular CLI installs this package before the schematic runs and
+      // saves it with a caret; pin it like the other Ayme packages.
+      addDependency("@ayme-dev/angular", version),
       addDependency("@ayme-dev/ayme", version),
       addDependency("@ayme-dev/unplugin-ayme", version, {
         type: DependencyType.Dev,

@@ -11,7 +11,11 @@ A class that describes a page or a meaningful part of a page through the element
 An instance of a Page Object Model. It represents one occurrence of the page or part of a page described by that model.
 
 **Page Object Child**:
-A named part of a Page Object. It may refer to one or more elements, or to one or more Page Objects.
+A part of a Page Object that its model declares, marked `@ayme.child` or `@ayme.collection`: one element, one Page Object, or a Child Collection of either. A member that is not marked is not a child, whatever it holds.
+
+**Child Collection**:
+A Page Object Child, marked `@ayme.collection`, that stands for any number of elements, or of Page Objects of one model. Each one it holds is told apart by its index, as in `rows[1]`.
+_Avoid_: Page Object Collection, collection child
 
 **Page Object Action**:
 A public method of a Page Object marked `@ayme.action`.
@@ -27,10 +31,17 @@ _Avoid_: computed description, composed description
 A model-facing observation of the currently presented page structure and its Page Object Root Marks. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 
 **Structural Ref**:
-A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element.
+A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, which Playwright may prefix with a frame as `f…e…`, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element.
 
 **Page State Session**:
-The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused.
+The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused. Each Host keeps its own over one document.
+
+**In-page Module**:
+The one per-document instance of Ayme's DOM work that every Host binds to. The first Host to reach the document installs it, every later Host binds to it, and a Host of another version is refused.
+_Avoid_: injected script (Playwright's own)
+
+**Host**:
+A side that drives a page through Playwright's `Page`: the page's own runtime, a Node process, or `ayme mcp`.
 
 **Visit**:
 One stretch of a Page State Session between navigations: from document load, or from a same-document navigation, to the next. Interaction history is scoped by Visits.
@@ -98,7 +109,7 @@ The route in an app's own backend that adds the provider's key and Jev model to 
 _Avoid_: relay (means the WebMCP local relay), proxy.
 
 **Inspector**:
-The in-page panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand.
+The panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand. It runs inline in the inspected page or outside it.
 _Avoid_: debug panel, debugger, POM inspector
 
 **Build without Ayme**:
@@ -110,7 +121,7 @@ The Inspector's setting for showing people what an agent does: it pauses briefly
 _Avoid_: slow mode, demo trace
 
 **Agent Connection**:
-The link between one coding agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools.
+The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools.
 
 **Peek**:
 A named view of application state that a coding agent can read on demand while the app runs, from the browser or from the app's own server process. Reading it changes nothing.

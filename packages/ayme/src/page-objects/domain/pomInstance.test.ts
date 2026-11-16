@@ -13,13 +13,14 @@ import {
 import { assertAvailable } from "../../page-state/domain";
 
 // Unit tests: one Page Object instance's Action Availability (ADR-0035),
-// from hand-written observations, without a page or a runtime. Elements are
-// fakes, and the agent's latest page state is a fake ref lookup.
+// from hand-written observations, without a page or a runtime. The agent's
+// latest page state is a fake ref lookup.
 
-const element = () => ({}) as Element;
+let minted = 0;
+const element = () => `s_${++minted}`;
 
 const root = (overrides: Partial<ObservedPomRoot> = {}): ObservedPomRoot => ({
-  element: element(),
+  ref: element(),
   present: true,
   available: true,
   inTheWay: [],
@@ -58,7 +59,7 @@ describe("one instance's availability", () => {
     expect(
       availabilityOf(
         instance({
-          root: root({ element: undefined, present: false, available: false }),
+          root: root({ ref: undefined, present: false, available: false }),
           predicates,
         }),
         "archive"
@@ -87,7 +88,7 @@ describe("one instance's availability", () => {
 
   it("names the first element in the way the agent's latest page state gave a ref", () => {
     const [hit, pane, overlay] = [element(), element(), element()];
-    const refs = new Map<Element, AriaRef>([
+    const refs = new Map<string, AriaRef>([
       [overlay, AriaRefSchema.parse("e2")],
       [pane, AriaRefSchema.parse("e3")],
     ]);

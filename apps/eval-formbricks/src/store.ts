@@ -15,8 +15,8 @@ import {
 } from "./goalLoop.ts";
 import { summarizeResult, type NormalizedResult } from "./normalize.ts";
 import { repoRoot, runsRoot, suitesRoot } from "./paths.ts";
-import type { SuiteSummary, SummarizedRun } from "./summary.ts";
-import { renderSummaryMarkdown } from "./summary.ts";
+import type { SummarizedStartupRun } from "./startupSummary.ts";
+import type { SummarizedRun } from "./summary.ts";
 
 export type SuiteManifest = {
   suiteId: string;
@@ -32,6 +32,23 @@ export type SuiteManifest = {
   runIds: string[];
   /** Why the suite stopped early, when it did. */
   error: string | null;
+};
+
+/** A startup suite's manifest: scenarios, not arms, and no mission. `lane` tells it from a mission suite's. */
+export type StartupManifest = Pick<
+  SuiteManifest,
+  | "suiteId"
+  | "startedAt"
+  | "finishedAt"
+  | "model"
+  | "timeoutSeconds"
+  | "runIds"
+  | "error"
+> & {
+  lane: "startup";
+  /** In the order they were asked for. */
+  scenarios: string[];
+  runsPerScenario: number;
 };
 
 type Json = Record<string, unknown>;
@@ -89,6 +106,17 @@ function strings(value: Json, key: string, what: string) {
   return property as string[];
 }
 
+function tokenUsage(run: Json, what: string) {
+  if (run.tokens === null || run.tokens === undefined) return null;
+  const tokens = record(run.tokens, `${what} tokens`);
+  return {
+    input: number(tokens, "input", `${what} tokens`),
+    cacheCreation: number(tokens, "cacheCreation", `${what} tokens`),
+    cacheRead: number(tokens, "cacheRead", `${what} tokens`),
+    output: number(tokens, "output", `${what} tokens`),
+  };
+}
+
 /** Reads the part of a stored `result.json` the summary needs. */
 export function parseStoredRun(value: unknown, what: string): SummarizedRun {
   const run = record(value, what);
@@ -98,10 +126,6 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     versions.browserInterface,
     `${what} browserInterface`
   );
-  const tokens =
-    run.tokens === null || run.tokens === undefined
-      ? null
-      : record(run.tokens, `${what} tokens`);
   // A result stored before the Goal Loop was measured has no calls in it.
   const goalLoop =
     run.goalLoop === null || run.goalLoop === undefined
@@ -113,15 +137,7 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     mission: string(run, "mission", what),
     pass: boolean(run, "pass", what),
     wallTimeMs: nullableNumber(run, "wallTimeMs", what),
-    tokens:
-      tokens === null
-        ? null
-        : {
-            input: number(tokens, "input", `${what} tokens`),
-            cacheCreation: number(tokens, "cacheCreation", `${what} tokens`),
-            cacheRead: number(tokens, "cacheRead", `${what} tokens`),
-            output: number(tokens, "output", `${what} tokens`),
-          },
+    tokens: tokenUsage(run, what),
     combinedCostUsd: nullableNumber(run, "combinedCostUsd", what),
     toolCallTotal:
       typeof run.toolCalls === "object" &&
@@ -168,6 +184,33 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
   };
 }
 
+export function parseStartupRun(
+  value: unknown,
+  what: string
+): SummarizedStartupRun {
+  const run = record(value, what);
+  const versions = record(run.versions, `${what} versions`);
+  const model = record(versions.model, `${what} model`);
+  return {
+    runId: string(run, "runId", what),
+    scenario: string(run, "scenario", what),
+    pass: boolean(run, "pass", what),
+    wallTimeMs: nullableNumber(run, "wallTimeMs", what),
+    tokens: tokenUsage(run, what),
+    filesRead: strings(run, "filesRead", what),
+    timeoutSeconds: number(run, "timeoutSeconds", what),
+    versions: {
+      claudeCode: nullableString(versions, "claudeCode", `${what} versions`),
+      model: {
+        requested: string(model, "requested", `${what} model`),
+        used: nullableString(model, "used", `${what} model`),
+        effort: string(model, "effort", `${what} model`),
+      },
+      aymeCommit: nullableString(versions, "aymeCommit", `${what} versions`),
+    },
+  };
+}
+
 export function parseSuiteManifest(value: unknown): SuiteManifest {
   const what = "Suite manifest";
   const manifest = record(value, what);
@@ -185,11 +228,28 @@ export function parseSuiteManifest(value: unknown): SuiteManifest {
   };
 }
 
+function parseStartupManifest(value: unknown): StartupManifest {
+  const what = "Suite manifest";
+  const manifest = record(value, what);
+  return {
+    lane: "startup",
+    suiteId: string(manifest, "suiteId", what),
+    startedAt: string(manifest, "startedAt", what),
+    finishedAt: nullableString(manifest, "finishedAt", what),
+    model: string(manifest, "model", what),
+    timeoutSeconds: number(manifest, "timeoutSeconds", what),
+    scenarios: strings(manifest, "scenarios", what),
+    runsPerScenario: number(manifest, "runsPerScenario", what),
+    runIds: strings(manifest, "runIds", what),
+    error: nullableString(manifest, "error", what),
+  };
+}
+
 export function suiteDirectory(suiteId: string) {
   return path.join(suitesRoot, suiteId);
 }
 
-export async function writeManifest(manifest: SuiteManifest) {
+export async function writeManifest(manifest: { suiteId: string }) {
   const directory = suiteDirectory(manifest.suiteId);
   await mkdir(directory, { recursive: true });
   await writeFile(
@@ -262,20 +322,29 @@ export async function completeStoredCosts(
   return completed;
 }
 
-/** The manifest and the stored result of each run it lists. */
-export async function readSuite(suiteId: string): Promise<{
-  manifest: SuiteManifest;
-  results: SummarizedRun[];
-}> {
-  const manifest = parseSuiteManifest(
-    await readJson(path.join(suiteDirectory(suiteId), "suite.json"))
+/** A stored manifest, of either lane. */
+export async function readManifest(
+  suiteId: string
+): Promise<SuiteManifest | StartupManifest> {
+  const value = await readJson(
+    path.join(suiteDirectory(suiteId), "suite.json")
   );
-  const results: SummarizedRun[] = [];
-  for (const runId of manifest.runIds) {
+  return record(value, "Suite manifest").lane === "startup"
+    ? parseStartupManifest(value)
+    : parseSuiteManifest(value);
+}
+
+/** The stored result of each run a manifest lists. */
+export async function readResults<Run>(
+  runIds: string[],
+  parse: (value: unknown, what: string) => Run
+) {
+  const results: Run[] = [];
+  for (const runId of runIds) {
     const file = path.join(runsRoot, runId, "result.json");
-    results.push(parseStoredRun(await readJson(file), file));
+    results.push(parse(await readJson(file), file));
   }
-  return { manifest, results };
+  return results;
 }
 
 type Prettier = {
@@ -299,12 +368,13 @@ async function formatLikeTheRepo(filePath: string, source: string) {
 /** `summary.md` and `summary.json` in `directory`, created when missing. */
 export async function writeSummaryFiles(
   directory: string,
-  summary: SuiteSummary
+  summary: object,
+  markdown: string
 ) {
   await mkdir(directory, { recursive: true });
   const files = [
     ["summary.json", `${JSON.stringify(summary, null, 2)}\n`],
-    ["summary.md", renderSummaryMarkdown(summary)],
+    ["summary.md", markdown],
   ] as const;
   for (const [name, source] of files) {
     const filePath = path.join(directory, name);

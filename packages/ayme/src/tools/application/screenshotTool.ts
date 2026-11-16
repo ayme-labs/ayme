@@ -7,12 +7,13 @@ import {
   resolveElementTarget,
   type PublishedElementTool,
 } from "./elementTools";
-import { INSPECTOR_HOST_SELECTOR } from "../../shared";
+import { EXCLUDED_SUBTREE_SELECTOR } from "../../shared";
 import {
   screenshotRequest,
   type ImageType,
   type ScreenshotInput,
 } from "../domain/screenshotRequest";
+import { imageSizeOf } from "../domain/imageSize";
 import type { ToolResult } from "../domain/toolTypes";
 
 const inputSchema: JsonSchema = {
@@ -42,9 +43,9 @@ const inputSchema: JsonSchema = {
   additionalProperties: false,
 };
 
-// The Inspector is not part of the page: it is hidden from the capture,
-// unless the page dogfoods it.
-const HIDE_INSPECTOR = `${INSPECTOR_HOST_SELECTOR}{visibility:hidden}`;
+// An excluded subtree, such as the Inspector's panel, is not part of the page:
+// it is hidden from the capture.
+const HIDE_EXCLUDED = `${EXCLUDED_SUBTREE_SELECTOR}{visibility:hidden}`;
 
 const MIME_TYPES = {
   png: "image/png",
@@ -57,18 +58,6 @@ function base64(bytes: Uint8Array): string {
   for (let start = 0; start < bytes.length; start += 0x8000)
     binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
   return btoa(binary);
-}
-
-/** The image's size in pixels, as the browser decodes it. */
-async function sizeOf(bytes: Uint8Array, mimeType: string) {
-  const bitmap = await createImageBitmap(
-    new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mimeType })
-  );
-  try {
-    return { width: bitmap.width, height: bitmap.height };
-  } finally {
-    bitmap.close();
-  }
 }
 
 /** Package-internal: the screenshot Browser Tool, published only. */
@@ -84,7 +73,7 @@ export const screenshotTool: PublishedElementTool = {
       // As Playwright MCP captures: CSS pixels, and jpeg at quality 90.
       scale: "css" as const,
       ...(request.type === "jpeg" ? { quality: 90 } : {}),
-      style: HIDE_INSPECTOR,
+      style: HIDE_EXCLUDED,
     };
     let bytes: Uint8Array;
     let subject: string;
@@ -110,7 +99,7 @@ export const screenshotTool: PublishedElementTool = {
       subject,
       filename: request.filename,
       mimeType,
-      ...(await sizeOf(bytes, mimeType)),
+      ...imageSizeOf(bytes, mimeType),
       data: base64(bytes),
     };
     return result;

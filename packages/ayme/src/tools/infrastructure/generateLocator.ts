@@ -7,16 +7,14 @@ import {
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
-import {
-  generateLocator,
-  resolveLocatorElements,
-} from "@ayme-dev/playwright-lite/internal";
+import { inPage } from "../../in-page";
 import type { JsonSchema } from "../../shared";
 import { asSentence } from "../../shared";
 import {
   resolveElementTarget,
   TARGET_SCHEMA,
   type PublishedElementTool,
+  type ResolvedTarget,
 } from "../application/elementTools";
 import { refFailure, selectorFailure } from "../../page-state/domain";
 import { type PageStateSession } from "../../page-state/application";
@@ -66,19 +64,21 @@ const definition = (label: string) => ({
 });
 
 /**
- * The Locator Recommendation for `element`, relative to `container` when one
- * is given. Playwright's own generator checks it addresses exactly the element,
- * or the interactive ancestor it picked for it; Ayme checks it carries no
- * Structural Ref.
+ * The Locator Recommendation for the element `selector` addresses, relative
+ * to the container's locator when one is given, from the in-page module:
+ * Playwright's own generator checks it addresses exactly the element, or the
+ * interactive ancestor it picked for it; Ayme checks it carries no Structural
+ * Ref.
  */
-function recommendLocator(
+async function recommendLocator(
   page: Page,
-  element: Element,
-  container: Element | undefined
-): PlaywrightLocatorString {
-  const locator = generateLocator(page, element, {
-    ...(container ? { root: container } : {}),
-  });
+  selector: string,
+  container: Container | undefined
+): Promise<PlaywrightLocatorString> {
+  const locator = await inPage(page).recommend(
+    page.locator(selector),
+    container && page.locator(container.selector)
+  );
   if (refFromSelector(locator))
     throw new Error(
       `the generated locator ${locator} contains a Structural Ref`
@@ -90,18 +90,18 @@ function recommendLocator(
 const reason = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-type Container = { within: string; element: Element; selector: string };
+type Container = { within: string; selector: string };
 
-/** Whether `container.locator(selector)` finds `element`, as Page Object code would. */
-function holds(
+/** Whether `container.locator(selector)` finds the element `elementRef` names, as Page Object code would. */
+async function holds(
   page: Page,
   container: Container,
   selector: string,
-  element: Element
-) {
-  return resolveLocatorElements(
-    page.locator(container.selector).locator(selector)
-  ).includes(element);
+  elementRef: string
+): Promise<boolean> {
+  return (
+    await inPage(page).mint(page.locator(container.selector).locator(selector))
+  ).includes(elementRef);
 }
 
 async function entryFor(
@@ -117,24 +117,29 @@ async function entryFor(
     target,
     error: (isRef ? refFailure : selectorFailure)(TARGET_LABEL, target, why),
   });
-  let element: Element, selector: string;
+  let resolved: ResolvedTarget;
   try {
-    ({ element, selector } = await resolveElementTarget(
+    resolved = await resolveElementTarget(
       page,
       definition(TARGET_LABEL),
       target,
       pageStateSession,
       isRef ? undefined : container?.selector
-    ));
+    );
   } catch (error) {
     return { target, error: asSentence(reason(error)) };
   }
-  if (container && isRef && !holds(page, container, selector, element))
+  const { elementRef, selector } = resolved;
+  if (
+    container &&
+    isRef &&
+    !(await holds(page, container, selector, elementRef))
+  )
     return fail(`it is not inside the container "${container.within}"`);
   try {
     return {
       target,
-      locator: recommendLocator(page, element, container?.element),
+      locator: await recommendLocator(page, selector, container),
     };
   } catch (error) {
     return fail(reason(error));
@@ -149,13 +154,13 @@ async function groupFor(
   let container: Container | undefined;
   if (group.within !== undefined)
     try {
-      const { element, selector } = await resolveElementTarget(
+      const { selector } = await resolveElementTarget(
         page,
         definition(WITHIN_LABEL),
         group.within,
         pageStateSession
       );
-      container = { within: group.within, element, selector };
+      container = { within: group.within, selector };
     } catch (error) {
       return { within: group.within, error: asSentence(reason(error)) };
     }

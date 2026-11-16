@@ -1,7 +1,7 @@
 import type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 // Hand-written projected page state for tests: the forest the page state
 // text is rendered from, as the runtime's look carries it.

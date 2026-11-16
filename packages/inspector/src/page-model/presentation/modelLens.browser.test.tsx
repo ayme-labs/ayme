@@ -653,6 +653,70 @@ it("selects a Page Object's member by clicking it, and shows it", async () => {
   expect(await detail.fact("Owner").textContent()).toBe("TodoPage");
 });
 
+/** A dashboard whose runs table declares its rows, with a description. */
+function runsDashboard(): PageModel {
+  const dashboard = pageObject("Dashboard", {
+    children: [
+      component("runs", "RunsTable", { locatorCollections: { rows: 3 } }),
+    ],
+  });
+  const runs = dashboard.children[0]!;
+  return {
+    objects: [
+      {
+        ...dashboard,
+        children: [
+          {
+            ...runs,
+            members: [{ ...runs.members[0]!, description: "One row per run." }],
+          },
+        ],
+      },
+    ],
+    models: [
+      {
+        className: "RunsTable",
+        members: [
+          {
+            name: "rows",
+            kind: "locator",
+            collection: true,
+            description: "One row per run.",
+            path: "RunsTable.rows",
+          },
+        ],
+        actions: [],
+        instancePaths: ["Dashboard.runs"],
+      },
+    ],
+  };
+}
+
+it("shows a declared child's description beside its live state", async () => {
+  renderLens({
+    selection: { kind: "member", path: "Dashboard.runs.rows" },
+    pageModel: runsDashboard(),
+  });
+
+  await expect
+    .poll(() => detail.description.textContent())
+    .toBe("One row per run.");
+  expect(await detail.fact("Declared as").textContent()).toBe("rows[]");
+  expect(await detail.fact("On the page").textContent()).toBe("3 matches");
+});
+
+it("shows a model's declared child's description", async () => {
+  renderLens({
+    selection: { kind: "member", path: "RunsTable.rows" },
+    pageModel: runsDashboard(),
+  });
+
+  await expect
+    .poll(() => detail.description.textContent())
+    .toBe("One row per run.");
+  expect(await detail.fact("Owner").textContent()).toBe("RunsTable");
+});
+
 it("goes from a member to the Page Object it belongs to", async () => {
   const { onSelect } = renderLens({
     selection: { kind: "member", path: "TodoPage.items[1].archiveButton" },
@@ -790,6 +854,29 @@ it("doesn't select a member that is not on the page", async () => {
     .poll(() => detail.member("confirmButton").isDisabled())
     .toBe(true);
   expect(onSelect).not.toHaveBeenCalled();
+});
+
+it("shows a selected member of a Page Object that is not on the page as not on the page", async () => {
+  renderLens({
+    selection: { kind: "member", path: "TodoPage.archiveDialog.confirmButton" },
+  });
+
+  await expect
+    .poll(() => detail.fact("On the page").textContent())
+    .toBe("not on the page");
+  expect(await detail.fact("Owner").textContent()).toBe(
+    "TodoPage.archiveDialog"
+  );
+});
+
+it("says a selected member that is gone is no longer on the page", async () => {
+  renderLens({
+    selection: { kind: "member", path: "TodoPage.removedButton" },
+  });
+
+  await expect
+    .poll(() => page.getByRole("region", { name: "Selected" }).textContent())
+    .toContain("TodoPage.removedButton is no longer on the page.");
 });
 
 it("dims a model's actions as not on page when none of its objects is, without running them", async () => {

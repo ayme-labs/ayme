@@ -2,7 +2,7 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
+import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/inspector";
 
 import type { ControlState } from "../../shared";
 import type { RunnableTool } from "../domain/runnableTools";

@@ -3,11 +3,13 @@ import { createTRPCClient, createWSClient, wsLink } from "@trpc/client";
 import {
   DISCONNECTED_CLOSE_CODE,
   HiddenToolListSchema,
+  InspectorRequestSchema,
   PageToolListSchema,
   PageWelcomeSchema,
   ToolCallOutcomeSchema,
   ToolCallSchema,
   UNKNOWN_PAIRING_CLOSE_CODE,
+  VERSION_GAP_CLOSE_CODE,
   type Hello,
   type PageTool,
   type PageWelcome,
@@ -21,7 +23,9 @@ import type { PageChannelRouter } from "./pageChannelRouter";
  * `onWelcome` gets the server's reply; when the socket reopens, it reports
  * its tools again. When the server says another tab paired in its place,
  * or that it does not know the pairing, the channel closes for good and
- * `onDisconnected` or `onUnknownPairing` runs. On any other close the
+ * `onDisconnected` or `onUnknownPairing` runs. When the server says the
+ * page's Ayme and its own can't work together, the channel closes for good
+ * and `onVersionGap` gets the server's reason, which names both versions. On any other close the
  * channel reconnects by itself, and `onLost` runs, unless `onClose` is
  * given: then it closes for good and `onClose` runs, as for an App
  * Process, which looks for a server again. A channel closed for good sends
@@ -35,6 +39,7 @@ export function openPageChannel(
     onWelcome,
     onDisconnected,
     onUnknownPairing,
+    onVersionGap,
     onLost,
     onClose,
     WebSocket: WebSocketClass,
@@ -45,6 +50,7 @@ export function openPageChannel(
     onWelcome(welcome: PageWelcome): void;
     onDisconnected(): void;
     onUnknownPairing(): void;
+    onVersionGap?(gap: string): void;
     onLost?(): void;
     onClose?(): void;
   }
@@ -88,13 +94,18 @@ export function openPageChannel(
       for (const listener of processToolListeners) listener([]);
       const code = cause?.code;
       const known =
-        code === DISCONNECTED_CLOSE_CODE || code === UNKNOWN_PAIRING_CLOSE_CODE;
+        code === DISCONNECTED_CLOSE_CODE ||
+        code === UNKNOWN_PAIRING_CLOSE_CODE ||
+        code === VERSION_GAP_CLOSE_CODE;
       if (!known && !onClose) return onLost?.();
       // Closing here stops the client from reconnecting.
       closed = true;
       void socket.close();
       if (code === DISCONNECTED_CLOSE_CODE) onDisconnected();
       else if (code === UNKNOWN_PAIRING_CLOSE_CODE) onUnknownPairing();
+      // tRPC passes the socket's close event, typed with its code only.
+      else if (code === VERSION_GAP_CLOSE_CODE)
+        onVersionGap?.((cause as { reason?: string }).reason ?? "");
       else onClose?.();
     },
   });
@@ -185,6 +196,24 @@ export function openPageChannel(
         onError() {},
       });
       return () => subscription.unsubscribe();
+    },
+    serveInspector(handler) {
+      const subscription = live().inspectorRequests.subscribe(undefined, {
+        onData(data) {
+          // Started here, in the order the server sent them.
+          const answer = handler(InspectorRequestSchema.parse(data));
+          void answer
+            .then((response) => live().inspectorResponse.mutate(response))
+            // The channel closed before the answer went out.
+            .catch(() => {});
+        },
+        // A server from before the external Inspector has no such subscription.
+        onError() {},
+      });
+      return () => subscription.unsubscribe();
+    },
+    async sendInspectorEvent(event) {
+      await live().inspectorEvent.mutate(event);
     },
     async callProcessTool(name, input) {
       return ToolCallOutcomeSchema.parse(

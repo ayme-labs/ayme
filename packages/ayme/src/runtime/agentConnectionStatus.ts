@@ -1,23 +1,7 @@
-import type { NotConnectedReason } from "@ayme-dev/mcp/client";
-
+import type { AgentConnectionStatus } from "../shared";
 import type { Ayme } from "./runtime";
 
-/**
- * Whether the session's page is connected to a coding agent through the
- * agent's Ayme MCP server, for the Inspector: `off` without the
- * `agentConnection` option, else as the page client reports it.
- * `not-connected` says why once the tab knows, `no-client` when the page
- * client failed to load; `connected` names the agent when its MCP client
- * gave a name, such as `claude-code`.
- */
-export type AgentConnectionStatus = Readonly<
-  | { state: "off" }
-  | {
-      state: "not-connected";
-      reason?: NotConnectedReason | "no-client";
-    }
-  | { state: "connected"; agent?: string }
->;
+export type { AgentConnectionStatus } from "../shared";
 
 /** The page client's own status, which leaves out `off`. */
 type ClientStatus = Exclude<AgentConnectionStatus, { state: "off" }>;

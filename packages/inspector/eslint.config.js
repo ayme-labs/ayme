@@ -20,17 +20,7 @@ const allowedSlices = {
   structure: ["page-model", "navigation", "panel", "shared"],
   runs: ["structure", "page-model", "navigation", "panel", "shared"],
   tools: ["runs", "structure", "page-model", "navigation", "panel", "shared"],
-  demo: [
-    "tools",
-    "runs",
-    "structure",
-    "page-model",
-    "navigation",
-    "panel",
-    "shared",
-  ],
   app: [
-    "demo",
     "tools",
     "runs",
     "structure",
@@ -136,25 +126,21 @@ export default [
   frontDoors(undefined, ["src/*.{ts,tsx}"], { tests: false }),
   frontDoors(undefined, ["src/*.test.{ts,tsx}"], { tests: true }),
   {
+    // The Inspector reads Ayme only through its inspector entry (ADR-0049).
+    // Its own Page Object Models (src/testing/) use Ayme's public API, and
+    // tests and test-utils may also use ./testing.
     files: [sourceFiles],
-    // Infrastructure, the instrumentation that mounts the Inspector, and the
-    // Inspector's own Page Object, which carries the runtime's decorators.
-    ignores: [
-      "src/**/infrastructure/**",
-      "src/app/mountInspector.ts",
-      "src/testing/pom/**",
-      ...testFiles,
-    ],
+    ignores: ["src/testing/**", "src/**/test-utils/**", ...testFiles],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
         {
-          paths: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"].map((name) => ({
-            name,
-            allowTypeImports: true,
-            message:
-              "Only infrastructure reads @ayme-dev/ayme at runtime; the rest takes props.",
-          })),
+          patterns: [
+            {
+              regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
+              message: "Import Ayme only through @ayme-dev/ayme/inspector.",
+            },
+          ],
         },
       ],
     },

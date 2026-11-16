@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rootTargetPath } from "@ayme-dev/ayme/internal";
+import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers, pathBelowPage } from "./memberIndex";
 import { collection, component, model, page } from "../test-utils/pageModel";
@@ -138,6 +138,48 @@ describe("what a path covers", () => {
     );
     expect(index.within("Header", { models: false })).toEqual(
       new Set(["Header", "Header.title"])
+    );
+  });
+});
+
+describe("a Locator collection", () => {
+  const table = page("RunsTable", {
+    locators: ["heading"],
+    locatorCollections: { rows: 2 },
+  });
+  // Indexed inside each test: Stryker activates a mutant only while a test
+  // runs, so an index built while Vitest collects the tests escapes it.
+  const indexRuns = () =>
+    indexMembers(
+      {
+        objects: [table],
+        models: [model("RunsTable", ["heading", "rows"])],
+      },
+      rootTargetPath
+    );
+
+  it("is each of its elements' member, at the element's index", () => {
+    const runs = indexRuns();
+    expect(runs.member("RunsTable.rows[1]")).toMatchObject({
+      path: "RunsTable.rows[1]",
+      owner: table,
+      locator: { name: "rows" },
+    });
+    expect(runs.member("RunsTable.rows[2]")).toBeUndefined();
+  });
+
+  it("stands for its elements, on its Page Object and on its model", () => {
+    const runs = indexRuns();
+    const elements = new Set(["RunsTable.rows[0]", "RunsTable.rows[1]"]);
+    expect(runs.targets("RunsTable.rows")).toEqual(elements);
+    expect(runs.targets("RunsTable.rows[1]")).toEqual(
+      new Set(["RunsTable.rows[1]"])
+    );
+    expect(runs.within("RunsTable.rows", { models: false })).toEqual(
+      new Set(["RunsTable.rows", ...elements])
+    );
+    expect(runs.within("RunsTable", { models: false })).toEqual(
+      new Set(["RunsTable", "RunsTable.heading", "RunsTable.rows", ...elements])
     );
   });
 });

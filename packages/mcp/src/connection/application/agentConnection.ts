@@ -7,6 +7,7 @@ import type {
   ToolCallOutcome,
 } from "../../contract";
 import * as tabLifecycle from "../domain/tabLifecycle";
+import { InspectorLink } from "./inspectorLink";
 import {
   heldCallText,
   unansweredCallText,
@@ -115,6 +116,8 @@ export class ChannelSession {
 export class PageSession extends ChannelSession {
   /** Ends the page's channel and tells it another tab paired in its place. */
   readonly disconnect: () => void;
+  /** The requests and events of an external Inspector, relayed to this page. */
+  readonly inspector = new InspectorLink();
 
   constructor(
     disconnect: () => void,
@@ -178,6 +181,7 @@ export class AgentConnection {
   #timer: ReturnType<typeof setTimeout> | undefined;
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
+  #versionGap: string | undefined;
 
   /** The tools the agent sees: the page's, then the App Processes'. */
   get tools(): readonly PageTool[] {
@@ -200,6 +204,25 @@ export class AgentConnection {
    */
   get hidden(): readonly string[] {
     return this.#merged().hidden.map(({ name }) => name);
+  }
+
+  /** The paired page's link for an external Inspector, if a page is paired. */
+  get inspectorLink(): InspectorLink | undefined {
+    return this.#page?.inspector;
+  }
+
+  /**
+   * Why the server refused the last page that said hello, when its Ayme and
+   * the server's can't work together (see `versionGap`), naming both
+   * versions. A page that pairs clears it.
+   */
+  get versionGap(): string | undefined {
+    return this.#versionGap;
+  }
+
+  /** The server refused a page whose Ayme it can't work with, as `gap` says. */
+  refuseVersion(gap: string) {
+    this.#versionGap = gap;
   }
 
   /** Whether a page is paired. */
@@ -245,6 +268,7 @@ export class AgentConnection {
     const previous = this.#page;
     if (previous) {
       this.#page = undefined;
+      previous.inspector.close();
       // The earlier page is gone, whether or not its channel has closed yet;
       // the lifecycle says how its calls are answered.
       for (const [callId, answer] of previous.takeUnanswered())
@@ -254,6 +278,7 @@ export class AgentConnection {
       this.#emit({ type: "unpaired" });
     }
 
+    this.#versionGap = undefined;
     const page = new PageSession(disconnect, (tools) => {
       if (this.#page !== page) return;
       this.#apply(
@@ -300,6 +325,7 @@ export class AgentConnection {
     if (session instanceof ProcessSession) return this.#detachProcess(session);
     if (this.#page !== session) return;
     this.#page = undefined;
+    session.inspector.close();
     this.#emit({ type: "unpaired" });
     for (const [callId, answer] of session.takeUnanswered())
       this.#leftCalls.set(callId, answer);
@@ -437,6 +463,7 @@ export class AgentConnection {
     const page = this.#page;
     if (page) {
       this.#page = undefined;
+      page.inspector.close();
       answerUnanswered(page.takeUnanswered(), { type: "stopped" });
       this.#emit({ type: "unpaired" });
     }

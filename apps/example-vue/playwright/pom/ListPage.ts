@@ -7,8 +7,11 @@ export class ListPage extends AppPage {
   // The playground is served at the site root in development, and under
   // /playground or /ayme when deployed. ayme.dev drops the trailing slash.
   readonly path = "/{:base(playground|ayme)}?{/}?";
+  @ayme.child
   readonly newItemInput: Locator;
+  @ayme.child
   readonly addItemButton: Locator;
+  @ayme.child
   readonly archiveDialog: ArchiveDialog;
   private readonly itemRows: Locator;
 
@@ -24,6 +27,7 @@ export class ListPage extends AppPage {
       .getByRole("listitem");
   }
 
+  @ayme.collection
   async items(): Promise<ListItem[]> {
     const rows = await this.itemRows.all();
     return rows.map((row) => new ListItem(row, this.archiveDialog));

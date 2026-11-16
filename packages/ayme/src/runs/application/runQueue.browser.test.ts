@@ -95,7 +95,7 @@ describe("one Run at a time per page, in Chromium", () => {
       name: "click_then_fail",
       description: "Click Save, then fail.",
       async execute(target) {
-        (target.element as HTMLElement).click();
+        await target.locator.click();
         throw new Error("Failed after clicking.");
       },
     };

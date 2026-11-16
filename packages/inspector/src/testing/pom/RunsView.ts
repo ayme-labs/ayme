@@ -18,25 +18,36 @@ export type RunInteraction = {
  */
 export class RunEntry extends PanelPart {
   /** Its card: what it ran, with what, and how it went. */
+  @ayme.child
   readonly card: Locator;
   /** Expands or collapses the run. */
+  @ayme.child
   readonly toggle: Locator;
   /** The mark that it ran before the page last loaded. */
+  @ayme.child
   readonly earlierPage: Locator;
   /** Its arguments, absent when it had none. */
+  @ayme.child
   readonly arguments: Locator;
   /** Shows or hides its result, on a successful run that returned one. */
+  @ayme.child
   readonly resultToggle: Locator;
   /** Its result, as JSON, while shown. */
+  @ayme.child
   readonly result: Locator;
   /** Copies its result. */
+  @ayme.child
   readonly copyResultButton: Locator;
   /** The image it returned, such as a screenshot, with what it shows. */
+  @ayme.child
   readonly image: Locator;
+  @ayme.child
   readonly error: Locator;
   /** The Interactions it performed itself, in order. */
+  @ayme.collection
   readonly interactions: Locator;
   /** The runs it started, nested under it, in the order it started them. */
+  @ayme.collection
   readonly childRuns: Locator;
 
   constructor(root: Locator) {
@@ -154,16 +165,24 @@ export class RunEntry extends PanelPart {
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 export class RunsView extends PanelPart {
   /** Collapses Runs to its header, or expands it. It reads "Runs · 2". */
+  @ayme.child
   readonly header: Locator;
+  @ayme.child
   readonly scope: Locator;
   /** Shows the selection's runs, e.g. "This object". */
+  @ayme.child
   readonly selectionScope: Locator;
   /** Shows every run. */
+  @ayme.child
   readonly allScope: Locator;
+  @ayme.child
   readonly clearButton: Locator;
+  @ayme.child
   readonly timeline: Locator;
   /** The runs shown, newest first. */
+  @ayme.collection
   readonly runs: Locator;
+  @ayme.child
   readonly empty: Locator;
 
   constructor(root: Locator) {

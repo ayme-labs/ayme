@@ -1,20 +1,20 @@
 import type { Locator, Page } from "@playwright/test";
-import { containsThroughShadow, parentElement } from "../../shared";
-import { latestPageStateRef } from "./pageState";
+import { inPage } from "../../in-page";
+import { RefResolutionError } from "../../shared";
 import {
   assertAvailable,
   obstructionReason,
   unfocusableReason,
-  type LatestRefLookup,
+  type LatestRefByRef,
 } from "../domain/toolAvailability";
-import type { Reach, ReachMeasurement } from "../application/reach";
+import type { Reach, ReachInput, ReachMeasurement } from "../application/reach";
 
 /**
  * Package-internal: the input a tool sends its element. A click needs to
  * reach it (ADR-0035); keyboard input needs only that it can take focus,
  * which an open modal it is not in or an inert ancestor prevents.
  */
-export type ElementInput = "click" | "focus";
+export type ElementInput = ReachInput;
 
 /**
  * Package-internal: what an Availability Reason may name as in the way of
@@ -26,94 +26,77 @@ export type ElementInput = "click" | "focus";
  * `element`, since what holds it is not in its way. Empty when nothing was
  * found.
  */
-export function inTheWayOf(
-  { blocker, hit }: ReachMeasurement,
-  element: Element
-): Element[] {
-  return blocker ? [blocker] : hit ? walkedUp(hit, element) : [];
+export function inTheWayOf({ blocker, hit }: ReachMeasurement): string[] {
+  return blocker ? [blocker] : [...(hit ?? [])];
 }
 
 /**
- * Package-internal: whether `input` would reach `element` now, as `reach`
- * measures it, as the Goal Loop and the Inspector offer refs for the tools
- * that need one; the hit test is `page`'s own (ADR-0041).
+ * Package-internal: the Structural Ref of each element `locator` matches on
+ * `page`, in the page's order, read in the page in one task. An element no
+ * capture has named is given a ref, a synthetic one, that `ayme-ref=` then
+ * resolves.
  */
-export function reaches(
-  reach: Reach,
-  page: Page,
-  element: Element,
-  input: ElementInput
-): boolean {
-  return input === "focus"
-    ? !reach.blockingAncestor(element)
-    : reach.measureReach(page, element).available;
+export function refsOfLocator(page: Page, locator: Locator): Promise<string[]> {
+  return inPage(page).mint(locator);
 }
 
 /**
- * Package-internal: refuses the call of `toolName` that sends `input` to
- * `element`, the one element `locator` resolves to, when the input would not
- * reach it as `reach` measures it, with the Availability Reason a Page
- * Object Tool gives: the same
- * measurement and wording as a Page Object Root's (ADR-0035), which never
- * names a kind of widget. A click's reach is measured where the click would
- * land: the element is scrolled into view first, as the call's own action
- * scrolls it, which also moves an element only partly shown.
+ * Package-internal: refuses the call of `toolName` that sends `input` to the
+ * element `ref` names on `page`, when the input would not reach it as
+ * `reach` measures it, with the Availability Reason a Page Object Tool
+ * gives: the same measurement and wording as a Page Object Root's
+ * (ADR-0035), which never names a kind of widget. A click's reach is
+ * measured where the click would land: the element is scrolled into view
+ * first, as the call's own action scrolls it, which also moves an element
+ * only partly shown.
  */
 export async function assertReachable(
   reach: Reach,
+  page: Page,
   toolName: string,
-  locator: Locator,
-  element: Element,
-  input: ElementInput
+  ref: string,
+  input: ElementInput,
+  latestRefOf: LatestRefByRef
 ): Promise<void> {
-  const reason = await unreachableReason(
-    reach,
-    locator,
-    element,
-    latestPageStateRef,
-    input
-  );
+  const reason = await unreachableReason(reach, page, ref, latestRefOf, input);
   if (reason !== undefined)
     assertAvailable(toolName, { present: true, available: false, reason });
 }
 
+/**
+ * Package-internal: `assertReachable` for the one element `locator` matches,
+ * such as a Page Object Root's, which has no ref of its own to hand; it measures
+ * the first element the locator matches.
+ */
+export async function assertLocatorReachable(
+  reach: Reach,
+  page: Page,
+  toolName: string,
+  locator: Locator,
+  input: ElementInput,
+  latestRefOf: LatestRefByRef
+): Promise<void> {
+  // The element a root observation reads: the first the locator matches.
+  const [ref] = await inPage(page).mint(locator);
+  if (ref === undefined)
+    throw new RefResolutionError(
+      `${toolName} is unavailable: its locator matches no element.`
+    );
+  await assertReachable(reach, page, toolName, ref, input, latestRefOf);
+}
+
 async function unreachableReason(
   reach: Reach,
-  locator: Locator,
-  element: Element,
-  latestRefOf: LatestRefLookup,
+  page: Page,
+  ref: string,
+  latestRefOf: LatestRefByRef,
   input: ElementInput
 ): Promise<string | undefined> {
   if (input === "focus") {
-    const blocker = reach.blockingAncestor(element);
-    return blocker && unfocusableReason(blocker, latestRefOf);
+    const blocker = await reach.blockingAncestor(page, ref);
+    return blocker ? unfocusableReason(blocker, latestRefOf) : undefined;
   }
-  const measurement = await reach.measureReachAtCall(locator, element);
+  const measurement = await reach.measureReachAtCall(page, ref);
   if (measurement.available) return undefined;
-  return obstructionReason(inTheWayOf(measurement, element), latestRefOf);
-}
-
-/**
- * `hit` and its ancestors up to the first that holds `element`, or `hit`
- * alone when it holds `element` itself, as `element`'s own ancestor does when
- * nothing else takes the click, or is an open native modal.
- */
-function walkedUp(hit: Element, element: Element): Element[] {
-  if (containsThroughShadow(hit, element) || isModal(hit)) return [hit];
-  const elements: Element[] = [];
-  for (
-    let node: Element | null = hit;
-    node && !containsThroughShadow(node, element);
-    node = parentElement(node)
-  )
-    elements.push(node);
-  return elements;
-}
-
-function isModal(element: Element): boolean {
-  try {
-    return element.matches(":modal");
-  } catch {
-    return false;
-  }
+  return obstructionReason(inTheWayOf(measurement), latestRefOf);
 }

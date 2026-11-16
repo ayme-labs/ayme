@@ -11,7 +11,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { createAyme } from "@ayme-dev/ayme";
+import { createAyme, createPage, type ElementFilter } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -69,7 +69,8 @@ afterEach(async () => {
 });
 
 it("C1: passes the page factory and ignore to the runtime session", async () => {
-  const ignore = (element: Element) => element.matches(".assistant");
+  // The stand-in Page has no Locators: the filter returns one of Playwright Lite's.
+  const ignore: ElementFilter = () => createPage().locator(".assistant");
   await act(() =>
     root().render(
       h(

@@ -1,76 +1,25 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
-import {
-  getPageStateForElements,
-  lookAtPageStateForDocument,
-  listRegisteredPomTargets,
-  listAvailablePomTools,
-  listRegisteredPoms,
-  subscribeToAgentImageRuns,
-  type AgentImageRun,
-  type RegisteredPom,
-} from "@ayme-dev/ayme/internal";
+import type {
+  InspectorAgentImageRun as AgentImageRun,
+  InspectorPageObject,
+} from "@ayme-dev/ayme/inspector";
 
+import { forest, node } from "../structure/test-utils/projected";
+import {
+  lookOf,
+  startedAyme,
+  type PageFixture,
+} from "../tools/test-utils/startedAyme";
 import { renderInspector } from "./renderInspector";
-import { startedAyme } from "../tools/test-utils/startedAyme";
 import { Inspector } from "../testing";
 
 // Component tests: Runs reading the page's Run log, with fixture Runs by
 // several Callers, driven through the Inspector POM on playwright-lite. The
 // runtime is replaced by a stand-in session whose Run log the test fills,
 // and which records the panel's own runs there for the Caller they name.
-vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
-    await import("../tools/test-utils/startedAyme");
-  const {
-    pageStateNodeEntry,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    toolInputViolations,
-    elementsOf,
-    kindOf,
-    rootTargetPath,
-  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  const { forest, node } = await import("../structure/test-utils/projected");
-  return {
-    // The Playwright call table, which demo feedback reads.
-    elementsOf,
-    kindOf,
-    pageStateNodeEntry,
-    rootTargetPath,
-    inputSchemaFor,
-    renderActionParameters,
-    renderSchema,
-    toolInputViolations,
-    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    lookAtPageStateForDocument: vi.fn(async () => ({
-      projected: forest(
-        node(
-          { ref: "e1", role: "main" },
-          node({ ref: "e2", role: "button", name: "Save" })
-        )
-      ),
-      elementsByRef: new Map(),
-    })),
-    listElementToolTargets: vi.fn(async () => new Map()),
-    getPomDefinitionText: vi.fn(() => ""),
-    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
-    listRegisteredPomTargets: vi.fn(async () => []),
-    listAvailablePomTools: vi.fn(() => []),
-    getStartedAyme: asStartedAyme,
-    getAgentConnectionStatus: agentConnectionOf,
-    getAppProcessTools: appProcessToolsOf,
-    subscribeToStartedAyme: () => () => {},
-    subscribeToAgentImageRuns: vi.fn(() => () => {}),
-    listRootedToolInstances: vi.fn(() => new Map()),
-    listRegisteredPoms: vi.fn(() => []),
-    subscribeToRegisteredPoms: vi.fn(() => () => true),
-  };
-});
-
 const save: RegisteredPomTool = {
   rooted: false,
   className: "Editor",
@@ -81,9 +30,8 @@ const save: RegisteredPomTool = {
   inputSchema: { type: "object" },
   parameters: [],
 };
-const editor: RegisteredPom = {
+const editor: InspectorPageObject = {
   id: "Editor",
-  instance: {},
   manifest: {
     className: "Editor",
     members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
@@ -98,17 +46,14 @@ const editor: RegisteredPom = {
     ],
   },
   memberObservations: [],
-  presentPaths: new Set([""]),
-  rootMemberPaths: new Set(),
+  presentPaths: [""],
+  rootMemberPaths: [],
   tools: [save],
 };
 
 /** The Editor Page Object on the page, with its available tool `Editor.save`. */
 function registerEditor() {
-  vi.mocked(listRegisteredPoms).mockReturnValue([editor]);
-  vi.mocked(listAvailablePomTools).mockReturnValue([save] as ReturnType<
-    typeof listAvailablePomTools
-  >);
+  startedAyme.setRegistry({ pageObjects: [editor] });
   startedAyme.tools.list.mockReturnValue([
     {
       name: save.name,
@@ -116,6 +61,7 @@ function registerEditor() {
       agentDescription: save.agentDescription,
       inputSchema: save.inputSchema,
       group: "pageObject",
+      className: save.className,
       available: true,
     },
   ]);
@@ -127,6 +73,29 @@ const inspector = new Inspector(
   page.locator("[data-ayme-inspector-root]")
 );
 const unmounts: (() => void)[] = [];
+// The page as the look gives it, which a test may change.
+let pageFixture: PageFixture;
+const setTargets = (targets: PageFixture["targets"]) => {
+  pageFixture = { ...pageFixture, targets };
+  startedAyme.setPage(pageFixture);
+};
+const setElements = (elementsByRef: PageFixture["elementsByRef"]) => {
+  pageFixture = { ...pageFixture, elementsByRef };
+  startedAyme.setPage(pageFixture);
+};
+
+beforeEach(() => {
+  pageFixture = {
+    projected: forest(
+      node(
+        { ref: "e1", role: "main" },
+        node({ ref: "e2", role: "button", name: "Save" })
+      )
+    ),
+    elementsByRef: new Map(),
+  };
+  startedAyme.setPage(pageFixture);
+});
 
 function renderApp() {
   const host = document.createElement("div");
@@ -173,7 +142,8 @@ it("lists every Caller's Runs from the page's Run log, newest first, as they sta
     { icon: "Run by an agent through WebMCP" },
     { text: "support-assistant" },
   ]);
-  expect(await click.arguments.textContent()).toBe('{"target":"e2"}');
+  expect(await click.arguments.count()).toBe(0);
+  expect(await click.toggle.textContent()).toContain("e2");
 
   byAgent.fail('Ref "e2" does not match a present element.');
 
@@ -216,23 +186,23 @@ it("nests a goal Run's child Runs under it, each with its own Interactions", asy
   });
   expect(await run.interactions.count()).toBe(0);
   expect(await run.childTools()).toEqual(["fill", "click"]);
-  expect(await run.child("fill").interactionList()).toEqual([
-    {
-      operation: "fill",
-      target: "getByRole('textbox', { name: 'Body' })",
-      value: '"Draft"',
-    },
-  ]);
-  expect(await run.child("click").interactionList()).toEqual([
-    { operation: "click", target: "getByRole('button', { name: 'Save' })" },
-  ]);
+  expect(await run.child("fill").toggle.textContent()).toContain(
+    "getByRole('textbox', { name: 'Body' })"
+  );
+  expect(await run.child("fill").toggle.textContent()).toContain('"Draft"');
+  expect(await run.child("fill").interactions.count()).toBe(0);
+  expect(await run.child("click").toggle.textContent()).toContain(
+    "getByRole('button', { name: 'Save' })"
+  );
+  expect(await run.child("click").interactions.count()).toBe(0);
   expect(await run.child("click").status()).toBe("Succeeded");
 });
 
 it("names each Interaction by the member whose locator it names, for any Caller", async () => {
   registerEditor();
   const saveButton = "getByRole('button', { name: 'Save' })";
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+  setTargets([
+    { path: "Unknown.button", element: document.body, locator: saveButton },
     { path: "Editor.saveButton", element: document.body, locator: saveButton },
   ]);
   const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
@@ -258,20 +228,151 @@ it("names each Interaction by the member whose locator it names, for any Caller"
       },
       { operation: "keyboard.press", target: "", value: '"Enter"' },
     ]);
+  const shown = await run.interactionList();
+  startedAyme.runs.start("snapshot", {}, "webmcp").succeed();
+  await expect
+    .poll(() => inspector.runs.latest("snapshot").status())
+    .toBe("Succeeded");
+  await expect.poll(() => run.interactionList()).toEqual(shown);
 });
 
-it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
+it("names an Interaction on a Locator collection holding one element by that element", async () => {
   registerEditor();
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+  startedAyme.setRegistry({
+    pageObjects: [
+      {
+        ...editor,
+        manifest: {
+          ...editor.manifest,
+          members: [
+            {
+              memberName: "buttons",
+              kind: "locator",
+              access: "field",
+              collection: true,
+            },
+          ],
+        },
+        memberObservations: [
+          { memberName: "buttons", kind: "locator", access: "field", count: 1 },
+        ],
+      },
+    ],
+  });
+  setTargets([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      aliases: ["locator('button')", "locator('button').last()"],
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button')" });
+  save.interact({ operation: "click", locator: "locator('button').first()" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[0]" },
+      { operation: "click", target: "Editor.buttons[0]" },
+    ]);
+});
+
+it("names an Interaction on a Locator collection's last element by that element", async () => {
+  registerEditor();
+  startedAyme.setRegistry({
+    pageObjects: [
+      {
+        ...editor,
+        manifest: {
+          ...editor.manifest,
+          members: [
+            {
+              memberName: "buttons",
+              kind: "locator",
+              access: "field",
+              collection: true,
+            },
+          ],
+        },
+        memberObservations: [
+          { memberName: "buttons", kind: "locator", access: "field", count: 2 },
+        ],
+      },
+    ],
+  });
+  setTargets([
+    {
+      path: "Editor.buttons[0]",
+      element: document.body,
+      locator: "locator('button').first()",
+      aliases: [],
+    },
+    {
+      path: "Editor.buttons[1]",
+      element: document.body,
+      locator: "locator('button').nth(1)",
+      aliases: ["locator('button').last()"],
+    },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: "locator('button').last()" });
+  save.interact({ operation: "click", locator: "locator('button').nth(1)" });
+  save.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("Editor.save").interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.buttons[1]" },
+      { operation: "click", target: "Editor.buttons[1]" },
+    ]);
+});
+
+it("names a Browser Tool's Interaction by the member whose element has its ref, not by another member", async () => {
+  registerEditor();
+  const body = document.createElement("textarea");
+  const button = document.createElement("button");
+  document.body.append(body, button);
+  unmounts.push(() => {
+    body.remove();
+    button.remove();
+  });
+  startedAyme.setRegistry({
+    pageObjects: [
+      {
+        ...editor,
+        manifest: {
+          ...editor.manifest,
+          members: [
+            { memberName: "bodyInput", kind: "locator", access: "field" },
+            ...editor.manifest.members,
+          ],
+        },
+      },
+    ],
+  });
+  setTargets([
+    {
+      path: "Editor.bodyInput",
+      element: body,
+      locator: "getByRole('textbox', { name: 'Body' })",
+    },
     {
       path: "Editor.saveButton",
-      element: document.body,
+      element: button,
       locator: "getByRole('button', { name: 'Save' })",
     },
   ]);
-  vi.mocked(getPageStateForElements).mockResolvedValue({
-    refs: ["e2"],
-  } as Awaited<ReturnType<typeof getPageStateForElements>>);
+  setElements(
+    new Map<NonNullable<Interaction["ref"]>, Element>([
+      ["e1" as NonNullable<Interaction["ref"]>, body],
+      ["e2" as NonNullable<Interaction["ref"]>, button],
+    ])
+  );
   const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
   click.interact({
     operation: "click",
@@ -282,8 +383,143 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
   renderApp();
 
   await expect
-    .poll(() => inspector.runs.latest("click").interactionList())
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain("Editor.saveButton");
+});
+
+it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
+  registerEditor();
+  setTargets([
+    {
+      path: "Editor.saveButton",
+      element: document.body,
+      locator: "getByRole('button', { name: 'Save' })",
+    },
+  ]);
+  setElements(
+    new Map([["e2" as NonNullable<Interaction["ref"]>, document.body]])
+  );
+  const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e2')",
+    ref: "e2" as Interaction["ref"],
+  });
+  click.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain("Editor.saveButton");
+});
+
+/** The page state the runtime last recorded, with one `role` node named `name` at `ref`. */
+function recordPage(ref: string, role: string, name: string) {
+  startedAyme.recordedPage = {
+    projected: forest(node({ ref, role: role as never, name })),
+    refs: [ref],
+  };
+}
+
+it("names a newly added target from the recorded page state before the Inspector's look catches up", async () => {
+  recordPage("e99", "button", "Dismiss notice");
+  const click = startedAyme.runs.start("click", { target: "e99" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e99')",
+    ref: "e99" as Interaction["ref"],
+  });
+  click.succeed();
+  renderApp();
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain('button "Dismiss notice"');
+});
+
+it("captures a member before input and preserves it through later interactions and run-end resolution", async () => {
+  registerEditor();
+  startedAyme.setRegistry({
+    pageObjects: [
+      {
+        ...editor,
+        manifest: {
+          ...editor.manifest,
+          members: [
+            ...editor.manifest.members,
+            { memberName: "otherButton", kind: "locator", access: "field" },
+          ],
+        },
+      },
+    ],
+  });
+  const button = document.createElement("button");
+  document.body.append(button);
+  unmounts.push(() => button.remove());
+  setTargets([
+    { path: "Editor.saveButton", element: button, locator: "saveButton" },
+  ]);
+  setElements(new Map([["e2" as NonNullable<Interaction["ref"]>, button]]));
+  recordPage("e2", "button", "Original");
+  renderApp();
+  await inspector.navigator.showLens("Structure");
+  await inspector.structure.pick("e2");
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({
+    operation: "click",
+    locator: "different locator spelling",
+    ref: "e2" as Interaction["ref"],
+  });
+  const run = inspector.runs.latest("Editor.save");
+  await expect
+    .poll(() => run.interactionList())
     .toEqual([{ operation: "click", target: "Editor.saveButton" }]);
+  recordPage("e99", "button", "Changed");
+  save.interact({
+    operation: "click",
+    locator: "another button",
+    ref: "e99" as Interaction["ref"],
+  });
+  setTargets([
+    { path: "Editor.otherButton", element: button, locator: "saveButton" },
+  ]);
+  save.succeed();
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.saveButton" },
+      { operation: "click", target: 'button "Changed"' },
+    ]);
+  // The persisted row must retain the pre-input description as well as its member.
+  await expect
+    .poll(
+      () => JSON.parse(sessionStorage.getItem("ayme-inspector:runs") ?? "[]")[0]
+    )
+    .toMatchObject({
+      className: "Editor",
+      interactions: [
+        { target: 'button "Original"' },
+        { target: 'button "Changed"' },
+      ],
+    });
+});
+
+it("does not invent a generic name for an unnamed target", async () => {
+  recordPage("e99", "generic", "");
+  renderApp();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(0);
+  const click = startedAyme.runs.start("click", { target: "e99" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e99')",
+    ref: "e99" as Interaction["ref"],
+  });
+  click.succeed();
+  await expect
+    .poll(() => inspector.runs.latest("click").toggle.textContent())
+    .toContain("e99");
+  expect(
+    await inspector.runs.latest("click").toggle.textContent()
+  ).not.toContain("generic");
 });
 
 it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {
@@ -307,13 +543,9 @@ it("shows an image a Run returned as itself, with the file Ayme MCP saved it to"
   expect(await run.resultToggle.count()).toBe(0);
 
   // `ayme mcp` reports the file it saved the image to once the Run ended.
-  const reportImage = vi
-    .mocked(subscribeToAgentImageRuns)
-    .mock.calls.at(-1)![0];
-  reportImage({
+  startedAyme.reportAgentImageRun({
     name: "screenshot",
     input: {},
-    result: image,
     savedTo: "/tmp/ayme-screenshots/page-1.png",
     startedAt: Date.now(),
     durationMs: 1,
@@ -429,22 +661,33 @@ it("scopes every Caller's Runs to the selection", async () => {
 it("scopes root-less class runs to their own Page Object", async () => {
   registerEditor();
   const other = { ...save, name: "Other.save", className: "Other" };
-  vi.mocked(listAvailablePomTools).mockReturnValue([save, other] as ReturnType<
-    typeof listAvailablePomTools
-  >);
-  vi.mocked(listRegisteredPoms).mockReturnValue([
-    editor,
+  startedAyme.tools.list.mockReturnValue([
+    ...startedAyme.tools.list(),
     {
-      ...editor,
-      id: "Other",
-      manifest: {
-        ...editor.manifest,
-        className: "Other",
-        tools: [{ methodName: "save", toolName: "Other.save", parameters: [] }],
-      },
-      tools: [other],
+      name: other.name,
+      inputSchema: other.inputSchema,
+      group: "pageObject",
+      className: other.className,
+      available: true,
     },
   ]);
+  startedAyme.setRegistry({
+    pageObjects: [
+      editor,
+      {
+        ...editor,
+        id: "Other",
+        manifest: {
+          ...editor.manifest,
+          className: "Other",
+          tools: [
+            { methodName: "save", toolName: "Other.save", parameters: [] },
+          ],
+        },
+        tools: [other],
+      },
+    ],
+  });
   startedAyme.runs.start("Editor.save", {}, "webmcp").succeed();
   startedAyme.runs.start("Other.save", {}, "webmcp").succeed();
   renderApp();
@@ -464,7 +707,7 @@ it("keeps a root-less run's class when remounting after its tool disappeared", a
   await inspector.navigator.model.object("Editor").click();
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   unmountApp();
-  vi.mocked(listAvailablePomTools).mockReturnValue([]);
+  startedAyme.tools.list.mockReturnValue([]);
   renderApp();
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
@@ -479,22 +722,20 @@ it("finds a root-less class run from a structure node belonging to that class", 
   document.body.append(app);
   unmounts.push(() => app.remove());
   const button = app.querySelector("button")!;
-  vi.mocked(lookAtPageStateForDocument).mockImplementation(async () => {
-    const { forest, node } = await import("../structure/test-utils/projected");
-    return {
-      projected: forest(
-        node(
-          { ref: "e1", role: "main" },
-          node({ ref: "e2", role: "button", name: "Save" })
-        )
-      ),
-      elementsByRef: new Map([
-        ["e1", app],
-        ["e2", button],
-      ]),
-    } as unknown as Awaited<ReturnType<typeof lookAtPageStateForDocument>>;
-  });
-  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+  pageFixture = {
+    projected: forest(
+      node(
+        { ref: "e1", role: "main" },
+        node({ ref: "e2", role: "button", name: "Save" })
+      )
+    ),
+    elementsByRef: new Map([
+      ["e1", app],
+      ["e2", button],
+    ]),
+  };
+  startedAyme.setPage(pageFixture);
+  setTargets([
     {
       path: "Editor.saveButton",
       element: button,
@@ -509,4 +750,43 @@ it("finds a root-less class run from a structure node belonging to that class", 
   expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
     "Editor.save"
   );
+});
+
+it("discards pending target descriptions when the log drops their run", async () => {
+  const unhandled = vi.fn();
+  window.addEventListener("unhandledrejection", unhandled);
+  unmounts.push(() =>
+    window.removeEventListener("unhandledrejection", unhandled)
+  );
+  renderApp();
+  await inspector.navigator.showLens("Structure");
+  await inspector.structure.pick("e2");
+  await inspector.runs.showAll();
+  const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
+  click.interact({
+    operation: "click",
+    locator: "saveButton",
+    ref: "e2" as Interaction["ref"],
+  });
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  const pending = Promise.withResolvers<void>();
+  startedAyme.look = async () => {
+    await pending.promise;
+    return lookOf(pageFixture);
+  };
+  click.succeed();
+  startedAyme.runs.newDocument();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(0);
+  await expect
+    .poll(() => sessionStorage.getItem("ayme-inspector:runs"))
+    .toBe("[]");
+  pending.resolve();
+  startedAyme.runs.start("snapshot", {}, "webmcp").succeed();
+  await expect
+    .poll(() => inspector.runs.latest("snapshot").status())
+    .toBe("Succeeded");
+  expect(await inspector.runs.runs.count()).toBe(1);
+  // The browser runner logs unhandled rejections without failing the test.
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  expect(unhandled).not.toHaveBeenCalled();
 });

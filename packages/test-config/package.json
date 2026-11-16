@@ -14,10 +14,10 @@
     }
   },
   "peerDependencies": {
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "picomatch": "^4.0.7"

@@ -17,13 +17,6 @@ import {
   type ElementToolDefinition,
   type RegisteredElementTool,
 } from "./elementTools";
-import {
-  isCheckableElement,
-  isClickableElement,
-  isFillableElement,
-  isSelectElement,
-  isUncheckableElement,
-} from "../domain/elementFilters";
 
 // --- Input schemas ---
 
@@ -196,13 +189,13 @@ const selectOptionDefinition = browserTool(
 
 /** Package-internal: the single-element Browser Tools, in publication order. */
 export const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
-  registerElementTool(clickDefinition, isClickableElement),
-  registerElementTool(hoverDefinition, isClickableElement),
-  registerElementTool(typeDefinition, isFillableElement),
-  registerElementTool(fillDefinition, isFillableElement),
-  registerElementTool(checkDefinition, isCheckableElement),
-  registerElementTool(uncheckDefinition, isUncheckableElement),
-  registerElementTool(selectOptionDefinition, isSelectElement),
+  registerElementTool(clickDefinition, { predicate: "clickable" }),
+  registerElementTool(hoverDefinition, { predicate: "clickable" }),
+  registerElementTool(typeDefinition, { predicate: "fillable" }),
+  registerElementTool(fillDefinition, { predicate: "fillable" }),
+  registerElementTool(checkDefinition, { predicate: "checkable" }),
+  registerElementTool(uncheckDefinition, { predicate: "uncheckable" }),
+  registerElementTool(selectOptionDefinition, { predicate: "select" }),
 ];
 
 // --- Browser Tools that are published only ---
@@ -263,10 +256,11 @@ async function fillField(
   const locator = page.locator(target.selector);
   await assertReachable(
     reach,
+    page,
     "fill_form",
-    locator,
-    target.element,
-    field.type === "checkbox" || field.type === "radio" ? "click" : "focus"
+    target.elementRef,
+    field.type === "checkbox" || field.type === "radio" ? "click" : "focus",
+    (ref) => pageStateSession.latestRefOfNamed(ref)
   );
   switch (field.type) {
     case "textbox":

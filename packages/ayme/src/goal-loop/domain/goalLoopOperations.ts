@@ -1,8 +1,12 @@
-import type { JsonPrimitive, JsonSchema, ToolParameter } from "../../shared";
+import type {
+  JsonPrimitive,
+  JsonSchema,
+  NamedToolParameter,
+} from "../../shared";
 import type { TargetField } from "../../tools/application";
 import type { RootedToolInstance } from "../../page-objects/application";
 import type { StartChildRun } from "../../runs/application";
-import type { Reach } from "../../page-state/application";
+import type { StructuralNode } from "@ayme-dev/core/structural-observation";
 
 /**
  * The operations the Goal Loop offers the model each step, and how each
@@ -13,11 +17,13 @@ import type { Reach } from "../../page-state/application";
 export type ClosedSet =
   | {
       kind: "ref";
-      filter: (element: Element) => boolean;
-      /** The filter before reach, for a tool that needs reach. */
-      matches?: (element: Element) => boolean;
-      /** The Reach the filter measures with, which batches a pass over the page. */
-      reach: Reach;
+      /** The nodes of the capture the tool takes and its input would reach, in tree order. */
+      nodes: readonly StructuralNode[];
+      /**
+       * For a tool that needs reach, how many nodes it takes before reach: the
+       * ones a click would not reach are counted when none is left to offer.
+       */
+      unreachable: number;
     }
   /**
    * The present items of one collection path, each with the tool's verdict on
@@ -189,7 +195,7 @@ function specsOf(
 
 /** A parameter whose closed set is given, such as the ref a tool acts on. */
 function closedSpecOf(
-  parameter: ToolParameter,
+  parameter: NamedToolParameter,
   closedSet: ClosedSet
 ): ArgumentSpec {
   return { ...specBase([parameter.name], parameter), closedSet };
@@ -211,13 +217,13 @@ function specBase(
 
 /** Classify every parameter of an action, its tuples' slots one by one. */
 export function specsOfParameters(
-  parameters: readonly ToolParameter[]
+  parameters: readonly NamedToolParameter[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) => specsOf(parameter));
 }
 
-/** The parameters of an object schema, each a `ToolParameter`. */
-function parametersOfObjectSchema(schema: JsonSchema): ToolParameter[] {
+/** The parameters of an object schema, each a `NamedToolParameter`. */
+function parametersOfObjectSchema(schema: JsonSchema): NamedToolParameter[] {
   const required = new Set(schema.required ?? []);
   return Object.entries(schema.properties ?? {}).map(
     ([name, propertySchema]) => ({
@@ -259,7 +265,7 @@ export function specsOfElementToolSchema(
  * inside `args` and are classified like any other parameter.
  */
 export function specsOfRootedTool(
-  parameters: readonly ToolParameter[],
+  parameters: readonly NamedToolParameter[],
   roots: readonly RootedToolInstance[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) =>
@@ -280,7 +286,7 @@ export function specsOfRootedTool(
  * The parameters a caller must pass, by name: for a rooted tool, its `ref` and the required ones inside `args`, dotted.
  */
 export function requiredParamsOf(
-  parameters: readonly ToolParameter[],
+  parameters: readonly NamedToolParameter[],
   rooted: boolean
 ): string[] {
   return parameters.flatMap((parameter) =>

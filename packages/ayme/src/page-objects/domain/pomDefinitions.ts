@@ -98,6 +98,7 @@ function definitionFor(node: DefinitionNode): PomDefinition {
       ? {}
       : { description: tool.description }),
     inputSchema: inputSchemaFor(tool.parameters),
+    parameters: tool.parameters,
     returnPoms: tool.returnPoms ?? [],
   }));
   return {

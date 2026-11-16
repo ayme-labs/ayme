@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // The floor of the TypeScript peer range, 5.4, knows no newer target,
+    // and rejects one in a tsconfig this one extends.
+    "target": "ES2022",
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src"]
+}

@@ -47,8 +47,10 @@ export function Header({
   layout: Layout;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
-  onLayoutChange: (layout: Layout) => void;
-  onCollapse: () => void;
+  /** Without it, no layout menu: the Inspector fills a window of its own. */
+  onLayoutChange?: (layout: Layout) => void;
+  /** Without it, no collapse: the Inspector fills a window of its own. */
+  onCollapse?: () => void;
   /** A press on the header outside its controls: the start of a drag. */
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
   collapseRef?: Ref<HTMLButtonElement>;
@@ -57,9 +59,11 @@ export function Header({
     <header
       className={cn(
         "relative z-10 flex h-header flex-none touch-none items-center gap-1.5 border-b pr-2 pl-3.5 select-none",
-        layout === "float"
-          ? "cursor-grab active:cursor-grabbing"
-          : "cursor-move"
+        !onPointerDown
+          ? "cursor-default"
+          : layout === "float"
+            ? "cursor-grab active:cursor-grabbing"
+            : "cursor-move"
       )}
       onPointerDown={(event) => {
         const target = event.target as Element;
@@ -78,17 +82,21 @@ export function Header({
       {status}
       <span className="flex-1" />
       <ThemeSwitch theme={theme} onChange={onThemeChange} />
-      <LayoutMenu layout={layout} onChange={onLayoutChange} />
-      <button
-        ref={collapseRef}
-        type="button"
-        aria-label="Collapse inspector"
-        aria-expanded
-        className={iconButton}
-        onClick={onCollapse}
-      >
-        <MinusIcon className="size-3.5" />
-      </button>
+      {onLayoutChange && (
+        <LayoutMenu layout={layout} onChange={onLayoutChange} />
+      )}
+      {onCollapse && (
+        <button
+          ref={collapseRef}
+          type="button"
+          aria-label="Collapse inspector"
+          aria-expanded
+          className={iconButton}
+          onClick={onCollapse}
+        >
+          <MinusIcon className="size-3.5" />
+        </button>
+      )}
     </header>
   );
 }

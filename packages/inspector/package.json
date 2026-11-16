@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/inspector",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Ayme's in-page panel for a page's Page Objects, Structural Page State and tools.",
   "keywords": [
     "ai-agent",
@@ -35,6 +35,10 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./external": {
+      "import": "./dist/external.mjs",
+      "default": "./dist/external.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",
@@ -64,15 +68,14 @@
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@ayme-dev/unplugin-ayme": "workspace:*",
     "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser-playwright": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "lucide-react": "^1.0.0",
@@ -82,6 +85,6 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }

@@ -1,55 +1,13 @@
-import type { Page } from "@playwright/test";
-import {
-  INSPECTOR_DOGFOOD_ATTRIBUTE,
-  installRuntimePageInstrumentation,
-} from "@ayme-dev/ayme/internal";
+import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme/inspector";
 
-import { allowPassThrough } from "../panel";
 import { renderInspector } from "./renderInspector";
-import { exposeInspectorShadowRoot } from "../shared";
-import { withDemoFeedback } from "../demo";
-
-// The page's two highlights: solid for the Inspector's selection, dashed
-// for what the pointer is over in the panel. An element that is both shows
-// the selection's.
-const highlightStyleText = `
-[data-ayme-highlight] {
-  animation: ayme-highlight-pulse 1.6s ease-in-out 2;
-  outline: 3px solid #d9a441;
-  outline-offset: 3px;
-  position: relative;
-  z-index: 1;
-}
-
-[data-ayme-hover]:not([data-ayme-highlight]) {
-  outline: 2px dashed #d9a441;
-  outline-offset: 3px;
-}
-
-@keyframes ayme-highlight-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(217 164 65 / 0%);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgb(217 164 65 / 18%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-ayme-highlight] {
-    animation: none;
-  }
-}
-`;
-
-/** How long demo mode pauses before each action. */
-const DEMO_PAUSE_MS = 500;
+import { exposeInspectorShadowRoot, inspectorClient } from "../shared";
 
 export type InspectorOptions = {
   /**
-   * Pauses before each action and shows a cue where a click lands, for every
-   * call, whoever makes it. Off by default: calls run at full speed.
+   * Asks the runtime for Demo Mode while the panel is mounted: it pauses
+   * before each action and shows a cue where a click lands, for every call,
+   * whoever makes it. Off by default: calls run at full speed.
    */
   demo?: boolean;
   /**
@@ -62,24 +20,8 @@ export type InspectorOptions = {
   dogfood?: boolean;
 };
 
-/**
- * Lets the pointer actions on the runtime's Pages reach elements under the
- * panel, and in demo mode paces every action and cues its clicks.
- */
-export function installInspectorInstrumentation({
-  demo = false,
-}: InspectorOptions = {}) {
-  return installRuntimePageInstrumentation((page) =>
-    withDemoFeedback(
-      page as Page,
-      demo ? { beforeActionMs: DEMO_PAUSE_MS, clickCue: true } : {}
-    )
-  );
-}
-
 type MountedInspector = {
   references: number;
-  disposeInstrumentation: () => void;
   disposeUi: () => void;
 };
 
@@ -87,39 +29,39 @@ let mounted: MountedInspector | undefined;
 
 /**
  * Mounts the Inspector once per document; each call returns its own dispose.
- * The first of overlapping mounts decides `demo` and `dogfood`.
+ * The first of overlapping mounts decides `demo` and `dogfood`. Demo Mode
+ * is the runtime's: the panel only asks for it.
  */
 export function mountInspector(options: InspectorOptions = {}) {
   if (!mounted) {
-    const disposeInstrumentation = installInspectorInstrumentation(options);
-    const highlightStyle = document.createElement("style");
-    highlightStyle.dataset.aymeInspectorHighlightStyle = "";
-    highlightStyle.textContent = highlightStyleText;
-    document.head.append(highlightStyle);
     // A custom element name, so the page's `div` rules and queries miss the
     // host. It needs no registration to host a shadow root.
     const host = document.createElement("ayme-inspector");
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
-    // Closed, so the host page's locators and page-state capture never match
-    // the Inspector's own text. Tests reach the root through the hook. Open
-    // when dogfooding, and marked so the runtime's page state keeps it.
-    if (options.dogfood) host.setAttribute(INSPECTOR_DOGFOOD_ATTRIBUTE, "");
+    // Closed, so the host page's locators never match the Inspector's own
+    // text, and marked as an excluded subtree, so the runtime's capture,
+    // Reach and screenshots leave it out. Tests reach the root through the
+    // hook. Open and unmarked when dogfooding: the runtime's page state keeps
+    // it then.
+    if (!options.dogfood) host.setAttribute(EXCLUDE_ATTRIBUTE, "");
     const shadowRoot = host.attachShadow({
       mode: options.dogfood ? "open" : "closed",
     });
     exposeInspectorShadowRoot(host, shadowRoot);
     document.body.append(host);
     const unmountUi = renderInspector(shadowRoot);
-    const disallowPassThrough = allowPassThrough(shadowRoot);
+    const askForDemo = (on: boolean) =>
+      void inspectorClient()
+        .demo(on)
+        .catch(() => {});
+    if (options.demo) askForDemo(true);
     mounted = {
       references: 0,
-      disposeInstrumentation,
       disposeUi() {
-        disallowPassThrough();
+        if (options.demo) askForDemo(false);
         unmountUi();
         host.remove();
-        highlightStyle.remove();
       },
     };
   }
@@ -134,7 +76,6 @@ export function mountInspector(options: InspectorOptions = {}) {
       instance.references -= 1;
       if (instance.references !== 0 || mounted !== instance) return;
       instance.disposeUi();
-      instance.disposeInstrumentation();
       mounted = undefined;
     },
   };

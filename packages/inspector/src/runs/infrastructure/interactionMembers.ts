@@ -1,55 +1,58 @@
-import type { Interaction } from "@ayme-dev/ayme";
-import {
-  getPageStateForElements,
-  listRegisteredPomTargets,
-  listRegisteredPoms,
-  rootTargetPath,
-} from "@ayme-dev/ayme/internal";
+import type { Interaction } from "@ayme-dev/ayme/inspector";
+import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import {
   actionSignature,
   buildPageModel,
   indexMembers,
 } from "../../page-model";
+import { inspectorClient, type InspectorClient } from "../../shared";
 
 /**
  * The Page Object member each Interaction acted on, by place: the member
- * whose locator it names, or, for a Browser Tool's Interaction by Structural
- * Ref, the member whose element has that ref now, while that member's
- * element is on the page. Read from the registry as it is now, so a member a
- * Run added, such as a new item, is named too.
+ * whose locator or alias it names (including a Locator collection's `last()`
+ * or sole element), or whose element has its captured Structural Ref in an
+ * unrecorded look, while that member's element is on the page. Read from the
+ * registry as it is now, so a member a Run added, such as a new item, is
+ * named too.
  */
 export async function interactionMembers(
-  interactions: readonly Interaction[]
+  interactions: readonly Interaction[],
+  client: InspectorClient = inspectorClient()
 ): Promise<(string | undefined)[]> {
   if (interactions.every(({ locator }) => locator === undefined))
     return interactions.map(() => undefined);
-  let targets: Awaited<ReturnType<typeof listRegisteredPomTargets>> = [];
+  let targets: Awaited<ReturnType<InspectorClient["look"]>>["targets"] = [];
+  let targetsByRef: ReadonlyMap<string, readonly string[]> = new Map();
   try {
-    targets = await listRegisteredPomTargets();
+    // Without the look's targets, Interactions keep their locators.
+    const look = await client.look();
+    targets = look.targets;
+    targetsByRef = new Map(Object.entries(look.targetsByRef));
   } catch {
-    // Without the registry's targets, Interactions keep their locators.
+    // Without the targets' refs, a ref locator names no member.
   }
-  let targetRefs: readonly (string | undefined)[] = [];
-  if (interactions.some(({ ref }) => ref !== undefined) && targets.length)
-    try {
-      ({ refs: targetRefs } = await getPageStateForElements(
-        targets.map(({ element }) => element)
-      ));
-    } catch {
-      // Without the targets' refs, a ref locator names no member.
-    }
   const members = indexMembers(
-    buildPageModel(listRegisteredPoms(), new Set(), [], actionSignature),
+    buildPageModel(
+      client.current().pageObjects,
+      new Set(),
+      [],
+      actionSignature
+    ),
     rootTargetPath
   );
   return interactions.map(({ locator, ref }) => {
     if (locator === undefined) return undefined;
-    return targets
-      .filter((target, index) =>
-        ref ? targetRefs[index] === ref : target.locator === locator
-      )
-      .map(({ path }) => members.member(path)?.path)
+    const paths = ref
+      ? (targetsByRef.get(ref) ?? [])
+      : targets
+          .filter(
+            (target) =>
+              target.locator === locator || target.aliases?.includes(locator)
+          )
+          .map(({ path }) => path);
+    return paths
+      .map((path) => members.member(path)?.path)
       .find((path) => path !== undefined);
   });
 }

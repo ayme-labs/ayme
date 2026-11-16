@@ -96,6 +96,7 @@ export function useRunning(
         focus={focus}
         onFocusShown={() => setFocus(undefined)}
         onHover={highlight.hover}
+        canHighlight={highlight.canHighlight}
       />
     </RunsRegion>
   );

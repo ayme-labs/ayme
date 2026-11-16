@@ -4,6 +4,7 @@
 /.pnpm-store/
 
 # Generated build and test output
+packages/ayme/build/generated/
 node_modules/
 .turbo/
 dist/

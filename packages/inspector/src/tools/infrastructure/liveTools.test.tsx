@@ -4,12 +4,11 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
-  getAgentConnectionStatus,
-  getAppProcessTools,
-  getStartedAyme,
-  subscribeToStartedAyme,
-} from "@ayme-dev/ayme/internal";
+  createInspectorContract,
+  type InspectorSession,
+} from "@ayme-dev/ayme/testing";
 
+import { createInspectorClient } from "../../shared";
 import { useLiveTools, type LiveTools } from "./liveTools";
 import {
   agentConnectionOf,
@@ -18,14 +17,9 @@ import {
   startedAyme,
 } from "../test-utils/startedAyme";
 
-// Unit tests: the Inspector's one source of the tools the panel can run, over
-// a stand-in started session that the test changes and announces.
-vi.mock("@ayme-dev/ayme/internal", () => ({
-  getStartedAyme: vi.fn(),
-  getAgentConnectionStatus: vi.fn(),
-  getAppProcessTools: vi.fn(),
-  subscribeToStartedAyme: vi.fn(),
-}));
+// Unit tests: the Inspector's one source of the tools the panel can run, read
+// through the contract client over a stand-in started session that the test
+// changes and announces.
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -57,13 +51,32 @@ const jobsPeek = {
 const unmounts: (() => void)[] = [];
 let session: Ayme | undefined = asStartedAyme();
 let announceSession: (ayme: Ayme | undefined) => void = () => {};
-vi.mocked(getStartedAyme).mockImplementation(() => session);
-vi.mocked(getAppProcessTools).mockImplementation(appProcessToolsOf);
-vi.mocked(getAgentConnectionStatus).mockImplementation(agentConnectionOf);
-vi.mocked(subscribeToStartedAyme).mockImplementation((listener) => {
-  announceSession = listener;
-  return () => {};
-});
+let connection = agentConnectionOf();
+const client = createInspectorClient(
+  createInspectorContract({
+    started: () => session as unknown as InspectorSession | undefined,
+    subscribeToStarted: (listener) => {
+      announceSession = listener;
+      return () => {};
+    },
+    appProcessTools: appProcessToolsOf,
+    connectionStatus: () => connection,
+    subscribeToAgentImageRuns: () => () => {},
+    highlights: { set: async () => {} },
+    pick: async () => undefined,
+    registry: {
+      pageObjects: () => [],
+      pomDefinitions: () => [],
+      subscribe: () => () => {},
+    },
+    look: async () => {
+      throw new Error("No look in this test.");
+    },
+    pomDefinitionText: () => "",
+    recordedPageState: async () => undefined,
+    demo: () => {},
+  })
+);
 
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) act(unmount);
@@ -72,14 +85,14 @@ afterEach(() => {
 });
 
 /** Renders a component that reads the live tools; returns each read. */
-function renderReader() {
+async function renderReader() {
   const seen: LiveTools[] = [];
   function Reader() {
-    seen.push(useLiveTools());
+    seen.push(useLiveTools(client));
     return null;
   }
   const root = createRoot(document.createElement("div"));
-  act(() => root.render(<Reader />));
+  await act(async () => root.render(<Reader />));
   unmounts.push(() => root.unmount());
   return seen;
 }
@@ -95,10 +108,10 @@ function publish(
 
 const announce = () => startedAyme.announce();
 
-it("gives the live tools and the publication status", () => {
+it("gives the live tools and the publication status", async () => {
   publish([getPageContext, addItem]);
 
-  const seen = renderReader();
+  const seen = await renderReader();
 
   expect(seen.at(-1)).toEqual({
     live: [getPageContext, addItem],
@@ -108,12 +121,12 @@ it("gives the live tools and the publication status", () => {
   });
 });
 
-it("gives the Agent Connection status, and follows it", () => {
+it("gives the Agent Connection status, and follows it", async () => {
   publish([getPageContext]);
-  const seen = renderReader();
+  const seen = await renderReader();
 
   startedAyme.agentConnection = { state: "connected", agent: "claude-code" };
-  act(() => announce());
+  await act(async () => announce());
 
   expect(seen.at(-1)?.agentConnection).toEqual({
     state: "connected",
@@ -121,34 +134,34 @@ it("gives the Agent Connection status, and follows it", () => {
   });
 });
 
-it("stops following the Agent Connection once nothing reads the tools", () => {
+it("stops following the Agent Connection once nothing reads the tools", async () => {
   const unsubscribe = vi.fn();
-  vi.mocked(getAgentConnectionStatus).mockImplementation(() => ({
+  connection = {
     get: () => startedAyme.agentConnection,
     subscribe: () => unsubscribe,
-  }));
-  renderReader();
+  };
+  await renderReader();
 
   for (const unmount of unmounts.splice(0)) act(unmount);
 
   expect(unsubscribe).toHaveBeenCalledOnce();
-  vi.mocked(getAgentConnectionStatus).mockImplementation(agentConnectionOf);
+  connection = agentConnectionOf();
 });
 
-it("follows a change of the publication status alone", () => {
+it("follows a change of the publication status alone", async () => {
   publish([getPageContext]);
-  const seen = renderReader();
+  const seen = await renderReader();
 
   startedAyme.webMCP.publicationStatus = {
     state: "unavailable",
     message: "The WebMCP driver is unavailable.",
   };
-  act(() => announce());
+  await act(async () => announce());
 
   expect(seen.at(-1)?.publication.state).toBe("unavailable");
 });
 
-it("keeps a listed tool that is unavailable, with its reason", () => {
+it("keeps a listed tool that is unavailable, with its reason", async () => {
   const clear: ToolInfo = {
     ...addItem,
     name: "ListPage.clear",
@@ -157,17 +170,17 @@ it("keeps a listed tool that is unavailable, with its reason", () => {
   };
   publish([getPageContext, clear]);
 
-  const seen = renderReader();
+  const seen = await renderReader();
 
   expect(seen.at(-1)?.live).toEqual([getPageContext, clear]);
 });
 
-it("gives the App Processes' tools beside the page's, and follows them", () => {
+it("gives the App Processes' tools beside the page's, and follows them", async () => {
   publish([getPageContext]);
-  const seen = renderReader();
+  const seen = await renderReader();
 
   startedAyme.appProcessTools.list.mockReturnValue([jobsPeek]);
-  act(() => announce());
+  await act(async () => announce());
 
   expect(seen.at(-1)).toMatchObject({
     live: [getPageContext],
@@ -186,16 +199,16 @@ it("gives the App Processes' tools beside the page's, and follows them", () => {
   expect(seen.at(-1)?.appProcess[0]).not.toHaveProperty("description");
 });
 
-it("keeps the live tools when publication fails, with its error", () => {
+it("keeps the live tools when publication fails, with its error", async () => {
   publish([getPageContext]);
-  const seen = renderReader();
+  const seen = await renderReader();
 
   publish(
     [getPageContext, addItem],
     "failed",
     "Publication failed: a name is taken."
   );
-  act(() => announce());
+  await act(async () => announce());
 
   expect(seen.at(-1)).toEqual({
     live: [getPageContext, addItem],
@@ -208,19 +221,20 @@ it("keeps the live tools when publication fails, with its error", () => {
   });
 });
 
-it("hands out the same value until something changes", () => {
+it("hands out the same value until something changes", async () => {
   publish([getPageContext]);
-  const seen = renderReader();
+  const seen = await renderReader();
+  const loaded = seen.at(-1);
 
-  act(() => announce());
+  await act(async () => announce());
 
-  expect(new Set(seen).size).toBe(1);
+  expect(seen.at(-1)).toBe(loaded);
 });
 
-it("gives no tools while no session is started, and follows the next one", () => {
+it("gives no tools while no session is started, and follows the next one", async () => {
   session = undefined;
   publish([getPageContext]);
-  const seen = renderReader();
+  const seen = await renderReader();
   expect(seen.at(-1)).toEqual({
     live: [],
     appProcess: [],
@@ -232,9 +246,9 @@ it("gives no tools while no session is started, and follows the next one", () =>
   });
 
   session = asStartedAyme();
-  act(() => announceSession(session));
+  await act(async () => announceSession(session));
   publish([getPageContext, addItem]);
-  act(() => announce());
+  await act(async () => announce());
 
   expect(seen.at(-1)?.live).toEqual([getPageContext, addItem]);
 });

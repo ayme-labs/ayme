@@ -1,12 +1,13 @@
-import type {
-  ChosenOption,
-  GoalInput,
-  GoalLoopStepRecord,
-  Handover,
-  HandoverHistoryEntry,
-  JsonSchema,
-  JsonValue,
-  ToolDescriptor,
+import {
+  PREDICATES,
+  type ChosenOption,
+  type GoalInput,
+  type GoalLoopStepRecord,
+  type Handover,
+  type HandoverHistoryEntry,
+  type JsonSchema,
+  type JsonValue,
+  type ToolDescriptor,
 } from "../../shared";
 import type { ActionFailure, ActionResult } from "../../page-state/domain";
 import { forkCursor, readRenderedChange } from "../../page-state/domain";
@@ -257,13 +258,16 @@ export async function pursueGoal(
     // fork, so the tree it sees is the "before" of the step's Change Record: a
     // change made while it decides counts into page_changed. The Caller's
     // cursor stays put until the Handover.
-    const capture = await pageStateSession.getPageStateCapture(loop);
+    // It carries the refs each predicate keeps, which the tools' options come from.
+    const capture = await pageStateSession.getPageStateCapture(loop, {
+      accepts: PREDICATES,
+    });
     const verdict = await decideStep({
       goal,
       values,
       history,
       capture,
-      toolOptions: buildToolOptions({ page, reach }),
+      toolOptions: await buildToolOptions({ page, reach }, capture),
       pomDefinitions: renderPomDefinitions(getPomDefinitions().definitions),
       decide: decisionFn,
     });

@@ -16,3 +16,18 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 - `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).
 - `decisionEndpoint(url, options?)` in `@ayme-dev/ayme`: the decision function that posts each step to your Decision Endpoint, in [`decisionEndpoint`](decision-endpoint.md#decisionendpoint).
 - `createDecisionEndpoint(options)` in `@ayme-dev/ayme/server`: the Decision Endpoint's handler, in [`createDecisionEndpoint`](decision-endpoint.md#createdecisionendpoint).
+
+## Page Objects that `ayme mcp` serves
+
+`ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship Ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:
+
+```ts
+// .ayme/page-objects.ts
+import { ProjectsPage } from "../src/pages/ProjectsPage";
+
+export default [ProjectsPage];
+```
+
+Without `--page-objects`, `ayme mcp` serves `.ayme/page-objects.ts` if the project has one. `--page-objects <file>` names another entry. The server builds the entry and serves it. It also writes `.ayme/init-script.js`, which your browser automation loads into the page as an init script. The script starts Ayme in the page, with the Agent Connection on, and registers the classes.
+
+The usage text of `ayme mcp` marks `--page-objects` experimental. See [Page Objects on a page without Ayme](../guides/page-objects-without-ayme.md).

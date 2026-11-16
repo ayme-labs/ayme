@@ -10,7 +10,9 @@ import { CreateMenu } from "./CreateMenu";
  */
 export class TopBar extends AppPage {
   readonly path = "/harness/create-menu";
+  @ayme.child
   readonly createButton: Locator;
+  @ayme.child
   readonly createMenu: CreateMenu;
 
   constructor(page: Page) {

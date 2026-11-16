@@ -23,15 +23,14 @@ const PageObjectCode = defineAsyncComponent(
 
 // Ordinary apps call useAyme() without options. This demo keeps its site
 // chrome and the dev server's Peek check out of Structural Page State.
-const isNotPlayground = (element: Element) =>
-  element.matches("[data-site-chrome], [data-peek-check]");
+const notPlayground = "[data-site-chrome], [data-peek-check]";
 const peekCheck = import.meta.env.DEV;
 // `VITE_AGENT_CONNECTION=false` builds the playground without the agent
 // wizard or the Agent Connection, while `@ayme-dev/mcp` is not on npm yet.
 const agentConnection = import.meta.env.VITE_AGENT_CONNECTION !== "false";
 const { ayme } = useAyme({
   pageObjects: [ListPage],
-  ignore: isNotPlayground,
+  ignore: notPlayground,
   // Only the dev server mounts a Decision Endpoint, and only when it has a
   // model key, so the page publishes `goal` only then: never in the deployed
   // build, nor on a dev server started without a key.

@@ -10,21 +10,23 @@ const { captureAriaSnapshot, pageObjectRoots, listRegisteredPoms } = vi.hoisted(
   })
 );
 
-vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
+vi.mock("../page-state/infrastructure/browserInPage", async () =>
+  (await import("../in-page/inPageStandIn.testSupport")).standInBrowserInPage(
+    captureAriaSnapshot,
+    async () => ({
+      roots: await pageObjectRoots(),
+      absentElements: [],
+    })
+  )
+);
 vi.mock("../page-objects/infrastructure/registry", () => ({
   listRegisteredPoms,
 }));
 
 import { ayme } from "../test-utils/agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
-import { providePageObjectStructure } from "../page-state/infrastructure";
 
 const ref = AriaRefSchema.parse;
-
-providePageObjectStructure(async () => ({
-  roots: await pageObjectRoots(),
-  absentElements: [],
-}));
 
 describe("the Ayme page state helper", () => {
   beforeEach(() => {
@@ -113,7 +115,7 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: AriaRefSchema.parse("e2"),
-        node: { ref: AriaRefSchema.parse("e2"), element: button },
+        node: { ref: AriaRefSchema.parse("e2") },
       },
       {
         status: "unresolved",
@@ -123,7 +125,7 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: AriaRefSchema.parse("e1"),
-        node: { ref: AriaRefSchema.parse("e1"), element: document.body },
+        node: { ref: AriaRefSchema.parse("e1") },
       },
     ]);
   });
@@ -162,7 +164,7 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: AriaRefSchema.parse("s_1"),
-        node: { ref: AriaRefSchema.parse("s_1"), element: account },
+        node: { ref: AriaRefSchema.parse("s_1") },
       },
     ]);
   });
@@ -237,7 +239,7 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: ref("s_2"),
-        node: { ref: ref("s_2"), element: billing },
+        node: { ref: ref("s_2") },
       },
     ]);
   });
@@ -306,26 +308,7 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: ref("s_1"),
-        node: { ref: ref("s_1"), element: account },
-      },
-    ]);
-  });
-
-  it("reports a rendered ref without an associated element as unresolved", async () => {
-    captureAriaSnapshot.mockReturnValue({
-      distilledText: "- generic [ref=e1]:",
-      fullText: "- generic [ref=e1]:",
-      refsByElement: new Map(),
-    });
-    pageObjectRoots.mockResolvedValue([]);
-
-    const state = await ayme.getPageState();
-
-    await expect(state.resolve(AriaRefSchema.parse("e1"))).resolves.toEqual([
-      {
-        status: "unresolved",
-        requestedRef: AriaRefSchema.parse("e1"),
-        reason: "no-element",
+        node: { ref: ref("s_1") },
       },
     ]);
   });
@@ -379,7 +362,7 @@ describe("the Ayme page state helper", () => {
       ["e2", "e4", "e6"].map((requestedRef) => ({
         status: "resolved",
         requestedRef: AriaRefSchema.parse(requestedRef),
-        node: { ref: AriaRefSchema.parse("e6"), element: latest },
+        node: { ref: AriaRefSchema.parse("e6") },
       }))
     );
   });
@@ -410,7 +393,7 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: AriaRefSchema.parse("e2"),
-        node: { ref: AriaRefSchema.parse("e2"), element: added },
+        node: { ref: AriaRefSchema.parse("e2") },
       },
     ]);
   });

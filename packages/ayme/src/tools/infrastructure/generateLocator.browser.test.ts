@@ -6,11 +6,8 @@ import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import type { PomManifest } from "../../shared";
 import { RuntimeStateError, ToolInputError } from "../../shared";
-import { buildToolOptions } from "../../goal-loop/application";
-import {
-  geometryReach,
-  getInteractionHistory,
-} from "../../page-state/infrastructure";
+import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { getInteractionHistory } from "../../page-state/infrastructure";
 import { shapeOf } from "../test-utils/playwrightMcp.testSupport";
 import { agentTools } from "../../test-utils/publication.testSupport";
 import { rooted } from "../../test-utils/pomRoot.testSupport";
@@ -429,9 +426,7 @@ describe("generate_locator in Chromium", () => {
 
     expect(getInteractionHistory(document).actions().size).toBe(actionsBefore);
     expect(
-      buildToolOptions({ page, reach: geometryReach }).map(
-        (option) => option.key
-      )
+      (await toolOptionsOf(page)).map((option) => option.key)
     ).not.toContain("generate_locator");
   });
 

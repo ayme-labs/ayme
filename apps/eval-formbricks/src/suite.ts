@@ -41,7 +41,6 @@ import {
 } from "./preconditions.ts";
 import { reportSuite } from "./report.ts";
 import { defaultModel, defaultTimeoutSeconds, log, runOnce } from "./run.ts";
-import { renderSummaryMarkdown } from "./summary.ts";
 import { suiteDirectory, writeManifest, type SuiteManifest } from "./store.ts";
 import { warmLabApp } from "./warmup.ts";
 
@@ -174,11 +173,11 @@ async function main() {
 
   manifest.finishedAt = new Date().toISOString();
   await writeManifest(manifest);
-  const { summary, written } = await reportSuite(suiteId, {
+  const { markdown, written } = await reportSuite(suiteId, {
     publish: false,
     openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
   });
-  process.stdout.write(renderSummaryMarkdown(summary));
+  process.stdout.write(markdown);
   log(`Summary written to ${written.join(", ")}.`);
 }
 

@@ -6,10 +6,13 @@ import { PanelPart } from "./PanelPart";
 /** One path in the Connections popover: the agent, or WebMCP. */
 export class ConnectionRow extends PanelPart {
   /** Its state in a word or two, such as "Connected" or "Off". */
+  @ayme.child
   readonly state: Locator;
   /** Its dot, whose `data-tone` says how the state reads: `ok`, `off`… */
+  @ayme.child
   readonly dot: Locator;
   /** The button that copies the option turning it on, while it is off. */
+  @ayme.child
   readonly copyButton: Locator;
 
   constructor(root: Locator) {
@@ -29,14 +32,19 @@ export class Connections extends PanelPart {
   /** The pill, its root: the Page Object is on the page while it shows. */
   readonly pill: Locator;
   /** The pill's dot, whose `data-tone` says how the agent's state reads. */
+  @ayme.child
   readonly pillDot: Locator;
   /**
    * The mark on the pill's corner while WebMCP is on and broken; its
    * `data-webmcp-mark` is WebMCP's state.
    */
+  @ayme.child
   readonly mark: Locator;
+  @ayme.child
   readonly popover: Locator;
+  @ayme.child
   readonly agent: ConnectionRow;
+  @ayme.child
   readonly webMCP: ConnectionRow;
 
   /**

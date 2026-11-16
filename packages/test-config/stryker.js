@@ -3,6 +3,7 @@
  * the package's fast-lane Vitest config. See docs/testing.md#change-analysis.
  */
 import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
 
 import { nonProductionPatterns } from "./analysis.js";
@@ -24,7 +25,18 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
     ignoreStatic: !full,
     // Two workers keep a local run light; CI's full lane takes every core.
     ...(full ? {} : { concurrency: 2 }),
-    tempDirName: ".stryker-tmp",
+    // Stryker copies the package into `<tempDir>/sandbox-*/`. With the temp
+    // dir at the repository root, `<root>/.stryker-tmp-<package>/sandbox-*/`
+    // stands as deep as `packages/<package>/`, so a path that climbs to the
+    // root, such as an import of `playwright-range.json`, resolves as it does
+    // outside Stryker. A path into a sibling package does not. Each package
+    // has its own directory, since Stryker removes the directory once its run
+    // leaves it empty.
+    tempDirName: path.join(
+      "..",
+      "..",
+      `.stryker-tmp-${path.basename(process.cwd())}`
+    ),
     reporters: full ? ["clear-text", "json", "html"] : ["clear-text", "json"],
     htmlReporter: { fileName: `reports/mutation/mutation-full${suffix}.html` },
     jsonReporter: {

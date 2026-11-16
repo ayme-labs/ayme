@@ -14,7 +14,8 @@ import { focusRing, pressable, pressableIcon } from "../../shared";
 import type { StructureNode } from "../../structure";
 import type { GroupOutcome, LocatorGroup } from "../domain/locatorGroups";
 import { findRefNode, type RefTreeRow } from "../domain/refTree";
-import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
+import { NodeDetail } from "../../shared";
+import { refText, RefTreeView } from "./RefTreeView";
 
 const smallButton =
   // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.

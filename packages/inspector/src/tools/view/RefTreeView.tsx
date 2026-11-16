@@ -3,7 +3,7 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { RefNode, RefTreeRow } from "../domain/refTree";
+import type { RefTreeRow } from "../domain/refTree";
 
 // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
 /** A ref as the Inspector shows it: purple, light enough to read on dark. */
@@ -103,29 +103,6 @@ export function RefTreeView({
           </p>
         )}
       </div>
-    </>
-  );
-}
-
-/**
- * What shows after a node's ref, e.g. ` button "Add item"`: its role, then
- * its name, or its text when it has none.
- */
-export function NodeDetail({ node }: { node: RefNode }) {
-  const text = node.children
-    .filter((child) => child.role === "text" && child.ref === undefined)
-    .map((child) => child.name)
-    .join(" ");
-  return (
-    <>
-      {` ${node.role}`}
-      {node.name ? (
-        <span className="text-green-700 dark:text-green-300">
-          {` ${JSON.stringify(node.name)}`}
-        </span>
-      ) : (
-        text && <span className="text-muted-foreground">{` ${text}`}</span>
-      )}
     </>
   );
 }

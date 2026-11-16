@@ -64,8 +64,8 @@ describe("a tool call that starts a full page load, in Chromium", () => {
         {
           name: "follow",
           description: "Follow a link.",
-          async execute({ element }) {
-            (element as HTMLElement).click();
+          async execute({ locator }) {
+            await locator.click();
           },
         },
       ],

@@ -1,3 +1,4 @@
+import { elementOfRef } from "../test-utils/elementRefs.testSupport";
 import { describe, expect, it } from "vitest";
 
 import { ayme } from "../test-utils/agentCalls.testSupport";
@@ -34,9 +35,12 @@ describe("the Ayme page state helper in Chromium", () => {
       observedRefs.map((requestedRef) => ({
         status: "resolved",
         requestedRef,
-        node: { ref: latestRef, element: previousElement },
+        node: { ref: latestRef },
       }))
     );
+
+    // The ref the page state gives now names the element that replaced it.
+    expect(await elementOfRef(latestRef)).toBe(previousElement);
 
     previousElement.toggleAttribute("hidden", true);
     await expect(originalState.resolve(originalRef)).resolves.toEqual([
@@ -52,7 +56,7 @@ describe("the Ayme page state helper in Chromium", () => {
       {
         status: "resolved",
         requestedRef: originalRef,
-        node: { ref: latestRef, element: previousElement },
+        node: { ref: latestRef },
       },
     ]);
 
@@ -70,7 +74,7 @@ describe("the Ayme page state helper in Chromium", () => {
       {
         status: "resolved",
         requestedRef: originalRef,
-        node: { ref: latestRef, element: previousElement },
+        node: { ref: latestRef },
       },
     ]);
   });
@@ -141,9 +145,10 @@ describe("the Ayme page state helper in Chromium", () => {
       {
         status: "resolved",
         requestedRef: homeRef,
-        node: { ref: homeRef, element: document.querySelector("#home") },
+        node: { ref: homeRef },
       },
     ]);
+    expect(await elementOfRef(homeRef)).toBe(document.querySelector("#home"));
   });
 });
 

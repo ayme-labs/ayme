@@ -55,6 +55,7 @@ type Chromium = {
       channel?: string;
       headless: boolean;
       viewport: { width: number; height: number };
+      args?: string[];
     }
   ): Promise<BrowserContext>;
 };

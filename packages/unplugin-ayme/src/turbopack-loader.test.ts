@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { expect, it, vi } from "vitest";
 
+import { PomCompileError } from "@ayme-dev/ayme/compiler";
+
 import turbopackLoader from "./turbopack-loader";
 
 const resourcePath = fileURLToPath(
@@ -100,7 +102,28 @@ it("reports invalid TypeScript instead of returning broken JavaScript", () => {
   const { context } = loaderContext();
   expect(() =>
     turbopackLoader.call(context, "export const broken: = ;")
-  ).toThrow("Could not transpile Ayme POM");
+  ).toThrow(PomCompileError);
+});
+
+it("names a Page Object Model's syntax error where it is in the source", () => {
+  const { context } = loaderContext();
+  expect(() =>
+    turbopackLoader.call(
+      context,
+      readFileSync(resourcePath, "utf8").replace(/\n\}\n$/, "\n}}\n")
+    )
+  ).toThrow(
+    expect.objectContaining({
+      diagnostics: [
+        {
+          text: "Declaration or statement expected.",
+          file: resourcePath,
+          line: 26,
+          column: 2,
+        },
+      ],
+    })
+  );
 });
 
 it("compiles a Page Object Model to a stand-in in a build without Ayme, the default", () => {

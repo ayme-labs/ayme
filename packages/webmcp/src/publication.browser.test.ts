@@ -1,9 +1,6 @@
 import { createAyme, createPage, type Ayme } from "@ayme-dev/ayme";
 import { registerCompiledPom } from "@ayme-dev/ayme/internal";
-import type {
-  ChromeModelContextExtensions,
-  ModelContext,
-} from "@mcp-b/webmcp-types";
+import type {} from "webmcp-types";
 import { afterEach, beforeAll, expect, it } from "vitest";
 
 // Runs on Chromium's own WebMCP: the browser launches with
@@ -33,8 +30,7 @@ registerCompiledPom(TodoPage, {
   components: [],
 });
 
-const context = () =>
-  document.modelContext as ModelContext & ChromeModelContextExtensions;
+const context = () => document.modelContext!;
 
 let ayme: Ayme | undefined;
 let stop = () => {};
@@ -63,11 +59,10 @@ it("publishes a session's Page Object Tool, and an agent's call runs it as a web
     ({ name }) => name === "app_TodoPage.addTodo"
   );
   expect(tool?.description).toBe("Add a todo with the given title.");
-  // Chromium 156 takes the input as an object; older builds took JSON text,
-  // as @mcp-b/webmcp-types still declares.
+  // Chromium 156 takes the input as an object; older builds took JSON text.
   const output: unknown = await context().executeTool!(tool!, {
     title: "Milk",
-  } as never);
+  });
   const result = (typeof output === "string" ? JSON.parse(output) : output) as {
     page_changed: boolean;
   };

@@ -11,7 +11,6 @@ import {
 } from "../../test-utils/agentCalls.testSupport";
 import { RootedComponent } from "../../test-utils/pomRoot.testSupport";
 import { startSession } from "../../test-utils/session.testSupport";
-import { geometryReach } from "../../page-state/infrastructure";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -165,8 +164,9 @@ it("#966 targets a shared portaled collection child's own root and refuses a row
     expect(state.text).not.toContain("renameDialog");
 
     // Five separate children resolve to one dialog instance.
-    const { buildToolOptions } = await import("../../goal-loop/application");
-    const offered = buildToolOptions({ page, reach: geometryReach }).find(
+    const { toolOptionsOf } =
+      await import("../../test-utils/toolOptions.testSupport");
+    const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "RenameDialog.confirm"
     )!;
     expect(offered.tool.args[0]!.closedSet).toMatchObject({

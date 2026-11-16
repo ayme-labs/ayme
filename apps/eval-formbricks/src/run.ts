@@ -115,7 +115,7 @@ export function log(line: string) {
   process.stderr.write(`[${new Date().toISOString()}] ${line}\n`);
 }
 
-function gitOutput(cwd: string, args: string[]) {
+export function gitOutput(cwd: string, args: string[]) {
   const result = spawnSync("git", args, { cwd, encoding: "utf8" });
   return result.status === 0 ? result.stdout.trim() : null;
 }
@@ -124,7 +124,7 @@ function seconds(ms: number | null) {
   return ms === null ? "no result" : `${(ms / 1000).toFixed(1)} s`;
 }
 
-async function writeJson(filePath: string, value: unknown) {
+export async function writeJson(filePath: string, value: unknown) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 

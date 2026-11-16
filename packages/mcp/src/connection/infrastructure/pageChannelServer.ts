@@ -1,4 +1,10 @@
-import { createServer, type Server } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
+import type { Duplex } from "node:stream";
 
 import { getWSConnectionHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -6,9 +12,18 @@ import { WebSocketServer, type WebSocket } from "ws";
 import {
   DISCONNECTED_CLOSE_CODE,
   UNKNOWN_PAIRING_CLOSE_CODE,
+  VERSION_GAP_CLOSE_CODE,
   type PageWelcome,
 } from "../../contract";
-import { admit, busyRefuses, isLocalProcess, probeAnswer } from "../../pairing";
+import {
+  OUR_AYME,
+  admit,
+  busyRefuses,
+  isLocalProcess,
+  probeAnswer,
+  versionGap,
+  type AymeVersion,
+} from "../../pairing";
 import type {
   AgentConnection,
   PageSession,
@@ -21,19 +36,35 @@ import {
 } from "./pageChannelRouter";
 
 /**
+ * What else the server's HTTP server answers: each method returns whether it
+ * claimed the request or upgrade, and `close` ends what it holds.
+ */
+export type ServerExtension = {
+  request(request: IncomingMessage, response: ServerResponse): boolean;
+  upgrade(request: IncomingMessage, socket: Duplex, head: Buffer): boolean;
+  close(): void;
+};
+
+/**
  * The WebSocket server pages and App Processes connect to. It accepts a
  * connection on the path `/<token>`, or without a token from a page on
  * localhost or a local process (see `admit`), and each accepted connection
  * attaches to `connection` once it says hello: as the page, or as an App
- * Process beside it. A `/probe` connection is closed at once and never
- * attaches. Returns the HTTP server, not yet listening, and what
- * closes it with every page connection, answering the calls still waiting.
+ * Process beside it. A page whose Ayme speaks another pairing contract than
+ * `ayme`, this package's unless given, is refused (see `versionGap`). A `/probe` connection is closed at once and never
+ * attaches. `extensions` let something else answer the HTTP requests and
+ * WebSocket upgrades one of them claims, in order, such as the external
+ * Inspector's page; everything else is the channel's. Returns the HTTP server, not yet
+ * listening, and what closes it with every page connection, answering the
+ * calls still waiting.
  */
 export function createPageChannelServer({
   connection,
   token,
   imageFolder,
   agent,
+  extensions = [],
+  ayme = OUR_AYME,
 }: {
   connection: AgentConnection;
   token: string;
@@ -44,8 +75,13 @@ export function createPageChannelServer({
    * read at each hello, which the page's welcome names.
    */
   agent: () => string | undefined;
+  extensions?: readonly ServerExtension[];
+  /** The server's Ayme, which a page's must work with. */
+  ayme?: Required<AymeVersion>;
 }): { server: Server; close(): void } {
-  const server = createServer((_request, response) => {
+  const server = createServer((request, response) => {
+    if (extensions.some((extension) => extension.request(request, response)))
+      return;
     response.statusCode = 426;
     response.end("The Ayme MCP server accepts WebSocket connections only.");
   });
@@ -58,6 +94,10 @@ export function createPageChannelServer({
   });
 
   server.on("upgrade", (request, socket, head) => {
+    if (
+      extensions.some((extension) => extension.upgrade(request, socket, head))
+    )
+      return;
     const admission = admit({
       path: request.url ?? "",
       origin: request.headers.origin,
@@ -96,6 +136,7 @@ export function createPageChannelServer({
           fromProcess,
           imageFolder,
           agent,
+          ayme,
         })
       );
       handleConnection(ws, request);
@@ -104,6 +145,7 @@ export function createPageChannelServer({
   return {
     server,
     close() {
+      for (const extension of extensions) extension.close();
       connection.close();
       for (const ws of sockets.clients) ws.terminate();
       sockets.close();
@@ -120,7 +162,10 @@ export function createPageChannelServer({
  * connection `fromProcess`, which sent no `Origin`, may say hello as an App
  * Process, and the server is never too busy for it. One that connected
  * without a token gets `handOver`, the server's token, in reply to its
- * hello, and every one gets `imageFolder` and the agent's name.
+ * hello, and every one gets `imageFolder` and the agent's name. A page
+ * whose Ayme can't work with the server's `ayme` is closed with
+ * `VERSION_GAP_CLOSE_CODE` and the gap as the reason, and `connection`
+ * records the gap for the agent.
  */
 function acceptPage(
   connection: AgentConnection,
@@ -130,11 +175,13 @@ function acceptPage(
     fromProcess,
     imageFolder,
     agent,
+    ayme,
   }: {
     handOver: string | undefined;
     fromProcess: boolean;
     imageFolder: string | undefined;
     agent: () => string | undefined;
+    ayme: Required<AymeVersion>;
   }
 ): PageChannelContext["page"] {
   let page: PageSession | ProcessSession | undefined;
@@ -175,6 +222,12 @@ function acceptPage(
         resolveSession(page);
         return welcome;
       }
+      const gap = versionGap({ page: hello, server: ayme });
+      if (gap !== undefined) {
+        connection.refuseVersion(gap);
+        ws.close(VERSION_GAP_CLOSE_CODE, closeReason(gap));
+        return {};
+      }
       // Decided at hello, which names the tab, so the tab the server works
       // with may still connect without a token, as before its token
       // reached it.
@@ -194,4 +247,11 @@ function acceptPage(
       return welcome;
     },
   };
+}
+
+/** `text` cut to the 123 bytes a WebSocket close reason holds. */
+function closeReason(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length <= 123) return text;
+  return new TextDecoder().decode(bytes.slice(0, 123)).replace(/\uFFFD$/, "");
 }

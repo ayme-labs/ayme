@@ -1,4 +1,4 @@
-import { pageStateNodeEntry } from "@ayme-dev/ayme/internal";
+import { pageStateNodeEntry } from "@ayme-dev/ayme/inspector";
 
 import { structureTreeBuilder } from "../domain/structure";
 

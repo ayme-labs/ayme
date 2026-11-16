@@ -2122,9 +2122,12 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
-        execute: async ({ ref, element }) => {
-          highlighted.push({ ref, tagName: element.tagName });
+        filter: "h1",
+        execute: async ({ ref, locator }) => {
+          highlighted.push({
+            ref,
+            tagName: await locator.evaluate((element) => element.tagName),
+          });
         },
       },
     ]);
@@ -2137,6 +2140,42 @@ describe("Goal Loop goal in Chromium", () => {
     expect(highlighted).toEqual([
       { ref: Object.keys(refQuestion)[0], tagName: "H1" },
     ]);
+  });
+
+  it("offers a single-element tool with a Locator filter only the elements its Locator matches", async () => {
+    setupPageWithOneClickable();
+    const highlighted: string[] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'button "Save changes"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // A Locator runs where the session does, so it may read this.
+    const actionable = "Save changes";
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        filter: (session) =>
+          session.getByRole("button", { name: actionable, exact: true }),
+        execute: async ({ ref }) => {
+          highlighted.push(ref);
+        },
+      },
+    ]);
+
+    await tool.execute({ goal: "highlight the save button", maxSteps: 5 });
+
+    const refQuestion = criteriaOf(requests[1]!).ref!;
+    expect(Object.values(refQuestion)).toEqual([
+      expect.stringContaining("Save changes"),
+    ]);
+    expect(highlighted).toEqual(Object.keys(refQuestion));
   });
 
   it("carries what a Custom Tool returned into its history entry: the only trace of an effect the page does not show", async () => {
@@ -2155,7 +2194,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async ({ ref }) => ({ highlighted: ref }),
       },
     ]);
@@ -2193,7 +2232,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async () => ({ text: "x".repeat(MAX_STEP_RETURNED) }),
       },
     ]);
@@ -2227,7 +2266,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         name: "highlight_element",
         description: "Highlight one element on the page.",
-        filter: (element) => element.tagName === "H1",
+        filter: "h1",
         execute: async () => state,
       },
     ]);
@@ -2346,13 +2385,6 @@ describe("Goal Loop goal in Chromium", () => {
     expect(resolutions.map((resolution) => resolution.status)).toEqual(
       Object.keys(offered).map(() => "resolved")
     );
-    expect(
-      resolutions.map(
-        (resolution) =>
-          resolution.status === "resolved" &&
-          resolution.node.element instanceof Element
-      )
-    ).not.toContain(false);
   });
 
   it("keeps an offered instance's ref-only root in the page it sends, with its Page Object Root Mark, and prunes the other wrappers", async () => {
@@ -3424,10 +3456,10 @@ describe("Goal Loop goal in Chromium", () => {
 
   it("names the items it could not offer when none has a ref in the page state", async () => {
     // The item is available, but inside a subtree the page state ignores,
-    // here the Inspector's host, so the capture holds no ref for it.
+    // here an excluded subtree, so the capture holds no ref for it.
     document.body.innerHTML = `
       <main>
-        <ul data-ayme-inspector-host>
+        <ul data-ayme-exclude>
           <li id="item-0">Item 0</li>
         </ul>
       </main>

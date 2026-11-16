@@ -10,6 +10,7 @@ import type {
   AymePage,
   AymeWebMcpOptions,
   CustomTool,
+  ElementFilter,
   GoalLoopDecisionFunction,
 } from "@ayme-dev/ayme";
 
@@ -21,7 +22,7 @@ export const providerProps = {
     required: false,
   },
   ignore: {
-    type: Function as PropType<(element: Element) => boolean>,
+    type: [String, Function] as PropType<ElementFilter>,
     required: false,
   },
   customTools: { type: Array as PropType<CustomTool[]>, required: false },

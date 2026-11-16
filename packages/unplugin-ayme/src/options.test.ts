@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { PlaywrightTestConfig } from "@playwright/test";
 import { expect, expectTypeOf, it } from "vitest";
 import ts from "typescript";
-import type { AymePlaywrightOptions } from "./index";
+import type { AymePlaywrightOptions } from "./vite";
 
 it("matches the supported subset of Playwright's exported config type", () => {
   expectTypeOf<NonNullable<AymePlaywrightOptions["use"]>>().toEqualTypeOf<
@@ -41,7 +41,7 @@ it(
         );
       }
       const entry = resolve(staging, "consumer.mts");
-      const source = `import type { AymePlaywrightOptions } from './index.mjs';
+      const source = `import type { AymePlaywrightOptions } from './vite.mjs';
 const valid: AymePlaywrightOptions = { use: { actionTimeout: 10, navigationTimeout: 0, testIdAttribute: 'data-id' } };
 // @ts-expect-error timeout must be numeric
 const invalid: AymePlaywrightOptions = { use: { actionTimeout: 'bad' } };

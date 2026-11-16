@@ -1,4 +1,4 @@
-import type {} from "@mcp-b/webmcp-types";
+import type {} from "webmcp-types";
 
 /** The part of `document.modelContext` publication uses. */
 export type WebMcpDriver = Pick<

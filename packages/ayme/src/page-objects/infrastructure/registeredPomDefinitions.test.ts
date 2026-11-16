@@ -4,10 +4,20 @@ import type { PomManifest, ToolManifest } from "../../shared";
 import type { AymePage } from "../../runtime";
 import type { TestSession } from "../../test-utils/session.testSupport";
 
-class FakeMutationObserver {
-  observe() {}
-  disconnect() {}
-}
+vi.mock(
+  "../../page-state/infrastructure/browserInPage",
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    ...(
+      await import("../../test-utils/pageOfDocument.testSupport")
+    ).standInPageOfDocument(),
+  })
+);
+vi.mock("./inPageDriver", async () =>
+  (
+    await import("../../test-utils/pageDriver.testSupport")
+  ).standInDriverModule()
+);
 
 const action = (
   methodName: string,
@@ -50,7 +60,6 @@ describe("POM definition catalog", () => {
   beforeEach(() => {
     vi.stubGlobal("window", {});
     vi.stubGlobal("document", { documentElement: {} });
-    vi.stubGlobal("MutationObserver", FakeMutationObserver);
   });
 
   afterEach(() => {
@@ -121,6 +130,9 @@ describe("POM definition catalog", () => {
                 required: ["value"],
                 additionalProperties: false,
               },
+              parameters: [
+                { name: "value", optional: false, schema: { type: "string" } },
+              ],
               returnPoms: ["HiddenDialog"],
             },
           ],
@@ -276,6 +288,9 @@ describe("POM definition catalog", () => {
               name: "run",
               description: callable?.authorDescription,
               inputSchema: callable?.inputSchema,
+              parameters: [
+                { name: "value", optional: false, schema: { type: "string" } },
+              ],
               returnPoms: [],
             },
           ],

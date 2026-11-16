@@ -17,9 +17,18 @@ const allowedSlices = {
   contract: [],
   pairing: ["contract"],
   connection: ["pairing", "contract"],
-  tools: ["connection", "pairing", "contract"],
-  server: ["tools", "connection", "pairing", "contract"],
-  client: ["tools", "connection", "pairing", "contract"],
+  inspector: ["connection", "pairing", "contract"],
+  tools: ["inspector", "connection", "pairing", "contract"],
+  "served-page-objects": ["connection", "pairing", "contract"],
+  server: [
+    "served-page-objects",
+    "tools",
+    "inspector",
+    "connection",
+    "pairing",
+    "contract",
+  ],
+  client: ["tools", "inspector", "connection", "pairing", "contract"],
   process: ["tools", "connection", "pairing", "contract"],
   testing: [],
 };
@@ -64,7 +73,13 @@ export default [
   ...horizontalBoundaries({
     packageRoot,
     // contract, the composition roots and testing aren't layered.
-    enforcedSlices: ["pairing", "connection", "tools"],
+    enforcedSlices: [
+      "pairing",
+      "connection",
+      "inspector",
+      "tools",
+      "served-page-objects",
+    ],
   }),
   {
     files: [sourceFiles],

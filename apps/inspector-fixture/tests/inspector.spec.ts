@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 import type { Inspector } from "@ayme-dev/inspector/testing";
 
-import { expect, openFixture, test } from "./fixtures";
+import { expect, openFixture, outline, test } from "./fixtures";
 
 // E2E: the built Inspector on fixture pages with a real Page Object, the
 // Ayme runtime and a recording WebMCP driver. Each test has one reason to
@@ -92,8 +92,6 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   inspector,
   listPage,
 }) => {
-  const outline = (element: typeof listPage.addItemButton) =>
-    element.evaluate((target) => getComputedStyle(target).outlineStyle);
   const { navigator } = inspector;
 
   await navigator.search("Add item");
@@ -104,8 +102,45 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   await page.mouse.move(0, 0);
   await navigator.result('textbox "New item"').hover();
 
-  await expect.poll(() => outline(listPage.addItemButton)).toBe("solid");
-  await expect.poll(() => outline(listPage.newItemInput)).toBe("dashed");
+  await expect.poll(outline(listPage.addItemButton)).toBe("solid");
+  await expect.poll(outline(listPage.newItemInput)).toBe("dashed");
+});
+
+test("the app's DOM gains no attribute while an element is highlighted", async ({
+  page,
+  inspector,
+  listPage,
+}) => {
+  /** Every attribute of every element of the app, outside the panel's host and Playwright's overlay. */
+  const attributes = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("*")]
+        .filter(
+          (element) =>
+            !["ayme-inspector", "x-pw-glass"].includes(element.localName)
+        )
+        .map((element) =>
+          [
+            element.localName,
+            ...[...element.attributes].map(
+              ({ name, value }) => `${name}=${value}`
+            ),
+          ].join(" ")
+        )
+    );
+  const { navigator } = inspector;
+  const before = await attributes();
+
+  await navigator.search("Add item");
+  await navigator.result('button "Add item"').click();
+  await navigator.search("New item");
+  await page.mouse.move(0, 0);
+  await navigator.result('textbox "New item"').hover();
+
+  // Both highlights are showing.
+  await expect.poll(outline(listPage.addItemButton)).toBe("solid");
+  await expect.poll(outline(listPage.newItemInput)).toBe("dashed");
+  expect(await attributes()).toEqual(before);
 });
 
 test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({

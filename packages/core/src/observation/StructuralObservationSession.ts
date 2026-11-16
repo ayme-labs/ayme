@@ -151,12 +151,17 @@ export class StructuralObservationSession {
     this._pageIdentities(entry.pageId).pending.push({
       entry,
       moment: {
-        visitId: this._timeline.currentVisitIdForPage(entry.pageId),
+        visitId:
+          entry.capturedForVisitId ??
+          this._timeline.currentVisitIdForPage(entry.pageId),
         afterActionId:
-          entry.relation === "before"
-            ? this._timeline.latestActionStartedForPage(entry.pageId)
-            : (entry.capturedForActionId ??
-              this._timeline.latestActionStartedForPage(entry.pageId)),
+          entry.relation !== "before" && entry.capturedForActionId
+            ? entry.capturedForActionId
+            : this._timeline.latestActionStartedForPage(
+                entry.pageId,
+                entry.at,
+                entry.capturedForActionId
+              ),
       },
     });
     return entry;

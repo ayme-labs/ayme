@@ -5,10 +5,10 @@ import { ChevronDownIcon, CrosshairIcon } from "lucide-react";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { pressable } from "../../shared";
+import { NodeDetail, pressable } from "../../shared";
 
 import type { RefNode, RefTreeRow } from "../domain/refTree";
-import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
+import { refText, RefTreeView } from "./RefTreeView";
 
 /**
  * The control of a ref field. Pressing it opens a searchable tree of the

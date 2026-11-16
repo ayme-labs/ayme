@@ -8,14 +8,19 @@ import type { Locator } from "@playwright/test";
 @ayme
 export class KeyField {
   /** Shows the key, e.g. `ControlOrMeta+C`. */
+  @ayme.child
   readonly input: Locator;
   /** Shows the mode and switches it. */
+  @ayme.child
   readonly modeButton: Locator;
   /** What to press while recording, or what's wrong with the key. */
+  @ayme.child
   readonly help: Locator;
   /** Replaces the key with the one it names, e.g. "Use Shift+Tab". */
+  @ayme.child
   readonly fixButton: Locator;
   /** While searching: the key names that match. */
+  @ayme.collection
   readonly options: Locator;
 
   constructor(card: Locator, path: string) {

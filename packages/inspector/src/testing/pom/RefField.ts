@@ -8,14 +8,20 @@ import type { Locator } from "@playwright/test";
 @ayme
 export class RefField {
   /** Shows the ref chosen, e.g. `e6 button "Add item"`, and opens the tree. */
+  @ayme.child
   readonly chooser: Locator;
   /** The crosshair: picks a ref by pointing at the page. */
+  @ayme.child
   readonly pickButton: Locator;
   /** While picking: what to click on the page. */
+  @ayme.child
   readonly pickHint: Locator;
+  @ayme.child
   readonly search: Locator;
+  @ayme.child
   readonly tree: Locator;
   /** The tree's nodes, each read as its ref, role and name. */
+  @ayme.collection
   readonly nodes: Locator;
 
   constructor(card: Locator, path: string) {

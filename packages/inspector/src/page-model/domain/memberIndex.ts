@@ -6,14 +6,17 @@ import type { ObjectMember, PageModel, PageObjectNode } from "./pageModel";
  * declares it.
  */
 export type IndexedMember = {
-  /** Its path, e.g. "ListPage.items[0]" or "ListPage.items[0].nameButton". */
+  /**
+   * Its path, e.g. "ListPage.items[0]", "ListPage.items[0].nameButton", or
+   * "RunsTable.rows[1]" for an element of a Locator collection.
+   */
   path: string;
   /**
    * The Page Object it is, or that declares it; the collection itself for a
    * collection's path.
    */
   owner: PageObjectNode;
-  /** The locator, when it is one. */
+  /** The locator, when it is one: a Locator collection for its element. */
   locator?: ObjectMember;
 };
 
@@ -97,6 +100,11 @@ export function indexMembers(
             const member = { path: locator.path, owner: node, locator };
             add(byTarget, locator.path, member);
             add(byPath, locator.path, member);
+            for (const path of elementPaths(locator)) {
+              const element = { path, owner: node, locator };
+              add(byTarget, path, element);
+              add(byPath, path, element);
+            }
           }
       }
       visit(node.children, node);
@@ -146,8 +154,8 @@ export function indexMembers(
     },
     targets: (path) =>
       new Set(
-        named(path).flatMap(({ owner, locator }) => {
-          if (locator) return [locator.path];
+        named(path).flatMap(({ path, owner, locator }) => {
+          if (locator) return locatorTargets(path, locator);
           if (owner.kind === "collection")
             return owner.children.map(({ path }) => rootTargetPath(path));
           return [rootTargetPath(owner.path)];
@@ -156,7 +164,9 @@ export function indexMembers(
     within: (path, options) =>
       new Set(
         named(path, options).flatMap(({ path, owner, locator }) =>
-          locator ? [path] : [...subtreePaths(owner)]
+          locator
+            ? [path, ...locatorTargets(path, locator)]
+            : [...subtreePaths(owner)]
         )
       ),
     toolInstances: (toolName) =>
@@ -185,6 +195,30 @@ export function pathBelowPage(node: PageObjectNode, index: MemberIndex) {
 /** A node's path and its members' and descendants' paths. */
 function* subtreePaths(node: PageObjectNode): Generator<string> {
   yield node.path;
-  for (const member of node.members) yield member.path;
+  for (const member of node.members) {
+    yield member.path;
+    yield* elementPaths(member);
+  }
   for (const child of node.children) yield* subtreePaths(child);
+}
+
+/**
+ * The registry target paths of a Locator collection's elements, by index,
+ * e.g. "RunsTable.rows[1]"; none for any other member.
+ */
+function elementPaths(member: ObjectMember): string[] {
+  return Array.from(
+    { length: member.elementCount ?? 0 },
+    (_, index) => `${member.path}[${index}]`
+  );
+}
+
+/**
+ * The registry target paths a locator member's `path` stands for: a Locator
+ * collection's elements for the collection, else the path itself.
+ */
+function locatorTargets(path: string, locator: ObjectMember): string[] {
+  return path === locator.path && locator.collection
+    ? elementPaths(locator)
+    : [path];
 }

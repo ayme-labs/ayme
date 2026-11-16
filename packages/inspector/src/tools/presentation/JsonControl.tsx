@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { JsonValue } from "@ayme-dev/ayme";
+import type { JsonValue } from "@ayme-dev/ayme/inspector";
 
 /** A value the form has no control for, typed as JSON. */
 export function JsonControl({

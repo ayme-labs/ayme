@@ -1,22 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { callers, type Ayme, type Run as LogRun } from "@ayme-dev/ayme";
 import {
-  getAppProcessTools,
-  getStartedAyme,
-  listAvailablePomTools,
-  subscribeToAgentImageRuns,
-  subscribeToStartedAyme,
-} from "@ayme-dev/ayme/internal";
+  callers,
+  type Run as LogRun,
+  type Interaction,
+  type JsonValue,
+} from "@ayme-dev/ayme/inspector";
 
-import { useTabState } from "../../shared";
+import { inspectorClient, useTabState } from "../../shared";
 import {
   rowIdOf,
   shownRuns,
   type RunNotes,
   type RunTarget,
 } from "../domain/logRuns";
-import type { CollectionItem, ToolArguments } from "../domain/run";
+import type {
+  CollectionItem,
+  InteractionDescription,
+  ToolArguments,
+} from "../domain/run";
+import { recordedTargetName } from "../domain/recordedTarget";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { interactionMembers } from "./interactionMembers";
 
@@ -49,10 +52,15 @@ type PendingRun = {
 export function useRuns({
   onSettled,
   itemOf,
+  describeInteraction,
 }: {
   onSettled: () => void;
   /** The item of the collection tool `toolName` whose root is `ref` now. */
   itemOf: (toolName: string, ref: string) => CollectionItem | undefined;
+  /** Reads the latest look synchronously, before an interaction changes the page. */
+  describeInteraction: (
+    interaction: Interaction
+  ) => Omit<InteractionDescription, "target">;
 }) {
   const [stored, setStored] = useTabState(runsKey, decodeRuns, encodeRuns);
   // The rows kept from before the panel mounted, read once.
@@ -99,12 +107,61 @@ export function useRuns({
       return item ? { item } : {};
     };
 
+    const client = inspectorClient();
     // The Runs seen so far, the ended Runs whose Interactions have been
     // named, and the agent's image Runs whose file has been noted, by row id.
     const seen = new Set<string>();
+    const descriptions = new Map<string, InteractionDescription[]>();
     const described = new Set<string>();
     const saved = new Set<string>();
     let listedRuns = NO_RUNS;
+    // The Interactions named a ref, not yet named from the recorded page
+    // state, by row id and place in the Run.
+    let unnamed: { rowId: string; index: number; ref: string }[] = [];
+    const captureInputs = (run: LogRun, rowId: string) => {
+      const captured = descriptions.get(rowId) ?? [];
+      for (const interaction of run.interactions.slice(captured.length)) {
+        if (interaction.ref)
+          unnamed.push({
+            rowId,
+            index: captured.length,
+            ref: interaction.ref,
+          });
+        captured.push(describeInteraction(interaction));
+      }
+      descriptions.set(rowId, captured);
+    };
+    // Names the new Interactions from the page state the runtime recorded
+    // for them, read as soon as they are seen: a target a Run added or
+    // removed is named before the Inspector's own look catches up.
+    const nameTargets = async () => {
+      const waiting = unnamed;
+      unnamed = [];
+      if (!waiting.length) return;
+      const recorded = await client.recordedPageState().catch(() => undefined);
+      for (const { rowId, index, ref } of waiting) {
+        const target = recordedTargetName(recorded, ref);
+        const captured = descriptions.get(rowId);
+        if (!target || !captured?.[index]) continue;
+        const named = captured.map((description, place) =>
+          place === index ? { ...description, target } : description
+        );
+        descriptions.set(rowId, named);
+        note(rowId, { descriptions: named });
+      }
+    };
+    const resolveMembers = async (run: LogRun, rowId: string) => {
+      const members = await interactionMembers(run.interactions);
+      const captured = descriptions.get(rowId);
+      if (!captured) return;
+      const resolved = captured.map((description, index) =>
+        description.member || !members[index]
+          ? description
+          : { ...description, member: members[index] }
+      );
+      descriptions.set(rowId, resolved);
+      note(rowId, { descriptions: resolved });
+    };
     const read = (runs: readonly LogRun[]) => {
       listedRuns = runs;
       const listed = new Set(runs.map(rowIdOf));
@@ -114,6 +171,7 @@ export function useRuns({
       const fresh = new Map<string, RunNotes>();
       for (const run of runs) {
         const rowId = rowIdOf(run);
+        captureInputs(run, rowId);
         if (seen.has(rowId)) continue;
         seen.add(rowId);
         fresh.set(rowId, {
@@ -127,30 +185,41 @@ export function useRuns({
         );
         for (const [rowId, runNotes] of fresh)
           notes.set(rowId, { ...notes.get(rowId), ...runNotes });
+        for (const [rowId, captured] of descriptions) {
+          if (!listed.has(rowId)) continue;
+          notes.set(rowId, {
+            ...notes.get(rowId),
+            descriptions: [...captured],
+          });
+        }
         return { runs, notes };
       });
+      for (const rowId of descriptions.keys())
+        if (!listed.has(rowId)) descriptions.delete(rowId);
+      void nameTargets();
       for (const run of runs) {
         const rowId = rowIdOf(run);
         if (run.status === "running" || described.has(rowId)) continue;
         described.add(rowId);
         if (!run.interactions.length) continue;
-        void interactionMembers(run.interactions).then((members) =>
-          note(rowId, { members })
-        );
+        void resolveMembers(run, rowId);
       }
     };
 
-    let unsubscribeFromLog = () => {};
-    const follow = (ayme: Ayme | undefined) => {
-      unsubscribeFromLog();
-      unsubscribeFromLog = ayme?.runs.subscribe(read) ?? (() => {});
-      read(ayme?.runs.list() ?? NO_RUNS);
+    // The Run log comes through the Inspector contract: its state lists the
+    // Runs, and says again whenever anything else in it changed.
+    let followed: readonly LogRun[] | undefined;
+    const follow = () => {
+      const runs = client.current().runs as readonly LogRun[];
+      if (runs === followed) return;
+      followed = runs;
+      read(runs);
     };
-    const unsubscribeFromStarted = subscribeToStartedAyme(follow);
-    follow(getStartedAyme());
+    const unsubscribeFromLog = client.subscribe(follow);
+    follow();
     // `ayme mcp` reports the file it saves an image to after the Run ended,
     // so the log already lists it: the newest such Run with no file yet.
-    const unsubscribeFromImages = subscribeToAgentImageRuns(
+    const unsubscribeFromImages = client.onAgentImageRun(
       ({ name, input, savedTo }) => {
         if (savedTo === undefined) return;
         const json = JSON.stringify(input);
@@ -168,11 +237,10 @@ export function useRuns({
       }
     );
     return () => {
-      unsubscribeFromStarted();
       unsubscribeFromLog();
       unsubscribeFromImages();
     };
-  }, [itemOf]);
+  }, [itemOf, describeInteraction]);
 
   const runs = useMemo(
     () =>
@@ -188,22 +256,19 @@ export function useRuns({
 
   const invoke = useCallback(
     async (toolName: string, args: ToolArguments, item?: CollectionItem) => {
-      const ayme = getStartedAyme();
-      const appProcessTools = ayme && getAppProcessTools(ayme);
-      const appProcess =
-        appProcessTools?.list().some(({ name }) => name === toolName) ?? false;
       const panelRun: PendingRun = {
         toolName,
         input: JSON.stringify(args),
         ...(item ? { item } : {}),
       };
       pending.current.push(panelRun);
-      const by = { by: callers.inspector };
       try {
-        if (appProcess) await appProcessTools!.run(toolName, args, by);
-        else await ayme?.tools.run(toolName, args as never, by);
-      } catch {
-        // The log records the failed Run, which the panel shows.
+        // A failed Run is the log's to record, which the panel shows.
+        await inspectorClient().runTool({
+          name: toolName,
+          input: args as JsonValue,
+          by: callers.inspector,
+        });
       } finally {
         pending.current.splice(pending.current.indexOf(panelRun), 1);
         onSettled();
@@ -230,13 +295,16 @@ function decodeTime(stored: unknown): number {
  * the registry as it is now. The ref identifies its instance separately.
  */
 function targetOf(toolName: string): { target?: RunTarget } {
-  const pomTool = listAvailablePomTools().find(
-    (candidate) => candidate.name === toolName
-  );
+  const pomTool = inspectorClient()
+    .current()
+    .tools.find(
+      (candidate) =>
+        candidate.name === toolName && candidate.className !== undefined
+    );
   if (!pomTool) return {};
   return {
     target: {
-      className: pomTool.className,
+      className: pomTool.className!,
     },
   };
 }

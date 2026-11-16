@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Ayme's MCP server for coding agents, and the page client it pairs with.",
   "keywords": [
     "ai-agent",
@@ -63,13 +63,18 @@
     "@modelcontextprotocol/sdk": "^1.32.0",
     "@trpc/client": "^11.19.0",
     "@trpc/server": "^11.19.0",
+    "esbuild": "^0.28.2",
     "ws": "^8.22.0",
     "zod": "^4.5.4"
   },
   "peerDependencies": {
+    "@ayme-dev/inspector": "workspace:*",
     "@playwright/test": ">=1.29 <1.65"
   },
   "peerDependenciesMeta": {
+    "@ayme-dev/inspector": {
+      "optional": true
+    },
     "@playwright/test": {
       "optional": true
     }
@@ -84,11 +89,11 @@
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vite": "~8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.0"
   }
 }

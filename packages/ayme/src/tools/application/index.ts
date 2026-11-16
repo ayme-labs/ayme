@@ -3,19 +3,17 @@ export {
   subscribeToAgentImageRuns,
 } from "./agentImageRuns";
 export type { AgentImageRun } from "./agentImageRuns";
-export { acceptedRefNodes } from "./elementTools";
+export { elementToolTargets, registerCustomTool } from "./elementTools";
+export type { ElementToolTargets } from "./elementTools";
 export type {
   CustomTool,
   CustomToolContext,
   PublishedElementTool,
+  RegisteredElementTool,
   ReachOn,
   TargetField,
 } from "./elementTools";
-export {
-  getPageContextForDocument,
-  getPageContextTool,
-  getPomDefinitionText,
-} from "./pageContext";
+export { getPageContextTool, pageContextFor } from "./pageContext";
 export type { PageContext } from "./pageContext";
 export { peekToolName } from "./peek";
 export type { PeekRead, PeekResult, PeekSide, PeekTool } from "./peek";

@@ -1,11 +1,13 @@
 import {
   openPageChannel,
   type AgentImageRun,
+  type InspectorPort,
   type PageChannel,
   type PageTools,
 } from "../connection";
 import type { PageTool } from "../contract";
 import {
+  OUR_AYME,
   forgetStoredPairing,
   socketUrl,
   storePairing,
@@ -16,7 +18,7 @@ import {
 import { clientBehaviours } from "./clientBehaviours";
 import { pairingSources } from "./pairingSources";
 
-export type { AgentImageRun } from "../connection";
+export type { AgentImageRun, InspectorPort } from "../connection";
 export type { NotConnectedReason } from "../pairing";
 
 /**
@@ -26,6 +28,11 @@ export type { NotConnectedReason } from "../pairing";
 export type AgentConnectionRuntime = {
   readonly tools: PageTools;
   readonly recordAgentImage?: (run: AgentImageRun) => void;
+  /**
+   * The page's Inspector contract, in plain data, when the session serves an
+   * external Inspector: `ayme mcp` relays it to Inspector windows.
+   */
+  readonly inspector?: InspectorPort;
 };
 
 /**
@@ -83,7 +90,9 @@ const RECONNECTING_MS = 10_000;
  * another tab paired in this tab's place, the tab forgets its pairing; when
  * it does not know the pairing, the tab forgets it and looks for a server
  * again. When a busy server refuses its pairing without a token, it looks
- * again from its next focus. Returns what ends the connection, the tools of
+ * again from its next focus. When the server says the page's Ayme and its
+ * own can't work together, the tab reports it on the console, forgets its
+ * pairing and does not look again. Returns what ends the connection, the tools of
  * the App Processes paired with the server, which the server sends the
  * tab, and whether the tab is connected.
  */
@@ -164,7 +173,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     // reports each failed retry as a loss too.
     let lost = false;
     const channel = openPageChannel(() => socketUrl(current), {
-      hello: () => ({ tab, url: window.location.href }),
+      hello: () => ({ tab, url: window.location.href, ...OUR_AYME }),
       onWelcome({ token, agent }) {
         lost = false;
         if (open === opened)
@@ -182,6 +191,14 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         forgetStoredPairing(tab);
         notConnected();
         startSources();
+      },
+      onVersionGap(gap) {
+        if (open !== opened) return;
+        opened.close();
+        open = undefined;
+        forgetStoredPairing(tab);
+        notConnected();
+        console.error(`[ayme] ${gap}`);
       },
       onLost() {
         if (open !== opened || lost) return;
@@ -210,6 +227,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         tools: ayme.tools,
         channel,
         recordAgentImage: ayme.recordAgentImage,
+        inspector: ayme.inspector,
       })
     );
     // Not a ClientBehaviour: it feeds `processTools`, which this function

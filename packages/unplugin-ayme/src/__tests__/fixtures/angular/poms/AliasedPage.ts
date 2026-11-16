@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 
 @ayme
 export class AliasedPage {
+  @ayme.child
   readonly homeLink: Locator;
 
   constructor(page: Page) {

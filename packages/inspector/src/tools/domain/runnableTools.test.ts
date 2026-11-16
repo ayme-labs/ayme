@@ -1,6 +1,9 @@
 import { expect, it } from "vitest";
 
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+import type {
+  InspectorPageObject,
+  ToolParameter,
+} from "@ayme-dev/ayme/inspector";
 
 import { listRunnableTools } from "./runnableTools";
 
@@ -8,7 +11,7 @@ import { listRunnableTools } from "./runnableTools";
 // the runtime lists as live. The registration and the live list are
 // hand-written.
 
-const addItem: RegisteredPom["tools"][number] = {
+const addItem: InspectorPageObject["tools"][number] = {
   className: "ListPage",
   rooted: false,
   methodName: "addItem",
@@ -18,7 +21,7 @@ const addItem: RegisteredPom["tools"][number] = {
   inputSchema: { type: "object" },
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
-const rename: RegisteredPom["tools"][number] = {
+const rename: InspectorPageObject["tools"][number] = {
   className: "ListItem",
   rooted: true,
   methodName: "rename",
@@ -39,13 +42,12 @@ const rename: RegisteredPom["tools"][number] = {
     },
   ],
 };
-const listPage: RegisteredPom = {
+const listPage: InspectorPageObject = {
   id: "ListPage",
-  instance: {},
   manifest: { className: "ListPage", members: [], components: [], tools: [] },
   memberObservations: [],
-  presentPaths: new Set([""]),
-  rootMemberPaths: new Set(),
+  presentPaths: [""],
+  rootMemberPaths: [],
   tools: [addItem, rename],
 };
 const markElement = {
@@ -78,6 +80,58 @@ it("runs a Page Object action with its parameters", () => {
   });
 });
 
+it("gives a Page Object action the parameters its manifest declares, a Child's too", () => {
+  const credentials: ToolParameter = {
+    destructured: "object",
+    optional: false,
+    fields: [
+      { name: "email", optional: false, schema: { type: "string" } },
+      { name: "password", optional: false, schema: { type: "string" } },
+    ],
+  };
+  const point: ToolParameter = {
+    destructured: "array",
+    optional: false,
+    fields: [
+      { name: "x", optional: false, schema: { type: "number" } },
+      { name: "y", optional: false, schema: { type: "number" } },
+    ],
+  };
+  const loginPage: InspectorPageObject = {
+    ...listPage,
+    id: "LoginPage",
+    manifest: {
+      className: "LoginPage",
+      members: [],
+      components: [
+        {
+          className: "ListItem",
+          members: [],
+          tools: [
+            {
+              methodName: "rename",
+              toolName: "ListItem.rename",
+              parameters: [point],
+            },
+          ],
+        },
+      ],
+      tools: [
+        {
+          methodName: "addItem",
+          toolName: "ListPage.addItem",
+          parameters: [credentials],
+        },
+      ],
+    },
+  };
+
+  const tools = listRunnableTools([loginPage], []);
+
+  expect(tools.get("ListPage.addItem")?.parameters).toEqual([credentials]);
+  expect(tools.get("ListItem.rename")?.parameters).toEqual([point]);
+});
+
 it("runs a rooted action on an item, with the action's own arguments", () => {
   const tools = listRunnableTools(
     [listPage],
@@ -104,7 +158,7 @@ it("can't run an action whose Page Object isn't on the page", () => {
 });
 
 it("describes a Page Object action the same on the page and off it", () => {
-  const openSettings: RegisteredPom["tools"][number] = {
+  const openSettings: InspectorPageObject["tools"][number] = {
     ...addItem,
     name: "ListPage.openSettings",
     methodName: "openSettings",

@@ -1,11 +1,7 @@
-// @vitest-environment jsdom
-
 import { describe, expect, it } from "vitest";
 import {
-  AriaRefSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
-  type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import type { PageStateCapture } from "../../page-state/domain";
 import {
@@ -23,6 +19,7 @@ import {
   clickTool,
   noul,
   refArg,
+  toolWithNodes,
 } from "../test-utils/stepDecision.testSupport";
 
 /**
@@ -35,7 +32,7 @@ import {
 describe("readRunOffAnswer", () => {
   it("rejects a run-off answer outside the elements it offered", () => {
     const capture = captureOfButtons(600);
-    const plan = planArguments(clickTool, capture);
+    const plan = planArguments(toolWithNodes(clickTool, capture), capture);
     if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
     const named: Record<string, string> = {
       [chunkQuestionId("ref", 1, ["ref"])]: "e10",
@@ -81,16 +78,16 @@ describe("fitListsToTarget", () => {
     ],
   };
 
-  /** A page whose one element, e1, is `element`. */
-  function captureOf(element: Element): PageStateCapture {
+  /**
+   * A page whose one node, e1, has `role`: a select is a combobox, a multiple
+   * select a listbox, as the browser's accessibility tree names them.
+   */
+  function captureOf(role: string): PageStateCapture {
     const tree = StructuralTree.fromAriaSnapshotYaml(
-      '- combobox "Size" [ref=e1]',
+      `- ${role} "Size" [ref=e1]`,
       new SyntheticAriaRefFactory()
     );
-    const elementsByRef = new Map<AriaRef, Element>([
-      [AriaRefSchema.parse("e1"), element],
-    ]);
-    return { tree, elementsByRef };
+    return { tree };
   }
 
   /**
@@ -98,7 +95,7 @@ describe("fitListsToTarget", () => {
    * medium and large with `scores`.
    */
   function chosenWith(capture: PageStateCapture, scores: readonly number[]) {
-    const plan = planArguments(selectTool, capture, {
+    const plan = planArguments(toolWithNodes(selectTool, capture), capture, {
       small: "S",
       medium: "M",
       large: "L",
@@ -119,7 +116,7 @@ describe("fitListsToTarget", () => {
   }
 
   it("sends a select element only the Goal Value scored highest", () => {
-    const capture = captureOf(document.createElement("select"));
+    const capture = captureOf("combobox");
     const chosen = chosenWith(capture, [0.6, 0.9, 0.7]);
 
     fitListsToTarget(selectTool, chosen, capture);
@@ -132,7 +129,7 @@ describe("fitListsToTarget", () => {
   });
 
   it("keeps the first of the Goal Values scored highest on a tie", () => {
-    const capture = captureOf(document.createElement("select"));
+    const capture = captureOf("combobox");
     const chosen = chosenWith(capture, [0.9, 0.6, 0.9]);
 
     fitListsToTarget(selectTool, chosen, capture);
@@ -141,9 +138,7 @@ describe("fitListsToTarget", () => {
   });
 
   it("sends a multiple select every Goal Value included", () => {
-    const select = document.createElement("select");
-    select.multiple = true;
-    const capture = captureOf(select);
+    const capture = captureOf("listbox");
     const chosen = chosenWith(capture, [0.6, 0.9, 0.7]);
 
     fitListsToTarget(selectTool, chosen, capture);
@@ -156,7 +151,7 @@ describe("fitListsToTarget", () => {
   });
 
   it("leaves the list alone for an element that is not a select", () => {
-    const capture = captureOf(document.createElement("button"));
+    const capture = captureOf("button");
     const chosen = chosenWith(capture, [0.6, 0.9, 0.7]);
 
     fitListsToTarget(selectTool, chosen, capture);

@@ -37,7 +37,7 @@ A build includes Ayme only when the plugin's `include` option is `true`. Without
 
 ## Supported versions
 
-Node.js 20.19 and later 20.x, or 22.12 and later; Vite 7 and 8; Angular 19 to 22 through `@angular-builders/custom-esbuild`; Next.js 16.0 and later with Turbopack. The plugin brings its own TypeScript compiler. Loading a Playwright config needs `@playwright/test` 1.62 to 1.64.
+Node.js 20.19 and later 20.x, or 22.12 and later; Vite 7 and 8; Angular 19 to 22 through `@angular-builders/custom-esbuild`; Next.js 16.0 and later with Turbopack. TypeScript 5.4 to 6.x, installed in the project: the plugin compiles Page Object Models with it. Loading a Playwright config needs `@playwright/test` 1.62 to 1.64.
 
 ## License
 

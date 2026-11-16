@@ -7,7 +7,7 @@
    such as server rendering, Angular's manual steps and optional WebMCP
    publication.
 3. Expose one of the project's existing actions on an existing POM, as
-   [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md) describes, in place of
+   [Page Object Models](ayme-page-objects.md) describes, in place of
    the quickstart's `ProjectsPage`.
 4. For a framework without an Ayme package, report that gap and stop at the
    documented integrations.

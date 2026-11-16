@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as index from "./index";
 import {
   absentPageObject,
   createAyme,
@@ -8,6 +9,7 @@ import {
   getStartedAyme,
   RuntimeStateError,
 } from "./absent";
+import * as absent from "./absent";
 
 // The entry a build without Ayme resolves `@ayme-dev/ayme` to: inert, and
 // every use of what the build left out fails naming it.
@@ -15,6 +17,18 @@ import {
 const removed = expect.objectContaining({
   name: "RuntimeStateError",
   message: expect.stringContaining("Ayme was removed from this build."),
+});
+
+describe("the absent entry's surface", () => {
+  it("has every value the index exports, so an app's import builds without Ayme", () => {
+    const missing = Object.keys(index).filter((name) => !(name in absent));
+    expect(missing).toEqual([]);
+  });
+
+  it("exports the exclusion mark the index does", () => {
+    expect(absent.EXCLUDE_ATTRIBUTE).toBe(index.EXCLUDE_ATTRIBUTE);
+    expect(absent.EXCLUDE_ATTRIBUTE).toBe("data-ayme-exclude");
+  });
 });
 
 describe("the absent session", () => {

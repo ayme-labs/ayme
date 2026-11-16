@@ -1,4 +1,4 @@
-import type { ToolResult } from "@ayme-dev/ayme";
+import type { ToolResult } from "@ayme-dev/ayme/inspector";
 
 import type { RunImage } from "./run";
 

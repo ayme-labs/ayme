@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/ayme",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Ayme's decorators, runtime and createAyme, and @ayme-dev/ayme/server for the Decision Endpoint.",
   "keywords": [
     "ai-agent",
@@ -38,6 +38,11 @@
       "import": "./dist/internal.mjs",
       "default": "./dist/internal.mjs"
     },
+    "./inspector": {
+      "types": "./dist/inspector.d.mts",
+      "import": "./dist/inspector.mjs",
+      "default": "./dist/inspector.mjs"
+    },
     "./absent": {
       "types": "./dist/absent.d.mts",
       "import": "./dist/absent.mjs",
@@ -48,6 +53,16 @@
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
     },
+    "./playwright": {
+      "types": "./dist/playwright.d.mts",
+      "import": "./dist/playwright.mjs",
+      "default": "./dist/playwright.mjs"
+    },
+    "./compiler": {
+      "types": "./dist/compiler.d.mts",
+      "import": "./dist/compiler.mjs",
+      "default": "./dist/compiler.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",
@@ -56,19 +71,24 @@
   },
   "scripts": {
     "build": "tsdown",
+    "sync:injected": "node scripts/syncInjectedScript.mjs",
     "lint": "eslint src --max-warnings 0",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests && vitest run --config vitest.typescript-floor.config.ts",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
     "test:package": "vitest run src/packedConsumer.test.ts",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
     "test:mutation": "stryker run"
   },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.65",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
-    "@ayme-dev/webmcp": "workspace:*"
+    "@ayme-dev/webmcp": "workspace:*",
+    "@playwright/test": ">=1.29 <1.65",
+    "typescript": ">=5.4 <7"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
@@ -81,6 +101,9 @@
       "optional": true
     },
     "@ayme-dev/webmcp": {
+      "optional": true
+    },
+    "typescript": {
       "optional": true
     }
   },
@@ -95,12 +118,13 @@
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser-playwright": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.9.1",
     "playwright": "^1.64.0",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "typescript-floor": "npm:typescript@5.4.5",
+    "vitest": "^5.1.0"
   }
 }

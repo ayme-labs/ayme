@@ -69,7 +69,7 @@ it("C1: passes every runtime option to the session unchanged", async () => {
   );
   const options: AymeOptions = {
     pageFactory,
-    ignore: (element) => element.matches(".assistant"),
+    ignore: ".assistant",
     customTools: [
       {
         name: "highlight_element",

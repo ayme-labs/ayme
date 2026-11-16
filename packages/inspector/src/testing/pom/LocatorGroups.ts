@@ -9,6 +9,7 @@ import { RefField } from "./RefField";
  * each with a container and its targets, by group number from 1.
  */
 export class LocatorGroups extends PanelPart {
+  @ayme.child
   readonly addGroupButton: Locator;
 
   constructor(card: Locator) {

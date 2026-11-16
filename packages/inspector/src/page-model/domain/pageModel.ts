@@ -1,15 +1,14 @@
 import type {
-  JsonSchema,
   PomDefinition,
   PomMemberObservation,
-} from "@ayme-dev/ayme";
+} from "@ayme-dev/ayme/inspector";
 import type {
   PomManifest,
   PomMemberManifest,
-  RegisteredPom,
+  InspectorPageObject,
   ToolManifest,
   ToolParameter,
-} from "@ayme-dev/ayme/internal";
+} from "@ayme-dev/ayme/inspector";
 
 /**
  * The page model the Model lens shows: the Page Objects on the page as a
@@ -55,7 +54,12 @@ export type ObjectMember = {
   kind: "locator" | "component";
   /** A child Page Object's model. */
   className?: string;
+  /** Whether it is a Child Collection, of Page Objects or of elements. */
   collection?: boolean;
+  /** A Locator collection's element count, each a target at its index. */
+  elementCount?: number;
+  /** The description its child declaration gives. */
+  description?: string;
   live: boolean;
   /** What the page probe found, e.g. "1 match", "3 items" or "not on page". */
   state: string;
@@ -97,7 +101,10 @@ export type ModelMember = {
   name: string;
   kind: "locator" | "component";
   className?: string;
+  /** Whether it is a Child Collection, of Page Objects or of elements. */
   collection?: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
   /**
    * Its path on the model, e.g. "ListItem.nameButton": what selects and
    * highlights it on every instance.
@@ -105,13 +112,8 @@ export type ModelMember = {
   path: string;
 };
 
-/**
- * An action's arguments from its input schema, or from the parameters a
- * manifest records, e.g. "(text: string)".
- */
-export type Signature = (
-  input: JsonSchema | readonly ToolParameter[]
-) => string;
+/** An action's arguments from the parameters it declares, e.g. "(text: string)". */
+export type Signature = (parameters: readonly ToolParameter[]) => string;
 
 /**
  * Builds the page model from the registered Page Objects, the live tools
@@ -121,7 +123,7 @@ export type Signature = (
  * agents read it, on the page or off it.
  */
 export function buildPageModel(
-  registrations: readonly RegisteredPom[],
+  registrations: readonly InspectorPageObject[],
   liveToolNames: ReadonlySet<string>,
   definitions: readonly PomDefinition[],
   signature: Signature
@@ -159,7 +161,7 @@ export function buildPageModel(
       return {
         name: action.name,
         ...describe(toolName, action.description),
-        signature: signature(action.inputSchema),
+        signature: signature(action.parameters),
         toolName,
         live: liveToolNames.has(toolName),
       };
@@ -193,13 +195,13 @@ export function* walk(
   }
 }
 
-/** An action's description as an object to spread: none when it has none. */
+/** A description as an object to spread: none when it has none. */
 function descriptionOf(description: string | undefined) {
   return description === undefined ? {} : { description };
 }
 
 function pageObject(
-  registration: RegisteredPom,
+  registration: InspectorPageObject,
   {
     liveToolNames,
     signature,
@@ -227,13 +229,13 @@ function pageObject(
     name: manifest.className,
     kind: "page",
     className: manifest.className,
-    live: registration.presentPaths.has(""),
+    live: registration.presentPaths.includes(""),
     ...objectParts(context, manifest, ""),
   };
 }
 
 type Context = {
-  registration: RegisteredPom;
+  registration: InspectorPageObject;
   liveToolNames: ReadonlySet<string>;
   signature: Signature;
   /** An action's description, by its tool's name and its author's text. */
@@ -268,12 +270,17 @@ function objectParts(
       ? `${path}.${member.memberName}`
       : member.memberName;
     // The member that resolved to the root is the root, not a child.
-    if (context.registration.rootMemberPaths.has(memberPath)) continue;
+    if (context.registration.rootMemberPaths.includes(memberPath)) continue;
     if (member.kind === "locator") {
       const observation = context.observations.get(memberPath);
       members.push({
         name: member.memberName,
         kind: "locator",
+        ...(member.collection === true && {
+          collection: true,
+          elementCount: isPresent(observation) ? observation.count : 0,
+        }),
+        ...descriptionOf(member.description),
         live: observation !== undefined && isPresent(observation),
         state: locatorState(observation),
         path: `${pageName}.${memberPath}`,
@@ -286,7 +293,7 @@ function objectParts(
     const childParts = (childPath: string) =>
       component &&
       (!ancestors.has(member.componentClassName) ||
-        context.registration.presentPaths.has(childPath) ||
+        context.registration.presentPaths.includes(childPath) ||
         context.observations.has(`${childPath}.root`))
         ? objectParts(context, component, childPath, nested)
         : {
@@ -304,7 +311,7 @@ function objectParts(
           name: `[${index}]`,
           kind: "item" as const,
           className: member.componentClassName,
-          live: context.registration.presentPaths.has(itemPath),
+          live: context.registration.presentPaths.includes(itemPath),
           ...childParts(itemPath),
         };
       });
@@ -333,6 +340,7 @@ function objectParts(
         kind: "component",
         className: member.componentClassName,
         collection: true,
+        ...descriptionOf(member.description),
         live: count > 0,
         state: plural(count, "item", "items"),
         path: collection.path,
@@ -341,7 +349,7 @@ function objectParts(
       continue;
     }
 
-    const live = context.registration.presentPaths.has(memberPath);
+    const live = context.registration.presentPaths.includes(memberPath);
     const child: UnkeyedNode = {
       path: `${pageName}.${memberPath}`,
       name: member.memberName,
@@ -355,6 +363,7 @@ function objectParts(
       name: member.memberName,
       kind: "component",
       className: member.componentClassName,
+      ...descriptionOf(member.description),
       live,
       state: live ? "on page" : "not on page",
       path: child.path,
@@ -389,12 +398,19 @@ function modelMember(
 ): ModelMember {
   const path = `${className}.${member.memberName}`;
   if (member.kind === "locator")
-    return { name: member.memberName, kind: "locator", path };
+    return {
+      name: member.memberName,
+      kind: "locator",
+      ...(member.collection === true && { collection: true }),
+      ...descriptionOf(member.description),
+      path,
+    };
   return {
     name: member.memberName,
     kind: "component",
     className: member.componentClassName,
     collection: member.collection,
+    ...descriptionOf(member.description),
     path,
   };
 }
@@ -405,7 +421,7 @@ function modelMember(
  * which a model does not list among its members.
  */
 function rootMemberPaths(
-  registrations: readonly RegisteredPom[],
+  registrations: readonly InspectorPageObject[],
   objects: readonly PageObjectNode[]
 ): ReadonlySet<string> {
   const classNames = new Map(
@@ -428,7 +444,9 @@ function rootMemberPaths(
   );
 }
 
-function isPresent(observation: PomMemberObservation | undefined) {
+function isPresent(
+  observation: PomMemberObservation | undefined
+): observation is PomMemberObservation {
   return (
     observation !== undefined &&
     observation.error === undefined &&

@@ -30,7 +30,8 @@ when it stops. With the option off, the page requests none of its code. It
 works whether WebMCP publication is on or off.
 
 For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
-`ayme mcp` with an MCP client (`startAgent`) and pairs a Playwright page through
+`ayme mcp` with an MCP client (`startAgent`, in another folder with a leading
+`{ cwd }`) and pairs a Playwright page through
 a connect link (`connectPage`); `Agent.call` returns the tool's own text and
 the change note apart. `freePort` picks a port outside the range a page scans,
 for `startAgent("--port", ...)` when no page should auto-pair with the server,
@@ -134,6 +135,17 @@ another App Process offers a tool with the same name.`
 
 The server logs each App Process that connects and disconnects on stderr.
 
+## The Inspector in a window
+
+With the optional `@ayme-dev/inspector` package installed, the server also
+serves the Inspector's external build at `/inspector` on its own port, and
+relays the Inspector contract to the paired tab over the connection it
+already holds. The server tool `ayme_inspect` returns the URL, and
+`ayme inspect` prints it from a terminal (`--port` looks on one port only; it
+prints a URL for each server that runs). Open it in a browser window beside
+the app, and give the app `inspector: { placement: "external" }` so its tab
+serves the contract. Without `@ayme-dev/inspector`, both say to install it.
+
 ## Ports
 
 The server listens on the first free port from 9350 to 9365, the range a page
@@ -169,6 +181,8 @@ the cases apart like this:
   the first tab's calls at once, the first tab forgets its pairing and does not
   reconnect, and the server works with the second tab.
 
+A duplicated tab keeps presenting the original tab's id, unlike a fresh second tab, and reopening a link with the same address and token does not give it a new id.
+
 While the page is away, no page is paired. A closed tab leaves it that way
 until a tab pairs again.
 
@@ -194,4 +208,7 @@ A connection that sends no `Origin` is accepted without a token too: browsers
 always send one, so it comes from a local program, which can already act as
 you (ADR-0033). Only such a connection may pair as an App Process. Any local
 program can therefore offer tools to the agent. The page and App Processes
-pair only with a loopback address.
+pair only with a loopback address. The Inspector's page and script are served
+to a request whose `Host` is `127.0.0.1` or `localhost`, and its WebSocket
+accepts only the page the server served (or a local program), so a website
+cannot read them or drive the page through the window's channel.

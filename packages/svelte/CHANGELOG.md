@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/ayme-labs/ayme/compare/svelte-v0.1.1...svelte-v0.2.0) (2026-11-04)
+
+
+### Miscellaneous Chores
+
+* **svelte:** Synchronize ayme versions
+
 ## [0.1.1](https://github.com/ayme-labs/ayme/compare/svelte-v0.1.0...svelte-v0.1.1) (2026-10-30)
 
 

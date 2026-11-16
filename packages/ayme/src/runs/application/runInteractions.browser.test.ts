@@ -83,6 +83,9 @@ const SAVE = "locator('#save')";
 describe("a Run's Interactions, in Chromium", () => {
   let ayme: Ayme;
   let stop: (() => void) | undefined;
+  let itemRef: string;
+  let addRef: string;
+  let saveRef: string;
 
   afterEach(() => {
     ayme.pom.unregister(ListPage);
@@ -97,7 +100,10 @@ describe("a Run's Interactions, in Chromium", () => {
     ayme = createAyme({ pageFactory: () => createPage(), ...options });
     stop = ayme.start();
     ayme.pom.register(ListPage);
-    await ayme.tools.run("snapshot", {});
+    const { structure } = await ayme.tools.run("snapshot", {});
+    itemRef = structure.match(/(e\d+) textbox "Item"/)![1]!;
+    addRef = structure.match(/(e\d+) button "Add"/)![1]!;
+    saveRef = structure.match(/(e\d+) button "Save"/)![1]!;
   }
 
   /** The Runs this test started, past the ones earlier tests left. */
@@ -119,8 +125,8 @@ describe("a Run's Interactions, in Chromium", () => {
       expect.objectContaining({
         tool: "ListPage.add",
         interactions: [
-          { operation: "fill", locator: ITEM, value: "Milk" },
-          { operation: "click", locator: ADD },
+          { operation: "fill", locator: ITEM, ref: itemRef, value: "Milk" },
+          { operation: "click", locator: ADD, ref: addRef },
         ],
       }),
     ]);
@@ -138,7 +144,7 @@ describe("a Run's Interactions, in Chromium", () => {
     expect(runsSince(before)).toEqual([
       expect.objectContaining({
         tool: "ListPage.check",
-        interactions: [{ operation: "click", locator: SAVE }],
+        interactions: [{ operation: "click", locator: SAVE, ref: saveRef }],
       }),
     ]);
   });
@@ -164,13 +170,13 @@ describe("a Run's Interactions, in Chromium", () => {
       expect.objectContaining({
         by: "assistant",
         interactions: [
-          { operation: "fill", locator: ITEM, value: "Eggs" },
-          { operation: "click", locator: ADD },
+          { operation: "fill", locator: ITEM, ref: itemRef, value: "Eggs" },
+          { operation: "click", locator: ADD, ref: addRef },
         ],
       }),
       expect.objectContaining({
         by: callers.inspector,
-        interactions: [{ operation: "click", locator: SAVE }],
+        interactions: [{ operation: "click", locator: SAVE, ref: saveRef }],
       }),
     ]);
   });
@@ -201,15 +207,15 @@ describe("a Run's Interactions, in Chromium", () => {
     expect(custom).toMatchObject({
       tool: "fill_then_save",
       interactions: [
-        { operation: "fill", locator: ITEM, value: "Tea" },
-        { operation: "hover", locator: ADD },
+        { operation: "fill", locator: ITEM, ref: itemRef, value: "Tea" },
+        { operation: "hover", locator: ADD, ref: addRef },
       ],
     });
     expect(children).toEqual([
       expect.objectContaining({
         tool: "ListPage.save",
         parent: custom!.id,
-        interactions: [{ operation: "click", locator: SAVE }],
+        interactions: [{ operation: "click", locator: SAVE, ref: saveRef }],
       }),
     ]);
   });
@@ -243,14 +249,14 @@ describe("a Run's Interactions, in Chromium", () => {
         tool: "ListPage.add",
         parent: custom!.id,
         interactions: [
-          { operation: "fill", locator: ITEM, value: "Milk" },
-          { operation: "click", locator: ADD },
+          { operation: "fill", locator: ITEM, ref: itemRef, value: "Milk" },
+          { operation: "click", locator: ADD, ref: addRef },
         ],
       }),
       expect.objectContaining({
         tool: "ListPage.save",
         parent: custom!.id,
-        interactions: [{ operation: "click", locator: SAVE }],
+        interactions: [{ operation: "click", locator: SAVE, ref: saveRef }],
       }),
     ]);
   });
@@ -292,12 +298,12 @@ describe("a Run's Interactions, in Chromium", () => {
       expect.objectContaining({
         tool: "ListPage.save",
         parent: goal!.id,
-        interactions: [{ operation: "click", locator: SAVE }],
+        interactions: [{ operation: "click", locator: SAVE, ref: saveRef }],
       }),
       expect.objectContaining({
         tool: "ListPage.save",
         parent: goal!.id,
-        interactions: [{ operation: "click", locator: SAVE }],
+        interactions: [{ operation: "click", locator: SAVE, ref: saveRef }],
       }),
     ]);
   });

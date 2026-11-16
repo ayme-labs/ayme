@@ -8,6 +8,7 @@ export class ResultsPage {}
 
 @ayme
 export class SearchPage {
+  @ayme.child
   searchBox!: SearchBox;
 
   @ayme.action

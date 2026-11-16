@@ -19,9 +19,10 @@ import { configureGoalLoop } from "../../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../../goal-loop/application";
 import {
   getInteractionHistory,
-  getPageStateForElements,
   getPageStateSession,
 } from "../infrastructure/pageState";
+import { refsOfSelectors } from "../../test-utils/elementRefs.testSupport";
+import { pageOfDocument } from "../infrastructure";
 import { rootOf } from "../../test-utils/pomRoot.testSupport";
 import {
   agentTools,
@@ -135,11 +136,9 @@ describe("Interaction history in Chromium", () => {
     );
     expect(firstVisit.cause).toBe("initial");
 
-    window.history.pushState(null, "", "?route=orders");
+    window.history.pushState(null, "", "/orders");
     await expect.poll(() => visits()).toHaveLength(2);
-    expect(visits()[1]!.urls).toEqual([
-      new URL("?route=orders", LOADED_URL).href,
-    ]);
+    expect(visits()[1]!.urls).toEqual([new URL("/orders", LOADED_URL).href]);
     await readStructure();
     expect(
       (await history().observations.getVisitEvidence(visits()[1]!.id)).cause
@@ -153,11 +152,11 @@ describe("Interaction history in Chromium", () => {
     );
     expect(visits()).toHaveLength(2);
     expect(visits()[1]!.urls).toEqual([
-      new URL("?route=orders", LOADED_URL).href,
-      new URL("?route=orders#details", LOADED_URL).href,
+      new URL("/orders", LOADED_URL).href,
+      new URL("/orders#details", LOADED_URL).href,
     ]);
 
-    window.history.replaceState(null, "", "?route=customers");
+    window.history.replaceState(null, "", "/customers");
     await expect.poll(() => visits()).toHaveLength(3);
   });
 
@@ -231,9 +230,26 @@ describe("Interaction history in Chromium", () => {
     if (resolved.status !== "resolved")
       throw new Error(`Expected ${addRef} to resolve, got ${resolved.reason}.`);
     expect(resolved.currentRef).not.toBe(addRef);
-    expect(
-      (await getPageStateForElements([document.querySelector("#add")!])).refs
-    ).toEqual([resolved.currentRef]);
+    expect(await refsOfSelectors("#add")).toEqual([resolved.currentRef]);
+  });
+
+  it("attributes a node that appeared on its own between two actions to the earlier action", async () => {
+    document.body.innerHTML = '<main><button id="save">Save</button></main>';
+    startRuntime();
+    await act("click", { target: refFor(await readStructure(), "Save") });
+    const earlier = lastActionId();
+
+    document
+      .querySelector("main")!
+      .insertAdjacentHTML("beforeend", '<p id="note">Saved elsewhere</p>');
+    // An action with no target captures the page only as its before.
+    await act("press_key", { key: "a" });
+    expect(lastActionId()).not.toBe(earlier);
+    const [noteRef] = await refsOfSelectors("#note");
+    if (!noteRef) throw new Error("Expected a ref for the note.");
+    const ledger = await readLedger();
+
+    expect(ledger.lifecycle(noteRef)?.appeared.afterActionId).toBe(earlier);
   });
 
   it("records the action and Visit a node disappeared in", async () => {
@@ -244,9 +260,7 @@ describe("Interaction history in Chromium", () => {
     });
     startRuntime();
     const structure = await readStructure();
-    const [draftRef] = (
-      await getPageStateForElements([document.querySelector("#draft")!])
-    ).refs;
+    const [draftRef] = await refsOfSelectors("#draft");
     if (!draftRef) throw new Error("Expected a ref for the draft paragraph.");
 
     await act("click", {
@@ -270,7 +284,7 @@ describe("Interaction history in Chromium", () => {
     const saveRef = refFor(await readStructure(), "Save");
     const visitsBefore = history().observations.getVisits().length;
 
-    window.history.pushState(null, "", "?route=continuity");
+    window.history.pushState(null, "", "/continuity");
     const save = document.querySelector("#save")!;
     save.replaceWith(save.cloneNode(true));
     await expect
@@ -282,14 +296,20 @@ describe("Interaction history in Chromium", () => {
     ]);
     if (resolution?.status !== "resolved")
       throw new Error(`Expected ${saveRef} to resolve after the route change.`);
-    expect(resolution.node.element).toBe(document.querySelector("#save"));
+    await expect
+      .poll(() =>
+        pageOfDocument(document)
+          .locator(`ayme-ref=${resolution.node.ref}`)
+          .evaluate((element) => element.id)
+      )
+      .toBe("save");
   });
 
   it("reports the new route's page in the Change Record of an action that navigates", async () => {
     document.body.innerHTML = '<main><a href="#" id="next">Orders</a></main>';
     document.querySelector("#next")!.addEventListener("click", (event) => {
       event.preventDefault();
-      window.history.pushState(null, "", "?route=orders-page");
+      window.history.pushState(null, "", "/orders-page");
       document.querySelector("main")!.innerHTML = "<h1>Orders page</h1>";
     });
     startRuntime();
@@ -415,9 +435,7 @@ describe("Interaction history in Chromium", () => {
     });
 
     // A capture Ayme makes for itself: it finds the ref and moves no cursor.
-    const [markRef] = (
-      await getPageStateForElements([document.querySelector("#mark")!])
-    ).refs;
+    const [markRef] = await refsOfSelectors("#mark");
     const result = await act("click", { target: markRef });
 
     expect(result.changes).toContain("Marked by the agent");

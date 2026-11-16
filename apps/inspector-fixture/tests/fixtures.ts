@@ -1,5 +1,12 @@
-import { test as base, selectors, type Page } from "@playwright/test";
+import {
+  test as base,
+  selectors,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
+import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
 import {
   Inspector,
   registerInspectorSelectors,
@@ -8,6 +15,58 @@ import {
 import { ListPage } from "../pom/ListPage";
 
 export { expect } from "@playwright/test";
+
+/**
+ * Playwright draws the Inspector's highlights in an overlay under `<html>`
+ * whose shadow root is closed. Opens it, before the page's scripts run, so
+ * `highlightOf` can read the boxes.
+ */
+const openHighlightOverlay = () => {
+  const attachShadow = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function (init) {
+    return attachShadow.call(
+      this,
+      this.localName === "x-pw-glass" ? { ...init, mode: "open" } : init
+    );
+  };
+};
+
+/**
+ * The highlight Playwright draws over `element` now: its outline style
+ * ("dashed" for what is hovered, "solid" for the selection) and colour, or
+ * none. The page's own elements carry no mark for it.
+ */
+export function highlightOf(element: Locator) {
+  return () =>
+    element.evaluate((target) => {
+      const rect = target.getBoundingClientRect();
+      const boxes = [...document.querySelectorAll("x-pw-glass")].flatMap(
+        (glass) => [
+          ...(glass.shadowRoot?.querySelectorAll("x-pw-highlight") ?? []),
+        ]
+      ) as HTMLElement[];
+      const near = (a: number, b: number) => Math.abs(a - b) < 1;
+      const box = boxes.find((candidate) => {
+        const at = candidate.getBoundingClientRect();
+        return (
+          candidate.style.display === "block" &&
+          near(at.x, rect.x) &&
+          near(at.y, rect.y) &&
+          near(at.width, rect.width) &&
+          near(at.height, rect.height)
+        );
+      });
+      return box
+        ? { style: box.style.outlineStyle, color: box.style.outlineColor }
+        : { style: "none", color: "" };
+    });
+}
+
+/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
+export function outline(element: Locator) {
+  const read = highlightOf(element);
+  return async () => (await read()).style;
+}
 
 /** The Caller mark of a run made from the panel, as Runs shows it. */
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
@@ -31,19 +90,39 @@ export type FixturePage =
   | "/dogfood.html";
 
 /**
+ * Where a project runs the Inspector: `inline`, mounted in the fixture page,
+ * or `external`, in a window of its own that `ayme mcp` serves, which the
+ * fixture page reaches over the Agent Connection.
+ */
+export type Placement = "inline" | "external";
+
+/**
+ * The external placement's end of the run: the Ayme MCP server the page
+ * connects to, and the window it serves the Inspector in.
+ */
+export type ExternalInspector = { agent: Agent; context: BrowserContext };
+
+/**
  * Opens a fixture page and fails with its own message, before any test
  * assertion, when the page's script broke or the runtime never published its
- * tools.
+ * tools. With `external`, the page is opened for the external placement and
+ * connected to its server, and the Inspector is the window that server
+ * serves: `inspector` drives that window, and `page` stays the app's.
  */
 export async function openFixture(
   page: Page,
   path: FixturePage,
-  { reload = false } = {}
+  {
+    reload = false,
+    external,
+  }: { reload?: boolean; external?: ExternalInspector } = {}
 ) {
+  await page.addInitScript(openHighlightOverlay);
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
   if (reload) await page.reload();
+  else if (external) await page.goto(await connectLink(external.agent, path));
   else await page.goto(path);
 
   const root = page.locator("html");
@@ -74,13 +153,53 @@ export async function openFixture(
   }
 
   page.off("pageerror", onPageError);
-  return { inspector: new Inspector(page), listPage: new ListPage(page) };
+  return {
+    inspector: new Inspector(
+      external ? await openInspectorWindow(page, external) : page
+    ),
+    listPage: new ListPage(page),
+  };
+}
+
+/** The link that pairs the fixture page, opened for the external placement, with `agent`. */
+async function connectLink(agent: Agent, path: FixturePage) {
+  const url = new URL(path, baseURL());
+  url.searchParams.set("external", "");
+  const { text, isError } = await agent.call("ayme_connect", {
+    url: url.href,
+  });
+  if (isError) throw new Error(`ayme_connect failed: ${text}`);
+  return text;
+}
+
+/** The address the fixture pages are served on, which the config picked. */
+function baseURL() {
+  return `http://127.0.0.1:${process.env.AYME_E2E_PORT_INSPECTOR}`;
+}
+
+/**
+ * Opens the window `ayme_inspect` names, beside the fixture page. The
+ * Inspector in it is already there for a page connected to the server.
+ */
+async function openInspectorWindow(
+  page: Page,
+  { agent, context }: ExternalInspector
+) {
+  const { text: url, isError } = await agent.call("ayme_inspect");
+  if (isError) throw new Error(`ayme_inspect failed: ${url}`);
+  const window = await context.newPage();
+  await window.goto(url);
+  // The fixture page stays the one the person looks at.
+  await page.bringToFront();
+  return window;
 }
 
 export const test = base.extend<
   {
     publishedTools: void;
     fixturePath: FixturePage;
+    placement: Placement;
+    agent: Agent | undefined;
     opened: Awaited<ReturnType<typeof openFixture>>;
     inspector: Inspector;
     listPage: ListPage;
@@ -108,8 +227,22 @@ export const test = base.extend<
     { auto: true },
   ],
   fixturePath: ["/", { option: true }],
-  opened: async ({ page, fixturePath }, use) => {
-    await use(await openFixture(page, fixturePath));
+  placement: ["inline", { option: true }],
+  // The external placement's server: the Ayme MCP server the fixture page
+  // connects to and that serves the Inspector. On a port of its own, outside
+  // the range pages scan, so no other test's page pairs with it.
+  agent: async ({ placement }, use) => {
+    if (placement !== "external") return use(undefined);
+    const agent = await startAgent("--port", String(await freePort()));
+    await use(agent);
+    await agent.close();
+  },
+  opened: async ({ page, context, fixturePath, agent }, use) => {
+    await use(
+      await openFixture(page, fixturePath, {
+        external: agent && { agent, context },
+      })
+    );
   },
   inspector: async ({ opened }, use) => {
     await use(opened.inspector);

@@ -11,15 +11,37 @@ export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 /** A Page Object Action's parameter, as TypeScript declares it. */
-export type ToolParameter = {
+export type ToolParameter = NamedToolParameter | DestructuredToolParameter;
+
+/**
+ * A parameter with a name, or one part of a destructured parameter: one
+ * field of the tool's input.
+ */
+export type NamedToolParameter = {
   name: string;
   /** Declared optional: `?`, an initializer, or `| undefined`. */
   optional: boolean;
   schema: JsonSchema;
-  /** A rest parameter: the action takes its list as separate arguments. */
+  /** A rest parameter or element: the action takes its list spread out. */
   rest?: true;
   /** The initializer's value, when it is a literal. */
   default?: JsonPrimitive;
+};
+
+/**
+ * A destructured parameter, whose parts are fields of the tool's input
+ * beside the other parameters'. An object pattern's fields are its type's
+ * properties, and the action takes them back as one object; an array
+ * pattern's are the names it binds, and the action takes them back as one
+ * array, in field order.
+ */
+export type DestructuredToolParameter = {
+  destructured: "object" | "array";
+  /** Declared optional: `?`, an initializer, or `| undefined`. */
+  optional: boolean;
+  fields: readonly NamedToolParameter[];
+  /** A rest parameter: the action takes its array spread out. */
+  rest?: true;
 };
 
 export type PomMemberAccess = "field" | "getter" | "method";
@@ -28,6 +50,15 @@ export type PomLocatorMemberManifest = {
   memberName: string;
   kind: "locator";
   access: PomMemberAccess;
+  /**
+   * Whether the Locator is declared a Child Collection (`@ayme.collection`)
+   * rather than one element (`@ayme.child`). The build always writes it;
+   * left out, as a hand-written manifest may, the Locator is neither warned
+   * about when it matches several elements nor indexed by element.
+   */
+  collection?: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
 };
 
 export type PomComponentMemberManifest = {
@@ -36,6 +67,8 @@ export type PomComponentMemberManifest = {
   access: PomMemberAccess;
   componentClassName: string;
   collection: boolean;
+  /** The description its child declaration gives. */
+  description?: string;
 };
 
 export type PomMemberManifest =
@@ -60,6 +93,12 @@ export type PomMemberObservation = {
   count: number;
   access?: PomMemberAccess;
   error?: string;
+  /**
+   * What is wrong with a member that was still observed, such as a Locator
+   * declared as one that matches several elements. Never an error: the
+   * observation stands.
+   */
+  warning?: string;
   /** Whether this observation is a documented console diagnostic. */
   diagnostic?: boolean;
 };
@@ -90,6 +129,8 @@ export type PomDefinitionAction = {
   name: string;
   description?: string;
   inputSchema: JsonSchema;
+  /** Its parameters as the action declares them, which its signature shows. */
+  parameters: readonly ToolParameter[];
   returnPoms: readonly string[];
 };
 

@@ -1,6 +1,9 @@
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";
-export { getPomDefinitions } from "./registeredPomDefinitions";
+export {
+  getPomDefinitions,
+  getPomDefinitionsOf,
+} from "./registeredPomDefinitions";
 export {
   listAvailablePomTools,
   listRootedToolInstances,
@@ -9,7 +12,10 @@ export {
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerPageObject,
+  browserRegistry,
   subscribeToRegisteredPoms,
 } from "./registry";
 export { createAymeRuntime } from "./aymeRuntime";
-export { installPageDriverReach } from "./litePageDriver";
+export { inPageDriver } from "./inPageDriver";
+export { pomRegistryOf } from "./registries";
+export type { PomRegistryHost } from "./registries";

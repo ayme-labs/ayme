@@ -1,17 +1,17 @@
 // The Browser Tools as published. The list lives here, not beside the
-// Browser Tools in application, because it includes generate_locator and
-// press_key, which use Playwright Lite, and the navigation tools, built on the
-// router store.
+// Browser Tools in application, because it includes generate_locator, which
+// reads the page through the in-page module, and the navigation tools, built
+// on the router store.
 import { ACTION_RESULT_NOTE } from "../../page-state/domain";
 import {
   fillFormTool,
   SINGLE_ELEMENT_TOOLS,
 } from "../application/browserTools";
 import type { PublishedElementTool } from "../application/elementTools";
+import { pressKeyTool } from "../application/pressKeyTool";
 import { screenshotTool } from "../application/screenshotTool";
 import { generateLocatorTool } from "./generateLocator";
-import { pressKeyTool } from "./pressKey";
-import { NAVIGATION_TOOLS } from "./routerStore";
+import { NAVIGATION_TOOLS } from "./navigationTools";
 
 /**
  * A Browser Tool that acts on the page, as published: its description ends

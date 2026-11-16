@@ -408,16 +408,27 @@ it(
           vue: "3.5.42",
           "@angular/core": "22.2.1",
           rxjs: "7.8.2",
+          // The compiler entry and the build plugin run on the project's
+          // TypeScript.
+          typescript: "6.0.3",
         },
       })
     );
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], consumer);
     const specifiers = Object.entries(packed).flatMap(([name, { dir }]) =>
-      Object.keys(readManifest(dir).exports ?? {})
-        // A manifest export, for tools like the Angular CLI, is not a module.
-        .filter((subpath) => subpath !== "./package.json")
-        .map((subpath) => path.posix.join(name, subpath))
+      Object.entries(readManifest(dir).exports ?? {})
+        // A manifest export, for tools like the Angular CLI, is not a module,
+        // and neither is an export of types only.
+        .filter(
+          ([subpath, target]) =>
+            subpath !== "./package.json" &&
+            !(
+              typeof target === "object" &&
+              Object.keys(target as object).every((key) => key === "types")
+            )
+        )
+        .map(([subpath]) => path.posix.join(name, subpath))
     );
     expect(specifiers).toEqual(
       expect.arrayContaining([
@@ -573,8 +584,14 @@ import { usePageObject } from '@ayme-dev/vue';
 import { usePageObject as useSveltePageObject } from '@ayme-dev/svelte';
 @ayme
 class Pom {
+  @ayme.child
   readonly input: Locator;
-  constructor(page: Page) { this.input = page.getByRole('textbox', { name: 'Name' }); }
+  // Not declared, so no Page Object Child.
+  readonly helper: Locator;
+  constructor(page: Page) {
+    this.input = page.getByRole('textbox', { name: 'Name' });
+    this.helper = page.getByRole('status');
+  }
   @ayme.action({ description: 'Fill and submit the input.' })
   async act(value: string) {
     await this.input.fill(value, { timeout: 10 });
@@ -583,6 +600,30 @@ class Pom {
     await items[0]?.waitFor({ state: 'hidden', timeout: 10 });
   }
 }
+@ayme({ root: (self: ItemPom) => self.root })
+class ItemPom {
+  constructor(readonly root: Locator) {}
+}
+@ayme
+class ChildrenPom {
+  @ayme.child
+  readonly heading: Locator;
+  @ayme.collection
+  readonly rows: Locator;
+  constructor(readonly page: Page) {
+    this.heading = page.getByRole('heading');
+    this.rows = page.getByRole('row');
+  }
+  @ayme.child({ description: 'The first item.' })
+  get first(): ItemPom { return new ItemPom(this.page.getByRole('listitem').first()); }
+  @ayme.collection({ description: 'Every cell.' })
+  get cells(): Locator { return this.page.getByRole('cell'); }
+  @ayme.collection({ description: 'The items.' })
+  async items(): Promise<ItemPom[]> {
+    return (await this.page.getByRole('listitem').all()).map((item) => new ItemPom(item));
+  }
+}
+void ChildrenPom;
 const ctor: PageObjectConstructor<Pom> = Pom;
 const instance: Pom = usePageObject(ctor);
 const svelteInstance: Pom = useSveltePageObject(ctor);
@@ -694,7 +735,7 @@ assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
 const manifest = JSON.parse(registration.slice('registerCompiledPom(Pom, '.length, -2));
-assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'field' }]);
+assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'field', collection: false }]);
 assert.deepEqual(manifest.tools, [{
   methodName: 'act',
   toolName: 'Pom.act',
@@ -787,17 +828,17 @@ for (const vite of ["7.0.0", "8.0.0"])
         `
 import { defineConfig, type Plugin } from 'vite';
 import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
+import type { AymePlaywrightOptions } from '@ayme-dev/unplugin-ayme';
 import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
 import {
-  derivePomManifests,
-  type AymePlaywrightOptions,
+  createPomCompiler,
   type PomCompilerOptions,
-} from '@ayme-dev/unplugin-ayme';
+} from '@ayme-dev/ayme/compiler';
 const options: AymeOptions = { playwright: { use: { testIdAttribute: 'data-id' } } };
 const plugin: Plugin = ayme(options);
 const playwright: AymePlaywrightOptions | undefined = options.playwright;
 const compilerOptions: PomCompilerOptions = {};
-void [turbopackLoader, derivePomManifests, playwright, compilerOptions];
+void [turbopackLoader, createPomCompiler, playwright, compilerOptions];
 export default defineConfig({ plugins: [plugin, aymeDefault()] });
 `
       );
@@ -1162,7 +1203,7 @@ it(
       [
         'const main = await import("@ayme-dev/ayme");',
         'const internal = await import("@ayme-dev/ayme/internal");',
-        'if (typeof main.ayme !== "function" || typeof main.ayme.action !== "function") throw new Error("missing the ayme decorators");',
+        'if (typeof main.ayme !== "function" || typeof main.ayme.action !== "function" || typeof main.ayme.child !== "function" || typeof main.ayme.collection !== "function") throw new Error("missing the ayme decorators");',
         'if ("default" in main || "getPageState" in main.ayme) throw new Error("the helper object must not be on the main entry");',
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
         'if (typeof main.createAyme !== "function") throw new Error("missing createAyme");',
