@@ -12,6 +12,7 @@ export type {
 } from "./recorded";
 export {
   pictureRef,
+  snapshotRef,
   type FirstRef,
   type PictureRef,
   type SnapshotRef,

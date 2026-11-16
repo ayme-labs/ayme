@@ -32,6 +32,9 @@ const assertVisible = {
   type: "assertVisible",
   selector: 'internal:role=status >> internal:has-text="Saved"i',
   target: null,
+  // The picked element's ref in the recorder's own snapshots, which the
+  // browser reads when Playwright reports the assertion.
+  snapshotTarget: "e3",
   values: {},
 };
 
@@ -119,7 +122,7 @@ describe("Assert visibility", () => {
         `        interaction:`,
         `          id: interaction_2`,
         `          type: assertVisible`,
-        `          targetRef: null`,
+        `          targetRef: e3`,
         `          targetSelector: internal:role=status >> internal:has-text="Saved"i`,
         `traceActionPoints:`,
       ].join("\n")

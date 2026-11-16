@@ -1,4 +1,5 @@
 import {
+  AriaRefSchema,
   MonotonicTimeMsSchema,
   SETTLED_PAGE_DEADLINE_MS,
   SETTLED_PAGE_QUIET_MS,
@@ -28,6 +29,7 @@ import {
 } from "../../../session/domain";
 import {
   pictureRef,
+  snapshotRef,
   type ElementLookup,
   type InteractionReport,
   type PageId,
@@ -55,7 +57,7 @@ import {
 } from "../in-page/drawing";
 import { startGate } from "../in-page/gate";
 import { installActivityWatch, type TargetChain } from "../in-page/watches";
-import { letThroughUpTo, type HeldByPage } from "../pageRules";
+import { letThroughUpTo, ownRefOf, type HeldByPage } from "../pageRules";
 import {
   ancestorRefs,
   followPickingIn,
@@ -427,6 +429,26 @@ async function openPage(
    * late the report comes. The page's own note of them, which can come
    * after the report, is used only when the element is gone.
    */
+  /**
+   * For an assertion, which Playwright reports by a selector alone: the ref
+   * the adapter's own snapshots give the picked element, or its nearest
+   * ancestor they list, read off a public snapshot of each in turn. Its
+   * snapshot names it as it names a click's target.
+   */
+  const withPickedRef = async (
+    report: InteractionReport,
+    page: Page
+  ): Promise<InteractionReport> => {
+    const { selector } = report;
+    if (report.type !== "assertVisible" || selector === null) return report;
+    // Calls Playwright traces: never inside a snapshot's mark.
+    const read = markers.then(() => pickedRef(page.locator(selector)));
+    markers = read.catch(() => {});
+    const ref = await read;
+    return ref
+      ? { ...report, snapshotTarget: snapshotRef(AriaRefSchema.parse(ref)) }
+      : report;
+  };
   const withAncestors = async (
     report: InteractionReport,
     page: Page
@@ -923,7 +945,10 @@ async function openPage(
           kind: "interactionReported",
           page: pageId,
           report: await asUpload(
-            await withAncestors(report, reported),
+            await withPickedRef(
+              await withAncestors(report, reported),
+              reported
+            ),
             reported
           ),
         }));
@@ -1086,6 +1111,25 @@ function locatorOf(page: Page, find: ElementLookup): Locator {
       return page.getByText(find.text, { exact: true });
   }
 }
+
+/**
+ * The ref an element has in the adapter's own snapshots, or its nearest
+ * ancestor's that has one: the page's structure lists no element without
+ * one. Undefined when none can be read.
+ */
+async function pickedRef(element: Locator): Promise<string | undefined> {
+  for (let up = 0; up < PICKED_DEPTH; up += 1) {
+    const own = await element
+      .ariaSnapshot({ mode: "ai", timeout: ANCESTOR_READ_MS })
+      .then(ownRefOf, () => null);
+    if (own !== undefined) return own ?? undefined;
+    element = element.locator("xpath=..");
+  }
+  return undefined;
+}
+
+/** How far up from a picked element its ref is looked for. */
+const PICKED_DEPTH = 32;
 
 /** How long finding the element of a highlight may take. */
 const HIGHLIGHT_LOOKUP_MS = 500;

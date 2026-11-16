@@ -11,6 +11,7 @@ import {
   keyTarget,
   leftAlone,
   modifiersOf,
+  ownRefOf,
   recordedAsPress,
   recordersOwn,
   replayed,
@@ -483,5 +484,20 @@ describe("what the outline while picking leaves out", () => {
       "ayme-recorder-highlight",
       "ayme-recorder-picking",
     ]);
+  });
+});
+
+describe("an element's own ref in a snapshot of it", () => {
+  it("is the ref on the snapshot's first line, its top element's", () => {
+    expect(ownRefOf(`- button "Main" [ref=e3]:\n  - img "Icon" [ref=e4]`)).toBe(
+      "e3"
+    );
+    expect(ownRefOf(`- button "In frame" [ref=f1e3]`)).toBe("f1e3");
+  });
+
+  it("is none when the structure does not list the top element", () => {
+    expect(ownRefOf(`- text: Total\n- button "Inside" [ref=e9]`)).toBe(
+      undefined
+    );
   });
 });

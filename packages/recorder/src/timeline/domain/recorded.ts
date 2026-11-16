@@ -52,6 +52,13 @@ export type InteractionReport = {
     readonly tree: string;
     readonly ancestors?: readonly PictureRef[];
   } | null;
+  /**
+   * For a report with no picture, as of an assertion: the ref the
+   * recorder's own snapshots give the element, or its nearest ancestor they
+   * list, read off the page when Playwright reported it. Absent when none
+   * was found.
+   */
+  readonly snapshotTarget?: SnapshotRef;
   /** Everything else Playwright said: the button, the modifiers and so on. */
   readonly values: Readonly<Record<string, unknown>>;
 };

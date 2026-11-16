@@ -144,13 +144,19 @@ function namedInPicture(
  * and whose top level is the picture's. It is taken only when the two nodes
  * agree on role and name, and only when one document has it: a ref is
  * trusted, so the element of another document that looks like the target is
- * never written in its place.
+ * never written in its place. A report with no picture, as of an assertion,
+ * may carry the recorder's own ref for the element instead: it is taken
+ * when the snapshot lists it.
  */
 export function locateTarget(
   before: StructuralTree,
   report: InteractionReport
 ): SnapshotRef | undefined {
-  const { target } = report;
+  const { target, snapshotTarget } = report;
+  // The recorder's own ref needs no matching: it names the element in
+  // every snapshot of the page that lists it.
+  if (snapshotTarget)
+    return before.hasNode(snapshotTarget) ? snapshotTarget : undefined;
   if (!target) return undefined;
   // A factory of its own: the picture is read only here.
   const picture = StructuralTree.fromAriaSnapshotYaml(

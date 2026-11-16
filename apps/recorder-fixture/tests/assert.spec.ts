@@ -89,8 +89,9 @@ test.describe("Assert visibility", () => {
     const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
     expect(text.match(/kind: interaction/g)).toHaveLength(2);
     const assertion = text.slice(text.indexOf("type: assertVisible"));
+    // The picked element is named by its ref, as a click's target is.
     expect(assertion).toMatch(
-      /^type: assertVisible\n\s+targetRef: \S+\n\s+targetSelector: internal:role=button\[name="Add item"i\]\n/
+      /^type: assertVisible\n\s+targetRef: e\d+\n\s+targetSelector: internal:role=button\[name="Add item"i\]\n/
     );
     // No Change Tree of its own: the next line leaves the entry.
     expect(assertion.split("\n")[3]).not.toMatch(/changeTree/);

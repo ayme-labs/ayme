@@ -119,6 +119,13 @@ export function leftAlone(target: ClickTarget): boolean {
   ].includes(target.inputType);
 }
 
+/** The ref on the first line of a snapshot in Playwright's AI mode: its
+ * top element's; none when the page structure does not list that one. */
+export function ownRefOf(snapshot: string): string | undefined {
+  const [first = ""] = snapshot.split("\n");
+  return /\[ref=([^\]]+)\]/.exec(first)?.[1];
+}
+
 /** Whether an element is one the recorder puts in a page itself, which the
  * outline while picking leaves out: its toolbar, its highlight and the
  * outline. */

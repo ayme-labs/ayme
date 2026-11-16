@@ -111,7 +111,7 @@ While paused, every step and every change row has a **Discard** button. A discar
       trace.zip                  the Playwright trace of the recording
 ```
 
-The package lists each Visit with its steps and what each changed, by the page's structure. A step names the element it acted on by a ref and a selector. Two kinds of step have a selector and no ref: an Assert visibility step, and a key pressed while nothing on the page had focus, which goes to the page's body, which the page structure does not list. A step's time is when its input reached the page, and the end of its place in the trace is when the page was read after it. The skill describes every field.
+The package lists each Visit with its steps and what each changed, by the page's structure. A step names the element it acted on by a ref and a selector; an Assert visibility step names the element you picked. A key pressed while nothing on the page had focus has a selector and no ref: it goes to the page's body, which the page structure does not list. A step's time is when its input reached the page, and the end of its place in the trace is when the page was read after it. The skill describes every field.
 
 The first save writes `.ayme/.gitignore`, so recordings stay out of your commits. If the project already has a `.ayme/.gitignore`, the recorder leaves it as it is. A package is written under a temporary name and renamed when complete, so you find either a whole package or none.
 
@@ -136,13 +136,12 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **An element the page structure does not list, which becomes two identical siblings, can be matched to the wrong one** in the next steps.
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
 - **The toolbar is part of the trace.** Its element stays in the trace's page snapshots, empty, and the toolbar can show in the trace's screenshots.
-- **Highlighting an element from the window adds actions to the trace.** The position numbers in the package stay right.
+- **Highlighting an element from the window, and picking one for Assert visibility, add actions to the trace.** The position numbers in the package stay right.
 - **An element can be highlighted only on the page now open, and only when exactly one element there matches.** A change row's element that the page no longer has is looked for by its role and name, outside frames only, so one of several look-alikes is never highlighted.
 - **The outline drawn while Assert visibility is on is part of the trace** while it shows, like the toolbar.
 - **The recorded page's own scripts can reach the toolbar's function** on the page, as any script the page runs can.
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.
 - **The window's change rows say what appeared, was removed or changed, but not the old and the new value.** The package has the full picture.
-- **An Assert visibility step has no ref for its element, only a selector,** and the window cannot name its element by role and name. Playwright reports the element it picked by a selector alone.
 - **When the recorder stops waiting, inputs it still held back are sent on together** and can reach the page out of order. This happens only when ending or pausing runs out of time, after about five seconds, with several inputs held.
 - **A click that reached the page but has no "after" when that time runs out is not recorded,** even if Playwright reported it.
 - **Recording is Chromium only.**

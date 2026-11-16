@@ -10,6 +10,7 @@ import {
   entryId,
   pageId,
   snapshotId,
+  snapshotRefOf,
   tracePositions,
 } from "../../test-utils/ids";
 
@@ -1270,7 +1271,11 @@ describe("the timeline, for discard and restore", () => {
 // Ticket #1278: an assertion is an entry like an Interaction, with one
 // snapshot that is its "before" and its "after".
 describe("the timeline, for an assertion", () => {
-  const assertion = (snapshot: SnapshotId, at: number): TimelineAddition => ({
+  const assertion = (
+    snapshot: SnapshotId,
+    at: number,
+    picked?: string
+  ): TimelineAddition => ({
     kind: "interaction",
     interaction: {
       page: pageId("page_1"),
@@ -1278,6 +1283,7 @@ describe("the timeline, for an assertion", () => {
         type: "assertVisible",
         selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
         target: null,
+        ...(picked ? { snapshotTarget: snapshotRefOf(picked) } : {}),
         values: {},
       },
       before: snapshot,
@@ -1330,6 +1336,42 @@ describe("the timeline, for an assertion", () => {
         `    endedAt: 30`,
       ].join("\n")
     );
+  });
+
+  it("names the element picked for an assertion by the ref the recorder's snapshot gives it, as it names a click's target", async () => {
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, savedPage),
+      assertion(snapshotId("snapshot_1"), 10, "e3"),
+    ])
+      await timeline.add(addition);
+
+    expect(timeline.visits()[0]!.entries[0]).toMatchObject({
+      interaction: { type: "assertVisible", targetRef: "e3" },
+      targetElement: 'paragraph "Saved"',
+    });
+    expect(await timeline.package(header)).toContain(
+      [
+        `          type: assertVisible`,
+        `          targetRef: e3`,
+        `          targetSelector: internal:role=paragraph >> internal:has-text="Saved"i`,
+      ].join("\n")
+    );
+  });
+
+  it("names no element for an assertion whose picked element the snapshot does not list", async () => {
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, savedPage),
+      assertion(snapshotId("snapshot_1"), 10, "e9"),
+    ])
+      await timeline.add(addition);
+
+    const [entry] = timeline.visits()[0]!.entries;
+    expect(entry).toMatchObject({ interaction: { targetRef: null } });
+    expect(entry).not.toHaveProperty("targetElement");
   });
 
   it("starts a Visit whose first entry is an assertion with the page as it stood at the assertion", async () => {

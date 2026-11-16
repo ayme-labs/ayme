@@ -776,6 +776,51 @@ it("reports the element a person picks as an assertion, leaves picking by itself
   expect(await browser.page.evaluate("window.clicks ?? 0")).toBe(0);
 });
 
+it("gives the element a person picks for an assertion the ref the adapter's own snapshot gives it, in a frame too, or its nearest listed ancestor's", async () => {
+  const browser = await onStockPlaywright(`
+    <button id="first">First</button>
+    <div role="group" aria-label="Card"><i id="star" style="display:inline-block;width:24px;height:24px;background:gold"></i></div>
+    <iframe srcdoc="<button>In frame</button>"></iframe>`);
+  const inFrame = browser.page.frameLocator("iframe").getByRole("button");
+  await inFrame.waitFor();
+  await reporting(browser);
+  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
+  const { snapshot } = await browser.toldOf("snapshotTaken");
+  const refOf = (line: string) =>
+    new RegExp(`${line} \\[ref=(\\w+)\\]`).exec(snapshot.tree)?.[1];
+  const picks = [
+    [browser.page.locator("#first"), refOf(`button "First"`)],
+    [inFrame, refOf(`button "In frame"`)],
+    [browser.page.locator("#star"), refOf(`group "Card"`)],
+  ] as const;
+  expect(picks.map(([, ref]) => ref)).toEqual([
+    expect.stringMatching(/^e\d+$/),
+    expect.stringMatching(/^f1e\d+$/),
+    expect.stringMatching(/^e\d+$/),
+  ]);
+
+  for (const [index, [element, ref]] of picks.entries()) {
+    await browser.ask({ kind: "pick", on: true });
+    await browser.toldOf("picking", ({ on }) => on);
+    await browser.click(element);
+    await expect
+      .poll(
+        () =>
+          browser.told.filter((signal) => signal.kind === "interactionReported")
+            .length
+      )
+      .toBe(index + 1);
+    const reported = browser.told.filter(
+      (signal) => signal.kind === "interactionReported"
+    )[index]!;
+    expect(reported.report).toMatchObject({
+      type: "assertVisible",
+      snapshotTarget: ref,
+    });
+    await browser.toldOf("picking", ({ on }) => !on);
+  }
+});
+
 it("leaves the gate holding clicks again once picking is over", async () => {
   const browser = await onStockPlaywright(CLICKABLE);
   await reporting(browser);
