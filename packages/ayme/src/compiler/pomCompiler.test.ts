@@ -9,6 +9,19 @@ import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
 
 // Appended to what the transform generates, to fail its transpile alone.
 const generated = vi.hoisted(() => ({ suffix: "" }));
+// TypeScript's own failure, thrown when transpiling code with this marker.
+const failsTranspile = "// TypeScript fails here.";
+vi.mock("./transpilePomModule", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("./transpilePomModule")>();
+  return {
+    transpilePomModule: (code: string, fileName: string) => {
+      if (code.includes(failsTranspile))
+        throw new Error("Debug Failure. Output generation failed");
+      return original.transpilePomModule(code, fileName);
+    },
+  };
+});
 vi.mock("./transformPomModule", async (importOriginal) => {
   const original =
     await importOriginal<typeof import("./transformPomModule")>();
@@ -180,6 +193,22 @@ describe("createPomCompiler", () => {
           )
         )
       ).toEqual([{ text: "Expression expected.", file: fileName }]);
+    } finally {
+      generated.suffix = "";
+    }
+  });
+
+  it("lets TypeScript's own failure on code it generated through as it is", () => {
+    const fileName = fixture("twoPagesPom");
+    generated.suffix = `\n${failsTranspile}\n`;
+    try {
+      expect(() =>
+        createPomCompiler({ include: true, tsconfigPath }).compile(
+          fileName,
+          source(fileName),
+          { emit: "js" }
+        )
+      ).toThrow(new Error("Debug Failure. Output generation failed"));
     } finally {
       generated.suffix = "";
     }

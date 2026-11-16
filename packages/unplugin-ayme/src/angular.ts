@@ -198,7 +198,10 @@ function esbuildColumn(file: string, line: number, column: number) {
 /** Line `line` of `file`, counted from 1, if the file can be read and has it. */
 function sourceLine(file: string, line: number): string | undefined {
   try {
-    return readFileSync(file, "utf8").split("\n")[line - 1];
+    // TypeScript's line breaks, so the line is the one it counted.
+    return readFileSync(file, "utf8").split(/\r\n|[\n\r\u2028\u2029]/)[
+      line - 1
+    ];
   } catch {
     // An unreadable file has no line to measure.
   }

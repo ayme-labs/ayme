@@ -143,10 +143,10 @@ function transpileCompiled(compiled: string, source: string, fileName: string) {
     return transpilePomModule(compiled, fileName);
   } catch (error) {
     transpilePomModule(source, fileName);
-    // `transpilePomModule` throws nothing else.
-    const { diagnostics } = error as PomCompileError;
+    // TypeScript's own failures pass as they are.
+    if (!(error instanceof PomCompileError)) throw error;
     throw new PomCompileError(
-      diagnostics.map(({ text }) => ({ text, file: fileName }))
+      error.diagnostics.map(({ text }) => ({ text, file: fileName }))
     );
   }
 }

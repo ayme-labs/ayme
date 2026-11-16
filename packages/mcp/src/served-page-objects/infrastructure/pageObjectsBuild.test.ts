@@ -224,6 +224,25 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
   });
 });
 
+it("counts a diagnostic's line as TypeScript does, across each kind of line break", async () => {
+  // Lines: "// a", "b", "c", "d", then "const café = ;".
+  const file = await pomFile("// a\r\nb\rc\u2028d\u2029const café = ;\n");
+  const { onLoad } = setUp(
+    models({
+      compile: () => {
+        throw new PomCompileError([
+          { text: "Expression expected.", file, line: 5, column: 14 },
+        ]);
+      },
+      invalidate: () => {},
+    })
+  );
+
+  expect(await onLoad({ path: file })).toMatchObject({
+    errors: [{ location: { file, line: 5, column: 14 } }],
+  });
+});
+
 it("leaves to esbuild a module the compiler does not compile, and one in node_modules", async () => {
   const compile = vi.fn(() => null);
   const { onLoad } = setUp(models({ compile, invalidate: () => {} }));
