@@ -5,6 +5,44 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPomCompiler } from "./index";
+import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
+
+// Appended to what the transform generates, to fail its transpile alone.
+const generated = vi.hoisted(() => ({ suffix: "" }));
+// TypeScript's own failure, thrown when transpiling code with this marker.
+const failsTranspile = "// TypeScript fails here.";
+vi.mock("./transpilePomModule", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("./transpilePomModule")>();
+  return {
+    transpilePomModule: (code: string, fileName: string) => {
+      if (code.includes(failsTranspile))
+        throw new Error("Debug Failure. Output generation failed");
+      return original.transpilePomModule(code, fileName);
+    },
+  };
+});
+vi.mock("./transformPomModule", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("./transformPomModule")>();
+  return {
+    ...original,
+    createPomTransform: (
+      ...args: Parameters<typeof original.createPomTransform>
+    ) => {
+      const transform = original.createPomTransform(...args);
+      return (...transformArgs: Parameters<typeof transform>) => {
+        const transformed = transform(...transformArgs);
+        return (
+          transformed && {
+            ...transformed,
+            code: transformed.code + generated.suffix,
+          }
+        );
+      };
+    },
+  };
+});
 
 // Each test builds TypeScript Programs, which run several times slower on CI
 // while the browser suites and the packed-consumer test run beside them.
@@ -78,37 +116,102 @@ describe("createPomCompiler", () => {
     expect(compiled?.code).not.toContain("registerCompiledPom");
   });
 
-  it("names an unsupported parameter where it is declared in the source", () => {
+  it("locates an unsupported parameter where it is declared in the source", () => {
     const fileName = fixture("unsupportedShapes/callablePom");
-    expect(() =>
-      createPomCompiler({ include: true, tsconfigPath }).compile(
-        fileName,
-        source(fileName),
-        { emit: "js" }
+    expect(
+      diagnosticsOf(() =>
+        createPomCompiler({ include: true, tsconfigPath }).compile(
+          fileName,
+          source(fileName),
+          { emit: "js" }
+        )
       )
-    ).toThrow(
-      `${fileName}:6:7: Unsupported Page Object Tool input type for CallablePom.run(callback): () => void.`
-    );
+    ).toEqual([
+      {
+        text: `Unsupported Page Object Tool input type for CallablePom.run(callback): () => void. Compiled with ${tsconfigPath}.`,
+        file: fileName,
+        ...positionOf(fileName, "callback:"),
+      },
+    ]);
   });
 
-  it("names a syntax error where it is in the source, not in the compiled module", () => {
+  it("locates an unsupported parameter of an imported Child in the Child's file", () => {
+    const page = fixture("importedUnsupportedChild/page");
+    const child = fixture("importedUnsupportedChild/child");
+    expect(
+      diagnosticsOf(() =>
+        createPomCompiler({ include: true, tsconfigPath }).compile(
+          page,
+          source(page),
+          { emit: "js" }
+        )
+      )
+    ).toEqual([
+      {
+        text: `Unsupported Page Object Tool input type for Scheduler.schedule(at): Date. Compiled with ${tsconfigPath}.`,
+        file: child,
+        ...positionOf(child, "at: Date"),
+      },
+    ]);
+  });
+
+  it("locates a syntax error where it is in the source, not in the compiled module", () => {
     const fileName = fixture("twoPagesPom");
     const broken = source(fileName).replace(
       "return new ResultsPage();",
       "return new ResultsPage(;"
     );
 
-    expect(() =>
+    const thrown = diagnosticsOf(() =>
       createPomCompiler({ include: true, tsconfigPath }).compile(
         fileName,
         broken,
         { emit: "js" }
       )
-    ).toThrow(
-      new Error(
-        `Could not transpile Ayme POM ${fileName}:\n${fileName}:16:28: ')' expected.`
-      )
     );
+
+    expect(thrown).toEqual([
+      {
+        text: "')' expected.",
+        file: fileName,
+        line: 16,
+        column: 28,
+      },
+    ]);
+  });
+
+  it("names only the file of an error in code it generated", () => {
+    const fileName = fixture("twoPagesPom");
+    generated.suffix = "\nlet generated = ;\n";
+    try {
+      expect(
+        diagnosticsOf(() =>
+          createPomCompiler({ include: true, tsconfigPath }).compile(
+            fileName,
+            source(fileName),
+            { emit: "js" }
+          )
+        )
+      ).toEqual([{ text: "Expression expected.", file: fileName }]);
+    } finally {
+      generated.suffix = "";
+    }
+  });
+
+  it("lets TypeScript's own failure on code it generated through as it is", () => {
+    const fileName = fixture("twoPagesPom");
+    generated.suffix = `\n${failsTranspile}\n`;
+    try {
+      expect(() =>
+        createPomCompiler({ include: true, tsconfigPath }).compile(
+          fileName,
+          source(fileName),
+          { emit: "js" }
+        )
+      ).toThrow(new Error("Debug Failure. Output generation failed"));
+    } finally {
+      generated.suffix = "";
+    }
   });
 
   it("leaves a module that declares no Page Object Model alone", () => {
