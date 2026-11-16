@@ -207,14 +207,18 @@ test.describe("the recorder window", () => {
     expect(await window.controls.offered()).toEqual(["Record"]);
   });
 
-  test("names the recorded page in its title", async ({
+  test("names the page that is open in its title, before Record, while recording and after Clear", async ({
     recording: { window },
   }) => {
-    await expect(window.page).toHaveTitle("Ayme Recorder");
+    const title = "Ayme Recorder - http://shop.test/";
+    await expect(window.page).toHaveTitle(title);
 
     await record(window);
+    await expect(window.page).toHaveTitle(title);
 
-    await expect(window.page).toHaveTitle("Ayme Recorder - http://shop.test/");
+    await window.controls.clearButton.click();
+    await expect(window.controls.recordButton).toBeEnabled();
+    await expect(window.page).toHaveTitle(title);
   });
 
   test("shows the design system's icon for the scheme the system is in", async ({
