@@ -6,10 +6,8 @@ pre-commit:
       run: pnpm exec lint-staged --concurrent false
     # Check only the workspaces the staged change reaches, within the cap in
     # scripts/pre-commit-checks.mjs. Why: docs/testing.md#local-runs-and-ci.
-    - name: typecheck
-      run: node scripts/pre-commit-checks.mjs typecheck
-    - name: test
-      run: node scripts/pre-commit-checks.mjs test
+    - name: typecheck and test
+      run: node scripts/pre-commit-checks.mjs
 
 commit-msg:
   jobs:

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  HEAVY_APPS,
   TEST_TASK_CAP,
   countTestTasks,
   filtersFor,
@@ -11,7 +10,10 @@ import {
 } from "./pre-commit-checks.mjs";
 
 const WORKSPACES = ["packages/vue", "packages/svelte", "apps/example-vue"];
-const EXCLUDE_HEAVY = HEAVY_APPS.map((name) => `--filter=!${name}`);
+const EXCLUDE_HEAVY = [
+  "--filter=!@ayme-dev/example-next",
+  "--filter=!@ayme-dev/example-nuxt",
+];
 
 test("planSelection selects the workspaces staged paths are in, once each", () => {
   const plan = planSelection(

@@ -1,13 +1,25 @@
-import { globSync } from "node:fs";
+import { globSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-// ESLint runs from the root and resolves each file's own workspace config,
-// so it lints only files in workspaces that have one, and only the
-// extensions the shared base config parses (no .vue or .svelte).
+// ESLint lints a staged file only where the workspace's own `lint` script
+// does, so the hook never fails a file CI does not lint. ESLint runs from the
+// root and resolves each file's workspace config, and the extensions are the
+// ones the shared base config parses (no .vue or .svelte).
 const root = import.meta.dirname;
-const linted = globSync("{packages,apps}/*/eslint.config.*", { cwd: root }).map(
-  (config) => path.join(root, path.dirname(config)) + path.sep
-);
+const linted = globSync("{packages,apps}/*/package.json", {
+  cwd: root,
+}).flatMap((manifest) => {
+  const lint = JSON.parse(readFileSync(path.join(root, manifest), "utf8"))
+    .scripts?.lint;
+  const [command, ...args] = lint?.split(/\s+/) ?? [];
+  if (command !== "eslint") return [];
+  const workspace = path.join(root, path.dirname(manifest));
+  // The paths come before the options: `eslint src --max-warnings 0`.
+  const end = args.findIndex((arg) => arg.startsWith("-"));
+  return args
+    .slice(0, end === -1 ? args.length : end)
+    .map((target) => path.join(workspace, target) + path.sep);
+});
 
 export default {
   "*": "prettier --ignore-unknown --write",

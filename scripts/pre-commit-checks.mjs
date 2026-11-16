@@ -1,20 +1,18 @@
 /**
- * Runs the pre-commit hook's typecheck or test job on the workspaces the
+ * Runs the pre-commit hook's typecheck, then its tests, on the workspaces the
  * staged change reaches: those it touches and those depending on them.
  * Unstaged and untracked files never widen the selection. Why the hook stays
  * small: docs/testing.md#local-runs-and-ci.
  *
- *   node scripts/pre-commit-checks.mjs typecheck|test          run the task
- *   node scripts/pre-commit-checks.mjs typecheck|test --dry    print it only
- *
- * The typecheck job, which runs first, prints the notices; both jobs print
- * the skip when the selection is over the cap.
+ *   node scripts/pre-commit-checks.mjs          run typecheck, then test
+ *   node scripts/pre-commit-checks.mjs --dry    print the commands only
  */
 import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Above this many test tasks, both jobs leave the selection to CI. */
+/** Above this many test tasks, the hook leaves typecheck and tests to CI. */
 export const TEST_TASK_CAP = 4;
 
 /** Root files every workspace depends on. */
@@ -27,7 +25,7 @@ export const GLOBAL_FILES = new Set([
 ]);
 
 /** Their typecheck needs an uncached production build. */
-export const HEAVY_APPS = ["@ayme-dev/example-next", "@ayme-dev/example-nuxt"];
+const HEAVY_APPS = ["@ayme-dev/example-next", "@ayme-dev/example-nuxt"];
 
 const QUICKSTART = /^docs\/guide\/start\/quickstart-[^/]*\.md$/;
 const WORKSPACE_DIR = /^(?:packages|apps)\/[^/]+(?=\/.)/;
@@ -104,6 +102,18 @@ function turbo(...args) {
   return run(TURBO, args);
 }
 
+/** Workspace directories of staged paths that exist now. */
+function currentWorkspaces(staged) {
+  const dirs = new Set(
+    staged.map((file) => WORKSPACE_DIR.exec(file)?.[0]).filter(Boolean)
+  );
+  // pnpm-workspace.yaml makes every packages/* and apps/* with a
+  // package.json a workspace.
+  return [...dirs].filter((dir) =>
+    existsSync(path.join(ROOT, dir, "package.json"))
+  );
+}
+
 function packageNames(lsJson) {
   const { packages } = JSON.parse(lsJson);
   if (!Array.isArray(packages?.items)) {
@@ -124,12 +134,11 @@ function wasWorkspace(dir) {
 }
 
 function main() {
-  const [task, ...flags] = process.argv.slice(2);
-  if (task !== "typecheck" && task !== "test") {
-    throw new Error("Usage: pre-commit-checks.mjs typecheck|test [--dry]");
+  const flags = process.argv.slice(2);
+  if (flags.some((flag) => flag !== "--dry")) {
+    throw new Error("Usage: pre-commit-checks.mjs [--dry]");
   }
   const dry = flags.includes("--dry");
-  const notify = task === "typecheck";
 
   const staged = run("git", [
     "diff",
@@ -140,38 +149,30 @@ function main() {
   ])
     .split("\0")
     .filter(Boolean);
-  const workspaces = packageNames(turbo("ls", "--output=json"));
-  const plan = planSelection(
-    staged,
-    workspaces.map((workspace) => workspace.path)
-  );
+  const plan = planSelection(staged, currentWorkspaces(staged));
 
-  if (notify) {
-    for (const dir of plan.removed.filter(wasWorkspace)) {
-      console.log(`${dir} is deleted; CI checks it.`);
-    }
-    if (plan.quickstart) {
-      console.log(
-        "A quickstart changed. Its check, the packed-consumer test in packages/ayme, is heavy and left to CI; run it alone with `pnpm -C packages/ayme test:package`."
-      );
-    }
+  for (const dir of plan.removed.filter(wasWorkspace)) {
+    console.log(`${dir} is deleted; CI checks it.`);
+  }
+  if (plan.quickstart) {
+    console.log(
+      `A quickstart changed. Its check, the packed-consumer test in packages/ayme, is heavy and left to CI. See ${POLICY}.`
+    );
   }
 
   const filters = filtersFor(plan);
   if (filters === undefined) return;
 
-  if (notify) {
-    const selected = new Set(
-      packageNames(turbo("ls", ...filters.selection, "--output=json")).map(
-        (workspace) => workspace.name
-      )
+  const selected = new Set(
+    packageNames(turbo("ls", ...filters.selection, "--output=json")).map(
+      (workspace) => workspace.name
+    )
+  );
+  const heavy = HEAVY_APPS.filter((name) => selected.has(name));
+  if (heavy.length > 0) {
+    console.log(
+      `Left to CI, since their typecheck needs a production build: ${heavy.join(", ")}.`
     );
-    const heavy = HEAVY_APPS.filter((name) => selected.has(name));
-    if (heavy.length > 0) {
-      console.log(
-        `Left to CI, since their typecheck needs a production build: ${heavy.join(", ")}.`
-      );
-    }
   }
 
   const count = countTestTasks(
@@ -182,17 +183,19 @@ function main() {
     return;
   }
 
-  const args = ["run", task, ...filters.run, "--concurrency=50%"];
-  if (dry) {
-    console.log(`turbo ${args.join(" ")}`);
-    return;
+  for (const task of ["typecheck", "test"]) {
+    const args = ["run", task, ...filters.run, "--concurrency=50%"];
+    if (dry) {
+      console.log(`turbo ${args.join(" ")}`);
+      continue;
+    }
+    const result = spawnSync(TURBO, args, { cwd: ROOT, stdio: "inherit" });
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      process.exitCode = result.status ?? 1;
+      return;
+    }
   }
-  const result = spawnSync(TURBO, args, {
-    cwd: ROOT,
-    stdio: "inherit",
-  });
-  if (result.error) throw result.error;
-  process.exitCode = result.status ?? 1;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();
