@@ -6,8 +6,14 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-import { UsageLimitError, withFallbackLogin, type Login } from "./login.ts";
+import {
+  readLoginTokens,
+  UsageLimitError,
+  withFallbackLogin,
+  type Login,
+} from "./login.ts";
 import { runsRoot } from "./paths.ts";
+import { tearDown } from "./run.ts";
 import { defaultScenarioId, startupScenarios } from "./scenarios.ts";
 import { runStartup, type StartupResult } from "./startup.ts";
 import { isUsageLimitText } from "./transcript.ts";
@@ -15,6 +21,11 @@ import { isUsageLimitText } from "./transcript.ts";
 // Dummy values with the shape of a Claude Code token.
 const firstToken = "sk-ant-oat01-dummyFirstTokenForTests9f3a0000";
 const fallbackToken = "sk-ant-oat01-dummyFallbackTokenForTests77c10000";
+/** The token with every character as a JSON escape, as a careless agent might print it. */
+const jsonEscaped = (token: string) =>
+  [...token]
+    .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
+    .join("");
 const fixturesDir = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "fixtures"
@@ -41,6 +52,9 @@ describe("isUsageLimitText", () => {
       "Your usage allocation has been disabled by your admin",
       "Your group's usage limit is set to $0",
       "This service is disabled for your org",
+      "Fable 5 requires usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage?from=cc_cli_limit_message, to continue.",
+      "Fable 5 requires usage credits. /model to switch models.",
+      "API Error: Usage credits required for 1M context · run /usage-credits to turn them on (they take effect in a new session), or /model sonnet to switch to standard context",
     ])
       expect(isUsageLimitText(text), text).toBe(true);
   });
@@ -50,9 +64,13 @@ describe("isUsageLimitText", () => {
       "API Error: 529 overloaded",
       "Server is temporarily limiting requests (not your usage limit)",
       "Opus is experiencing high load, please use /model to switch to Sonnet",
+      "Fable is experiencing high load, please use /model to switch to Sonnet",
+      "Fable is experiencing high load. Switch to Sonnet.",
+      "API Error: Request rejected (429) · this may be a temporary capacity issue.",
       "Done. You've hit your target.",
       "I told you: You've hit your weekly limit",
-      "Fable 5 requires usage credits.",
+      "I told you: Fable 5 requires usage credits.",
+      "Opus with 1M context is not available for your account.",
     ])
       expect(isUsageLimitText(text), text).toBe(false);
   });
@@ -135,6 +153,19 @@ describe("withFallbackLogin", () => {
       }).catch((error: unknown) => (error as Error).message);
       expect(first).toContain("CLAUDE_CODE_OAUTH_TOKEN ");
       expect(first).not.toContain("not-a-token");
+      // The suite's preflight reads the tokens the same way, so it refuses them the same way.
+      expect(() =>
+        readLoginTokens(directory, {
+          CLAUDE_CODE_OAUTH_TOKEN: "not-a-token-0123456789",
+          CLAUDE_CODE_OAUTH_TOKEN_FALLBACK: fallbackToken,
+        })
+      ).toThrow(/^CLAUDE_CODE_OAUTH_TOKEN does not have the shape/);
+      expect(() =>
+        readLoginTokens(directory, {
+          CLAUDE_CODE_OAUTH_TOKEN: firstToken,
+          CLAUDE_CODE_OAUTH_TOKEN_FALLBACK: "e",
+        })
+      ).toThrow(/^CLAUDE_CODE_OAUTH_TOKEN_FALLBACK does not have the shape/);
       // An empty fallback is no second token.
       await expect(
         refuse({
@@ -145,6 +176,30 @@ describe("withFallbackLogin", () => {
     } finally {
       await rm(directory, { recursive: true });
     }
+  });
+});
+
+describe("tearDown", () => {
+  it("logs a step that fails and leaves the run's own outcome alone", async () => {
+    const written: string[] = [];
+    const write = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk) => {
+        written.push(String(chunk));
+        return true;
+      });
+    try {
+      await expect(
+        tearDown("close the database", () =>
+          Promise.reject(new Error("connection lost"))
+        )
+      ).resolves.toBeUndefined();
+    } finally {
+      write.mockRestore();
+    }
+    expect(written.join("")).toContain(
+      "Could not close the database: connection lost"
+    );
   });
 });
 
@@ -200,29 +255,39 @@ describe("runStartup across two logins", () => {
     return { runDir, result: result as StartupResult };
   };
 
-  it("repeats the run on the fallback login when the first is limited, and records the login by name", async () => {
+  it("repeats the run on the fallback login when the first is limited, records the login by name and keeps neither token in either attempt's files", async () => {
     logins({ first: "limit-in-setup.jsonl", fallback: "startup-exact.jsonl" });
-    const before = (await runFolders()).length;
+    // The agent echoes its token on both streams, once in JSON escapes, once in indented JSON over several lines.
+    vi.stubEnv("FAKE_CLAUDE_ECHO_TOKEN", "1");
+    const known = new Set(await runFolders());
     const { result, runDir } = await start();
     expect(result.login).toBe("fallback");
     expect(result.pass).toBe(true);
     expect(JSON.stringify(result)).not.toContain(fallbackToken);
     expect(JSON.stringify(result)).not.toContain(firstToken);
     // Both attempts leave their own folder; the discarded one keeps its transcript.
-    const folders = await runFolders();
-    expect(folders).toHaveLength(before + 2);
-    const discarded = folders.find(
-      (name) =>
-        !runDir.endsWith(name) &&
-        !existsSync(path.join(runsRoot, name, "result.json"))
-    );
+    const created = (await runFolders()).filter((name) => !known.has(name));
+    expect(created).toHaveLength(2);
+    const discarded = created.find((name) => !runDir.endsWith(name));
     expect(discarded).toBeDefined();
+    expect(existsSync(path.join(runsRoot, discarded!, "result.json"))).toBe(
+      false
+    );
     expect(
       await readFile(
         path.join(runsRoot, discarded!, "transcript.jsonl"),
         "utf8"
       )
     ).toContain("You've hit your weekly limit");
+    for (const folder of created)
+      for (const file of ["transcript.jsonl", "stderr.log"]) {
+        const text = await readFile(path.join(runsRoot, folder, file), "utf8");
+        expect(text, `${folder}/${file}`).toContain("[redacted]");
+        for (const token of [firstToken, fallbackToken]) {
+          expect(text, `${folder}/${file}`).not.toContain(token);
+          expect(text, `${folder}/${file}`).not.toContain(jsonEscaped(token));
+        }
+      }
   });
 
   it("uses the first login alone when it is not limited", async () => {
@@ -246,26 +311,6 @@ describe("runStartup across two logins", () => {
     await expect(start()).rejects.toThrow(
       /^Both Claude Code logins are at their usage limit, so the run cannot complete\. The transcript is in /
     );
-  });
-
-  it("keeps neither token in any file of either attempt, although the agent echoes it on both streams, once in JSON escapes", async () => {
-    logins({ first: "limit-in-setup.jsonl", fallback: "startup-exact.jsonl" });
-    vi.stubEnv("FAKE_CLAUDE_ECHO_TOKEN", "1");
-    await start();
-    const folders = (await runFolders()).slice(-2);
-    expect(folders).toHaveLength(2);
-    for (const folder of folders)
-      for (const file of ["transcript.jsonl", "stderr.log"]) {
-        const text = await readFile(path.join(runsRoot, folder, file), "utf8");
-        expect(text, `${folder}/${file}`).toContain("[redacted]");
-        for (const token of [firstToken, fallbackToken])
-          expect(text, `${folder}/${file}`).not.toContain(token);
-        // Written with JSON escapes, a token is no literal text: read what each line says.
-        if (file === "transcript.jsonl")
-          for (const line of text.trim().split("\n"))
-            for (const token of [firstToken, fallbackToken])
-              expect(JSON.stringify(JSON.parse(line))).not.toContain(token);
-      }
   });
 
   it("names the second login's variable when Claude Code does not accept its token", async () => {

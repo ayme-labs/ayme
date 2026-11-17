@@ -12,6 +12,7 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createWriteStream } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
 import type { Arm } from "./arms.ts";
@@ -43,7 +44,7 @@ export type ClaudeInvocation = {
   setupTimeoutMs?: number;
   transcriptPath: string;
   stderrPath: string;
-  /** Token values to scrub from the agent's output before it is kept, besides the one in `environment`. */
+  /** Every token value to scrub from the agent's output before it is kept: the one in `environment` and any other login's. */
   secrets?: string[];
 } & (
   | {
@@ -170,47 +171,36 @@ export function claudeEnvironment(
   return environment;
 }
 
-/** Replaces every secret in the text. */
-export function redactSecrets(text: string, secrets: string[]): string {
-  let redacted = text;
-  for (const secret of secrets)
-    if (secret !== "") redacted = redacted.replaceAll(secret, "[redacted]");
-  return redacted;
+/**
+ * One character of a secret as it may be printed: itself, or its JSON escape
+ * (`\u0073`, in either case of hex digit), the only escape JSON has for the
+ * letters, digits and dashes of a token.
+ */
+function printedCharacter(character: string) {
+  const hex = character
+    .charCodeAt(0)
+    .toString(16)
+    .padStart(4, "0")
+    .replace(/[a-f]/g, (digit) => `[${digit}${digit.toUpperCase()}]`);
+  return `(?:${character.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&")}|\\\\u${hex})`;
 }
 
 /**
- * One line of the agent's output as it is stored. A line that is JSON is
- * scanned as its decoded strings, so a token written with JSON escapes
- * (`\u0073k-ant-...`) is found too: only when one is, the line is stored
- * re-serialized with every token replaced, and any other line is stored byte
- * for byte. A line that is not JSON is scrubbed as text.
+ * Replaces every secret in the text, whether it is written out or spelled
+ * with JSON escapes (`\u0073k-ant-...`), in a string, a key or anywhere else
+ * in the text, so it holds for a stream-json line as for the whole of stderr,
+ * indented JSON over several lines included. What is not a secret stays byte
+ * for byte.
  */
-export function scrubLine(line: string, secrets: string[]): string {
-  let event: unknown;
-  try {
-    event = JSON.parse(line);
-  } catch {
-    return redactSecrets(line, secrets);
-  }
-  let found = false;
-  const scrub = (value: unknown): unknown => {
-    if (typeof value === "string") {
-      const redacted = redactSecrets(value, secrets);
-      found ||= redacted !== value;
-      return redacted;
-    }
-    if (Array.isArray(value)) return value.map(scrub);
-    if (typeof value === "object" && value !== null)
-      return Object.fromEntries(
-        Object.entries(value).map(([key, entry]) => [
-          redactSecrets(key, secrets),
-          scrub(entry),
-        ])
+export function redactSecrets(text: string, secrets: string[]): string {
+  let redacted = text;
+  for (const secret of secrets)
+    if (secret !== "")
+      redacted = redacted.replace(
+        new RegExp(secret.split("").map(printedCharacter).join(""), "g"),
+        "[redacted]"
       );
-    return value;
-  };
-  const scrubbed = scrub(event);
-  return found ? JSON.stringify(scrubbed) : line;
+  return redacted;
 }
 
 export function claudeVersion(): string | null {
@@ -280,7 +270,6 @@ export async function runClaude(
   invocation: ClaudeInvocation
 ): Promise<ClaudeRun> {
   const transcript = createWriteStream(invocation.transcriptPath);
-  const stderr = createWriteStream(invocation.stderrPath);
   const startedAt = new Date();
   const child = spawn("claude", claudeArguments(invocation), {
     cwd: invocation.cwd,
@@ -289,21 +278,19 @@ export async function runClaude(
     stdio: ["pipe", "pipe", "pipe"],
   });
   // Neither stream keeps a token: the output is public once the results folder is uploaded.
-  const secrets = [
-    ...(invocation.secrets ?? []),
-    invocation.environment.CLAUDE_CODE_OAUTH_TOKEN ?? "",
-  ];
-  const stderrReader = createInterface({ input: child.stderr });
-  stderrReader.on("line", (line) =>
-    stderr.write(`${scrubLine(line, secrets)}\n`)
-  );
+  const secrets = invocation.secrets ?? [];
+  // Stderr is free text, so it is scrubbed as a whole, once it is complete: a token in JSON printed
+  // over several lines is no secret on any one line. Stdout is stream-json, scrubbed line by line.
+  let stderr = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk: string) => (stderr += chunk));
   const stderrClosed = new Promise<void>((resolve) =>
-    stderrReader.once("close", resolve)
+    child.stderr.once("close", resolve)
   );
   // A message sent to an agent that has already exited must not take the harness down.
-  child.stdin.on("error", (error) =>
-    stderr.write(`harness: writing to the agent failed: ${error.message}\n`)
-  );
+  child.stdin.on("error", (error) => {
+    stderr += `harness: writing to the agent failed: ${error.message}\n`;
+  });
 
   const lines: string[] = [];
   let usageLimited = false;
@@ -312,7 +299,7 @@ export async function runClaude(
   reader.on("line", (rawLine) => {
     // The event is read as the agent wrote it; only what is stored is scrubbed.
     const result = resultEvent(rawLine);
-    const line = scrubLine(rawLine, secrets);
+    const line = redactSecrets(rawLine, secrets);
     lines.push(line);
     transcript.write(`${line}\n`);
     if (result !== null) {
@@ -407,7 +394,10 @@ export async function runClaude(
     linger = setTimeout(stopChild, exitGraceMs);
     const { exitCode, signal } = await closed;
     await Promise.all([readerClosed, stderrClosed]);
-    await Promise.all([closeStream(transcript), closeStream(stderr)]);
+    await Promise.all([
+      closeStream(transcript),
+      writeFile(invocation.stderrPath, redactSecrets(stderr, secrets)),
+    ]);
     // An interrupted run is not a result: nothing is stored and a suite stops.
     if (interruptedBy)
       throw new Error(`The run was interrupted by ${interruptedBy}.`);

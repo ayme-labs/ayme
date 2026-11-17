@@ -3,7 +3,8 @@
  * attempt ends on a usage limit, the attempt is thrown away and the whole run
  * is done again, from the start, on the second. Without a second token a
  * limit is handled as any other failure of the run. A token reaches only the
- * agent's environment; what this module records is the login's name.
+ * agent's environment and the `claude auth status` check; what this module
+ * records is the login's name.
  */
 import {
   fallbackTokenVariable,
@@ -60,6 +61,24 @@ function checkedToken(
   );
 }
 
+/**
+ * Both configured tokens, each checked for its shape, before anything uses
+ * either: a malformed one is refused here, by variable name, whichever of the
+ * two it is. A token that is not configured is `undefined`.
+ */
+export function readLoginTokens(
+  directory: string,
+  parent: NodeJS.ProcessEnv = process.env
+) {
+  return {
+    first: checkedToken(readOauthToken(directory, parent), tokenVariable),
+    fallback: checkedToken(
+      readEnvVariable(fallbackTokenVariable, directory, parent),
+      fallbackTokenVariable
+    ),
+  };
+}
+
 /** Runs the attempt on the first login, and once more on the second when the first ended on a usage limit. */
 export async function withFallbackLogin<T>(
   directory: string,
@@ -67,11 +86,7 @@ export async function withFallbackLogin<T>(
   log: (line: string) => void,
   parent: NodeJS.ProcessEnv = process.env
 ): Promise<T> {
-  const first = checkedToken(readOauthToken(directory, parent), tokenVariable);
-  const fallback = checkedToken(
-    readEnvVariable(fallbackTokenVariable, directory, parent),
-    fallbackTokenVariable
-  );
+  const { first, fallback } = readLoginTokens(directory, parent);
   const secrets = [first, fallback].filter(
     (token): token is string => token !== undefined
   );

@@ -10,7 +10,8 @@
 // answer depend on the CLAUDE_CODE_OAUTH_TOKEN it receives, as a login does: a
 // token not in it is not logged in and runs nothing. With FAKE_CLAUDE_ECHO_TOKEN
 // it also echoes that token on both streams, as a careless agent might, and once
-// on stdout with every character written as a JSON escape.
+// on stdout with every character written as a JSON escape, and on stderr inside
+// indented JSON over several lines.
 // Each user message's text goes to stderr, so a test can see what was sent,
 // as do the arguments and the skills in its configuration folder. The fixture
 // writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
@@ -79,6 +80,10 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       .join("");
     process.stdout.write(
       `{"type":"system","subtype":"debug","message":"my escaped token is ${escaped}"}\n`
+    );
+    // In indented JSON over several lines, with the token as a value and as a key.
+    process.stderr.write(
+      `fake claude: config {\n  "nested": {\n    "value": "${escaped}",\n    "${escaped}": 1\n  }\n}\n`
     );
   }
   const turn = turns[replayed];

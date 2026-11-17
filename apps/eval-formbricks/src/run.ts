@@ -113,6 +113,21 @@ export function log(line: string) {
   process.stderr.write(`[${new Date().toISOString()}] ${line}\n`);
 }
 
+/**
+ * One step of a run's teardown. A step that fails is logged and never takes the
+ * place of how the run ended, which may be the refusal that triggers the repeat
+ * on the second login, or the message that both logins are at their limit.
+ */
+export async function tearDown(step: string, action: () => Promise<unknown>) {
+  try {
+    await action();
+  } catch (error) {
+    log(
+      `Could not ${step}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 export function gitOutput(cwd: string, args: string[]) {
   const result = spawnSync("git", args, {
     cwd,
@@ -344,10 +359,16 @@ async function runOnceOn(
       );
     return { runId, runDir, result };
   } finally {
-    await armSetup?.dispose();
-    await database.close();
-    await rm(profileDir, { recursive: true, force: true });
-    await rm(claudeConfigDir, { recursive: true, force: true });
+    await tearDown("close what the arm's setup started", async () => {
+      await armSetup?.dispose();
+    });
+    await tearDown("close the database", () => database.close());
+    await tearDown("delete the browser profile", () =>
+      rm(profileDir, { recursive: true, force: true })
+    );
+    await tearDown("delete the Claude Code configuration folder", () =>
+      rm(claudeConfigDir, { recursive: true, force: true })
+    );
   }
 }
 

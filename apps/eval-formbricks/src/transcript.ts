@@ -102,7 +102,10 @@ function parseEvents(lines: string[]) {
  * instead when the seat cannot buy more usage ("Your seat type doesn't include usage ...", "Your
  * usage allocation has been disabled by your admin", "Your group's usage limit is set to $0"),
  * and "This service is disabled for your org", which it gives on a quota rejection when the
- * organisation has disabled overage. Only the weekly limit has been seen in a real transcript.
+ * organisation has disabled overage. When the account lacks credits for the model or the context it
+ * was asked for, it refuses with "Fable 5 requires usage credits. Switch to another model ..." and
+ * "API Error: Usage credits required for 1M context · run ...". Only the weekly limit has been seen
+ * in a real transcript.
  * Anchored at the start: the CLI writes these itself, so a model's text that quotes one does not
  * count. Overload and server throttling ("Opus is experiencing high load", "Server is temporarily
  * limiting requests (not your usage limit)") are not the login's own limit and do not match.
@@ -116,6 +119,9 @@ const usageLimitTexts = [
   /^Your usage allocation has been disabled by your admin/,
   /^Your group's usage limit is set to \$0/,
   /^This service is disabled for your org\b/,
+  // Claude Code's own pattern for the model that needs credits, which only Fable does.
+  /^Fable(?: [^\u00B7\n]{1,40})? requires usage credits\./,
+  /^API Error: Usage credits required for 1M context\b/,
 ];
 
 export function isUsageLimitText(text: string) {

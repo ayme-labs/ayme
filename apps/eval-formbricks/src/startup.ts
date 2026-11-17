@@ -37,7 +37,7 @@ import {
   claudeTokenPrecondition,
 } from "./preconditions.ts";
 import { readyLine } from "./prompt.ts";
-import { defaultModel, gitOutput, log, writeJson } from "./run.ts";
+import { defaultModel, gitOutput, log, tearDown, writeJson } from "./run.ts";
 import {
   defaultScenarioId,
   startupScenarios,
@@ -269,7 +269,9 @@ async function runStartupOn(
     await writeJson(path.join(runDir, "result.json"), result);
     return { runDir, result };
   } finally {
-    await rm(claudeConfigDir, { recursive: true, force: true });
+    await tearDown("delete the Claude Code configuration folder", () =>
+      rm(claudeConfigDir, { recursive: true, force: true })
+    );
   }
 }
 

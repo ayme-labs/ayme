@@ -11,7 +11,6 @@ import {
   claudeEnvironment,
   redactSecrets,
   runClaude,
-  scrubLine,
   userMessageLine,
   type ClaudeInvocation,
   type ClaudeRun,
@@ -317,44 +316,61 @@ describe("runClaude", () => {
   });
 });
 
-describe("scrubLine", () => {
+describe("redactSecrets", () => {
   const token = "sk-ant-oat01-dummyTokenForTests0123456789";
   const escaped = [...token]
     .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
     .join("");
 
-  it("finds a token written with JSON escapes, and stores the line re-serialized without it", () => {
-    const line = `{"type":"system","message":"my token is ${escaped}","n":1}`;
+  it("replaces a token written out", () => {
+    expect(redactSecrets(`debug: ${token} here, ${token}`, [token])).toBe(
+      "debug: [redacted] here, [redacted]"
+    );
+  });
+
+  it("finds a token written with JSON escapes, in either case of hex digit, and changes nothing else", () => {
+    const line = `{ "type" : "system",  "message":"my token is ${escaped}","n":1}`;
     expect(line).not.toContain(token);
-    // Its decoded text is the whole token, which a search of the raw bytes misses.
-    expect(redactSecrets(line, [token])).toBe(line);
-    const stored = scrubLine(line, [token]);
-    expect(JSON.parse(stored)).toEqual({
-      type: "system",
-      message: "my token is [redacted]",
-      n: 1,
-    });
-    expect(JSON.stringify(JSON.parse(stored))).not.toContain(token);
-  });
-
-  it("finds a token in a key, a nested value and an array", () => {
-    const stored = scrubLine(
-      JSON.stringify({ [token]: { list: ["a", `x${token}`] } }),
-      [token]
+    expect(redactSecrets(line, [token])).toBe(
+      '{ "type" : "system",  "message":"my token is [redacted]","n":1}'
     );
-    expect(JSON.parse(stored)).toEqual({
-      "[redacted]": { list: ["a", "x[redacted]"] },
-    });
+    expect(redactSecrets("\\u006b \\u006B", ["k"])).toBe(
+      "[redacted] [redacted]"
+    );
   });
 
-  it("keeps a line without a token byte for byte, formatting included", () => {
+  it("finds a token used only as a JSON key, written out or in JSON escapes", () => {
+    for (const key of [token, escaped]) {
+      const stored = redactSecrets(`{"${key}":{"list":["a"]}}`, [token]);
+      expect(JSON.parse(stored)).toEqual({ "[redacted]": { list: ["a"] } });
+    }
+  });
+
+  it("finds a token in indented JSON over several lines among other lines, as a value and as a key", () => {
+    const stderr = [
+      "starting",
+      "{",
+      '  "nested": {',
+      `    "value": "${escaped}",`,
+      `    "${escaped}": 1,`,
+      `    "literal": "${token}"`,
+      "  }",
+      "}",
+      "done",
+    ].join("\n");
+    const stored = redactSecrets(stderr, [token]);
+    expect(stored).not.toContain(token);
+    expect(stored).not.toContain(escaped);
+    expect(stored.split("\n")).toHaveLength(9);
+    expect(stored.match(/\[redacted\]/g)).toHaveLength(3);
+  });
+
+  it("keeps a text without a token byte for byte", () => {
     const line = '{ "type" : "result",  "result":"\\u0041 done" }';
-    expect(scrubLine(line, [token])).toBe(line);
+    expect(redactSecrets(line, [token])).toBe(line);
   });
 
-  it("scrubs a line that is not JSON as text", () => {
-    expect(scrubLine(`debug: ${token} here`, [token])).toBe(
-      "debug: [redacted] here"
-    );
+  it("replaces every secret it is given", () => {
+    expect(redactSecrets("a b", ["a", "b"])).toBe("[redacted] [redacted]");
   });
 });

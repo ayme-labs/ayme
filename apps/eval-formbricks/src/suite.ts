@@ -20,17 +20,14 @@ import path from "node:path";
 import { armIds, arms, isArmId, type ArmId } from "./arms.ts";
 import { parseFlags } from "./cli.ts";
 import { claudeEnvironment } from "./claude.ts";
-import {
-  openRouterKeyVariable,
-  readEnvVariable,
-  readOauthToken,
-} from "./environment.ts";
+import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
 import { ensureDatabaseBuilt } from "./formbricks/database.ts";
 import {
   defaultMissionId,
   missionDefinitions,
   type MissionDefinition,
 } from "./missions.ts";
+import { readLoginTokens } from "./login.ts";
 import { evalRoot, formbricksRoot, labUrl } from "./paths.ts";
 import {
   checkPreconditions,
@@ -94,7 +91,8 @@ async function main() {
 
   log("Checking preconditions.");
   try {
-    const oauthToken = readOauthToken(evalRoot);
+    // Both tokens are checked for their shape before the first reaches `claude auth status`.
+    const oauthToken = readLoginTokens(evalRoot).first;
     await checkPreconditions([
       claudeTokenPrecondition({
         environment:
