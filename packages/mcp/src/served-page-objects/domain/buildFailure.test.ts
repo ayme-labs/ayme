@@ -71,3 +71,33 @@ it("names the file of an error that has no line, without one", () => {
     "/project/.ayme/pom/PlainPage.ts: Could not read TypeScript project configuration"
   );
 });
+
+it("names the column an editor counts after non-ASCII text, from esbuild's count of UTF-8 bytes on the error's line", () => {
+  // "    return \"café ☕ 😀\" + this.note.textContent(" is 47 UTF-16 code
+  // units and 52 UTF-8 bytes: é is 2 bytes, ☕ 3 and 😀 4.
+  const lineText = '    return "café ☕ 😀" + this.note.textContent(;';
+  expect(
+    buildErrorLine({
+      text: "')' expected.",
+      location: { file: entry, line: 19, column: 52, lineText },
+    })
+  ).toBe(`${entry}:19:48: ')' expected.`);
+});
+
+it("names esbuild's column as it is when the error has no line text", () => {
+  expect(
+    buildErrorLine({
+      text: "')' expected.",
+      location: { file: entry, line: 19, column: 52 },
+    })
+  ).toBe(`${entry}:19:53: ')' expected.`);
+});
+
+it("names esbuild's column as it is when the error's line text is empty, as for a line esbuild did not read", () => {
+  expect(
+    buildErrorLine({
+      text: "unreadable",
+      location: { file: entry, line: 2, column: 4, lineText: "" },
+    })
+  ).toBe(`${entry}:2:5: unreadable`);
+});

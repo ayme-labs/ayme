@@ -12,7 +12,7 @@ import { join } from "node:path";
 import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
 
-import { PageObjectsBuildError } from "../domain/buildFailure";
+import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import {
   buildOutcomes,
   failedPageObjects,
@@ -213,15 +213,67 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
     })
   );
 
-  expect(await onLoad({ path: file })).toMatchObject({
+  const result = (await onLoad({ path: file })) as {
+    errors: esbuild.PartialMessage[];
+  };
+  expect(result).toMatchObject({
     errors: [
       {
         text: "Expression expected.",
         // "const café = " is 13 code units and 14 bytes.
-        location: { file, line: 1, column: 14 },
+        location: { file, line: 1, column: 14, lineText: "const café = ;" },
       },
     ],
   });
+  // The reported line counts the column as TypeScript and editors do.
+  expect(
+    buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
+  ).toBe(`${file}:1:14: Expression expected.`);
+});
+
+it("reports esbuild's own error after non-ASCII text at the column an editor counts", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-esbuild-"))
+  );
+  const line = 'export const note = "café ☕ 😀" +;';
+  await writeFile(join(folder, "entry.ts"), `${line}\n`);
+  const log = vi.fn();
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log,
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [outcomes.plugin],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    // esbuild's own error counts its column in UTF-8 bytes, and carries its line.
+    expect(failure.errors).toMatchObject([
+      {
+        location: {
+          line: 1,
+          column: Buffer.byteLength(line.slice(0, line.indexOf(";"))),
+          lineText: line,
+        },
+      },
+    ]);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(buildErrorLine(error.errors[0]!)).toBe(
+      `${join(folder, "entry.ts")}:1:${line.indexOf(";") + 1}: ${failure.errors[0]!.text}`
+    );
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
 });
 
 it("counts a diagnostic's line as TypeScript does, across each kind of line break", async () => {
