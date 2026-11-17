@@ -350,8 +350,9 @@ export async function runCodex(
       typeof started?.thread?.id === "string" ? started.thread.id : null;
     clearTimeout(startTimer);
 
+    // A start that outlasted the timeout sends no setup message, even to a server that then answers.
     const setupTurn =
-      threadId === null
+      threadId === null || startTimedOut
         ? {
             turn: { sentAt: "", wallTimeMs: null, timedOut: startTimedOut },
             result: null,
@@ -369,7 +370,11 @@ export async function runCodex(
     const setupFailure =
       threadId === null && !setup.timedOut
         ? "Codex did not start a thread"
-        : setupTurnFailure(agent, setupTurn, setupTimeout);
+        : setupTurnFailure(
+            agent,
+            { turn: setup, result: setupTurn.result },
+            setupTimeout
+          );
     const task =
       setupFailure === null
         ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
