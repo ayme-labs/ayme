@@ -101,3 +101,18 @@ it("names esbuild's column as it is when the error's line text is empty, as for 
     })
   ).toBe(`${entry}:2:5: unreadable`);
 });
+
+it("counts a U+FEFF that starts the error's line, as TypeScript counts it", () => {
+  // "\uFEFFconst value = " is 15 UTF-16 code units and 17 UTF-8 bytes.
+  expect(
+    buildErrorLine({
+      text: "Expression expected.",
+      location: {
+        file: entry,
+        line: 2,
+        column: 17,
+        lineText: "\uFEFFconst value = ;",
+      },
+    })
+  ).toBe(`${entry}:2:16: Expression expected.`);
+});
