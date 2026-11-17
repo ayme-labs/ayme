@@ -25,7 +25,7 @@ permissions:
 
 env:
   # The Claude Code the worker runs, as in eval-formbricks.yml.
-  CLAUDE_CODE_VERSION: 2.1.281
+  CLAUDE_CODE_VERSION: 2.1.326
 
 jobs:
   plan:
@@ -114,7 +114,8 @@ jobs:
       - name: Run
         working-directory: apps/eval-first-install
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The eval's second login; the first is used by eval-formbricks.yml.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK }}
         run: >-
           node src/run.ts --tool "${{ matrix.tool }}"
           --packed "$RUNNER_TEMP/packed"

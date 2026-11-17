@@ -33,7 +33,7 @@ On a shared machine, note that the worker chooses its own ports and browser, and
 
 ## In CI
 
-[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/validate-real-playwright-evals` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. A `workflow_dispatch` workflow could not be dispatched from this branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.281 as in `eval-formbricks.yml` and the `CLAUDE_CODE_OAUTH_TOKEN` secret. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
+[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/validate-real-playwright-evals` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. A `workflow_dispatch` workflow could not be dispatched from this branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
 
 ## A run's folder
 
