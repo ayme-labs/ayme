@@ -58,8 +58,8 @@ export async function startMcpServer({
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
   const connection = new AgentConnection();
   const token = randomUUID();
-  // Admits the Inspector's page an agent app shows, whose origin is the
-  // agent app's: a token of its own, which pairs no page.
+  // Admits the Inspector's page an Agent App shows, whose origin is the
+  // Agent App's: a token of its own, which pairs no page.
   const inspectorToken = randomUUID();
   // The MCP server starts after the page's: a page may say hello before it.
   let agentName = (): string | undefined => undefined;

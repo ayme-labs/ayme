@@ -9,8 +9,8 @@ import { Header } from "../view/Header";
  * panel fills it, with the same header and body, and nothing to drag, dock,
  * resize or collapse. Its structure is the shell's: an `ayme` landmark
  * holding a frame that holds the header and the body. Where the window is
- * shown in an agent app's chat, the header has a fullscreen control while
- * the agent app offers fullscreen.
+ * shown in an Agent App's chat, the header has a fullscreen control while
+ * the Agent App offers fullscreen.
  */
 export function WindowShell({
   theme,

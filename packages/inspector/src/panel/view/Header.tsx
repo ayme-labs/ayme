@@ -32,7 +32,7 @@ const iconButton = cn(
 
 /**
  * The panel's header: the ayme title, the status after it, the theme
- * switch, the layout menu, collapse, and fullscreen where an agent app
+ * switch, the layout menu, collapse, and fullscreen where an Agent App
  * offers it. The panel drags by it.
  */
 export function Header({

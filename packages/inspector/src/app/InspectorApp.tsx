@@ -39,7 +39,7 @@ import { decodeViewState, viewStateKey, withSelection } from "./viewState";
  * the one selection the navigator, the detail pane and Runs share, and
  * keeps where the person was in it for the tab. `windowed` fills a window of
  * the Inspector's own, outside the page it shows, in place of the dockable
- * panel; `fullscreen` is what an agent app that shows that window offers.
+ * panel; `fullscreen` is what an Agent App that shows that window offers.
  */
 export function InspectorApp({
   windowed = false,

@@ -4,7 +4,7 @@ import {
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 
 /**
- * A stand-in for an agent app that shows MCP Apps, as the e2e tests use it:
+ * A stand-in for an Agent App that shows MCP Apps, as the e2e tests use it:
  * it shows the page at `?frame=` (which the test serves) in the sandboxed
  * frame of `agent-app.html`, through the ext-apps SDK's own host side.
  * `?modes=` lists the display modes it offers, `inline` by default.

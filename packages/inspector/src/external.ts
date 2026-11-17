@@ -13,20 +13,20 @@ import {
 } from "./shared";
 
 /**
- * The id of the element that names the socket of the page an agent app
+ * The id of the element that names the socket of the page an Agent App
  * shows, as JSON `{ "socket": url }`. `ayme mcp` writes it into that page:
- * the page's own address is the agent app's, not the server's.
+ * the page's own address is the Agent App's, not the server's.
  */
 const AGENT_APP_CONFIG_ID = "ayme-inspector-app";
 
-/** How many times in a row a window in an agent app connects again. */
+/** How many times in a row a window in an Agent App connects again. */
 const AGENT_APP_RETRIES = 3;
 
 /**
  * Starts the Inspector in the window it is served to: it reads the page
  * behind the server that served this window, and fills the window. In an
- * agent app's chat, the page names that server's socket, and the Inspector
- * talks to the agent app it is shown in. There, the socket's token ends with
+ * Agent App's chat, the page names that server's socket, and the Inspector
+ * talks to the Agent App it is shown in. There, the socket's token ends with
  * the server, so a window that finds no server after {@link AGENT_APP_RETRIES}
  * tries stops and says so; a browser window goes on trying, since the server
  * it is served by may start again at the same address.

@@ -2,14 +2,14 @@ import type { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
 import type { FullscreenState, WindowFullscreen } from "../panel";
 
-/** The height the Inspector asks an agent app for, shown inline. */
+/** The height the Inspector asks an Agent App for, shown inline. */
 export const INLINE_HEIGHT = 600;
 
 /**
- * Talks to the agent app that shows this window in its chat, as an MCP App
+ * Talks to the Agent App that shows this window in its chat, as an MCP App
  * (through the ext-apps SDK, over the frame's `postMessage`): it asks for
- * {@link INLINE_HEIGHT}, and gives the fullscreen the agent app offers,
- * which is none until the agent app answers. It sends no size after that,
+ * {@link INLINE_HEIGHT}, and gives the fullscreen the Agent App offers,
+ * which is none until the Agent App answers. It sends no size after that,
  * so a fullscreen frame's size never reads as a request. `AppClass` is the
  * SDK's `App`: only the external build imports the SDK, so the Inspector in
  * the page carries none of it.
@@ -22,7 +22,7 @@ export function connectAgentApp(AppClass: typeof App): WindowFullscreen {
   );
   const listeners = new Set<() => void>();
   let state: FullscreenState = { offered: false, active: false };
-  // The agent app names the display mode in its answer to a request, in a
+  // The Agent App names the display mode in its answer to a request, in a
   // context change, or in both: the last one it named is the window's.
   const update = (
     displayMode: string | undefined,
@@ -43,7 +43,7 @@ export function connectAgentApp(AppClass: typeof App): WindowFullscreen {
       update(app.getHostContext()?.displayMode);
       void app.sendSizeChanged({ height: INLINE_HEIGHT });
     },
-    // Not shown by an agent app after all: it offers nothing.
+    // Not shown by an Agent App after all: it offers nothing.
     () => {}
   );
   return {

@@ -128,7 +128,7 @@ describe("the external Inspector's socket", () => {
     await expect(open(base, "https://example.com")).rejects.toThrow();
   });
 
-  // The origins three agent apps' in-chat frames were measured to send.
+  // The origins three Agent Apps' in-chat frames were measured to send.
   const agentAppOrigins = [
     "null",
     "vscode-webview://1a2b3c4d",

@@ -34,11 +34,11 @@ export default defineConfig([
   },
   {
     // The external build (ADR-0049): one script `ayme mcp` serves to a
-    // browser window on its own, and puts inside the page an agent app
+    // browser window on its own, and puts inside the page an Agent App
     // shows, so nothing is left to resolve there: React, Ayme's contract
     // entry and the MCP Apps SDK are inside it, and the Inspector shares its
     // output with no other entry (a chunk would be a second file to serve).
-    // Minified: no bundler reads it after this one, and an agent app gets
+    // Minified: no bundler reads it after this one, and an Agent App gets
     // the whole script inside every page it shows.
     ...shared,
     clean: false,

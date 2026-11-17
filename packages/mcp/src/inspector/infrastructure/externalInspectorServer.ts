@@ -25,8 +25,8 @@ import type { InspectorRelay } from "../application/inspectorRelay";
  * is the loopback server's is answered, so a page that rebinds a name to
  * 127.0.0.1 reads nothing. A window must come from the page the server
  * served, or bring `token` in its socket URL's `token` parameter, as the
- * page an agent app shows in its chat does: its origin is the agent app's,
- * and differs per app. Each window admitted by token is logged.
+ * page an Agent App shows in its chat does: its origin is the Agent App's,
+ * and differs per app (ADR-0056). Each window admitted by token is logged.
  */
 export function externalInspectorServer({
   relay,

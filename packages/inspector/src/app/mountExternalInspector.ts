@@ -7,7 +7,7 @@ import { exposeInspectorShadowRoot } from "../shared";
  * placement, in a page that `ayme mcp` serves. It fills the window, and shows
  * a page that is not this document, so it hears none of its DOM events: the
  * contract client it reads through is the channel's (`external`). Shown in
- * an agent app's chat, it offers the `fullscreen` the agent app offers.
+ * an Agent App's chat, it offers the `fullscreen` the Agent App offers.
  */
 export function mountExternalInspector({
   fullscreen,
@@ -36,7 +36,7 @@ export const SERVER_LOST_NOTICE =
 
 /**
  * Says, in place of the Inspector, that the server this window read through
- * is gone. In the system's colours: the window is an agent app's frame,
+ * is gone. In the system's colours: the window is an Agent App's frame,
  * light or dark.
  */
 export function showServerLost() {

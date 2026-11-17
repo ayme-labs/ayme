@@ -17,8 +17,8 @@ import {
 } from "./fixtures";
 
 // `ayme_inspect` carries the external Inspector as an MCP App. These tests
-// stand in for an agent app that shows MCP Apps: they read the page the
-// tool points to over MCP, as the agent app does, and show it in a frame
+// stand in for an Agent App that shows MCP Apps: they read the page the
+// tool points to over MCP, as the Agent App does, and show it in a frame
 // sandboxed without `allow-same-origin`, under the Content Security Policy
 // the page declares, through the ext-apps SDK's own host side
 // (`app/agentApp.ts`). The Inspector renders into a closed shadow root; its
@@ -28,7 +28,7 @@ test.beforeAll(() => registerInspectorSelectors(selectors));
 /** The Page Object Tool of the served entry's `PlainPage`. */
 const PLAIN_PAGE_TOOL = "PlainPage.readNote";
 
-/** The page `ayme_inspect` points an agent app to, as the agent app reads it. */
+/** The page `ayme_inspect` points an Agent App to, as the Agent App reads it. */
 async function inspectorApp(agent: Agent) {
   const { tools } = await agent.client.listTools();
   const inspect = tools.find((tool) => tool.name === "ayme_inspect");
@@ -46,9 +46,9 @@ async function inspectorApp(agent: Agent) {
 }
 
 /**
- * Shows the page in a stand-in agent app that offers `modes`, in a browser
- * context of its own. Returns the agent app's page, the Inspector in it, and
- * `close`, which closes both. Without `announces`, the agent app grants a
+ * Shows the page in a stand-in Agent App that offers `modes`, in a browser
+ * context of its own. Returns the Agent App's page, the Inspector in it, and
+ * `close`, which closes both. Without `announces`, the Agent App grants a
  * display mode in its answer only and sends no context change after it.
  */
 async function showInAgentApp(
@@ -59,7 +59,7 @@ async function showInAgentApp(
   announces = true
 ) {
   // Under the policy T3 Code was measured to apply, the strictest of the
-  // agent apps measured: inline scripts and styles only, and connections
+  // Agent Apps measured: inline scripts and styles only, and connections
   // only to the origins the page declares. From a loopback server of its
   // own: a document Playwright fulfils has no address, so Chrome would take
   // it for a public one and block its connection to the loopback server.
@@ -110,7 +110,7 @@ function closeServer(server: Server) {
   return new Promise((resolve) => server.close(resolve));
 }
 
-/** What the page asked the stand-in agent app for. */
+/** What the page asked the stand-in Agent App for. */
 function agentAppSaw(page: Page) {
   return page.evaluate(
     () =>
@@ -122,7 +122,7 @@ function agentAppSaw(page: Page) {
   );
 }
 
-test("an agent app shows the Inspector ayme_inspect points to, which runs a tool on the paired page, admitted by its token", async ({
+test("an Agent App shows the Inspector ayme_inspect points to, which runs a tool on the paired page, admitted by its token", async ({
   context,
   page,
   browser,
@@ -170,7 +170,7 @@ test("an agent app shows the Inspector ayme_inspect points to, which runs a tool
   }
 });
 
-test("the Inspector in an agent app that offers no fullscreen has no fullscreen control", async ({
+test("the Inspector in an Agent App that offers no fullscreen has no fullscreen control", async ({
   context,
   page,
   browser,
@@ -187,7 +187,7 @@ test("the Inspector in an agent app that offers no fullscreen has no fullscreen 
     );
     try {
       await shown.inspector.open();
-      // The page asks for its height once the agent app has answered.
+      // The page asks for its height once the Agent App has answered.
       await expect
         .poll(async () => (await agentAppSaw(shown.page)).heights)
         .toEqual([600]);
@@ -202,7 +202,7 @@ test("the Inspector in an agent app that offers no fullscreen has no fullscreen 
   }
 });
 
-test("the Inspector goes by the display mode an agent app grants, when the agent app announces no change after it", async ({
+test("the Inspector goes by the display mode an Agent App grants, when the Agent App announces no change after it", async ({
   context,
   page,
   browser,
@@ -241,7 +241,7 @@ test("the Inspector goes by the display mode an agent app grants, when the agent
   }
 });
 
-test("the Inspector in an agent app stops and says so once its server is gone", async ({
+test("the Inspector in an Agent App stops and says so once its server is gone", async ({
   context,
   page,
   browser,

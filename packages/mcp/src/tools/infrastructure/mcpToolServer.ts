@@ -34,7 +34,7 @@ import {
  * result carries its tool change note, if any, as a text item after the
  * tool's own. A server tool's input is checked against its input schema
  * before the tool runs, with arguments left out taken as `{}`; a page
- * tool's input is the page's to check. A server tool's page for agent apps
+ * tool's input is the page's to check. A server tool's page for Agent Apps
  * (`app`) is a resource of the server, linked from the tool's listing, the
  * MCP Apps way.
  */
@@ -84,7 +84,7 @@ export function createMcpToolServer({
         description,
         inputSchema,
         ...(app && {
-          // The flat key is the one agent apps read before `ui` was nested.
+          // The flat key is the one Agent Apps read before `ui` was nested.
           _meta: { ui: { resourceUri: app.uri }, "ui/resourceUri": app.uri },
         }),
       })),

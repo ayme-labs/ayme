@@ -15,7 +15,7 @@ export function inspectorUrl(host: string, port: number): string {
   return `http://${host}:${port}${INSPECTOR_PATH}`;
 }
 
-/** The address of the page an agent app shows in its chat (MCP Apps). */
+/** The address of the page an Agent App shows in its chat (MCP Apps). */
 export const INSPECTOR_APP_URI = "ui://ayme/inspector.html";
 
 /**
@@ -60,17 +60,17 @@ export const INSPECTOR_HTML = inspectorDocument(
 );
 
 /**
- * The id of the element that gives the page an agent app shows the socket
+ * The id of the element that gives the page an Agent App shows the socket
  * it connects to, as JSON `{ "socket": url }`. The Inspector's external
- * build reads it, and, finding it, talks to the agent app it is shown in.
+ * build reads it, and, finding it, talks to the Agent App it is shown in.
  */
 export const INSPECTOR_APP_CONFIG_ID = "ayme-inspector-app";
 
 /**
- * The page an agent app shows in its chat (MCP Apps): the external
- * Inspector's document with `build`, its script, inside it, since agent apps
+ * The page an Agent App shows in its chat (MCP Apps): the external
+ * Inspector's document with `build`, its script, inside it, since Agent Apps
  * load no script from elsewhere, and the socket URL it connects to, since its
- * own address is the agent app's. Without a build, the install hint.
+ * own address is the Agent App's. Without a build, the install hint.
  */
 export function inspectorAppHtml(
   build: string | undefined,

@@ -4,7 +4,7 @@ import type { ServerToolFactory } from "./serverTool";
 
 /**
  * `ayme_inspect`: the URL of the external Inspector of the connected page,
- * and the same Inspector as a page an agent app that shows MCP Apps shows in
+ * and the same Inspector as a page an Agent App that shows MCP Apps shows in
  * its chat.
  */
 export const inspectTool: ServerToolFactory = ({ inspector }) => ({

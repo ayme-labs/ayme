@@ -2,7 +2,7 @@
 export type FullscreenState = { offered: boolean; active: boolean };
 
 /**
- * Fullscreen as an agent app that shows the Inspector's window in its chat
+ * Fullscreen as an Agent App that shows the Inspector's window in its chat
  * offers it: the window's header shows a fullscreen control while it is
  * offered.
  */
