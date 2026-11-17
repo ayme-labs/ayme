@@ -1228,13 +1228,16 @@ function askSharedSnapshot(draft: Draft, earlier: Input, later: Input) {
 }
 
 /** The held input of a page that is under way: the oldest without its
- * "after". An input known from its report only goes its own way. */
+ * "after". An input known from its report only goes its own way, and so
+ * does a key that reached its page while its typing settles: it needs no
+ * read, and keeps nothing behind it waiting. */
 const underWay = (draft: Draft, page: PageId) =>
   draft.inputs.find(
     (input) =>
       input.page === page &&
       input.held.kind !== "reported" &&
-      input.stage !== "settled"
+      input.stage !== "settled" &&
+      !(input.held.kind === "typing" && input.stage === "settling")
   );
 
 /** What the browser tells about an input while a recording is under way. */
@@ -1277,7 +1280,12 @@ function heard(state: Active, draft: Draft, happening: BrowserSignal): Active {
     case "snapshotTaken":
       return snapshotTaken(state, draft, happening.snapshot);
     case "inputPassedOn":
-      inputPassedOn(draft, happening.input, happening.at);
+      inputPassedOn(
+        draft,
+        happening.input,
+        happening.at,
+        state.phase === "wrappingUp"
+      );
       return state;
     case "pageSettled":
       pageSettled(draft, happening.input);
@@ -1445,15 +1453,24 @@ const startAt = (input: Input, snapshot: SnapshotId, at: number | null) =>
   input.unread && !input.before ? { before: snapshot, passedOnAt: at } : {};
 
 /** A held input has reached its page. */
-function inputPassedOn(draft: Draft, id: InputId, at: number) {
+function inputPassedOn(
+  draft: Draft,
+  id: InputId,
+  at: number,
+  wrappingUp: boolean
+) {
   const input = draft.inputs.find(
     (held) => held.id === id && held.stage === "passingOn"
   );
   if (!input) return;
   change(draft, input.id, { passedOnAt: at });
-  // Typing has no "after": what it changed is the typing's report's.
+  // Typing has no "after": what it changed is the typing's report's. In a
+  // wrap-up it stays under way until its page is settled, by when its
+  // report is in: the pages go on holding inputs meanwhile, so that a click
+  // right after it gets a "before" of its own.
   if (input.held.kind === "typing") {
-    change(draft, input.id, { stage: "settled" });
+    change(draft, input.id, { stage: wrappingUp ? "settling" : "settled" });
+    if (wrappingUp) draft.todo.push(settleAfter(input));
     return;
   }
   const later = draft.inputs.find(
@@ -1479,6 +1496,9 @@ function pageSettled(draft: Draft, id: InputId) {
   );
   // A wait that was cut short ends too: nothing waits for it any more.
   if (!input) return;
+  // Typing needs no read of its own: its report has come by now.
+  if (input.held.kind === "typing")
+    return change(draft, input.id, { stage: "settled" });
   change(draft, input.id, {
     stage: "takingAfter",
     asked: askSnapshot(draft, input.page),
@@ -1629,8 +1649,11 @@ function startReported(draft: Draft, index: number): boolean {
   const earlier = draft.inputs
     .slice(0, index)
     .filter((before) => before.page === input.page);
-  // The inputs of its page ahead of it that have no "after" yet.
-  const ahead = earlier.filter((before) => before.stage !== "settled");
+  // The inputs of its page ahead of it that have no "after" yet. A key the
+  // page held gives none: it is the typing's.
+  const ahead = earlier.filter(
+    (before) => before.stage !== "settled" && before.held.kind !== "typing"
+  );
   // It starts from the "after" of an input the pages held, and from an
   // assertion's one snapshot: it waits for that. A held input that is
   // still on its way hands it its snapshot when it arrives.
@@ -2049,6 +2072,7 @@ const behindUnshown = (draft: Draft, input: Input) =>
       (held) =>
         held.page === input.page &&
         !held.joins &&
+        held.held.kind !== "typing" &&
         (held.held.kind !== "reported" || held.told === null)
     );
 
@@ -2065,7 +2089,10 @@ const mayBeRevised = (draft: Draft, input: Input) =>
 const behindUnwritten = (draft: Draft, input: Input) =>
   draft.inputs
     .slice(0, draft.inputs.indexOf(input))
-    .some((held) => held.page === input.page && !held.joins);
+    .some(
+      (held) =>
+        held.page === input.page && !held.joins && held.held.kind !== "typing"
+    );
 
 /** What a wrap-up that is over leads to. */
 function wrappedUp(

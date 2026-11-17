@@ -3631,7 +3631,9 @@ describe("the lifecycle, for what the review against the spec found", () => {
         [keep(snapshot1), passOn(input1)],
         [takeSnapshot(snapshot2)],
         [keep(snapshot2), passOn(input2)],
-        [takeSnapshot(snapshot3)],
+        // The key keeps the pages holding until its page settles (bug 7);
+        // the click behind it does not wait for that.
+        [waitForSettled(input2), takeSnapshot(snapshot3)],
         [keep(snapshot3), passOn(input3)],
       ],
       state: { phase: "wrappingUp" },
@@ -6141,6 +6143,39 @@ describe("the lifecycle, for a fill while it is typed", () => {
         [takeSnapshot(snapshot3)],
       ],
       state: { phase: "recording" },
+    },
+    {
+      name: "bug 7: after Stop, a key the page held that reached it keeps the pages holding until its page settles, so its typing's report comes first and a click right after it is held with a 'before' of its own",
+      happened: [
+        opened,
+        ...started,
+        {
+          kind: "inputHeld",
+          input: input1,
+          page: page1,
+          held: { kind: "typing" },
+        },
+        stop,
+        taken(snapshot1),
+        passedOn(input1),
+        reportedAs(fill("a")),
+        clickHeld(input2),
+        taken(snapshot2),
+      ],
+      todo: [
+        [startTimeLimit, reply("applied")],
+        [keep(snapshot1), passOn(input1)],
+        // Not yet "hold no more": its typing is not reported yet.
+        [waitForSettled(input1)],
+        [waitForSettled(reported1), shown(fill("a"), snapshot1, null)],
+        [takeSnapshot(snapshot2)],
+        [
+          keep(snapshot2),
+          passOn(input2),
+          final(fill("a"), snapshot1, snapshot2),
+        ],
+      ],
+      state: { phase: "wrappingUp" },
     },
     {
       name: "bug 6: typing more into a field after Continue, which Playwright revises into the fill before the pause, is a fill of its own",
