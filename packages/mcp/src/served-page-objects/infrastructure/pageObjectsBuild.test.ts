@@ -231,6 +231,70 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
   ).toBe(`${file}:1:14: Expression expected.`);
 });
 
+it("leaves a file's byte order mark out of a diagnostic's line and column, as TypeScript does", async () => {
+  const file = await pomFile("\uFEFFconst value = ;\n");
+  const { onLoad } = setUp(
+    models({
+      compile: () => {
+        // TypeScript drops the mark as it reads the file, and counts without it.
+        throw new PomCompileError([
+          { text: "Expression expected.", file, line: 1, column: 15 },
+        ]);
+      },
+      invalidate: () => {},
+    })
+  );
+
+  const result = (await onLoad({ path: file })) as {
+    errors: esbuild.PartialMessage[];
+  };
+  expect(result).toMatchObject({
+    errors: [
+      { location: { file, line: 1, column: 14, lineText: "const value = ;" } },
+    ],
+  });
+  expect(
+    buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
+  ).toBe(`${file}:1:15: Expression expected.`);
+});
+
+it("reports esbuild's own error on the first line of a file with a byte order mark at the column an editor counts", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-esbuild-bom-"))
+  );
+  await writeFile(join(folder, "entry.ts"), "\uFEFFconst value = ;\n");
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log: vi.fn(),
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [outcomes.plugin],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    // esbuild counts the mark's three bytes in the column and leaves it out of the line.
+    expect(failure.errors).toMatchObject([
+      { location: { line: 1, column: 17, lineText: "const value = ;" } },
+    ]);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(buildErrorLine(error.errors[0]!)).toBe(
+      `${join(folder, "entry.ts")}:1:15: ${failure.errors[0]!.text}`
+    );
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
 it("reports esbuild's own error after non-ASCII text at the column an editor counts", async () => {
   const folder = await realpath(
     await mkdtemp(join(tmpdir(), "ayme-pom-esbuild-"))

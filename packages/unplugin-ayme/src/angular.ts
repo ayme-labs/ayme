@@ -201,13 +201,16 @@ function esbuildColumn(lineText: string | undefined, column: number) {
     : Buffer.byteLength(lineText.slice(0, column - 1));
 }
 
-/** Line `line` of `file`, counted from 1, if the file can be read and has it. */
+/**
+ * Line `line` of `file`, counted from 1, if the file can be read and has it.
+ * It is the line TypeScript counted: split at its line breaks, without the
+ * byte order mark a file may start with.
+ */
 function sourceLine(file: string, line: number): string | undefined {
   try {
-    // TypeScript's line breaks, so the line is the one it counted.
-    return readFileSync(file, "utf8").split(/\r\n|[\n\r\u2028\u2029]/)[
-      line - 1
-    ];
+    return readFileSync(file, "utf8")
+      .replace(/^\uFEFF/, "")
+      .split(/\r\n|[\n\r\u2028\u2029]/)[line - 1];
   } catch {
     // An unreadable file has no line to measure.
   }
