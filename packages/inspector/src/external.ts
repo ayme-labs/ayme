@@ -6,7 +6,7 @@
 // app that shows it in its chat as an MCP App.
 import { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
-import { connectAgentApp, mountExternalInspector } from "./app";
+import { connectAgentApp, mountExternalInspector, showServerLost } from "./app";
 import {
   replaceInspectorTransport,
   webSocketInspectorContract,
@@ -19,11 +19,17 @@ import {
  */
 const AGENT_APP_CONFIG_ID = "ayme-inspector-app";
 
+/** How many times in a row a window in an agent app connects again. */
+const AGENT_APP_RETRIES = 3;
+
 /**
  * Starts the Inspector in the window it is served to: it reads the page
  * behind the server that served this window, and fills the window. In an
  * agent app's chat, the page names that server's socket, and the Inspector
- * talks to the agent app it is shown in.
+ * talks to the agent app it is shown in. There, the socket's token ends with
+ * the server, so a window that finds no server after {@link AGENT_APP_RETRIES}
+ * tries stops and says so; a browser window goes on trying, since the server
+ * it is served by may start again at the same address.
  */
 export function startExternalInspector() {
   const agentApp = document.getElementById(AGENT_APP_CONFIG_ID);
@@ -41,6 +47,14 @@ export function startExternalInspector() {
         mounted?.dispose();
         mounted = mountExternalInspector({ fullscreen });
       },
+      ...(agentApp && {
+        retries: AGENT_APP_RETRIES,
+        onLost() {
+          mounted?.dispose();
+          mounted = undefined;
+          showServerLost();
+        },
+      }),
     }),
     { external: true }
   );

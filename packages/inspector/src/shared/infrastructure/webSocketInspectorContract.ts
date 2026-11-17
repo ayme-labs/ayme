@@ -35,6 +35,13 @@ export type WebSocketInspectorOptions = {
    * over, as it does across a reload.
    */
   onNewPage?: () => void;
+  /**
+   * How many times in a row to connect again before giving the server up
+   * for lost. Without it, the transport connects again for ever.
+   */
+  retries?: number;
+  /** Called once, when the server is given up for lost. */
+  onLost?: () => void;
 };
 
 /**
@@ -44,7 +51,9 @@ export type WebSocketInspectorOptions = {
  * changes, its revisions start again; the transport raises them past the
  * newest it gave, so the client, which never lets a lower revision replace a
  * newer state, shows the new page. When the connection closes, the requests
- * waiting fail and the transport connects again, as for a new page.
+ * waiting fail and the transport connects again, as for a new page. After
+ * `retries` connections in a row that did not open, it stops: every request
+ * fails from then on.
  */
 export function webSocketInspectorContract(
   url: string,
@@ -52,6 +61,8 @@ export function webSocketInspectorContract(
     WebSocket: WebSocketClass = WebSocket,
     reconnectMs = 1000,
     onNewPage,
+    retries,
+    onLost,
   }: WebSocketInspectorOptions = {}
 ): InspectorContract {
   const observers = new Set<InspectorObserver>();
@@ -62,6 +73,11 @@ export function webSocketInspectorContract(
   // revision given so far.
   let base = 0;
   let newest = 0;
+  // The connections in a row that did not open, and whether it gave up.
+  let failed = 0;
+  let lost = false;
+  const closed = () =>
+    new Error("The connection to the Ayme MCP server closed.");
 
   const raise = <T extends { revision: number }>(value: T): T => {
     const revision = value.revision + base;
@@ -83,6 +99,7 @@ export function webSocketInspectorContract(
 
   const send = (method: string, params?: unknown) =>
     new Promise<unknown>((resolve, reject) => {
+      if (lost) return reject(closed());
       const id = nextId++;
       waiting.set(id, { resolve, reject });
       transmit(JSON.stringify({ id, method, params }));
@@ -116,6 +133,7 @@ export function webSocketInspectorContract(
   const connect = (reconnected: boolean) => {
     socket = new WebSocketClass(url);
     socket.onopen = () => {
+      failed = 0;
       for (const frame of outbox.splice(0)) socket.send(frame);
       if (!reconnected) return;
       // The server knows nothing of this connection's subscription.
@@ -132,11 +150,16 @@ export function webSocketInspectorContract(
       else pending?.resolve(reply.result);
     };
     socket.onclose = () => {
-      const error = new Error("The connection to the Ayme MCP server closed.");
+      const error = closed();
       for (const pending of waiting.values()) pending.reject(error);
       waiting.clear();
       // What was not sent is not sent to the next connection either.
       outbox.length = 0;
+      if (retries !== undefined && failed >= retries) {
+        lost = true;
+        return onLost?.();
+      }
+      failed++;
       setTimeout(() => connect(true), reconnectMs);
     };
     socket.onerror = () => {};

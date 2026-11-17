@@ -29,3 +29,21 @@ export function mountExternalInspector({
     },
   };
 }
+
+/** What a window says once its server is gone for good. */
+export const SERVER_LOST_NOTICE =
+  "This Inspector lost its Ayme MCP server. Ask the agent to open the Inspector again.";
+
+/**
+ * Says, in place of the Inspector, that the server this window read through
+ * is gone. In the system's colours: the window is an agent app's frame,
+ * light or dark.
+ */
+export function showServerLost() {
+  const notice = document.createElement("p");
+  notice.setAttribute("role", "status");
+  notice.textContent = SERVER_LOST_NOTICE;
+  notice.style.cssText =
+    "margin:0;padding:16px;font:14px system-ui,sans-serif;color-scheme:light dark;background:Canvas;color:CanvasText";
+  document.body.append(notice);
+}

@@ -240,3 +240,39 @@ test("the Inspector goes by the display mode an agent app grants, when the agent
     await agent.close();
   }
 });
+
+test("the Inspector in an agent app stops and says so once its server is gone", async ({
+  context,
+  page,
+  browser,
+  baseURL,
+}, testInfo) => {
+  const { agent } = await startServingAgent(context, testInfo);
+  try {
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    const shown = await showInAgentApp(
+      browser,
+      baseURL!,
+      await inspectorApp(agent),
+      ["inline"]
+    );
+    try {
+      await shown.inspector.open();
+      await expect(shown.inspector.header.title).toBeVisible();
+
+      await agent.close();
+
+      // It connects again a few times, a second apart, before it stops.
+      await expect(
+        shown.page
+          .frameLocator("#app")
+          .getByText("This Inspector lost its Ayme MCP server.")
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(shown.inspector.header.title).toHaveCount(0);
+    } finally {
+      await shown.close();
+    }
+  } finally {
+    await agent.close();
+  }
+});
