@@ -31,3 +31,7 @@ Unsupported or ambiguous types produce build diagnostics instead of weak runtime
 ## Clarification (2026-09-24)
 
 Explicit exposure concerns actions: every action stays decorated with `@WebMCP.tool`. Recognition of a Page Object class may be inherited: a class is a Page Object Model when it, or an ancestor, carries `@WebMCP` (#22).
+
+## Clarification (2026-11-17)
+
+The 2026-09-24 clarification names decorators that have since been renamed; the consumer docs own the current names. The decision stands: a class is a Page Object Model when it, or an ancestor, is marked, and only marked actions are exposed. No explicit override exists for a type the compiler cannot represent: such a type fails the build, as the consequences above say.
