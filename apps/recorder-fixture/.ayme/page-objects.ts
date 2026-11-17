@@ -11,7 +11,9 @@ import { HelpPage } from "./pom/HelpPage";
 import { InputsPage } from "./pom/InputsPage";
 import { LatePage } from "./pom/LatePage";
 import { LeavingPage } from "./pom/LeavingPage";
+import { SettlingPage } from "./pom/SettlingPage";
 import { ShopPage } from "./pom/ShopPage";
+import { TickingPage } from "./pom/TickingPage";
 import { WishlistPage } from "./pom/WishlistPage";
 
 export default [
@@ -26,6 +28,8 @@ export default [
   InputsPage,
   LatePage,
   LeavingPage,
+  SettlingPage,
   ShopPage,
+  TickingPage,
   WishlistPage,
 ] satisfies AymeOptions["pageObjects"];

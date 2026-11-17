@@ -2,6 +2,8 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { CartPage } from "../.ayme/pom/CartPage";
+import { SettlingPage } from "../.ayme/pom/SettlingPage";
+import { TickingPage } from "../.ayme/pom/TickingPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** The recorder's phase and Visits, as a subscriber is told them. */
@@ -15,6 +17,22 @@ function watch({ recorder }: Recording) {
       .filter((entry) => entry.kind === "interaction").length;
   });
   return seen;
+}
+
+/** The Change Tree of each Interaction a saved recording has, by the text
+ * its target selector holds; "" for one with no Change Tree, undefined for
+ * one that is not there. */
+async function changesBy({ recorder }: Recording, target: string) {
+  const outcome = await recorder.done;
+  if (outcome.kind !== "saved") throw new Error("Nothing was saved.");
+  const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
+  return text
+    .split("traceActionPoints:")[0]!
+    .split("\n      - kind: ")
+    .filter((entry) =>
+      /targetSelector: (.*)/.exec(entry)?.[1]?.includes(target)
+    )
+    .map((entry) => entry.split("changeTree:")[1] ?? "");
 }
 
 test.describe("the recorder's controls", () => {
@@ -140,5 +158,66 @@ test.describe("the recorder's controls", () => {
 
     expect(await recorder.done).toEqual({ kind: "empty" });
     await expect(readdir(join(projectDir, ".ayme"))).rejects.toThrow(/ENOENT/);
+  });
+
+  test("a click made after Stop, while an earlier click's page still changes, is recorded with its own change and not credited to the earlier click", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/settling.html");
+    const { recorder, page, person } = recording;
+    const settling = new SettlingPage(page);
+    const seen = watch(recording);
+    expect(await recorder.send({ type: "record" })).toBe("applied");
+
+    await person.click(settling.loadButton);
+    expect(await recorder.send({ type: "stop" })).toBe("applied");
+    await person.click(settling.markButton);
+    const phase = seen.phase;
+    const results = await settling.results.count();
+    await expect(settling.markState).toHaveText("Marked");
+    // The timing this needs: the first click's page was still changing,
+    // and "Paused" did not show yet, when the second click reached it.
+    expect(results).toBeLessThan(10);
+    expect(phase).toBe("wrappingUp");
+    await expect(settling.results).toHaveCount(10);
+    await expect.poll(() => seen.phase, { timeout: 10_000 }).toBe("paused");
+    expect(await recorder.send({ type: "finish" })).toBe("applied");
+
+    const [load] = await changesBy(recording, "Load results");
+    const [mark] = await changesBy(recording, "Mark");
+    // As while recording, the first click ends where the second starts, so
+    // what the page goes on changing after the second is the second's.
+    expect(load).toBeTruthy();
+    expect(load).not.toContain("Marked");
+    expect(mark).toContain("Marked");
+    expect(mark).toContain("Result 10");
+  });
+
+  test("a click made after Stop, before 'Paused' shows, is saved when the terminal stops the recorder right after", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/ticking.html");
+    const { recorder, page, person } = recording;
+    const ticking = new TickingPage(page);
+    const seen = watch(recording);
+    expect(await recorder.send({ type: "record" })).toBe("applied");
+    // Stop while the page still changes after a click: the wrap-up waits for
+    // it to settle, and "Paused" shows only then. On a quiet page it shows
+    // a few milliseconds after Stop, too soon for a person to click.
+    await person.click(ticking.startButton);
+    expect(await recorder.send({ type: "stop" })).toBe("applied");
+    await person.pause();
+    await person.click(ticking.stopButton);
+    const phase = seen.phase;
+    // Ctrl+C in the terminal, at once.
+    recorder.end();
+    await expect(ticking.state).toHaveText("Stopped");
+    // The timing this needs: "Paused" did not show yet when the click
+    // reached the page, so the click is still recorded.
+    expect(phase).toBe("wrappingUp");
+
+    expect(await changesBy(recording, "Start ticking")).toHaveLength(1);
+    const [stop] = await changesBy(recording, "Stop ticking");
+    expect(stop).toContain("Stopped");
   });
 });
