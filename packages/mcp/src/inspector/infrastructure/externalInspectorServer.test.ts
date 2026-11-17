@@ -88,12 +88,17 @@ describe("the external Inspector's page", () => {
 });
 
 describe("the external Inspector's socket", () => {
-  const open = (base: string, origin: string | undefined, query = "") =>
+  const open = (
+    base: string,
+    origin: string | undefined,
+    query = "",
+    host?: string
+  ) =>
     new Promise<WebSocket>((resolve, reject) => {
-      const socket = new WebSocket(
-        `ws://${base}/inspector/ws${query}`,
-        origin === undefined ? {} : { origin }
-      );
+      const socket = new WebSocket(`ws://${base}/inspector/ws${query}`, {
+        ...(origin === undefined ? {} : { origin }),
+        ...(host === undefined ? {} : { headers: { host } }),
+      });
       socket.once("open", () => resolve(socket));
       socket.once("error", reject);
       socket.once("unexpected-response", () => reject(new Error("refused")));
@@ -156,6 +161,16 @@ describe("the external Inspector's socket", () => {
       await expect(open(base, origin, "?token=")).rejects.toThrow();
       await expect(open(base, origin)).rejects.toThrow();
     }
+    expect(logged).toEqual([]);
+  });
+
+  it("refuses a window that brings the token under another host name, which a rebinding page would use", async () => {
+    const { base, port, logged } = await start();
+    const host = `evil.example:${port}`;
+
+    await expect(
+      open(base, `http://${host}`, `?token=${TOKEN}`, host)
+    ).rejects.toThrow();
     expect(logged).toEqual([]);
   });
 
