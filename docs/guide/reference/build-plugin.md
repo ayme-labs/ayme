@@ -236,12 +236,12 @@ Each field resolves on its own. `use` wins over the selected project, then the t
 
 ## Errors
 
-These fail the build or the dev server. An error the Page Object compiler reports names its file and, when the compiler knows them, its line and column in the file as written. Some errors have a file only, such as the one for a tsconfig it could not find.
+These fail the build or the dev server. An error the Page Object compiler reports names its file and, when the compiler knows them, its line and column in the file as written. Some errors have a file only, such as `Could not find a tsconfig.json for this module.`
 
 How the position appears depends on what runs the compiler:
 
-- **Vite, Turbopack and [`ayme mcp`](../guides/page-objects-without-ayme.md)**: the error starts with `<file>:<line>:<col>: `, or with `<file>: ` when it has no line. The column counts from 1. An error that names several places has one line for each.
-- **Angular**: esbuild shows the error as it shows any other: the message first, then the file, line and column above a code frame of that line. esbuild counts the column from 0. An error that names several places is shown as one error for each.
+- **Vite, Turbopack and [`ayme mcp`](../guides/page-objects-without-ayme.md)**: the error starts with `<file>:<line>:<col>: `, or with `<file>: ` when it has no line. The column counts from 1. An error about several places, such as a Page Object that reaches two classes with the same name, has one line for each place.
+- **Angular**: esbuild prints the message first, then the file, line and column above a code frame of that line. esbuild counts the column from 0. An error about several places is printed as one error for each place.
 
 The build runs the same [root-less class check](ayme.md#root-less-models) as the runtime. A class whose root it cannot read from the source, such as one given through spread options, passes the build and is checked at registration.
 
