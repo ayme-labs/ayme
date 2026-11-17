@@ -187,9 +187,9 @@ describe("a subclass in a module without the decorator", () => {
       expect(writeProject()()).toBeNull();
     });
 
-    it("reports a malformed tsconfig instead of skipping the subclass, at the tsconfig", () => {
+    it("reports an invalid tsconfig option instead of skipping the subclass, where TypeScript locates it", () => {
       const transform = writeProject(
-        JSON.stringify({ compilerOptions: { moduleResolution: "unknown" } })
+        '{\n  "compilerOptions": { "moduleResolution": "unknown" }\n}\n'
       );
       expect(diagnosticsOf(transform)).toEqual([
         {
@@ -197,6 +197,9 @@ describe("a subclass in a module without the decorator", () => {
             /^Could not read TypeScript project configuration: .*moduleResolution/
           ),
           file: join(root!, "tsconfig.json"),
+          // The option's value: `"unknown"`.
+          line: 2,
+          column: 44,
         },
       ]);
     });
