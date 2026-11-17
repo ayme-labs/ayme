@@ -5,9 +5,8 @@
 import { createServer, type AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
@@ -139,7 +138,7 @@ export async function startAgent(
   const client = new Client({ name: "ayme-e2e", version: "0.0.0" });
   let toolListChanges = 0;
   client.setNotificationHandler(
-    ToolListChangedNotificationSchema,
+    "notifications/tools/list_changed",
     () => void toolListChanges++
   );
   await client.connect(transport);

@@ -80,9 +80,8 @@ test.describe("without @ayme-dev/inspector installed", () => {
   test("ayme_inspect answers with the same hint", async () => {
     const port = await freePort();
     const { StdioClientTransport } =
-      await import("@modelcontextprotocol/sdk/client/stdio.js");
-    const { Client } =
-      await import("@modelcontextprotocol/sdk/client/index.js");
+      await import("@modelcontextprotocol/client/stdio");
+    const { Client } = await import("@modelcontextprotocol/client");
     const client = new Client({ name: "ayme-e2e", version: "0.0.0" });
     await client.connect(
       new StdioClientTransport({

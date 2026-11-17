@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 
 import { version } from "../../package.json";
 import { AgentConnection, createPageChannelServer } from "../connection";

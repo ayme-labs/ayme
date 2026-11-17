@@ -60,7 +60,8 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@trpc/client": "^11.19.0",
     "@trpc/server": "^11.19.0",
     "esbuild": "^0.28.2",
