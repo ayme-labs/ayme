@@ -145,6 +145,10 @@ already holds. The server tool `ayme_inspect` returns the URL, and
 prints a URL for each server that runs). Open it in a browser window beside
 the app, and give the app `inspector: { placement: "external" }` so its tab
 serves the contract. Without `@ayme-dev/inspector`, both say to install it.
+`ayme_inspect` also carries the Inspector as an MCP App, so an agent app that
+shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows it in the
+chat. That page connects to the same WebSocket, admitted by a token the
+server gives it, and the server logs each window it admits that way.
 
 ## Ports
 

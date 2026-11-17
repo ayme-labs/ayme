@@ -18,7 +18,7 @@ useAyme({ inspector: import.meta.env.DEV });
 
 The session loads the Inspector when it starts in the browser and unmounts it when it stops. With the option off, the page requests no Inspector code. To show people what an agent does, `inspector: { demo: true }` also pauses before each action and shows where each click lands.
 
-To run it outside the page instead, pass `inspector: { placement: "external" }` and open the URL that `ayme inspect` prints, or that the agent's `ayme_inspect` returns, in a window beside the app. `@ayme-dev/mcp`'s `ayme mcp` serves the Inspector's `./external` build and relays it to the page.
+To run it outside the page instead, pass `inspector: { placement: "external" }` and open the URL that `ayme inspect` prints, or that the agent's `ayme_inspect` returns, in a window beside the app. `@ayme-dev/mcp`'s `ayme mcp` serves the Inspector's `./external` build and relays it to the page. An agent app that shows MCP Apps shows the same Inspector in its chat.
 
 ## Documentation
 

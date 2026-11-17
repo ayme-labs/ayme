@@ -34,11 +34,14 @@ useAyme({ inspector: { placement: "external" } });
 
 `ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`, or run `ayme inspect` in a terminal; both give the same URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
 
+An agent app that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows the same Inspector in the chat when the agent calls `ayme_inspect`; other agents get the URL. It opens about 600 pixels high, and its header has a fullscreen button where the agent app offers fullscreen. A run from it acts on the page paired with that agent's `ayme mcp`.
+
 - Install `@ayme-dev/inspector` where `ayme` runs, as in the first section. Without it, `ayme inspect` and `ayme_inspect` say to install it.
 - With several servers running, `ayme inspect` prints a URL for each; `ayme inspect --port <port>` looks on one port only.
 - The page keeps no Inspector code for it; the window loads the Inspector from the server.
 - The window shows the page's host as "page", since it does not know the page's address.
 - A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.
+- The Inspector in a chat works while the `ayme mcp` that served it runs. After that server restarts, it no longer reaches the page until the agent calls `ayme_inspect` again.
 
 ## Demo mode
 
