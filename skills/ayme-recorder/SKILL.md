@@ -28,20 +28,9 @@ a Playwright test that replays the flow.
    Leave every discarded entry out of the page objects and the test. A package
    with no kept entry has no flow to implement: tell the user whether it
    captured nothing or every entry is a stub, and stop.
-3. **Propose** the page objects and the test to the user before you write any
-   file, following
-   [Write page objects from the recording](#write-page-objects-from-the-recording)
-   and [Write the test](#write-the-test). Settle it with them.
-4. **Write** what you agreed, following
-   [Page object design](references/page-object-design.md). Where it conflicts
-   with the project's existing POM and test conventions, raise the conflict
-   with the user.
-5. **Run** the test until it passes. Fix locators and timing, but not the
-   flow. When passing would take different steps or different checks, stop
-   and tell the user. That happens, for example, when the app no longer
-   behaves as recorded.
+3. **Follow** the [mirroring test playbook](playbooks/mirroring-test.md) from
+   its first step to its end.
 
-Done when the test passes against the app and replays the flow you agreed.
 A package with no kept entry is done when you have told the user and stopped.
 
 ## Read the package
@@ -142,8 +131,8 @@ action: use a snapshot already in the trace, or the next visit's baseline.
 
 ## Write page objects from the recording
 
-Draft the test from the timeline first, then the smallest set of page objects
-that can express it. When a step or a check cannot be expressed, change the
+Draft the playbook's test from the timeline first, then the smallest set of
+page objects that can express it. When a step or a check cannot be expressed, change the
 page objects, never the check. Design them by
 [Page object design](references/page-object-design.md); the package shows its
 evidence:
@@ -165,51 +154,6 @@ Target selectors, and `/locator:` lines in older packages, are candidates.
 Check each by [Locator strategy](references/page-object-design.md#locator-strategy)
 and keep one that meets it. Look in the trace for an element that has no
 candidate, or whose candidate does not meet the strategy.
-
-## Write the test
-
-One test replays the flow in recorded order, with no steps the user did not
-take and no branching. Every step goes through a page object action or one
-of its named locators. Every check goes through a page object locator or
-method. When an action returns one of several page objects, assert the one
-the recorded flow reached, rather than branching on it. For example,
-`dialog.create()` in
-[Page object design](references/page-object-design.md#return-where-the-user-continues)
-returns a `ProjectPage` or the dialog. After
-`const created = await dialog.create()`, write
-`assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
-
-Turn the timeline into assertions:
-
-- Assert what a step caused beyond the element it acted on: something appears,
-  disappears or is replaced, a count changes, a page opens.
-- Assert a value or choice the user entered or interacted with when it shows up somewhere else or
-  later, such as an added item in the cart.
-- Leave out the acted element's own change, such as a filled value, focus or a
-  checked box, what the page already showed, and changes unrelated to the
-  flow, such as animations or clocks.
-- An `assert*` interaction, such as `assertVisible`, marks a point where the
-  user checked something: from its target and the changes around it, work out
-  what they meant to check, and assert that.
-- Each assertion checks one fact. An `<added>` node can take the place of a
-  `<removed>` node with the same role. Check in the trace whether they are
-  the same element, as [Use the trace](#use-the-trace) shows. When they are,
-  the element re-rendered, and that is one fact: its new content. For the
-  cart button above, held as `cartLink` by a `Header` component `header`:
-
-  ```ts
-  await expect(header.cartLink).toHaveAccessibleName("Cart, 2 items");
-  ```
-
-  When the trace does not show they are the same, treat them as two
-  elements.
-
-  When a different element takes the old one's place, such as a confirmation
-  that replaces a form, that is two facts: the old one is gone, and the new
-  one is visible.
-
-- Steps that only change their own element, such as filling the fields of one form, need no
-  assertions in between; assert after the step that submits it.
 
 ## Use the trace
 
