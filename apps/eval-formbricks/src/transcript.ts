@@ -95,14 +95,29 @@ function parseEvents(lines: string[]) {
 }
 
 /**
- * Whether a `result` event's text says the login hit a usage limit. Claude Code 2.1.281 words every
- * one as "You've hit your <session|weekly|Opus|Sonnet|Fable|usage credit|monthly spend> limit ..."
- * (the observed one: "You've hit your weekly limit \u00b7 resets Nov 20, 9am (UTC)"). Its other
- * rate-limit texts, such as "Opus is experiencing high load" and "Server is temporarily limiting
- * requests (not your usage limit)", are not the login's own limit and do not match.
+ * The texts Claude Code 2.1.281 gives for a login that cannot take another request, read from its
+ * published binary (not run): "You've hit your <session|weekly|Opus|Sonnet|usage|monthly spend|...>
+ * limit", "You've hit your team's shared budget", "You've reached your Fable limit", "You're out
+ * of usage credits" and "You're out of extra usage", "Your org is out of usage", and what it says
+ * instead when the seat cannot buy more usage ("Your seat type doesn't include usage ...", "Your
+ * usage allocation has been disabled by your admin", "Your group's usage limit is set to $0").
+ * Only the weekly limit has been seen in a real transcript. Anchored at the start: the CLI writes
+ * these itself, so a model's text that quotes one does not count. Overload and server throttling
+ * ("Opus is experiencing high load", "Server is temporarily limiting requests (not your usage
+ * limit)") are not the login's own limit and do not match.
  */
+const usageLimitTexts = [
+  /^You've hit your [^\n]*\b(?:limit|budget)\b/,
+  /^You've reached your [^\n]*\blimit\b/,
+  /^You're out of (?:extra usage|usage credits)\b/,
+  /^Your org is out of usage\b/,
+  /^Your seat type doesn't include (?:extra )?usage\b/,
+  /^Your usage allocation has been disabled by your admin/,
+  /^Your group's usage limit is set to \$0/,
+];
+
 export function isUsageLimitText(text: string) {
-  return /^You've hit your [^\n]*\blimit\b/.test(text);
+  return usageLimitTexts.some((pattern) => pattern.test(text));
 }
 
 /** Whether one transcript line is a `result` event, whether it reports an error, and whether that error is a usage limit; read while the agent runs. */

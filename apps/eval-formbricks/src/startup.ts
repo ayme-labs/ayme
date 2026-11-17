@@ -26,7 +26,6 @@ import {
   type ClaudeRun,
 } from "./claude.ts";
 import {
-  readLogins,
   usageLimitError,
   withFallbackLogin,
   type Login,
@@ -170,12 +169,9 @@ export async function runStartup(
   options: StartupOptions
 ): Promise<{ runDir: string; result: StartupResult }> {
   return withFallbackLogin(
-    readLogins(evalRoot),
+    evalRoot,
     (login) => runStartupOn(options, login),
-    () =>
-      log(
-        "The first login is at its usage limit; repeating the run from the start on the fallback login."
-      )
+    log
   );
 }
 
@@ -198,7 +194,11 @@ async function runStartupOn(
 
   log("Checking preconditions.");
   await checkPreconditions([
-    claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+    claudeTokenPrecondition({
+      environment,
+      envDirectory: evalRoot,
+      variable: login.variable,
+    }),
   ]);
   if (environment === undefined) throw new Error("unreachable: no environment");
   log(`Run ${runId}: ${runDir}`);
@@ -234,6 +234,7 @@ async function runStartupOn(
       setupTimeoutMs: timeoutMs,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
+      secrets: login.secrets,
     });
     const limited = usageLimitError(run, login, runDir);
     if (limited !== null) throw limited;

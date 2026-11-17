@@ -2,11 +2,15 @@
  * Keeps the lab app folder, the agent's working root, as the next run's agent
  * must find it. Gitignored files do not count. Before a run the checkout must
  * be clean; after it, files the agent left behind are moved out, never deleted.
+ * An attempt that is thrown away also gets its changes to tracked files saved
+ * as a patch and undone, so that the repeat starts from the checkout as committed.
  */
 import { spawnSync } from "node:child_process";
-import { mkdir, rename } from "node:fs/promises";
+import { existsSync, realpathSync } from "node:fs";
+import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { withoutClaudeVariables } from "./claude.ts";
 import { formbricksRoot, labRoot, repoRoot } from "./paths.ts";
 
 /** Paths relative to the lab app folder. */
@@ -53,7 +57,7 @@ function gitStatus(cwd: string, args: string[]) {
   const result = spawnSync(
     "git",
     ["status", "--porcelain=v1", "-z", "--untracked-files=all", ...args],
-    { cwd, encoding: "utf8" }
+    { cwd, encoding: "utf8", env: withoutClaudeVariables(process.env) }
   );
   if (result.status !== 0)
     throw new Error(
@@ -95,4 +99,78 @@ export async function moveFiles(
     await mkdir(path.dirname(target), { recursive: true });
     await rename(path.join(root, file), target);
   }
+}
+
+const git = (cwd: string, args: string[]) =>
+  spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: withoutClaudeVariables(process.env),
+  });
+
+/**
+ * Saves the diff of a tracked file against HEAD under `destination` as
+ * `<file>.diff`, then restores the file. The diff is written first: when git
+ * cannot produce it or the restore fails, the file stays as the agent left it.
+ */
+async function saveAndRestore(file: string, destination: string, root: string) {
+  // The file may be gone, or in the Formbricks submodule: ask the repository that holds its folder.
+  let folder = path.dirname(path.join(root, file));
+  while (!existsSync(folder)) folder = path.dirname(folder);
+  const top = git(folder, ["rev-parse", "--show-toplevel"]);
+  if (top.status !== 0) throw new Error(`${file} is in no git repository.`);
+  const repository = top.stdout.trim();
+  // Git reports real paths, which differ from `root` where a folder on the way is a symlink.
+  const relative = path.relative(
+    repository,
+    path.join(
+      realpathSync(folder),
+      path.relative(folder, path.join(root, file))
+    )
+  );
+  const diff = git(repository, ["diff", "HEAD", "--binary", "--", relative]);
+  if (diff.status !== 0)
+    throw new Error(`git diff failed for ${file}: ${diff.stderr.trim()}`);
+  const target = path.join(destination, `${file}.diff`);
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, diff.stdout);
+  const restore = git(repository, ["checkout", "HEAD", "--", relative]);
+  if (restore.status !== 0)
+    throw new Error(
+      `git checkout failed for ${file}: ${restore.stderr.trim()}`
+    );
+}
+
+/**
+ * The attempt's own cleanup: sets aside what the agent left in the lab app
+ * folder, whichever way it ended. `before` is the state when the agent was
+ * started, and only what is new since then is touched: a file or change that
+ * was already there is not the attempt's.
+ *
+ * Files the agent created are moved into `destination`. Changes to tracked
+ * files are left for a person to inspect, unless the attempt is thrown away
+ * (`discard`): then each is saved as a patch in `destination` and undone, so
+ * the run can be repeated. Returns what was new.
+ */
+export async function setAsideAttempt(options: {
+  before: LabChanges;
+  destination: string;
+  discard: boolean;
+  read?: () => LabChanges;
+  root?: string;
+}): Promise<LabChanges> {
+  const { before, destination, discard, read = readLabChanges } = options;
+  const root = options.root ?? labRoot;
+  const after = read();
+  const changes: LabChanges = {
+    untracked: after.untracked.filter(
+      (file) => !before.untracked.includes(file)
+    ),
+    modified: after.modified.filter((file) => !before.modified.includes(file)),
+  };
+  await moveFiles(changes.untracked, destination, root);
+  if (discard)
+    for (const file of changes.modified)
+      await saveAndRestore(file, destination, root);
+  return changes;
 }

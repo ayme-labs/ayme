@@ -9,42 +9,29 @@ import {
   fallbackTokenVariable,
   readEnvVariable,
   readOauthToken,
+  tokenVariable,
 } from "./environment.ts";
 
 export type LoginName = "first" | "fallback";
 
 export type Login = {
   name: LoginName;
+  /** The variable that holds this login's token, for messages. */
+  variable: string;
   /** `undefined` only for a first login that is not configured; the token precondition reports that. */
   token: string | undefined;
-  /** Another login follows this one. */
-  hasNext: boolean;
+  /** Every configured token; the agent's output is scrubbed of all of them before it is kept. */
+  secrets: string[];
+  /** A second login is configured, so a limit on this one is repeated instead of handled here. */
+  hasFallback: boolean;
 };
 
-/** The attempt ended on the first login's usage limit and the run is to be repeated on the next. */
+/** The attempt ended on the first login's usage limit and the run is to be repeated on the second. */
 export class UsageLimitError extends Error {}
-
-/** The first login, then the fallback when its token is configured. */
-export function readLogins(
-  directory: string,
-  parent: NodeJS.ProcessEnv = process.env
-): Login[] {
-  const fallback = readEnvVariable(fallbackTokenVariable, directory, parent);
-  return [
-    {
-      name: "first",
-      token: readOauthToken(directory, parent),
-      hasNext: fallback !== undefined,
-    },
-    ...(fallback === undefined
-      ? []
-      : [{ name: "fallback" as const, token: fallback, hasNext: false }]),
-  ];
-}
 
 /**
  * The error that ends an attempt which hit a usage limit, or `null` when the
- * attempt stands: it did not hit one, or it is the only login there is.
+ * attempt stands: it did not hit one, or the first login has no fallback.
  */
 export function usageLimitError(
   run: { usageLimited: boolean },
@@ -52,28 +39,46 @@ export function usageLimitError(
   where: string
 ): Error | null {
   if (!run.usageLimited) return null;
-  if (login.hasNext)
-    return new UsageLimitError("The first login is at its usage limit.");
   if (login.name === "fallback")
     return new Error(
       `Both Claude Code logins are at their usage limit, so the run cannot complete. The transcript is in ${where}.`
     );
-  return null;
+  return login.hasFallback
+    ? new UsageLimitError("The first login is at its usage limit.")
+    : null;
 }
 
-/** Runs the attempt on each login in turn until one is not at its limit. */
+/** Runs the attempt on the first login, and once more on the second when the first ended on a usage limit. */
 export async function withFallbackLogin<T>(
-  logins: Login[],
+  directory: string,
   attempt: (login: Login) => Promise<T>,
-  onFallback: () => void
+  log: (line: string) => void,
+  parent: NodeJS.ProcessEnv = process.env
 ): Promise<T> {
-  for (const login of logins) {
-    try {
-      return await attempt(login);
-    } catch (error) {
-      if (!(error instanceof UsageLimitError) || !login.hasNext) throw error;
-      onFallback();
-    }
+  const first = readOauthToken(directory, parent);
+  const fallback = readEnvVariable(fallbackTokenVariable, directory, parent);
+  const secrets = [first, fallback].filter(
+    (token): token is string => token !== undefined
+  );
+  try {
+    return await attempt({
+      name: "first",
+      variable: tokenVariable,
+      token: first,
+      secrets,
+      hasFallback: fallback !== undefined,
+    });
+  } catch (error) {
+    if (!(error instanceof UsageLimitError)) throw error;
   }
-  throw new Error("unreachable: no login");
+  log(
+    "The first login is at its usage limit; repeating the run from the start on the fallback login."
+  );
+  return attempt({
+    name: "fallback",
+    variable: fallbackTokenVariable,
+    token: fallback,
+    secrets,
+    hasFallback: false,
+  });
 }

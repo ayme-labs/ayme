@@ -43,6 +43,8 @@ export type ClaudeInvocation = {
   setupTimeoutMs?: number;
   transcriptPath: string;
   stderrPath: string;
+  /** Token values to scrub from the agent's output before it is kept, besides the one in `environment`. */
+  secrets?: string[];
 } & (
   | {
       /** The second message: the task. */
@@ -168,8 +170,19 @@ export function claudeEnvironment(
   return environment;
 }
 
+/** Replaces every secret in the text. */
+export function redactSecrets(text: string, secrets: string[]): string {
+  let redacted = text;
+  for (const secret of secrets)
+    if (secret !== "") redacted = redacted.replaceAll(secret, "[redacted]");
+  return redacted;
+}
+
 export function claudeVersion(): string | null {
-  const result = spawnSync("claude", ["--version"], { encoding: "utf8" });
+  const result = spawnSync("claude", ["--version"], {
+    encoding: "utf8",
+    env: withoutClaudeVariables(process.env),
+  });
   if (result.status !== 0) return null;
   return result.stdout.trim().replace(/\s*\(Claude Code\)\s*$/, "") || null;
 }
@@ -240,7 +253,18 @@ export async function runClaude(
     detached: true,
     stdio: ["pipe", "pipe", "pipe"],
   });
-  child.stderr.pipe(stderr);
+  // Neither stream keeps a token: the output is public once the results folder is uploaded.
+  const secrets = [
+    ...(invocation.secrets ?? []),
+    invocation.environment.CLAUDE_CODE_OAUTH_TOKEN ?? "",
+  ];
+  const stderrReader = createInterface({ input: child.stderr });
+  stderrReader.on("line", (line) =>
+    stderr.write(`${redactSecrets(line, secrets)}\n`)
+  );
+  const stderrClosed = new Promise<void>((resolve) =>
+    stderrReader.once("close", resolve)
+  );
   // A message sent to an agent that has already exited must not take the harness down.
   child.stdin.on("error", (error) =>
     stderr.write(`harness: writing to the agent failed: ${error.message}\n`)
@@ -250,7 +274,8 @@ export async function runClaude(
   let usageLimited = false;
   let onResult: ((event: { isError: boolean }) => void) | null = null;
   const reader = createInterface({ input: child.stdout });
-  reader.on("line", (line) => {
+  reader.on("line", (rawLine) => {
+    const line = redactSecrets(rawLine, secrets);
     lines.push(line);
     transcript.write(`${line}\n`);
     const result = resultEvent(line);
@@ -345,7 +370,7 @@ export async function runClaude(
     // Claude Code exits once its input ends; one that lingers is stopped so the run can end.
     linger = setTimeout(stopChild, exitGraceMs);
     const { exitCode, signal } = await closed;
-    await readerClosed;
+    await Promise.all([readerClosed, stderrClosed]);
     await Promise.all([closeStream(transcript), closeStream(stderr)]);
     // An interrupted run is not a result: nothing is stored and a suite stops.
     if (interruptedBy)

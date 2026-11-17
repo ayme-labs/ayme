@@ -6,7 +6,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { claudeAuthStatus, claudeVersion } from "./claude.ts";
+import {
+  claudeAuthStatus,
+  claudeVersion,
+  withoutClaudeVariables,
+} from "./claude.ts";
 import { envFileName, tokenVariable } from "./environment.ts";
 import type { LabChanges } from "./labCheckout.ts";
 
@@ -18,26 +22,30 @@ export type Precondition = {
 /**
  * The eval's long-lived Claude Code token must be present, and Claude Code must
  * accept it in the agent's environment. The token itself is never repeated.
+ * Messages name the variable of the login in use, the second one included.
  */
 export function claudeTokenPrecondition(options: {
   /** The agent's environment, or `undefined` when there is no token to build it from. */
   environment: NodeJS.ProcessEnv | undefined;
   /** The directory holding the env file, for the message. */
   envDirectory: string;
+  /** The variable the login's token comes from, for the message; the first login's by default. */
+  variable?: string;
 }): Precondition {
+  const variable = options.variable ?? tokenVariable;
   const envFile = path.join(options.envDirectory, envFileName);
   return {
     name: "Claude Code token",
     check: () => {
       if (options.environment === undefined)
-        return `No ${tokenVariable}. Create a token with \`claude setup-token\` and put \`${tokenVariable}=<token>\` in ${envFile} (ignored by git), or export the variable.`;
+        return `No ${variable}. Create a token with \`claude setup-token\` and put \`${variable}=<token>\` in ${envFile} (ignored by git), or export the variable.`;
       if (claudeVersion() === null)
         return "Claude Code is not installed: `claude --version` failed.";
       const status = claudeAuthStatus(options.environment);
       if (status === null)
         return "Claude Code did not report its authentication status.";
       if (!status.loggedIn)
-        return `Claude Code does not accept the ${tokenVariable} from ${envFile}. Create a new one with \`claude setup-token\`.`;
+        return `Claude Code does not accept the ${variable} from ${envFile}. Create a new one with \`claude setup-token\`.`;
       return null;
     },
   };
@@ -46,7 +54,10 @@ export function claudeTokenPrecondition(options: {
 export const dockerPrecondition: Precondition = {
   name: "Docker",
   check: () => {
-    const result = spawnSync("docker", ["info"], { encoding: "utf8" });
+    const result = spawnSync("docker", ["info"], {
+      encoding: "utf8",
+      env: withoutClaudeVariables(process.env),
+    });
     if (result.error || result.status !== 0)
       return "Docker is not running. Start Docker Desktop.";
     return null;

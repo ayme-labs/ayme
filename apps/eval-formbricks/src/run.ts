@@ -25,16 +25,17 @@ import {
   claudeEnvironment,
   claudeVersion,
   runClaude,
+  withoutClaudeVariables,
+  type ClaudeRun,
 } from "./claude.ts";
 import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
 import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
-import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
-  readLogins,
-  usageLimitError,
-  withFallbackLogin,
-  type Login,
-} from "./login.ts";
+  readLabChanges,
+  setAsideAttempt,
+  type LabChanges,
+} from "./labCheckout.ts";
+import { usageLimitError, withFallbackLogin, type Login } from "./login.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -118,7 +119,11 @@ export function log(line: string) {
 }
 
 export function gitOutput(cwd: string, args: string[]) {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: withoutClaudeVariables(process.env),
+  });
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
@@ -138,14 +143,7 @@ export async function writeJson(filePath: string, value: unknown) {
 export async function runOnce(
   options: RunOptions
 ): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
-  return withFallbackLogin(
-    readLogins(evalRoot),
-    (login) => runOnceOn(options, login),
-    () =>
-      log(
-        "The first login is at its usage limit; repeating the run from the start on the fallback login."
-      )
-  );
+  return withFallbackLogin(evalRoot, (login) => runOnceOn(options, login), log);
 }
 
 async function runOnceOn(
@@ -175,7 +173,11 @@ async function runOnceOn(
   log("Checking preconditions.");
   try {
     await checkPreconditions([
-      claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+      claudeTokenPrecondition({
+        environment,
+        envDirectory: evalRoot,
+        variable: login.variable,
+      }),
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
@@ -243,28 +245,47 @@ async function runOnceOn(
     log(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
-    const run = await runClaude({
-      cwd: labRoot,
-      environment: { ...environment, ...armSetup?.environment },
-      model: options.model,
-      arm: options.arm,
-      mcpConfigPath,
-      readableDirectories: armSetup?.readableDirectories,
-      setupPrompt: setup,
-      prompt,
-      timeoutMs: options.timeoutSeconds * 1000,
-      transcriptPath: path.join(runDir, "transcript.jsonl"),
-      stderrPath: path.join(runDir, "stderr.log"),
-    });
-    // A limit ends the attempt: half a run is no measurement. Files the agent left in the lab app folder must not reach the repeat.
-    const limited = usageLimitError(run, login, runDir);
-    if (limited !== null) {
-      await moveFiles(
-        readLabChanges().untracked,
-        path.join(runDir, "agent-files")
-      );
-      throw limited;
+    // The agent starts from a clean checkout (a precondition); what is new after it is the attempt's.
+    const labBefore = readLabChanges();
+    let run: ClaudeRun | undefined;
+    let failure: unknown;
+    try {
+      run = await runClaude({
+        cwd: labRoot,
+        environment: { ...environment, ...armSetup?.environment },
+        model: options.model,
+        arm: options.arm,
+        mcpConfigPath,
+        readableDirectories: armSetup?.readableDirectories,
+        setupPrompt: setup,
+        prompt,
+        timeoutMs: options.timeoutSeconds * 1000,
+        transcriptPath: path.join(runDir, "transcript.jsonl"),
+        stderrPath: path.join(runDir, "stderr.log"),
+        secrets: login.secrets,
+      });
+    } catch (error) {
+      failure = error;
     }
+    // A limit ends the attempt: half a run is no measurement, and the repeat must start from the checkout as committed.
+    const limited =
+      run === undefined ? null : usageLimitError(run, login, runDir);
+    // The attempt's own cleanup, however the agent ended. It never replaces the error that says why the attempt ended.
+    let labChanges: LabChanges = { untracked: [], modified: [] };
+    try {
+      labChanges = await setAsideAttempt({
+        before: labBefore,
+        destination: path.join(runDir, "agent-files"),
+        discard: limited !== null,
+      });
+    } catch (error) {
+      if (run !== undefined && limited === null) throw error;
+      log(
+        `Could not set aside what the agent left in the lab app folder: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    if (run === undefined) throw failure;
+    if (limited !== null) throw limited;
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -273,10 +294,6 @@ async function runOnceOn(
     log(
       `Agent finished: exit ${run.exitCode ?? run.signal}, setup turn ${seconds(run.setup.wallTimeMs)}, task turn ${seconds(run.task.wallTimeMs)}, timed out ${run.task.timedOut}, ${run.lines.length} events.`
     );
-
-    // Whatever the agent left in the lab app folder must not reach the next run.
-    const labChanges = readLabChanges();
-    await moveFiles(labChanges.untracked, path.join(runDir, "agent-files"));
 
     log("Reading the verdict from the database.");
     const verdict = judgeMission(
