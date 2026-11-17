@@ -15,6 +15,7 @@ import {
   errorResult,
   goneToolResult,
   mcpPageTool,
+  type McpListedTool,
   type ToolResult,
 } from "../domain/toolResult";
 
@@ -65,16 +66,17 @@ export function createMcpToolServer({
     if (server.transport) void server.sendToolListChanged().catch(() => {});
   });
 
-  server.setRequestHandler("tools/list", () => ({
-    tools: [
+  server.setRequestHandler("tools/list", () => {
+    const tools: McpListedTool[] = [
       ...serverTools.map(({ name, description, inputSchema }) => ({
         name,
         description,
         inputSchema,
       })),
       ...view.listRead(connection.tools).map(mcpPageTool),
-    ],
-  }));
+    ];
+    return { tools };
+  });
 
   const run = (name: string, input: Record<string, unknown>) => {
     const serverTool = serverTools.find((tool) => tool.name === name);

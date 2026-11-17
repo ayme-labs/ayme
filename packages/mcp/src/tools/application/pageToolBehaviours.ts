@@ -10,13 +10,23 @@ export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
   const publish = (list: ReturnType<typeof tools.list>) =>
     void channel
       .publishTools(
-        list.map(({ name, description, inputSchema, available, reason }) => ({
-          name,
-          description,
-          inputSchema,
-          available,
-          reason,
-        }))
+        list.map(
+          ({
+            name,
+            description,
+            inputSchema,
+            destructive,
+            available,
+            reason,
+          }) => ({
+            name,
+            description,
+            inputSchema,
+            ...(destructive ? { destructive: true } : {}),
+            available,
+            reason,
+          })
+        )
       )
       // The channel closed; the next channel publishes again.
       .catch(() => {});
