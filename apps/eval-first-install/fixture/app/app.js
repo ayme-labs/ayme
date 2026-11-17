@@ -37,9 +37,35 @@ function button(text, attributes, onClick) {
   return element;
 }
 
+// Rows are kept by item id and updated in place, as a keyed framework list
+// does, so a row's element stays the same while its item is on the list.
+// A Page Object rooted at a row keeps its id across changes, as it does on
+// apps/example-vue.
+const rows = { active: new Map(), archived: new Map() };
+
 function activeRow(item) {
   const row = document.createElement("li");
   const name = document.createElement("div");
+  row.append(
+    name,
+    button(
+      "Archive",
+      { "data-action": "archive", "aria-label": `Archive ${item.id}` },
+      () => openArchive(item)
+    )
+  );
+  fillName(row, item);
+  return row;
+}
+
+// Rebuilds the name part of an active row only when what it shows changed.
+function fillName(row, item) {
+  const shown =
+    editingId === item.id ? `edit:${item.text}` : `view:${item.text}`;
+  if (row.dataset.shown === shown) return;
+  row.dataset.shown = shown;
+  const name = row.firstElementChild;
+  name.replaceChildren();
   if (editingId === item.id) {
     const input = document.createElement("input");
     input.value = item.text;
@@ -71,15 +97,6 @@ function activeRow(item) {
   const id = document.createElement("code");
   id.textContent = item.id;
   name.append(" ", id);
-  row.append(
-    name,
-    button(
-      "Archive",
-      { "data-action": "archive", "aria-label": `Archive ${item.id}` },
-      () => openArchive(item)
-    )
-  );
-  return row;
 }
 
 function archivedRow(item) {
@@ -95,13 +112,36 @@ function archivedRow(item) {
   return row;
 }
 
+// Removes the rows of items that left the list, updates the others in place
+// and appends rows for new items. Items never change order, so appending
+// keeps the list in item order.
+function sync(list, kept, items, create, update) {
+  const ids = new Set(items.map((item) => item.id));
+  for (const [id, row] of kept) {
+    if (!ids.has(id)) {
+      row.remove();
+      kept.delete(id);
+    }
+  }
+  for (const item of items) {
+    const row = kept.get(item.id);
+    if (row) {
+      update?.(row, item);
+    } else {
+      const created = create(item);
+      kept.set(item.id, created);
+      list.append(created);
+    }
+  }
+}
+
 function render() {
   const active = state.items.filter((item) => !item.archived);
   const archived = state.items.filter((item) => item.archived);
-  $("active-items").replaceChildren(...active.map(activeRow));
+  sync($("active-items"), rows.active, active, activeRow, fillName);
   $("active-items").hidden = active.length === 0;
   $("no-active-items").hidden = active.length > 0;
-  $("archived-items").replaceChildren(...archived.map(archivedRow));
+  sync($("archived-items"), rows.archived, archived, archivedRow);
   $("archived-items").hidden = archived.length === 0;
   $("no-archived-items").hidden = archived.length > 0;
 }
