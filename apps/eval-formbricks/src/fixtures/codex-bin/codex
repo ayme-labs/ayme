@@ -5,7 +5,8 @@
  * notifications of a turn: the setup turn replies ready, the task turn calls
  * an MCP tool twice, one call failing. FAKE_CODEX_HANG_TURN names a turn (1
  * or 2) that never completes, FAKE_CODEX_FAIL_TURN one that ends failed, and
- * FAKE_CODEX_DELAY_MS delays each turn's end.
+ * FAKE_CODEX_DELAY_MS delays each turn's end. FAKE_CODEX_SILENT answers
+ * nothing at all.
  */
 import { createInterface } from "node:readline";
 
@@ -24,6 +25,7 @@ let turns = 0;
 
 createInterface({ input: process.stdin }).on("line", (line) => {
   const { id, method, params } = JSON.parse(line);
+  if (process.env.FAKE_CODEX_SILENT) return;
   if (method === "initialize") send({ id, result: { userAgent: "fake" } });
   if (method === "thread/start") {
     send({

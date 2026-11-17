@@ -11,7 +11,7 @@
  * for now; `codexArmProblem` names the others.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { copyFileSync, createWriteStream, existsSync } from "node:fs";
+import { copyFileSync, createWriteStream, existsSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
@@ -63,12 +63,17 @@ const toml = (value: string) => JSON.stringify(value);
 /**
  * The run's `config.toml`: the model and effort, no approval question ever
  * asked, no project instructions read from the agent's working root, no web
- * search, and the arm's MCP servers with every tool of theirs approved.
+ * search, none of the skills Codex ships with, and the arm's MCP servers with
+ * every tool of theirs approved. An MCP server keeps the user's real home
+ * folder, which the agent itself does not get (see `codexEnvironment`).
  */
 export function codexConfig(options: {
   model: string;
   mcpServers: Record<string, McpServer>;
+  /** The home folder the MCP servers run with; the user's own by default. */
+  home?: string;
 }) {
+  const home = options.home ?? os.homedir();
   return [
     `model = ${toml(options.model)}`,
     `model_reasoning_effort = ${toml(agentEffort)}`,
@@ -80,6 +85,9 @@ export function codexConfig(options: {
     "[agents]",
     "enabled = false",
     "",
+    "[skills.bundled]",
+    "enabled = false",
+    "",
     "[features]",
     ...featuresOff.map((feature) => `${feature} = false`),
     ...Object.entries(options.mcpServers).flatMap(([name, server]) => [
@@ -87,6 +95,7 @@ export function codexConfig(options: {
       `[mcp_servers.${toml(name)}]`,
       `command = ${toml(server.command)}`,
       `args = [${server.args.map(toml).join(", ")}]`,
+      `env = { HOME = ${toml(home)} }`,
       // Without it a call is refused: nobody is there to approve it.
       'default_tools_approval_mode = "approve"',
     ]),
@@ -110,7 +119,9 @@ export function codexArmProblem(
 /**
  * The environment the agent runs in: the parent's, minus every variable of
  * an agent or of Ayme the launcher may carry, plus the run's own fresh
- * configuration folder, where the sign-in lives.
+ * configuration folder, where the sign-in lives. That folder is the agent's
+ * home folder too: Codex reads the user's own skills from `~/.agents/skills`
+ * whatever its configuration folder is, and the agent must not get them.
  */
 export function codexEnvironment(
   options: { configDir: string },
@@ -122,7 +133,16 @@ export function codexEnvironment(
       environment[key] = value;
   }
   environment.CODEX_HOME = options.configDir;
+  environment.HOME = options.configDir;
   return environment;
+}
+
+/**
+ * Whether `codex login status` reports a sign-in with an API key, which
+ * bills the API and not the ChatGPT plan.
+ */
+export function signedInWithApiKey(loginStatus: string) {
+  return /api key/i.test(loginStatus);
 }
 
 export function codexVersion(): string | null {
@@ -136,7 +156,8 @@ export function codexVersion(): string | null {
  * folder. With an access token, Codex signs in with it there, so the token
  * stays out of the agent's environment. Without one, on a
  * developer's machine, the sign-in file of the user's own Codex is copied
- * in. The key is never repeated.
+ * in. A sign-in with an API key is refused, since it bills the API. The
+ * token is never repeated.
  */
 export function codexSignInPrecondition(options: {
   environment: NodeJS.ProcessEnv;
@@ -173,9 +194,16 @@ export function codexSignInPrecondition(options: {
         env: options.environment,
         encoding: "utf8",
       });
-      return status.status === 0
-        ? null
-        : "Codex reports that it is not signed in.";
+      const problem =
+        status.status !== 0
+          ? "Codex reports that it is not signed in."
+          : signedInWithApiKey(`${status.stdout}${status.stderr}`)
+            ? "Codex is signed in with an API key, which bills the API. Sign in with a ChatGPT plan: `codex logout`, then `codex login`."
+            : null;
+      // A sign-in that is refused does not stay in the run folder.
+      if (problem !== null)
+        rmSync(path.join(options.configDir, "auth.json"), { force: true });
+      return problem;
     },
   };
 }
@@ -339,6 +367,12 @@ export async function runCodex(
     const setupTimeout = invocation.setupTimeoutMs ?? setupTimeoutMs;
     // Starting up is the setup turn's: its clock starts before the thread exists.
     const setupSentAt = Date.now();
+    let startTimedOut = false;
+    // A server that never answers ends with the setup turn's timeout too.
+    const startTimer = setTimeout(() => {
+      startTimedOut = true;
+      stopChild();
+    }, setupTimeout);
     await request("initialize", {
       clientInfo: { name: "ayme-eval", title: "Ayme eval", version: "0.0.0" },
     });
@@ -347,6 +381,7 @@ export async function runCodex(
     const started = thread?.result as { thread?: { id?: unknown } } | undefined;
     threadId =
       typeof started?.thread?.id === "string" ? started.thread.id : null;
+    clearTimeout(startTimer);
 
     const { turn: setupTurn, result: setupResult } =
       threadId === null
@@ -354,25 +389,27 @@ export async function runCodex(
             turn: { sentAt: "", wallTimeMs: null, timedOut: false },
             result: null,
           }
-        : await turn(invocation.setupPrompt, setupTimeout);
+        : await turn(
+            invocation.setupPrompt,
+            Math.max(0, setupTimeout - (Date.now() - setupSentAt))
+          );
     const setup: Turn = {
       sentAt: new Date(setupSentAt).toISOString(),
       wallTimeMs:
         setupTurn.wallTimeMs === null ? null : Date.now() - setupSentAt,
-      timedOut: setupTurn.timedOut,
+      timedOut: setupTurn.timedOut || startTimedOut,
     };
-    const setupFailure =
-      threadId === null
+    const setupFailure = setup.timedOut
+      ? `the setup turn ran out of its ${setupTimeout / 1000} s timeout`
+      : threadId === null
         ? "Codex did not start a thread"
-        : setup.timedOut
-          ? `the setup turn ran out of its ${setupTimeout / 1000} s timeout`
-          : setupResult === null
-            ? "the agent ended before answering the setup message"
-            : setupResult.isError
-              ? "the setup turn ended with an error"
-              : child.exitCode !== null
-                ? "the agent ended right after the setup turn"
-                : null;
+        : setupResult === null
+          ? "the agent ended before answering the setup message"
+          : setupResult.isError
+            ? "the setup turn ended with an error"
+            : child.exitCode !== null
+              ? "the agent ended right after the setup turn"
+              : null;
     const task =
       setupFailure === null
         ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
@@ -399,6 +436,13 @@ export async function runCodex(
   } finally {
     if (linger) clearTimeout(linger);
     if (forceKill) clearTimeout(forceKill);
+    // The app server is gone, or the run failed: whatever is left of its process group,
+    // an MCP server or a browser that ignored the first signal, goes with it.
+    try {
+      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
+    } catch {
+      // Nothing this process may signal is left: the run's outcome stands.
+    }
     process.off("SIGINT", onInterrupt);
     process.off("SIGTERM", onInterrupt);
   }
