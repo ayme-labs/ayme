@@ -106,6 +106,23 @@ export function startAgentProcess(options: {
   process.once("SIGINT", onInterrupt);
   process.once("SIGTERM", onInterrupt);
 
+  let leftoversKilled = false;
+  /**
+   * The agent is gone, or the run failed: whatever is left of its process
+   * group, an MCP server or a browser that ignored the first signal, goes
+   * with it. Once only, and as soon as the agent has exited, so the group's
+   * id cannot have passed to another process in between.
+   */
+  const killLeftovers = () => {
+    if (leftoversKilled || !child.pid) return;
+    leftoversKilled = true;
+    try {
+      signalProcessGroup(child.pid, "SIGKILL");
+    } catch {
+      // Nothing this process may signal is left: the run's outcome stands.
+    }
+  };
+
   let onTurnEnd: ((result: TurnResult) => void) | null = null;
   let linger: NodeJS.Timeout | undefined;
 
@@ -154,6 +171,7 @@ export function startAgentProcess(options: {
       child.stdin.end();
       linger = setTimeout(stop, exitGraceMs);
       const exit = await closed;
+      killLeftovers();
       await readerClosed;
       await Promise.all([closeStream(transcript), closeStream(stderr)]);
       if (interruptedBy)
@@ -166,13 +184,7 @@ export function startAgentProcess(options: {
       if (forceKill) clearTimeout(forceKill);
       process.off("SIGINT", onInterrupt);
       process.off("SIGTERM", onInterrupt);
-      // The agent is gone, or the run failed: whatever is left of its process group,
-      // an MCP server or a browser that ignored the first signal, goes with it.
-      try {
-        if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-      } catch {
-        // Nothing this process may signal is left: the run's outcome stands.
-      }
+      killLeftovers();
     },
   };
 }
