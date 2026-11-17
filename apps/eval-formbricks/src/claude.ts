@@ -69,6 +69,8 @@ export type ClaudeRun = {
   setup: Turn;
   /** Why the setup turn did not complete; the task is sent only after a completed setup turn. */
   setupFailure: string | null;
+  /** A turn's `result` event said the login hit its usage limit. */
+  usageLimited: boolean;
   /** The measured turn; `null` when the task was never sent. */
   task: Turn | null;
   /** When the agent was started. */
@@ -245,13 +247,17 @@ export async function runClaude(
   );
 
   const lines: string[] = [];
+  let usageLimited = false;
   let onResult: ((event: { isError: boolean }) => void) | null = null;
   const reader = createInterface({ input: child.stdout });
   reader.on("line", (line) => {
     lines.push(line);
     transcript.write(`${line}\n`);
     const result = resultEvent(line);
-    if (result !== null) onResult?.(result);
+    if (result !== null) {
+      usageLimited ||= result.usageLimit;
+      onResult?.(result);
+    }
   });
   // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
   const readerClosed = new Promise<void>((resolve) =>
@@ -349,6 +355,7 @@ export async function runClaude(
       signal,
       setup,
       setupFailure,
+      usageLimited,
       task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),

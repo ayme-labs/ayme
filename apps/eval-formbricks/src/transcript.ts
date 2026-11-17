@@ -94,12 +94,32 @@ function parseEvents(lines: string[]) {
   return { events, unparsedLines };
 }
 
-/** Whether one transcript line is a `result` event, and whether it reports an error; read while the agent runs. */
-export function resultEvent(line: string): { isError: boolean } | null {
+/**
+ * Whether a `result` event's text says the login hit a usage limit. Claude Code 2.1.281 words every
+ * one as "You've hit your <session|weekly|Opus|Sonnet|Fable|usage credit|monthly spend> limit ..."
+ * (the observed one: "You've hit your weekly limit \u00b7 resets Nov 20, 9am (UTC)"). Its other
+ * rate-limit texts, such as "Opus is experiencing high load" and "Server is temporarily limiting
+ * requests (not your usage limit)", are not the login's own limit and do not match.
+ */
+export function isUsageLimitText(text: string) {
+  return /^You've hit your [^\n]*\blimit\b/.test(text);
+}
+
+/** Whether one transcript line is a `result` event, whether it reports an error, and whether that error is a usage limit; read while the agent runs. */
+export function resultEvent(
+  line: string
+): { isError: boolean; usageLimit: boolean } | null {
   try {
     const event: unknown = JSON.parse(line);
     if (!isRecord(event) || event.type !== "result") return null;
-    return { isError: event.is_error === true };
+    const isError = event.is_error === true;
+    return {
+      isError,
+      usageLimit:
+        isError &&
+        typeof event.result === "string" &&
+        isUsageLimitText(event.result),
+    };
   } catch {
     return null;
   }

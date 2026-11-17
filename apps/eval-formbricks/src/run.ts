@@ -26,13 +26,15 @@ import {
   claudeVersion,
   runClaude,
 } from "./claude.ts";
-import {
-  openRouterKeyVariable,
-  readEnvVariable,
-  readOauthToken,
-} from "./environment.ts";
+import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
 import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
+import {
+  readLogins,
+  usageLimitError,
+  withFallbackLogin,
+  type Login,
+} from "./login.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -131,9 +133,24 @@ export async function writeJson(filePath: string, value: unknown) {
 /**
  * Runs the mission once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict is a result, not an error.
+ * A run whose first login hits its usage limit is done again from the start on the fallback login.
  */
 export async function runOnce(
   options: RunOptions
+): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
+  return withFallbackLogin(
+    readLogins(evalRoot),
+    (login) => runOnceOn(options, login),
+    () =>
+      log(
+        "The first login is at its usage limit; repeating the run from the start on the fallback login."
+      )
+  );
+}
+
+async function runOnceOn(
+  options: RunOptions,
+  login: Login
 ): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
@@ -147,11 +164,13 @@ export async function runOnce(
   await mkdir(outputDir, { recursive: true });
   await mkdir(claudeConfigDir, { recursive: true });
 
-  const oauthToken = readOauthToken(evalRoot);
   const environment =
-    oauthToken === undefined
+    login.token === undefined
       ? undefined
-      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+      : claudeEnvironment({
+          configDir: claudeConfigDir,
+          oauthToken: login.token,
+        });
 
   log("Checking preconditions.");
   try {
@@ -237,6 +256,15 @@ export async function runOnce(
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
     });
+    // A limit ends the attempt: half a run is no measurement. Files the agent left in the lab app folder must not reach the repeat.
+    const limited = usageLimitError(run, login, runDir);
+    if (limited !== null) {
+      await moveFiles(
+        readLabChanges().untracked,
+        path.join(runDir, "agent-files")
+      );
+      throw limited;
+    }
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -272,6 +300,7 @@ export async function runOnce(
 
     const result = normalizeRun({
       runId,
+      login: login.name,
       arm: options.arm.id,
       missionId: mission.id,
       requestedModel: options.model,
