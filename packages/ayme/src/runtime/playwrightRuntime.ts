@@ -24,7 +24,9 @@ import { pomRegistryOf } from "../page-objects/infrastructure";
 import type { PageObjectConstructor } from "../page-objects/application";
 import type { ElementFilter } from "../shared";
 import {
+  agentToolsBySession,
   createAymeOn,
+  type AgentTools,
   type Ayme,
   type PreparedOptions,
   type SessionTarget,
@@ -62,6 +64,13 @@ export type PlaywrightAymeOptions = {
  */
 export type PlaywrightAyme = Omit<Ayme, "start"> & {
   start(): Promise<() => void>;
+  /**
+   * Spike: the session's tools as an agent reads and calls them, the way
+   * `ayme mcp` and WebMCP publication do in the browser: a Page Object Tool
+   * answers what it changed in the Page Object Tree, not the full record.
+   * Its Runs are `ayme-mcp`'s.
+   */
+  readonly agentTools: AgentTools;
 };
 
 /**
@@ -82,6 +91,7 @@ export function createPlaywrightAyme(
   });
   return {
     ...core,
+    agentTools: agentToolsBySession.get(core)!,
     async start() {
       await registerSelectors();
       prepared = await prepare(page, options);

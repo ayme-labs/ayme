@@ -20,6 +20,9 @@ const allowedSlices = {
   inspector: ["connection", "pairing", "contract"],
   tools: ["inspector", "connection", "pairing", "contract"],
   "served-page-objects": ["connection", "pairing", "contract"],
+  // Spike: the background process that runs Page Object Tools in Node, and
+  // its thin commands. Unlayered.
+  "node-session": ["served-page-objects"],
   server: [
     "served-page-objects",
     "tools",

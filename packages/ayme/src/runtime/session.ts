@@ -375,6 +375,18 @@ const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
 export const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
 
 /**
+ * Spike: a session's tools as an agent channel takes them, which the browser
+ * runtime hands its loaders: listed with their Agent Description, a Page
+ * Object Tool answered with a `PageObjectToolAnswer`.
+ */
+export type AgentTools = {
+  list(): readonly (ToolInfo & { description?: string })[];
+  run(name: string, input: unknown): Promise<unknown>;
+};
+/** Spike: the agent tools of each session, for a Node host that has no loader. */
+export const agentToolsBySession = new WeakMap<Ayme, AgentTools>();
+
+/**
  * The session's App Process tools: those of the page client it follows,
  * and none while it follows none.
  */
@@ -1111,6 +1123,7 @@ export function createAymeOn(
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  agentToolsBySession.set(ayme, aymeMcpTools);
   setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }
