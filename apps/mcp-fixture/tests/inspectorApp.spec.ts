@@ -50,13 +50,14 @@ async function inspectorApp(agent: Agent) {
  * context of its own. Returns the Agent App's page, the Inspector in it, and
  * `close`, which closes both. Without `announces`, the Agent App grants a
  * display mode in its answer only and sends no context change after it.
+ * Without `resizes`, it leaves the frame at the height it has.
  */
 async function showInAgentApp(
   browser: Browser,
   baseURL: string,
   app: { html: string; connectDomains: string[] },
   modes: string[],
-  announces = true
+  { announces = true, resizes = true } = {}
 ) {
   // Under the policy T3 Code was measured to apply, the strictest of the
   // Agent Apps measured: inline scripts and styles only, and connections
@@ -90,7 +91,7 @@ async function showInAgentApp(
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(
-    `${baseURL}/agent-app.html?modes=${modes.join(",")}&announce=${announces ? 1 : 0}&frame=${encodeURIComponent(`http://127.0.0.1:${port}/`)}`
+    `${baseURL}/agent-app.html?modes=${modes.join(",")}&announce=${announces ? 1 : 0}&resize=${resizes ? 1 : 0}&frame=${encodeURIComponent(`http://127.0.0.1:${port}/`)}`
   );
   const inspector = new Inspector(
     page,
@@ -216,7 +217,7 @@ test("the Inspector goes by the display mode an Agent App grants, when the Agent
       baseURL!,
       await inspectorApp(agent),
       ["inline", "fullscreen"],
-      false
+      { announces: false }
     );
     try {
       await shown.inspector.open();
@@ -269,6 +270,46 @@ test("the Inspector in an Agent App stops and says so once its server is gone", 
           .getByText("This Inspector lost its Ayme MCP server.")
       ).toBeVisible({ timeout: 15_000 });
       await expect(shown.inspector.header.title).toHaveCount(0);
+    } finally {
+      await shown.close();
+    }
+  } finally {
+    await agent.close();
+  }
+});
+
+test("the Inspector's page is as tall as it asks to be shown, for an Agent App that sizes the frame by the page's own height", async ({
+  context,
+  page,
+  browser,
+  baseURL,
+}, testInfo) => {
+  const { agent } = await startServingAgent(context, testInfo);
+  try {
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    const shown = await showInAgentApp(
+      browser,
+      baseURL!,
+      await inspectorApp(agent),
+      ["inline"],
+      { resizes: false }
+    );
+    try {
+      await expect
+        .poll(async () => (await agentAppSaw(shown.page)).heights)
+        .toEqual([600]);
+
+      // The height Cursor measures, in a frame left shorter than that.
+      const frame = shown.page.frames().find((f) => f.parentFrame() !== null)!;
+      const measured = await frame.evaluate(() =>
+        Math.max(
+          document.body.scrollHeight,
+          document.body.offsetHeight,
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight
+        )
+      );
+      expect(measured).toBe(600);
     } finally {
       await shown.close();
     }

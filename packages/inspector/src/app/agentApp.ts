@@ -10,7 +10,10 @@ export const INLINE_HEIGHT = 600;
  * (through the ext-apps SDK, over the frame's `postMessage`): it asks for
  * {@link INLINE_HEIGHT}, and gives the fullscreen the Agent App offers,
  * which is none until the Agent App answers. It sends no size after that,
- * so a fullscreen frame's size never reads as a request. `AppClass` is the
+ * so a fullscreen frame's size never reads as a request. The document
+ * itself is that tall too: the Inspector fills its window and gives the
+ * document no height of its own, and an Agent App may size the frame by the
+ * document's height, as Cursor does. `AppClass` is the
  * SDK's `App`: only the external build imports the SDK, so the Inspector in
  * the page carries none of it.
  */
@@ -20,6 +23,7 @@ export function connectAgentApp(AppClass: typeof App): WindowFullscreen {
     { availableDisplayModes: ["inline", "fullscreen"] },
     { autoResize: false }
   );
+  document.body.style.minHeight = `${INLINE_HEIGHT}px`;
   const listeners = new Set<() => void>();
   let state: FullscreenState = { offered: false, active: false };
   // The Agent App names the display mode in its answer to a request, in a
