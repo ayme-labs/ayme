@@ -82,7 +82,8 @@ A package under `packages/` that is not private joins the release set and its sh
 
 A new framework edits these files outside its own package and example:
 
-- the root [README](../README.md): the framework list and the supported-versions row;
+- the root [README](../README.md): the framework list;
+- the install guide's [supported versions](guide/start/install.md#supported-versions) table: the framework's row;
 - the [testing guide](testing.md)'s E2E lane, for the example's render modes and servers;
 - the skill's [onboarding step](../skills/ayme/references/onboarding.md);
 - the [packed-consumer test](../packages/ayme/src/packedConsumer.test.ts): the tarball lists and the framework floors;
