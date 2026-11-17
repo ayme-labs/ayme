@@ -11,7 +11,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import type { RecorderChannel } from "../channel";
-import { RecorderWindow } from "../testing";
+import { RecorderWindow, type Entry } from "../testing";
 import { channelUrl, mountWindow } from "./mountWindow";
 import { entryId } from "../test-utils/ids";
 
@@ -287,31 +287,7 @@ it("joins each icon of a Visit to the next by a line", async () => {
   expect(await recorderWindow.timeline.lines.count()).toBe(4);
 });
 
-it("highlights the element of a chip of the page now open while it is hovered, and clears it when left", async () => {
-  const { channel, sent, tell } = scriptedChannel();
-  mount(channel);
-  tell({
-    phase: "recording",
-    visits: [login, inventory],
-    commands: ["stop", "highlight", "clearHighlight"],
-  });
-  await expect.poll(async () => (await visits()).length).toBe(2);
-  const [click] = await (await visits())[1]!.entries();
-  const [, second] = await click!.changes();
-
-  await click!.target.hover();
-  await second!.element.hover();
-  await click!.title.hover();
-
-  expect(sent).toEqual([
-    { type: "highlight", entry: entryId("interaction_2") },
-    { type: "clearHighlight" },
-    { type: "highlight", entry: entryId("interaction_2"), row: 1 },
-    { type: "clearHighlight" },
-  ]);
-});
-
-it("leaves the chips of an earlier Visit inert, and asks for no highlight when it does not apply", async () => {
+it("highlights the element of a chip of any Visit while it is hovered, and clears it when left", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
   tell({
@@ -322,16 +298,78 @@ it("leaves the chips of an earlier Visit inert, and asks for no highlight when i
   await expect.poll(async () => (await visits()).length).toBe(2);
   const [fill] = await (await visits())[0]!.entries();
   const [row] = await fill!.changes();
+  const [click] = await (await visits())[1]!.entries();
+  const [, second] = await click!.changes();
 
+  await click!.target.hover();
+  await second!.element.hover();
+  // An earlier Visit's: the engine looks for it on the page as it is now.
   await fill!.target.hover();
   await row!.element.hover();
-  await fill!.title.hover();
+  await click!.title.hover();
+
+  expect(sent).toEqual([
+    { type: "highlight", entry: entryId("interaction_2") },
+    { type: "clearHighlight" },
+    { type: "highlight", entry: entryId("interaction_2"), row: 1 },
+    { type: "clearHighlight" },
+    { type: "highlight", entry: entryId("interaction_1") },
+    { type: "clearHighlight" },
+    { type: "highlight", entry: entryId("interaction_1"), row: 0 },
+    { type: "clearHighlight" },
+  ]);
+});
+
+it("asks for no highlight when it does not apply", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
   tell({ phase: "paused", visits: [login, inventory], commands: ["continue"] });
+  await expect.poll(async () => (await visits()).length).toBe(2);
   const [click] = await (await visits())[1]!.entries();
+  const [row] = await click!.changes();
+
   await click!.target.hover();
+  await row!.element.hover();
   await click!.title.hover();
 
   expect(sent).toEqual([]);
+});
+
+it("shows a chip that can highlight its element with a border and a crosshair, and one that cannot as before", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  /** How a chip shows that it can be hovered. */
+  const look = (chip: Entry["target"]) =>
+    chip.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { cursor: style.cursor, border: style.borderTopWidth };
+    });
+  tell({
+    phase: "recording",
+    visits: [login, inventory],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [click] = await (await visits())[1]!.entries();
+  const [row] = await click!.changes();
+
+  expect(await look(click!.target)).toEqual({
+    cursor: "crosshair",
+    border: "1px",
+  });
+  expect(await look(row!.element)).toEqual({
+    cursor: "crosshair",
+    border: "1px",
+  });
+
+  tell({ phase: "paused", visits: [login, inventory], commands: ["continue"] });
+  await expect
+    .poll(() => look(click!.target))
+    .toEqual({
+      cursor: "auto",
+      border: "0px",
+    });
+  expect(await look(row!.element)).toEqual({ cursor: "auto", border: "0px" });
 });
 
 it("offers Stop, Assert visibility, Clear and Finish while recording, and sends each", async () => {

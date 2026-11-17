@@ -53,11 +53,10 @@ const paused: RecorderCommandType[] = [
   "highlight",
   "clearHighlight",
 ];
-const open = { current: true };
 
 describe("an entry's card", () => {
   it("names an Interaction, its target and the roots of what it changed, each of which can highlight its element", () => {
-    expect(entryCardOf(click, recording, open)).toEqual({
+    expect(entryCardOf(click, recording)).toEqual({
       icon: "click",
       title: "Click",
       target: {
@@ -97,9 +96,10 @@ describe("an entry's card", () => {
   });
 
   it("asks to highlight the target by its entry alone, naming no row", () => {
-    expect(entryCardOf(click, recording, open).target?.highlight).toStrictEqual(
-      { type: "highlight", entry: entryId("interaction_1") }
-    );
+    expect(entryCardOf(click, recording).target?.highlight).toStrictEqual({
+      type: "highlight",
+      entry: entryId("interaction_1"),
+    });
   });
 
   it("shows the selector of a target the page's structure does not name", () => {
@@ -108,7 +108,7 @@ describe("an entry's card", () => {
       { kind: "interaction" }
     >;
     Reflect.deleteProperty(unnamed, "targetElement");
-    expect(entryCardOf(unnamed, recording, open).target).toEqual({
+    expect(entryCardOf(unnamed, recording).target).toEqual({
       text: '[data-test="add-to-cart"]',
       highlight: { type: "highlight", entry: entryId("interaction_1") },
     });
@@ -120,21 +120,20 @@ describe("an entry's card", () => {
       targetElement: undefined,
       interaction: { id: click.id, type: "press", targetRef: "e9" },
     } as TimelineEntry;
-    expect(entryCardOf(bare, recording, open).target?.text).toBe("[ref=e9]");
+    expect(entryCardOf(bare, recording).target?.text).toBe("[ref=e9]");
     expect(
       entryCardOf(
         {
           ...bare,
           interaction: { id: click.id, type: "press", targetRef: null },
         } as TimelineEntry,
-        recording,
-        open
+        recording
       ).target
     ).toBeNull();
   });
 
   it("titles a change no Interaction made by what it is, with no target", () => {
-    expect(entryCardOf(change, recording, open)).toMatchObject({
+    expect(entryCardOf(change, recording)).toMatchObject({
       icon: "change",
       title: "Element removed",
       target: null,
@@ -146,36 +145,26 @@ describe("an entry's card", () => {
     expect(
       entryCardOf(
         { ...click, interaction: { ...click.interaction, type: "uncheck" } },
-        recording,
-        open
+        recording
       ).icon
     ).toBe("interaction");
   });
 
-  it("leaves every chip of an earlier Visit inert", () => {
-    const card = entryCardOf(click, recording, { current: false });
-    expect(card.target?.highlight).toBeNull();
-    expect(card.changes.map((row) => row.chip.highlight)).toEqual([null, null]);
-    expect(card.leave).toBeNull();
-  });
-
   it("asks for no highlight when it does not apply", () => {
-    const card = entryCardOf(click, ["continue", "discard"], open);
+    const card = entryCardOf(click, ["continue", "discard"]);
     expect(card.target?.highlight).toBeNull();
     expect(card.leave).toBeNull();
   });
 
   it("offers Discard while paused", () => {
-    expect(entryCardOf(click, paused, open)).toMatchObject({
+    expect(entryCardOf(click, paused)).toMatchObject({
       discard: { type: "discard", entry: entryId("interaction_1") },
       restore: null,
     });
   });
 
   it("hides what a discarded entry changed and offers Restore", () => {
-    expect(
-      entryCardOf({ ...click, discarded: true }, paused, open)
-    ).toMatchObject({
+    expect(entryCardOf({ ...click, discarded: true }, paused)).toMatchObject({
       discarded: true,
       discard: null,
       restore: { type: "restore", entry: entryId("interaction_1") },
@@ -184,18 +173,18 @@ describe("an entry's card", () => {
   });
 
   it("offers neither Discard nor Restore when they do not apply", () => {
-    expect(
-      entryCardOf({ ...click, discarded: true }, recording, open)
-    ).toMatchObject({ discard: null, restore: null });
-    expect(entryCardOf(click, recording, open)).toMatchObject({
+    expect(entryCardOf({ ...click, discarded: true }, recording)).toMatchObject(
+      { discard: null, restore: null }
+    );
+    expect(entryCardOf(click, recording)).toMatchObject({
       discard: null,
       restore: null,
     });
   });
 
   it("lists no changes for an Interaction that changed nothing", () => {
-    expect(
-      entryCardOf({ ...click, changes: null }, recording, open).changes
-    ).toEqual([]);
+    expect(entryCardOf({ ...click, changes: null }, recording).changes).toEqual(
+      []
+    );
   });
 });

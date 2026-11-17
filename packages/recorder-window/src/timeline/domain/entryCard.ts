@@ -17,7 +17,7 @@ export type Chip = {
   /** Shown on hover: the target's selector, when the chip names it. */
   readonly hint?: string;
   /** What hovering it asks: a highlight of its element on the page, while
-   * that applies and its Visit is the page now open; none otherwise. */
+   * that applies, whichever Visit it is of; none otherwise. */
   readonly highlight: RecorderCommand | null;
 };
 
@@ -28,8 +28,8 @@ export type EntryCard = {
   /** The Interaction's target; none on a change no Interaction made, and
    * none for a target known neither by element nor by selector. */
   readonly target: Chip | null;
-  /** What leaving a chip asks: no highlight. None while the chips are
-   * inert. */
+  /** What leaving a chip asks: no highlight. None while highlighting does
+   * not apply. */
   readonly leave: RecorderCommand | null;
   /** The person left it out: it stays where it is, struck through. */
   readonly discarded: boolean;
@@ -93,17 +93,16 @@ function reviewOf(
 }
 
 /**
- * Reads how an entry shows from the entry, the commands that apply, and
- * whether its Visit is the page now open: only the chips of that page can
- * highlight their elements.
+ * Reads how an entry shows from the entry and the commands that apply. The
+ * chips of every Visit can highlight their elements: the engine looks for an
+ * element of a Visit its page has left on the page as it is now.
  */
 export function entryCardOf(
   entry: TimelineEntry,
-  commands: readonly RecorderCommandType[],
-  { current }: { readonly current: boolean }
+  commands: readonly RecorderCommandType[]
 ): EntryCard {
   const applies = (type: RecorderCommandType) => commands.includes(type);
-  const highlights = current && applies("highlight");
+  const highlights = applies("highlight");
   const highlight = (row?: number): RecorderCommand | null =>
     highlights
       ? {
@@ -116,8 +115,7 @@ export function entryCardOf(
   return {
     ...headingOf(entry),
     target: entry.kind === "interaction" ? targetOf(entry, highlight()) : null,
-    leave:
-      current && applies("clearHighlight") ? { type: "clearHighlight" } : null,
+    leave: applies("clearHighlight") ? { type: "clearHighlight" } : null,
     ...review,
     changes: review.discarded
       ? []

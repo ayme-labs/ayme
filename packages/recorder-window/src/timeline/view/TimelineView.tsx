@@ -64,9 +64,6 @@ export function TimelineView({
             key={visit.visitId}
             visit={visit}
             number={index + 1}
-            // The latest Visit is the page now open: only its chips can
-            // highlight their elements.
-            current={index === visits.length - 1}
             commands={commands}
             onCommand={onCommand}
           />
@@ -79,13 +76,11 @@ export function TimelineView({
 function VisitSection({
   visit,
   number,
-  current,
   commands,
   onCommand,
 }: {
   visit: RecordedVisit;
   number: number;
-  current: boolean;
   commands: readonly RecorderCommandType[];
   onCommand: OnCommand;
 }) {
@@ -112,7 +107,7 @@ function VisitSection({
           key={entry.id}
           entry={entry}
           line={index < last}
-          card={entryCardOf(entry, commands, { current })}
+          card={entryCardOf(entry, commands)}
           onCommand={onCommand}
         />
       ))}
@@ -170,7 +165,8 @@ function EntryCard({
 }
 
 /** An element in a chip. Hovering it highlights its element on the page,
- * when it can; the target's selector shows on hover. */
+ * when it can, and a chip that can shows so by its border and a crosshair;
+ * the target's selector shows on hover. */
 function ChipView({
   chip,
   leave,
@@ -190,7 +186,8 @@ function ChipView({
       title={chip.hint}
       onMouseEnter={() => highlight && onCommand(highlight)}
       onMouseLeave={() => leave && onCommand(leave)}
-      className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-semibold break-all group-data-[discarded=true]:opacity-60"
+      data-highlights={highlight !== null}
+      className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-semibold break-all group-data-[discarded=true]:opacity-60 data-[highlights=true]:cursor-crosshair data-[highlights=true]:border data-[highlights=true]:border-border"
     >
       {chip.text}
     </span>
