@@ -1,0 +1,12 @@
+{
+  "name": "my-list-app",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@ayme-dev/ayme": "{{AYME_VERSION}}",
+    "@ayme-dev/mcp": "{{AYME_VERSION}}",
+    "@ayme-dev/webmcp": "{{AYME_VERSION}}",
+    "@playwright/test": "1.64.1",
+    "typescript": "6.0.3"
+  }
+}

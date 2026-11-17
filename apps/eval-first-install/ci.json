@@ -1,0 +1,5 @@
+{
+  "ref": "feat/page-object-tools-beside-browser-automation",
+  "runs": 1,
+  "tools": ["playwright-cli", "playwright-mcp", "agent-browser"]
+}
