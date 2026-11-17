@@ -105,7 +105,8 @@ function parseEvents(lines: string[]) {
  * organisation has disabled overage. When the account lacks credits for the model or the context it
  * was asked for, it refuses with "Fable 5 requires usage credits. Switch to another model ..." and
  * "API Error: Usage credits required for 1M context · run ...". Only the weekly limit has been seen
- * in a real transcript.
+ * in a real transcript. Its other refusals are not about paying and do not match: an organisation that has disabled
+ * subscription access, an account on hold, a model or auto mode the plan does not include, and every authentication error.
  * Anchored at the start: the CLI writes these itself, so a model's text that quotes one does not
  * count. Overload and server throttling ("Opus is experiencing high load", "Server is temporarily
  * limiting requests (not your usage limit)") are not the login's own limit and do not match.
@@ -114,6 +115,7 @@ const usageLimitTexts = [
   /^You've hit your [^\n]*\b(?:limit|budget)\b/,
   /^You've reached your [^\n]*\blimit\b/,
   /^You're out of (?:extra usage|usage credits)\b/,
+  /^Credit balance is too low\b/,
   /^Your org is out of usage\b/,
   /^Your seat type doesn't include (?:extra )?usage\b/,
   /^Your usage allocation has been disabled by your admin/,

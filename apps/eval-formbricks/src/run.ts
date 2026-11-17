@@ -114,14 +114,21 @@ export function log(line: string) {
 }
 
 /**
- * One step of a run's teardown. A step that fails is logged and never takes the
- * place of how the run ended, which may be the refusal that triggers the repeat
- * on the second login, or the message that both logins are at their limit.
+ * One step of a run's teardown or of cleaning up a discarded attempt. As on
+ * `main`, a step that fails stops the suite when the run itself succeeded. When
+ * an error is already being reported (the refusal that triggers the repeat on the
+ * second login, the message that both logins are at their limit, or any other run
+ * error) the failure is logged instead and that error stays what the run ends with.
  */
-export async function tearDown(step: string, action: () => Promise<unknown>) {
+export async function tearDown(
+  step: string,
+  action: () => Promise<unknown>,
+  errorInFlight: boolean
+) {
   try {
     await action();
   } catch (error) {
+    if (!errorInFlight) throw error;
     log(
       `Could not ${step}: ${error instanceof Error ? error.message : String(error)}`
     );
@@ -204,6 +211,7 @@ async function runOnceOn(
 
   const database = await openFormbricksDatabase(formbricksRoot);
   let armSetup: ArmSetup | undefined;
+  let errorInFlight = false;
   try {
     log("Seeding the mission.");
     const mission = await seedMission(database, options.mission, runId, labUrl);
@@ -273,17 +281,15 @@ async function runOnceOn(
     // move to this attempt's agent-files/; tracked changes stay, and stop the repeat at the clean-checkout check.
     const limited = usageLimitError(run, login, runDir);
     if (limited !== null) {
-      try {
-        await moveFiles(
-          readLabChanges().untracked,
-          path.join(runDir, "agent-files")
-        );
-      } catch (error) {
-        // Never in place of the message that says why the attempt ended.
-        log(
-          `Could not move what the agent left in the lab app folder: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
+      await tearDown(
+        "move what the agent left in the lab app folder",
+        () =>
+          moveFiles(
+            readLabChanges().untracked,
+            path.join(runDir, "agent-files")
+          ),
+        true
+      );
       throw limited;
     }
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
@@ -358,16 +364,27 @@ async function runOnceOn(
         "Warning: the agent changed the lab app checkout. Files it created are in agent-files/; tracked files it modified are still there. Inspect them before the next run."
       );
     return { runId, runDir, result };
+  } catch (error) {
+    errorInFlight = true;
+    throw error;
   } finally {
-    await tearDown("close what the arm's setup started", async () => {
-      await armSetup?.dispose();
-    });
-    await tearDown("close the database", () => database.close());
-    await tearDown("delete the browser profile", () =>
-      rm(profileDir, { recursive: true, force: true })
+    await tearDown(
+      "close what the arm's setup started",
+      async () => {
+        await armSetup?.dispose();
+      },
+      errorInFlight
     );
-    await tearDown("delete the Claude Code configuration folder", () =>
-      rm(claudeConfigDir, { recursive: true, force: true })
+    await tearDown("close the database", () => database.close(), errorInFlight);
+    await tearDown(
+      "delete the browser profile",
+      () => rm(profileDir, { recursive: true, force: true }),
+      errorInFlight
+    );
+    await tearDown(
+      "delete the Claude Code configuration folder",
+      () => rm(claudeConfigDir, { recursive: true, force: true }),
+      errorInFlight
     );
   }
 }

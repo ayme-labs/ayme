@@ -203,6 +203,7 @@ async function runStartupOn(
   if (environment === undefined) throw new Error("unreachable: no environment");
   log(`Run ${runId}: ${runDir}`);
 
+  let errorInFlight = false;
   try {
     const skillDir = aymeSkillDirectory(claudeConfigDir);
     await cp(aymeSkillSource, skillDir, { recursive: true });
@@ -268,9 +269,14 @@ async function runStartupOn(
     };
     await writeJson(path.join(runDir, "result.json"), result);
     return { runDir, result };
+  } catch (error) {
+    errorInFlight = true;
+    throw error;
   } finally {
-    await tearDown("delete the Claude Code configuration folder", () =>
-      rm(claudeConfigDir, { recursive: true, force: true })
+    await tearDown(
+      "delete the Claude Code configuration folder",
+      () => rm(claudeConfigDir, { recursive: true, force: true }),
+      errorInFlight
     );
   }
 }

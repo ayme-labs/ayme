@@ -46,6 +46,7 @@ describe("isUsageLimitText", () => {
       "You're out of usage credits · resets Nov 20 · progress saved",
       "You're out of usage credits. /model to switch models.",
       "You're out of extra usage",
+      "Credit balance is too low",
       "Your org is out of usage · add funds to continue",
       "Your org is out of usage · contact your admin",
       "Your seat type doesn't include usage credits",
@@ -70,6 +71,9 @@ describe("isUsageLimitText", () => {
       "Done. You've hit your target.",
       "I told you: You've hit your weekly limit",
       "I told you: Fable 5 requires usage credits.",
+      "I told you: Credit balance is too low",
+      "Your organization has disabled Claude subscription access for Claude Code · Use an Anthropic API key instead, or ask your admin to enable access",
+      "Your account is on hold and can't sign in to Claude Code. View details or appeal: https://claude.ai/appeal",
       "Opus with 1M context is not available for your account.",
     ])
       expect(isUsageLimitText(text), text).toBe(false);
@@ -180,7 +184,9 @@ describe("withFallbackLogin", () => {
 });
 
 describe("tearDown", () => {
-  it("logs a step that fails and leaves the run's own outcome alone", async () => {
+  const failing = () => Promise.reject(new Error("connection lost"));
+
+  it("logs a step that fails and keeps the error that is already being reported", async () => {
     const written: string[] = [];
     const write = vi
       .spyOn(process.stderr, "write")
@@ -190,9 +196,7 @@ describe("tearDown", () => {
       });
     try {
       await expect(
-        tearDown("close the database", () =>
-          Promise.reject(new Error("connection lost"))
-        )
+        tearDown("close the database", failing, true)
       ).resolves.toBeUndefined();
     } finally {
       write.mockRestore();
@@ -200,6 +204,12 @@ describe("tearDown", () => {
     expect(written.join("")).toContain(
       "Could not close the database: connection lost"
     );
+  });
+
+  it("lets a step that fails surface when the run itself succeeded", async () => {
+    await expect(
+      tearDown("close the database", failing, false)
+    ).rejects.toThrow("connection lost");
   });
 });
 

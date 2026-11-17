@@ -186,21 +186,24 @@ function printedCharacter(character: string) {
 }
 
 /**
- * Replaces every secret in the text, whether it is written out or spelled
- * with JSON escapes (`\u0073k-ant-...`), in a string, a key or anywhere else
- * in the text, so it holds for a stream-json line as for the whole of stderr,
- * indented JSON over several lines included. What is not a secret stays byte
- * for byte.
+ * Builds the function that replaces every secret in a text, whether it is written out
+ * or spelled with JSON escapes (`\u0073k-ant-...`), in a string, a key or
+ * anywhere else in the text, so it holds for a stream-json line as for the
+ * whole of stderr, indented JSON over several lines included. What is not a
+ * secret stays byte for byte. The patterns are built once, here, not per line.
  */
-export function redactSecrets(text: string, secrets: string[]): string {
-  let redacted = text;
-  for (const secret of secrets)
-    if (secret !== "")
-      redacted = redacted.replace(
-        new RegExp(secret.split("").map(printedCharacter).join(""), "g"),
-        "[redacted]"
-      );
-  return redacted;
+export function secretRedactor(secrets: string[]): (text: string) => string {
+  const patterns = secrets
+    .filter((secret) => secret !== "")
+    .map(
+      (secret) =>
+        new RegExp(secret.split("").map(printedCharacter).join(""), "g")
+    );
+  return (text) =>
+    patterns.reduce(
+      (redacted, pattern) => redacted.replace(pattern, "[redacted]"),
+      text
+    );
 }
 
 export function claudeVersion(): string | null {
@@ -278,7 +281,7 @@ export async function runClaude(
     stdio: ["pipe", "pipe", "pipe"],
   });
   // Neither stream keeps a token: the output is public once the results folder is uploaded.
-  const secrets = invocation.secrets ?? [];
+  const redact = secretRedactor(invocation.secrets ?? []);
   // Stderr is free text, so it is scrubbed as a whole, once it is complete: a token in JSON printed
   // over several lines is no secret on any one line. Stdout is stream-json, scrubbed line by line.
   let stderr = "";
@@ -299,7 +302,7 @@ export async function runClaude(
   reader.on("line", (rawLine) => {
     // The event is read as the agent wrote it; only what is stored is scrubbed.
     const result = resultEvent(rawLine);
-    const line = redactSecrets(rawLine, secrets);
+    const line = redact(rawLine);
     lines.push(line);
     transcript.write(`${line}\n`);
     if (result !== null) {
@@ -396,7 +399,7 @@ export async function runClaude(
     await Promise.all([readerClosed, stderrClosed]);
     await Promise.all([
       closeStream(transcript),
-      writeFile(invocation.stderrPath, redactSecrets(stderr, secrets)),
+      writeFile(invocation.stderrPath, redact(stderr)),
     ]);
     // An interrupted run is not a result: nothing is stored and a suite stops.
     if (interruptedBy)

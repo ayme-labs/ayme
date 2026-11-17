@@ -9,7 +9,7 @@ import { arms } from "./arms.ts";
 import {
   claudeArguments,
   claudeEnvironment,
-  redactSecrets,
+  secretRedactor,
   runClaude,
   userMessageLine,
   type ClaudeInvocation,
@@ -316,14 +316,14 @@ describe("runClaude", () => {
   });
 });
 
-describe("redactSecrets", () => {
+describe("secretRedactor", () => {
   const token = "sk-ant-oat01-dummyTokenForTests0123456789";
   const escaped = [...token]
     .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
     .join("");
 
   it("replaces a token written out", () => {
-    expect(redactSecrets(`debug: ${token} here, ${token}`, [token])).toBe(
+    expect(secretRedactor([token])(`debug: ${token} here, ${token}`)).toBe(
       "debug: [redacted] here, [redacted]"
     );
   });
@@ -331,17 +331,17 @@ describe("redactSecrets", () => {
   it("finds a token written with JSON escapes, in either case of hex digit, and changes nothing else", () => {
     const line = `{ "type" : "system",  "message":"my token is ${escaped}","n":1}`;
     expect(line).not.toContain(token);
-    expect(redactSecrets(line, [token])).toBe(
+    expect(secretRedactor([token])(line)).toBe(
       '{ "type" : "system",  "message":"my token is [redacted]","n":1}'
     );
-    expect(redactSecrets("\\u006b \\u006B", ["k"])).toBe(
+    expect(secretRedactor(["k"])("\\u006b \\u006B")).toBe(
       "[redacted] [redacted]"
     );
   });
 
   it("finds a token used only as a JSON key, written out or in JSON escapes", () => {
     for (const key of [token, escaped]) {
-      const stored = redactSecrets(`{"${key}":{"list":["a"]}}`, [token]);
+      const stored = secretRedactor([token])(`{"${key}":{"list":["a"]}}`);
       expect(JSON.parse(stored)).toEqual({ "[redacted]": { list: ["a"] } });
     }
   });
@@ -358,7 +358,7 @@ describe("redactSecrets", () => {
       "}",
       "done",
     ].join("\n");
-    const stored = redactSecrets(stderr, [token]);
+    const stored = secretRedactor([token])(stderr);
     expect(stored).not.toContain(token);
     expect(stored).not.toContain(escaped);
     expect(stored.split("\n")).toHaveLength(9);
@@ -367,10 +367,10 @@ describe("redactSecrets", () => {
 
   it("keeps a text without a token byte for byte", () => {
     const line = '{ "type" : "result",  "result":"\\u0041 done" }';
-    expect(redactSecrets(line, [token])).toBe(line);
+    expect(secretRedactor([token])(line)).toBe(line);
   });
 
   it("replaces every secret it is given", () => {
-    expect(redactSecrets("a b", ["a", "b"])).toBe("[redacted] [redacted]");
+    expect(secretRedactor(["a", "b"])("a b")).toBe("[redacted] [redacted]");
   });
 });
