@@ -219,6 +219,9 @@ function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
             }
           : {}),
         inputSchema: tool.inputSchema,
+        ...("destructive" in tool && tool.destructive
+          ? { destructive: true as const }
+          : {}),
         group,
         available,
         ...(reason === undefined ? {} : { reason }),

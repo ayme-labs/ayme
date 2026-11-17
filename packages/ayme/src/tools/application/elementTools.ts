@@ -39,6 +39,14 @@ export type CustomTool = {
   /** The only instruction the model gets about this operation. */
   description: string;
   /**
+   * Marks the operation as one that cannot be undone, such as deleting a
+   * record or submitting an order. The published tool says so in its
+   * annotations: `destructiveHint` over MCP, `consequentialHint` over
+   * WebMCP. Ayme still runs it like any other tool. `false` is the same as
+   * leaving it out.
+   */
+  destructive?: boolean;
+  /**
    * The elements the Goal Loop may offer: a CSS selector, or a function the
    * session calls once with its Page, returning the Locator of them (see
    * `ElementFilter`). Omitted = every node with a ref.
@@ -75,6 +83,8 @@ export type CustomToolContext = {
  */
 export type PublishedElementTool = ToolDescriptor & {
   inputSchema: JsonSchema;
+  /** A Custom Tool marked `destructive: true`. */
+  destructive?: true;
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
@@ -331,7 +341,7 @@ export async function resolveElementTarget(
 export function registerCustomTool(
   customTool: CustomTool
 ): RegisteredElementTool {
-  return registerElementTool(
+  const registered = registerElementTool(
     {
       name: customTool.name,
       description: customTool.description,
@@ -349,6 +359,9 @@ export function registerCustomTool(
     },
     customTool.filter ? { filter: customTool.name } : { every: true }
   );
+  return customTool.destructive
+    ? { ...registered, tool: { ...registered.tool, destructive: true } }
+    : registered;
 }
 
 /** The nodes a tool takes and the subset its input would reach. */

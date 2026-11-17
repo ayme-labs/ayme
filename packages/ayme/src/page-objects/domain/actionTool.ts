@@ -100,9 +100,10 @@ export function inputSchemaFor(
 /**
  * What a Page Object Tool tells about its action beyond its name and schema:
  * the description its author wrote, the other Page Objects it may return,
- * which the page shows afterwards, and its Agent Description, the text an
- * agent reads from the two. A blank description, or returning its own class,
- * tells nothing, so it is left out.
+ * which the page shows afterwards, its Agent Description, the text an
+ * agent reads from the two, and whether its author marked it destructive. A
+ * blank description, or returning its own class, tells nothing, so it is
+ * left out.
  */
 export function actionFacts(
   action: ToolManifest,
@@ -111,6 +112,7 @@ export function actionFacts(
   authorDescription?: string;
   agentDescription?: string;
   returnPoms?: readonly string[];
+  destructive?: true;
 } {
   const returnPoms =
     action.returnPoms?.filter((name) => name !== ownClassName) ?? [];
@@ -123,6 +125,7 @@ export function actionFacts(
     ...(authorDescription === undefined ? {} : { authorDescription }),
     ...(agentDescription === undefined ? {} : { agentDescription }),
     ...(returnPoms.length ? { returnPoms } : {}),
+    ...(action.destructive ? { destructive: true } : {}),
   };
 }
 

@@ -146,6 +146,77 @@ describe("derivePomManifests", () => {
     }
   );
 
+  describe("the destructive option", () => {
+    it("marks the actions whose @ayme.action sets destructive: true, and an inherited one in the subclass", () => {
+      const tools = (className: string) =>
+        manifestForClass("destructiveActionsPom", className)?.tools.map(
+          (tool) => [tool.methodName, tool.destructive]
+        );
+
+      const expected = [
+        ["submit", true],
+        ["remove", true],
+        ["preview", undefined],
+        ["edit", undefined],
+        ["close", undefined],
+      ];
+      expect(tools("DestructiveActionsPom")).toEqual(expected);
+      expect(tools("InheritedDestructivePom")).toEqual(expected);
+      expect(
+        manifestForClass("destructiveActionsPom", "DestructiveActionsPom")
+          ?.tools[2]
+      ).not.toHaveProperty("destructive");
+    });
+
+    it("reads options written in parentheses", () => {
+      expect(
+        manifestFor("parenthesizedOptionsPom")?.tools.map(
+          ({ description, destructive }) => [description, destructive]
+        )
+      ).toEqual([["Submit the order.", true]]);
+    });
+
+    it.each([
+      [
+        "variableDestructivePom",
+        "The destructive option of Page Object Action VariableDestructivePom.submit is not true or false.",
+        "destructive: DESTRUCTIVE",
+      ],
+      [
+        "spreadDestructivePom",
+        "The destructive option of Page Object Action SpreadDestructivePom.submit may come from a spread or a computed key.",
+        "...options",
+      ],
+      [
+        "variableOptionsDestructivePom",
+        "The destructive option of Page Object Action VariableOptionsDestructivePom.submit may come from options that are no object literal.",
+        "options)",
+      ],
+      [
+        "unionSpreadDestructivePom",
+        "The destructive option of Page Object Action UnionSpreadDestructivePom.submit may come from a spread or a computed key.",
+        "...options",
+      ],
+      // A spread with a string index signature may set any option; the
+      // description is read first.
+      [
+        "indexSpreadDestructivePom",
+        "The description of Page Object Action IndexSpreadDestructivePom.submit may come from a spread or a computed key.",
+        "...flags",
+      ],
+    ])(
+      "fails the build for %s, whose destructive option the build cannot read, at that element",
+      (fixture, text, element) => {
+        const file = path.resolve(
+          `src/compiler/fixtures/computedDestructive/${fixture}.ts`
+        );
+        expect(diagnosticsOf(() => derivePomManifests(file))).toEqual([
+          { text, file, ...positionOf(file, element) },
+        ]);
+      }
+    );
+  });
+
   it.each(["privateRootPom", "protectedRootPom"])(
     "leaves a non-public member named root out of %s like any other non-public member",
     (fixture) => {
