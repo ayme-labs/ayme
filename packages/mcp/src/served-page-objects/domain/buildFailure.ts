@@ -60,7 +60,8 @@ function editorColumn({
   // that is empty, the column is 0 either way.
   if (!lineText) return column + 1;
   const bytes = new TextEncoder().encode(lineText).subarray(0, column);
-  return new TextDecoder().decode(bytes).length + 1;
+  // Decoded as it is: by default a decoder drops a U+FEFF that comes first.
+  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes).length + 1;
 }
 
 /**
