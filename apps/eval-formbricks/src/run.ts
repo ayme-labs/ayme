@@ -1,16 +1,23 @@
 /**
  * One mission, once, through one arm. Checks preconditions, seeds, opens the
- * mission's start page, runs Claude Code, reads the verdict from the database
+ * mission's start page, runs the agent, reads the verdict from the database
  * and stores the run.
  * `runOnce` is the function the suite calls; the command below wraps it.
  *
- *   node src/run.ts --arm playwright-mcp [--model sonnet] [--timeout-seconds 600] [--mission <id>]
+ *   node src/run.ts --arm playwright-mcp [--agent claude|codex] [--model sonnet] [--timeout-seconds 600] [--mission <id>]
  */
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  agentAccess,
+  agentIds,
+  defaultModels,
+  isAgentId,
+  type AgentId,
+} from "./agents.ts";
 import {
   arms,
   armIds,
@@ -20,13 +27,8 @@ import {
   type ArmSetup,
 } from "./arms.ts";
 import { initPageScript, openStartPage } from "./browser.ts";
-import {
-  agentEffort,
-  claudeEnvironment,
-  claudeVersion,
-  runClaude,
-} from "./claude.ts";
-import { readOauthToken } from "./environment.ts";
+import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
+import { codexConfig, codexVersion, runCodex } from "./codex.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
@@ -56,7 +58,6 @@ import {
 } from "./paths.ts";
 import {
   checkPreconditions,
-  claudeTokenPrecondition,
   dockerPrecondition,
   formbricksPreparedPrecondition,
   labAppPrecondition,
@@ -66,17 +67,20 @@ import { createPrompt, setupPrompt } from "./prompt.ts";
 import { judgeMission } from "./verdict.ts";
 
 export type RunOptions = {
+  /** Claude Code unless named. */
+  agent?: AgentId;
   arm: Arm;
   mission: MissionDefinition;
   model: string;
   timeoutSeconds: number;
 };
 
-export const defaultModel = "sonnet";
+/** The startup lane's, which runs through Claude Code alone. */
+export const defaultModel = defaultModels.claude;
 export const defaultTimeoutSeconds = 600;
 
 function usage() {
-  return `Usage: pnpm eval:run -- --arm <${armIds.join("|")}> [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
+  return `Usage: pnpm eval:run -- --arm <${armIds.join("|")}> [--agent <${agentIds.join("|")}>] [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
 }
 
 function parseOptions(argv: string[]): RunOptions {
@@ -90,6 +94,8 @@ function parseOptions(argv: string[]): RunOptions {
   }
   const arm = values.get("arm");
   if (arm === undefined || !isArmId(arm)) throw new Error(usage());
+  const agent = values.get("agent") ?? "claude";
+  if (!isAgentId(agent)) throw new Error(usage());
   const missionId = values.get("mission") ?? defaultMissionId;
   const mission = missionDefinitions[missionId];
   if (mission === undefined) throw new Error(usage());
@@ -99,9 +105,10 @@ function parseOptions(argv: string[]): RunOptions {
   if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0)
     throw new Error(usage());
   return {
+    agent,
     arm: arms[arm],
     mission,
-    model: values.get("model") ?? defaultModel,
+    model: values.get("model") ?? defaultModels[agent],
     timeoutSeconds,
   };
 }
@@ -136,22 +143,24 @@ export async function runOnce(
   const outputDir = path.join(runDir, "playwright-output");
   const initPagePath = path.join(runDir, "init-page.cjs");
   const mcpConfigPath = path.join(runDir, "mcp.json");
-  // A fresh, empty Claude Code configuration for this run alone; deleted with the browser profile.
-  const claudeConfigDir = path.join(runDir, "claude-config");
+  const agent = options.agent ?? "claude";
+  // A fresh, empty configuration of the agent's for this run alone; deleted with the browser profile.
+  const claudeConfigDir = path.join(runDir, `${agent}-config`);
   await mkdir(profileDir, { recursive: true });
   await mkdir(outputDir, { recursive: true });
   await mkdir(claudeConfigDir, { recursive: true });
 
-  const oauthToken = readOauthToken(evalRoot);
-  const environment =
-    oauthToken === undefined
-      ? undefined
-      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+  const { environment, preconditions: agentPreconditions } = agentAccess({
+    agent,
+    configDir: claudeConfigDir,
+    envDirectory: evalRoot,
+    arms: [options.arm],
+  });
 
   log("Checking preconditions.");
   try {
     await checkPreconditions([
-      claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+      ...agentPreconditions,
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
@@ -213,29 +222,39 @@ export async function runOnce(
     // Whatever the arm's interface needs outside the measured window.
     armSetup = await options.arm.setup?.(armContext);
     // After the setup, which may add a server only it can name, such as one attached to a port it chose.
-    await writeJson(mcpConfigPath, {
-      mcpServers: {
-        ...options.arm.mcpServers(armContext),
-        ...armSetup?.mcpServers,
-      },
-    });
+    const mcpServers = {
+      ...options.arm.mcpServers(armContext),
+      ...armSetup?.mcpServers,
+    };
+    await writeJson(mcpConfigPath, { mcpServers });
+    if (agent === "codex")
+      await writeFile(
+        path.join(claudeConfigDir, "config.toml"),
+        codexConfig({ model: options.model, mcpServers })
+      );
 
     log(
-      `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
+      `Starting the agent (${agent}, ${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
-    const run = await runClaude({
+    const invocation = {
       cwd: agentRoot,
       environment: { ...environment, ...armSetup?.environment },
-      model: options.model,
-      arm: options.arm,
-      mcpConfigPath,
-      readableDirectories: armSetup?.readableDirectories,
       setupPrompt: setup,
       prompt,
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
-    });
+    };
+    const run =
+      agent === "codex"
+        ? await runCodex(invocation)
+        : await runClaude({
+            ...invocation,
+            model: options.model,
+            arm: options.arm,
+            mcpConfigPath,
+            readableDirectories: armSetup?.readableDirectories,
+          });
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -258,6 +277,7 @@ export async function runOnce(
 
     const result = normalizeRun({
       runId,
+      agent,
       arm: options.arm.id,
       missionId: mission.id,
       requestedModel: options.model,
@@ -270,7 +290,8 @@ export async function runOnce(
       finishedAt: run.finishedAt,
       verdict,
       versions: {
-        claudeCode: claudeVersion(),
+        claudeCode: agent === "claude" ? claudeVersion() : null,
+        codex: agent === "codex" ? codexVersion() : null,
         browserInterface: options.arm.browserInterface(),
         browser: browserVersion,
         formbricksCommit: gitOutput(formbricksRoot, ["rev-parse", "HEAD"]),

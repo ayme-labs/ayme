@@ -25,6 +25,7 @@ export type SummarizedRun = Pick<
   versions: Pick<
     NormalizedResult["versions"],
     | "claudeCode"
+    | "codex"
     | "model"
     | "browserInterface"
     | "browser"
@@ -75,6 +76,8 @@ export type SuiteSummary = {
   timeoutSeconds: number[];
   versions: {
     claudeCode: string[];
+    /** Present when a run went through Codex. */
+    codex?: string[];
     modelRequested: string[];
     modelUsed: string[];
     /** The agent's thinking effort; one value when every run used the same. */
@@ -159,8 +162,10 @@ export function buildSummary(input: {
     interfaces.set(`${arm}\0${name}\0${version}`, { arm, name, version });
   }
 
+  const codex = distinct(results.map((r) => r.versions.codex ?? null));
   const versions: SuiteSummary["versions"] = {
     claudeCode: distinct(results.map((r) => r.versions.claudeCode)),
+    ...(codex.length > 0 ? { codex } : {}),
     modelRequested: distinct(results.map((r) => r.versions.model.requested)),
     modelUsed: distinct(results.map((r) => r.versions.model.used)),
     effort: distinct(results.map((r) => r.versions.model.effort ?? null)),
@@ -193,6 +198,7 @@ export function buildSummary(input: {
   }
   const mixed = [
     ["Claude Code versions", versions.claudeCode],
+    ["Codex versions", versions.codex ?? []],
     ["models", versions.modelUsed],
     ["thinking efforts", versions.effort],
     ["Ayme commits", versions.aymeCommit],
@@ -267,7 +273,9 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
     "## Versions a rerun must match",
     "",
     `- Date: ${summary.date}`,
-    `- Claude Code: ${list(versions.claudeCode)}`,
+    versions.codex === undefined
+      ? `- Claude Code: ${list(versions.claudeCode)}`
+      : `- Codex: ${list(versions.codex)}`,
     `- Model: ${list(versions.modelUsed)} (requested ${list(versions.modelRequested)}, effort ${list(versions.effort)})`,
     ...versions.browserInterfaces.map(
       ({ arm, name, version }) => `- ${name} ${version} (${arm})`
