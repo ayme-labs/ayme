@@ -208,31 +208,40 @@ function buildError(
   if (diagnostic.line === undefined)
     return { text, location: { file: diagnostic.file } };
   const { file, line, column } = diagnostic;
+  const lineText = sourceLine(file, line);
   return {
     text,
-    location: { file, line, column: esbuildColumn(file, line, column) },
+    location: {
+      file,
+      line,
+      column: esbuildColumn(lineText, column),
+      // esbuild draws its code frame from this line, which it has not loaded.
+      ...(lineText !== undefined && { lineText }),
+    },
   };
 }
 
 /**
- * `column` of `line` in `file`, counted from 1 in UTF-16 code units as
- * TypeScript counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without
- * that line, the count of code units stands in.
+ * `column` of `lineText`, counted from 1 in UTF-16 code units as TypeScript
+ * counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without the line,
+ * the count of code units stands in.
  */
-function esbuildColumn(file: string, line: number, column: number) {
-  const lineText = sourceLine(file, line);
+function esbuildColumn(lineText: string | undefined, column: number) {
   return lineText === undefined
     ? column - 1
     : Buffer.byteLength(lineText.slice(0, column - 1));
 }
 
-/** Line `line` of `file`, counted from 1, if the file can be read and has it. */
+/**
+ * Line `line` of `file`, counted from 1, if the file can be read and has it.
+ * It is the line TypeScript counted: split at its line breaks, without the
+ * byte order mark a file may start with.
+ */
 function sourceLine(file: string, line: number): string | undefined {
   try {
-    // TypeScript's line breaks, so the line is the one it counted.
-    return readFileSync(file, "utf8").split(/\r\n|[\n\r\u2028\u2029]/)[
-      line - 1
-    ];
+    return readFileSync(file, "utf8")
+      .replace(/^\uFEFF/, "")
+      .split(/\r\n|[\n\r\u2028\u2029]/)[line - 1];
   } catch {
     // An unreadable file has no line to measure.
   }
@@ -280,14 +289,23 @@ export function buildOutcomes({
           failure = new PageObjectsBuildError({
             entry,
             lastGood: good !== undefined,
-            errors: errors.map(({ text, location }) => ({
-              text,
-              location: location && {
-                file: resolve(folder, location.file),
-                line: location.line,
-                column: location.column,
-              },
-            })),
+            errors: errors.map(({ text, location, pluginName }) => {
+              if (!location) return { text, location };
+              const file = resolve(folder, location.file);
+              return {
+                text,
+                location: {
+                  file,
+                  line: location.line,
+                  column:
+                    // A plugin's error has the column the plugin gave it.
+                    pluginName || location.line !== 1
+                      ? location.column
+                      : location.column - byteOrderMarkLength(file),
+                  lineText: location.lineText,
+                },
+              };
+            }),
           });
           log(failure.message);
         }
@@ -308,6 +326,21 @@ export function buildOutcomes({
     },
   };
 }
+
+/**
+ * The bytes of the byte order mark `file` starts with, or 0. esbuild counts
+ * them in a column on the file's first line and leaves the mark out of the
+ * line's text; TypeScript and editors count neither.
+ */
+function byteOrderMarkLength(file: string): number {
+  try {
+    return readFileSync(file).subarray(0, 3).equals(BYTE_ORDER_MARK) ? 3 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
 
 /**
  * Why `build` serves nothing while no build of `entry` has succeeded: the

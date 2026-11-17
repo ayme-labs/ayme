@@ -370,7 +370,13 @@ export class SavePage {
       {
         text: `Unsupported Page Object Tool input type for SavePage.save(at): Date. Compiled with ${path.join(root, "tsconfig.json")}.`,
         // esbuild counts columns from 0: this is the parameter's name.
-        location: { file: "SavePage.ts", line: 6, column: 13 },
+        location: {
+          file: "SavePage.ts",
+          line: 6,
+          column: 13,
+          // esbuild never loads the module, so it draws this line in its code frame.
+          lineText: "  async save(at: Date) {",
+        },
       },
     ]);
   } finally {
@@ -407,6 +413,7 @@ ${declaration}
           column: Buffer.byteLength(
             declaration.slice(0, declaration.indexOf("at:"))
           ),
+          lineText: declaration,
         },
       },
     ]);
@@ -454,7 +461,12 @@ it("reports a diagnostic without a position at its file, one without a file at t
       {
         text: "after line breaks",
         // "const café = " is 13 code units and 14 bytes.
-        location: { file: "Lines.ts", line: 5, column: 14 },
+        location: {
+          file: "Lines.ts",
+          line: 5,
+          column: 14,
+          lineText: "const café = ;",
+        },
       },
       // The entry is the first module compiled, so the first to fail.
       { text: "no file", location: { file: "main.ts" } },

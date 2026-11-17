@@ -177,31 +177,40 @@ function buildError(
   if (diagnostic.line === undefined)
     return { text, location: { file: diagnostic.file } };
   const { file, line, column } = diagnostic;
+  const lineText = sourceLine(file, line);
   return {
     text,
-    location: { file, line, column: esbuildColumn(file, line, column) },
+    location: {
+      file,
+      line,
+      column: esbuildColumn(lineText, column),
+      // esbuild draws its code frame from this line, which it has not loaded.
+      ...(lineText !== undefined && { lineText }),
+    },
   };
 }
 
 /**
- * `column` of `line` in `file`, counted from 1 in UTF-16 code units as
- * TypeScript counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without
- * that line, the count of code units stands in.
+ * `column` of `lineText`, counted from 1 in UTF-16 code units as TypeScript
+ * counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without the line,
+ * the count of code units stands in.
  */
-function esbuildColumn(file: string, line: number, column: number) {
-  const lineText = sourceLine(file, line);
+function esbuildColumn(lineText: string | undefined, column: number) {
   return lineText === undefined
     ? column - 1
     : Buffer.byteLength(lineText.slice(0, column - 1));
 }
 
-/** Line `line` of `file`, counted from 1, if the file can be read and has it. */
+/**
+ * Line `line` of `file`, counted from 1, if the file can be read and has it.
+ * It is the line TypeScript counted: split at its line breaks, without the
+ * byte order mark a file may start with.
+ */
 function sourceLine(file: string, line: number): string | undefined {
   try {
-    // TypeScript's line breaks, so the line is the one it counted.
-    return readFileSync(file, "utf8").split(/\r\n|[\n\r\u2028\u2029]/)[
-      line - 1
-    ];
+    return readFileSync(file, "utf8")
+      .replace(/^\uFEFF/, "")
+      .split(/\r\n|[\n\r\u2028\u2029]/)[line - 1];
   } catch {
     // An unreadable file has no line to measure.
   }
