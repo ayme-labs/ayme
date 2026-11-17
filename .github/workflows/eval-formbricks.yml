@@ -133,7 +133,7 @@ jobs:
         working-directory: apps/eval-formbricks
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.agent == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          OPENAI_API_KEY: ${{ inputs.agent == 'codex' && secrets.OPENAI_API_KEY || '' }}
+          CODEX_ACCESS_TOKEN: ${{ inputs.agent == 'codex' && secrets.CODEX_ACCESS_TOKEN || '' }}
           AGENT: ${{ inputs.agent }}
           MISSION: ${{ inputs.mission }}
           ARMS: ${{ inputs.arms }}

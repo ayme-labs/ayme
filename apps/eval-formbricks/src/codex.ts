@@ -30,7 +30,8 @@ import { envFileName } from "./environment.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export const codexDefaultModel = "gpt-6-luna";
-export const codexKeyVariable = "OPENAI_API_KEY";
+/** A Codex access token, which runs on the ChatGPT workspace's plan, not on API billing. */
+export const codexTokenVariable = "CODEX_ACCESS_TOKEN";
 
 /** How long the app server may take to exit once its input is closed before it is stopped. */
 const exitGraceMs = 5_000;
@@ -132,14 +133,15 @@ export function codexVersion(): string | null {
 
 /**
  * Codex must be installed and signed in inside the run's configuration
- * folder. With an API key, Codex signs in with it there. Without one, on a
+ * folder. With an access token, Codex signs in with it there, so the token
+ * stays out of the agent's environment. Without one, on a
  * developer's machine, the sign-in file of the user's own Codex is copied
  * in. The key is never repeated.
  */
 export function codexSignInPrecondition(options: {
   environment: NodeJS.ProcessEnv;
   configDir: string;
-  apiKey: string | undefined;
+  accessToken: string | undefined;
   /** The directory holding the env file, for the message. */
   envDirectory: string;
   /** The user's own Codex folder; `~/.codex` by default. */
@@ -154,18 +156,18 @@ export function codexSignInPrecondition(options: {
         options.userCodexHome ?? path.join(os.homedir(), ".codex"),
         "auth.json"
       );
-      if (options.apiKey !== undefined) {
-        const login = spawnSync("codex", ["login", "--with-api-key"], {
+      if (options.accessToken !== undefined) {
+        const login = spawnSync("codex", ["login", "--with-access-token"], {
           env: options.environment,
-          input: options.apiKey,
+          input: options.accessToken,
           encoding: "utf8",
         });
         if (login.status !== 0)
-          return `Codex does not accept the ${codexKeyVariable}.`;
+          return `Codex does not accept the ${codexTokenVariable}. Create a new access token in the ChatGPT admin console.`;
       } else if (existsSync(userAuth)) {
         copyFileSync(userAuth, path.join(options.configDir, "auth.json"));
       } else {
-        return `No ${codexKeyVariable} and no Codex sign-in. Put \`${codexKeyVariable}=<key>\` in ${path.join(options.envDirectory, envFileName)} (ignored by git), export the variable, or sign in with \`codex login\`.`;
+        return `No ${codexTokenVariable} and no Codex sign-in. Put \`${codexTokenVariable}=<token>\` in ${path.join(options.envDirectory, envFileName)} (ignored by git), export the variable, or sign in with \`codex login\`.`;
       }
       const status = spawnSync("codex", ["login", "status"], {
         env: options.environment,

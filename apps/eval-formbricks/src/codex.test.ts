@@ -23,6 +23,7 @@ describe("codexEnvironment", () => {
           PATH: "/usr/bin",
           CODEX_HOME: "/Users/someone/.codex",
           OPENAI_API_KEY: "the-launcher's-key",
+          CODEX_ACCESS_TOKEN: "the-launcher's-token",
           CLAUDE_CODE_OAUTH_TOKEN: "token",
           ANTHROPIC_MODEL: "something",
           AYME_OPENROUTER_API_KEY: "the-lab-app's-model-key",

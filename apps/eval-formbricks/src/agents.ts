@@ -9,7 +9,7 @@ import {
   codexArmProblem,
   codexDefaultModel,
   codexEnvironment,
-  codexKeyVariable,
+  codexTokenVariable,
   codexSignInPrecondition,
 } from "./codex.ts";
 import { readEnvVariable, readOauthToken } from "./environment.ts";
@@ -62,7 +62,7 @@ export function agentAccess(options: {
       codexSignInPrecondition({
         environment,
         configDir,
-        apiKey: readEnvVariable(codexKeyVariable, envDirectory),
+        accessToken: readEnvVariable(codexTokenVariable, envDirectory),
         envDirectory,
       }),
       {
