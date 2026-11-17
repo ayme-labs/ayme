@@ -17,7 +17,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 
-import { armIds, arms, isArmId, type ArmId } from "./arms.ts";
+import { armIds, arms, defaultArmIds, isArmId, type ArmId } from "./arms.ts";
 import { parseFlags } from "./cli.ts";
 import { claudeEnvironment } from "./claude.ts";
 import { readOauthToken } from "./environment.ts";
@@ -56,7 +56,7 @@ function usage() {
 
 export function parseSuiteOptions(argv: string[]): SuiteOptions {
   const flags = parseFlags(argv, usage());
-  const chosen = flags.get("arms")?.split(",") ?? armIds;
+  const chosen = flags.get("arms")?.split(",") ?? defaultArmIds;
   if (chosen.length === 0 || !chosen.every(isArmId)) throw new Error(usage());
   const runsPerArm = Number(flags.get("runs") ?? defaultRunsPerArm);
   const timeoutSeconds = Number(

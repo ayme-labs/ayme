@@ -16,6 +16,13 @@ import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
 import { installAymeSkill, setUpAymePage, type AymeChannel } from "./ayme.ts";
+import {
+  attachAymeCli,
+  aymeCliEnvironment,
+  installAymeCli,
+  installAymeCliSkill,
+  markGlobal,
+} from "./aymeCli.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { cdpEndpoint, freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -66,9 +73,17 @@ export function shimScript() {
 export function playwrightCliEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "profileDir" | "outputDir">,
   parentPath: string = process.env.PATH ?? "",
-  options: { cdpEndpoint?: string; webmcp?: boolean } = {}
+  options: {
+    cdpEndpoint?: string;
+    webmcp?: boolean;
+    /** A configuration file the daemon reads beside these variables. */
+    configPath?: string;
+  } = {}
 ): Record<string, string> {
   return {
+    ...(options.configPath === undefined
+      ? {}
+      : { PLAYWRIGHT_MCP_CONFIG: options.configPath }),
     // No update check on the network, no download.
     NO_UPDATE_NOTIFIER: "1",
     PATH: `${shimDirectory(context.runDir)}${path.delimiter}${parentPath}`,
@@ -221,5 +236,69 @@ export async function setUpPlaywrightCliWithAyme(
     readableDirectories: [context.outputDir, skillDir, aymeSkillDir],
     evidence: { ...page.evidence, remoteDebuggingPort: port },
     dispose,
+  };
+}
+
+/** The configuration file that makes the browser the CLI opens reachable over CDP on `port`. */
+export function remoteDebuggingConfig(port: number) {
+  return {
+    browser: { launchOptions: { args: [`--remote-debugging-port=${port}`] } },
+  };
+}
+
+export function remoteDebuggingConfigPath(runDir: string) {
+  return path.join(runDir, "playwright-cli.config.json");
+}
+
+/**
+ * Spike: the setup of the CLI arm with Ayme through the `ayme` command. The
+ * CLI opens its own browser on Formbricks as it is, as in the arm alone,
+ * with one addition: a configuration file that gives the browser a
+ * remote-debugging port. Then the `ayme` command and its skill, the start
+ * page's tab marked with the CLI's own `eval`, and Ayme's background process
+ * attached to that browser. Nothing is loaded into the page at browser
+ * start.
+ */
+export async function setUpPlaywrightCliWithAymeCli(
+  context: ArmContext
+): Promise<ArmSetup> {
+  const port = await freeLoopbackPort();
+  const configPath = remoteDebuggingConfigPath(context.runDir);
+  const environment = {
+    ...playwrightCliEnvironment(context, undefined, { configPath }),
+    ...aymeCliEnvironment(context),
+  };
+  const skillDir = await installCliAndSkill(context);
+  const aymeSkillDir = await installAymeCliSkill(context.configDir);
+  await installAymeCli(shimDirectory(context.runDir));
+  await writeFile(configPath, JSON.stringify(remoteDebuggingConfig(port)));
+  const session = await startSession(context, environment, [
+    "open",
+    context.start.url,
+  ]);
+  let ayme: Awaited<ReturnType<typeof attachAymeCli>>;
+  try {
+    ayme = await attachAymeCli(context, environment, {
+      shimDirectory: shimDirectory(context.runDir),
+      endpoint: cdpEndpoint(port),
+      setMark: (token) =>
+        runCli(context, environment, [
+          "eval",
+          `() => (window.${markGlobal} = ${JSON.stringify(token)})`,
+        ]),
+    });
+  } catch (error) {
+    await session.dispose();
+    throw error;
+  }
+  return {
+    environment,
+    readableDirectories: [context.outputDir, skillDir, aymeSkillDir],
+    evidence: { ...ayme.evidence, remoteDebuggingPort: port },
+    dispose: async () => {
+      // Ayme's process first: it only attaches, and the browser is the session's to close.
+      await ayme.dispose();
+      await session.dispose();
+    },
   };
 }

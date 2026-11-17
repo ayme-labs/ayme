@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { armIds } from "./arms.ts";
+import { armIds, arms, defaultArmIds } from "./arms.ts";
 import { parseSuiteOptions } from "./suite.ts";
 
 describe("the suite options", () => {
-  it("default to every defined arm, three runs each, Sonnet and 600 seconds", () => {
+  it("default to every arm but the spike's, three runs each, Sonnet and 600 seconds", () => {
     const options = parseSuiteOptions([]);
-    expect(options.arms).toEqual(armIds);
+    expect(options.arms).toEqual(defaultArmIds);
+    expect(options.arms).toEqual(
+      armIds.filter((armId) => !armId.endsWith("-with-ayme-cli"))
+    );
+    expect(options.arms).toHaveLength(9);
+    expect(options.arms.some((armId) => arms[armId].aymeCli)).toBe(false);
     expect(options.runsPerArm).toBe(3);
     expect(options.model).toBe("sonnet");
     expect(options.timeoutSeconds).toBe(600);

@@ -222,10 +222,13 @@ describe.each([
 });
 
 const aymeArmIds = armIds.filter((armId) => arms[armId].ayme !== undefined);
-const aloneArmIds = armIds.filter((armId) => arms[armId].ayme === undefined);
+// The arms with Ayme through the `ayme` command (spike) are tested in aymeCli.test.ts.
+const aloneArmIds = armIds.filter(
+  (armId) => arms[armId].ayme === undefined && !arms[armId].aymeCli
+);
 
 describe("the arms", () => {
-  it("are each browser automation alone, with Ayme through WebMCP, and with Ayme as its own MCP server", () => {
+  it("are each browser automation alone, with Ayme through WebMCP, and with Ayme as its own MCP server, and the two with the ayme command", () => {
     expect(armIds.toSorted()).toEqual(
       [
         "playwright-mcp",
@@ -234,9 +237,11 @@ describe("the arms", () => {
         "playwright-cli",
         "playwright-cli-with-ayme-webmcp",
         "playwright-cli-with-ayme-page-objects",
+        "playwright-cli-with-ayme-cli",
         "agent-browser",
         "agent-browser-with-ayme-webmcp",
         "agent-browser-with-ayme-page-objects",
+        "agent-browser-with-ayme-cli",
       ].toSorted()
     );
     for (const armId of aymeArmIds) {

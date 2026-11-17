@@ -14,12 +14,24 @@
  * and load that skill and that reference in the setup turn. The interface
  * line states which tools the agent has, and no instruction of Ayme's: those
  * come from the reference. The arms alone get nothing of Ayme.
+ *
+ * Spike: Playwright CLI and agent-browser each have one more arm, with Ayme
+ * through the `ayme` command (`aymeCli.ts`). Nothing is served into the page:
+ * a background process attaches to the arm's browser over CDP and runs the
+ * lab app's Page Objects in Node. A suite runs these arms only when named.
  */
 import {
   agentBrowserVersion,
   setUpAgentBrowserAlone,
   setUpAgentBrowserWithAyme,
+  setUpAgentBrowserWithAymeCli,
 } from "./agentBrowser.ts";
+import {
+  aymeCliAllowedTools,
+  aymeCliDisallowedTools,
+  aymeCliPreconditions,
+  aymeCliSentence,
+} from "./aymeCli.ts";
 import {
   aymeMcpServer,
   aymePreconditions,
@@ -32,6 +44,7 @@ import {
   playwrightCliVersion,
   setUpPlaywrightCli,
   setUpPlaywrightCliWithAyme,
+  setUpPlaywrightCliWithAymeCli,
 } from "./playwrightCli.ts";
 import {
   playwrightMcpServer,
@@ -43,10 +56,14 @@ import type { Precondition } from "./preconditions.ts";
 export type BrowserAutomation =
   "playwright-mcp" | "playwright-cli" | "agent-browser";
 
+/** The browser automations that run a shell command, so can run `ayme` beside their own. */
+export type CommandAutomation = Exclude<BrowserAutomation, "playwright-mcp">;
+
 export type ArmId =
   | BrowserAutomation
   | `${BrowserAutomation}-with-ayme-page-objects`
-  | `${BrowserAutomation}-with-ayme-webmcp`;
+  | `${BrowserAutomation}-with-ayme-webmcp`
+  | `${CommandAutomation}-with-ayme-cli`;
 
 export type McpServer = { command: string; args: string[] };
 
@@ -86,8 +103,10 @@ export type ArmSetup = {
 export type Arm = {
   id: ArmId;
   browserAutomation: BrowserAutomation;
-  /** How Ayme's Page Object Tools reach the agent; none for an arm without Ayme. */
+  /** How Ayme's Page Object Tools reach the agent from `ayme mcp`; none for an arm without it. */
   ayme?: AymeChannel;
+  /** Spike: the Page Object Tools reach the agent through the `ayme` command. */
+  aymeCli?: true;
   /** The one prompt line that differs between arms; it may say where the browser is. */
   interfaceLine: (start: Mission["start"]) => string;
   /** The browser automation's own skill, which the setup turn names and loads; none for an arm without one. */
@@ -284,6 +303,35 @@ function armWithAyme(
   };
 }
 
+/**
+ * Spike: the arm of a browser automation with Ayme through the `ayme`
+ * command: the arm alone, on the browser it has alone, plus the command,
+ * its skill and their permissions. No MCP server and no page setup of
+ * Ayme's.
+ */
+function armWithAymeCli(browserAutomation: CommandAutomation): Arm {
+  const base = browserAutomations[browserAutomation];
+  const setup = {
+    "playwright-cli": setUpPlaywrightCliWithAymeCli,
+    "agent-browser": setUpAgentBrowserWithAymeCli,
+  }[browserAutomation];
+  return {
+    id: `${browserAutomation}-with-ayme-cli`,
+    browserAutomation,
+    aymeCli: true,
+    interfaceLine: (start) =>
+      `${aloneLines[browserAutomation](start)} ${aymeCliSentence}`,
+    ...(base.skill === undefined ? {} : { skill: base.skill }),
+    tools: base.tools,
+    allowedTools: [...base.allowedTools, ...aymeCliAllowedTools],
+    disallowedTools: [...base.disallowedTools(null), ...aymeCliDisallowedTools],
+    mcpServers: () => ({}),
+    preconditions: aymeCliPreconditions,
+    setup,
+    browserInterface: base.browserInterface,
+  };
+}
+
 export const arms: Record<ArmId, Arm> = {
   "playwright-mcp": armAlone("playwright-mcp"),
   "playwright-mcp-with-ayme-webmcp": armWithAyme("playwright-mcp", "webmcp"),
@@ -291,12 +339,17 @@ export const arms: Record<ArmId, Arm> = {
   "playwright-cli": armAlone("playwright-cli"),
   "playwright-cli-with-ayme-webmcp": armWithAyme("playwright-cli", "webmcp"),
   "playwright-cli-with-ayme-page-objects": armWithAyme("playwright-cli", "mcp"),
+  "playwright-cli-with-ayme-cli": armWithAymeCli("playwright-cli"),
   "agent-browser": armAlone("agent-browser"),
   "agent-browser-with-ayme-webmcp": armWithAyme("agent-browser", "webmcp"),
   "agent-browser-with-ayme-page-objects": armWithAyme("agent-browser", "mcp"),
+  "agent-browser-with-ayme-cli": armWithAymeCli("agent-browser"),
 };
 
 export const armIds = Object.keys(arms) as ArmId[];
+
+/** The arms a suite runs when none is named: every arm but the spike's. */
+export const defaultArmIds = armIds.filter((armId) => !arms[armId].aymeCli);
 
 export function isArmId(value: string): value is ArmId {
   return Object.hasOwn(arms, value);

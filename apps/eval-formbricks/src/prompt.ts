@@ -1,5 +1,6 @@
 import type { Arm } from "./arms.ts";
 import { aymeReference, aymeSkillName } from "./ayme.ts";
+import { aymeCliSkillName } from "./aymeCli.ts";
 import { missionDefinitions, type Mission } from "./missions.ts";
 
 /**
@@ -36,6 +37,19 @@ export function aymeReadyLine({ skill }: Pick<Arm, "skill">) {
 }
 
 /**
+ * Spike: what the setup turn of an arm with the `ayme` command asks: load
+ * the browser automation's skill and the `ayme-cli` skill, whose one file
+ * is the instruction text, so there is no reference to read.
+ */
+export function aymeCliReadyLine({ skill }: Pick<Arm, "skill">) {
+  const skills =
+    skill === undefined
+      ? `the \`${aymeCliSkillName}\` skill`
+      : `the \`${skill}\` skill and the \`${aymeCliSkillName}\` skill`;
+  return `Load ${skills} now with the Skill tool. Don't read files and don't use the browser; just reply ready.`;
+}
+
+/**
  * The first message of every run. It names no app and no task, and keeps the
  * agent off the page. Starting up and loading the arm's skills happen in this
  * turn, outside the measured one, so the prompt names the skills: a bare
@@ -43,9 +57,10 @@ export function aymeReadyLine({ skill }: Pick<Arm, "skill">) {
  * and loading it in the measured turn instead. An arm with Ayme reads the
  * skill reference here too.
  */
-export function setupPrompt(arm: Pick<Arm, "skill" | "ayme">) {
-  const ready =
-    arm.ayme === undefined
+export function setupPrompt(arm: Pick<Arm, "skill" | "ayme" | "aymeCli">) {
+  const ready = arm.aymeCli
+    ? aymeCliReadyLine(arm)
+    : arm.ayme === undefined
       ? readyLine({ skill: arm.skill })
       : aymeReadyLine(arm);
   return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${ready}

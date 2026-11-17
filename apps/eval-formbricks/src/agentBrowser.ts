@@ -24,6 +24,13 @@ import {
   setUpAymePage,
   type AymeChannel,
 } from "./ayme.ts";
+import {
+  attachAymeCli,
+  aymeCliEnvironment,
+  installAymeCli,
+  installAymeCliSkill,
+  markGlobal,
+} from "./aymeCli.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -187,19 +194,28 @@ async function setUpPlainPage(
  */
 async function setUpAgentBrowser(
   context: ArmContext,
-  channel: AymeChannel | null
+  channel: AymeChannel | null,
+  /** Spike: Ayme through the `ayme` command, on the page of the arm alone. */
+  aymeCli = false
 ): Promise<ArmSetup> {
   const webmcp = channel === "webmcp";
   const port = await freeLoopbackPort();
   const skillDir = await installCliAndSkill(context);
-  const aymeSkillDir =
-    channel === null ? null : await installAymeSkill(context.configDir);
+  const aymeSkillDir = aymeCli
+    ? await installAymeCliSkill(context.configDir)
+    : channel === null
+      ? null
+      : await installAymeSkill(context.configDir);
+  if (aymeCli) await installAymeCli(shimDirectory(context.runDir));
   const socketDir = await mkdtemp(path.join(os.tmpdir(), "ab-"));
-  const environment = agentBrowserEnvironment(context, process.env.PATH ?? "", {
-    cdpPort: port,
-    socketDir,
-    webmcp,
-  });
+  const environment = {
+    ...agentBrowserEnvironment(context, process.env.PATH ?? "", {
+      cdpPort: port,
+      socketDir,
+      webmcp,
+    }),
+    ...(aymeCli ? aymeCliEnvironment(context) : {}),
+  };
   const browserArgs = [`--remote-debugging-port=${port}`];
   let page: Awaited<ReturnType<typeof setUpPlainPage>>;
   try {
@@ -215,7 +231,10 @@ async function setUpAgentBrowser(
     await rm(socketDir, { recursive: true, force: true });
     throw error;
   }
+  let ayme: Awaited<ReturnType<typeof attachAymeCli>> | undefined;
   const dispose = async () => {
+    // Ayme's process first: it only attaches to the browser.
+    await ayme?.dispose();
     try {
       await runCli(context, environment, ["close", "--all"]);
     } catch (error) {
@@ -238,6 +257,16 @@ async function setUpAgentBrowser(
       throw new Error(
         `agent-browser reported ${pageUrl || "no page"} instead of the start page at ${context.start.url}.`
       );
+    if (aymeCli)
+      ayme = await attachAymeCli(context, environment, {
+        shimDirectory: shimDirectory(context.runDir),
+        endpoint: `http://127.0.0.1:${port}`,
+        setMark: (token) =>
+          runCli(context, environment, [
+            "eval",
+            `window.${markGlobal} = ${JSON.stringify(token)}`,
+          ]),
+      });
   } catch (error) {
     await dispose();
     throw error;
@@ -251,6 +280,7 @@ async function setUpAgentBrowser(
     ],
     evidence: {
       ...page.evidence,
+      ...ayme?.evidence,
       remoteDebuggingPort: port,
       agentBrowserWebMcp: webmcp,
     },
@@ -269,4 +299,14 @@ export function setUpAgentBrowserWithAyme(
   channel: AymeChannel
 ) {
   return setUpAgentBrowser(context, channel);
+}
+
+/**
+ * Spike: the arm with Ayme through the `ayme` command: the page of the arm
+ * alone, Formbricks as it is with nothing loaded at browser start, and
+ * Ayme's background process attached to the same browser, on the tab marked
+ * with agent-browser's own `eval`.
+ */
+export function setUpAgentBrowserWithAymeCli(context: ArmContext) {
+  return setUpAgentBrowser(context, null, true);
 }
