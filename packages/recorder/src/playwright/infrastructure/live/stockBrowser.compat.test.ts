@@ -978,6 +978,33 @@ it("outlines the element under the mouse in a frame that loads a new document wh
   expect(await outlinedInFrame()).toBeNull();
 });
 
+it("leaves the click to Playwright's picking in a document that loads while it picks, as in one open when it began", async () => {
+  const browser = await onStockPlaywright(
+    `<button id="b" onclick="window.clicks = (window.clicks ?? 0) + 1">Button</button>`
+  );
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+  // The page goes on to a new document of its own while Playwright picks.
+  await browser.page.evaluate(() => (location.href = "?again"));
+  await browser.toldOf("pageNavigated", ({ url }) => url.endsWith("?again"));
+  await browser.page.locator("#b").waitFor();
+
+  await browser.click(browser.page.locator("#b"));
+
+  // Playwright reports the page's going on as well, before.
+  const { report } = await browser.toldOf(
+    "interactionReported",
+    ({ report }) => report.type === "assertVisible"
+  );
+  expect(report.selector).toContain("Button");
+  await browser.toldOf("picking", ({ on }) => !on);
+  expect(browser.told.map(({ kind }) => kind)).not.toContain("inputHeld");
+  expect(await browser.page.evaluate("window.clicks ?? 0")).toBe(0);
+});
+
 // The hover highlight (ticket #1278): the recorder's own highlight, drawn
 // on the element a ref of the adapter's own latest snapshot names.
 

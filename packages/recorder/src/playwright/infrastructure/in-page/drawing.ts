@@ -122,15 +122,22 @@ export type PickingStart = { readonly on: boolean; readonly change: number };
 
 /**
  * Starts a document that loads while Playwright picks with the outline
- * following the mouse, or without it. Every start the adapter added runs in
- * each new document, in the order they were added: only the latest counts.
+ * following the mouse, or without it, and its gate leaving the picking
+ * click to Playwright, or not, as the gates of the documents open when the
+ * mode changed were told. Every start the adapter added runs in each new
+ * document, in the order they were added, after the gate's script: only the
+ * latest counts.
  */
 export function startPicking(
   start: PickingStart,
-  rules: Picking & { readonly followPicking: typeof followPicking }
+  rules: Picking & {
+    readonly followPicking: typeof followPicking;
+    readonly pickWithGate: (on: boolean) => void;
+  }
 ): void {
   const self = window as unknown as { __aymeRecorderPickingStart?: number };
   if ((self.__aymeRecorderPickingStart ?? 0) > start.change) return;
   self.__aymeRecorderPickingStart = start.change;
+  rules.pickWithGate(start.on);
   rules.followPicking(start.on, rules);
 }

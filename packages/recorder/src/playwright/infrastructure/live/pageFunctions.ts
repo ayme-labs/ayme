@@ -6,6 +6,7 @@ import {
   type HighlightBox,
   type PickingStart,
 } from "../in-page/drawing";
+import { pickWithGate } from "../in-page/calls";
 import { gateIn } from "../in-page/gate";
 import {
   ancestorRefsIn,
@@ -82,8 +83,9 @@ export const followPickingIn: (on: boolean) => void = withRules(followPicking, {
 });
 
 /** Starts a document that loads while Playwright picks with the outline
- * following the mouse, or without it, as the latest start said. */
+ * following the mouse and its gate leaving the picking click to Playwright,
+ * or with neither, as the latest start said. */
 export const startPickingIn: (start: PickingStart) => void = withRules(
   startPicking,
-  { outline, recordersOwn, followPicking }
+  { outline, recordersOwn, followPicking, pickWithGate }
 );
