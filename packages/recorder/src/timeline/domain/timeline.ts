@@ -100,6 +100,8 @@ type Written = {
   /** Its target and how it is named, as last measured. */
   target: FirstRef | undefined;
   named: NamedElement | null;
+  /** What it was last measured as, and up to which "after". */
+  measured?: { readonly after: SnapshotId | null; readonly as: Measured };
 };
 
 /** What an Interaction's entry is measured as. */
@@ -354,7 +356,12 @@ export class Timeline {
     // Stryker disable next-line ConditionalExpression: an entry once written stays; the check is for the type
     if (index < 0) return;
     const end = placeIn(visit, interaction.after);
-    const measured = await this.measure(written, visit.snapshots[end]);
+    // A new text alone, as with each key, is not measured again.
+    const measured =
+      written.measured?.after === interaction.after
+        ? written.measured.as
+        : await this.measure(written, visit.snapshots[end]);
+    written.measured = { after: interaction.after, as: measured };
     visit.entries[index] = this.entryOf(
       written,
       interaction,
@@ -827,6 +834,7 @@ export class Timeline {
       named: null,
     };
     const measured = await this.measure(written, visit.snapshots[end]);
+    written.measured = { after: interaction.after, as: measured };
     visit.entries.push(this.entryOf(written, interaction, measured));
     // The entries never go back: an Interaction with no "after" here, or
     // one written late, leaves them where they stand.
