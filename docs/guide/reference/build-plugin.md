@@ -236,7 +236,7 @@ Each field resolves on its own. `use` wins over the selected project, then the t
 
 ## Errors
 
-These fail the build or the dev server. An error the Page Object compiler reports starts with where it is: `<file>:<line>:<col>: `, at the line and column in the file as written, or `<file>: ` when the compiler knows no position in it, such as for the tsconfig it could not find. An error that names several places takes a line for each.
+These fail the build or the dev server. An error the Page Object compiler reports names where it is: its file and, where the compiler knows them, the line and column in the file as written. The tsconfig it could not find, for one, has no line or column. Vite, Turbopack and [`ayme mcp`](../guides/page-objects-without-ayme.md) start the error with `<file>:<line>:<col>: `, or `<file>: ` without a line, and count the column from 1. An error that names several places takes a line for each. Angular shows it as esbuild shows any error: the message, then the position above a code frame of the line, with the column counted from 0. Each place is an error of its own.
 
 The build runs the same [root-less class check](ayme.md#root-less-models) as the runtime. A class whose root it cannot read from the source, such as one given through spread options, passes the build and is checked at registration.
 
