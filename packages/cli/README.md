@@ -143,4 +143,6 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.
 - **When the recorder stops waiting, inputs it still held back are sent on together** and can reach the page out of order. This happens only when ending or pausing runs out of time, after about five seconds, with several inputs held.
 - **A click that reached the page but has no "after" when that time runs out is not recorded,** even if Playwright reported it.
+- **Typing in a field the page moved the focus to by itself can have its changes listed under the field before it,** as in a verification code with one box per character, when you type into the next box before the page was quiet.
+- **On very large pages, clicks, the first key after Record, and the recorder window lag while the recorder reads the page.** It takes 10 to 40 ms on ordinary pages, and about a second on a page with tens of thousands of elements, such as the Wikipedia article "World War II".
 - **Recording is Chromium only.**
