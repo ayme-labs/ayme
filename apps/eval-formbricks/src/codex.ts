@@ -10,21 +10,18 @@
  * its own. Only arms that need neither a command line nor a skill run on it
  * for now; `codexArmProblem` names the others.
  */
-import { spawn, spawnSync } from "node:child_process";
-import { copyFileSync, createWriteStream, existsSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createInterface } from "node:readline";
 
-import type { Arm, McpServer } from "./arms.ts";
 import {
-  agentEffort,
-  closeStream,
-  setupTimeoutMs,
-  signalProcessGroup,
-  type ClaudeRun,
+  setupTurnFailure,
+  startAgentProcess,
   type Turn,
-} from "./claude.ts";
+} from "./agentProcess.ts";
+import type { Arm, McpServer } from "./arms.ts";
+import { agentEffort, setupTimeoutMs, type ClaudeRun } from "./claude.ts";
 import { turnCompleted } from "./codexTranscript.ts";
 import { envFileName } from "./environment.ts";
 import type { Precondition } from "./preconditions.ts";
@@ -237,68 +234,43 @@ type Json = Record<string, unknown>;
 export async function runCodex(
   invocation: CodexInvocation
 ): Promise<ClaudeRun> {
-  const transcript = createWriteStream(invocation.transcriptPath);
-  const stderr = createWriteStream(invocation.stderrPath);
   const startedAt = new Date();
-  const child = spawn("codex", ["app-server", "--strict-config"], {
-    cwd: invocation.cwd,
-    env: invocation.environment,
-    detached: true,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  child.stderr.pipe(stderr);
-  // A message sent to an agent that has already exited must not take the harness down.
-  child.stdin.on("error", (error) =>
-    stderr.write(`harness: writing to the agent failed: ${error.message}\n`)
-  );
-  const send = (message: Json) =>
-    child.stdin.write(`${JSON.stringify(message)}\n`);
-
-  const lines: string[] = [];
   const answers = new Map<number, (answer: Json) => void>();
-  let onTurnCompleted: ((event: { isError: boolean }) => void) | null = null;
-  const reader = createInterface({ input: child.stdout });
-  reader.on("line", (line) => {
-    let message: Json;
-    try {
-      message = JSON.parse(line) as Json;
-    } catch {
-      message = {};
-    }
-    if (typeof message.method === "string" && message.method.endsWith("/delta"))
-      return;
-    lines.push(line);
-    transcript.write(`${line}\n`);
-    if (typeof message.id === "number" && message.method === undefined) {
-      answers.get(message.id)?.(message);
-      answers.delete(message.id);
-    } else if (message.id !== undefined) {
-      // The server asks for an approval or an input: nobody is there, so it is refused, not left waiting.
-      send({
-        id: message.id,
-        error: { code: -32601, message: "The eval answers no request." },
-      });
-    }
-    const completed = turnCompleted(line);
-    if (completed !== null) onTurnCompleted?.(completed);
+  const agent = startAgentProcess({
+    command: "codex",
+    args: ["app-server", "--strict-config"],
+    cwd: invocation.cwd,
+    environment: invocation.environment,
+    transcriptPath: invocation.transcriptPath,
+    stderrPath: invocation.stderrPath,
+    onLine: (line) => {
+      let message: Json;
+      try {
+        message = JSON.parse(line) as Json;
+      } catch {
+        message = {};
+      }
+      if (
+        typeof message.method === "string" &&
+        message.method.endsWith("/delta")
+      )
+        return false;
+      if (typeof message.id === "number" && message.method === undefined) {
+        answers.get(message.id)?.(message);
+        answers.delete(message.id);
+      } else if (message.id !== undefined) {
+        // The server asks for an approval or an input: nobody is there, so it is refused, not left waiting.
+        send({
+          id: message.id,
+          error: { code: -32601, message: "The eval answers no request." },
+        });
+      }
+      const completed = turnCompleted(line);
+      if (completed !== null) agent.completeTurn(completed);
+      return true;
+    },
   });
-  // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
-  const readerClosed = new Promise<void>((resolve) =>
-    reader.once("close", resolve)
-  );
-  const closed = new Promise<{
-    exitCode: number | null;
-    signal: NodeJS.Signals | null;
-  }>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", (code, closeSignal) =>
-      resolve({ exitCode: code, signal: closeSignal })
-    );
-  });
-  const ended = closed.then(
-    () => undefined,
-    () => undefined
-  );
+  const send = (message: Json) => agent.write(`${JSON.stringify(message)}\n`);
 
   let nextId = 1;
   /** Sends a request and waits for its answer; `null` when the agent ended first. */
@@ -307,62 +279,23 @@ export async function runCodex(
       const id = nextId++;
       answers.set(id, resolve);
       send({ id, method, params });
-      void ended.then(() => resolve(null));
+      void agent.ended.then(() => resolve(null));
     });
-
-  let forceKill: NodeJS.Timeout | undefined;
-  const stopChild = () => {
-    if (!child.pid) return;
-    signalProcessGroup(child.pid, "SIGTERM");
-    forceKill ??= setTimeout(() => {
-      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-    }, 10_000);
-  };
-  // The child runs in its own process group so a timeout can take the MCP server and browser with it;
-  // an interrupted harness must do the same instead of leaving them behind.
-  let interruptedBy: NodeJS.Signals | null = null;
-  const onInterrupt = (received: NodeJS.Signals) => {
-    interruptedBy = received;
-    stopChild();
-    process.once("exit", () => process.kill(process.pid, received));
-  };
-  process.once("SIGINT", onInterrupt);
-  process.once("SIGTERM", onInterrupt);
 
   let threadId: string | null = null;
   /** Sends one message as a turn and waits for its end, the turn's timeout or the agent's end. */
-  const turn = async (text: string, timeoutMs: number) => {
-    const sentAt = Date.now();
-    let timedOut = false;
-    let timer: NodeJS.Timeout | undefined;
-    const result = await new Promise<{ isError: boolean } | null>((resolve) => {
-      timer = setTimeout(() => {
-        timedOut = true;
-        stopChild();
-        resolve(null);
-      }, timeoutMs);
-      onTurnCompleted = resolve;
-      void ended.then(() => resolve(null));
+  const turn = (text: string, timeoutMs: number) =>
+    agent.turn(timeoutMs, () => {
       void request("turn/start", {
         threadId,
         input: [{ type: "text", text }],
       }).then((answer) => {
         // A turn the server refused to start never completes.
         if (answer !== null && answer.error !== undefined)
-          resolve({ isError: true });
+          agent.completeTurn({ isError: true });
       });
     });
-    clearTimeout(timer);
-    onTurnCompleted = null;
-    const timing: Turn = {
-      sentAt: new Date(sentAt).toISOString(),
-      wallTimeMs: result === null ? null : Date.now() - sentAt,
-      timedOut,
-    };
-    return { turn: timing, result };
-  };
 
-  let linger: NodeJS.Timeout | undefined;
   try {
     const setupTimeout = invocation.setupTimeoutMs ?? setupTimeoutMs;
     // Starting up is the setup turn's: its clock starts before the thread exists.
@@ -371,7 +304,7 @@ export async function runCodex(
     // A server that never answers ends with the setup turn's timeout too.
     const startTimer = setTimeout(() => {
       startTimedOut = true;
-      stopChild();
+      agent.stop();
     }, setupTimeout);
     await request("initialize", {
       clientInfo: { name: "ayme-eval", title: "Ayme eval", version: "0.0.0" },
@@ -383,10 +316,11 @@ export async function runCodex(
       typeof started?.thread?.id === "string" ? started.thread.id : null;
     clearTimeout(startTimer);
 
-    const { turn: setupTurn, result: setupResult } =
-      threadId === null
+    // A start that outlasted the timeout sends no setup message, even to a server that then answers.
+    const setupTurn =
+      threadId === null || startTimedOut
         ? {
-            turn: { sentAt: "", wallTimeMs: null, timedOut: false },
+            turn: { sentAt: "", wallTimeMs: null, timedOut: startTimedOut },
             result: null,
           }
         : await turn(
@@ -396,33 +330,23 @@ export async function runCodex(
     const setup: Turn = {
       sentAt: new Date(setupSentAt).toISOString(),
       wallTimeMs:
-        setupTurn.wallTimeMs === null ? null : Date.now() - setupSentAt,
-      timedOut: setupTurn.timedOut || startTimedOut,
+        setupTurn.turn.wallTimeMs === null ? null : Date.now() - setupSentAt,
+      timedOut: setupTurn.turn.timedOut,
     };
-    const setupFailure = setup.timedOut
-      ? `the setup turn ran out of its ${setupTimeout / 1000} s timeout`
-      : threadId === null
+    const setupFailure =
+      threadId === null && !setup.timedOut
         ? "Codex did not start a thread"
-        : setupResult === null
-          ? "the agent ended before answering the setup message"
-          : setupResult.isError
-            ? "the setup turn ended with an error"
-            : child.exitCode !== null
-              ? "the agent ended right after the setup turn"
-              : null;
+        : setupTurnFailure(
+            agent,
+            { turn: setup, result: setupTurn.result },
+            setupTimeout
+          );
     const task =
       setupFailure === null
         ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
         : null;
-    child.stdin.end();
     // The app server is stopped when it does not exit on its own once its input ends.
-    linger = setTimeout(stopChild, exitGraceMs);
-    const { exitCode, signal } = await closed;
-    await readerClosed;
-    await Promise.all([closeStream(transcript), closeStream(stderr)]);
-    // An interrupted run is not a result: nothing is stored and a suite stops.
-    if (interruptedBy)
-      throw new Error(`The run was interrupted by ${interruptedBy}.`);
+    const { exitCode, signal } = await agent.finish(exitGraceMs);
     return {
       exitCode,
       signal,
@@ -431,19 +355,9 @@ export async function runCodex(
       task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),
-      lines,
+      lines: agent.lines,
     };
   } finally {
-    if (linger) clearTimeout(linger);
-    if (forceKill) clearTimeout(forceKill);
-    // The app server is gone, or the run failed: whatever is left of its process group,
-    // an MCP server or a browser that ignored the first signal, goes with it.
-    try {
-      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-    } catch {
-      // Nothing this process may signal is left: the run's outcome stands.
-    }
-    process.off("SIGINT", onInterrupt);
-    process.off("SIGTERM", onInterrupt);
+    agent.dispose();
   }
 }

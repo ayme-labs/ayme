@@ -232,6 +232,19 @@ describe("runCodex", () => {
     expect(run.task).toBeNull();
   });
 
+  it("sends nothing when starting up outlasted the setup turn's timeout, even to a server that then answers", async () => {
+    const run = await drive(
+      { FAKE_CODEX_SLOW_START_MS: "600" },
+      { setupTimeoutMs: 300 }
+    );
+    expect(run.setupFailure).toBe(
+      "the setup turn ran out of its 0.3 s timeout"
+    );
+    expect(run.setup.timedOut).toBe(true);
+    expect(run.task).toBeNull();
+    expect(run.stderr).not.toContain("user message");
+  });
+
   it("stops the agent when the task turn runs out of the timeout, keeping the turn's events", async () => {
     const run = await drive({ FAKE_CODEX_HANG_TURN: "2" }, { timeoutMs: 300 });
     expect(run.setupFailure).toBeNull();
