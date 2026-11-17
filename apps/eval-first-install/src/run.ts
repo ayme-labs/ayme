@@ -197,6 +197,17 @@ function runClaude(
   });
 }
 
+/** Why Claude Code answered without the model, such as a usage limit. */
+function agentRefusal(file: string): string | undefined {
+  if (!existsSync(file)) return "no transcript";
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    if (!line.includes('"<synthetic>"')) continue;
+    const event = JSON.parse(line);
+    return event.message?.content?.[0]?.text ?? "a synthetic answer";
+  }
+  return undefined;
+}
+
 function sessionId(): string | undefined {
   const file = join(out, "setup.jsonl");
   if (!existsSync(file)) return undefined;
@@ -314,6 +325,8 @@ try {
     );
     log(`setup: ${JSON.stringify(setup)}`);
     meta.setup = setup;
+    const refused = agentRefusal(join(out, "setup.jsonl"));
+    if (refused) throw new Error(`The model was never reached: ${refused}`);
     // The restart: the worker's own folder processes stay as a real user's
     // would, but the session ends and starts again with .mcp.json loaded.
     const id = sessionId();
@@ -335,6 +348,7 @@ try {
   log(`Harness error: ${meta.error}`);
 } finally {
   const outcome = checkOutcome(fixture.state(), n);
+  if (meta.error) Object.assign(outcome, { harnessError: meta.error });
   writeFileSync(
     join(out, "outcome.json"),
     `${JSON.stringify({ ...outcome, state: fixture.state() }, null, 2)}\n`

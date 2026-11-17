@@ -31,7 +31,7 @@ export const DEFAULT_CHANNEL: Record<Tool, Channel> = {
 export type Score = {
   run: string;
   tool: string;
-  outcome: "pass" | "fail" | "n/a";
+  outcome: "pass" | "fail" | "n/a" | "harness error";
   claimed: string;
   skill: string;
   docs: string[];
@@ -371,11 +371,18 @@ export function scoreRun(dir: string): Score {
 
   const results = [...setup, ...task].filter((e) => e.type === "result");
   const outcomeFile = join(dir, "outcome.json");
-  const outcome = existsSync(outcomeFile)
-    ? JSON.parse(readFileSync(outcomeFile, "utf8")).passed
-      ? "pass"
-      : "fail"
-    : "n/a";
+  const checked = existsSync(outcomeFile)
+    ? JSON.parse(readFileSync(outcomeFile, "utf8"))
+    : undefined;
+  // A run the harness could not carry out, such as one whose model was never
+  // reached, is not the worker's failure.
+  const outcome = !checked
+    ? "n/a"
+    : checked.harnessError
+      ? "harness error"
+      : checked.passed
+        ? "pass"
+        : "fail";
   const reportFile = join(dir, "REPORT.md");
 
   const record = join(dir, "ayme-record.jsonl");
@@ -459,7 +466,9 @@ export function table(scores: Score[]): string {
   ]);
   const total = scores.reduce((sum, s) => sum + s.costUsd, 0);
   const passed = scores.filter((s) => s.outcome === "pass").length;
-  const checked = scores.filter((s) => s.outcome !== "n/a").length;
+  const checked = scores.filter(
+    (s) => s.outcome === "pass" || s.outcome === "fail"
+  ).length;
   const escape = (cell: string) =>
     cell.replace(/\|/g, "\\|").replace(/\n/g, " ");
   return [
