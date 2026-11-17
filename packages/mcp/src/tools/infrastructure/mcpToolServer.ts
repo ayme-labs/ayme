@@ -2,10 +2,15 @@ import {
   toolInputViolations,
   violationSentences,
 } from "@ayme-dev/core/tool-input";
-import { Server } from "@modelcontextprotocol/server";
+import {
+  RESOURCE_MIME_TYPE,
+  registerAppResource,
+} from "@modelcontextprotocol/ext-apps/server";
+import { McpServer, type Server } from "@modelcontextprotocol/server";
 
 import { callPageTool } from "../application/callPageTool";
 import type {
+  AppPage,
   ServerTool,
   ServerToolContext,
   ServerToolFactory,
@@ -29,7 +34,9 @@ import {
  * result carries its tool change note, if any, as a text item after the
  * tool's own. A server tool's input is checked against its input schema
  * before the tool runs, with arguments left out taken as `{}`; a page
- * tool's input is the page's to check.
+ * tool's input is the page's to check. A server tool's page for agent apps
+ * (`app`) is a resource of the server, linked from the tool's listing, the
+ * MCP Apps way.
  */
 export function createMcpToolServer({
   name,
@@ -44,10 +51,13 @@ export function createMcpToolServer({
   context: Omit<ServerToolContext, "wasOffered">;
 }): Server {
   const { connection, saveImage, failedPageObjects } = context;
-  const server = new Server(
+  // The SDK's high-level server registers the MCP App pages as resources;
+  // the tools stay on this server's own handlers.
+  const mcpServer = new McpServer(
     { name, version },
     { capabilities: { tools: { listChanged: true } } }
   );
+  const server = mcpServer.server;
   // Asked only once a tool runs, by when `view` exists.
   const wasOffered = (name: string): boolean => view.wasOffered(name);
   const serverTools: readonly ServerTool[] = serverToolFactories.map((tool) =>
@@ -65,12 +75,18 @@ export function createMcpToolServer({
     if (server.transport) void server.sendToolListChanged().catch(() => {});
   });
 
+  for (const { app } of serverTools) if (app) registerAppPage(mcpServer, app);
+
   server.setRequestHandler("tools/list", () => ({
     tools: [
-      ...serverTools.map(({ name, description, inputSchema }) => ({
+      ...serverTools.map(({ name, description, inputSchema, app }) => ({
         name,
         description,
         inputSchema,
+        ...(app && {
+          // The flat key is the one agent apps read before `ui` was nested.
+          _meta: { ui: { resourceUri: app.uri }, "ui/resourceUri": app.uri },
+        }),
       })),
       ...view.listRead(connection.tools).map(mcpPageTool),
     ],
@@ -116,4 +132,25 @@ export function createMcpToolServer({
   );
 
   return server;
+}
+
+/** Registers `app` as an MCP App resource of `mcpServer`. */
+function registerAppPage(mcpServer: McpServer, app: AppPage) {
+  const ui = { csp: { connectDomains: app.connectDomains } };
+  registerAppResource(
+    mcpServer,
+    app.name,
+    app.uri,
+    { _meta: { ui } },
+    async () => ({
+      contents: [
+        {
+          uri: app.uri,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await app.html(),
+          _meta: { ui },
+        },
+      ],
+    })
+  );
 }

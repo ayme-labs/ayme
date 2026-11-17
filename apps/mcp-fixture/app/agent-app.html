@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Stand-in agent app</title>
+  </head>
+  <body>
+    <!-- Sandboxed as T3 Code's in-chat frame, the strictest measured: scripts
+         and forms run, but its origin is opaque, so storage throws and its
+         requests say `null`. -->
+    <iframe
+      id="app"
+      title="MCP App"
+      sandbox="allow-scripts allow-forms"
+      style="width: 960px; height: 200px; border: 0"
+    ></iframe>
+    <script type="module" src="./agentApp.ts"></script>
+  </body>
+</html>

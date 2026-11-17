@@ -1,8 +1,12 @@
-import { INSPECTOR_INSTALL_HINT } from "../../inspector";
+import { INSPECTOR_APP_URI, INSPECTOR_INSTALL_HINT } from "../../inspector";
 import { errorResult, textResult } from "../domain/toolResult";
 import type { ServerToolFactory } from "./serverTool";
 
-/** `ayme_inspect`: the URL of the external Inspector of the connected page. */
+/**
+ * `ayme_inspect`: the URL of the external Inspector of the connected page,
+ * and the same Inspector as a page an agent app that shows MCP Apps shows in
+ * its chat.
+ */
 export const inspectTool: ServerToolFactory = ({ inspector }) => ({
   name: "ayme_inspect",
   description:
@@ -12,5 +16,11 @@ export const inspectTool: ServerToolFactory = ({ inspector }) => ({
     return (await inspector.installed())
       ? textResult(inspector.url)
       : errorResult(INSPECTOR_INSTALL_HINT);
+  },
+  app: {
+    uri: INSPECTOR_APP_URI,
+    name: "Ayme Inspector",
+    connectDomains: [inspector.socketOrigin],
+    html: inspector.appPage,
   },
 });

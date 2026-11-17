@@ -34,15 +34,21 @@ export default defineConfig([
   },
   {
     // The external build (ADR-0049): one script `ayme mcp` serves to a
-    // browser window on its own, so nothing is left to resolve there: React
-    // and Ayme's contract entry are inside it, and the Inspector shares its
+    // browser window on its own, and puts inside the page an agent app
+    // shows, so nothing is left to resolve there: React, Ayme's contract
+    // entry and the MCP Apps SDK are inside it, and the Inspector shares its
     // output with no other entry (a chunk would be a second file to serve).
     ...shared,
     clean: false,
     dts: false,
     entry: { external: "src/external.ts" },
     deps: {
-      alwaysBundle: [/^react(-dom)?(\/|$)/, /^radix-ui(\/|$)/, /^@ayme-dev\//],
+      alwaysBundle: [
+        /^react(-dom)?(\/|$)/,
+        /^radix-ui(\/|$)/,
+        /^@ayme-dev\//,
+        /^@modelcontextprotocol\/ext-apps\//,
+      ],
     },
   },
 ]);

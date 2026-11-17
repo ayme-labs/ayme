@@ -8,6 +8,8 @@ import {
   InspectorRelay,
   externalInspectorServer,
   inspectCommand,
+  inspectorAppHtml,
+  inspectorSocketUrl,
   inspectorUrl,
   readExternalBuild,
 } from "../inspector";
@@ -56,6 +58,9 @@ export async function startMcpServer({
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
   const connection = new AgentConnection();
   const token = randomUUID();
+  // Admits the Inspector's page an agent app shows, whose origin is the
+  // agent app's: a token of its own, which pairs no page.
+  const inspectorToken = randomUUID();
   // The MCP server starts after the page's: a page may say hello before it.
   let agentName = (): string | undefined => undefined;
   // The external Inspector and the Page Objects entry's build are served
@@ -73,6 +78,8 @@ export async function startMcpServer({
       externalInspectorServer({
         relay: new InspectorRelay(connection),
         readBuild: readExternalBuild,
+        token: inspectorToken,
+        log,
       }),
       ...(build ? [servedPageObjectsServer(build)] : []),
     ],
@@ -127,6 +134,12 @@ export async function startMcpServer({
       inspector: {
         url: inspectorUrl(SERVER_HOST, port),
         installed: async () => (await readExternalBuild()) !== undefined,
+        appPage: async () =>
+          inspectorAppHtml(
+            await readExternalBuild(),
+            inspectorSocketUrl(SERVER_HOST, port, inspectorToken)
+          ),
+        socketOrigin: pairing.address,
       },
     },
   });

@@ -3,6 +3,7 @@ export { connectTool } from "./application/connectTool";
 export { inspectTool } from "./application/inspectTool";
 export { listToolsTool } from "./application/listToolsTool";
 export type {
+  AppPage,
   ServerTool,
   ServerToolContext,
   ServerToolFactory,

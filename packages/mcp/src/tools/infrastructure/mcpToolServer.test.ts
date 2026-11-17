@@ -51,7 +51,12 @@ async function connectAgent() {
       pairing: { address: "ws://x", token: "t" },
       saveImage: async () => "/x",
       failedPageObjects: async () => undefined,
-      inspector: { url: "http://x/inspector", installed: async () => true },
+      inspector: {
+        url: "http://x/inspector",
+        installed: async () => true,
+        appPage: async () => "<!doctype html>",
+        socketOrigin: "ws://x",
+      },
     },
   });
   const [clientTransport, serverTransport] =
