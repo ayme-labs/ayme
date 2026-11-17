@@ -287,15 +287,17 @@ export function buildOutcomes({
           failure = new PageObjectsBuildError({
             entry,
             lastGood: good !== undefined,
-            errors: withoutRepeats(errors).map(({ text, location }) => ({
-              text,
-              location: location && {
-                file: resolve(folder, location.file),
-                line: location.line,
-                column: location.column,
-                lineText: location.lineText,
-              },
-            })),
+            errors: withoutRepeats(errors, folder).map(
+              ({ text, location }) => ({
+                text,
+                location: location && {
+                  file: resolve(folder, location.file),
+                  line: location.line,
+                  column: location.column,
+                  lineText: location.lineText,
+                },
+              })
+            ),
           });
           log(failure.message);
         }
@@ -318,22 +320,35 @@ export function buildOutcomes({
 }
 
 /**
- * `errors` without esbuild's own errors at a file and line where the
+ * `errors` without esbuild's own errors at a line of a JSON file where the
  * compiler reports one. esbuild reads the tsconfig a compile reads, for its
- * `paths`, so a mistake in it would be listed by both.
+ * `paths`, so a mistake in it would be listed by both. Only a tsconfig is
+ * JSON that both read: in any other file, two errors on a line are two
+ * mistakes. esbuild names a symlinked tsconfig by its target, so files are
+ * compared by their real paths, in `folder`.
  */
-function withoutRepeats(errors: readonly esbuild.Message[]) {
-  const atLine = ({ location }: esbuild.Message) =>
-    location ? `${location.file}:${location.line}` : undefined;
+function withoutRepeats(errors: readonly esbuild.Message[], folder: string) {
+  const jsonLine = ({ location }: esbuild.Message) =>
+    location?.file.endsWith(".json")
+      ? `${realPath(resolve(folder, location.file))}:${location.line}`
+      : undefined;
   const compilerLines = new Set(
-    errors.filter((error) => error.pluginName === MODELS_PLUGIN).map(atLine)
+    errors.filter((error) => error.pluginName === MODELS_PLUGIN).map(jsonLine)
   );
-  return errors.filter(
-    (error) =>
-      error.pluginName ||
-      error.location === null ||
-      !compilerLines.has(atLine(error))
-  );
+  return errors.filter((error) => {
+    if (error.pluginName) return true;
+    const line = jsonLine(error);
+    return line === undefined || !compilerLines.has(line);
+  });
+}
+
+/** The real path of `file`, or `file` itself when it cannot be resolved. */
+function realPath(file: string) {
+  try {
+    return realpathSync(file);
+  } catch {
+    return file;
+  }
 }
 
 /**

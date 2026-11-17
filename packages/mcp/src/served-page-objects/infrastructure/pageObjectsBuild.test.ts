@@ -583,6 +583,116 @@ it("reports a tsconfig JSON error once, though the compiler and esbuild each rea
   }
 });
 
+it("reports a tsconfig JSON error once when the tsconfig is a symlink, which esbuild names by its target", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-tsconfig-link-"))
+  );
+  const tsconfig = join(folder, "tsconfig.json");
+  await mkdir(join(folder, "configs"));
+  await writeFile(
+    join(folder, "configs", "base.json"),
+    '{\n  "compilerOptions": {\n    "target": "es2022",,\n  }\n}\n'
+  );
+  await symlink(join("configs", "base.json"), tsconfig);
+  await writeFile(join(folder, "entry.ts"), "class Page {}\n");
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log: vi.fn(),
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          models({
+            compile: () => {
+              throw new PomCompileError([
+                {
+                  text: "Could not read TypeScript project configuration: Property assignment expected.",
+                  file: tsconfig,
+                  line: 3,
+                  column: 24,
+                },
+              ]);
+            },
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    expect(failure.errors).toHaveLength(2);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(error.errors.map(buildErrorLine)).toEqual([
+      `${tsconfig}:3:24: Could not read TypeScript project configuration: Property assignment expected.`,
+    ]);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
+it("keeps esbuild's own error on the line of a compiler error when the file is not a tsconfig", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-same-line-"))
+  );
+  const other = join(folder, "other.js");
+  await writeFile(other, 'import "./missing";\n');
+  await writeFile(join(folder, "entry.ts"), "class Page {}\n");
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log: vi.fn(),
+  });
+  try {
+    await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts", "other.js"],
+        bundle: true,
+        write: false,
+        outdir: join(folder, "out"),
+        logLevel: "silent",
+        plugins: [
+          models({
+            compile: () => {
+              throw new PomCompileError([
+                {
+                  text: 'Page Object "Page" reaches two different classes named "Row".',
+                  file: other,
+                  line: 1,
+                  column: 1,
+                },
+              ]);
+            },
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(error.errors.map(buildErrorLine).sort()).toEqual(
+      [
+        `${other}:1:1: Page Object "Page" reaches two different classes named "Row".`,
+        `${other}:1:8: Could not resolve "./missing"`,
+      ].sort()
+    );
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
 it("leaves an esbuild error without a location alone", () => {
   const { onEnd } = setUp(
     models({ compile: () => null, invalidate: () => {} })
