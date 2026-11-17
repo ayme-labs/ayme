@@ -2,11 +2,7 @@ import {
   toolInputViolations,
   violationSentences,
 } from "@ayme-dev/core/tool-input";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { Server } from "@modelcontextprotocol/server";
 
 import { callPageTool } from "../application/callPageTool";
 import type {
@@ -69,7 +65,7 @@ export function createMcpToolServer({
     if (server.transport) void server.sendToolListChanged().catch(() => {});
   });
 
-  server.setRequestHandler(ListToolsRequestSchema, () => ({
+  server.setRequestHandler("tools/list", () => ({
     tools: [
       ...serverTools.map(({ name, description, inputSchema }) => ({
         name,
@@ -102,7 +98,7 @@ export function createMcpToolServer({
   };
 
   server.setRequestHandler(
-    CallToolRequestSchema,
+    "tools/call",
     async (request): Promise<ToolResult> => {
       const { name, arguments: input = {} } = request.params;
       const result = await run(name, input);

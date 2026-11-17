@@ -1,6 +1,4 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { afterEach, expect, it } from "vitest";
 
 import { AgentConnection } from "../../connection";
@@ -61,7 +59,7 @@ async function connectAgent() {
   const client = new Client({ name: "test", version: "0.0.0" });
   let listChanges = 0;
   client.setNotificationHandler(
-    ToolListChangedNotificationSchema,
+    "notifications/tools/list_changed",
     () => void listChanges++
   );
   await server.connect(serverTransport);
