@@ -44,6 +44,8 @@ const COMPILER = "@ayme-dev/ayme/compiler";
 const RUNTIME = "@ayme-dev/ayme";
 /** The runtime entry's id, which no file on disk has. */
 const RUNTIME_ENTRY = "ayme-served-runtime";
+/** The plugin that compiles Page Object Models, which esbuild names on its errors. */
+const MODELS_PLUGIN = "ayme-served-page-object-models";
 
 /** The Page Objects entry's build, which rebuilds as its files change. */
 export type PageObjectsBuild = {
@@ -122,9 +124,8 @@ export function pageObjectModels(
   PomCompileError: PomCompilerEntry["PomCompileError"]
 ): esbuild.Plugin {
   const compiled = new Set<string>();
-  const name = "ayme-served-page-object-models";
   return {
-    name,
+    name: MODELS_PLUGIN,
     setup(build) {
       // A rebuild compiles afresh, so an edited dependency reaches the manifest.
       build.onStart(() => {
@@ -136,7 +137,7 @@ export function pageObjectModels(
           const location = error.location;
           if (
             // The compiler's own errors are at positions in the source.
-            error.pluginName !== name &&
+            error.pluginName !== MODELS_PLUGIN &&
             location &&
             compiled.has(
               resolve(
@@ -286,7 +287,7 @@ export function buildOutcomes({
           failure = new PageObjectsBuildError({
             entry,
             lastGood: good !== undefined,
-            errors: errors.map(({ text, location }) => ({
+            errors: withoutRepeats(errors).map(({ text, location }) => ({
               text,
               location: location && {
                 file: resolve(folder, location.file),
@@ -314,6 +315,25 @@ export function buildOutcomes({
       return () => void listeners.delete(listener);
     },
   };
+}
+
+/**
+ * `errors` without esbuild's own errors at a file and line where the
+ * compiler reports one. esbuild reads the tsconfig a compile reads, for its
+ * `paths`, so a mistake in it would be listed by both.
+ */
+function withoutRepeats(errors: readonly esbuild.Message[]) {
+  const atLine = ({ location }: esbuild.Message) =>
+    location ? `${location.file}:${location.line}` : undefined;
+  const compilerLines = new Set(
+    errors.filter((error) => error.pluginName === MODELS_PLUGIN).map(atLine)
+  );
+  return errors.filter(
+    (error) =>
+      error.pluginName ||
+      error.location === null ||
+      !compilerLines.has(atLine(error))
+  );
 }
 
 /**

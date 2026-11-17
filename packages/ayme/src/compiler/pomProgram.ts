@@ -162,8 +162,16 @@ function parseConfig(
   onConfigFile?: (fileName: string) => void
 ) {
   onConfigFile?.(path.resolve(configPath));
-  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-  if (configFile.error) throw configError(configPath, configFile.error);
+  let text: string | undefined;
+  // `readConfigFile` reports a file it cannot read and a JSON syntax error,
+  // which parsing the source file below does not.
+  const { error } = ts.readConfigFile(
+    configPath,
+    (fileName) => (text = ts.sys.readFile(fileName))
+  );
+  if (error) throw configError(configPath, error);
+  // Parsed as a source file, an option's error is located in it, as `tsc` locates it.
+  const configFile = ts.parseJsonText(configPath, text ?? "");
 
   const parseHost: ts.ParseConfigHost = onConfigFile
     ? {
@@ -175,8 +183,8 @@ function parseConfig(
         },
       }
     : ts.sys;
-  return ts.parseJsonConfigFileContent(
-    configFile.config,
+  return ts.parseJsonSourceFileConfigFileContent(
+    configFile,
     parseHost,
     path.dirname(configPath),
     undefined,

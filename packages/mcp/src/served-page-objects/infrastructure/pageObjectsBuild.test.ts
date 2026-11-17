@@ -527,6 +527,62 @@ it("omits generated positions when the working directory is a symlink", async ()
   }
 });
 
+it("reports a tsconfig JSON error once, though the compiler and esbuild each read that tsconfig", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-tsconfig-"))
+  );
+  const tsconfig = join(folder, "tsconfig.json");
+  await writeFile(
+    tsconfig,
+    '{\n  "compilerOptions": {\n    "target": "es2022",,\n  }\n}\n'
+  );
+  await writeFile(join(folder, "entry.ts"), "class Page {}\n");
+  const log = vi.fn();
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log,
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          models({
+            compile: () => {
+              throw new PomCompileError([
+                {
+                  text: "Could not read TypeScript project configuration: Property assignment expected.",
+                  file: tsconfig,
+                  line: 3,
+                  column: 24,
+                },
+              ]);
+            },
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    // esbuild reads the tsconfig for `paths` and reports the mistake too.
+    expect(failure.errors).toHaveLength(2);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(error.errors.map(buildErrorLine)).toEqual([
+      `${tsconfig}:3:24: Could not read TypeScript project configuration: Property assignment expected.`,
+    ]);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
 it("leaves an esbuild error without a location alone", () => {
   const { onEnd } = setUp(
     models({ compile: () => null, invalidate: () => {} })
