@@ -858,6 +858,166 @@ describe("the timeline, for an input known from its report", () => {
       },
     ]);
   });
+
+  describe("while it is typed, added under a key", () => {
+    /** The typing, added under its key, with its text and latest read. */
+    const typed = (
+      text: string,
+      after: SnapshotId | null,
+      picture = atTheMoment
+    ): TimelineAddition => {
+      const { interaction } = typing(picture) as Extract<
+        TimelineAddition,
+        { kind: "interaction" }
+      >;
+      return {
+        kind: "interaction",
+        key: "fill_1",
+        interaction: {
+          ...interaction,
+          report: { ...interaction.report, values: { text } },
+          after,
+        },
+      };
+    };
+    const entriesOf = (timeline: Timeline) =>
+      timeline.visits().flatMap((one) => one.entries);
+    const earlier = [visit, snapshot(snapshotId("snapshot_1"), 10, draftEmpty)];
+
+    it("shows a fill as soon as it is added, before the page is read again: its text, what had changed by its first key as a row of its own, and no changes yet (rules 1, 3, 4)", async () => {
+      const timeline = await timelineOf([...earlier, typed("m", null)]);
+
+      expect(entriesOf(timeline)).toEqual([
+        {
+          kind: "change",
+          id: entryId("change_1"),
+          timestamp: 10,
+          changes: [{ kind: "added", element: 'alert "Welcome back"' }],
+        },
+        expect.objectContaining({
+          kind: "interaction",
+          id: entryId("interaction_1"),
+          interaction: expect.objectContaining({ type: "fill", text: "m" }),
+          changes: null,
+        }),
+      ]);
+    });
+
+    it("replaces a fill added again under its key in place: its text follows, its changes run from the picture at its first key to its latest read, and the row above it stays (rules 1, 2, 4, 7)", async () => {
+      const timeline = await timelineOf([...earlier, typed("m", null)]);
+      const before = entriesOf(timeline);
+      for (const addition of [
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ])
+        await timeline.add(addition);
+
+      const after = entriesOf(timeline);
+      expect(after.map((entry) => entry.id)).toEqual(
+        before.map((entry) => entry.id)
+      );
+      expect(after[0]).toEqual(before[0]);
+      expect(after[1]).toMatchObject({
+        interaction: { text: "milk" },
+        changes: [
+          {
+            kind: "changed",
+            element: 'textbox "Item"',
+            changed: [{ property: "text" }],
+          },
+          {
+            kind: "changed",
+            element: 'paragraph "Draft saved"',
+            changed: [{ property: "text" }],
+          },
+        ],
+      });
+    });
+
+    it("names an element the page added before the first key by the later read's ref once that read comes, in the package as in the rows (rule 4)", async () => {
+      const timeline = await timelineOf([...earlier, typed("m", null)]);
+      for (const addition of [
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ])
+        await timeline.add(addition);
+
+      expect(await timeline.package(header)).toContain(
+        [
+          `      - kind: change`,
+          `        timestamp: 10`,
+          `        changeTree:`,
+          `          - [ref=e1]:`,
+          `            - <added> [ref=e5] alert: Welcome back`,
+          `      - kind: interaction`,
+          `        timestamp: 10`,
+          `        interaction:`,
+          `          id: interaction_1`,
+          `          type: fill`,
+          `          targetRef: e3`,
+          `          targetSelector: internal:role=textbox[name="Item"i]`,
+          `          text: milk`,
+          `        changeTree:`,
+          `          - [ref=e1]:`,
+          `            - <changed> [ref=e3] textbox "Item": milk`,
+          `            - <changed> [ref=e4] paragraph: Draft saved`,
+          `traceActionPoints: []`,
+        ].join("\n")
+      );
+    });
+
+    it("replaces only the text of a fill when Playwright revises it after it could change no more (rule 5)", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+      const [, fill] = entriesOf(timeline);
+      await timeline.add({
+        kind: "text",
+        key: "fill_1",
+        report: {
+          type: "fill",
+          selector: 'internal:role=textbox[name="Item"i]',
+          target: null,
+          values: { text: "milky" },
+        },
+      });
+
+      const [, now] = entriesOf(timeline);
+      if (fill?.kind !== "interaction") throw new Error("No fill.");
+      expect(now).toEqual({
+        ...fill,
+        interaction: { ...fill.interaction, text: "milky" },
+      });
+    });
+
+    it("keeps a fill whose page went on to another Visit with what had changed by its first key, and no changes (rule 7)", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null),
+        {
+          kind: "visit",
+          page: pageId("page_1"),
+          url: "http://shop.test/next",
+          cause: "navigate",
+        },
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+
+      const [first] = timeline.visits();
+      expect(first!.entries).toEqual([
+        expect.objectContaining({ kind: "change", id: entryId("change_1") }),
+        expect.objectContaining({
+          id: entryId("interaction_1"),
+          interaction: expect.objectContaining({ text: "milk" }),
+          changes: null,
+        }),
+      ]);
+      expect(await timeline.package(header)).toContain("<added> [ref=s_");
+    });
+  });
 });
 
 describe("the timeline, for a target the snapshot does not list", () => {

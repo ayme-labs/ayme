@@ -37,6 +37,7 @@ import type {
   TracePosition,
   VisitCause,
 } from "./recorded";
+import type { InteractionReport } from "./recorded";
 import {
   firstRef,
   isFirst,
@@ -44,7 +45,7 @@ import {
   type FirstRef,
   type SnapshotRef,
 } from "./refs";
-import { pictureBefore } from "./reportPicture";
+import { pictureBefore, type PictureBefore } from "./reportPicture";
 import { locateTarget } from "./target";
 
 export type { PackageHeader } from "./packageText";
@@ -65,7 +66,48 @@ type Kept = {
 };
 
 /** An Interaction that has no entry yet. */
-type Waiting = RecordedInteraction & { readonly id: EntryId };
+type Waiting = RecordedInteraction & {
+  readonly id: EntryId;
+  readonly key?: string;
+};
+
+/**
+ * Playwright's picture of the page at an input's first report, matched with
+ * its "before" alone, as when the input shows before the page is read
+ * again. An element the picture has and the "before" has not gets a ref of
+ * its own, and is tied to the ref a later read gives it once one does.
+ */
+type Pictured = {
+  readonly picture: PictureBefore;
+  /** From a ref of the picture's own to the later read's ref it is tied to. */
+  readonly tied: Map<AriaRef, AriaRef>;
+};
+
+/** An Interaction's entry, as it is measured again when it is replaced. */
+type Written = {
+  readonly visit: Visit;
+  readonly id: EntryId;
+  readonly from: Kept;
+  /** As it was first added: its report holds the picture it is measured
+   * from. */
+  readonly first: RecordedInteraction;
+  /** Where the entries stood once what changed before it was written. */
+  readonly throughAtStart: number;
+  /** Null for an input measured from its "before", as a held one is. */
+  readonly pictured: Pictured | null;
+  /** The change of its own the picture showed ahead of it, if any. */
+  readonly changedBefore: EntryId | null;
+  /** Its target and how it is named, as last measured. */
+  target: FirstRef | undefined;
+  named: NamedElement | null;
+};
+
+/** What an Interaction's entry is measured as. */
+type Measured = {
+  readonly target: FirstRef | undefined;
+  readonly named: NamedElement | null;
+  readonly change: StructuralTree | null;
+};
 
 type Visit = {
   readonly id: string;
@@ -187,6 +229,8 @@ export class Timeline {
   /** When each snapshot was read. No snapshot was read at no time. */
   private readonly readAt = new Map<SnapshotId | null, number>();
   private told: readonly RecordedVisit[] = [];
+  /** The entries added under a key, by their key. */
+  private readonly byKey = new Map<string, Written>();
   private readonly warned: RecorderWarning[] = [];
 
   /** What a person should know about how this recording was made. */
@@ -248,7 +292,9 @@ export class Timeline {
         return;
       }
       case "interaction": {
-        const { interaction } = addition;
+        const { interaction, key } = addition;
+        const added = key === undefined ? undefined : this.byKey.get(key);
+        if (added) return this.replace(added, interaction);
         // The Visit it started in: one that leaves the page has its "after"
         // in the next Visit.
         const visit = this.all.find((started) =>
@@ -263,9 +309,10 @@ export class Timeline {
           );
           visit.through = visit.start;
         }
-        const recorded = {
+        const recorded: Waiting = {
           ...interaction,
           id: `interaction_${++this.interactions}` as EntryId,
+          ...(key === undefined ? {} : { key }),
         };
         visit.waiting.push(recorded);
         this.recorded.push({
@@ -286,10 +333,71 @@ export class Timeline {
         );
         return;
       }
+      case "text": {
+        const added = this.byKey.get(addition.key);
+        if (added) this.retext(added, addition.report);
+        return;
+      }
       case "discard":
       case "restore":
         return this.decide(addition.entry, addition.kind === "discard");
     }
+  }
+
+  /** An entry added under a key, measured again up to its new "after", with
+   * its new text, in its place. */
+  private async replace(written: Written, interaction: RecordedInteraction) {
+    const { visit } = written;
+    const index = visit.entries.findIndex(
+      ({ entry }) => entry.id === written.id
+    );
+    // Stryker disable next-line ConditionalExpression: an entry once written stays; the check is for the type
+    if (index < 0) return;
+    const end = placeIn(visit, interaction.after);
+    const measured = await this.measure(written, visit.snapshots[end]);
+    visit.entries[index] = this.entryOf(
+      written,
+      interaction,
+      measured,
+      visit.entries[index]!.entry.discarded
+    );
+    // Where the entries stand is worked out again from where they stood
+    // before it: an "after" on another Visit leaves them there. An entry
+    // written after it keeps them where they are.
+    visit.through =
+      index === visit.entries.length - 1
+        ? Math.max(written.throughAtStart, end)
+        : Math.max(visit.through, end);
+    const place = this.recorded.findIndex((one) => one.id === written.id);
+    this.recorded[place] = {
+      ...this.recorded[place]!,
+      after: interaction.after,
+      afterInVisit: end < 0 ? null : interaction.after,
+    };
+    this.tell();
+  }
+
+  /** Replaces only the text of an entry added under a key. */
+  private retext(written: Written, report: InteractionReport) {
+    const { visit } = written;
+    const index = visit.entries.findIndex(
+      ({ entry }) => entry.id === written.id
+    );
+    const kept = visit.entries[index];
+    // Stryker disable next-line ConditionalExpression: an entry added under a key is an Interaction's; the check is for the type
+    if (kept?.entry.kind !== "interaction") return;
+    visit.entries[index] = {
+      ...kept,
+      entry: {
+        ...kept.entry,
+        interaction: interactionDetails(
+          written.id,
+          report,
+          written.target ?? null
+        ),
+      },
+    };
+    this.tell();
   }
 
   /** Leaves an entry out of the recording, or puts it back. One this
@@ -456,59 +564,215 @@ export class Timeline {
   }
 
   /**
-   * What changed before an input known from its report, and what it changed:
-   * the report's picture of the page stands between the snapshot before it
-   * and its "after". Null when the picture cannot be read so.
+   * Matches an input's picture with its "before" and its "after", or with
+   * its "before" alone while it has no "after", and writes what had changed
+   * by the moment of the input as a change of its own, ahead of it. A
+   * picture that cannot be read so is warned of, and the input is taken as
+   * one the gate held.
    */
-  private async fromPicture(
+  private async pictured(
+    visit: Visit,
+    interaction: Waiting,
     from: Kept,
-    to: Kept,
-    interaction: RecordedInteraction
-  ): Promise<{
-    changedBefore: StructuralTree;
-    changedByIt: StructuralTree;
-    target: FirstRef | undefined;
-    named: NamedElement | null;
-  } | null> {
+    to: Kept | undefined
+  ): Promise<{ pictured: Pictured | null; changedBefore: EntryId | null }> {
     const { target, type, selector } = interaction.report;
-    if (!target) return null;
-    const pageId = from.observation.pageId;
-    const between = await this.session.readChange(
-      pageId,
-      from.observation,
-      to.observation
+    const picture =
+      target &&
+      pictureBefore({
+        previous: from.tree,
+        ...(to && {
+          between: await this.session.readChange(
+            from.observation.pageId,
+            from.observation,
+            to.observation
+          ),
+        }),
+        picture: target.tree,
+        selector,
+        target: target.ref,
+        targetAsBefore: type === "fill" || type === "select",
+        refs: this.refs,
+      });
+    if (!picture) {
+      this.warned.push({
+        kind: "reportShape",
+        message: `Playwright's report of ${interaction.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
+      });
+      return { pictured: null, changedBefore: null };
+    }
+    const pictured = { picture, tied: new Map<AriaRef, AriaRef>() };
+    const before = await this.changedBefore(
+      from,
+      pictured,
+      new Map([...from.firstRefs, ...(to?.firstRefs ?? [])])
     );
-    const picture = pictureBefore({
-      previous: from.tree,
-      between,
-      picture: target.tree,
-      selector,
-      target: target.ref,
-      targetAsBefore: type === "fill" || type === "select",
-      refs: this.refs,
-    });
-    if (!picture) return null;
-    const [before, after] = await this.session.readIdentityLedger(
-      pageId,
-      (ledger) => {
-        const sameIdentity = (beforeRef: AriaRef, afterRef: AriaRef) =>
-          ledger.sameIdentity(beforeRef, afterRef);
-        // Stryker disable next-line ObjectLiteral: equivalent, since the picture's tree has every element the earlier snapshot shares with it under that snapshot's ref, which leaves no pair for the record to deny
-        const sinceBefore = { sameIdentity };
-        return [
-          StructuralTree.reconcile(from.tree, picture.tree, sinceBefore),
-          StructuralTree.reconcile(picture.tree, to.tree, { sameIdentity }),
-        ];
-      }
-    );
-    const firstRefs = new Map([...from.firstRefs, ...to.firstRefs]);
     return {
-      changedBefore: this.underFirstRefs(before!, firstRefs),
-      changedByIt: this.underFirstRefs(after!, firstRefs),
-      target:
-        picture.target &&
-        (firstRefs.get(picture.target) ?? firstRef(picture.target)),
-      named: namedTarget(picture.tree, picture.target),
+      pictured,
+      changedBefore: changedSomething(before)
+        ? this.writeChange(visit, interaction.at, before)
+        : null,
+    };
+  }
+
+  /** What had changed from the "before" to the picture. */
+  private async changedBefore(
+    from: Kept,
+    pictured: Pictured,
+    firstRefs: ReadonlyMap<SnapshotRef, FirstRef>
+  ): Promise<StructuralTree> {
+    const tree = this.tiedTree(pictured);
+    const before = await this.session.readIdentityLedger(
+      from.observation.pageId,
+      (ledger) =>
+        StructuralTree.reconcile(from.tree, tree, {
+          sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) =>
+            ledger.sameIdentity(beforeRef, afterRef),
+        })
+    );
+    return this.underFirstRefs(before, firstRefs);
+  }
+
+  /** The picture's tree, each element tied to a later read under that
+   * read's ref. */
+  private tiedTree({ picture, tied }: Pictured): StructuralTree {
+    if (tied.size === 0) return picture.tree;
+    const rename = (node: StructuralNode): StructuralNode =>
+      node.copy({
+        ref: tied.get(node.ref) ?? node.ref,
+        children: node.children.map((child) =>
+          typeof child === "string" ? child : rename(child)
+        ),
+      });
+    return new StructuralTree(rename(picture.tree.root), this.refs);
+  }
+
+  /**
+   * Ties each element of the picture that its "before" has not to the ref
+   * the read `to` gives it, as the picture matched with both reads says.
+   * The change of its own ahead of the input then names it as the later
+   * trees do: what it shows stays as it was.
+   */
+  private async tie(written: Written, to: Kept) {
+    const { from, pictured, first, visit } = written;
+    // Stryker disable next-line OptionalChaining: only an input with a picture is tied; the check is for the type
+    const target = first.report.target;
+    if (!pictured || !target) return;
+    const later = pictureBefore({
+      previous: from.tree,
+      between: await this.session.readChange(
+        from.observation.pageId,
+        from.observation,
+        to.observation
+      ),
+      picture: target.tree,
+      selector: first.report.selector,
+      target: target.ref,
+      targetAsBefore:
+        first.report.type === "fill" || first.report.type === "select",
+      // Its own refs are only looked at, never kept.
+      refs: new SyntheticAriaRefFactory(),
+    });
+    if (!later) return;
+    let tiedNow = false;
+    for (const [seen, ref] of pictured.picture.refOf) {
+      if (!pictured.picture.fresh.has(ref) || pictured.tied.has(ref)) continue;
+      const now = later.refOf.get(seen);
+      if (now === undefined || later.fresh.has(now) || !to.tree.getNode(now))
+        continue;
+      pictured.tied.set(ref, now);
+      tiedNow = true;
+    }
+    if (!tiedNow || !written.changedBefore) return;
+    const index = visit.entries.findIndex(
+      ({ entry }) => entry.id === written.changedBefore
+    );
+    const kept = visit.entries[index]!;
+    const before = await this.changedBefore(
+      from,
+      pictured,
+      new Map([...from.firstRefs, ...to.firstRefs])
+    );
+    const { changes, rows } = rowsOf(before);
+    visit.entries[index] = {
+      ...kept,
+      entry: { ...kept.entry, kind: "change", changes },
+      change: before,
+      rows,
+    };
+  }
+
+  /**
+   * An Interaction's target and what it changed, from its "before", or from
+   * its picture, to its "after"; nothing when it has no "after" in its
+   * Visit.
+   */
+  private async measure(
+    written: Written,
+    to: Kept | undefined
+  ): Promise<Measured> {
+    const { from, pictured, first } = written;
+    if (!pictured) {
+      const located = locateTarget(from.tree, first.report);
+      return {
+        // Every ref of a kept snapshot has its first ref.
+        target: located && from.firstRefs.get(located),
+        named: namedTarget(from.tree, located),
+        change: to ? await this.change(from, to) : null,
+      };
+    }
+    if (to) await this.tie(written, to);
+    const tree = this.tiedTree(pictured);
+    const firstRefs = new Map([...from.firstRefs, ...(to?.firstRefs ?? [])]);
+    const firstOf = (ref: AriaRef) =>
+      firstRefs.get(snapshotRef(ref)) ??
+      written.visit.firstRefs.get(snapshotRef(ref)) ??
+      firstRef(snapshotRef(ref));
+    const ref = pictured.picture.target;
+    const targetRef = ref && (pictured.tied.get(ref) ?? ref);
+    const measured = {
+      target: targetRef && firstOf(targetRef),
+      named: namedTarget(tree, targetRef),
+    };
+    if (!to) return { ...measured, change: null };
+    const after = await this.session.readIdentityLedger(
+      from.observation.pageId,
+      (ledger) =>
+        StructuralTree.reconcile(tree, to.tree, {
+          sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) =>
+            ledger.sameIdentity(beforeRef, afterRef),
+        })
+    );
+    return { ...measured, change: this.underFirstRefs(after, firstRefs) };
+  }
+
+  /** An Interaction's entry as measured. */
+  private entryOf(
+    written: Written,
+    interaction: RecordedInteraction,
+    { target, named, change }: Measured,
+    discarded?: true
+  ): Entry {
+    written.target = target;
+    written.named = named;
+    const changed = change && changedSomething(change) ? change : null;
+    const told = changed && rowsOf(changed);
+    return {
+      entry: {
+        kind: "interaction",
+        id: written.id,
+        timestamp: interaction.at,
+        interaction: interactionDetails(
+          written.id,
+          interaction.report,
+          target ?? null
+        ),
+        ...(named ? { targetElement: wordsOf(named) } : {}),
+        changes: told && told.changes,
+        ...(discarded ? { discarded } : {}),
+      },
+      change: changed,
+      rows: told ? told.rows : [],
     };
   }
 
@@ -548,72 +812,26 @@ export class Timeline {
   ): Promise<void> {
     const from = visit.snapshots[placeIn(visit, interaction.before)]!;
     const end = placeIn(visit, interaction.after);
-    const { target, named, change } = await this.effectOf(
+    const { pictured, changedBefore } = interaction.beforeFromReport
+      ? await this.pictured(visit, interaction, from, visit.snapshots[end])
+      : { pictured: null, changedBefore: null };
+    const written: Written = {
       visit,
-      interaction,
+      id: interaction.id,
       from,
-      visit.snapshots[end]
-    );
-    const changed = change && changedSomething(change) ? change : null;
-    const told = changed && rowsOf(changed);
-    visit.entries.push({
-      entry: {
-        kind: "interaction",
-        id: interaction.id,
-        timestamp: interaction.at,
-        interaction: interactionDetails(
-          interaction.id,
-          interaction.report,
-          target ?? null
-        ),
-        ...(named ? { targetElement: wordsOf(named) } : {}),
-        changes: told && told.changes,
-      },
-      change: changed,
-      rows: told ? told.rows : [],
-    });
+      first: interaction,
+      throughAtStart: visit.through,
+      pictured,
+      changedBefore,
+      target: undefined,
+      named: null,
+    };
+    const measured = await this.measure(written, visit.snapshots[end]);
+    visit.entries.push(this.entryOf(written, interaction, measured));
     // The entries never go back: an Interaction with no "after" here, or
     // one written late, leaves them where they stand.
     visit.through = Math.max(visit.through, end);
-  }
-
-  /**
-   * An Interaction's target and what it changed, from its "before" to its
-   * "after"; nothing when it has no "after" in its Visit. For an input known
-   * from its report, the report's picture says how the page stood at the
-   * moment of the input: what had changed by then is written as a change of
-   * its own, ahead of the Interaction. A picture that cannot be read so is
-   * warned of, and the input is taken as one the gate held.
-   */
-  private async effectOf(
-    visit: Visit,
-    interaction: Waiting,
-    from: Kept,
-    to: Kept | undefined
-  ): Promise<{
-    target: FirstRef | undefined;
-    named: NamedElement | null;
-    change: StructuralTree | null;
-  }> {
-    const located = locateTarget(from.tree, interaction.report);
-    const held = {
-      // Every ref of a kept snapshot has its first ref.
-      target: located && from.firstRefs.get(located),
-      named: namedTarget(from.tree, located),
-      change: to ? await this.change(from, to) : null,
-    };
-    if (!interaction.beforeFromReport || !to) return held;
-    const read = await this.fromPicture(from, to, interaction);
-    if (!read) {
-      this.warned.push({
-        kind: "reportShape",
-        message: `Playwright's report of ${interaction.id} does not have the shape of a snapshot: it is recorded with what it changed up to its 'after' only.`,
-      });
-      return held;
-    }
-    if (changedSomething(read.changedBefore))
-      this.writeChange(visit, interaction.at, read.changedBefore);
-    return { target: read.target, named: read.named, change: read.changedByIt };
+    if (interaction.key !== undefined) this.byKey.set(interaction.key, written);
   }
 
   /**
@@ -639,7 +857,11 @@ export class Timeline {
   }
 
   /** Writes a change of its own: one no Interaction explains. */
-  private writeChange(visit: Visit, at: number, change: StructuralTree) {
+  private writeChange(
+    visit: Visit,
+    at: number,
+    change: StructuralTree
+  ): EntryId {
     const id = `change_${++this.changes}` as EntryId;
     const { changes, rows } = rowsOf(change);
     visit.entries.push({
@@ -647,6 +869,7 @@ export class Timeline {
       change,
       rows,
     });
+    return id;
   }
 
   /**

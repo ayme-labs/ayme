@@ -27,6 +27,11 @@ export type PictureBefore = {
   readonly tree: StructuralTree;
   /** The target's ref in `tree`, if the picture names one that matched. */
   readonly target: SnapshotRef | undefined;
+  /** The ref each element of the picture has in `tree`, by the picture's
+   * own ref. */
+  readonly refOf: ReadonlyMap<AriaRef, AriaRef>;
+  /** The refs `tree` gave elements no snapshot has. */
+  readonly fresh: ReadonlySet<AriaRef>;
 };
 
 /**
@@ -38,13 +43,17 @@ export type PictureBefore = {
  * when it cannot be told which document the picture is of: the report has no
  * selector, or two frames fit it alike.
  *
- * `between` is the earlier snapshot reconciled with the later one. Typing
- * and a choice are reported once the field has changed, so with
- * `targetAsBefore` the target is taken as the earlier snapshot has it.
+ * `between` is the earlier snapshot reconciled with the later one. Without
+ * it the picture is matched against the earlier snapshot alone, as for an
+ * input that shows before the page is read again: an element of that
+ * snapshot the picture does not have is taken as gone by then, so a
+ * picture of another shape is told only when another document fits it
+ * better. Typing and a choice are reported once the field has changed, so
+ * with `targetAsBefore` the target is taken as the earlier snapshot has it.
  */
 export function pictureBefore(options: {
   readonly previous: StructuralTree;
-  readonly between: StructuralTree;
+  readonly between?: StructuralTree;
   readonly picture: string;
   /** Playwright's selector for the target: it says which document the input
    * was given to, and so which document the picture is of. */
@@ -53,7 +62,8 @@ export function pictureBefore(options: {
   readonly targetAsBefore: boolean;
   readonly refs: SyntheticAriaRefFactory;
 }): PictureBefore | null {
-  const { previous, between, refs } = options;
+  const { previous, refs } = options;
+  const between = options.between ?? previous;
   // Its refs are its own: read with a factory of its own.
   const picture = StructuralTree.fromAriaSnapshotYaml(
     options.picture,
@@ -89,6 +99,8 @@ export function pictureBefore(options: {
   // element has in `between`.
   let matched = new Set<AriaRef>();
   let target: SnapshotRef | undefined;
+  let refOf = new Map<AriaRef, AriaRef>();
+  let fresh = new Set<AriaRef>();
 
   function pair(seen: readonly StructuralNode[], known: StructuralNode[]) {
     const pairs = new Map<StructuralNode, StructuralNode>();
@@ -118,6 +130,8 @@ export function pictureBefore(options: {
     // The picture's refs are the report's own.
     const isTarget = pictureRef(seen.ref) === options.target;
     const ref = known?.ref ?? refs.create();
+    if (!known) fresh.add(ref);
+    refOf.set(seen.ref, ref);
     if (isTarget) target = snapshotRef(ref);
     // The picture never holds what is inside a frame; the target has
     // changed already: both stand as the earlier snapshot has them.
@@ -143,12 +157,17 @@ export function pictureBefore(options: {
     });
   }
 
+  const isMatched = (node: StructuralNode) => matched.has(node.ref);
   // The document the picture is of: one the report's selector allows, whose
   // elements the picture all has.
   const readings: PictureBefore[] = [];
+  /** With the earlier snapshot alone: the readings that miss some of it. */
+  const partial: PictureBefore[] = [];
   for (const scope of scopesFor(between, options.selector)) {
     matched = new Set();
     target = undefined;
+    refOf = new Map();
+    fresh = new Set();
     const roots = pair(picture.getRootNodes(), scope.roots);
     const built = picture
       .getRootNodes()
@@ -164,10 +183,20 @@ export function pictureBefore(options: {
       nodes(node).forEach(check);
     };
     scope.roots.forEach(check);
-    if (!complete) continue;
+    // With the earlier snapshot alone, an element it has may be gone by the
+    // moment of the input; its top level may not: the picture is of another
+    // document then.
+    if (!complete && (options.between || !scope.roots.every(isMatched)))
+      continue;
+    const into = complete ? readings : partial;
     if (!scope.frame) {
       if (built.length === 1)
-        readings.push({ tree: new StructuralTree(built[0]!, refs), target });
+        into.push({
+          tree: new StructuralTree(built[0]!, refs),
+          target,
+          refOf,
+          fresh,
+        });
       continue;
     }
     // Outside the frame, the page stands as the earlier snapshot has it.
@@ -180,12 +209,16 @@ export function pictureBefore(options: {
               typeof child === "string" ? child : outside(child)
             ),
           });
-    readings.push({
+    into.push({
       tree: new StructuralTree(outside(previous.root), refs),
       target,
+      refOf,
+      fresh,
     });
   }
   // Two frames the picture fits alike: which one the input was given to
-  // cannot be told, and a guess could name the wrong element.
-  return readings.length === 1 ? readings[0]! : null;
+  // cannot be told, and a guess could name the wrong element. With the
+  // earlier snapshot alone, a document the picture fits whole comes first.
+  if (readings.length > 0) return readings.length === 1 ? readings[0]! : null;
+  return partial.length === 1 ? partial[0]! : null;
 }

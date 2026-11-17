@@ -112,7 +112,25 @@ export type TimelineAddition =
        */
       readonly resumes?: boolean;
     }
-  | { readonly kind: "interaction"; readonly interaction: RecordedInteraction }
+  | {
+      readonly kind: "interaction";
+      readonly interaction: RecordedInteraction;
+      /**
+       * For an Interaction that may still change, as typing does while it is
+       * typed: the name the session gives it. Added again under the same
+       * key, it replaces the entry added before, in place, with its "before"
+       * and its first picture as they were: its text from the report, and
+       * what it changed up to its "after".
+       */
+      readonly key?: string;
+    }
+  /** Playwright revised the report of the Interaction added under `key`
+   * after it could change no more: only its text is replaced. */
+  | {
+      readonly kind: "text";
+      readonly key: string;
+      readonly report: InteractionReport;
+    }
   /** The person leaves an entry out of the recording, by its `id`. An entry
    * the timeline does not have is left alone. */
   | { readonly kind: "discard"; readonly entry: EntryId }
