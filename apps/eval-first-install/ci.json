@@ -1,5 +1,5 @@
 {
   "ref": "6b0b4d79ee01c9a4abb5591a8c0fbab0c2c7e957",
-  "runs": 1,
+  "runs": 3,
   "tools": ["playwright-cli", "playwright-mcp", "agent-browser"]
 }
