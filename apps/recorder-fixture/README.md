@@ -81,7 +81,8 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   own page.
 
 - `assert.spec.ts` uses Assert visibility from the toolbar and the window,
-  and hovers entries' targets and the rows of what they changed in the
+  also on a page that loads while it is on (`departing.html`, which goes on
+  to `arrival.html` by itself), and hovers entries' targets and the rows of what they changed in the
   window, in pages a real recorder records, including a step whose click
   led to another page (`catalog.html`, to `basket.html` with one match and
   to `wishlist.html` with two): the highlight is read off the recorded page.

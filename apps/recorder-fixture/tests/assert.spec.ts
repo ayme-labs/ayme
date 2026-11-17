@@ -8,9 +8,11 @@ import {
 import type { EntryId } from "@ayme-dev/recorder/contract";
 import { selectors, type Locator, type Page } from "@playwright/test";
 
+import { ArrivalPage } from "../.ayme/pom/ArrivalPage";
 import { BasketPage } from "../.ayme/pom/BasketPage";
 import { CartPage } from "../.ayme/pom/CartPage";
 import { CatalogPage } from "../.ayme/pom/CatalogPage";
+import { DepartingPage } from "../.ayme/pom/DepartingPage";
 import { InputsPage } from "../.ayme/pom/InputsPage";
 import { WishlistPage } from "../.ayme/pom/WishlistPage";
 import { expect, test } from "./fixtures";
@@ -99,6 +101,72 @@ test.describe("Assert visibility", () => {
     );
     // No Change Tree of its own: the next line leaves the entry.
     expect(assertion.split("\n")[3]).not.toMatch(/changeTree/);
+  });
+
+  test("picks the element a person clicks on a page that loaded while Assert visibility was on, and the next click reaches the page and is recorded", async ({
+    startRecording,
+    page: windowPage,
+  }) => {
+    const recording = await startRecording("/departing.html", { window: true });
+    const { page, person, recorder } = recording;
+    const toolbar = await RecorderToolbar.on(page, selectors);
+    const window = new RecorderWindow(windowPage);
+    await window.open(recording.windowUrl!);
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    const departing = new DepartingPage(page);
+    await person.click(departing.departButton);
+    // As a person does: the next press only once the click has done its
+    // part.
+    await expect(departing.state).toHaveText("Departing");
+    await person.click(toolbar.assertVisibility);
+    await expect.poll(() => window.controls.picking()).toBe(true);
+    // The page goes on to the next one by itself while Playwright picks.
+    await page.waitForURL(/\/arrival\.html$/);
+    const arrival = new ArrivalPage(page);
+    await expect(arrival.countUpButton).toBeVisible();
+    expect(await window.controls.picking()).toBe(true);
+
+    await person.click(arrival.countUpButton);
+    await expect.poll(() => window.controls.picking()).toBe(false);
+    await person.pause();
+    // Picked: the click did not reach the page.
+    await expect(arrival.count).toHaveText("Count: 0");
+    await person.click(arrival.countUpButton);
+    await expect(arrival.count).toHaveText("Count: 1");
+    // The window shows both as they happen, on the page they were made on.
+    await expect(window.timeline.visitSections).toHaveCount(2);
+    const [, arrived] = await window.timeline.visits();
+    const steps = arrived!.entryCards.and(
+      windowPage.locator('[data-kind="interaction"]')
+    );
+    await expect(steps).toHaveCount(2);
+    await expect(new Entry(steps.nth(0)).title).toHaveText("Assert");
+    await expect(new Entry(steps.nth(1)).title).toHaveText("Click");
+
+    const finishing = Date.now();
+    expect(await recorder.send({ type: "finish" })).toBe("applied");
+    const outcome = await recorder.done;
+    // Not the five seconds a wrap-up waits at most.
+    expect(Date.now() - finishing).toBeLessThan(3_000);
+    if (outcome.kind !== "saved") throw new Error("Nothing was saved.");
+    const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
+    const entries = text
+      .slice(text.indexOf("arrival.html"), text.indexOf("traceActionPoints:"))
+      .split("\n      - kind: ");
+    const assertionText = entries.find((entry) =>
+      entry.includes("type: assertVisible")
+    );
+    const clickText = entries.find((entry) => entry.includes("type: click"));
+    expect(assertionText).toMatch(
+      /type: assertVisible\n\s+targetRef: (f\d+)?e\d+\n\s+targetSelector: internal:role=button\[name="Count up"i\]$/
+    );
+    expect(clickText).toMatch(
+      /type: click\n\s+targetRef: (f\d+)?e\d+\n\s+targetSelector: internal:role=button\[name="Count up"i\]\n/
+    );
+    expect(clickText).toMatch(
+      /<changed> \[ref=(f\d+)?e\d+\] paragraph: "Count: 1"/
+    );
   });
 });
 
