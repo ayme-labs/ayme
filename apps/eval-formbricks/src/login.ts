@@ -7,6 +7,7 @@
  */
 import {
   fallbackTokenVariable,
+  isOauthTokenShape,
   readEnvVariable,
   readOauthToken,
   tokenVariable,
@@ -48,6 +49,17 @@ export function usageLimitError(
     : null;
 }
 
+/** A configured token must look like one; the message names the variable and never the value. */
+function checkedToken(
+  token: string | undefined,
+  variable: string
+): string | undefined {
+  if (token === undefined || isOauthTokenShape(token)) return token;
+  throw new Error(
+    `${variable} does not have the shape of a Claude Code token (sk-ant-oat...). Create one with \`claude setup-token\`.`
+  );
+}
+
 /** Runs the attempt on the first login, and once more on the second when the first ended on a usage limit. */
 export async function withFallbackLogin<T>(
   directory: string,
@@ -55,8 +67,11 @@ export async function withFallbackLogin<T>(
   log: (line: string) => void,
   parent: NodeJS.ProcessEnv = process.env
 ): Promise<T> {
-  const first = readOauthToken(directory, parent);
-  const fallback = readEnvVariable(fallbackTokenVariable, directory, parent);
+  const first = checkedToken(readOauthToken(directory, parent), tokenVariable);
+  const fallback = checkedToken(
+    readEnvVariable(fallbackTokenVariable, directory, parent),
+    fallbackTokenVariable
+  );
   const secrets = [first, fallback].filter(
     (token): token is string => token !== undefined
   );

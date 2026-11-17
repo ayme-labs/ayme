@@ -26,15 +26,10 @@ import {
   claudeVersion,
   runClaude,
   withoutClaudeVariables,
-  type ClaudeRun,
 } from "./claude.ts";
 import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
 import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
-import {
-  readLabChanges,
-  setAsideAttempt,
-  type LabChanges,
-} from "./labCheckout.ts";
+import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import { usageLimitError, withFallbackLogin, type Login } from "./login.ts";
 import {
   ensureDatabaseBuilt,
@@ -245,47 +240,37 @@ async function runOnceOn(
     log(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
-    // The agent starts from a clean checkout (a precondition); what is new after it is the attempt's.
-    const labBefore = readLabChanges();
-    let run: ClaudeRun | undefined;
-    let failure: unknown;
-    try {
-      run = await runClaude({
-        cwd: labRoot,
-        environment: { ...environment, ...armSetup?.environment },
-        model: options.model,
-        arm: options.arm,
-        mcpConfigPath,
-        readableDirectories: armSetup?.readableDirectories,
-        setupPrompt: setup,
-        prompt,
-        timeoutMs: options.timeoutSeconds * 1000,
-        transcriptPath: path.join(runDir, "transcript.jsonl"),
-        stderrPath: path.join(runDir, "stderr.log"),
-        secrets: login.secrets,
-      });
-    } catch (error) {
-      failure = error;
+    const run = await runClaude({
+      cwd: labRoot,
+      environment: { ...environment, ...armSetup?.environment },
+      model: options.model,
+      arm: options.arm,
+      mcpConfigPath,
+      readableDirectories: armSetup?.readableDirectories,
+      setupPrompt: setup,
+      prompt,
+      timeoutMs: options.timeoutSeconds * 1000,
+      transcriptPath: path.join(runDir, "transcript.jsonl"),
+      stderrPath: path.join(runDir, "stderr.log"),
+      secrets: login.secrets,
+    });
+    // A limit ends the attempt: half a run is no measurement. It is cleaned up as after any run: untracked files
+    // move to this attempt's agent-files/; tracked changes stay, and stop the repeat at the clean-checkout check.
+    const limited = usageLimitError(run, login, runDir);
+    if (limited !== null) {
+      try {
+        await moveFiles(
+          readLabChanges().untracked,
+          path.join(runDir, "agent-files")
+        );
+      } catch (error) {
+        // Never in place of the message that says why the attempt ended.
+        log(
+          `Could not move what the agent left in the lab app folder: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+      throw limited;
     }
-    // A limit ends the attempt: half a run is no measurement, and the repeat must start from the checkout as committed.
-    const limited =
-      run === undefined ? null : usageLimitError(run, login, runDir);
-    // The attempt's own cleanup, however the agent ended. It never replaces the error that says why the attempt ended.
-    let labChanges: LabChanges = { untracked: [], modified: [] };
-    try {
-      labChanges = await setAsideAttempt({
-        before: labBefore,
-        destination: path.join(runDir, "agent-files"),
-        discard: limited !== null,
-      });
-    } catch (error) {
-      if (run !== undefined && limited === null) throw error;
-      log(
-        `Could not set aside what the agent left in the lab app folder: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-    if (run === undefined) throw failure;
-    if (limited !== null) throw limited;
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -294,6 +279,10 @@ async function runOnceOn(
     log(
       `Agent finished: exit ${run.exitCode ?? run.signal}, setup turn ${seconds(run.setup.wallTimeMs)}, task turn ${seconds(run.task.wallTimeMs)}, timed out ${run.task.timedOut}, ${run.lines.length} events.`
     );
+
+    // Whatever the agent left in the lab app folder must not reach the next run.
+    const labChanges = readLabChanges();
+    await moveFiles(labChanges.untracked, path.join(runDir, "agent-files"));
 
     log("Reading the verdict from the database.");
     const verdict = judgeMission(

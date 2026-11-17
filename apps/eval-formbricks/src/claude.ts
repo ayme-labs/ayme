@@ -178,6 +178,41 @@ export function redactSecrets(text: string, secrets: string[]): string {
   return redacted;
 }
 
+/**
+ * One line of the agent's output as it is stored. A line that is JSON is
+ * scanned as its decoded strings, so a token written with JSON escapes
+ * (`\u0073k-ant-...`) is found too: only when one is, the line is stored
+ * re-serialized with every token replaced, and any other line is stored byte
+ * for byte. A line that is not JSON is scrubbed as text.
+ */
+export function scrubLine(line: string, secrets: string[]): string {
+  let event: unknown;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    return redactSecrets(line, secrets);
+  }
+  let found = false;
+  const scrub = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      const redacted = redactSecrets(value, secrets);
+      found ||= redacted !== value;
+      return redacted;
+    }
+    if (Array.isArray(value)) return value.map(scrub);
+    if (typeof value === "object" && value !== null)
+      return Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => [
+          redactSecrets(key, secrets),
+          scrub(entry),
+        ])
+      );
+    return value;
+  };
+  const scrubbed = scrub(event);
+  return found ? JSON.stringify(scrubbed) : line;
+}
+
 export function claudeVersion(): string | null {
   const result = spawnSync("claude", ["--version"], {
     encoding: "utf8",
@@ -260,7 +295,7 @@ export async function runClaude(
   ];
   const stderrReader = createInterface({ input: child.stderr });
   stderrReader.on("line", (line) =>
-    stderr.write(`${redactSecrets(line, secrets)}\n`)
+    stderr.write(`${scrubLine(line, secrets)}\n`)
   );
   const stderrClosed = new Promise<void>((resolve) =>
     stderrReader.once("close", resolve)
@@ -275,10 +310,11 @@ export async function runClaude(
   let onResult: ((event: { isError: boolean }) => void) | null = null;
   const reader = createInterface({ input: child.stdout });
   reader.on("line", (rawLine) => {
-    const line = redactSecrets(rawLine, secrets);
+    // The event is read as the agent wrote it; only what is stored is scrubbed.
+    const result = resultEvent(rawLine);
+    const line = scrubLine(rawLine, secrets);
     lines.push(line);
     transcript.write(`${line}\n`);
-    const result = resultEvent(line);
     if (result !== null) {
       usageLimited ||= result.usageLimit;
       onResult?.(result);

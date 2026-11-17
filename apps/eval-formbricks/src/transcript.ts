@@ -100,11 +100,12 @@ function parseEvents(lines: string[]) {
  * limit", "You've hit your team's shared budget", "You've reached your Fable limit", "You're out
  * of usage credits" and "You're out of extra usage", "Your org is out of usage", and what it says
  * instead when the seat cannot buy more usage ("Your seat type doesn't include usage ...", "Your
- * usage allocation has been disabled by your admin", "Your group's usage limit is set to $0").
- * Only the weekly limit has been seen in a real transcript. Anchored at the start: the CLI writes
- * these itself, so a model's text that quotes one does not count. Overload and server throttling
- * ("Opus is experiencing high load", "Server is temporarily limiting requests (not your usage
- * limit)") are not the login's own limit and do not match.
+ * usage allocation has been disabled by your admin", "Your group's usage limit is set to $0"),
+ * and "This service is disabled for your org", which it gives on a quota rejection when the
+ * organisation has disabled overage. Only the weekly limit has been seen in a real transcript.
+ * Anchored at the start: the CLI writes these itself, so a model's text that quotes one does not
+ * count. Overload and server throttling ("Opus is experiencing high load", "Server is temporarily
+ * limiting requests (not your usage limit)") are not the login's own limit and do not match.
  */
 const usageLimitTexts = [
   /^You've hit your [^\n]*\b(?:limit|budget)\b/,
@@ -114,6 +115,7 @@ const usageLimitTexts = [
   /^Your seat type doesn't include (?:extra )?usage\b/,
   /^Your usage allocation has been disabled by your admin/,
   /^Your group's usage limit is set to \$0/,
+  /^This service is disabled for your org\b/,
 ];
 
 export function isUsageLimitText(text: string) {

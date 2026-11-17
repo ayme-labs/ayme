@@ -9,7 +9,8 @@
 // FAKE_CLAUDE_BY_TOKEN, a JSON object from an OAuth token to a fixture, makes the
 // answer depend on the CLAUDE_CODE_OAUTH_TOKEN it receives, as a login does: a
 // token not in it is not logged in and runs nothing. With FAKE_CLAUDE_ECHO_TOKEN
-// it also echoes that token on both streams, as a careless agent might.
+// it also echoes that token on both streams, as a careless agent might, and once
+// on stdout with every character written as a JSON escape.
 // Each user message's text goes to stderr, so a test can see what was sent,
 // as do the arguments and the skills in its configuration folder. The fixture
 // writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
@@ -72,6 +73,12 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     process.stderr.write(`fake claude: my token is ${token}\n`);
     process.stdout.write(
       `${JSON.stringify({ type: "system", subtype: "debug", message: `my token is ${token}` })}\n`
+    );
+    const escaped = [...token]
+      .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
+      .join("");
+    process.stdout.write(
+      `{"type":"system","subtype":"debug","message":"my escaped token is ${escaped}"}\n`
     );
   }
   const turn = turns[replayed];

@@ -1,17 +1,11 @@
-import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import {
-  classifyEntries,
-  moveFiles,
-  parsePorcelain,
-  setAsideAttempt,
-} from "./labCheckout.ts";
+import { classifyEntries, moveFiles, parsePorcelain } from "./labCheckout.ts";
 import { labCheckoutCleanPrecondition } from "./preconditions.ts";
 
 describe("parsePorcelain", () => {
@@ -107,87 +101,5 @@ describe("the lab checkout precondition", () => {
     const problem = await precondition.check();
     expect(problem).toContain("untracked snap.yaml");
     expect(problem).toContain("modified formbricks/README.md");
-  });
-});
-
-/** The mission run's own cleanup, against a real git repository standing in for the lab app. */
-describe("setAsideAttempt", () => {
-  const dirs: string[] = [];
-  afterEach(async () => {
-    for (const dir of dirs.splice(0))
-      await rm(dir, { recursive: true, force: true });
-  });
-
-  async function lab() {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "lab-attempt-"));
-    dirs.push(dir);
-    const root = path.join(dir, "lab");
-    await mkdir(path.join(root, "sub"), { recursive: true });
-    await writeFile(path.join(root, "kept.txt"), "committed\n");
-    await writeFile(path.join(root, "sub/gone.txt"), "committed too\n");
-    const git = (...args: string[]) =>
-      spawnSync(
-        "git",
-        ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args],
-        { cwd: root, encoding: "utf8" }
-      );
-    git("init", "-q");
-    git("add", ".");
-    git("commit", "-q", "-m", "start");
-    // The agent: edits one tracked file, deletes another, creates a file; a developer's file was there before.
-    await writeFile(path.join(root, "kept.txt"), "the agent's edit\n");
-    await rm(path.join(root, "sub/gone.txt"));
-    await writeFile(path.join(root, "new.txt"), "agent");
-    await writeFile(path.join(root, "developer.txt"), "mine");
-    return {
-      root,
-      destination: path.join(dir, "agent-files"),
-      read: () => ({
-        untracked: ["developer.txt", "new.txt"],
-        modified: ["kept.txt", "sub/gone.txt"],
-      }),
-      before: { untracked: ["developer.txt"], modified: [] },
-    };
-  }
-
-  it("moves only the files the attempt created, and leaves tracked changes for a person when the run stands", async () => {
-    const { root, destination, read, before } = await lab();
-    const changes = await setAsideAttempt({
-      before,
-      destination,
-      discard: false,
-      read,
-      root,
-    });
-    expect(changes).toEqual({
-      untracked: ["new.txt"],
-      modified: ["kept.txt", "sub/gone.txt"],
-    });
-    expect(await readFile(path.join(destination, "new.txt"), "utf8")).toBe(
-      "agent"
-    );
-    expect(existsSync(path.join(root, "developer.txt"))).toBe(true);
-    expect(await readFile(path.join(root, "kept.txt"), "utf8")).toBe(
-      "the agent's edit\n"
-    );
-    expect(existsSync(path.join(destination, "kept.txt.diff"))).toBe(false);
-  });
-
-  it("saves a patch of each tracked change and restores the file when the attempt is thrown away", async () => {
-    const { root, destination, read, before } = await lab();
-    await setAsideAttempt({ before, destination, discard: true, read, root });
-    expect(await readFile(path.join(root, "kept.txt"), "utf8")).toBe(
-      "committed\n"
-    );
-    expect(await readFile(path.join(root, "sub/gone.txt"), "utf8")).toBe(
-      "committed too\n"
-    );
-    expect(
-      await readFile(path.join(destination, "kept.txt.diff"), "utf8")
-    ).toContain("+the agent's edit");
-    expect(
-      await readFile(path.join(destination, "sub/gone.txt.diff"), "utf8")
-    ).toContain("-committed too");
-    expect(existsSync(path.join(root, "developer.txt"))).toBe(true);
   });
 });

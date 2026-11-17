@@ -9,7 +9,9 @@ import { arms } from "./arms.ts";
 import {
   claudeArguments,
   claudeEnvironment,
+  redactSecrets,
   runClaude,
+  scrubLine,
   userMessageLine,
   type ClaudeInvocation,
   type ClaudeRun,
@@ -178,6 +180,7 @@ describe("runClaude", () => {
     setupTimeoutMs?: number;
     resultDelayMs?: number;
     withoutTask?: boolean;
+    secrets?: string[];
   }): Promise<ClaudeRun & { stderr: string }> {
     const workDir = await mkdtemp(path.join(os.tmpdir(), "eval-claude-"));
     workDirs.push(workDir);
@@ -205,6 +208,7 @@ describe("runClaude", () => {
       setupTimeoutMs: options.setupTimeoutMs ?? 10_000,
       transcriptPath: path.join(workDir, "transcript.jsonl"),
       stderrPath,
+      ...(options.secrets === undefined ? {} : { secrets: options.secrets }),
     } as ClaudeInvocation);
     return { ...run, stderr: await readFile(stderrPath, "utf8") };
   }
@@ -277,5 +281,80 @@ describe("runClaude", () => {
     expect(turns).toHaveLength(2);
     expect(turns[0]?.result).not.toBeNull();
     expect(turns[1]?.result).toBeNull();
+  });
+
+  it("flags a usage limit in the setup turn, which ends the run before the task", async () => {
+    const run = await drive({ fixture: "limit-in-setup.jsonl" });
+    expect(run.usageLimited).toBe(true);
+    expect(run.task).toBeNull();
+  });
+
+  it("flags a usage limit in the task turn, after a completed setup turn", async () => {
+    const run = await drive({ fixture: "limit-in-task.jsonl" });
+    expect(run.usageLimited).toBe(true);
+    expect(run.setupFailure).toBeNull();
+    expect(run.task).not.toBeNull();
+  });
+
+  it("flags no limit in a completed run or in an error that is not one", async () => {
+    expect((await drive({ fixture: "complete.jsonl" })).usageLimited).toBe(
+      false
+    );
+    expect((await drive({ fixture: "setup-failed.jsonl" })).usageLimited).toBe(
+      false
+    );
+  });
+
+  it("reads each event as the agent wrote it, whatever is scrubbed from what is stored", async () => {
+    // A value that is part of every field name would rewrite `type` and `result`; the turns still end and the limit is seen.
+    const run = await drive({
+      fixture: "limit-in-setup.jsonl",
+      secrets: ["e"],
+    });
+    expect(run.usageLimited).toBe(true);
+    expect(run.setup.timedOut).toBe(false);
+    expect(run.task).toBeNull();
+  });
+});
+
+describe("scrubLine", () => {
+  const token = "sk-ant-oat01-dummyTokenForTests0123456789";
+  const escaped = [...token]
+    .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
+    .join("");
+
+  it("finds a token written with JSON escapes, and stores the line re-serialized without it", () => {
+    const line = `{"type":"system","message":"my token is ${escaped}","n":1}`;
+    expect(line).not.toContain(token);
+    // Its decoded text is the whole token, which a search of the raw bytes misses.
+    expect(redactSecrets(line, [token])).toBe(line);
+    const stored = scrubLine(line, [token]);
+    expect(JSON.parse(stored)).toEqual({
+      type: "system",
+      message: "my token is [redacted]",
+      n: 1,
+    });
+    expect(JSON.stringify(JSON.parse(stored))).not.toContain(token);
+  });
+
+  it("finds a token in a key, a nested value and an array", () => {
+    const stored = scrubLine(
+      JSON.stringify({ [token]: { list: ["a", `x${token}`] } }),
+      [token]
+    );
+    expect(JSON.parse(stored)).toEqual({
+      "[redacted]": { list: ["a", "x[redacted]"] },
+    });
+  });
+
+  it("keeps a line without a token byte for byte, formatting included", () => {
+    const line = '{ "type" : "result",  "result":"\\u0041 done" }';
+    expect(scrubLine(line, [token])).toBe(line);
+  });
+
+  it("scrubs a line that is not JSON as text", () => {
+    expect(scrubLine(`debug: ${token} here`, [token])).toBe(
+      "debug: [redacted] here"
+    );
   });
 });
