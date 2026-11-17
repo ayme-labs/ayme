@@ -48,13 +48,15 @@ async function inspectorApp(agent: Agent) {
 /**
  * Shows the page in a stand-in agent app that offers `modes`, in a browser
  * context of its own. Returns the agent app's page, the Inspector in it, and
- * `close`, which closes both.
+ * `close`, which closes both. Without `announces`, the agent app grants a
+ * display mode in its answer only and sends no context change after it.
  */
 async function showInAgentApp(
   browser: Browser,
   baseURL: string,
   app: { html: string; connectDomains: string[] },
-  modes: string[]
+  modes: string[],
+  announces = true
 ) {
   // Under the policy T3 Code was measured to apply, the strictest of the
   // agent apps measured: inline scripts and styles only, and connections
@@ -88,7 +90,7 @@ async function showInAgentApp(
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(
-    `${baseURL}/agent-app.html?modes=${modes.join(",")}&frame=${encodeURIComponent(`http://127.0.0.1:${port}/`)}`
+    `${baseURL}/agent-app.html?modes=${modes.join(",")}&announce=${announces ? 1 : 0}&frame=${encodeURIComponent(`http://127.0.0.1:${port}/`)}`
   );
   const inspector = new Inspector(
     page,
@@ -192,6 +194,45 @@ test("the Inspector in an agent app that offers no fullscreen has no fullscreen 
 
       await expect(shown.inspector.header.title).toBeVisible();
       await expect(shown.inspector.header.fullscreenButton).toHaveCount(0);
+    } finally {
+      await shown.close();
+    }
+  } finally {
+    await agent.close();
+  }
+});
+
+test("the Inspector goes by the display mode an agent app grants, when the agent app announces no change after it", async ({
+  context,
+  page,
+  browser,
+  baseURL,
+}, testInfo) => {
+  const { agent } = await startServingAgent(context, testInfo);
+  try {
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    const shown = await showInAgentApp(
+      browser,
+      baseURL!,
+      await inspectorApp(agent),
+      ["inline", "fullscreen"],
+      false
+    );
+    try {
+      await shown.inspector.open();
+      const { header } = shown.inspector;
+
+      await header.toggleFullscreen();
+      await expect(header.fullscreenButton).toHaveAccessibleName(
+        "Exit fullscreen"
+      );
+      await header.toggleFullscreen();
+
+      await expect(header.fullscreenButton).toHaveAccessibleName("Fullscreen");
+      expect((await agentAppSaw(shown.page)).displayModes).toEqual([
+        "fullscreen",
+        "inline",
+      ]);
     } finally {
       await shown.close();
     }

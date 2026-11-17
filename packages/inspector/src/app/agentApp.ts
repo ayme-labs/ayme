@@ -22,19 +22,25 @@ export function connectAgentApp(AppClass: typeof App): WindowFullscreen {
   );
   const listeners = new Set<() => void>();
   let state: FullscreenState = { offered: false, active: false };
-  const read = () => {
-    const context = app.getHostContext();
-    const offered = context?.availableDisplayModes?.includes("fullscreen");
-    const active = context?.displayMode === "fullscreen";
+  // The agent app names the display mode in its answer to a request, in a
+  // context change, or in both: the last one it named is the window's.
+  const update = (
+    displayMode: string | undefined,
+    modes = app.getHostContext()?.availableDisplayModes
+  ) => {
+    const offered = modes?.includes("fullscreen") === true;
+    const active =
+      displayMode === undefined ? state.active : displayMode === "fullscreen";
     if (offered === state.offered && active === state.active) return;
-    state = { offered: offered === true, active };
+    state = { offered, active };
     for (const listener of [...listeners]) listener();
   };
-  app.onhostcontextchanged = read;
+  app.onhostcontextchanged = ({ displayMode, availableDisplayModes }) =>
+    update(displayMode, availableDisplayModes);
   app.onteardown = async () => ({});
   void app.connect().then(
     () => {
-      read();
+      update(app.getHostContext()?.displayMode);
       void app.sendSizeChanged({ height: INLINE_HEIGHT });
     },
     // Not shown by an agent app after all: it offers nothing.
@@ -49,7 +55,10 @@ export function connectAgentApp(AppClass: typeof App): WindowFullscreen {
     toggle() {
       void app
         .requestDisplayMode({ mode: state.active ? "inline" : "fullscreen" })
-        .then(read, () => {});
+        .then(
+          ({ mode }) => update(mode),
+          () => {}
+        );
     },
   };
 }

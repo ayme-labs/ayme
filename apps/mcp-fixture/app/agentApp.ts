@@ -9,10 +9,13 @@ import {
  * frame of `agent-app.html`, through the ext-apps SDK's own host side.
  * `?modes=` lists the display modes it offers, `inline` by default.
  * It sizes the frame as the page asks, grants any display mode it offers,
- * and keeps what the page asked for in `window.agentAppSaw`.
+ * and keeps what the page asked for in `window.agentAppSaw`. With
+ * `?announce=0` it grants a display mode in its answer only, and sends no
+ * context change after it, which the MCP Apps specification allows.
  */
 const frame = document.querySelector<HTMLIFrameElement>("#app")!;
 const query = new URLSearchParams(location.search);
+const announces = query.get("announce") !== "0";
 const offered = (query.get("modes") ?? "inline").split(",") as (
   "inline" | "fullscreen" | "pip"
 )[];
@@ -43,7 +46,7 @@ bridge.onsizechange = ({ height }) => {
 bridge.onrequestdisplaymode = async ({ mode }) => {
   saw.displayModes.push(mode);
   const granted = offered.includes(mode) ? mode : "inline";
-  bridge.setHostContext({ ...context, displayMode: granted });
+  if (announces) bridge.setHostContext({ ...context, displayMode: granted });
   return { mode: granted };
 };
 await bridge.connect(
