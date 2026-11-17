@@ -21,24 +21,17 @@ on:
         description: Runs per arm
         type: number
         default: 3
-      agent:
-        description: The agent every run goes through
-        type: choice
-        options:
-          - claude
-          - codex
-        default: claude
       model:
-        description: The model every run uses, such as sonnet or haiku for claude; empty takes the agent's default
+        description: The Claude Code model every run uses, such as sonnet or haiku
         type: string
-        default: ""
+        default: sonnet
       qualify_only:
         description: Prepare and qualify the lab app only, with no agent and no model call
         type: boolean
         default: false
 
-# One eval at a time: every paid run uses the same agent login, and two at
-# once would share its usage limits.
+# One eval at a time: every paid run uses the same Claude Code login, and two
+# at once would share its usage limits.
 concurrency:
   group: eval-formbricks
   cancel-in-progress: false
@@ -49,8 +42,6 @@ permissions:
 env:
   # The Claude Code the agent runs, recorded in every result.
   CLAUDE_CODE_VERSION: 2.1.281
-  # The Codex the agent runs with `agent: codex`, recorded in every result.
-  CODEX_VERSION: 0.169.0
 
 jobs:
   eval:
@@ -80,16 +71,10 @@ jobs:
           docker version --format 'Docker {{.Server.Version}}'
 
       - name: Install Claude Code
-        if: ${{ !inputs.qualify_only && inputs.agent == 'claude' }}
+        if: ${{ !inputs.qualify_only }}
         run: |
           npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
           claude --version
-
-      - name: Install Codex
-        if: ${{ !inputs.qualify_only && inputs.agent == 'codex' }}
-        run: |
-          npm install --global "@openai/codex@${CODEX_VERSION}"
-          codex --version
 
       - name: Prepare the lab app
         working-directory: apps/lab-formbricks
@@ -132,16 +117,13 @@ jobs:
         if: ${{ !inputs.qualify_only }}
         working-directory: apps/eval-formbricks
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.agent == 'claude' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
-          CODEX_ACCESS_TOKEN: ${{ inputs.agent == 'codex' && secrets.CODEX_ACCESS_TOKEN || '' }}
-          AGENT: ${{ inputs.agent }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           MISSION: ${{ inputs.mission }}
           ARMS: ${{ inputs.arms }}
           RUNS: ${{ inputs.runs }}
           MODEL: ${{ inputs.model }}
         run: |
-          args=(--agent "$AGENT" --mission "$MISSION" --runs "$RUNS")
-          if [ -n "$MODEL" ]; then args+=(--model "$MODEL"); fi
+          args=(--mission "$MISSION" --runs "$RUNS" --model "$MODEL")
           if [ -n "$ARMS" ]; then args+=(--arms "$ARMS"); fi
           pnpm eval:suite -- "${args[@]}"
 
