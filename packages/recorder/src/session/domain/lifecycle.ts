@@ -380,6 +380,12 @@ type Input = {
    * was reported, and had no snapshot yet: its "after" is its "before" too,
    * and Playwright's picture of the page is not set against it. */
   readonly unread: boolean;
+  /** For an input known from its report only: what the timeline was last
+   * told of it while it shows, before it is final. Null until it shows. */
+  readonly told: {
+    readonly after: SnapshotId | null;
+    readonly report: InteractionReport;
+  } | null;
 };
 
 /** What a started recording keeps track of. */
@@ -408,6 +414,12 @@ type PageGate = {
   /** The snapshot asked for at Continue to be that one, while it is under
    * way. */
   readonly resuming?: SnapshotId | null;
+  /** Playwright reported an Interaction on the page since Record or
+   * Continue. */
+  readonly reported?: boolean;
+  /** The fill written last, while Playwright reported nothing newer on the
+   * page: a revision of it sets its text. */
+  readonly lastFill?: { readonly key: string; readonly type: string } | null;
 };
 
 export type LifecycleState = {
@@ -1164,6 +1176,7 @@ const newInput = (
   passedOnAt: null,
   report,
   unread: false,
+  told: null,
 });
 
 /** A recording being changed within one step. */
@@ -1270,7 +1283,7 @@ function heard(state: Active, draft: Draft, happening: BrowserSignal): Active {
       pageSettled(draft, happening.input);
       return state;
     case "interactionRevised":
-      interactionRevised(draft, happening.page, happening.report);
+      interactionRevised(state, draft, happening.page, happening.report);
       return state;
     case "inputGone":
       // Never passed on to the document that came after it.
@@ -1472,8 +1485,17 @@ function pageSettled(draft: Draft, id: InputId) {
   });
 }
 
-/** Playwright revised the Interaction it reported last on the page. */
+/**
+ * Playwright revised the Interaction it reported last on the page. Typing's
+ * text follows each revision; what it changed is still measured from the
+ * picture of its first report. A fill that is final already takes only the
+ * text, while Playwright reported nothing newer on the page. One Playwright
+ * reported before Record or Continue is new to this stretch of recording,
+ * as typing more into a field typed in before a pause: it is a fill of its
+ * own.
+ */
 function interactionRevised(
+  state: Active,
   draft: Draft,
   page: PageId,
   report: InteractionReport
@@ -1481,11 +1503,33 @@ function interactionRevised(
   const open = draft.inputs.findLast(
     (input) => input.page === page && input.held.kind === "reported"
   );
-  if (!open) return;
+  const gate = gateOf(draft, page);
+  if (!open) {
+    if (gate?.lastFill) {
+      if (gate.lastFill.type === report.type)
+        draft.todo.push({
+          kind: "timeline",
+          add: { kind: "text", key: gate.lastFill.key, report },
+        });
+      return;
+    }
+    if (
+      !gate?.reported &&
+      REPORTED_ONLY.has(report.type) &&
+      state.pages.some((open) => open.id === page)
+    ) {
+      changeGate(draft, page, { reported: true });
+      knownFromReport(draft, page, report);
+    }
+    return;
+  }
   // Stryker disable next-line OptionalChaining: an input known from its report has one; the check is for the type
   const reportedAs = open.report?.type;
   if (reportedAs !== report.type) return;
-  change(draft, open.id, { report });
+  // Stryker disable next-line OptionalChaining: an input known from its report has one; the check is for the type
+  change(draft, open.id, {
+    report: { ...report, target: open.report!.target },
+  });
   if (open.stage === "takingAfter") change(draft, open.id, { revised: true });
   if (open.stage === "settled") {
     change(draft, open.id, { stage: "settling" });
@@ -1501,6 +1545,8 @@ function interactionReported(
   page: PageId,
   report: InteractionReport
 ) {
+  // A revision from now on is of this report, not of a fill before it.
+  changeGate(draft, page, { reported: true, lastFill: null });
   if (report.type === ASSERTED) return asserted(draft, page, report);
   const kind = heldKindOf(report);
   if (kind !== null) return reportOfHeld(state, draft, page, report, kind);
@@ -1904,20 +1950,29 @@ const awaitsTheLast = (input: Input) =>
 /**
  * Writes down every input that has all it needs, in the order of the
  * inputs. `last`: nothing newer can happen any more, so an input known from
- * its report only is written too.
+ * its report only is written too. Until then such an input shows as it
+ * stands, once it has its start and every earlier input of its page shows:
+ * the timeline is told it again whenever its text or its latest read
+ * changes.
  */
 function writeDown(draft: Draft, last: boolean) {
   for (const input of draft.inputs) {
-    if (input.stage !== "settled") continue;
-    if (input.unreported) {
+    if (input.stage === "settled" && input.unreported) {
       draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
       continue;
     }
     if (!input.report || !input.before) continue;
-    if (!last && mayBeRevised(draft, input)) continue;
-    if (behindUnwritten(draft, input)) continue;
     const covered = draft.inputs.filter((held) => held.joins === input.id);
-    if (covered.some((held) => held.stage !== "settled")) continue;
+    const complete =
+      input.stage === "settled" &&
+      (last || !mayBeRevised(draft, input)) &&
+      !behindUnwritten(draft, input) &&
+      covered.every((held) => held.stage === "settled");
+    if (input.held.kind === "reported") {
+      showOrWrite(draft, input, complete);
+      continue;
+    }
+    if (!complete) continue;
     draft.todo.push({
       kind: "timeline",
       add: {
@@ -1929,9 +1984,6 @@ function writeDown(draft: Draft, last: boolean) {
           // The clicks its report covers end where the last of them does.
           after: covered.at(-1)?.after ?? input.after,
           at: input.passedOnAt ?? 0,
-          ...(input.held.kind === "reported" && !input.unread
-            ? { beforeFromReport: true }
-            : {}),
         },
       },
     });
@@ -1940,6 +1992,65 @@ function writeDown(draft: Draft, last: boolean) {
     );
   }
 }
+
+/** The name the timeline knows a fill by while it shows. */
+const fillKey = (input: Input) => `${input.before}:${input.id}`;
+
+/**
+ * Shows an input known from its report only as it stands, or writes it
+ * when it is final. A final one is let go; a revision Playwright sends of it
+ * later sets its text, unless a newer input of its page has a report.
+ */
+function showOrWrite(draft: Draft, input: Input, final: boolean) {
+  const report = input.report!;
+  const told = input.told;
+  const changed = !told || told.after !== input.after || told.report !== report;
+  if (!final && (!changed || behindUnshown(draft, input))) return;
+  // The final one is told even when it changed nothing since: it is what
+  // the recording keeps.
+  draft.todo.push({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      key: fillKey(input),
+      ...(final ? {} : { open: true as const }),
+      interaction: {
+        page: input.page,
+        report,
+        before: input.before!,
+        after: input.after,
+        at: input.passedOnAt ?? 0,
+        ...(input.unread ? {} : { beforeFromReport: true }),
+      },
+    },
+  });
+  if (!final) {
+    change(draft, input.id, { told: { after: input.after, report } });
+    return;
+  }
+  draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
+  const newer = draft.inputs.some(
+    (other) => other.page === input.page && other.report !== null
+  );
+  changeGate(draft, input.page, {
+    lastFill: newer ? null : { key: fillKey(input), type: report.type },
+  });
+}
+
+/** An earlier input of its page does not show yet: one that shows comes
+ * after it. */
+const behindUnshown = (draft: Draft, input: Input) =>
+  draft.inputs
+    .slice(
+      0,
+      draft.inputs.findIndex((held) => held.id === input.id)
+    )
+    .some(
+      (held) =>
+        held.page === input.page &&
+        !held.joins &&
+        (held.held.kind !== "reported" || held.told === null)
+    );
 
 /** An input known from its report only may still be revised: it is written
  * once something newer happened on its page, or at the last. */

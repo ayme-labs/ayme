@@ -123,6 +123,8 @@ export type TimelineAddition =
        * what it changed up to its "after".
        */
       readonly key?: string;
+      /** It is not final yet: it is added again under its key. */
+      readonly open?: true;
     }
   /** Playwright revised the report of the Interaction added under `key`
    * after it could change no more: only its text is replaced. */

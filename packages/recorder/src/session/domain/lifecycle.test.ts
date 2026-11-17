@@ -232,6 +232,23 @@ const oneClick = [
   taken(snapshot2),
 ];
 
+/**
+ * The lists as they read before typing showed while it was typed: a fill is
+ * written once, when it is final, under no key. What shows of it before then
+ * is held by the rows of "the lifecycle, for a fill while it is typed".
+ */
+function writes(todo: readonly (readonly ToDo[])[]): ToDo[][] {
+  return todo.map((step) =>
+    step.flatMap((item): ToDo[] => {
+      if (item.kind !== "timeline" || item.add.kind !== "interaction")
+        return [item];
+      const { key, open, ...add } = item.add;
+      if (key === undefined) return [item];
+      return open ? [] : [{ ...item, add }];
+    })
+  );
+}
+
 /** Everything the lifecycle asked for along the way, and where it stands. */
 function run(happened: readonly Happening[]) {
   let state = initialState;
@@ -1227,7 +1244,7 @@ describe("the lifecycle", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
@@ -1834,7 +1851,7 @@ describe("the lifecycle", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
@@ -2472,7 +2489,7 @@ describe("the lifecycle, for every kind of input", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
@@ -2581,7 +2598,7 @@ describe("the lifecycle, for discard and restore", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.at(-1)).toEqual(todo);
+    expect(writes(result.todo).at(-1)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 
@@ -2649,7 +2666,7 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
       reportingOff,
     ]);
 
-    expect(todo.slice(-4)).toEqual([
+    expect(writes(todo).slice(-4)).toEqual([
       [waitForSettled(reported1)],
       [takeSnapshot(snapshot2)],
       [keep(snapshot2)],
@@ -2895,7 +2912,7 @@ describe("the lifecycle, for Assert visibility", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.at(-1)).toEqual(todo);
+    expect(writes(result.todo).at(-1)).toEqual(todo);
     expect(result.state).toEqual(state);
   });
 
@@ -3181,7 +3198,7 @@ describe("the lifecycle, for the highlight", () => {
       todo: [replyKept(1, "notFound")],
     },
   ])("$name", ({ happened, todo }) => {
-    expect(run(happened).todo.at(-1)).toEqual(todo);
+    expect(writes(run(happened).todo).at(-1)).toEqual(todo);
   });
 
   it("goes from Record to the trace started, to Playwright reporting, to the pages holding inputs, to Record answered, and shows recording only then", () => {
@@ -3684,7 +3701,7 @@ describe("the lifecycle, for what the review against the spec found", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -4216,6 +4233,18 @@ describe("the lifecycle, with more than one page", () => {
           report: typed("m"),
         },
         takenOf(snapshot1, page1),
+        // Page 2 had a report of its own since Record: its revision is of
+        // that one, not of a fill from before Record.
+        {
+          kind: "interactionReported",
+          page: page2,
+          report: {
+            type: "click",
+            selector: "internal:role=button",
+            target: null,
+            values: { button: "left" },
+          },
+        },
         {
           kind: "interactionRevised",
           page: page2,
@@ -4278,7 +4307,7 @@ describe("the lifecycle, with more than one page", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -4312,7 +4341,7 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
       todo: [[pick, reply("applied")]],
     },
   ])("$name", ({ happened, todo }) => {
-    expect(run(happened).todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(run(happened).todo).slice(-todo.length)).toEqual(todo);
   });
 });
 
@@ -4545,8 +4574,14 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
 
     // What Playwright revises.
     {
-      name: "a revision with nothing reported to revise changes nothing",
-      happened: [opened, ...started, revised(typed("x"))],
+      name: "a revision with nothing reported to revise since Record changes nothing",
+      happened: [
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        revised(typed("x")),
+      ],
       todo: [[]],
       state: { phase: "recording" },
     },
@@ -4608,7 +4643,7 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -4758,7 +4793,7 @@ describe("the lifecycle, for the clicks one report covers", () => {
       todo: [written(clickOf(2), snapshot2, snapshot4, 22)],
     },
   ])("$name", ({ happened, todo }) => {
-    expect(run(happened).todo.at(-1)).toEqual(todo);
+    expect(writes(run(happened).todo).at(-1)).toEqual(todo);
   });
 });
 
@@ -5528,7 +5563,7 @@ describe("the lifecycle, for rules no row reached", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -5837,7 +5872,7 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -5880,5 +5915,256 @@ describe("the lifecycle, for the address of the page that is open", () => {
     expect(
       after([opened, { kind: "pageClosed", page: page1, pagesLeft: 0 }])
     ).toBeNull();
+  });
+});
+
+// Typing shows while it is typed: a fill is in the window from its first
+// report, its text follows every key, and the rows under it follow each
+// read of its page, until the next action makes it final.
+describe("the lifecycle, for a fill while it is typed", () => {
+  const reportedAs = (report: InteractionReport): Happening => ({
+    kind: "interactionReported",
+    page: page1,
+    report,
+  });
+  const revised = (report: InteractionReport): Happening => ({
+    kind: "interactionRevised",
+    page: page1,
+    report,
+  });
+  const fill = (text: string): InteractionReport => ({
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text },
+  });
+  const choice: InteractionReport = {
+    type: "select",
+    selector: "internal:role=combobox",
+    target: null,
+    values: { options: ["Large"] },
+  };
+  /** A fill as the timeline is told it, under its key, while it shows. */
+  const shown = (
+    report: InteractionReport,
+    before: SnapshotId,
+    after: SnapshotId | null,
+    input = reported1
+  ): ToDo => ({
+    kind: "timeline",
+    add: {
+      kind: "interaction",
+      key: `${before}:${input}`,
+      open: true,
+      interaction: {
+        page: page1,
+        report,
+        before,
+        after,
+        at: 10,
+        beforeFromReport: true,
+      },
+    },
+  });
+  /** A fill as the timeline is told it when it is final. */
+  const final = (
+    report: InteractionReport,
+    before: SnapshotId,
+    after: SnapshotId | null
+  ): ToDo => {
+    const told = shown(report, before, after);
+    if (told.kind !== "timeline" || told.add.kind !== "interaction")
+      throw new Error("Not a fill.");
+    // Final: not open any more.
+    return { ...told, add: { ...told.add, open: undefined } };
+  };
+  /** Only the text of a fill that is final. */
+  const retext = (
+    report: InteractionReport,
+    before: SnapshotId,
+    input = reported1
+  ): ToDo => ({
+    kind: "timeline",
+    add: { kind: "text", key: `${before}:${input}`, report },
+  });
+  /** A click recorded: the page's latest snapshot is snapshot 2. */
+  const clicked = [opened, ...started, ...oneClick, reported];
+  const timeLimit: Happening = { kind: "timeLimitPassed" };
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    {
+      name: "a fill shows as soon as Playwright reports it, before the page is read: its text, and no changes yet (rules 1 and 3)",
+      happened: [...clicked, reportedAs(fill("m"))],
+      todo: [[waitForSettled(reported1), shown(fill("m"), snapshot2, null)]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a fill waits to show for one read when the page was not read since Record (rule 3)",
+      happened: [opened, ...started, reportedAs(fill("m")), taken(snapshot1)],
+      todo: [
+        [takeSnapshot(snapshot1)],
+        [
+          keep(snapshot1),
+          waitForSettled(reported1),
+          shown(fill("m"), snapshot1, null),
+          letThrough(null),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a fill never shows before the entry above it: one typed while the click before it still settles shows with that click's 'after' (rule 3)",
+      happened: [
+        opened,
+        ...started,
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        reported,
+        reportedAs(fill("m")),
+        settled(input1),
+        taken(snapshot2),
+      ],
+      todo: [
+        [],
+        [],
+        [takeSnapshot(snapshot2)],
+        [
+          keep(snapshot2),
+          waitForSettled(reported1),
+          interaction(snapshot1, snapshot2),
+          shown(fill("m"), snapshot2, null),
+          letThrough(input1),
+        ],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a fill's text follows every key at once (rule 1)",
+      happened: [...clicked, reportedAs(fill("m")), revised(fill("mi"))],
+      todo: [[shown(fill("mi"), snapshot2, null)]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "the rows under a fill follow each read of its page, and its text can be ahead of them (rule 2)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        revised(fill("mi")),
+        settled(reported1),
+        taken(snapshot4),
+      ],
+      todo: [
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), shown(fill("m"), snapshot2, snapshot3)],
+        [waitForSettled(reported1), shown(fill("mi"), snapshot2, snapshot3)],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4), shown(fill("mi"), snapshot2, snapshot4)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "the next action makes a fill final: its place and rows stay, and a revision after it sets only its text (rule 5)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        clickHeld(input2),
+        revised(fill("mi")),
+        taken(snapshot4),
+      ],
+      todo: [
+        [takeSnapshot(snapshot4), final(fill("m"), snapshot2, snapshot3)],
+        [retext(fill("mi"), snapshot2)],
+        [keep(snapshot4), passOn(input2)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a revision after a newer report is dropped: it is not the fill's (rule 5)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        clickHeld(input2),
+        taken(snapshot4),
+        passedOn(input2),
+        reported,
+        revised(fill("mi")),
+      ],
+      todo: [[]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "Stop keeps a fill's last text: its rows catch up with it before Paused shows (rule 6)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        revised(fill("mi")),
+        stop,
+        settled(reported1),
+        taken(snapshot3),
+        gateOff,
+        taken(snapshot4),
+        reportingOff,
+      ],
+      todo: [
+        [startTimeLimit, reply("applied")],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), holdNoMore, shown(fill("mi"), snapshot2, snapshot3)],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4), stopReporting],
+        [final(fill("mi"), snapshot2, snapshot3)],
+      ],
+      state: { phase: "paused" },
+    },
+    {
+      name: "a fill that showed is kept when the wrap-up's time limit passes before its read (rule 7)",
+      happened: [...clicked, reportedAs(fill("m")), stop, timeLimit],
+      todo: [[holdNoMore, stopReporting]],
+      state: { phase: "paused" },
+    },
+    {
+      name: "a choice shows once, when it is reported (rule 9)",
+      happened: [...clicked, reportedAs(choice), settled(reported1)],
+      todo: [
+        [waitForSettled(reported1), shown(choice, snapshot2, null)],
+        [takeSnapshot(snapshot3)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
+      name: "bug 6: typing more into a field after Continue, which Playwright revises into the fill before the pause, is a fill of its own",
+      happened: [
+        ...clicked,
+        reportedAs(fill("ab")),
+        settled(reported1),
+        taken(snapshot3),
+        stop,
+        gateOff,
+        taken(snapshot4),
+        reportingOff,
+        resume,
+        reporting,
+        holding,
+        taken(snapshot5),
+        revised(fill("abcd")),
+      ],
+      todo: [[waitForSettled(reported1), shown(fill("abcd"), snapshot5, null)]],
+      state: { phase: "recording" },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
   });
 });
