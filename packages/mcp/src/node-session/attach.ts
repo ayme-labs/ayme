@@ -70,11 +70,15 @@ export async function attach(
   endpoint: string,
   mark: string
 ): Promise<{ browser: Browser; page: Page }> {
-  // Before the connection, so its contexts get the engine.
-  await ayme.registerAymeRef(playwright.selectors);
   const browser = await playwright.chromium.connectOverCDP(endpoint, {
     noDefaults: true,
   });
+  // After the connection: Playwright 1.64 hands an engine registered before
+  // it only to contexts it creates, so on the browser's own context
+  // `ayme-ref=` would be an unknown engine. Registered now, it reaches the
+  // contexts that exist. The session's own registration, on start, is then a
+  // no-op: it is once per process.
+  await ayme.registerAymeRef(playwright.selectors);
   // Playwright's client dismisses a dialog nobody listens for. The owning
   // automation answers dialogs; Ayme's client must leave them open.
   for (const context of browser.contexts()) context.on("dialog", () => {});

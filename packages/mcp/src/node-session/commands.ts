@@ -3,7 +3,7 @@
 // names and arguments are placeholders: the CLI's interface is not decided.
 // Node built-ins only, so a command pays for nothing it does not use.
 import { spawn } from "node:child_process";
-import { closeSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -148,6 +148,7 @@ async function detach(folder: string): Promise<number> {
     await sleep(25);
   if (isAlive(record.pid)) process.kill(record.pid, "SIGKILL");
   removeRecord(folder);
+  rmSync(logFile(folder), { force: true });
   process.stdout.write("Stopped.\n");
   return 0;
 }

@@ -53,6 +53,10 @@ export async function runBackground({
   const { page } = await attach(project, endpoint, mark);
   const session = project.ayme.createAyme({ page, pageObjects: classes });
   const stopSession = await session.start();
+  // The session lists a Page Object's tools once it has looked at the page,
+  // which the browser runtime does before it publishes them. Without this
+  // first read, a call sent right after the start finds no tool.
+  await session.agentTools.run(PAGE_OBJECTS, {}).catch(() => {});
 
   const offered = () =>
     session.agentTools
