@@ -51,7 +51,7 @@ The lanes, their commands and where test-only code lives are in the [testing gui
 - **Server tests** in Node that render concurrent requests, for C9 and C10.
 - **Example certification**: the example apps' end-to-end tests, below.
 - **Packed-consumer checks**: the package in the tarball lists and a type-check consumer at its framework floor.
-- **Minimum-version lanes** in the CI compatibility matrix: the package's own tests at the framework floor, and the example's end-to-end tests at the meta-framework floor. The tested floors are in the root README's [supported versions](../README.md#supported-versions) table.
+- **Minimum-version lanes** in the CI compatibility matrix: the package's own tests at the framework floor, and the example's end-to-end tests at the meta-framework floor. The tested floors are in the install guide's [supported versions](guide/start/install.md#supported-versions) table.
 
 ## Example app
 
@@ -72,7 +72,7 @@ Its Page Object Models live in the app's own source, because the build plugin co
 
 ## Docs
 
-The package README owns installation, setup, the API, and the supported versions and limits. The root README lists the integration and its floor; the shipped skill's onboarding step names its root setup. The example README covers running the example.
+The package README owns installation, setup, the API, and the supported versions and limits. The root README lists the integration, and the install guide's [supported versions](guide/start/install.md#supported-versions) table lists its floor; the shipped skill's onboarding step names its root setup. The example README covers running the example.
 
 ## Release
 
