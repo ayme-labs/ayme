@@ -172,10 +172,18 @@ export async function runOnce(
     throw error;
   }
   if (environment === undefined) throw new Error("unreachable: no environment");
-  ensureDatabaseBuilt(formbricksRoot, log);
-  log(`Run ${runId}: ${runDir}`);
-
-  const database = await openFormbricksDatabase(formbricksRoot);
+  // The agent's configuration folder holds its sign-in, so it never outlives the run, however the run ends.
+  const removeAgentConfig = () =>
+    rm(claudeConfigDir, { recursive: true, force: true });
+  let database: Awaited<ReturnType<typeof openFormbricksDatabase>>;
+  try {
+    ensureDatabaseBuilt(formbricksRoot, log);
+    log(`Run ${runId}: ${runDir}`);
+    database = await openFormbricksDatabase(formbricksRoot);
+  } catch (error) {
+    await removeAgentConfig();
+    throw error;
+  }
   let armSetup: ArmSetup | undefined;
   try {
     log("Seeding the mission.");
@@ -315,10 +323,13 @@ export async function runOnce(
       );
     return { runId, runDir, result };
   } finally {
-    await armSetup?.dispose();
-    await database.close();
-    await rm(profileDir, { recursive: true, force: true });
-    await rm(claudeConfigDir, { recursive: true, force: true });
+    try {
+      await armSetup?.dispose();
+      await database.close();
+    } finally {
+      await removeAgentConfig();
+      await rm(profileDir, { recursive: true, force: true });
+    }
   }
 }
 

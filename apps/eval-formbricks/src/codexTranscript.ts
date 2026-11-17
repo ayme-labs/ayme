@@ -130,6 +130,8 @@ export function summarizeCodexTranscript(lines: string[]): TranscriptSummary {
   const zero: Totals = { input: 0, cached: 0, cacheWrite: 0, output: 0 };
   let totals: Totals | null = null;
   let totalsBefore = zero;
+  /** The tool calls that started and have not finished, by item id. */
+  const inFlight = new Map<string, string>();
 
   const init = (): TranscriptInit => ({
     model,
@@ -164,8 +166,17 @@ export function summarizeCodexTranscript(lines: string[]): TranscriptSummary {
       isRecord(params.tokenUsage)
     )
       totals = readTotals(params.tokenUsage.total) ?? totals;
+    if (
+      message.method === "item/started" &&
+      isRecord(params.item) &&
+      typeof params.item.id === "string" &&
+      params.item.type !== "agentMessage" &&
+      !conversationItems.has(String(params.item.type))
+    )
+      inFlight.set(params.item.id, toolName(params.item));
     if (message.method === "item/completed" && isRecord(params.item)) {
       const { item } = params;
+      if (typeof item.id === "string") inFlight.delete(item.id);
       if (item.type === "agentMessage") {
         turn.assistantMessages += 1;
         if (typeof item.text === "string") finalMessage = item.text;
@@ -206,9 +217,15 @@ export function summarizeCodexTranscript(lines: string[]): TranscriptSummary {
       started = false;
       finalMessage = null;
       totalsBefore = totals ?? totalsBefore;
+      inFlight.clear();
     }
   }
   // Messages after the last completed turn belong to one that was cut short.
+  // A tool call it started and never finished was still made, as in a Claude Code transcript.
+  if (started) {
+    for (const name of inFlight.values())
+      (turn.toolCalls.byTool[name] ??= { total: 0, failed: 0 }).total += 1;
+  }
   if (started)
     turns.push({ ...turn, init: init(), toolCalls: sortedCounts(turn) });
 
