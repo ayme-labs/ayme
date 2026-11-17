@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 export const tokenVariable = "CLAUDE_CODE_OAUTH_TOKEN";
+/** The second login, used for a run when the first is at its usage limit. */
+export const fallbackTokenVariable = "CLAUDE_CODE_OAUTH_TOKEN_FALLBACK";
 /** The key the lab app's Decision Endpoint calls OpenRouter with; the eval reads cost records with the same one. */
 export const openRouterKeyVariable = "AYME_OPENROUTER_API_KEY";
 export const envFileName = ".env.local";

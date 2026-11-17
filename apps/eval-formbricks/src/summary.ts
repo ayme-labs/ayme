@@ -4,6 +4,7 @@
  * versions a rerun has to match. Pure; reading the stored runs and writing the
  * files are the callers' job.
  */
+import type { LoginName } from "./login.ts";
 import type { NormalizedResult } from "./normalize.ts";
 import { totalTokens, type TokenUsage } from "./transcript.ts";
 
@@ -11,6 +12,7 @@ import { totalTokens, type TokenUsage } from "./transcript.ts";
 export type SummarizedRun = Pick<
   NormalizedResult,
   | "runId"
+  | "login"
   | "arm"
   | "mission"
   | "pass"
@@ -34,6 +36,14 @@ export type SummarizedRun = Pick<
     | "aymeCommit"
   >;
 };
+
+/** The note for a suite whose runs were served by both logins; `null` when one login (or none recorded) served them all. */
+export function loginNote(logins: (LoginName | undefined)[]): string | null {
+  const first = logins.filter((login) => login === "first").length;
+  const fallback = logins.filter((login) => login === "fallback").length;
+  if (first === 0 || fallback === 0) return null;
+  return `The runs used different Claude Code logins: ${first} the first, ${fallback} the fallback, after the first reached its usage limit.`;
+}
 
 /** Median, lowest and highest over the runs that have the value. */
 export type Spread = {
@@ -216,6 +226,8 @@ export function buildSummary(input: {
       notes.push(
         `The runs differ in ${label}: ${values.join(", ")}. A rerun cannot match them all.`
       );
+  const logins = loginNote(results.map((run) => run.login));
+  if (logins !== null) notes.push(logins);
   const dirty = results.filter((run) => run.labCheckoutDirty).length;
   if (dirty > 0)
     notes.push(`${dirty} run(s) changed the lab app checkout while running.`);
