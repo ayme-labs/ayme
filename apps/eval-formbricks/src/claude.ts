@@ -205,7 +205,7 @@ export function claudeAuthStatus(
   }
 }
 
-function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
+export function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
   try {
     process.kill(-pid, signal);
   } catch (error) {
@@ -362,7 +362,9 @@ export async function runClaude(
   }
 }
 
-function closeStream(stream: NodeJS.WritableStream & { closed?: boolean }) {
+export function closeStream(
+  stream: NodeJS.WritableStream & { closed?: boolean }
+) {
   return new Promise<void>((resolve, reject) => {
     if (stream.closed) return resolve();
     stream.once("error", reject);

@@ -1,4 +1,5 @@
 import type { Turn } from "./claude.ts";
+import { summarizeCodexTranscript } from "./codexTranscript.ts";
 import {
   summarizeTranscript,
   totalTokens,
@@ -13,6 +14,8 @@ export type RunArtifacts = {
   runId: string;
   arm: string;
   missionId: string;
+  /** The agent that ran: Claude Code unless named. Its transcript is read accordingly. */
+  agent?: "claude" | "codex";
   /** The model as requested; the model as used comes from the transcript. */
   requestedModel: string;
   /** The thinking effort the agent ran with, the same for every arm. */
@@ -31,6 +34,8 @@ export type RunArtifacts = {
   versions: {
     /** From `claude --version`; the transcript's own report wins when present. */
     claudeCode: string | null;
+    /** From `codex --version`, for a run through Codex. */
+    codex?: string | null;
     browserInterface: { name: string; version: string };
     browser: string | null;
     formbricksCommit: string | null;
@@ -72,11 +77,13 @@ export type NormalizedResult = {
   agentReported: { durationMs: number | null; apiDurationMs: number | null };
   /** The task turn's tokens. */
   tokens: TokenUsage | null;
-  /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. */
+  /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. Unknown for Codex, which reports tokens only. */
   costUsd: number | null;
   toolCalls: ToolCallCounts;
   versions: {
     claudeCode: string | null;
+    /** Present for a run through Codex alone. */
+    codex?: string;
     model: { requested: string; used: string | null; effort: string | null };
     browserInterface: { name: string; version: string };
     browser: string | null;
@@ -134,7 +141,10 @@ function turnCost(
 }
 
 export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
-  const summary = summarizeTranscript(artifacts.transcript);
+  const summary =
+    artifacts.agent === "codex"
+      ? summarizeCodexTranscript(artifacts.transcript)
+      : summarizeTranscript(artifacts.transcript);
   // The setup message is answered first; everything after its result event is the task turn's.
   const [setup = noTurn, task = noTurn] = summary.turns;
   const { result } = task;
@@ -175,6 +185,9 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     toolCalls: task.toolCalls,
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
+      ...(artifacts.versions.codex == null
+        ? {}
+        : { codex: artifacts.versions.codex }),
       model: {
         requested: artifacts.requestedModel,
         used: modelUsed,
@@ -254,7 +267,7 @@ export function summarizeResult(result: NormalizedResult) {
 ${tools}
 - Permission denials: ${result.agent.permissionDenials}
 - Setup turn, not counted above: ${seconds(setupTurn.wallTimeMs)}, ${count(setupTurn.tokens === null ? null : totalTokens(setupTurn.tokens))} tokens, ${dollars(setupTurn.costUsd)}, tool calls ${setupTurn.toolCalls.total} (${setupTurn.toolCalls.failed} failed)
-- Claude Code: ${result.versions.claudeCode ?? "unknown"}
+- ${result.versions.codex === undefined ? `Claude Code: ${result.versions.claudeCode ?? "unknown"}` : `Codex: ${result.versions.codex}`}
 - Model: ${result.versions.model.used ?? "unknown"} (requested ${result.versions.model.requested}, effort ${result.versions.model.effort ?? "unknown"})
 - Browser interface: ${result.versions.browserInterface.name} ${result.versions.browserInterface.version}
 - Browser: ${result.versions.browser ?? "unknown"}

@@ -37,7 +37,7 @@ pnpm eval:run -- --arm playwright-cli-with-ayme
 pnpm eval:run -- --arm agent-browser
 ```
 
-Options: `--model` (default `sonnet`), `--timeout-seconds` (default `600`, the task turn's; see [what is measured](#what-is-measured)), `--mission` (default `rename-survey-and-question`; see [missions and arms](#missions-and-arms)). Every run calls the model and costs money.
+Options: `--agent` (`claude`, the default, or `codex`; see [the Codex agent](#the-codex-agent)), `--model` (default `sonnet`, or `gpt-6-luna` for Codex), `--timeout-seconds` (default `600`, the task turn's; see [what is measured](#what-is-measured)), `--mission` (default `rename-survey-and-question`; see [missions and arms](#missions-and-arms)). Every run calls the model and costs money.
 
 The run:
 
@@ -72,7 +72,7 @@ From this directory inside `devbox shell`:
 pnpm eval:suite -- --runs 3
 ```
 
-Options: `--arms` (comma-separated, default every arm in [`src/arms.ts`](src/arms.ts)), `--runs` per arm (default `3`), `--model` (default `sonnet`), `--timeout-seconds` (default `600`), `--mission`. Every run uses the same timeout and settings and seeds its own mission. Every run calls the model and costs money; the smallest suite is one arm and one run:
+Options: `--arms` (comma-separated, default every arm in [`src/arms.ts`](src/arms.ts)), `--agent` (default `claude`), `--runs` per arm (default `3`), `--model` (default `sonnet`, or `gpt-6-luna` for Codex), `--timeout-seconds` (default `600`), `--mission`. Every run uses the same timeout and settings and seeds its own mission. Every run calls the model and costs money; the smallest suite is one arm and one run:
 
 ```sh
 pnpm eval:suite -- --arms playwright-mcp --runs 1
@@ -89,11 +89,28 @@ The first run that cannot complete (a missing precondition, an unreachable lab a
 
 ## On a hosted runner
 
-The [Formbricks eval workflow](../../.github/workflows/eval-formbricks.yml) runs a suite on a standard GitHub-hosted Ubuntu runner, started by hand only (Actions, Formbricks eval, Run workflow). It never runs on pull requests or pushes. Its inputs are the mission, the arms (empty for every arm), the runs per arm, the model (default `sonnet`), and `qualify_only`, which prepares the lab app and runs `lab:qualify` without starting an agent, so it calls no model and costs nothing.
+The [Formbricks eval workflow](../../.github/workflows/eval-formbricks.yml) runs a suite on a standard GitHub-hosted Ubuntu runner, started by hand only (Actions, Formbricks eval, Run workflow). It never runs on pull requests or pushes. Its inputs are the agent (`claude` or `codex`), the mission, the arms (empty for every arm), the runs per arm, the model (empty for the agent's default), and `qualify_only`, which prepares the lab app and runs `lab:qualify` without starting an agent, so it calls no model and costs nothing.
 
-The job installs the pinned Claude Code, runs `lab:prepare`, starts `lab:dev` in the background and waits for the sign-in page, then runs `pnpm eval:suite`. It reads one repository secret, `CLAUDE_CODE_OAUTH_TOKEN`, the agent's Claude Code login; a qualify-only run does not get it. Only people with write access to the repository can start it, and runs from forks never get the secrets. The job summary holds the machine (OS, runner image, CPUs, memory) and the suite summary; the `eval-formbricks-results` artifact holds `results/` with the same machine record, and `lab-formbricks-log` holds the lab app's output. The repository is public, so its Actions logs and artifacts are too.
+The job installs the pinned Claude Code, or the pinned Codex, runs `lab:prepare`, starts `lab:dev` in the background and waits for the sign-in page, then runs `pnpm eval:suite`. It reads one repository secret, the agent's login: `CLAUDE_CODE_OAUTH_TOKEN` for Claude Code, `OPENAI_API_KEY` for Codex; a qualify-only run gets neither. Only people with write access to the repository can start it, and runs from forks never get the secrets. The job summary holds the machine (OS, runner image, CPUs, memory) and the suite summary; the `eval-formbricks-results` artifact holds `results/` with the same machine record, and `lab-formbricks-log` holds the lab app's output. The repository is public, so its Actions logs and artifacts are too.
 
 A runner is not a Mac, so its timings are not comparable with a Mac's: compare runs from the same kind of machine only. One eval runs at a time, since every paid run uses the same Claude Code login. A runner's summary is committed in a folder of its own, with the machine beside it, so it never replaces a Mac's summary of the same day: the first is [`summaries/2026-10-06-hosted-runner/`](summaries/2026-10-06-hosted-runner/summary.md), and the latest, with ten runs per arm, are [`summaries/2026-10-24-hosted-runner/`](summaries/2026-10-24-hosted-runner/summary.md) and [`summaries/2026-10-24-hosted-runner-sign-in-create-and-revise-survey/`](summaries/2026-10-24-hosted-runner-sign-in-create-and-revise-survey/summary.md).
+
+## The Codex agent
+
+`--agent codex` runs a mission through Codex instead of Claude Code, on `gpt-6-luna` unless `--model` names another. It runs the `playwright-mcp` arm alone for now: Codex has no permission rules like Claude Code's, so the arms that need a command line or a skill are refused before the run starts.
+
+The run is the same two messages in one session. Codex runs as `codex app-server`, which keeps one process and one thread for both turns, so the arm's MCP servers start in the setup turn. Its configuration folder is fresh, inside the run folder: the arm's MCP servers with every tool approved, no approval question, no project instructions, no web search, and Codex's own extras switched off, the apps connected to the signed-in account among them.
+
+It signs in with `OPENAI_API_KEY`, from the shell or `.env.local`. Without one, the sign-in file of your own Codex (`~/.codex/auth.json`) is copied into the run folder and deleted with it.
+
+What differs from a Claude Code run:
+
+- Cost is unknown: Codex reports tokens only.
+- Codex counts cached tokens inside its input tokens; the result takes them out, so the token columns mean the same for both agents.
+- The result records the Codex version and the MCP servers that started, not the tools the agent listed. Codex still lists a few tools of its own, such as `apply_patch`, under a read-only sandbox.
+- The agent has no file tools, where the Claude Code arms keep the read-only ones.
+
+Compare arms within one agent, not one agent with the other.
 
 ## The summary
 
