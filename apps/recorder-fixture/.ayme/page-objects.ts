@@ -9,6 +9,7 @@ import { DepartingPage } from "./pom/DepartingPage";
 import { GesturesPage } from "./pom/GesturesPage";
 import { HelpPage } from "./pom/HelpPage";
 import { InputsPage } from "./pom/InputsPage";
+import { LargePage } from "./pom/LargePage";
 import { LatePage } from "./pom/LatePage";
 import { LeavingPage } from "./pom/LeavingPage";
 import { SettlingPage } from "./pom/SettlingPage";
@@ -26,6 +27,7 @@ export default [
   GesturesPage,
   HelpPage,
   InputsPage,
+  LargePage,
   LatePage,
   LeavingPage,
   SettlingPage,
