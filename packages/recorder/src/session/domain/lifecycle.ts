@@ -430,6 +430,11 @@ export type LifecycleState = {
     } & Flow)
   | ({
       readonly phase: "wrappingUp";
+      /** The pages are asked to hold no input back any more, which is once
+       * no input is under way. Until then they hold inputs back as while
+       * recording, so that an input given before "Paused" shows is recorded
+       * as any other, from a "before" of its own. */
+      readonly gateOffAsked: boolean;
       /** Every page confirmed that it holds no input back any more. */
       readonly gateOff: boolean;
       /** The last snapshots still under way; null until they are asked for. */
@@ -888,6 +893,7 @@ const NOTHING_UNDER_WAY = {
   inputs: [],
   gates: [],
   reportedOnly: 0,
+  gateOffAsked: true,
   gateOff: true,
   finals: [],
   switchingOff: true,
@@ -951,16 +957,19 @@ function endFromOutside(state: LifecycleState): Step {
 
 /**
  * Starts the wrap-up that ends a stretch of recording. It is over when every
- * page has confirmed that it holds no input back, every held input has been
- * passed on and has its "after", a last snapshot of every page is in, and
- * Playwright's report for every input is in; or when the time limit passes.
- * Until then the recorder records: a click a page still holds back is
- * recorded like any other.
+ * held input has been passed on and has its "after", every page has then
+ * confirmed that it holds no input back, a last snapshot of every page is
+ * in, and Playwright's report for every input is in; or when the time limit
+ * passes. Until then the recorder records: the pages hold inputs back as
+ * while recording, and a click given meanwhile is recorded like any other,
+ * with a "before" that closes the Interaction still settling.
  */
 function wrapUp(
   state: Extract<LifecycleState, { phase: "recording" }>,
   then: AfterWrapUp
 ): Step {
+  // With nothing under way, the pages stop holding inputs back at once.
+  const idle = state.inputs.every((input) => input.stage === "settled");
   return proceed(
     {
       phase: "wrappingUp",
@@ -969,6 +978,7 @@ function wrapUp(
       snapshotsAsked: state.snapshotsAsked,
       gates: state.gates,
       reportedOnly: state.reportedOnly,
+      gateOffAsked: idle,
       gateOff: false,
       finals: null,
       then,
@@ -982,7 +992,7 @@ function wrapUp(
         ? [pickRequest(false)]
         : []),
       ...answerRecord(state),
-      { kind: "browser", ask: { kind: "holdInputs", on: false } },
+      ...(idle ? [holdNoMore] : []),
       { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
     ]
   );
@@ -1834,6 +1844,11 @@ function goOnWrappingUp(
   // still be revised, as typing goes on until "Paused" shows: it is written
   // at the last, when nothing newer can be reported.
   const nothingNewer = reportsOff || endsRecorder(state.then);
+  const settled = draft.inputs.every((input) => input.stage === "settled");
+  // The pages stop holding inputs back once no input is under way: what was
+  // given before then is recorded as while recording.
+  const gateOffAsked = state.gateOffAsked || settled;
+  if (!state.gateOffAsked && settled) draft.todo.push(holdNoMore);
   let finals = state.finals;
   if (
     state.gateOff &&
@@ -1841,7 +1856,7 @@ function goOnWrappingUp(
     // A snapshot is marked in the trace, which a Finish pressed at once may
     // not have started yet.
     !state.traceStarting &&
-    draft.inputs.every((input) => input.stage === "settled")
+    settled
   )
     // What changed after the last Interaction is picked up once, here.
     finals = state.pages.map((page) => ({
@@ -1850,7 +1865,7 @@ function goOnWrappingUp(
     }));
   // The last snapshots may be in just now, as when no page is left.
   writeDown(draft, finals?.length === 0 && nothingNewer);
-  const next = { ...state, ...settle(draft), finals };
+  const next = { ...state, ...settle(draft), gateOffAsked, finals };
   if (
     finals?.length !== 0 ||
     draft.inputs.some((input) => !awaitsTheLast(input)) ||
@@ -1869,6 +1884,12 @@ function goOnWrappingUp(
     ],
   };
 }
+
+/** Has the pages hold no input back any more. */
+const holdNoMore: ToDo = {
+  kind: "browser",
+  ask: { kind: "holdInputs", on: false },
+};
 
 /** Whether a wrap-up ends the recorder: Playwright's recorder is then let
  * go with the browser, and never switched off. */
@@ -1981,7 +2002,11 @@ function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
     todo: [],
   };
   writeDown(draft, true);
-  const todo = [...draft.todo, ...release(state.inputs)];
+  const todo = [
+    ...draft.todo,
+    ...(state.gateOffAsked ? [] : [holdNoMore]),
+    ...release(state.inputs),
+  ];
   const livesOn = state.then === "pause" || state.then === "clear";
   if (livesOn && !state.switchingOff)
     todo.push({

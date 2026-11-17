@@ -151,10 +151,14 @@ const holdInputs: ToDo = {
   ask: { kind: "holdInputs", on: true },
 };
 const recordApplied: ToDo = { kind: "replyDeferred", result: "applied" };
-const wrapUp: ToDo[] = [
-  { kind: "browser", ask: { kind: "holdInputs", on: false } },
-  { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS },
-];
+const holdNoMore: ToDo = {
+  kind: "browser",
+  ask: { kind: "holdInputs", on: false },
+};
+const startTimeLimit: ToDo = { kind: "startTimeLimit", ms: WRAP_UP_LIMIT_MS };
+/** A wrap-up with nothing under way: the pages hold inputs back no more at
+ * once. */
+const wrapUp: ToDo[] = [holdNoMore, startTimeLimit];
 const trace = { file: "/tmp/trace.zip", positions: { snapshot_1: "11" } };
 // Stopping a trace is given a time: a browser that never answers keeps
 // neither a save nor a Clear waiting for ever.
@@ -658,28 +662,28 @@ describe("the lifecycle", () => {
       state: { phase: "saving" },
     },
     {
-      name: "Finish while a click is held: the click is passed on and is in the package",
+      name: "Finish while a click is held: the click is passed on and is in the package, and the pages hold inputs back until it has its 'after'",
       happened: [
         opened,
         ...started,
         clickHeld(input1),
         finish,
-        gateOff,
         taken(snapshot1),
         passedOn(input1),
         settled(input1),
         taken(snapshot2),
+        gateOff,
         reported,
         taken(snapshot3),
       ],
       todo: [
         [takeSnapshot(snapshot1)],
-        [...wrapUp, reply("applied")],
-        [],
+        [startTimeLimit, reply("applied")],
         [keep(snapshot1), passOn(input1)],
         [waitForSettled(input1)],
         [takeSnapshot(snapshot2)],
-        [keep(snapshot2), takeSnapshot(snapshot3)],
+        [keep(snapshot2), holdNoMore],
+        [takeSnapshot(snapshot3)],
         [interaction(snapshot1, snapshot2)],
         [keep(snapshot3), stopTrace],
       ],
@@ -703,6 +707,70 @@ describe("the lifecycle", () => {
         [waitForSettled(input1)],
       ],
       state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a click held after Stop while an earlier click's page still changes ends that click at its own 'before', and is recorded with its own change",
+      happened: [
+        opened,
+        ...started,
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        stop,
+        clickHeld(input2),
+        taken(snapshot2),
+        passedOn(input2),
+        settled(input2),
+        taken(snapshot3),
+        reported,
+        reported,
+        gateOff,
+      ],
+      todo: [
+        [startTimeLimit, reply("applied")],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), passOn(input2)],
+        [waitForSettled(input2)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), holdNoMore],
+        [interaction(snapshot1, snapshot2)],
+        [interaction(snapshot2, snapshot3)],
+        [takeSnapshot(snapshot4)],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "a click held after Stop is saved when the recorder is ended from outside before it has its 'after'",
+      happened: [
+        opened,
+        ...started,
+        clickHeld(input1),
+        taken(snapshot1),
+        passedOn(input1),
+        stop,
+        clickHeld(input2),
+        outsideEnd,
+        taken(snapshot2),
+        passedOn(input2),
+        settled(input2),
+        taken(snapshot3),
+        reported,
+        reported,
+        gateOff,
+        taken(snapshot4),
+      ],
+      todo: [
+        [],
+        [keep(snapshot2), passOn(input2)],
+        [waitForSettled(input2)],
+        [takeSnapshot(snapshot3)],
+        [keep(snapshot3), holdNoMore],
+        [interaction(snapshot1, snapshot2)],
+        [interaction(snapshot2, snapshot3)],
+        [takeSnapshot(snapshot4)],
+        [keep(snapshot4), stopTrace],
+      ],
+      state: { phase: "saving" },
     },
     {
       name: "the wrap-up waits for the report of a click that was already passed on",
@@ -1114,11 +1182,15 @@ describe("the lifecycle", () => {
         clickHeld(input1),
         taken(snapshot1),
         finish,
-        gateOff,
         { kind: "inputGone", input: input1 },
+        gateOff,
         taken(snapshot2),
       ],
-      todo: [[takeSnapshot(snapshot2)], [keep(snapshot2), stopTrace]],
+      todo: [
+        [holdNoMore],
+        [takeSnapshot(snapshot2)],
+        [keep(snapshot2), stopTrace],
+      ],
       state: { phase: "saving" },
     },
     {
@@ -1280,7 +1352,7 @@ describe("the lifecycle", () => {
         stop,
         { kind: "timeLimitPassed" },
       ],
-      todo: [[passOn(input1), passOn(input2), stopReporting]],
+      todo: [[holdNoMore, passOn(input1), passOn(input2), stopReporting]],
       state: { phase: "paused" },
     },
     {
@@ -1292,7 +1364,7 @@ describe("the lifecycle", () => {
         finish,
         { kind: "timeLimitPassed" },
       ],
-      todo: [[passOn(input1), stopTrace]],
+      todo: [[holdNoMore, passOn(input1), stopTrace]],
       state: { phase: "saving" },
     },
     {
@@ -4348,8 +4420,8 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
       ],
       todo: [
         [takeSnapshot(snapshot2)],
-        [...wrapUp, reply("applied")],
-        [passOn(input2), stopReporting],
+        [startTimeLimit, reply("applied")],
+        [holdNoMore, passOn(input2), stopReporting],
       ],
       state: { phase: "paused" },
     },
@@ -5263,7 +5335,13 @@ describe("the lifecycle, for rules no row reached", () => {
     {
       name: "when the time limit passes, a double click whose second click never settled is written with what its first click changed",
       happened: [opened, ...started, ...doubleReportedEarly, stop, timeLimit],
-      todo: [[written(clickOf(2), snapshot1, snapshot2, 21), stopReporting]],
+      todo: [
+        [
+          written(clickOf(2), snapshot1, snapshot2, 21),
+          holdNoMore,
+          stopReporting,
+        ],
+      ],
       state: { phase: "paused" },
     },
     {
@@ -5402,7 +5480,7 @@ describe("the lifecycle, for rules no row reached", () => {
       ],
       todo: [
         [waitForSettled(input1), pick(true)],
-        [pick(false), ...wrapUp, reply("applied")],
+        [pick(false), startTimeLimit, reply("applied")],
       ],
       state: { phase: "wrappingUp" },
     },
@@ -5748,13 +5826,13 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     {
       name: "when the time limit passes while a choice waits for its first snapshot, nothing is asked to be passed on: no page held it",
       happened: [opened, ...started, reportedAs(choice), stop, timeLimit],
-      todo: [[stopReporting]],
+      todo: [[holdNoMore, stopReporting]],
       state: { phase: "paused" },
     },
     {
       name: "when the time limit passes while an assertion waits for its snapshot, nothing is asked to be passed on",
       happened: [opened, ...started, reportedAs(visible), stop, timeLimit],
-      todo: [[stopReporting]],
+      todo: [[holdNoMore, stopReporting]],
       state: { phase: "paused" },
     },
   ])("$name", ({ happened, todo, state }) => {
