@@ -99,8 +99,9 @@ describe.each(cliArmIds)("the %s arm", (armId) => {
   it("has its browser automation's interface line and one sentence on where the Page Object Tools are", () => {
     for (const start of [editorStart, signInStart])
       expect(arm.interfaceLine(start)).toBe(
-        `${alone.interfaceLine(start)} ${aymeCliSentence}`
+        `Use the \`${arm.browserAutomation}\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}. ${aymeCliSentence}`
       );
+    expect(aymeCliSentence).toContain("start from `ayme tools`");
     expect(aymeCliSentence).toContain("`ayme` command");
     // What to run after a Page Object Tool is the instruction text's alone.
     expect(aymeCliSentence).not.toMatch(

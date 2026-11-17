@@ -11,8 +11,9 @@ each action of the Page Objects on the screen, and the Page Object Tree, which
 lists those Page Objects with the id (`po<n>`) each rooted Page Object Tool
 takes.
 
-Before you take a full snapshot, run `ayme tools`. When a Page Object Tool
-does the next step, call it instead; take the snapshot only when none does.
+On each new screen, starting with the first one, run `ayme tools` before you
+take a snapshot. When a Page Object Tool does the next step, call it; take a
+snapshot only when none does.
 
 ## The commands
 
@@ -22,7 +23,8 @@ Run them in the project folder. Each one prints its answer and exits.
   what it does, and its parameters as a JSON schema.
 - `ayme page-objects` prints the Page Object Tree: each Page Object on the
   screen under its class name, its declared children with their values, and
-  the id (`po<n>`) of each Page Object that has a root.
+  the id (`po<n>`) of each Page Object that has a root. Its last line says
+  how many Page Object Tools the screen has.
 - `ayme call <tool> '<json parameters>'` calls a Page Object Tool. Leave the
   parameters out when the tool takes none. A tool of a class with ids takes
   the id as `id` and the action's own arguments as `args`:

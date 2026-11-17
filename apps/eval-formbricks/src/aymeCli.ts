@@ -47,7 +47,7 @@ export const markGlobal = "__aymeMark";
 
 /** What the arm's interface line adds to its browser automation's: where the Page Object Tools are, as a fact. */
 export const aymeCliSentence =
-  "The `ayme` command, attached to this tab, lists and calls the Page Object Tools of the screen the browser is on.";
+  "The `ayme` command, attached to this tab, lists and calls the Page Object Tools of the screen the browser is on; start from `ayme tools`.";
 
 function bashCommand(command: string) {
   return [`Bash(${command})`, `Bash(${command}:*)`];

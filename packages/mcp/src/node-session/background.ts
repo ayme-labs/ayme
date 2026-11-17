@@ -64,6 +64,8 @@ export async function runBackground({
       .filter(
         (tool) => tool.group === "pageObject" || tool.name === PAGE_OBJECTS
       );
+  const toolCount = () =>
+    offered().filter((tool) => tool.name !== PAGE_OBJECTS).length;
   const run = async (
     name: string,
     input: unknown
@@ -81,7 +83,17 @@ export async function runBackground({
     }
   };
   const answer = (request: SessionRequest): Promise<SessionResponse> => {
-    if (request.method === "page_objects") return run(PAGE_OBJECTS, {});
+    if (request.method === "page_objects")
+      return run(PAGE_OBJECTS, {}).then((response) => {
+        const count = toolCount();
+        // The tree names no tool; the last line only says how many `ayme tools` lists.
+        return response.ok && count > 0
+          ? {
+              ...response,
+              text: `${response.text}\n${count} Page Object Tool${count === 1 ? "" : "s"} on this screen: ayme tools`,
+            }
+          : response;
+      });
     if (request.method === "call") return run(request.name, request.input);
     if (request.method === "tools")
       return Promise.resolve({

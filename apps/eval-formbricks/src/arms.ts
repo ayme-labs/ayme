@@ -320,7 +320,7 @@ function armWithAymeCli(browserAutomation: CommandAutomation): Arm {
     browserAutomation,
     aymeCli: true,
     interfaceLine: (start) =>
-      `${aloneLines[browserAutomation](start)} ${aymeCliSentence}`,
+      `Use the \`${browserAutomation}\` command for every browser interaction. Its browser session is already open ${startState(start)}. ${aymeCliSentence}`,
     ...(base.skill === undefined ? {} : { skill: base.skill }),
     tools: base.tools,
     allowedTools: [...base.allowedTools, ...aymeCliAllowedTools],
