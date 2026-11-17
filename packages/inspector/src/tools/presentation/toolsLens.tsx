@@ -4,7 +4,13 @@ import { Badge } from "@ayme-dev/design-system/components/badge";
 import { Separator } from "@ayme-dev/design-system/components/separator";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { chip, QualifiedName, WhatTheModelSees } from "../../shared";
+import {
+  chip,
+  DestructiveIcon,
+  DestructiveMark,
+  QualifiedName,
+  WhatTheModelSees,
+} from "../../shared";
 import {
   type Lens,
   NavItem,
@@ -78,16 +84,23 @@ export function toolsLens({
                     <NavItem
                       // Named by the name whole: its two parts would read apart.
                       aria-label={tool.name}
+                      aria-description={
+                        tool.destructive ? "Destructive" : undefined
+                      }
                       selected={tool.name === selectedTool}
                       onClick={() =>
                         onSelect({ kind: "tool", name: tool.name })
                       }
                       className={side && "pr-20"}
                     >
-                      <ZapIcon
-                        className="size-3.5 flex-none text-muted-foreground"
-                        aria-hidden
-                      />
+                      {tool.destructive ? (
+                        <DestructiveIcon />
+                      ) : (
+                        <ZapIcon
+                          className="size-3.5 flex-none text-muted-foreground"
+                          aria-hidden
+                        />
+                      )}
                       <QualifiedName
                         name={tool.name}
                         className="font-mono text-xs"
@@ -178,9 +191,12 @@ function ToolPage({
   const { className } = tool;
   return (
     <article aria-label={tool.name} data-tool-page>
-      <h2 className="font-mono text-sm font-semibold [overflow-wrap:anywhere]">
-        {tool.name}
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 font-mono text-sm font-semibold [overflow-wrap:anywhere]">
+          {tool.name}
+        </h2>
+        {tool.destructive && <DestructiveMark />}
+      </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         {className && (
           <button
