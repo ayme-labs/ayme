@@ -5,10 +5,14 @@ import {
   RecorderToolbar,
   RecorderWindow,
 } from "@ayme-dev/recorder-window/testing";
+import type { EntryId } from "@ayme-dev/recorder/contract";
 import { selectors, type Locator, type Page } from "@playwright/test";
 
+import { BasketPage } from "../.ayme/pom/BasketPage";
 import { CartPage } from "../.ayme/pom/CartPage";
+import { CatalogPage } from "../.ayme/pom/CatalogPage";
 import { InputsPage } from "../.ayme/pom/InputsPage";
+import { WishlistPage } from "../.ayme/pom/WishlistPage";
 import { expect, test } from "./fixtures";
 
 // Ticket #1278: Assert visibility and the hover highlight, in pages a real
@@ -171,5 +175,61 @@ test.describe("the hover highlight", () => {
       .toEqual(await boxOf(cart.itemCount));
     await click!.title.hover();
     await expect.poll(() => highlightOn(page)).toBeNull();
+  });
+
+  test("highlights the element of a step whose click left the page on the page it led to, which has exactly one element that matches", async ({
+    startRecording,
+    page: windowPage,
+  }) => {
+    const recording = await startRecording("/catalog.html", { window: true });
+    const { page, person } = recording;
+    const window = new RecorderWindow(windowPage);
+    await window.open(recording.windowUrl!);
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    await person.click(new CatalogPage(page).basketLink);
+    const basket = new BasketPage(page);
+    await expect(basket.basketLink).toBeVisible();
+    // The click is the first page's; the basket is a page of its own.
+    await expect(window.timeline.visitSections).toHaveCount(2);
+    const [catalog] = await window.timeline.visits();
+    await expect(catalog!.entryCards).toHaveCount(1);
+    const [click] = await catalog!.entries();
+
+    await click!.target.hover();
+    await expect
+      .poll(() => highlightOn(page))
+      .toEqual(await boxOf(basket.basketLink));
+    await click!.title.hover();
+    await expect.poll(() => highlightOn(page)).toBeNull();
+  });
+
+  test("highlights nothing for a step whose click left the page when the page it led to has several elements that match", async ({
+    startRecording,
+    page: windowPage,
+  }) => {
+    const recording = await startRecording("/catalog.html", { window: true });
+    const { page, person, recorder } = recording;
+    const window = new RecorderWindow(windowPage);
+    await window.open(recording.windowUrl!);
+    await window.controls.recordButton.click();
+    await expect(window.controls.stopButton).toBeEnabled();
+    await person.click(new CatalogPage(page).wishlistLink);
+    await expect(new WishlistPage(page).wishlistLinks).toHaveCount(2);
+    await expect(window.timeline.visitSections).toHaveCount(2);
+    const [catalog] = await window.timeline.visits();
+    await expect(catalog!.entryCards).toHaveCount(1);
+    const [click] = await catalog!.entries();
+
+    await click!.target.hover();
+    // The same highlight through the handle: it replaces the hover's, and
+    // is answered once the page has been looked at.
+    expect(
+      await recorder.send({
+        type: "highlight",
+        entry: "interaction_1" as EntryId,
+      })
+    ).toBe("notFound");
+    expect(await highlightOn(page)).toBeNull();
   });
 });
