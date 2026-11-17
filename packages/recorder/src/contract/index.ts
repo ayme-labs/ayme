@@ -209,9 +209,10 @@ export type RecorderCommand =
   // Highlight.
   /** While recording or paused: highlights an element of the entry on the
    * page, in place of any other: its target, or with `row` the element of
-   * that row of its `changes`, counted from 0. Answered "notFound" when the
-   * element is gone, belongs to an earlier Visit, or cannot be found for
-   * certain: nothing is highlighted then. It changes no entry. */
+   * that row of its `changes`, counted from 0. An entry of an earlier Visit
+   * of the page is looked for on the page as it is now. Answered "notFound"
+   * when its page is closed or does not have exactly one element that
+   * matches: nothing is highlighted then. It changes no entry. */
   | {
       readonly type: "highlight";
       readonly entry: EntryId;

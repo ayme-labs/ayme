@@ -220,9 +220,9 @@ export type Happening =
   /** The timeline made something of the recording a person should know of. */
   | { readonly kind: "timelineWarned"; readonly warning: RecorderWarning }
   // Highlight.
-  /** The timeline found the element of the entry a highlight names, as the
-   * page now names it; null when it is gone, of an earlier Visit, or not
-   * known for certain. */
+  /** The timeline found how to look for the element of the entry a
+   * highlight names on the page as it is now; null when the entry names no
+   * element to look for. */
   | {
       readonly kind: "located";
       readonly highlight: number;

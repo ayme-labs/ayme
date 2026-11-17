@@ -1512,20 +1512,43 @@ describe("the timeline, for the highlight", () => {
     expect(timeline.liveTarget(entryId("change_1"), 0)).toBeNull();
   });
 
-  it("finds nothing for an entry of an earlier Visit of its page", async () => {
+  it("finds an entry of a Visit its page has left on the page as it is now: its target by its selector, a row's element by its role and name or its text, never by a ref of the Visit left", async () => {
+    const offer = [savedPage, `  - button "Remove" [ref=e4]`].join("\n");
     const timeline = await timelineOf([
-      ...clicked,
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, offer),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
       {
         kind: "visit",
         page: page1,
         url: "http://shop.test/cart",
         cause: "navigate",
       },
-      snapshot(snapshotId("snapshot_3"), 30, idle),
+      // The page's new document gives the same refs to other elements.
+      snapshot(snapshotId("snapshot_3"), 30, offer),
+    ]);
+    expect(timeline.visits()[0]!.entries[0]!.changes).toEqual([
+      expect.objectContaining({ element: 'paragraph "Saved"' }),
+      expect.objectContaining({ element: 'button "Remove"' }),
     ]);
 
-    expect(timeline.liveTarget(interaction1)).toBeNull();
-    expect(timeline.liveTarget(interaction1, 0)).toBeNull();
+    expect(timeline.liveTarget(interaction1)).toEqual({
+      page: page1,
+      find: { by: "selector", selector: 'internal:role=button[name="Save"i]' },
+    });
+    expect(timeline.liveTarget(interaction1, 0)).toEqual({
+      page: page1,
+      find: { by: "text", text: "Saved" },
+    });
+    expect(timeline.liveTarget(interaction1, 1)).toEqual({
+      page: page1,
+      find: { by: "role", role: "button", name: "Remove" },
+    });
+    expect(timeline.liveTarget(interaction1, 2)).toBeNull();
   });
 
   it("finds nothing for the target of a change of its own, of an entry it does not have, or of one with no selector", async () => {

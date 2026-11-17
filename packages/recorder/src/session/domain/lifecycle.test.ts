@@ -2966,7 +2966,7 @@ describe("the lifecycle, for the highlight", () => {
       todo: [replyKept(1, "notFound")],
     },
     {
-      name: "an element the timeline cannot find, gone or of an earlier Visit, is answered 'notFound', and what was drawn is cleared",
+      name: "an element the timeline has no way to look for is answered 'notFound', and what was drawn is cleared",
       happened: [...recording, highlight(interaction1), located(1, false)],
       todo: [replyKept(1, "notFound"), draw(1, null)],
     },

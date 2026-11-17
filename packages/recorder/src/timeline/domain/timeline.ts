@@ -121,15 +121,20 @@ const selectorOf = (entry: TimelineEntry): ElementLookup | null => {
 };
 
 /** How the page is asked for the element a row names: by the ref the
- * Visit's latest snapshot gives it, or else by its role and name. */
+ * Visit's latest snapshot gives it, or else, and always once the page has
+ * left the Visit, by its role and name or its text. */
 function lookupOf(
   visit: Visit,
-  element: NamedElement | null | undefined
+  element: NamedElement | null | undefined,
+  left: boolean
 ): ElementLookup | null {
   if (!element) return null;
-  const now = [...visit.snapshots.at(-1)!.firstRefs].find(
-    ([, first]) => first === element.ref
-  )?.[0];
+  // A Visit its page has left has no ref in the document the page has now.
+  const now = left
+    ? undefined
+    : [...visit.snapshots.at(-1)!.firstRefs].find(
+        ([, first]) => first === element.ref
+      )?.[0];
   if (now && !isSyntheticRef(now)) return { by: "ref", ref: now };
   if (element.byText) return { by: "text", text: element.name };
   return { by: "role", role: element.role, name: element.name };
@@ -311,9 +316,12 @@ export class Timeline {
    * that row of its changes names, by the ref the page's latest snapshot
    * gives it, or, when that snapshot no longer lists it, by its role and
    * name. Only a ref the browser gave can name an element of the page: core
-   * makes up refs for the nodes the browser gave none. Null for an entry of
-   * a Visit its page has left, a target with no selector, and a row the
-   * entry does not have or whose element is named by nothing.
+   * makes up refs for the nodes the browser gave none. An entry of a Visit
+   * its page has left is looked for on the page as it is now: its target by
+   * its selector all the same, a row's element by its role and name, as no
+   * ref of that Visit names an element of the page's new document. Null for
+   * a target with no selector, and a row the entry does not have or whose
+   * element is named by nothing.
    */
   liveTarget(
     entry: EntryId,
@@ -322,11 +330,11 @@ export class Timeline {
     for (const visit of this.all) {
       const found = visit.entries.find((one) => one.entry.id === entry);
       if (!found) continue;
-      if (this.current.get(visit.page) !== visit) return null;
+      const left = this.current.get(visit.page) !== visit;
       const find =
         row === undefined
           ? selectorOf(found.entry)
-          : lookupOf(visit, found.rows[row]);
+          : lookupOf(visit, found.rows[row], left);
       return find && { page: visit.page, find };
     }
     return null;
