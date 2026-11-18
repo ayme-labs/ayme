@@ -407,11 +407,14 @@ async function openPage(
    * A report, with the element the input acted on, as Playwright's selector
    * names it: a link or a button rather than the element inside it that
    * was under the pointer, whose ref is the one Playwright's report gives.
-   * The page's note of the input says which element that is, and its
-   * ancestors for one the picture does not list. Without the note yet, a
-   * mouse input is read through the selector (`withAncestors`);
-   * a field and a focused element are what typing and keys act on, so their
-   * ref is Playwright's.
+   * The page's note of the input says which element that is: the note whose
+   * element under the pointer is the one Playwright's ref names, so that it
+   * is this input's own. Without that note, a mouse input is read through
+   * the selector (`fromSelector`, for `withAncestors`), with Playwright's
+   * ref standing if it cannot be; a field and a focused element are what
+   * typing and keys act on, so their ref is Playwright's. A report whose
+   * picture does not list the element under the pointer is read through the
+   * selector too, with the page's latest note standing.
    */
   const reportFrom = (
     page: Page,
@@ -420,37 +423,26 @@ async function openPage(
     const report = reportOf(action);
     const tree = action.ariaSnapshot;
     if (!tree) return { report, fromSelector: false };
-    const listed = (ref: string) => tree.includes(`[ref=${ref}]`);
     const types = CHAIN_TYPES[action.name] ?? [];
     const told = (chains.get(page) ?? []).filter((chain) =>
       types.includes(chain.type)
     );
-    const seen = action.ref
-      ? told.findLast((chain) => chain.under === action.ref)
-      : told.at(-1);
-    const named = (refs: readonly (string | null)[]) =>
-      refs.filter((ref): ref is string => ref !== null).map(pictureRef);
-    if (seen) {
-      const [acted = null, ...above] = seen.chain;
-      return {
-        report: {
-          ...report,
-          target:
-            acted !== null && listed(acted)
-              ? { ref: pictureRef(acted), tree }
-              : { ref: null, tree, ancestors: named(above) },
-        },
-        fromSelector: false,
-      };
+    if (action.ref && listedIn(tree, action.ref)) {
+      const own = told.findLast((chain) => chain.under === action.ref);
+      if (own)
+        return {
+          report: { ...report, target: namedIn(tree, own.chain) },
+          fromSelector: false,
+        };
+      return { report, fromSelector: MOUSE_REPORTS.has(action.name) };
     }
-    const mouse = MOUSE_REPORTS.has(action.name);
-    if (action.ref && listed(action.ref) && !mouse)
-      return { report, fromSelector: false };
+    const latest = told.at(-1);
     return {
       report: {
         ...report,
-        // Playwright's own, if the selector cannot be read.
-        target: { ref: null, tree, ancestors: named([action.ref ?? null]) },
+        target: latest
+          ? namedIn(tree, latest.chain)
+          : { ref: null, tree, ancestors: [] },
       },
       fromSelector: true,
     };
@@ -500,15 +492,7 @@ async function openPage(
     markers = read.catch(() => {});
     const refs = await read;
     if (!refs) return report;
-    return {
-      ...report,
-      target: {
-        ...target,
-        ancestors: refs
-          .filter((ref): ref is string => ref !== null)
-          .map(pictureRef),
-      },
-    };
+    return { ...report, target: namedIn(target.tree, refs) };
   };
   /**
    * Files chosen in a file input, which Playwright 1.64 reports as typing
@@ -831,9 +815,12 @@ async function openPage(
     // first. Switching off reports a click it holds back to see whether a
     // double click follows (1.63 and later; 1.62 holds nothing back).
     if (recorderMode && !on) await everyReportDelivered();
-    if (recorderMode)
+    if (recorderMode) {
       await inModeOrder(() => recorderMode!.setMode(on ? "recording" : "none"));
-    else if (on) {
+      // A report that is still being read, as through its selector, is
+      // told before the answer too.
+      if (!on) await reports;
+    } else if (on) {
       await startPlaywrightRecorder();
       recorderMode = await recorderModeOf(context);
       // Whether it picks, whoever switched it: told when it changes.
@@ -1089,6 +1076,30 @@ function firstFileOf(report: InteractionReport): string | undefined {
     text.startsWith(FAKE_PATH)
     ? text.slice(FAKE_PATH.length)
     : undefined;
+}
+
+/** Whether a report's picture lists a ref. */
+const listedIn = (tree: string, ref: string | null): ref is string =>
+  ref !== null && tree.includes(`[ref=${ref}]`);
+
+/**
+ * The target of a report, from the refs of the element the input acted on
+ * and its ancestors, nearest first: the element itself when the picture
+ * lists it, and otherwise the ancestors the picture lists. A ref the
+ * picture does not list, as one an element kept from another read, says
+ * nothing of it.
+ */
+function namedIn(
+  tree: string,
+  refs: readonly (string | null)[]
+): NonNullable<InteractionReport["target"]> {
+  const [acted = null, ...above] = refs;
+  if (listedIn(tree, acted)) return { ref: pictureRef(acted), tree };
+  return {
+    ref: null,
+    tree,
+    ancestors: above.filter((ref) => listedIn(tree, ref)).map(pictureRef),
+  };
 }
 
 /** The reports of an input of the mouse: the element under the pointer can
