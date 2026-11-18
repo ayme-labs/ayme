@@ -312,6 +312,38 @@ export function keyHeld(key: {
   return { held: press || key.holding, typing: !press };
 }
 
+/** The elements a selector of Playwright's names for an input given to an
+ * element inside them: links, buttons and the controls like them, as a CSS
+ * selector. */
+export function controlsSelector(): string {
+  return "button,select,input,[role=button],[role=checkbox],[role=radio],a,[role=link]";
+}
+
+/** What is known of an element, and each element above it, for
+ * `actedOnIndex`. */
+export type ActedOnFacts = {
+  /** An input, a text area, a select, or editable content. */
+  readonly field: boolean;
+  /** It matches `controlsSelector`. */
+  readonly interactive: boolean;
+  readonly visible: boolean;
+};
+
+/**
+ * Which element an input given to the first of `path` acted on, as
+ * Playwright's selector for it names it: the place in `path`, the element
+ * under the pointer and each element above it, nearest first. Playwright
+ * 1.64 names the nearest control around the element, a link or a button,
+ * when it is visible, and a field itself; its own ref of the target is the
+ * element under the pointer's, before it looks for that control, so the
+ * recorder looks for it the same way.
+ */
+export function actedOnIndex(path: readonly ActedOnFacts[]): number {
+  if (path.length === 0 || path[0]!.field) return 0;
+  const control = path.findIndex((element) => element.interactive);
+  return control >= 0 && path[control]!.visible ? control : 0;
+}
+
 /**
  * The refs of a node and each node above it, nearest first, null where a
  * node has none: `up` names the node above, `refOf` a node's ref.

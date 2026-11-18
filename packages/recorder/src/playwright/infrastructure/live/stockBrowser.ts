@@ -403,34 +403,65 @@ async function openPage(
   await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
   });
-  /** A report, with the ancestors of a target its picture does not list. */
-  const reportFrom = (page: Page, action: PlaywrightAction) => {
+  /**
+   * A report, with the element the input acted on, as Playwright's selector
+   * names it: a link or a button rather than the element inside it that
+   * was under the pointer, whose ref is the one Playwright's report gives.
+   * The page's note of the input says which element that is, and its
+   * ancestors for one the picture does not list. Without the note yet, a
+   * mouse input is read through the selector (`withAncestors`);
+   * a field and a focused element are what typing and keys act on, so their
+   * ref is Playwright's.
+   */
+  const reportFrom = (
+    page: Page,
+    action: PlaywrightAction
+  ): { report: InteractionReport; fromSelector: boolean } => {
     const report = reportOf(action);
-    if (!action.ariaSnapshot) return report;
-    const listed = (ref: string) =>
-      action.ariaSnapshot!.includes(`[ref=${ref}]`);
-    if (action.ref && listed(action.ref)) return report;
-    const seen = (chains.get(page) ?? []).findLast((chain) =>
-      (CHAIN_TYPES[action.name] ?? []).includes(chain.type)
+    const tree = action.ariaSnapshot;
+    if (!tree) return { report, fromSelector: false };
+    const listed = (ref: string) => tree.includes(`[ref=${ref}]`);
+    const types = CHAIN_TYPES[action.name] ?? [];
+    const told = (chains.get(page) ?? []).filter((chain) =>
+      types.includes(chain.type)
     );
+    const seen = action.ref
+      ? told.findLast((chain) => chain.under === action.ref)
+      : told.at(-1);
+    const named = (refs: readonly (string | null)[]) =>
+      refs.filter((ref): ref is string => ref !== null).map(pictureRef);
+    if (seen) {
+      const [acted = null, ...above] = seen.chain;
+      return {
+        report: {
+          ...report,
+          target:
+            acted !== null && listed(acted)
+              ? { ref: pictureRef(acted), tree }
+              : { ref: null, tree, ancestors: named(above) },
+        },
+        fromSelector: false,
+      };
+    }
+    const mouse = MOUSE_REPORTS.has(action.name);
+    if (action.ref && listed(action.ref) && !mouse)
+      return { report, fromSelector: false };
     return {
-      ...report,
-      target: {
-        ref: null,
-        tree: action.ariaSnapshot,
-        ancestors: (seen?.chain.slice(1) ?? [])
-          .filter((ref): ref is string => ref !== null)
-          .map(pictureRef),
+      report: {
+        ...report,
+        // Playwright's own, if the selector cannot be read.
+        target: { ref: null, tree, ancestors: named([action.ref ?? null]) },
       },
+      fromSelector: true,
     };
   };
   /**
-   * The ancestors of a target the report's picture does not list, read off
-   * the element itself through Playwright's selector for it: the refs
-   * Playwright's recorder tagged it and each ancestor with (`_ariaRef`, a
-   * private part of Playwright) stay on them, so they are there however
-   * late the report comes. The page's own note of them, which can come
-   * after the report, is used only when the element is gone.
+   * The element an input acted on and its ancestors, for a report that
+   * came before the page's own note of them: read off the element
+   * Playwright's selector names, nearest first, itself included. The refs
+   * Playwright's recorder tagged them with (`_ariaRef`, a private part of
+   * Playwright) stay on them, so they are there however late the report
+   * comes. When the element is gone, Playwright's own ref stands.
    */
   /**
    * For an assertion, which Playwright reports by a selector alone: the ref
@@ -454,10 +485,11 @@ async function openPage(
   };
   const withAncestors = async (
     report: InteractionReport,
-    page: Page
+    page: Page,
+    fromSelector: boolean
   ): Promise<InteractionReport> => {
     const { target, selector } = report;
-    if (!target || target.ref !== null || selector === null) return report;
+    if (!fromSelector || !target || selector === null) return report;
     // A call Playwright traces: never inside a snapshot's mark.
     const read = markers.then(() =>
       page
@@ -957,13 +989,13 @@ async function openPage(
         const pageId = idOf.get(reported);
         if (!pageId) return;
         // What it names is read now, before anything else happens.
-        const report = reportFrom(reported, action);
+        const { report, fromSelector } = reportFrom(reported, action);
         inReportOrder(async () => ({
           kind: "interactionReported",
           page: pageId,
           report: await asUpload(
             await withPickedRef(
-              await withAncestors(report, reported),
+              await withAncestors(report, reported, fromSelector),
               reported
             ),
             reported
@@ -975,7 +1007,7 @@ async function openPage(
       actionUpdated: (reported, action) => {
         const pageId = idOf.get(reported);
         if (!pageId) return;
-        const report = reportFrom(reported, action);
+        const { report } = reportFrom(reported, action);
         inReportOrder(async () => ({
           kind: "interactionRevised",
           page: pageId,
@@ -1058,6 +1090,10 @@ function firstFileOf(report: InteractionReport): string | undefined {
     ? text.slice(FAKE_PATH.length)
     : undefined;
 }
+
+/** The reports of an input of the mouse: the element under the pointer can
+ * be inside the one it acted on. */
+const MOUSE_REPORTS = new Set(["click", "check", "uncheck"]);
 
 /** The events whose target a report of each kind names. */
 const CHAIN_TYPES: Readonly<Record<string, readonly string[]>> = {

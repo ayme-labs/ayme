@@ -1279,6 +1279,34 @@ it("names a click on an element its snapshot does not list by the nearest ancest
   ).toBe("star");
 });
 
+// Playwright's report gives the ref of the element under the pointer, while
+// its selector names the link or the button around it.
+it("names a click on an element inside a link by the link, as Playwright's selector does, whether its snapshot lists the element clicked or not", async () => {
+  // As on github.com: a label that is a box of its own, which the snapshot
+  // lists, and one that is not.
+  const browser = await onStockPlaywright(
+    `<a href="#a" onclick="event.preventDefault()"><span id="listed" style="display:inline-block">Pull requests</span> <span>12</span></a>
+     <a href="#b" onclick="event.preventDefault()"><span id="plain">ayme</span></a>`
+  );
+  await reporting(browser);
+
+  for (const [inner, link, selected] of [
+    // Its name as Playwright's selector writes it, for the report of it.
+    ["#listed", 'link "Pull requests 12"', 'name="Pull requests"'],
+    ["#plain", 'link "ayme"', 'name="ayme"'],
+  ] as const) {
+    await browser.click(browser.page.locator(inner));
+    const { report } = await browser.toldOf(
+      "interactionReported",
+      (signal) => signal.report.selector?.includes(selected) === true
+    );
+    const named = report.target!.ref ?? report.target!.ancestors?.[0];
+    expect(report.target!.tree).toMatch(
+      new RegExp(`${link}[^\\n]*\\[ref=${named}\\]`)
+    );
+  }
+});
+
 // Playwright holds a left click back to see whether a double click follows
 // (1.63 and later; 1.62 holds nothing back), and reports it when its
 // recorder is switched off. The click's report can still be on its way from

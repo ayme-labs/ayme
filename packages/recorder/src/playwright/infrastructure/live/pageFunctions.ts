@@ -9,14 +9,17 @@ import {
 import { pickWithGate } from "../in-page/calls";
 import { gateIn } from "../in-page/gate";
 import {
+  actedOn,
   ancestorRefsIn,
   ariaRefOf,
   elementAbove,
   targetWatchIn,
 } from "../in-page/watches";
 import {
+  actedOnIndex,
   ancestorChain,
   clickHeld,
+  controlsSelector,
   gateStartsOn,
   keyHeld,
   keyRoute,
@@ -59,7 +62,7 @@ const ancestorRules = { ancestorChain, elementAbove, ariaRefOf };
 /** Installs the target watch in a document. */
 export const installTargetWatch: (tell: string) => void = withRules(
   targetWatchIn,
-  ancestorRules
+  { ...ancestorRules, actedOnIndex, controlsSelector, actedOn }
 );
 
 /** Reads the refs of an element's ancestors in its page. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  actedOnIndex,
   ancestorChain,
   clickHeld,
   gateStartsOn,
@@ -499,5 +500,36 @@ describe("an element's own ref in a snapshot of it", () => {
     expect(ownRefOf(`- text: Total\n- button "Inside" [ref=e9]`)).toBe(
       undefined
     );
+  });
+});
+
+describe("the element an input acted on, as Playwright's selector names it", () => {
+  const plain = { field: false, interactive: false, visible: true };
+  const link = { field: false, interactive: true, visible: true };
+
+  it("is the nearest link, button or other control around the element under the pointer", () => {
+    expect(actedOnIndex([plain, plain, link, plain, link])).toBe(2);
+  });
+
+  it("is the element itself when it is a control", () => {
+    expect(actedOnIndex([link, plain, link])).toBe(0);
+  });
+
+  it("is the element itself when no control is around it", () => {
+    expect(actedOnIndex([plain, plain])).toBe(0);
+  });
+
+  it("is the element itself when the nearest control around it is not visible", () => {
+    expect(actedOnIndex([plain, { ...link, visible: false }, link])).toBe(0);
+  });
+
+  it("is a field itself, whatever is around it", () => {
+    expect(
+      actedOnIndex([{ field: true, interactive: true, visible: true }, link])
+    ).toBe(0);
+  });
+
+  it("is none for no element", () => {
+    expect(actedOnIndex([])).toBe(0);
   });
 });
