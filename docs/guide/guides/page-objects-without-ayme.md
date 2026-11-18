@@ -1,10 +1,10 @@
 # Page Objects on a page without Ayme
 
-How to let `ayme mcp` serve your Page Objects to a page whose app doesn't ship Ayme, through Playwright MCP or Playwright CLI.
+How to let `ayme mcp` serve your Page Objects to a page whose app doesn't ship Ayme, through Playwright MCP, Playwright CLI or agent-browser.
 
 > **Experimental:** this may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
 
-When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme mcp` can build your Page Objects and load them into any page, such as a staging site or an app you can't change. Register `ayme mcp` in your agent as in [Connect an agent](connect-an-agent.md#register-the-server-in-your-agent); you don't turn anything on in the page.
+When your agent drives the browser with Playwright MCP, Playwright CLI or agent-browser, `ayme mcp` can build your Page Objects and load them into any page, such as a staging site or an app you can't change. Register `ayme mcp` in your agent as in [Connect an agent](connect-an-agent.md#register-the-server-in-your-agent); you don't turn anything on in the page.
 
 ## Set it up
 
@@ -25,6 +25,7 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
    {
      "browser": {
        "initScript": [".ayme/init-script.js"],
+       "launchOptions": { "channel": "chrome" },
        "contextOptions": {
          "bypassCSP": true,
          "permissions": ["local-network-access"]
@@ -33,11 +34,19 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
    }
    ```
 
-   Pass it to Playwright MCP with `--config <file>` in its registration, or to Playwright CLI with `playwright-cli open --config <file> <url>`.
+   Pass it to Playwright MCP in its registration, such as `npx -y @playwright/mcp@<version> --config=<file>`, or to Playwright CLI with `playwright-cli open --config <file> <url>`. Playwright CLI reads `.playwright/cli.config.json` by default, without `--config`; from that file, the init script is `../.ayme/init-script.js`.
+
+   `"channel": "chrome"` runs the Chrome installed on the machine. With `"browserName": "chromium"` and no channel, the browser tool runs Playwright's own Chromium, which it downloads first.
+
+   agent-browser takes no config file for this. Start it with the init script instead: `agent-browser --init-script .ayme/init-script.js open <url>`.
 
 4. Ask the agent to call `ayme_connect` with the page's URL and open the link. The answer adds a line naming the init script, and your Page Objects' tools become the agent's tools. While no build of the entry has succeeded, that line, and the answer to a page tool while no page is connected, give the build's first error instead.
 
+   When the agent calls your Page Objects' tools through WebMCP, as below, skip this step: open the page with your browser tool.
+
 To have the page also publish your Page Objects' tools through WebMCP, for a browser tool that calls a page's WebMCP tools such as Playwright CLI, install `@ayme-dev/webmcp` beside `@ayme-dev/ayme` and add `--webmcp` after `mcp` in the registration, such as `npx -y @ayme-dev/mcp@<version> mcp --webmcp`. It is off by default, and `ayme mcp` refuses to start with it when there are no Page Objects to serve.
+
+The page publishes through WebMCP only in a Chrome that supplies `document.modelContext`, and a Chrome your browser tool launches does not by default. Add the feature to its launch arguments: for Playwright MCP and Playwright CLI, `"launchOptions": { "args": ["--enable-features=WebMCP"] }` under `browser` in the config file; for agent-browser, `--args "--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport"`. Without it, the browser tool reports that the page registers no WebMCP tools. With Playwright CLI, `webmcp-list` is also empty until the first `playwright-cli snapshot`.
 
 `bypassCSP` lets a page with a Content Security Policy connect to `ayme mcp`. The `local-network-access` permission lets a page on a public site reach `127.0.0.1`; without it, Chrome blocks the connection when headless and waits on a permission prompt when headed.
 
@@ -46,6 +55,5 @@ To have the page also publish your Page Objects' tools through WebMCP, for a bro
 - Playwright MCP and Playwright CLI refuse to start while the init script is missing, so start `ayme mcp` first in a fresh clone.
 - The browser reads the init script when it starts. If it can start before `ayme mcp`, or outlive a restart on another port, add `--port <port>` to the `ayme mcp` registration so every start writes the same init script, then restart the browser once.
 - After an edit, `ayme mcp` rebuilds and the open page swaps in the new Page Objects. A failed build is logged to `ayme mcp`'s standard error, and the page keeps the last good one.
-- Chromium-based browsers only.
 - Navigating to another origin needs a new `ayme_connect` link.
 - On a page whose app already ships Ayme, the app's own tools win over the served ones.
