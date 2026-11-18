@@ -1,7 +1,7 @@
 import { test as base, type Browser, type WebApp } from "@e2e-dev/web";
 import { expect, type Screen } from "e2e";
 import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
-import type { RecordingDriver } from "@ayme-dev/webmcp/testing";
+import { recordPublishedTools } from "@ayme-dev/e2e-testing";
 
 import type { FixturePage, Placement } from "../fixtures";
 import { Inspector } from "./pom/Inspector";
@@ -33,35 +33,6 @@ function openHighlightOverlay() {
   };
 }
 
-/**
- * In the page: the recording WebMCP driver of `@ayme-dev/webmcp/testing`
- * (`recordPublishedTools`), which that entry installs through Playwright's
- * `addInitScript` and does not export as a function.
- */
-function installRecordingDriver() {
-  const publishedTools: RecordingDriver["tools"] = [];
-  Object.defineProperty(document, "modelContext", {
-    configurable: false,
-    value: {
-      tools: publishedTools,
-      async registerTool(
-        tool: RecordingDriver["tools"][number],
-        { signal }: { signal: AbortSignal }
-      ) {
-        publishedTools.push(tool);
-        signal.addEventListener(
-          "abort",
-          () => {
-            const index = publishedTools.indexOf(tool);
-            if (index >= 0) publishedTools.splice(index, 1);
-          },
-          { once: true }
-        );
-      },
-    },
-  });
-}
-
 type Fixtures = { app: WebApp; browser: Browser; screen: Screen };
 
 /** An attribute of the fixture page's `<html>`, read now. */
@@ -84,7 +55,7 @@ export async function openFixture(
   agent?: Agent
 ) {
   await browser.addInitScript(openHighlightOverlay);
-  await browser.addInitScript(installRecordingDriver);
+  await recordPublishedTools(browser);
   if (agent) await browser.goto(await connectLink(agent, app, path));
   else await app.open(path);
   const [pageTab] = browser.tabs();

@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 import { test as base, type Browser, type WebApp } from "@e2e-dev/web";
 import { expect, type Locator, type Screen } from "e2e";
 import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
-import type { RecordingDriver } from "@ayme-dev/webmcp/testing";
+import {
+  executePublishedTool,
+  publishedToolNames,
+  publishedToolSchema,
+  recordPublishedTools,
+  type RecordingDriver,
+} from "@ayme-dev/e2e-testing";
 
 import { counterPath, server } from "./config";
 
@@ -37,35 +43,6 @@ function ignoreAutoPairScanInPage() {
         this.close();
     }
   };
-}
-
-/**
- * In the page: the recording WebMCP driver of `@ayme-dev/webmcp/testing`
- * (`recordPublishedTools`), which that entry installs through Playwright's
- * `addInitScript` and does not export as a function.
- */
-function installRecordingDriver() {
-  const publishedTools: RecordingDriver["tools"] = [];
-  Object.defineProperty(document, "modelContext", {
-    configurable: false,
-    value: {
-      tools: publishedTools,
-      async registerTool(
-        tool: RecordingDriver["tools"][number],
-        { signal }: { signal: AbortSignal }
-      ) {
-        publishedTools.push(tool);
-        signal.addEventListener(
-          "abort",
-          () => {
-            const index = publishedTools.indexOf(tool);
-            if (index >= 0) publishedTools.splice(index, 1);
-          },
-          { once: true }
-        );
-      },
-    },
-  });
 }
 
 /** Where `recordPageErrors` keeps what it saw, across the tab's documents. */
@@ -147,46 +124,6 @@ export const test = exampleTest.extend<{ failOnPageErrors: void }>({
     ).toEqual([]);
   },
 });
-
-/** Installs the recording WebMCP driver in every document the test opens. */
-export const recordPublishedTools = (browser: Browser) =>
-  browser.addInitScript(installRecordingDriver);
-
-/** The names of the tools published right now, in publication order. */
-export const publishedToolNames = (browser: Browser) =>
-  browser.evaluate(() =>
-    (
-      document as unknown as { modelContext: RecordingDriver }
-    ).modelContext.tools.map((tool) => tool.name)
-  );
-
-/** One published tool's name, description and schema; `null` while it is not published. */
-const publishedToolSchema = (browser: Browser, name: string) =>
-  browser.evaluate((name: string) => {
-    const tool = (
-      document as unknown as { modelContext: RecordingDriver }
-    ).modelContext.tools.find((candidate) => candidate.name === name);
-    return tool
-      ? JSON.parse(
-          JSON.stringify({
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-            ...(tool.annotations ? { annotations: tool.annotations } : {}),
-          })
-        )
-      : null;
-  }, name);
-
-/** Executes one published tool from the page. */
-const executePublishedTool = (browser: Browser, name: string) =>
-  browser.evaluate(async (name: string) => {
-    const tool = (
-      document as unknown as { modelContext: RecordingDriver }
-    ).modelContext.tools.find((candidate) => candidate.name === name);
-    if (!tool) throw new Error(`${name} is not published.`);
-    return JSON.parse(JSON.stringify((await tool.execute({})) ?? null));
-  }, name);
 
 const otherPage = (screen: Screen) =>
   screen.getByText("Other page without Page Objects.");
