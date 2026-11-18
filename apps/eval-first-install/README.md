@@ -33,7 +33,7 @@ On a shared machine, note that the worker chooses its own ports and browser, and
 
 ## In CI
 
-[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/validate-real-playwright-evals` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. A `workflow_dispatch` workflow could not be dispatched from this branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
+[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/validate-real-playwright-evals` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. `"docPatch": false` makes it a control round, run on the ref's own skill and guide. A `workflow_dispatch` workflow could not be dispatched from this branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
 
 ## A run's folder
 
@@ -72,4 +72,4 @@ The command classes are heuristics over the transcripts; check a surprising cell
 
 ## The doc changes under test
 
-[doc-changes.patch](doc-changes.patch) is applied to the copies of the skill and the guide given to the worker, never to the repo. It is made against the PR head `6b0b4d79`.
+[doc-changes.patch](doc-changes.patch) is applied to the copies of the skill and the guide given to the worker, never to the repo. It is made against the PR head `6b0b4d79`. `node src/pack.ts --no-doc-patch` packs the skill and the guide as the ref has them, for a control round.

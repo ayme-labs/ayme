@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ref: ${{ steps.plan.outputs.ref }}
+      doc-patch: ${{ steps.plan.outputs.doc-patch }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
@@ -45,9 +46,10 @@ jobs:
             const c = require("./apps/eval-first-install/ci.json");
             const include = c.tools.flatMap((tool) =>
               Array.from({ length: c.runs }, (_, i) => ({ tool, run: i + 1 })));
+            const docPatch = c.docPatch !== false;
             require("fs").appendFileSync(process.env.GITHUB_OUTPUT,
-              `ref=${c.ref}\nmatrix=${JSON.stringify({ include })}\n`);
-            console.log(c.ref, JSON.stringify(include));
+              `ref=${c.ref}\ndoc-patch=${docPatch}\nmatrix=${JSON.stringify({ include })}\n`);
+            console.log(c.ref, `docPatch=${docPatch}`, JSON.stringify(include));
           '
 
   pack:
@@ -67,7 +69,11 @@ jobs:
         working-directory: apps/eval-first-install
         env:
           REF: ${{ needs.plan.outputs.ref }}
-        run: node src/pack.ts --ref "$REF" --out "$RUNNER_TEMP/packed"
+          DOC_PATCH: ${{ needs.plan.outputs.doc-patch }}
+        run: |
+          args=()
+          if [ "$DOC_PATCH" = "false" ]; then args+=(--no-doc-patch); fi
+          node src/pack.ts --ref "$REF" --out "$RUNNER_TEMP/packed" "${args[@]}"
       # The task done by a script instead of a worker: proves the registry,
       # the install, the fixture and the served Page Objects fit together
       # before any model is paid for.
@@ -156,7 +162,7 @@ jobs:
           fi
           node src/score.ts "${dirs[@]}" --json results/scores.json > results/scores.md
           {
-            echo "### First-install eval: $(node -p 'require("./ci.json").ref')"
+            echo "### First-install eval: $(node -p 'const c = require("./ci.json"); c.ref + (c.docPatch === false ? ", without doc-changes.patch" : "")')"
             echo
             cat results/scores.md
           } >> "$GITHUB_STEP_SUMMARY"
