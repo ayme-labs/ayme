@@ -893,6 +893,42 @@ it("dims a model's actions as not on page when none of its objects is, without r
   expect(renderRun).not.toHaveBeenCalled();
 });
 
+it("marks a destructive action of a model that is not on the page", async () => {
+  renderLens({
+    selection: { kind: "model", className: "LineItem" },
+    pageModel: {
+      objects: [],
+      models: [
+        {
+          className: "LineItem",
+          members: [],
+          actions: [
+            {
+              name: "remove",
+              signature: "()",
+              toolName: "LineItem.remove",
+              destructive: true,
+              live: false,
+            },
+            {
+              name: "edit",
+              signature: "()",
+              toolName: "LineItem.edit",
+              live: false,
+            },
+          ],
+          instancePaths: [],
+        },
+      ],
+    },
+  });
+
+  await expect
+    .poll(() => detail.offPageActionMarkedDestructive("remove"))
+    .toBe(true);
+  expect(await detail.offPageActionMarkedDestructive("edit")).toBe(false);
+});
+
 it("wraps a model's description and its actions' descriptions within the pane when it is not on the page", async () => {
   renderLens({
     selection: { kind: "model", className: longClassName },

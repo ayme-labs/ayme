@@ -148,6 +148,25 @@ it("names the tools whose parameters or description changed under the same name"
   ).toContain("Changed: SurveyListPage.search (parameters, description).");
 });
 
+it("notes a tool whose destructive mark changed as changed annotations, and takes false as no mark", () => {
+  const submit = (destructive?: boolean): SeenTool => ({
+    name: "Order.submit",
+    available: true,
+    inputSchema: { type: "object" },
+    ...(destructive === undefined ? {} : { destructive }),
+  });
+
+  expect(toolChangeNote(state([submit()]), state([submit(true)]))).toContain(
+    "Changed: Order.submit (annotations)."
+  );
+  expect(toolChangeNote(state([submit(true)]), state([submit()]))).toContain(
+    "Changed: Order.submit (annotations)."
+  );
+  expect(
+    toolChangeNote(state([submit(false)]), state([submit()]))
+  ).toBeUndefined();
+});
+
 it("gives no note when a tool's schema is equal but built anew, in another key order", () => {
   const before: SeenTool = {
     name: "Cart.add",

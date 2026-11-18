@@ -31,4 +31,4 @@ Any framework Ayme supports; the Inspector bundles its own React. `@playwright/t
 
 ## License
 
-[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE)
+[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE). Bundled third-party code keeps its original license; see `THIRD_PARTY_NOTICES.txt` in the package.

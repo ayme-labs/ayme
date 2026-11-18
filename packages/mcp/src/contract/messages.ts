@@ -17,6 +17,8 @@ export const PageToolSchema = z.object({
   name: z.string().check(z.minLength(1)),
   description: z.optional(z.string()),
   inputSchema: z.record(z.string(), z.unknown()),
+  /** Its author marked it destructive: a call cannot be undone. */
+  destructive: z.optional(z.boolean()),
   available: z.boolean(),
   reason: z.optional(z.string()),
 });

@@ -25,6 +25,7 @@ import {
   errorResult,
   goneToolResult,
   mcpPageTool,
+  type McpListedTool,
   type ToolResult,
 } from "../domain/toolResult";
 
@@ -107,20 +108,19 @@ export function createMcpToolServer({
 
   server.setRequestHandler("tools/list", (_request, ctx) => {
     nameAgent(ctx);
-    return {
-      tools: [
-        ...serverTools.map(({ name, description, inputSchema, app }) => ({
-          name,
-          description,
-          inputSchema,
-          ...(app && {
-            // The flat key is the one Agent Apps read before `ui` was nested.
-            _meta: { ui: { resourceUri: app.uri }, "ui/resourceUri": app.uri },
-          }),
-        })),
-        ...view.listRead(connection.tools).map(mcpPageTool),
-      ],
-    };
+    const tools: McpListedTool[] = [
+      ...serverTools.map(({ name, description, inputSchema, app }) => ({
+        name,
+        description,
+        inputSchema,
+        ...(app && {
+          // The flat key is the one Agent Apps read before `ui` was nested.
+          _meta: { ui: { resourceUri: app.uri }, "ui/resourceUri": app.uri },
+        }),
+      })),
+      ...view.listRead(connection.tools).map(mcpPageTool),
+    ];
+    return { tools };
   });
 
   const run = (name: string, input: Record<string, unknown>) => {
