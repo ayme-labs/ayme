@@ -24,10 +24,8 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 2. **Analyze** the package and its trace, as
    [Read the package](../SKILL.md#read-the-package) and
    [Use the trace](../SKILL.md#use-the-trace) say. List the calls with
-   `trace requests`. Use the trace says to read requests only that way; in
-   this playbook, also read a call in full with `trace request <n>`, `<n>`
-   from that list. It prints the `Cookie` and `Authorization` headers: quote
-   them nowhere. Classify each call as a read or a permanent change from the evidence: the
+   `trace requests` and read each one in full with `trace request <n>`.
+   Classify each call as a read or a permanent change from the evidence: the
    method, the URL or action name, the request body, the response, and what
    changed on the page right after it. The method alone does not decide it:
    reads can be POSTs, and GETs can change state. Done when every call the

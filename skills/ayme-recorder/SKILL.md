@@ -171,11 +171,8 @@ attributes, taken every 50–100 ms while the user worked, not only at
 interactions. It also holds the network log: every request, with its timing,
 headers and bodies. `trace snapshot` opens the snapshots of recorded
 interactions; `trace requests` lists the requests with their method, status
-and duration, but not when each started.
-
-The trace holds the user's cookies and credentials. Read requests only with
-`trace requests`: `trace request <id>` prints every header, `Cookie` and
-`Authorization` included.
+and duration, but not when each started; `trace request <n>`, with `<n>` from
+that list, shows one request in full, headers and bodies included.
 
 Read the trace when a tree does not settle what a step did, or to find a
 locator for an element. Each element carries its package ref as
