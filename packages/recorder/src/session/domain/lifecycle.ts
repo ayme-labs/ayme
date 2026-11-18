@@ -685,7 +685,15 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   // Record says which Visit its pages start, whatever became of them.
   // Stryker disable next-line StringLiteral: every mark but "opened" and "blankAtRecord" starts a Visit by navigation
   const since = at.since ?? "moved";
-  return stay(moved({ ...at, since }));
+  const next = moved({ ...at, since });
+  // While paused, the timeline is told at once of a page that had a Visit:
+  // an element of the Visit it left is looked for there by its role and
+  // name, not by a ref.
+  if (state.phase !== "paused" || page.since !== undefined) return stay(next);
+  return {
+    state: next,
+    todo: [{ kind: "timeline", add: { kind: "elsewhere", page: id, url } }],
+  };
 }
 
 /** A page closed. The last one closing is an end from outside. */

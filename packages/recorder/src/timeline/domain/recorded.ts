@@ -131,6 +131,10 @@ export type TimelineAddition =
       readonly key: string;
       readonly report: InteractionReport;
     }
+  /** The page went to `url` while the recorder was paused: its Visit is
+   * left, unless only the query or the hash changed, and an element of it
+   * is no longer looked for by a ref of that Visit. */
+  | { readonly kind: "elsewhere"; readonly page: PageId; readonly url: string }
   /** The person leaves an entry out of the recording, by its `id`. An entry
    * the timeline does not have is left alone. */
   | { readonly kind: "discard"; readonly entry: EntryId }

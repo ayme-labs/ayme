@@ -1841,6 +1841,44 @@ describe("the timeline, for the highlight", () => {
     expect(timeline.liveTarget(interaction1, 2)).toBeNull();
   });
 
+  it("finds a row's element by its role and name, never by a ref, once its page went elsewhere while the recorder was paused, and by its ref after a change of only the query or the hash", async () => {
+    const offer = [savedPage, `  - button "Remove" [ref=e4]`].join("\n");
+    const recorded = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, offer),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+    ]);
+    const hashOnly = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, offer),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+    ]);
+
+    await recorded.add({
+      kind: "elsewhere",
+      page: page1,
+      url: "http://shop.test/cart",
+    });
+    await hashOnly.add({ kind: "elsewhere", page: page1, url: `${url}#top` });
+
+    expect(recorded.liveTarget(interaction1, 1)).toEqual({
+      page: page1,
+      find: { by: "role", role: "button", name: "Remove" },
+    });
+    expect(hashOnly.liveTarget(interaction1, 1)).toEqual({
+      page: page1,
+      find: { by: "ref", ref: snapshotRefOf("e4") },
+    });
+  });
+
   it("finds nothing for the target of a change of its own, of an entry it does not have, or of one with no selector", async () => {
     const timeline = await timelineOf([
       visit,

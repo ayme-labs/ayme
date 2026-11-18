@@ -4,6 +4,7 @@ import {
   PageIdSchema,
   StructuralObservationSession,
   StructuralTree,
+  startsNewVisit,
   SyntheticAriaRefFactory,
   type AriaRef,
   type StructuralNode,
@@ -349,6 +350,13 @@ export class Timeline {
             (kept) => kept.snapshot.id === interaction.before
           )
         );
+        return;
+      }
+      case "elsewhere": {
+        const left = this.current.get(addition.page);
+        // Continue starts its Visit there, as the address says.
+        if (left && startsNewVisit(left.url, addition.url))
+          this.current.delete(addition.page);
         return;
       }
       case "text": {

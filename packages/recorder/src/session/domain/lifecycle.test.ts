@@ -1240,10 +1240,19 @@ describe("the lifecycle", () => {
       state: { phase: "saving" },
     },
     {
-      name: "a page that went elsewhere while paused starts a Visit there at Continue",
+      name: "a page that went elsewhere while paused starts a Visit there at Continue, and the timeline is told at once that it left its Visit",
       happened: [...stopped, navigated("http://shop.test/cart"), resume],
       todo: [
-        [],
+        [
+          {
+            kind: "timeline",
+            add: {
+              kind: "elsewhere",
+              page: page1,
+              url: "http://shop.test/cart",
+            },
+          },
+        ],
         [
           visitAt("http://shop.test/cart", "navigate"),
           reportInteractions,
