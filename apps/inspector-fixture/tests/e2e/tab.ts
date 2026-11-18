@@ -23,6 +23,19 @@ export class Tab {
   on(query: (screen: Screen) => Locator): On {
     return new On(this, query(this.screen));
   }
+
+  /**
+   * CSS that crosses the Inspector's closed shadow root, for the few parts
+   * no role, name or label tells apart, such as a list's own items and not
+   * the ones nested in them (`> li`). e2e documents no way for CSS to cross
+   * a closed root: `browser.locator` stops at it. Its web engine registers
+   * the `e2e-roots=` selector for its own queries, which runs CSS in the
+   * document and in every closed root under it; this is the one place the
+   * suite relies on it, so an e2e upgrade that changes it fails here.
+   */
+  css(selector: string): On {
+    return new On(this, this.browser.locator(`e2e-roots=${selector}`));
+  }
 }
 
 /**
@@ -58,5 +71,25 @@ export class On {
 
   async fill(value: string) {
     await (await this.front()).fill(value);
+  }
+
+  async check() {
+    await (await this.front()).check();
+  }
+
+  async count() {
+    return (await this.front()).count();
+  }
+
+  async isVisible() {
+    return (await this.front()).isVisible();
+  }
+
+  async textContent() {
+    return (await this.front()).textContent();
+  }
+
+  async getAttribute(name: string) {
+    return (await this.front()).getAttribute(name);
   }
 }

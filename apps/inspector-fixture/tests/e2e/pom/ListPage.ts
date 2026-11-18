@@ -11,4 +11,14 @@ export class ListPage {
   get newItemInput(): On {
     return this.tab.on((screen) => screen.getByRole("textbox", "New item"));
   }
+
+  get urgentCheckbox(): On {
+    return this.tab.on((screen) => screen.getByRole("checkbox", "Urgent"));
+  }
+
+  get items(): On {
+    return this.tab.on((screen) =>
+      screen.getByRole("list", "Items").getByRole("listitem")
+    );
+  }
 }

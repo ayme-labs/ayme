@@ -4,6 +4,7 @@ import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
 import { recordPublishedTools } from "@ayme-dev/e2e-testing";
 
 import type { FixturePage, Placement } from "../fixtures";
+import { AgentView } from "./agentView";
 import { Inspector } from "./pom/Inspector";
 import { ListPage } from "./pom/ListPage";
 import { Tab, type On } from "./tab";
@@ -14,6 +15,9 @@ import { Tab, type On } from "./tab";
 // Inspector window is a second tab.
 
 export type { FixturePage, Placement };
+
+/** The Caller mark of a run made from the panel, as Runs shows it. */
+export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
 
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
@@ -83,6 +87,8 @@ export async function openFixture(
 
   const page = new Tab(screen, browser, pageTab!);
   return {
+    page,
+    agentView: new AgentView(page),
     inspector: new Inspector(
       agent ? await openInspectorTab({ browser, screen }, agent, page) : page
     ),
@@ -147,9 +153,17 @@ export function testIn(placement: Placement, path: FixturePage = "/") {
           );
         },
       })
-      .extend<{ inspector: Inspector; listPage: ListPage }>({
+      .extend<{
+        inspector: Inspector;
+        listPage: ListPage;
+        agentView: AgentView;
+        page: Tab;
+      }>({
         inspector: async ({ opened }, use) => use(opened.inspector),
         listPage: async ({ opened }, use) => use(opened.listPage),
+        agentView: async ({ opened }, use) => use(opened.agentView),
+        // The fixture page's tab, for a test that reads the page directly.
+        page: async ({ opened }, use) => use(opened.page),
       })
   );
 }
