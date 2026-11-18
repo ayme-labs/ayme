@@ -46,6 +46,9 @@ declare global {
   interface Window {
     __aymeRecorderGate?: Gate;
     __aymeRecorderGateStart?: GateStart;
+    /** The latest start of Playwright's picking a document heard of
+     * (`startPicking`). */
+    __aymeRecorderPickingStart?: GateStart;
   }
 }
 
@@ -112,7 +115,8 @@ export function gateIn(held: string, rules: GateRules): void {
   /** The codes of held keys whose release is the gate's too. */
   const swallowKeyUp = new Set<string>();
   /** Playwright's recorder picks an element: inputs are left to it. */
-  let picking = false;
+  // Picking started before this script ran, if the start did.
+  let picking = rules.gateStartsOn(window.__aymeRecorderPickingStart);
   const arrived = () => {
     waiting = Math.max(0, waiting - 1);
     if (!on && waiting === 0) holding = false;

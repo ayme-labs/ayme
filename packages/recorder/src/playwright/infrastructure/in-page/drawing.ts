@@ -129,8 +129,9 @@ export type PickingStart = { readonly on: boolean; readonly change: number };
  * following the mouse, or without it, and its gate leaving the picking
  * click to Playwright, or not, as the gates of the documents open when the
  * mode changed were told. Every start the adapter added runs in each new
- * document, in the order they were added, after the gate's script: only the
- * latest counts.
+ * document: only the latest counts. It is kept in the document, so that a
+ * gate whose script runs after it starts as it says, as the gate's own
+ * start is (`startGate`).
  */
 export function startPicking(
   start: PickingStart,
@@ -139,9 +140,11 @@ export function startPicking(
     readonly pickWithGate: (on: boolean) => void;
   }
 ): void {
-  const self = window as unknown as { __aymeRecorderPickingStart?: number };
-  if ((self.__aymeRecorderPickingStart ?? 0) > start.change) return;
-  self.__aymeRecorderPickingStart = start.change;
+  const self = window as unknown as {
+    __aymeRecorderPickingStart?: PickingStart;
+  };
+  if ((self.__aymeRecorderPickingStart?.change ?? 0) > start.change) return;
+  self.__aymeRecorderPickingStart = start;
   rules.pickWithGate(start.on);
   rules.followPicking(start.on, rules);
 }

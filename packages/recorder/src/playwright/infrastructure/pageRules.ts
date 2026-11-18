@@ -246,8 +246,9 @@ export function withRules<
   return sent;
 }
 
-/** Whether the gate of a new document starts on: as the latest start said,
- * and off when none did. */
+/** Whether the gate of a new document starts on, or starts leaving the
+ * picking click to Playwright: as the latest start of either said, and off
+ * when none did. */
 export function gateStartsOn(
   start: { readonly on: boolean } | undefined
 ): boolean {

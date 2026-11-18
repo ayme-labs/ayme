@@ -26,6 +26,8 @@ import {
   loadProjectPlaywright,
   projectPlaywrightCli,
 } from "../projectPlaywright";
+import { startGate } from "../in-page/gate";
+import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
 import { snapshotId } from "../../../test-utils/ids";
 
@@ -1042,6 +1044,76 @@ it("leaves the click to Playwright's picking in a document that loads while it p
   expect(browser.told.map(({ kind }) => kind)).not.toContain("inputHeld");
   expect(await browser.page.evaluate("window.clicks ?? 0")).toBe(0);
 });
+
+it("leaves the click to Playwright's picking in a frame whose document loads while it picks", async () => {
+  const browser = await onStockPlaywright(
+    `<iframe srcdoc="<p>Before</p>"></iframe>`
+  );
+  const frame = browser.page.frameLocator("iframe");
+  await frame.getByText("Before").waitFor();
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+  // The frame goes on to a new document while Playwright picks.
+  await browser.page.evaluate(() => {
+    document.querySelector("iframe")!.srcdoc =
+      "<button id='b' onclick='window.clicks = (window.clicks ?? 0) + 1'>Inside</button>";
+  });
+  await frame.locator("#b").waitFor();
+
+  await browser.click(frame.locator("#b"));
+
+  const { report } = await browser.toldOf(
+    "interactionReported",
+    ({ report }) => report.type === "assertVisible"
+  );
+  expect(report.selector).toContain("Inside");
+  expect(browser.told.map(({ kind }) => kind)).not.toContain("inputHeld");
+  expect(
+    await frame
+      .locator("#b")
+      .evaluate(() => (window as unknown as { clicks?: number }).clicks ?? 0)
+  ).toBe(0);
+});
+
+it.runIf(!attaching)(
+  "starts a document's gate leaving the click to picking whichever runs first, the gate's script or the start of picking",
+  async () => {
+    const running = await projectChromium.launch({ headless: true });
+    ends.push(() => running.close());
+    /** A page whose scripts run the other way round from the adapter's:
+     * the starts first, then the gate. How many clicks it held. */
+    const reversed = async (picking: boolean) => {
+      const page = await running.newPage();
+      const held = { count: 0 };
+      await page.exposeBinding("held", () => {
+        held.count += 1;
+      });
+      const run = (fn: { toString(): string }, arg: unknown) =>
+        page.addInitScript({
+          content: `(${fn.toString()})(${JSON.stringify(arg)})`,
+        });
+      await run(startGate, { on: true, change: 1 });
+      if (picking) await run(startPickingIn, { on: true, change: 1 });
+      await run(installGate, "held");
+      // A document of its own, which the scripts start.
+      await page.goto("data:text/html,<button>Pick me</button>");
+      const box = (await page.getByRole("button").boundingBox())!;
+      await page.mouse.click(box.x + 5, box.y + 5);
+      return held;
+    };
+
+    // Not picking, the gate holds the click.
+    const holding = await reversed(false);
+    await expect.poll(() => holding.count).toBe(1);
+    // Picking, it leaves the click to Playwright, though it started last.
+    const picking = await reversed(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(picking.count).toBe(0);
+  }
+);
 
 // The hover highlight (ticket #1278): the recorder's own highlight, drawn
 // on the element a ref of the adapter's own latest snapshot names.
