@@ -212,7 +212,9 @@ export const askInPage: Confirm = ({ name, summary, page }) =>
 Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
 header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
-each irreversible step, to `.ayme/params/<flow>.recorded.json`. The test
+each irreversible step, read from that step's trace snapshot, to
+`.ayme/params/<flow>.recorded.json`. Have `summary()` normalise whitespace:
+pages often use non-breaking spaces, as in `$ 210.00`. The test
 calls the same flow, never a copy of its steps, with a `confirm` that always
 approves and keeps each summary, so the test checks what a person would:
 
