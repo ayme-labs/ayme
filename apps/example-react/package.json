@@ -8,9 +8,11 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
-    "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test",
-    "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test"
+    "test:e2e": "pnpm run test:playwright:dev && pnpm run test:playwright:prod && pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:playwright:dev": "AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:dev": "AYME_E2E_RENDER=spa e2e run",
+    "test:playwright:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa e2e run"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
@@ -29,6 +31,8 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@playwright/test": "^1.64.0",
+    "e2e": "0.23.1",
+    "@e2e-dev/web": "0.16.0",
     "playwright": "^1.64.0",
     "@vitejs/plugin-react": "^6.1.1",
     "vite": "^8.2.2",
