@@ -19,7 +19,10 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    page, log in if needed, then clear what the site keeps for itself but keep
    the login. In DevTools, open Application → Storage, untick Cookies, and
    Local storage too when the site keeps its login there, and press "Clear
-   site data". Then reload the start page and do the flow.
+   site data". A kept cookie can also hide a consent banner that a live run
+   will meet: when the site has one, delete its consent cookie under
+   Application → Cookies as well, and answer the banner in the recording.
+   Then reload the start page and do the flow.
    Otherwise the site answers from its own caches, and the recording lacks
    those calls. When the user does the flow to the end, irreversible steps
    included, the replay test covers them too.
