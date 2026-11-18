@@ -177,16 +177,34 @@ export function goneToolResult(name: string): ToolResult {
 
 /**
  * A page tool as the MCP tool list shows it: its name, description and
- * schema only, since that list changes on presence and not on availability
- * (ADR-0035).
+ * schema, and `destructiveHint` when its author marked it destructive, but
+ * not its availability, since that list changes on presence and not on
+ * availability (ADR-0035). An unmarked tool gets no annotations: MCP then
+ * takes it as possibly destructive, and Ayme never says otherwise.
  */
-export function mcpPageTool({ name, description, inputSchema }: PageTool) {
-  return {
+export function mcpPageTool({
+  name,
+  description,
+  inputSchema,
+  destructive,
+}: PageTool): McpListedTool {
+  const tool = {
     name,
     description,
     inputSchema: { ...inputSchema, type: "object" as const },
   };
+  return destructive
+    ? { ...tool, annotations: { destructiveHint: true } }
+    : tool;
 }
+
+/** A tool in the MCP tool list: a page tool or one of the server's own. */
+export type McpListedTool = {
+  name: string;
+  description: string | undefined;
+  inputSchema: Record<string, unknown> & { type: "object" };
+  annotations?: { destructiveHint: true };
+};
 
 /**
  * A page tool as `ayme_list_tools` shows it: the MCP listing, plus whether

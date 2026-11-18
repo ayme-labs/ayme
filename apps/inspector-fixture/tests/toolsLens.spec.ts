@@ -25,7 +25,7 @@ test("the Tools lens lists exactly the tools an agent gets", async ({
     .toEqual([...agentTools.map(({ name }) => name), ...NOT_ON_WEBMCP].sort());
 });
 
-test("each tool's page shows the description and schema an agent gets", async ({
+test("each tool's page shows the description, schema and destructive mark an agent gets", async ({
   page,
   inspector,
 }) => {
@@ -44,7 +44,18 @@ test("each tool's page shows the description and schema an agent gets", async ({
     expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
       tool.inputSchema
     );
+    const destructive = tool.annotations?.consequentialHint === true;
+    expect(await toolPage.destructiveMark.count()).toBe(destructive ? 1 : 0);
+    expect(await inspector.navigator.tools.markedDestructive(tool.name)).toBe(
+      destructive
+    );
   }
+  // The fixture's ListPage.clear is the one marked.
+  expect(
+    agentTools
+      .filter(({ annotations }) => annotations?.consequentialHint)
+      .map(({ name }) => name)
+  ).toEqual(["ListPage.clear"]);
 });
 
 test("a Page Object tool's page shows its model's definition as snapshot returns it", async ({

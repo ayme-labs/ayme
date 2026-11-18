@@ -10,6 +10,9 @@ export class ToolPage extends PanelPart {
   /** The tool's name. */
   @ayme.child
   readonly title: Locator;
+  /** The mark beside its name of a tool marked destructive. */
+  @ayme.child
+  readonly destructiveMark: Locator;
   /** Its description; a tool without one shows none. */
   @ayme.child
   readonly description: Locator;
@@ -28,6 +31,9 @@ export class ToolPage extends PanelPart {
   constructor(detail: Locator) {
     super(detail.locator("article[data-tool-page]"));
     this.title = this.root.getByRole("heading", { level: 2 });
+    this.destructiveMark = this.root.locator(
+      ":scope > div:first-child > [data-destructive-mark]"
+    );
     this.description = this.root.locator(":scope > p");
     this.kind = this.root.locator("[data-tool-kind]");
     this.modelLink = this.root.getByRole("button", {

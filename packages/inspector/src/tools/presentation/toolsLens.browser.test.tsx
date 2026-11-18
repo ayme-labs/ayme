@@ -185,6 +185,39 @@ it("lists no Node section while no App Process offers a Peek tool", async () => 
   expect(await navigator.tools.separatorBefore("peek.cart")).toBe(false);
 });
 
+it("marks a destructive tool with a warning icon in its row and the destructive mark beside its name", async () => {
+  const removeItem: LiveTool = {
+    name: "ListItem.remove",
+    inputSchema: { type: "object", properties: {} },
+    group: "pageObject",
+    className: "ListItem",
+    destructive: true,
+  };
+  renderTools({ tools: [pageContext, addItem, removeItem] });
+
+  await expect
+    .poll(() => navigator.tools.markedDestructive("ListItem.remove"))
+    .toBe(true);
+  expect(await navigator.tools.markedDestructive("ListPage.addItem")).toBe(
+    false
+  );
+  expect(
+    await navigator.tools
+      .tool("ListItem.remove")
+      .getAttribute("aria-description")
+  ).toBe("Destructive");
+
+  await navigator.tools.tool("ListItem.remove").click();
+  await expect
+    .poll(() => detail.toolPage.destructiveMark.textContent())
+    .toBe("Destructive");
+  await navigator.tools.tool("ListPage.addItem").click();
+  await expect
+    .poll(() => detail.toolPage.title.textContent())
+    .toBe("ListPage.addItem");
+  expect(await detail.toolPage.destructiveMark.count()).toBe(0);
+});
+
 it("opens a tool's page with its description, then the run slot", async () => {
   const onSelect = vi.fn();
   renderTools({ onSelect });
