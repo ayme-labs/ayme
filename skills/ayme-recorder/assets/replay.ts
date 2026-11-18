@@ -6,8 +6,9 @@
  * live. Every other request is answered from the recording when `match()`
  * pairs it with a recorded call not used yet, after that call's recorded
  * duration divided by REPLAY_SPEED (default 1). Identical calls get their
- * answers in recorded order. Anything else is aborted and logged, with up to
- * three recorded calls of the same method and path to compare it with.
+ * answers in recorded order. Anything else is aborted and logged, with the
+ * closest recorded call of the same method and path and the fields where the
+ * two differ.
  *
  * The replay test also blocks service workers:
  * `test.use({ serviceWorkers: "block" })`.
@@ -70,15 +71,7 @@ export async function installReplay(context: BrowserContext, traceZip: string) {
     const live: Call = { method, url: request.url(), body: request.postData() };
     const index = unused.findIndex((call) => match(live, call));
     if (index === -1) {
-      const path = new URL(live.url).pathname;
-      const samePath = recorded
-        .filter(
-          (call) =>
-            call.method === method && new URL(call.url).pathname === path
-        )
-        .slice(0, 3)
-        .map(({ url, body }) => ({ url, body }));
-      console.log("replay: aborted", live, "recorded:", samePath);
+      logAborted(live, recorded);
       return route.abort();
     }
     const call = unused.splice(index, 1)[0]!;
@@ -93,6 +86,61 @@ export async function installReplay(context: BrowserContext, traceZip: string) {
     });
   });
 }
+
+// Prints only the fields that differ: whole bodies, such as ASP.NET view state,
+// would flood the output.
+function logAborted(live: Call, recorded: Call[]) {
+  console.log(`replay: aborted ${live.method} ${live.url}`);
+  const path = new URL(live.url).pathname;
+  const liveFields = fields(live);
+  const closest = recorded
+    .filter(
+      (call) =>
+        call.method === live.method && new URL(call.url).pathname === path
+    )
+    .map((call) => ({ call, fields: fields(call) }))
+    .sort(
+      (a, b) => shared(liveFields, b.fields) - shared(liveFields, a.fields)
+    )[0];
+  if (!closest)
+    return console.log("  no recorded call with this method and path");
+  console.log(`  closest recorded: ${closest.call.url}`, {
+    onlyLive: onlyIn(liveFields, closest.fields),
+    onlyRecorded: onlyIn(closest.fields, liveFields),
+  });
+}
+
+/** A call's query and body as `name=value` fields, from JSON or a form. */
+function fields({ url, body }: Call): Set<string> {
+  const out = [...new URL(url).searchParams].map(
+    ([key, value]) => `${key}=${value}`
+  );
+  if (body) {
+    try {
+      flatten(JSON.parse(body), "", out);
+    } catch {
+      for (const [key, value] of new URLSearchParams(body))
+        out.push(`${key}=${value}`);
+    }
+  }
+  return new Set(out);
+}
+
+function flatten(value: unknown, path: string, out: string[]) {
+  if (value !== null && typeof value === "object")
+    for (const [key, item] of Object.entries(value))
+      flatten(item, path ? `${path}.${key}` : key, out);
+  else out.push(`${path}=${JSON.stringify(value)}`);
+}
+
+const shared = (a: Set<string>, b: Set<string>) =>
+  [...a].filter((field) => b.has(field)).length;
+
+const onlyIn = (a: Set<string>, b: Set<string>) =>
+  [...a]
+    .filter((field) => !b.has(field))
+    .slice(0, 10)
+    .map((field) => (field.length > 120 ? `${field.slice(0, 120)}…` : field));
 
 function loadCalls(traceZip: string): RecordedCall[] {
   const zip = readZip(traceZip);
