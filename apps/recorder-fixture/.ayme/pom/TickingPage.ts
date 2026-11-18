@@ -15,6 +15,8 @@ export class TickingPage extends FixturePage {
   readonly stopButton = this.page.getByRole("button", {
     name: "Stop ticking",
   });
+  @ayme.child({ description: '"Ticks: 0", then one more every 100 ms.' })
+  readonly ticks = this.page.locator("#ticks");
   @ayme.child({ description: '"Not stopped", then "Stopped".' })
   readonly state = this.page.locator("#state");
 }

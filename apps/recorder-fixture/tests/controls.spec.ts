@@ -170,6 +170,10 @@ test.describe("the recorder's controls", () => {
     expect(await recorder.send({ type: "record" })).toBe("applied");
 
     await person.click(settling.loadButton);
+    // The click reached the page, so the recorder heard of it: it sent it
+    // on. Stop comes after that, as a person's does; one sent within the
+    // milliseconds the page's message takes is no person's.
+    await expect(settling.results).not.toHaveCount(0);
     expect(await recorder.send({ type: "stop" })).toBe("applied");
     await person.click(settling.markButton);
     const phase = seen.phase;
@@ -206,6 +210,8 @@ test.describe("the recorder's controls", () => {
     // a few milliseconds after Stop, too soon for a person to click.
     await person.click(ticking.startButton);
     const started = Date.now();
+    // The click reached the page, so the recorder heard of it, before Stop.
+    await expect(ticking.ticks).not.toHaveText("Ticks: 0");
     expect(await recorder.send({ type: "stop" })).toBe("applied");
     await new Promise((resolve) => setTimeout(resolve, 300));
     await person.click(ticking.stopButton);
