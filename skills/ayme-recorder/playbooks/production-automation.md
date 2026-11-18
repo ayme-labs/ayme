@@ -52,9 +52,9 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 6. **Heal** against the replay test. Run it with
    `npx playwright test <file> --repeat-each 3 --retries 0 --workers 1` and
    fix the page objects' locators and waits, never the flow's steps. When
-   passing would take other steps, stop and tell the user. Keep the waits
-   Page object design asks for, such as an action finishing in its target
-   state. Prove each other wait: take it out and run three times at recorded
+   passing would take other steps, stop and tell the user. Keep every wait
+   that ends an action in its target state, as Page object design asks, even
+   when the test passes without it. Prove each other wait: take it out and run three times at recorded
    speed, then three times with `REPLAY_SPEED=1000`. A wait that matters
    fails or flakes without it at either speed: put it back. Remove one that
    passes both. Done when the test passes three runs in a row with every
