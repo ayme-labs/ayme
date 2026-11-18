@@ -39,6 +39,13 @@ function openHighlightOverlay() {
 
 type Fixtures = { app: WebApp; browser: Browser; screen: Screen };
 
+/**
+ * The browsers whose documents get the fixture's init scripts already: a
+ * test that opens a second fixture page must not install them twice, since
+ * the recording driver's `document.modelContext` can be defined only once.
+ */
+const prepared = new WeakSet<Browser>();
+
 /** An attribute of the fixture page's `<html>`, read now. */
 const rootAttribute = (browser: Browser, name: string) =>
   browser.evaluate(
@@ -93,8 +100,11 @@ export async function openFixture(
   path: FixturePage,
   agent?: Agent
 ) {
-  await browser.addInitScript(openHighlightOverlay);
-  await recordPublishedTools(browser);
+  if (!prepared.has(browser)) {
+    prepared.add(browser);
+    await browser.addInitScript(openHighlightOverlay);
+    await recordPublishedTools(browser);
+  }
   if (agent) await browser.goto(await connectLink(agent, app, path));
   else await app.open(path);
   const [pageTab] = browser.tabs();

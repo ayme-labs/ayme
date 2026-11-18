@@ -37,29 +37,35 @@ abstract class Part {
 const panelOf: Root = (screen) => screen.getByRole("complementary", "ayme");
 
 /**
- * The text of the first element `selector` matches inside the Inspector, as
- * the DOM has it, line breaks and indentation included: e2e's text reads
- * collapse whitespace. It reads through the hook the Inspector's mount keeps
+ * The text of every element `selector` matches inside the Inspector, as the
+ * DOM has it: e2e's text reads give the rendered text, which collapses
+ * whitespace and spaces apart the pieces of a qualified name such as
+ * `ListPage.addItem`. It reads through the hook the Inspector's mount keeps
  * for tests, the closed root on its host under
  * `Symbol.for("@ayme-dev/inspector/shadow-root")`
  * (`packages/inspector/src/shared/infrastructure/shadowRootHook.ts`), which
  * Playwright's `ayme-inspector=` selector engine reads too.
  */
-async function panelText(tab: Tab, selector: string): Promise<string | null> {
+async function panelTexts(tab: Tab, selector: string): Promise<string[]> {
   await tab.front();
   return tab.browser.evaluate((selector: string) => {
     const key = Symbol.for("@ayme-dev/inspector/shadow-root");
-    for (const host of document.querySelectorAll(
-      "[data-ayme-inspector-host]"
-    )) {
-      const root = (host as unknown as Record<symbol, ShadowRoot | undefined>)[
-        key
-      ];
-      const match = root?.querySelector(selector);
-      if (match) return match.textContent;
-    }
-    return null;
+    return [...document.querySelectorAll("[data-ayme-inspector-host]")].flatMap(
+      (host) => {
+        const root = (
+          host as unknown as Record<symbol, ShadowRoot | undefined>
+        )[key];
+        return [...(root?.querySelectorAll(selector) ?? [])].map(
+          (match) => match.textContent ?? ""
+        );
+      }
+    );
   }, selector);
+}
+
+/** The text of the first element `selector` matches, as `panelTexts` reads it. */
+async function panelText(tab: Tab, selector: string): Promise<string | null> {
+  return (await panelTexts(tab, selector))[0] ?? null;
 }
 
 /** The Structure lens's tree, in the navigator. */
@@ -139,8 +145,70 @@ export class ModelLens extends Part {
   }
 }
 
+/** How the Tools lens labels its groups. */
+export type ToolGroupLabel =
+  | "Page object tools"
+  | "Custom tools"
+  | "Browser tools"
+  | "Peek tools"
+  | "Agent tools";
+
+const toolGroupLabels: readonly ToolGroupLabel[] = [
+  "Page object tools",
+  "Custom tools",
+  "Browser tools",
+  "Peek tools",
+  "Agent tools",
+];
+
+/** The Tools lens's tree: the live tools, grouped. */
+export class ToolsLens extends Part {
+  /** One group's list. */
+  group(label: ToolGroupLabel): On {
+    return this.on((root) => root.getByRole("list", label));
+  }
+
+  /** A tool's entry, by name. Pressing it opens the tool's page. */
+  tool(name: string): On {
+    return this.on((root) => root.getByRole("button", name));
+  }
+
+  /** A tool's row in its group's list. */
+  row(name: string): On {
+    return this.on((root) =>
+      root
+        .getByRole("listitem")
+        .filter({ has: this.tab.screen.getByRole("button", name) })
+    );
+  }
+
+  /** Whether a tool's row shows the destructive icon in place of the tool icon. */
+  async markedDestructive(name: string): Promise<boolean> {
+    const icon = this.tab.browser.locator("[data-destructive-icon]");
+    return (
+      (await this.row(name)
+        .within((row) => row.filter({ has: icon }))
+        .count()) > 0
+    );
+  }
+
+  /** The listed tools' names, by group, for the groups that list any. */
+  async listed(): Promise<Partial<Record<ToolGroupLabel, string[]>>> {
+    const listed: Partial<Record<ToolGroupLabel, string[]>> = {};
+    for (const label of toolGroupLabels) {
+      const names = await panelTexts(
+        this.tab,
+        `[aria-label=${JSON.stringify(label)}] button`
+      );
+      if (names.length > 0) listed[label] = names;
+    }
+    return listed;
+  }
+}
+
 /** The navigator: search, the lens switcher and the active lens's tree. */
 export class Navigator extends Part {
+  readonly tools = new ToolsLens(this.tab, this.root);
   readonly structure = new StructureLens(this.tab, this.root);
   readonly model = new ModelLens(this.tab, this.root);
 
@@ -189,6 +257,14 @@ export class WhatTheModelSees extends Part {
   /** The Page Object definitions' text, line by line as the panel shows it. */
   definitionsText(): Promise<string | null> {
     return panelText(this.tab, 'pre[aria-label="Page object definitions"]');
+  }
+
+  /** A tool's input schema, parsed from what the block shows. */
+  async schemaValue(toolName: string): Promise<unknown> {
+    const label = JSON.stringify(`${toolName} input schema`);
+    return JSON.parse(
+      (await panelText(this.tab, `pre[aria-label=${label}]`)) ?? ""
+    );
   }
 
   /** The page state's text, line by line as the panel shows it. */
@@ -419,6 +495,19 @@ export class ToolPage extends Part {
     this.tab,
     this.inside((root) => root.getByRole("form"))
   );
+
+  /** The tool's name. */
+  get title(): On {
+    return this.on((root) => root.getByRole("heading", { level: 2 }));
+  }
+
+  /** The mark beside its name of a tool marked destructive. */
+  get destructiveMark(): On {
+    // Beside the name only: the run card has a mark of its own.
+    return this.tab.css(
+      "article[data-tool-page] > div:first-child > [data-destructive-mark]"
+    );
+  }
 
   /** Its description's text, or "" for a tool without one. */
   async descriptionText(): Promise<string> {
