@@ -57,7 +57,7 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone.
+Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone. When a model's `present` returns `false`, none of its members are listed.
 
 A predicate that reads the URL follows client-side routing and the browser's Back and Forward.
 
