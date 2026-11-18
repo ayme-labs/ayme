@@ -67,6 +67,11 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   and clicks inside a frame, an open shadow root and on an element the page
   structure does not list.
 
+- `targets.spec.ts` checks the element a step names on `app/nested.html`:
+  a click, and a double click, on the text inside a link or a button names
+  the link or the button, as Playwright's selector does, whether the page
+  structure lists the element clicked or not.
+
 - `toolbar.spec.ts` drives the in-page toolbar through its page object
   (`@ayme-dev/recorder-window/testing`), with a person's input, in pages a
   real recorder records, beside the window when `startRecording` is asked to
