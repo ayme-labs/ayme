@@ -62,7 +62,7 @@ const REDIRECTS = new Set([301, 302, 307, 308]);
 export async function installReplay(context: BrowserContext, traceZip: string) {
   const recorded = loadCalls(traceZip);
   const unused = [...recorded];
-  const speed = Number(process.env.REPLAY_SPEED) || 1;
+  const speed = Number(process.env["REPLAY_SPEED"]) || 1;
   await context.route("**/*", async (route, request) => {
     const method = request.method();
     const read = method === "GET" || method === "HEAD";
