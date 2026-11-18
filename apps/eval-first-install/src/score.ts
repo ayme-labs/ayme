@@ -259,7 +259,8 @@ function classify(use: ToolUse): Classified[] {
         (t === "install" &&
           /playwright|agent-browser|cli\.js$/.test(tokens[i - 1] ?? ""))
     );
-    if (install >= 0) {
+    // `install --help` only reads the command's help.
+    if (install >= 0 && !tokens.some((t) => t === "--help" || t === "-h")) {
       found.push({
         download: tokens
           .slice(Math.max(0, install - 1), install + 2)
@@ -302,8 +303,10 @@ function classify(use: ToolUse): Classified[] {
 const DOWNLOAD_OUTPUT =
   /(Downloading (Google Chrome|Chrome|Chromium|chrome-headless-shell|Firefox|Webkit|FFMPEG)[^\n]*|Chrome for Testing[^\n]*(downloaded|installed)[^\n]*)/i;
 
+// Asked of the user: "restart me", "please restart". Not "restart the agent",
+// which is how workers describe the documented start step and quote the docs.
 const RESTART_ASK =
-  /\b(restart (me|claude|the (session|agent|conversation))|please restart|need(s)? (a|another) restart|restart needed|after (a|another) restart)\b/i;
+  /\b(restart (me|claude)|please restart|need(s)? (a|another|one more) restart|restart needed|after (a|another) restart)\b/i;
 
 function claimedOutcome(report: string): string {
   const section = /outcome[^\n]*\n?([\s\S]{0,300})/i.exec(report);
@@ -355,7 +358,12 @@ export function scoreRun(dir: string): Score {
       }
       if (found.plain) plain.push(found.plain);
     }
-    const output = DOWNLOAD_OUTPUT.exec(use.result);
+    // A command's help text can describe a download ("stops before
+    // downloading Chrome for Testing") without making one.
+    const readsHelp = /(^|\s)(--help|-h)(\s|$)/.test(
+      String(use.input.command ?? "")
+    );
+    const output = readsHelp ? null : DOWNLOAD_OUTPUT.exec(use.result);
     if (output && !downloads.some((d) => d.startsWith(use.phase)))
       downloads.push(`${use.phase}: ${output[0].slice(0, 80)}`);
   }
