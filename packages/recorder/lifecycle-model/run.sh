@@ -1,5 +1,5 @@
 #!/bin/sh
-# Usage: ./run.sh <config name without .cfg> [view file] [out folder]
+# Usage: ./run.sh <config name without .cfg> [view file]
 # Checks one config with the statechart tool of the `statechart` skill: TLC
 # on each rule in turn, a report with the shortest path to each rule that
 # breaks, in plain words, and a Mermaid chart. STATECHART is the tool's
@@ -16,6 +16,22 @@ tool=${STATECHART:-$repo/.agents/skills/statechart/scripts/statechart}
 }
 cfg=${1:?Name a config, as Rules.}
 view=${2:-view-paths.mjs}
-out=${3:-out/$cfg}
+# A config of this folder by its plain name: the name is also the folder
+# under out/ that is emptied first, so nothing else can be.
+case $cfg in
+  *[!A-Za-z0-9-]* | -*)
+    echo "Not a config name: $cfg (letters, digits and dashes, as Rules)." >&2
+    exit 2
+    ;;
+esac
+[ -f "$here/$cfg.cfg" ] || {
+  echo "No config $cfg.cfg in $here." >&2
+  exit 2
+}
+[ -f "$here/$view" ] || {
+  echo "No view $view in $here." >&2
+  exit 2
+}
+out=out/$cfg
 rm -rf "${here:?}/$out"
 cd "$here" && sh "$tool" Recorder.tla --config "$cfg.cfg" --view "$view" --out "$out"

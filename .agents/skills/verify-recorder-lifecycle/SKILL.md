@@ -63,10 +63,11 @@ each function named in a comment beside the operator that models it (search
   `server/infrastructure/windowChannelRouter.ts`.
 
 **Sync commit: `2eb4ef3f`** (`feat/recorder-rebuild`). To see what changed in
-covered code since:
+covered code since, from any folder of the repository (the procedure below
+runs in the model's):
 
 ```sh
-git log --oneline 2eb4ef3f..HEAD -- packages/recorder/src
+git log --oneline 2eb4ef3f..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
@@ -86,9 +87,11 @@ a shared machine run one at a time.
    ./run-all.sh
    ```
 
-   It writes `out/<config>/report.md` for each config, with each rule that
-   breaks told as its path in plain words, and `out/Chart-*/chart.mmd`. Read
-   every result with the `statechart` skill. Compare each config with the
+   For each config it checked, it writes `out/<config>/report.md`, with each
+   rule that breaks told as its path in plain words, and
+   `out/Chart-*/chart.mmd`. A config the tool could not check has no report:
+   `run-all.sh` names it, with its log in `out-<config>.log`, and exits
+   non-zero. Read every report with the `statechart` skill. Compare each config with the
    table in the README, "Running it": the states it reaches and what it must
    give. To check one config with TLC alone, set `TLA2TOOLS` (README,
    "Running it") and run `./tlc.sh Rules`.
