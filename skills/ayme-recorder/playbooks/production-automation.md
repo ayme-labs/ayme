@@ -241,8 +241,10 @@ test("contract flow replays", async ({ context }) => {
 ```
 
 Write `match()` in the copy for the site. Each `replay: aborted` line in the
-output is a request it paired with no recorded call. Compare the request with
-its recorded call from `trace request <n>`: when they differ only in a part
+output is a request it paired with no recorded call, followed by the recorded
+calls with the same method and path. Compare the request with the one it
+should have matched, or read that one in full with `trace request <n>`: when
+they differ only in a part
 that changes between runs, such as a timestamp, counter, token, a build
 stamp in the URL (`?r=1795017612`), a host that differs per visit or a
 JSON-RPC `id`, leave that

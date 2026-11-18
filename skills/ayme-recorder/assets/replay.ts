@@ -6,7 +6,8 @@
  * live. Every other request is answered from the recording when `match()`
  * pairs it with a recorded call not used yet, after that call's recorded
  * duration divided by REPLAY_SPEED (default 1). Identical calls get their
- * answers in recorded order. Anything else is aborted and logged.
+ * answers in recorded order. Anything else is aborted and logged, with up to
+ * three recorded calls of the same method and path to compare it with.
  *
  * The replay test also blocks service workers:
  * `test.use({ serviceWorkers: "block" })`.
@@ -59,16 +60,25 @@ const DROPPED_HEADERS = new Set([
 const REDIRECTS = new Set([301, 302, 307, 308]);
 
 export async function installReplay(context: BrowserContext, traceZip: string) {
-  const unused = loadCalls(traceZip);
+  const recorded = loadCalls(traceZip);
+  const unused = [...recorded];
   const speed = Number(process.env.REPLAY_SPEED) || 1;
   await context.route("**/*", async (route, request) => {
     const method = request.method();
     const read = method === "GET" || method === "HEAD";
     if (read && LIVE_TYPES.has(request.resourceType())) return route.continue();
     const live: Call = { method, url: request.url(), body: request.postData() };
-    const index = unused.findIndex((recorded) => match(live, recorded));
+    const index = unused.findIndex((call) => match(live, call));
     if (index === -1) {
-      console.log("replay: aborted", live);
+      const path = new URL(live.url).pathname;
+      const samePath = recorded
+        .filter(
+          (call) =>
+            call.method === method && new URL(call.url).pathname === path
+        )
+        .slice(0, 3)
+        .map(({ url, body }) => ({ url, body }));
+      console.log("replay: aborted", live, "recorded:", samePath);
       return route.abort();
     }
     const call = unused.splice(index, 1)[0]!;
